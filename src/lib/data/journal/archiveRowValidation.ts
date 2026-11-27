@@ -20,7 +20,7 @@ type Check = (value: unknown) => boolean;
 const text: Check = (value) => typeof value === 'string';
 // A lone surrogate is not text SQLite can round-trip, so an id holding one is
 // unreadable. Nor is a NUL: the driver reads the stored text back cut short
-// at it, so the next Merge could not match the row (re-check carpet 11, F4).
+// at it, so the next Merge could not match the row.
 const NUL = String.fromCharCode(0);
 const identity: Check = (value) => typeof value === 'string' && value.trim().length > 0 && value.isWellFormed() &&
   !value.includes(NUL);
@@ -317,7 +317,7 @@ const ROWS = {
     method: oneOf(HAIR_REMOVAL_METHODS),
     painRating: nullable(integerBetween(1, 5)),
     minutes: optional(nullable(integerBetween(1, 1440))),
-    // The free text before ticket 30; restore reads it by cost.ts's rule.
+    // The free text; restore reads it by cost.ts's rule.
     cost: optional(text),
     provider: text,
     photos: list(hairRemovalPhoto),

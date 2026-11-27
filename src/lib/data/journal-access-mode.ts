@@ -2,16 +2,15 @@ import type { KeystoreBootSource } from './keystore-file';
 
 /* How this journal opens (ADR-0041).
 
-   All four of ADR-0041's modes are here. The three secret-derived ones are
-   one wrap system with three secret sources (crypto/keystore.ts): a
-   keystore's own `secretSource` says which, so the mode is read off the
-   keystore rather than tracked beside it. Android's device-bound mode is the
-   one that is biometric-gated already - Keystore will not release the key
-   until the platform confirms who is present - so the module names it as
-   such rather than offering a second mechanism, and `'biometric'` here means
-   the web's WebAuthn PRF mode only (ticket 55, data/journal-biometric.ts).
-   It is offered on a device that turns out to have it and nowhere else, so
-   nothing may assume a build that compiles this arm can reach it. */
+   All four of ADR-0041's modes are here. The three secret-derived ones are one wrap system
+   with three secret sources (crypto/keystore.ts): a keystore's own `secretSource` says
+   which, so the mode is read off the keystore rather than tracked beside it. Android's
+   device-bound mode is the one that is biometric-gated already - Keystore will not release
+   the key until the platform confirms who is present - so the module names it as such
+   rather than offering a second mechanism, and `'biometric'` here means the web's WebAuthn
+   PRF mode only (data/journal-biometric.ts). It is offered on a device that turns out to
+   have it and nowhere else, so nothing may assume a build that compiles this arm can reach
+   it. */
 export type JournalAccessMode = 'passphrase' | 'pin' | 'biometric' | 'device-bound' | 'unlocked' | null;
 
 /** Whether this mode has a secret to ask for again mid-session. Device-bound

@@ -1,7 +1,6 @@
-/* FA 27: an appointment keeps its time of day and can name who it was with.
-   Version 110 adds `appointment.time_of_day` and `appointment.provider_id`
-   after FA 26's rebuild, as plain ADD COLUMNs, and a `provider` table for the
-   person's own notes on the people they see. */
+/* an appointment keeps its time of day and can name who it was with. Version 110 adds
+   `appointment.time_of_day` and `appointment.provider_id` after rebuild, as plain ADD
+   COLUMNs, and a `provider` table for the person's own notes on the people they see. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

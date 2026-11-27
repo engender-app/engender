@@ -17,9 +17,8 @@ export interface AreaStatesArea {
       hidden, not finished and not suspended, and no row was written to say
       that. */
   getAreaStates(): Promise<AreaStates>;
-  /** Hides or unhides every area named, together. Hiding takes an area out
-      of the navigation only - the records, the direct URL and search are
-      untouched (ADR-0043's own kind of hiding). */
+  /** Hides or unhides every area named, together. Hiding takes an area out of the
+      navigation only - the records, the direct URL and search are untouched. */
   setAreasHidden(areas: readonly HideableArea[], hidden: boolean): Promise<void>;
   /** Records the day every area named finished, or clears it with null.
       Finishing does not hide: a stream you are done with is still readable,
@@ -89,15 +88,14 @@ export function makeAreaStatesArea(driver: SqliteDriver): AreaStatesArea {
       );
       const states: AreaStates = {};
       for (const row of rows) {
-        /* Cycle tracking is not answerable here, and a row saying otherwise
-           is dropped rather than trusted: no writer in this build can make
-           one, but an `area_state` row travels, so a foreign archive is a
-           way in. ADR-0043's rule is one-directional and an archive must not
-           be what reverses it. `cycleTrackingVisible` stays cycle's gate.
+        /* Cycle tracking is not answerable here, and a row saying otherwise is dropped
+           rather than trusted: no writer in this build can make one, but an `area_state`
+           row travels, so a foreign archive is a way in. rule is one-directional and an
+           archive must not be what reverses it. `cycleTrackingVisible` stays cycle's gate.
 
-           Any other key this build has never heard of can only come from an
-           archive written by a newer one. It travelled here and it travels
-           on; nothing above reads an area it cannot name. */
+           Any other key this build has never heard of can only come from an archive written
+           by a newer one. It travelled here and it travels on; nothing above reads an area
+           it cannot name. */
         if (row.area === 'cycleEvents') continue;
         states[row.area as HideableArea] = {
           hidden: row.hidden === 1,

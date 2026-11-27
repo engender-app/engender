@@ -1,15 +1,13 @@
-/* Browser-tier check for ticket 141: batching the demo seed's writes so a
-   liveQuery watching the tables it touches re-runs once per seed rather than
-   once per write.
+/* Browser-tier check for batching the demo seed's writes so a liveQuery watching the tables
+   it touches re-runs once per seed rather than once per write.
 
-   Here rather than the Node tier because `seedPersonaJournal`'s photos need
-   a DOM (`journal-seed.ts`'s `demoPhoto`, `canvas.toBlob`) - the reason
-   `returnGap.test.ts` gives for testing only its pure day-picking logic
-   there. This drives the real seed against a real SQLite driver and a real
-   Svelte scheduler, twice: once as the writes land unbatched (how
-   `resetDemo` ran before ticket 141), once wrapped in `batchWrites` (how
-   `reseed` runs it now) - counting how many times a Home-shaped liveQuery,
-   watching only the table the seed's entry writes touch, re-runs each time. */
+   Here rather than the Node tier because `seedPersonaJournal`'s photos need a DOM
+   (`journal-seed.ts`'s `demoPhoto`, `canvas.toBlob`) - the reason `returnGap.test.ts` gives
+   for testing only its pure day-picking logic there. This drives the real seed against a
+   real SQLite driver and a real Svelte scheduler, twice: once as the writes land unbatched,
+   once wrapped in `batchWrites` (how `reseed` runs it now) - counting how many times a
+   Home-shaped liveQuery, watching only the table the seed's entry writes touch, re-runs
+   each time. */
 import { flushSync } from 'svelte';
 import { createEncryptedWebSqlite } from '../../src/lib/data/sqlite/mc-driver.ts';
 import { boot } from '../../src/lib/data/sqlite/boot.ts';
@@ -67,7 +65,7 @@ async function run() {
   await until(() => countQuery.value !== undefined, 'the entry count query to answer the first time');
 
   // Unbatched: every write announces as it lands, the way `resetDemo` ran
-  // before ticket 141.
+
   const runsBeforeUnbatched = countRuns;
   await seedPersonaJournal(journal, TODAY);
   const seededCount = await journal.entries.countAll();

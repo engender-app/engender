@@ -31,33 +31,28 @@
     grows = false
   }: {
     name: string;
-    /** A `href` makes the segment a link and the group a nav: each choice is
-        its own screen at its own URL, so switching is navigation and belongs
-        in history. Wrapped's four cadences are that, and they had a
-        hand-written copy of this control with no pill on it, so the same
-        gesture looked like two different controls one tab apart (Alicja,
-        2026-08-25). */
+    /** A `href` makes the segment a link and the group a nav: each choice is its own screen
+        at its own URL, so switching is navigation and belongs in history. Wrapped's four
+        cadences are that, and they had a hand-written copy of this control with no pill on
+        it, so the same gesture looked like two different controls one tab apart. */
     options: { value: string; label: string; href?: string; aria?: string }[];
     value: string;
     onChange?: (v: string) => void;
-    /** For a set of short labels - a range in days, a number of steps. The
-        buttons keep their 48dp press height and the pill is drawn shorter
-        inside it, so what slides reads as a pill crossing the set rather
-        than as a dot moving between dots. Six segments reading "7d" to
-        "365d" were 52px wide and 42px tall, which is a circle, and a circle
-        sliding says nothing about the set it is crossing (Alicja,
-        2026-08-25). */
+    /** For a set of short labels - a range in days, a number of steps. The buttons keep
+        their 48dp press height and the pill is drawn shorter inside it, so what slides
+        reads as a pill crossing the set rather than as a dot moving between dots. Six
+        segments reading "7d" to "365d" were 52px wide and 42px tall, which is a circle, and
+        a circle sliding says nothing about the set it is crossing. */
     compact?: boolean;
     /** Disable when a selection changes context, such as a language reload. */
     selectOnArrow?: boolean;
-    /** The group's own identity for the walkthrough's handle (ADR-0029). */
+    /** The group's own identity for the walkthrough's handle. */
     key?: string;
-    /** For a set the person edits while the screen is up (Progress photos'
-        poses, pre-release-human 12): a segment added, removed or renamed
-        opens or closes its own width rather than landing in one frame and
-        shoving its neighbours along. A rename is a new segment in place of
-        the old one, so its width travels too. Off everywhere else, where the
-        set is fixed and nothing about this is wanted. */
+    /** For a set the person edits while the screen is up: a segment added, removed or
+        renamed opens or closes its own width rather than landing in one frame and shoving
+        its neighbours along. A rename is a new segment in place of the old one, so its
+        width travels too. Off everywhere else, where the set is fixed and nothing about
+        this is wanted. */
     grows?: boolean;
   } = $props();
 
@@ -156,27 +151,22 @@
   let trackSize = $state({ w: 0, h: 0 });
   let canScrollStart = $state(false);
   let canScrollEnd = $state(false);
-  /* Whether the track has anywhere to scroll at all, which is a different
-     question from either of the two above: those say which edge still has
-     something past it *right now*, and both are false at rest on a track
-     that does scroll but happens to be sitting at one end. The trailing
-     spacer is keyed to this one (ticket 99 item 24, "last value highlight
-     in switcher doesn't reach the end of the bg") - on a track that fits,
-     the spacer and the gap in front of it were 11px of dead background
-     after the last segment, so the pill stopped short of the end while the
-     first segment sat flush against the start. */
+  /* Whether the track has anywhere to scroll at all, which is a different question from
+     either of the two above: those say which edge still has something past it *right now*,
+     and both are false at rest on a track that does scroll but happens to be sitting at one
+     end. The trailing spacer is keyed to this one - on a track that fits, the spacer and
+     the gap in front of it were 11px of dead background after the last segment, so the pill
+     stopped short of the end while the first segment sat flush against the start. */
   let canScroll = $state(false);
 
   function updateScrollFade() {
     if (!track) return;
-    /* Against the first and last segment's own edges, not scrollWidth and
-       clientWidth: the track carries a few pixels of trailing padding past
-       its last segment on purpose (the spacer below, so that segment does
-       not run flush into the track's rounded corner), and that padding is
-       itself a few pixels of "more to scroll" with no segment behind it.
-       Measuring the raw scroll range flagged that padding as more content
-       and hinted at it even with the last option already fully in view
-       (Alicja, 2026-08-28, on the wrapped cadence tabs opened on "Range"). */
+    /* Against the first and last segment's own edges, not scrollWidth and clientWidth: the
+       track carries a few pixels of trailing padding past its last segment on purpose (the
+       spacer below, so that segment does not run flush into the track's rounded corner),
+       and that padding is itself a few pixels of "more to scroll" with no segment behind
+       it. Measuring the raw scroll range flagged that padding as more content and hinted at
+       it even with the last option already fully in view. */
     const first = buttons[0];
     const last = buttons[buttons.length - 1];
     if (!first || !last) {
@@ -201,14 +191,12 @@
     updateScrollFade();
   });
 
-  /* Drag to scroll, for the pointer that has no flick. A touch pans the
-     track natively; a mouse had nothing - "i cannot click and slide nor
-     scroll on web" (Alicja, phase 5 ticket 99 round 3) - so pressing and
-     sliding now moves the track itself, and the press only becomes a
-     selection if it never turned into a drag. The moved flag is what keeps
-     those two honest: a release after a real drag suppresses the click the
-     browser still fires at the segment under the pointer, link or button,
-     so a flick past "90d" does not land on "180d". */
+  /* Drag to scroll, for the pointer that has no flick. A touch pans the track natively; a
+     mouse needs drag scrolling. Pressing and
+     sliding now moves the track itself, and the press only becomes a selection if it never
+     turned into a drag. The moved flag is what keeps those two honest: a release after a
+     real drag suppresses the click the browser still fires at the segment under the
+     pointer, link or button, so a flick past "90d" does not land on "180d". */
   let dragStartX = 0;
   let dragStartScroll = 0;
   let dragMoved = false;
@@ -362,14 +350,13 @@
     >
       {@render pillMark()}
       {#each options as o, i (o.value)}
-        <!-- Replaces rather than pushes. A switcher shows a different view of
-             the screen you are already on, so each flick of it is not a place
-             to come back to: pushed, the back arrow spent one tap per switch
-             undoing them instead of leaving the screen (Alicja, 2026-08-26).
-             `screen-transition.ts` already says the same thing about these in
-             its own table, where crossing them is tier 3 rather than a
-             navigation. data-no-press: the pill crossing the set
-             is already this control's press response. -->
+        <!-- Replaces rather than pushes. A switcher shows a different view of the screen
+             you are already on, so each flick of it is not a place to come back to: pushed,
+             the back arrow spent one tap per switch undoing them instead of leaving the
+             screen. `screen-transition.ts` already says the same thing about these in its
+             own table, where crossing them is tier 3 rather than a navigation.
+             data-no-press: the pill crossing the set is already this control's press
+             response. -->
         <a
           bind:this={buttons[i]}
           class="segment"

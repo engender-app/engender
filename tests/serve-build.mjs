@@ -1,18 +1,18 @@
-/* Serves `<root>/build` the way deploy/nginx does (after-release ticket 31,
-   audit PERF-05), for the browser checks that boot the built app.
+/* Serves `<root>/build` the way deploy/nginx does, for the browser checks that boot the
+   built app.
 
-   They used to go through vite preview, whose document is not the one that
-   ships: SvelteKit's preview renders the fallback page again instead of
-   reading build/index.html, so it had no CSP meta and no held module hints,
-   and every check ran under neither. This reads the file on disk for every
-   request, so the page a check loads is the page a person loads.
+   They used to go through vite preview, whose document is not the one that ships:
+   SvelteKit's preview renders the fallback page again instead of reading build/index.html,
+   so it had no CSP meta and no held module hints, and every check ran under neither. This
+   reads the file on disk for every request, so the page a check loads is the page a person
+   loads.
 
    What it copies from the production config
    (deploy/nginx/snippets/engender-journal-site.conf): the production CSP and two isolation
-   headers SQLite needs, a file served as itself, a missing file under
-   /_app/immutable/ answered with 404, and anything else answered with the
-   document, which is how this SPA's routes reach the client. It does not
-   compress or cache; nothing a check measures depends on either. */
+   headers SQLite needs, a file served as itself, a missing file under /_app/immutable/
+   answered with 404, and anything else answered with the document, which is how this SPA's
+   routes reach the client. It does not compress or cache; nothing a check measures depends
+   on either. */
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { extname, join, resolve, sep } from 'node:path';
@@ -43,10 +43,11 @@ const ISOLATION = {
   'Cross-Origin-Embedder-Policy': 'require-corp'
 };
 
-/** The request handler serveBuild runs, on its own so vite preview can
-    serve the same files (vite.config.ts, after-release ticket 32).
-    @param {string} root
-    @returns {(req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse) => void} */
+/**
+ * Shared request handler for serveBuild and Vite preview.
+ * @param {string} root
+ * @returns {(req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse) => void}
+ */
 export function buildRequestHandler(root) {
   const build = resolve(root, 'build');
   const documentPath = join(build, 'index.html');

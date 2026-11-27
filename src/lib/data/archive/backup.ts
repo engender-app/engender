@@ -18,12 +18,12 @@ import { portablePreferences } from './payload';
 export type { Delivery };
 
 /** Every way a backup leaves the app (F21). */
-/* EXPORT_PATHS stays exported only for its own test (AU-09 test-only review). */
+/* EXPORT_PATHS stays exported only for its own test. */
 export const EXPORT_PATHS = ['encrypted', 'csv', 'json'] as const;
 
 export type ExportPath = (typeof EXPORT_PATHS)[number];
 
-/* ExportSource stays exported only for its own test (AU-09 test-only review). */
+/* ExportSource stays exported only for its own test. */
 export interface ExportSource {
   /** The journal in the shape an archive carries it, and a reader for its
       photo files. Taken already open so the screen reads it once. */
@@ -38,7 +38,7 @@ export interface ExportSource {
 
 /** A file on its way off the device. The body is a stream so the encrypted
     path stays bounded (ADR-0007); the plain paths are one piece. */
-/* OutgoingFile stays exported only for its own test (AU-09 test-only review). */
+/* OutgoingFile stays exported only for its own test. */
 export interface OutgoingFile {
   recordBackup?: boolean;
   fileName: string;

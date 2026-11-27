@@ -1,7 +1,6 @@
-/* Surfaces opt into cross-block spacing by attribute to avoid a
-   second list of component class names (ADR-0038). Keep the preceding
-   control side class-based because it has no common owning component.
-   Check stylesheet selectors and surface attributes in source. */
+/* Surfaces opt into cross-block spacing by attribute to avoid a second list of component
+   class names. Keep the preceding control side class-based because it has no common owning
+   component. Check stylesheet selectors and surface attributes in source. */
 
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -57,7 +56,7 @@ describe("kit.css's cross-block spacing", () => {
     // lives here now, beside the rule it is an exception to, so the cascade
     // can't quietly take it back.
     //
-    // `.stats-note` was the other half of this pair until phase 8 UX ticket
+    // `.stats-note` was the other half of this pair in older versions UX ticket
     // 03. Its three consumers moved inside the cards they qualify, because
     // hanging a sentence below a card is where the gap has to be argued for
     // at all: a note's own margin-top collapses under the card's, and the
@@ -73,8 +72,8 @@ describe("kit.css's cross-block spacing", () => {
   });
 
   it('no longer enumerates the full surface set anywhere', () => {
-    // The two rules ticket 41 replaced each carried the whole set by name,
-    // in three places between them. Ticket 43 closed the last one - the
+    // The two rules replaced each carried the whole set by name
+    // in three places between them. closed the last one - the
     // chip-row/photo-strip-under-a-surface rule above - so no spacing
     // selector in kit.css names a surface class on its lead side any more.
     const fullSet = /\.kit-chart,\s*\.kit-list,\s*\.kit-tiles,\s*\.kit-notice/;

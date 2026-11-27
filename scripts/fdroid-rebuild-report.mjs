@@ -1,6 +1,5 @@
-/* F-Droid rebuild attempt for ticket 18: build the public-source Android
-   release path twice, compare bytes, and write a report whether or not the
-   bytes match. */
+/* F-Droid rebuild attempt for build the public-source Android release path twice, compare
+   bytes, and write a report whether or not the bytes match. */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';

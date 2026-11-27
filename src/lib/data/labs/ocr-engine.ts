@@ -48,11 +48,9 @@ export function tesseractLabOcrEngine(): LabOcrEngine {
 
       const bytes = new Uint8Array(image);
       const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
-      /* A Blob passed straight to tesseract.js, not an object URL: the worker
-         reads a Blob with FileReader, but a URL string it fetches - and this
-         document's CSP has no `blob:` in connect-src, so that fetch is
-         refused before recognition ever runs (found only once ticket 44 made
-         the sheet reachable enough to try). */
+      /* A Blob passed straight to tesseract.js, not an object URL: the worker reads a Blob
+         with FileReader, but a URL string it fetches - and this document's CSP has no
+         `blob:` in connect-src, so that fetch is refused before recognition ever runs. */
       const blob = new Blob([buffer], { type: 'image/*' });
       /* Terminating the worker is the only stop tesseract.js has - there is
          no cancel on `recognize` - and it makes the pending call reject.

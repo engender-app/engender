@@ -37,10 +37,9 @@
   let status = $state<AndroidReminderStatus | 'unreadable'>({ notifications: 'not-required', exactAlarms: 'not-required' });
   let statusReady = $state(false);
 
-  /* Re-read whenever the screen comes back to the front, because both
-     ways out of a refusal are Android's own settings screens (ticket 41,
-     U30). Every read goes through the watcher, the ones after a request
-     too, so a read from before the trip to settings cannot land last. */
+  /* Re-read whenever the screen comes back to the front, because both ways out of a refusal
+     are Android's own settings screens. Every read goes through the watcher, the ones after
+     a request too, so a read from before the trip to settings cannot land last. */
   let statusWatch: ReturnType<typeof watchStatus<AndroidReminderStatus | 'unreadable'>> | null = null;
 
   async function requestNotifications() {
@@ -61,8 +60,8 @@
     await statusWatch?.refresh();
   }
 
-  /* An old plaintext copy the phone could not lock (GD-031). Both ways out
-     end in a resync, so reminders come back as soon as the copy is gone. */
+  /* An old plaintext copy the phone could not lock. Both ways out end in a resync, so
+     reminders come back as soon as the copy is gone. */
   async function retryStoredCopy() {
     try {
       await androidReminders.retryStoredCopy();
@@ -151,12 +150,11 @@
     {/snippet}
   </ScreenHeader>
 
-  <!-- Carpet 30: the app's own daily check-in, flush on the page. It had a
-       `.card` with a 1.5px `--accent-border` edge, which was the group
-       saying "this one is mine, not a reminder you made" - a claim rule 4
-       has no treatment for, and one the row's own title makes in words.
-       The shape is the disguise sheet's, settled on carpet 29: `.spread`
-       rows in a stack, no ground, no edge, no separators. -->
+  <!-- the app's own daily check-in, flush on the page. It had a `.card` with a 1.5px
+       `--accent-border` edge, which was the group saying "this one is mine, not a reminder
+       you made" - a claim rule 4 has no treatment for, and one the row's own title makes in
+       words. The shape is the disguise sheet's, settled on: `.spread` rows in a stack, no
+       ground, no edge, no separators. -->
   <ReadReserve ready={preferencesAttached()} estimate={checkInEstimate} onrest={checkInRemember} data-checkin>
     <div class="stack-3">
       <div class="spread">

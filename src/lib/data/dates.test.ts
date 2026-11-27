@@ -7,7 +7,7 @@ const { fmtApart } = await import('./dates');
 const { overwriteGetLocale } = await import('../paraglide/runtime.js');
 
 describe('fmtApart', () => {
-  it('says "Same day" for two things on one day rather than "0 days apart" (bug session 18, item 63)', () => {
+  it('says "Same day" for two things on one day rather than "0 days apart"', () => {
     overwriteGetLocale(() => 'en');
     expect(fmtApart(20000, 20000)).toBe('Same day');
     overwriteGetLocale(() => 'pl');

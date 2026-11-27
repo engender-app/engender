@@ -22,15 +22,9 @@ interface AreaState {
   suspendedEpochDay: number | null;
 }
 
-/** Every area a person can hide, which is every area but one.
-
-    `cycleEvents` is out, and structurally rather than by convention. Cycle
-    tracking's visibility is ADR-0043's own one-directional question: a
-    preference or a testosterone regimen can add the row back, and no
-    preference is what hides it, because read cold an unconditional cycle row
-    is a dysphoria trigger. A uniform flag defaulting to shown would delete
-    both the asymmetry and the data-driven unhide, so `cycleTrackingVisible`
-    stays cycle's gate and this record cannot be asked about it. */
+/** Cycle tracking has its own visibility gate. A testosterone regimen or
+    an explicit preference can surface it. Exclude it here so the ordinary
+    area flag cannot override that decision. */
 export type HideableArea = Exclude<ArchiveSectionName, 'cycleEvents'>;
 
 /** Every area that has said anything, sparse on purpose: a key with no entry
@@ -46,23 +40,15 @@ export type AreaStates = Partial<Record<HideableArea, AreaState>>;
 
 export const AREA_STATES_BEFORE_READ: AreaStates = {};
 
-/** The areas a person can declare finished: the original nine approved area
-    by area by Alicja on 2026-09-03, plus `voicePracticeTakes`, which that ticket posed as an open choice rather
-    than a decision Alicja had already made - "decide with the deepening
-    spec's ticket 13 in hand whether practice takes join the finishable set
-    or sit behind the same row" - resolved here and worth her confirming.
+/** Finishing applies to an ongoing practice someone decides to stop
+    tracking. Each item names an accumulating series whose records can
+    continue indefinitely.
 
-    The rule they satisfy: finishing is a statement about the person's
-    *practice of tracking*, so it fits an accumulating dated series they
-    decide they are done adding to - and says nothing on top of a thing that
-    already ends itself, which is what `NOT_FINISHABLE` below is mostly
-    about.
-
-    Declared as the array so the literals stay narrow: a union written by
-    hand beside a widened `readonly ArchiveSectionName[]` would make
-    `Unfinishable` collapse to `never` and the whole check below vacuous. */
+    Keep this as a literal array so `Unfinishable` checks every other
+    archive section. A widened `readonly ArchiveSectionName[]` would
+    collapse it to `never`. */
 /* FINISHABLE_AREAS stays exported for its own test, and cross-checked in
-   areaGroups.test.ts (AU-09 test-only review). */
+   areaGroups.test.ts. */
 export const FINISHABLE_AREAS = [
   'hairRemovalSessions',
   'wearSessions',
@@ -86,14 +72,8 @@ export const FINISHABLE_AREAS = [
 
 export type FinishableArea = (typeof FINISHABLE_AREAS)[number];
 
-/** The finishable areas that can also be paused, not done (phase 8 features
-    ticket 51, ADR-0052 amendment). Cut from ticket 44's own answer: don't
-    build a general `suspended` field speculatively, and let whichever area
-    names a real case propose it against that need. Asked directly, two did -
-    a temporary break from voice practice, and pausing electrolysis or laser
-    for a while - and none of the other seven did, so they are not here. A
-    later ticket naming a case for one of those adds it to this list, the same
-    way `FINISHABLE_AREAS` itself grows one area at a time. */
+/** Voice practice and hair removal can pause and resume (ADR-0052).
+    Only add a section here when its practice needs a temporary break. */
 export const SUSPENDABLE_AREAS = [
   'hairRemovalSessions',
   'voiceBenchmarks',
@@ -104,23 +84,10 @@ export type SuspendableArea = (typeof SUSPENDABLE_AREAS)[number];
 
 type Unfinishable = Exclude<ArchiveSectionName, FinishableArea>;
 
-/** Every area that deliberately **cannot** be finished, and why - a full
-    `Record` over whatever `FINISHABLE_AREAS` does not name, the shape
-    `DAY_OPT_OUTS` uses (`day.ts`). A new archive section is a compile error
-    here until somebody either declares it finishable or writes down why it
-    is not, so nobody has to remember the check.
-
-    Two families of reason, and the difference matters:
-
-    *Practice-based.* A judgement under Alicja's rule: the area already ends
-    per record, so an area-level finish on top of it says nothing new. The
-    wording is derived from that rule rather than quoted from her.
-
-    *Structural.* A fact about the schema rather than a judgement about
-    practice - reference data, or content that belongs to another record.
-    These need no product call and cannot drift. */
-/* NOT_FINISHABLE stays exported only for its own test (AU-09 test-only
-   review). */
+/** A new archive section must be finishable or have a reason here.
+    Some practices end per record. Reference data and content owned by
+    another record have no independent practice to finish. */
+/* NOT_FINISHABLE stays exported only for its own test. */
 export const NOT_FINISHABLE: Record<Unfinishable, string> = {
   /* Practice-based exclusions. */
   tryouts: 'a tryout carries its own end day, so finishing the practice says nothing the record has not already said',
@@ -145,7 +112,7 @@ export const NOT_FINISHABLE: Record<Unfinishable, string> = {
   labResults: 'results arrive from outside on whatever schedule the prescription needs, so there is no practice of the person’s to declare done',
   reminders: 'an intention for a future day, switched off one reminder at a time',
   checklists: 'a list is answered and done with per list, which is the same statement one level down',
-  // Phase 8 features ticket 52, ADR-0065: paper keeps arriving. There is no
+  // ADR-0065: paper keeps arriving. There is no
   // state in which somebody is done being sent opinions, referrals and
   // rulings, so an area-level finish here would be a statement nobody is in
   // a position to make.
@@ -171,14 +138,12 @@ export const NOT_FINISHABLE: Record<Unfinishable, string> = {
   personalEffectTypes: 'reference data, not a series (CONTEXT: "Reference data")'
 };
 
-/** Whether an area is out of the navigation. Nothing here hides data: a
-    hidden area keeps its records, its direct URL and its place in search,
-    the same as ADR-0043's own hiding does.
+/** Whether an area is out of the navigation. Nothing here hides data: a hidden area keeps
+    its records, its direct URL and its place in search.
 
-    Takes no day, unlike `areaQuiet` below - hiding an area is not a dated
-    statement, and finishing one does not hide it. */
-/* areaHidden stays exported for its own test, and cross-checked in
-   areaStates.test.ts (AU-09 test-only review). */
+    Takes no day, unlike `areaQuiet` below - hiding an area is not a dated statement, and
+    finishing one does not hide it. */
+/* areaHidden stays exported for its own test, and cross-checked in areaStates.test.ts. */
 export function areaHidden(area: HideableArea, states: AreaStates): boolean {
   return states[area]?.hidden === true;
 }
@@ -187,14 +152,16 @@ export function areaHidden(area: HideableArea, states: AreaStates): boolean {
     state - the same test the storage layer runs to know when to drop a row
     (`journal/areaStates.ts`). Here so both sides read one function rather
     than two copies of "hidden = 0 and both days are null" agreeing by luck. */
-/* areaStateResting stays exported only for its own test (AU-09 test-only
-   review). */
+/* areaStateResting stays exported only for its own test. */
 export function areaStateResting(state: Pick<AreaState, 'hidden' | 'finishedEpochDay' | 'suspendedEpochDay'>): boolean {
   return !state.hidden && state.finishedEpochDay === null && state.suspendedEpochDay === null;
 }
 
 /**
- * Hide a surface only if it fronts at least one area and all those areas are hidden. `cycleEvents` is outside `HideableArea`, so a surface for it alone stays visible (ADR-0043). `hubRows.ts` uses this rule so a hub row and the screen it opens agree.
+ * Hide a surface only if it fronts at least one area and all those areas are
+ * hidden. `cycleEvents` is outside `HideableArea`, so a surface for it alone
+ * stays visible. `hubRows.ts` uses this rule so a hub row and the screen it
+ * opens agree.
  */
 export function areasHidden(areas: readonly ArchiveSectionName[], states: AreaStates): boolean {
   if (areas.length === 0) return false;

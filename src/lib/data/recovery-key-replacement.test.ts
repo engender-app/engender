@@ -1,12 +1,10 @@
-/* Replacing a recovery key through process death (last-audit UI 42).
+/* Replacing a recovery key through process death.
 
-   Each test drives the real operations against one in-memory store that
-   stands in for the disk, through a process that dies after a set number of
-   writes or removals have landed. "Restarting" is carrying on against the
-   same store with nothing else: no screen, no held key, only what was
-   written. The rows are the outcome table in the approved protocol
-   (orchestration/ui42-protocol-proposal-2026-10-16.md), for a replacement
-   and for a journal's first key. */
+   Each test drives the real operations against one in-memory store that stands in for the
+   disk, through a process that dies after a set number of writes or removals have landed.
+   "Restarting" is carrying on against the same store with nothing else: no screen, no held
+   key, only what was written. The rows are the outcome table in the approved protocol, for
+   a replacement and for a journal's first key. */
 import { afterEach, describe, test, expect, vi } from 'vitest';
 import {
   RecoveryKeyNotPendingError,

@@ -1,8 +1,7 @@
-/* The post-rc.1 squash (pre-publish ticket 01): what the chain from the v88
-   baseline up to 119 builds, held to dumps frozen from the unsquashed chain
-   before the squash touched it. The headers of the four schema-v119-* files
-   in test-support say which commit carried that chain and how to rebuild
-   them. */
+/* The post-rc.1 squash: what the chain from the v88 baseline up to 119 builds, held to
+   dumps frozen from the unsquashed chain before the squash touched it. The headers of the
+   four schema-v119-* files in test-support say which commit carried that chain and how to
+   rebuild them. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

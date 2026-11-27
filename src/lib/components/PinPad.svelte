@@ -1,19 +1,16 @@
 <script lang="ts">
-  /* The keypad and the dots above it, extracted from LockScreen when ticket
-     53 gave the PIN three jobs instead of one: choosing it in the setup
-     module, confirming it there, and typing it at a gate - cold start or
-     mid-session. Three copies of a keypad is how the two it replaced had
-     already drifted once.
+  /* The keypad and the dots above it, extracted from LockScreen when gave the PIN three
+     jobs instead of one: choosing it in the setup module, confirming it there, and typing
+     it at a gate - cold start or mid-session. Three copies of a keypad is how the two it
+     replaced had already drifted once.
 
-     Deliberately dumb. It collects digits and says when it has enough; the
-     throttle, the error copy, the biometric key and what a finished PIN
-     means all belong to whoever mounted it, because those differ per job
-     while the pad itself never does.
+     Deliberately dumb. It collects digits and says when it has enough; the throttle, the
+     error copy, the biometric key and what a finished PIN means all belong to whoever
+     mounted it, because those differ per job while the pad itself never does.
 
-     Its motion is the half of the system that belongs on a screen met under
-     stress: dots filling as a response to a press, a
-     shake keyed to the refusal count so it plays once per refusal rather
-     than once per mount, and nothing that arrives or leaves. */
+     Its motion is the half of the system that belongs on a screen met under stress: dots
+     filling as a response to a press, a shake keyed to the refusal count so it plays once
+     per refusal rather than once per mount, and nothing that arrives or leaves. */
 
   import { m } from '$lib/paraglide/messages';
   import { PIN_LENGTH } from '$lib/crypto/params';

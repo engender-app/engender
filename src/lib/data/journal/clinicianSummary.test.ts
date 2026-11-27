@@ -1,8 +1,6 @@
-/* The clinician visit summary: an assembly over rows
-   regimen, doses, labs, exposure, sideEffects, cycleEvents, checklists,
-   procedures and areaStates own, recomputed on every read. One registry
-   since functional-audit ticket 38, which folded the dossier layer that
-   used to sit on top of it into it. */
+/* The clinician visit summary: an assembly over rows regimen, doses, labs, exposure,
+   sideEffects, cycleEvents, checklists, procedures and areaStates own, recomputed on every
+   read. One registry, which folded the dossier layer that used to sit on top of it into it. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
@@ -101,7 +99,7 @@ test('an episode superseded before the range starts is left out; the one still o
   assert.equal(summary.sections.regimen!.history[0].endEpochDay, null);
 });
 
-test('an ended episode inside the range reports its own stored end day, whatever else starts outside the range (phase 5 ticket 38)', async () => {
+test('an ended episode inside the range reports its own stored end day, whatever else starts outside the range', async () => {
   const { journal } = await journalWithBuiltIns();
   await episode(journal, 19000, { dose: 2, endEpochDay: 19029 });
   await episode(journal, 19030, { dose: 4 });
@@ -151,12 +149,10 @@ test('with nothing logged at all, every section comes back empty rather than thr
   });
 });
 
-/* Functional-audit ticket 38: the registry is the page. Every part the
-   printed summary carries, the personal details at its top included, is a
-   section here, in the order the page prints them - which put the prep list
-   before procedures and finished areas all along, whatever the old
-   registry's own order said, because the dossier layer drew its blocks in
-   its own order. */
+/* The registry is the page. Every part the printed summary carries, the personal details at
+   its top included, is a section here, in the order the page prints them - which put the
+   prep list before procedures and finished areas all along, whatever the old registry's own
+   order said, because the dossier layer drew its blocks in its own order. */
 test('a section is registered for each part the page prints, in the order it prints', async () => {
   const printed = [
     'demographics',
@@ -237,9 +233,8 @@ test('cycle events in the range are a section like the others', async () => {
   assert.deepEqual(summary.sections.cycleEvents!.map((e) => e.epochDay), [19003]);
 });
 
-/* Ticket 08 reserved an `autoLogged` field for ticket 11 to fill; ticket 11
-   put `source` on the dose itself instead, so what the row carries is the
-   journal's own answer and the summary adds nothing. */
+/* Reserved an `autoLogged` field to fill; put `source` on the dose itself instead, so what
+   the row carries is the journal's own answer and the summary adds nothing. */
 test("carries each dose's source, so the print can mark the ones a schedule wrote", async () => {
   const { journal } = await journalWithBuiltIns();
   await episode(journal, 19000);
@@ -311,7 +306,7 @@ test('a procedure with no checklist yet prints an empty one rather than nothing'
   assert.equal(summary.sections.procedures![0].surgeryEpochDay, null);
 });
 
-/* Phase 8 features ticket 04: when a stream ended. */
+/* When a stream ended. */
 
 test('the summary says which streams ended and when, whatever the range', async () => {
   const { journal } = await journalWithBuiltIns();
@@ -344,8 +339,8 @@ test('un-finishing takes the line back off the page', async () => {
   assert.deepEqual(summary.sections.finishedAreas!, []);
 });
 
-/* Phase 8 features ticket 39: excluding a drug from the range sheet drops
-   its rows from regimen, dose-history and exposure, and nothing else. */
+/* Excluding a drug from the range sheet drops its rows from regimen, dose-history and
+   exposure, and nothing else. */
 
 test('excluding a drug drops its regimen episode, keeps everyone else\'s', async () => {
   const { journal } = await journalWithBuiltIns();
@@ -385,9 +380,8 @@ test('a dose that cannot be attributed to any drug is never dropped by an exclus
   assert.equal(summary.sections.regimen!.doses.length, 1);
 });
 
-/* Route days left an excluded drug in until functional-audit ticket 39:
-   with a drug that is not HRT off by default, an SSRI's oral days still
-   reached the page as "oral" days. They now count only the drugs printed;
+/* Route days left an excluded drug in with a drug that is not HRT off by default, an SSRI's
+   oral days still reached the page as "oral" days. They now count only the drugs printed;
    excluded doses (ones the log could not attribute) stay as they were. */
 test('excluding a drug drops its exposure dose totals, regimen days and route days, keeps excluded doses as they were', async () => {
   const { journal } = await journalWithBuiltIns();
@@ -429,8 +423,7 @@ test('with no exclusion set, getSummary keeps printing every drug (default param
   assert.equal(summary.sections.regimen!.history.length, 1);
 });
 
-/* The printing choices the sheet makes (phase 8 features ticket 39,
-   after-release 22), beside the registry they choose from. */
+/* The printing choices the sheet makes, beside the registry they choose from. */
 
 test('lists every distinct drug name across the given episodes once, sorted, keeping the first spelling', () => {
   const first = { drug: 'Estradiol Valerate' } as Parameters<typeof regimenDrugNames>[0][number];
@@ -456,8 +449,7 @@ test('preserves saved exclusions under alternate spellings after deduplication',
   assert.deepEqual(excluded, { ' ESTRADIOL VALERATE ': true, 'Estradiol Valerate': true, 'estradiol valerate': true, Progesterone: true });
 });
 
-/* After-release 22 (L04-06): the regimen cell read "Estradiol valerate
-   (valerate)", naming the ester twice. */
+/* (L04-06): the regimen cell read "Estradiol valerate (valerate)", naming the ester twice. */
 test('names an ester beside the drug only when the drug name does not already, by whole words', () => {
   assert.equal(regimenEsterNote('Estradiol', 'valerate'), 'valerate');
   assert.equal(regimenEsterNote('Testosterone', 'cypionate'), 'cypionate');
@@ -469,9 +461,8 @@ test('names an ester beside the drug only when the drug name does not already, b
   assert.equal(regimenEsterNote('Estradiol enanthate-free', 'enanthat'), 'enanthat');
 });
 
-/* Functional-audit ticket 39: the summary is the one thing made to leave
-   the device, so a drug that is not HRT stays off it until the person
-   switches it on. The drug class is FA 18's, stored on the episode. */
+/* The summary is the one thing made to leave the device, so a drug that is not HRT stays
+   off it until the person switches it on. The episode stores the drug class. */
 test('a drug of class other is left out by default, and printed once switched on', async () => {
   const { journal } = await journalWithBuiltIns();
   await episode(journal, 19000, { drug: 'estradiol valerate' });
@@ -528,11 +519,10 @@ test('a change whose effect is hidden, or whose category is off, stays off the p
   assert.deepEqual(summary.sections.personalEffects, []);
 });
 
-/* The side-effects part reads FA 23's ongoing or resolved state. A side
-   effect that began before the range and is still going on was active in
-   it, so it prints; one resolved before the range began was not, so it
-   does not. Each carries its resolved day, for the page to file it under
-   ongoing or resolved. */
+/* The side-effects part reads ongoing or resolved state. A side effect that began before
+   the range and is still going on was active in it, so it prints; one resolved before the
+   range began was not, so it does not. Each carries its resolved day, for the page to file
+   it under ongoing or resolved. */
 test('side effects are the ones active at any point in the range, each with its resolved day', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.sideEffects.upsertSideEffect({ name: 'long ago, over', severity: 2, epochDay: 18800, resolvedEpochDay: 18850 });

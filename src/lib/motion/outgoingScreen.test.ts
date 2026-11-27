@@ -56,10 +56,10 @@ describe('the outgoing screen at the new capture', () => {
     expect(incoming.removed).toBe(false);
   });
 
-  /* The foot is in the app column rather than in the screen since carpet
-     26, so a screen's remains are two nodes. A foot that has begun to leave
-     is dead whether or not the screen being entered has one of its own,
-     which is why this is read off the mark and not off document order. */
+  /* The foot is in the app column rather than in the screen since, so a screen's remains
+     are two nodes. A foot that has begun to leave is dead whether or not the screen being
+     entered has one of its own, which is why this is read off the mark and not off document
+     order. */
   it('removes every foot whose outro has begun, and asks for those only', () => {
     const leaving = foot();
     const asked: string[] = [];

@@ -59,12 +59,11 @@
   let sessionsQuery = liveList((j) => j.taper.getSessions());
   let sessions = $derived(sessionsQuery.rows);
 
-  /* Which procedure the taper follows (audit item 7: it used to carry its
-     own "surgery day", a second copy of a date the procedure already
-     has, and the audit found the two disagreeing). Read alongside the
-     taper rather than joined into it here - `journal.taper.getTaper()`
-     already reads the join for `procedureId`, and this list is what a
-     picker among more than one eligible procedure needs besides. */
+  /* Which procedure the taper follows (it used to carry its own "surgery day", a second
+     copy of a date the procedure already has, and the audit found the two disagreeing).
+     Read alongside the taper rather than joined into it here - `journal.taper.getTaper()`
+     already reads the join for `procedureId`, and this list is what a picker among more
+     than one eligible procedure needs besides. */
   let proceduresQuery = liveList((j) => j.procedures.getProcedures());
   let procedures = $derived(proceduresQuery.rows);
   let eligibleProcedures = $derived(procedures.filter(dilationEligible));
@@ -295,10 +294,9 @@
   <!-- Held at last visit's height until the taper, the procedures and the sessions have answered, then faded in: the body used to cut in at full opacity when they did. -->
   <ReadReserve ready={dilationRevealed} estimate={dilationEstimate} onrest={dilationRemember}>
     {#if !taper && eligibleProcedures.length === 0}
-      <!-- A schedule names the procedure it follows (audit item 7), so with
-           none to name there is nothing to type in yet - and the editor would
-           open on a save it could never enable. Says so, and sends the person
-           to the screen that fixes it. -->
+      <!-- A schedule names the procedure it follows, so with none to name there is nothing
+           to type in yet - and the editor would open on a save it could never enable. Says
+           so, and sends the person to the screen that fixes it. -->
       <div class="screen-part">
         <Notice
           icon="repeat"
@@ -324,9 +322,9 @@
       <div class="screen-part">
         <SectionHeading text={m.schedule_title()} />
         {#if eligibleProcedures.length > 1}
-          <!-- A picker only where there is a real choice to make (audit item
-               7): with exactly one eligible procedure, `openScheduleEditor`
-               already selected it and there is nothing here to ask. -->
+          <!-- A picker only where there is a real choice to make: with exactly one eligible
+               procedure, `openScheduleEditor` already selected it and there is nothing here
+               to ask. -->
           <Field label={m.dilation_procedure_label()} legend>
             {#snippet children()}
               <Segmented
@@ -513,10 +511,8 @@
         </div>
       {/if}
 
-      <!-- The schedule itself, under the reading of it rather than over: it
-           is where the taper is edited, not what a person opens this screen
-           to find out (rule 16, and the same lesson ticket 54 took on the
-           roadmap - open on where you are, not on the pack's provenance). -->
+      <!-- The schedule itself, under the reading of it rather than over: it is where the
+           taper is edited, not what a person opens this screen to find out. -->
       <div class="screen-part">
         <SectionHeading text={m.schedule_title()} />
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.schedule)}>

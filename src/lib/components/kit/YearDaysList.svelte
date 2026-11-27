@@ -149,8 +149,8 @@
   }
 
   /* The end of the year dims the way a disabled icon button does
-     (components.css, .icon-btn:disabled), and travels there on the kit's
-     own opacity transition (ticket 18 added it to .icon-btn). */
+     (components.css,.icon-btn:disabled), and travels there on the kit's own opacity
+     transition. */
   .year-days-step[aria-disabled='true'] {
     opacity: 0.45;
     cursor: default;

@@ -93,13 +93,11 @@
     epochDay?: number;
     entryId?: number;
     seedMood?: number | null;
-    /** The appointment this new entry debriefs, by id (phase 6 ticket 08,
-        rekeyed from a date by ticket 58), arriving as a query param the
-        same way `seedMood` does. Opens the entry under the debrief
-        scaffold once on mount and links the saved entry back to the
-        appointment in the same transaction - never on an edit
-        of an existing entry, the same "creation aid, not an editing one"
-        rule the prompt already follows. */
+    /** The appointment this new entry debriefs, by id, arriving as a query param the same
+        way `seedMood` does. Opens the entry under the debrief scaffold once on mount and
+        links the saved entry back to the appointment in the same transaction - never on an
+        edit of an existing entry, the same "creation aid, not an editing one" rule the
+        prompt already follows. */
     debriefForAppointment?: string;
     /** A chip section a new entry opens with, from the address (`?open=`).
         A resumed draft keeps its own open section. */
@@ -144,8 +142,8 @@
   );
   /** Which way the last change went, so a step back runs the film backwards. */
   let steppingBack = $state(false);
-  /** A back gesture is drawing the step back (ticket 04, box 5): the first
-      step is drawn under the second, and the way on under the finish control. */
+  /** A back gesture is drawing the step back: the first step is drawn under the second, and
+      the way on under the finish control. */
   let previewing = $state(false);
   /** The swap after a drawn step back, which has nothing left to move. */
   let instantStep = $state(false);
@@ -225,16 +223,14 @@
   });
   onFirstResult(loaded, (entry) => { if (entryId != null) void session.resume(entry); });
 
-  /* Curation metadata (CONTEXT: "Starred"), read once like the rest of
-     `existing` and kept in its own local state rather than `entryDraft`:
-     starring an existing entry is its own mutation (setEntryStarred), and
-     `loaded`'s deliberately empty table list (see
-     above) means it will not refresh itself from elsewhere either.
+  /* Curation metadata, read once like the rest of `existing` and kept in its own local
+     state rather than `entryDraft`: starring an existing entry is its own mutation
+     (setEntryStarred), and `loaded`'s deliberately empty table list (see above) means it
+     will not refresh itself from elsewhere either.
 
-     A new entry has no id to write `setEntryStarred` against yet, so
-     toggling one before the first save only flips this local flag - ticket
-     18's "starred before it is saved". The journal includes that flag in
-     the creation transaction. An existing entry keeps writing
+     A new entry has no id to write `setEntryStarred` against yet, so toggling one before
+     the first save only flips this local flag - "starred before it is saved". The journal
+     includes that flag in the creation transaction. An existing entry keeps writing
      immediately, the same as it always has. */
   let starred = $derived(session.starred);
 
@@ -289,16 +285,15 @@
     void prepareDraft(() => fillDebriefPrefill(debriefForAppointment));
   }
 
-  /* Prefill the debrief with answers from the room, paired with their
-     questions, then dated labs and side effects since the visit.
-     Read the in-room state without consuming it so a discarded draft can
-     be started again. Resolve the visit date from its ID. If it is missing,
-     keep the answers and omit the dated list. debriefNote.ts merges the
-     list without locale dependencies (ADR-0016).
+  /* Prefill the debrief with answers from the room, paired with their questions, then dated
+     labs and side effects since the visit. Read the in-room state without consuming it so a
+     discarded draft can be started again. Resolve the visit date from its ID. If it is
+     missing, keep the answers and omit the dated list. debriefNote.ts merges the list
+     without locale dependencies.
 
-     Append both sections in one write only while the note still matches
-     the scaffold. Preserve typing and restored drafts. With no answers or
-     dated items, leave the scaffold alone. */
+     Append both sections in one write only while the note still matches the scaffold.
+     Preserve typing and restored drafts. With no answers or dated items, leave the scaffold
+     alone. */
   async function fillDebriefPrefill(appointmentId: string) {
     // Awaited first, deterministically: a restored process-death draft is
     // the person's own unsaved work and always wins the race against this
@@ -429,7 +424,7 @@
     followReveal(sectionEl, region, chipRow);
   }
 
-  /* Contextual Inline Cards (ADR-0044) */
+  /* Contextual Inline Cards */
   let tryoutsQuery = liveQuery((j) => j.tryouts.getTryouts());
   let activeTryout = $derived(
     (tryoutsQuery.value ?? []).find((t) => t.endEpochDay == null && (t.kind === 'name' || t.kind === 'pronouns'))
@@ -480,17 +475,15 @@
 
   let isHrtActive = $derived(activeEpisodes.length > 0);
 
-  /* ADR-0043's gate, asked rather than re-derived. This screen read the cycle preference directly, which was the
-     one surface of three that did - so somebody on a testosterone regimen who
-     never flipped the switch got the More row and the side-effects section
-     and not this, which is the reader the automatic half of the rule exists
-     for.
+  /* The gate, asked rather than re-derived. This screen read the cycle preference directly,
+     which was the one surface of three that did - so somebody on a testosterone regimen who
+     never flipped the switch got the More row and the side-effects section and not this,
+     which is the reader the automatic half of the rule exists for.
 
-     `Date.now()` and not this entry's own day, which is what the other two
-     surfaces pass: the question is whether cycle tracking is surfaced for
-     this person, not whether it was surfaced on a day they are backdating
-     to. A regimen that has since ended does not take the chips off an entry
-     written last spring. */
+     `Date.now()` and not this entry's own day, which is what the other two surfaces pass:
+     the question is whether cycle tracking is surfaced for this person, not whether it was
+     surfaced on a day they are backdating to. A regimen that has since ended does not take
+     the chips off an entry written last spring. */
   let cycleTrackingActive = $derived(
     cycleTrackingVisible(episodesQuery.value ?? [], Date.now(), prefs.cycleTrackingChoice)
   );
@@ -585,14 +578,12 @@
     }
   }
 
-  /* The day-prompt queue (ticket 47, ADR-0008/0015): every picked or
-     captured photo is normalized before it reaches the draft, and
-     normalizing always strips whatever date the file carried, so each one
-     gets asked for a day before it lands. A queue rather than a single
-     pending photo because pickPhotos() can bring back several at once
-     (photoPicking.ts) - each is asked in turn, oldest first, so none is
-     silently dropped by the next one overwriting `dayPromptQueue[0]`
-     before it resolves. */
+  /* The day-prompt queue (ADR-0008/0015): every picked or captured photo is normalized
+     before it reaches the draft, and normalizing always strips whatever date the file
+     carried, so each one gets asked for a day before it lands. A queue rather than a single
+     pending photo because pickPhotos() can bring back several at once (photoPicking.ts) -
+     each is asked in turn, oldest first, so none is silently dropped by the next one
+     overwriting `dayPromptQueue[0]` before it resolves. */
   let dayPromptQueue = $state<NormalizedPhoto[]>([]);
   let dayPromptValue = $state('');
 
@@ -638,16 +629,16 @@
     return last.photo.fileName ? { fileName: last.photo.fileName } : null;
   }
 
-  /* A photo taken with the camera just now was taken today, so on today's
-     entry there is nothing to ask (audit UX-05: Save and Skip did the same
-     thing). A picked file has had its date stripped and could be from any
-     day, so it is still asked; so is a capture on a backdated entry. */
+  /* A photo taken with the camera just now was taken today, so on today's entry there is
+     nothing to ask (Save and Skip did the same thing). A picked file has had its date
+     stripped and could be from any day, so it is still asked; so is a capture on a
+     backdated entry. */
   const entryPhotoReview = photoReview(lastDraftPhotoReference, (photo) => {
     if (entryDraft.epochDay === todayEpochDay()) entryDraft.addPhoto({ ...photo, epochDayOverride: null });
     else queueForDayPrompt([photo]);
   }, 'entry');
 
-  // The photo tapped to open the viewer (ticket CARPET-06); null keeps it
+  // The photo tapped to open the viewer; null keeps it
   // closed.
   let viewedPhoto = $state<{ fileName: string | null; bytes?: Uint8Array } | null>(null);
 
@@ -693,15 +684,14 @@
     }
   }
 
-  /* Picking one that already exists, rather than making one here. Photos
-     offered a gallery from the start and these two did not, which is what
-     Alicja asked for on 2026-08-25 against the built screen: a recording of
-     her own voice from a year ago is the same kind of thing as a photo from
-     a year ago, and the editor could take one and not the other.
+  /* Picking one that already exists, rather than making one here. Photos offered a gallery
+     from the start and these two did not, a recording of her own voice from a year ago is
+     the same kind of thing as a photo from a year ago, and the editor could take one and
+     not the other.
 
-     The store owns whether the file is admissible - the wrong kind, too
-     long, too large to store - and reports its own refusals, so there is
-     nothing to branch on here beyond "did anything come back". */
+     The store owns whether the file is admissible - the wrong kind, too long, too large to
+     store - and reports its own refusals, so there is nothing to branch on here beyond "did
+     anything come back". */
   async function addRecordingFile() {
     const bytes = await pickRecording();
     if (bytes) entryDraft.addRecording(bytes);
@@ -845,12 +835,10 @@
     toast(m.saved(), { kind: 'saved' });
   }
 
-  /* The mood comes first (Alicja, 2026-11-25, ticket 09's sign-off): the
-     way on from the first step waits for a face, so a later step never
-     lacks one. Pressed without one, it stays and takes the person to the
-     faces, saying why. An address that opens on a later step (`?open=`)
-     can still arrive without one, which is what saveEntry's walk back to
-     the faces is left for. */
+  /* The mood comes first: the way on from the first step waits for a face, so a later step
+     never lacks one. Pressed without one, it stays and takes the person to the faces,
+     saying why. An address that opens on a later step (`?open=`) can still arrive without
+     one, which is what saveEntry's walk back to the faces is left for. */
   let wayOnNotice = $state('');
   function goOn() {
     if (!stepAhead) return;
@@ -911,16 +899,14 @@
     }
   }
 
-  /* The step back drawn under Android's back gesture (ticket 04, box 5).
-     While the gesture runs, the first step is drawn beneath the second
-     (`previewing`), inert, from the same draft, and each part of the step
-     change - the step, the heading on the field, the way on under the
-     finish control and the scroll to the top - follows the gesture's
-     progress through the motion a tap on Back plays ($lib/motion/entryStep).
-     Releasing settles it forward from there and then swaps the real steps
-     with nothing left to move; cancelling settles it back and takes the
-     drawing away. The real second step stays the real one until the swap,
-     so a cancel leaves it exactly as it was. */
+  /* The step back drawn under Android's back gesture. While the gesture runs, the first
+     step is drawn beneath the second (`previewing`), inert, from the same draft, and each
+     part of the step change - the step, the heading on the field, the way on under the
+     finish control and the scroll to the top - follows the gesture's progress through the
+     motion a tap on Back plays ($lib/motion/entryStep). Releasing settles it forward from
+     there and then swaps the real steps with nothing left to move; cancelling settles it
+     back and takes the drawing away. The real second step stays the real one until the
+     swap, so a cancel leaves it exactly as it was. */
   let scrub: StepScrub | undefined;
   let previewStep = $state<HTMLElement | undefined>();
   let leavingStepEl: HTMLElement | undefined;
@@ -1059,21 +1045,18 @@
      Put the name on .editor-bg so only the fill grows from the tapped
      row. Keep text and fields outside that raster and crossfade them
      through the screen transition. -->
-<!-- The fieldset is the screen rather than a wrapper inside it. Its
-     `disabled` is what stops native fields taking edits during a save on a
-     WebView that predates `inert`, and as a `display: contents` wrapper it
-     hid every block from `.screen > *` and the header from the field's bleed
-     rule: the field drew 20px inset with no 20px between the blocks under
-     it (audit UI-01). As the screen, its children are the screen's again. -->
+<!-- The fieldset is the screen rather than a wrapper inside it. Its `disabled` is what
+     stops native fields taking edits during a save on a WebView that predates `inert`, and
+     as a `display: contents` wrapper it hid every block from `.screen > *` and the header
+     from the field's bleed rule: the field drew 20px inset with no 20px between the blocks
+     under it. As the screen, its children are the screen's again. -->
 <fieldset class="screen editor" inert={saving} disabled={saving} bind:this={stepScreen}>
   <div class="editor-bg" style:view-transition-name={entryContainerName(entryId != null ? String(entryId) : null)}></div>
-  <!-- Back goes wherever you opened it from, not to the entry's own day. An
-       entry is drawn on Home, on a day, in search, on the timeline, inside a
-       tryout and in the counterevidence journal, and every one of those sent
-       you to /day/... on the way back - a screen you may never have been on
-       (Alicja, 2026-08-26, from the counterevidence journal). The day stays
-       as the href the header falls back to on a deep link or a reload
-       (NAV-005, CARPET-05). -->
+  <!-- Back goes wherever you opened it from, not to the entry's own day. An entry is drawn
+       on Home, on a day, in search, on the timeline, inside a tryout and in the
+       counterevidence journal, and every one of those sent you to /day/... on the way back
+       - a screen you may never have been on. The day stays as the href the header falls
+       back to on a deep link or a reload. -->
   <ScreenHeader
     title={entryId != null ? m.entry() : stepped ? stepTitle(step) : m.new_entry()}
     subtitle={dateLine}
@@ -1085,9 +1068,8 @@
   >
     {#snippet actions()}
       {#if stepped}
-        <!-- The star on the field, in the same place on every step, so a
-             new entry can be starred wherever the person is (ticket 09; the
-             single page keeps it in its save bar). -->
+        <!-- The star on the field, in the same place on every step, so a new entry can be
+             starred wherever the person is. -->
         <button
           class="icon-btn press"
           aria-label={starred ? m.unstar_entry() : m.star_entry()}
@@ -1156,7 +1138,7 @@
        viewports above the Save button. What a journal is for comes first
        now, grown to its text; every structured question is one tap away
        in the chip row under it; mood is asked where the saving happens.
-       Nothing about what an entry records changed (CONTEXT: "Entry"). -->
+       Nothing about what an entry records changed. -->
   <textarea autocomplete={journalTextAutocomplete()}
     class="input editor-note"
     id="ed-note"
@@ -1169,8 +1151,8 @@
   {/snippet}
 
   {#snippet manageModes()}
-    <!-- In place (audit item 6): raises the same sheet Settings' own
-         Tracking row opens, rather than navigating there and back. -->
+    <!-- In place: raises the same sheet Settings' own Tracking row opens, rather than
+         navigating there and back. -->
     <button
       type="button"
       class="kit-heading-action"
@@ -1182,10 +1164,8 @@
   {/snippet}
 
   {#snippet modeBlock(onStep = false)}
-  <!-- Mode and Gender stay open on the page (Alicja, on the spike,
-       17 September 2026: "some of the sections should be always-on, for
-       example gender and mode"). They keep the headings and the "manage"
-       and "change" links redesign ticket 51 gave them. -->
+  <!-- Mode and Gender stay open on the page. They keep the headings and the "manage" and
+       "change" gave them. -->
   {#if vocabulary.visiblePresentations.length > 0}
     {#if onStep}
       <!-- On a step the question is the one heading,
@@ -1300,14 +1280,12 @@
        not want the recorder. Each kind keeps its own two controls, pick and
        make, since "Record" on two buttons side by side did not say which one
        was which and the chip now says it instead. -->
-  <!-- One surface for the three media kinds (pre-release 18, item 76).
-       Each kind was a section of its own, so switching chips closed one
-       under the other while the next opened: two blocks travelling, the
-       extent dipping and rising again, and its 20px margin gone in one
-       frame at each end. The surface opens and closes with the chips as
-       any section does, and between kinds it only changes height
-       (`resize`) while the tiles cross: the old ones leave the flow as
-       they fade, the new ones come up once they have gone. -->
+  <!-- One surface for the three media kinds. Each kind was a section of its own, so
+       switching chips closed one under the other while the next opened: two blocks
+       travelling, the extent dipping and rising again, and its 20px margin gone in one
+       frame at each end. The surface opens and closes with the chips as any section does,
+       and between kinds it only changes height (`resize`) while the tiles cross: the old
+       ones leave the flow as they fade, the new ones come up once they have gone. -->
   {#if MEDIA_SECTIONS.some((kind) => sections.includes(kind) && entryDraft.openSection === kind)}
     <div class="editor-section" data-editor-media-surface transition:disclose>
       <!-- `resize` on a box of its own: on the section it fought
@@ -1464,18 +1442,15 @@
   {/snippet}
 
   {#snippet cards()}
-  <!-- Contextual Inline Cards (ADR-0044). Offers rather than
-       questions, so they stay where they were - after what the person
-       chose to open, before the foot - and take no chip. -->
+  <!-- Contextual Inline Cards. Offers rather than questions, so they stay where they were -
+       after what the person chose to open, before the foot - and take no chip. -->
   {#if activeTryout}
-    <!-- All three contextual cards open their own height rather than
-         appearing at full size in one frame (ticket 99 item 18, "tryout
-         felt sense comes out without an animation"). None of them is on
-         screen when the editor mounts - each waits on a read the journal
-         has not answered yet - so they arrive into a screen the person is
-         already looking at, which is what tier 3 is for. A Svelte
-         transition is local and does not play on first render, so this
-         stays out of the way of the screen's own arrival. -->
+    <!-- All three contextual cards open their own height rather than appearing at full size
+         in one frame. None of them is on screen when the editor mounts - each waits on a
+         read the journal has not answered yet - so they arrive into a screen the person is
+         already looking at, which is what tier 3 is for. A Svelte transition is local and
+         does not play on first render, so this stays out of the way of the screen's own
+         arrival. -->
     <div class="contextual-panel" data-contextual="tryout-felt-sense" transition:disclose>
       <div class="contextual-header">
         <span class="contextual-title">{m.entry_tryout_felt_sense_title({ name: activeTryout.label })}</span>
@@ -1702,12 +1677,11 @@
   {@render cards()}
   {/snippet}
 
-  <!-- A new entry's later steps, in
-       the order Alicja chose: what is marked comes before what is written.
-       Mode and the tags, wrapped chips per group; then the body map and
-       the cards the day offers, open on their own step; then the note, and
-       the photos, video and voice last. The step's title names the step, so
-       the tags and the body carry no heading of their own. -->
+  <!-- A new entry's later steps, in display order: what is marked comes before what is
+       written. Mode and the tags, wrapped chips per group; then the body map and the cards
+       the day offers, open on their own step; then the note, and the photos, video and
+       voice last. The step's title names the step, so the tags and the body carry no
+       heading of their own. -->
   {#snippet marksStep()}
   {@render modeBlock(true)}
   {#if hasTags()}
@@ -1793,15 +1767,12 @@
 
   <SaveBar>
     {#if stepped}
-      <!-- Finishing is the same control on every step, in the same place: it
-           is one element, so it neither moves nor fades when the step
-           changes, and only the way on beside it opens and closes
-           (ticket 03 chose the wording; ticket 04 keeps the control still).
-           Finishing saves what is set and closes, so it is the ink button
-           and says what it does; going on is the soft block after it, on
-           the right where a next step reads (bug session 18, item 84),
-           naming the next step in a word. One row since ticket 09: stacked
-           the two took 125px of the step's window, in a row 69. -->
+      <!-- Finishing is the same control on every step, in the same place: it is one
+           element, so it neither moves nor fades when the step changes, and only the way on
+           beside it opens and closes. Finishing saves what is set and closes, so it is the
+           ink button and says what it does; going on is the soft block after it, on the
+           right where a next step reads, naming the next step in a word. One row since
+           stacked the two took 125px of the step's window, in a row 69. -->
       <div class="entry-foot" use:scrollCues={{ axis: 'y', scroller: stepRegion }}>
         <button
           class="btn press"
@@ -2166,7 +2137,7 @@
      and add tiles sat flush on the chips. */
   .entry-step > .editor-chips + .editor-section { margin-top: var(--space-5); }
 
-  /* Contextual Inline Cards (ADR-0044) */
+  /* Contextual Inline Cards */
   .contextual-panel {
     background: var(--surface);
     border: 1px solid var(--outline);
@@ -2189,8 +2160,8 @@
     align-items: center;
     justify-content: space-between;
   }
-  /* The field label's type, sentence case (after-release 28): "Tryout:
-     she/her" read as TRYOUT: SHE/HER and changed the name it quotes. */
+  /* The field label's type, sentence case: "Tryout: she/her" read as TRYOUT: SHE/HER and
+     changed the name it quotes. */
   .contextual-title {
     font-size: var(--text-sm);
     font-weight: var(--weight-bold);
@@ -2219,13 +2190,11 @@
     cursor: pointer;
     transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
   }
-  /* The 48px target is the shared .hit-floor box (components.css), and only
-     on the chips that are themselves a <button> (ticket 99 item 19, "when i
-     select an effect, i cannot deselect it even though i am clicking on the
-     'x'"). The one chip that is a <div> wrapping its own dismiss button
-     must not carry it: an overlay with no handler, painted after its
-     sibling button because a positioned pseudo-element with auto z-index
-     paints in tree order, swallowed every press on the x. */
+  /* The 48px target is the shared .hit-floor box (components.css), and only on the chips
+     that are themselves a <button>. The one chip that is a <div> wrapping its own dismiss
+     button must not carry it: an overlay with no handler, painted after its sibling button
+     because a positioned pseudo-element with auto z-index paints in tree order, swallowed
+     every press on the x. */
   .contextual-chip:hover {
     border-color: var(--accent-border, var(--outline));
   }
@@ -2299,9 +2268,9 @@
     gap: var(--space-2);
   }
 
-  /* Wraps the thumb only, not the star/remove badges beside it (ticket
-     CARPET-06) - a plain block the same size as the tile it holds, so it
-     adds a tap target without shifting either badge's absolute position. */
+  /* Wraps the thumb only, not the star/remove badges beside it - a plain block the same
+     size as the tile it holds, so it adds a tap target without shifting either badge's
+     absolute position. */
   .photo-view {
     display: block; border: none; background: none; padding: 0; cursor: pointer;
     border-radius: var(--r-block);
@@ -2325,11 +2294,10 @@
   .photo-star :global(.icon) { position: relative; }
   .photo-star.is-starred { color: var(--accent); }
 
-  /* A player is a row of its own rather than photo-row/photo-wrap's fixed
-     72px square (screens.css): it is a transport across the width, not a
-     tile. Both media are laid out here since ticket 46 gave them one
-     transport - a recording is that row, a video note is a frame with the
-     same row under it. */
+  /* A player is a row of its own rather than photo-row/photo-wrap's fixed 72px square
+     (screens.css): it is a transport across the width, not a tile. Both media are laid out
+     here gave them one transport - a recording is that row, a video note is a frame with
+     the same row under it. */
   .recording-list { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-3); }
   .recording-row { display: flex; align-items: center; gap: var(--space-2); }
   .recording-remove {
@@ -2340,13 +2308,10 @@
     display: flex; align-items: center; justify-content: center;
   }
 
-  /* A video note is its picture plus the transport under it, so it is taller
-     than a recording's row and its remove button sits at the top rather than
-     centred against the player (ticket 22, remeasured on ticket 46 - the
-     "36px strip" that comment named was the native <audio> element's box and
-     is gone). The list wrapper is .recording-list either way - the gap and
-     the column are the same, and a second class with the same rules would
-     only drift. */
+  /* A video note is its picture plus the transport under it, so it is taller than a
+     recording's row and its remove button sits at the top rather than centred against the
+     player. The list wrapper is .recording-list either way - the gap and the column are the
+     same, and a second class with the same rules would only drift. */
   .video-row { display: flex; align-items: flex-start; gap: var(--space-2); }
   .video-hint { margin: 0 0 var(--space-3); color: var(--text-2); font-size: 0.85rem; }
   .video-preview { position: relative; margin-bottom: var(--space-3); }

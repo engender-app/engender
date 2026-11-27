@@ -45,9 +45,8 @@ test('rc.1 archive without a writer stamp still verifies and restores', async ()
     await driver.close();
   }
 });
-/* Tables the functional audit's cuts drop before 1.0 (spec: "cut means
-   removed"). Their rows go with the migration, so a released fixture's count
-   for them is checked as gone rather than kept. */
+/* The migration drops these tables and their rows. Expect them to be absent
+   after updating a released fixture. */
 const DROPPED_TABLES = new Set(['saved_question', 'doubt_snapshot', 'doubt_snapshot_entry', 'measurement', 'measurement_type', 'size_record', 'affirmation', 'revisit', 'word_frequency_ignore', 'journaling_pause', 'roadmap_track', 'entry_template', 'entry_template_tag', 'entry_template_dimension_value', 'tally_event', 'hair_stage', 'hair_photo']);
 
 interface ReleasedCounts {
@@ -86,17 +85,16 @@ async function checkReleasedFixture(directory: string, chain: Migration[] = migr
         continue;
       }
       const [row] = await driver.query<{ n: number }>(`SELECT COUNT(*) AS n FROM "${table.replaceAll('"', '""')}"`);
-      /* Rows a cut dropped from a table it kept: area states naming a
-         dropped section, and the felt-sense readings that hung off a
-         milestone (functional audit ticket 32, migration 98). The archive
-         is the same journal, so it says how many those were. */
+      /* Rows a cut dropped from a table it kept: area states naming a dropped section, and
+         the felt-sense readings that hung off a milestone. The archive is the same journal,
+         so it says how many those were. */
       const droppedRows = table === 'area_state'
         ? opened.payload.journal.areaStates.filter((state) => DROPPED_ARCHIVE_SECTION_NAMES.includes(state.area)).length
         : table === 'felt_sense'
           ? opened.payload.journal.feltSenseEntries.filter((entry) => (entry as { milestoneId?: string | null }).milestoneId != null).length
           : 0;
-      /* Pre-release-human 12 split genital_sexual into genital and sexual
-         (migration 121): one category row in, two out. */
+      /* Split genital_sexual into genital and sexual (migration 121): one category row in,
+         two out. */
       const splitRows = table === 'effect_category'
         && opened.payload.journal.effectCategories.some((category) => (category as { key?: string }).key === 'genital_sexual') ? 1 : 0;
       assert.equal(row.n, expected - droppedRows + splitRows, `released SQLite table ${table}`);
@@ -169,8 +167,8 @@ test('release coverage refuses empty and missing fixtures but excludes alpha tag
 });
 
 test('the rc.1 fixture detects a row-deleting first step after 88', async () => {
-  /* The step after the baseline is the squash of 89 to 119 (pre-publish
-     ticket 01), the one an rc.1 journal takes on update. */
+  /* The step after the baseline is the squash of 89 to 119, the one an rc.1 journal takes
+     on update. */
   const directory = join(releasedRoot, '1.0.0-rc.1');
   const original = readFileSync(join(directory, 'journal.sqlite'));
   assert.equal(original.readUInt32BE(60), 88);

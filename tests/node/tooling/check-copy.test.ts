@@ -1,12 +1,10 @@
-/* The two copy checks CI runs (phase 2 ticket 06, wiring the check ticket 19
-   then relies on): the two catalogues have to hold the same keys, and no
-   screen may grow new user-facing text that never reaches them.
+/* The two copy checks CI runs: the two catalogues have to hold the same keys, and no screen
+   may grow new user-facing text that never reaches them.
 
-   A missing key that source code actually calls is already a type error -
-   paraglide generates one function per key, so `m.nothing_like_this()` fails
-   `npm run check`. What that cannot see is a key present in English and
-   absent in Polish, since the runtime falls back to the base locale and
-   prints English at a Polish reader. Hence the parity half. */
+   A missing key that source code actually calls is already a type error - paraglide
+   generates one function per key, so `m.nothing_like_this()` fails `npm run check`. What
+   that cannot see is a key present in English and absent in Polish, since the runtime falls
+   back to the base locale and prints English at a Polish reader. Hence the parity half. */
 import { describe, expect, it } from 'vitest';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -127,9 +125,8 @@ describe('ratchetProblems', () => {
   });
 
   it('rejects a stale baseline after copy moved into the catalogues', () => {
-    /* Left alone, an unlowered number is room for the same screen to regress
-       back to it in silence. Lowering it is the visible half of the work
-       tickets 19 and 23 do. */
+    /* Left alone, an unlowered number is room for the same screen to regress back to it in
+       silence. Lowering it is the visible half of the work do. */
     const problems = ratchetProblems({ 'a.svelte': 1 }, { 'a.svelte': 3 });
     expect(problems).toHaveLength(1);
     expect(problems[0]).toMatch(/1/);

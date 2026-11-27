@@ -109,20 +109,18 @@ export function comfortBand(
     (quality.ts's MAX_F0_CV), which is about 1.4 semitones of spread - so a
     take about to fail is plainly off the middle without slamming into the
     edges. */
-/* STEADINESS_SEMITONES stays exported only for its own test (AU-09 test-only
-   review). */
+/* STEADINESS_SEMITONES stays exported only for its own test. */
 export const STEADINESS_SEMITONES = 3;
 
-/** The axis a held note is judged on: not absolute hertz but semitones
-    around the note itself, because the vowel step's task is keeping one
-    pitch rather than reaching one (Alicja, 2026-09-04) and a flat line is
-    the whole answer. Null where nothing has been voiced yet and there is no
+/** The axis a held note is judged on: not absolute hertz but semitones around the note
+    itself, because the vowel step's task is keeping one pitch rather than reaching one and
+    a flat line is the whole answer. Null where nothing has been voiced yet and there is no
     note to centre on.
 
-    This is deliberately the shape the whole ticket took the live gauge off:
-    a relative axis is unreadable for "where is my voice" and exactly right
-    for "am I holding still". The difference is that it is now one of two
-    named instruments rather than the only one there is. */
+    This is deliberately the shape the whole ticket took the live gauge off: a relative axis
+    is unreadable for "where is my voice" and exactly right for "am I holding still". The
+    difference is that it is now one of two named instruments rather than the only one there
+    is. */
 export function steadinessAxis(referenceHz: number | null): PitchAxis | null {
   if (referenceHz === null) return null;
   const edge = 2 ** (STEADINESS_SEMITONES / 12);

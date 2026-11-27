@@ -1,5 +1,5 @@
-/* Today's "time since" line (functional audit 33): how long ago the journey
-   anchor's milestone was, in the duration words the rest of the app uses. */
+/* Today's "time since" line: how long ago the journey anchor's milestone was, in the
+   duration words the rest of the app uses. */
 
 import assert from 'node:assert/strict';
 import { test, vi } from 'vitest';

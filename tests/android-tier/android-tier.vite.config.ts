@@ -16,15 +16,15 @@ const PROBES = {
   ocr: { root: 'ocr', outDir: `${ASSETS}/ocr-probe` },
   'credential-power-cut': { root: 'credential-power-cut', outDir: `${ASSETS}/credential-power-cut-probe` },
   'pin-count': { root: 'pin-count', outDir: `${ASSETS}/pin-count-probe` },
-  /** Ticket 11: the shared journal contract suite over the native driver. */
+  /** The shared journal contract suite over the native driver. */
   'auto-export': { root: 'auto-export', outDir: `${ASSETS}/auto-export-probe` },
   contract: { root: '.', outDir: `${ASSETS}/probe` },
-  /** Ticket 13: seeds a journal so the claim gate can read its bytes. */
+  /** Seeds a journal so the claim gate can read its bytes. */
   encryption: { root: 'encryption', outDir: `${ASSETS}/encryption-probe` },
-  /** Ticket 17: archive import/export between web and Android implementations. */
+  /** Archive import/export between web and Android implementations. */
   'archive-recovery': { root: 'archive/recovery', outDir: `${ASSETS}/archive-recovery-probe` },
   archive: { root: 'archive', outDir: `${ASSETS}/archive-cross-probe` },
-  /** Ticket 20: ten-year Journal benchmark over the native driver. */
+  /** Ten-year Journal benchmark over the native driver. */
   'long-journal': { root: 'long-journal', outDir: `${ASSETS}/long-journal-probe` }
 };
 

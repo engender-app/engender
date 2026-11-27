@@ -1,16 +1,14 @@
 /* The coarse-name-to-SQL-table mapping.
 
-   writes.ts's TABLE_NAMES are invalidation names, coarser than the schema on
-   purpose - 'entry' alone covers the entry row, its dimension values, its
-   tag links, its body-region values and its search index, because nothing
-   reads one without the others (writes.ts's own header says so). Until this
-   ticket that mapping lived only in comments; writes.sql.test.ts drives real
-   SQL through the recording driver and needs it as data.
+   Writes.ts's TABLE_NAMES are invalidation names, coarser than the schema on purpose -
+   'entry' alone covers the entry row, its dimension values, its tag links, its body-region
+   values and its search index, because nothing reads one without the others (writes.ts's
+   own header says so). Until this ticket that mapping lived only in comments;
+   writes.sql.test.ts drives real SQL through the recording driver and needs it as data.
 
-   Two things a real table name can never be: a coarse name is what a screen
-   declares and a driver never sees, so nothing here collides with the other,
-   and TABLE_NAMES itself is untouched (ticket 02's own scope line - this is
-   an added declaration, not a renaming). */
+   Two things a real table name can never be: a coarse name is what a screen declares and a
+   driver never sees, so nothing here collides with the other, and TABLE_NAMES itself is
+   untouched. */
 
 import type { TableName } from './writes.ts';
 
@@ -20,8 +18,7 @@ import type { TableName } from './writes.ts';
     per-coarse-name union check - both directions matter, the same reason
     tablesWrittenBy/tablesReadBy above refuse an unclassified name instead of
     guessing. */
-/* SQL_TABLES stays exported for its own test, and cross-checked in
-   writes.sql.test.ts (AU-09 test-only review). */
+/* SQL_TABLES stays exported for its own test, and cross-checked in writes.sql.test.ts. */
 export const SQL_TABLES: Record<TableName, readonly string[]> = {
   /* entry_fts is a virtual table (FTS5) that entries.ts writes to
      explicitly on every path that changes a note (indexEntry, called from
@@ -85,10 +82,9 @@ export const SQL_TABLES: Record<TableName, readonly string[]> = {
     rather than nowhere. */
 const FTS5_SHADOW_TABLE_REASON = "an FTS5 shadow table SQLite manages itself; app SQL never names it, so 'entry' cannot cover it";
 
-/* UNMAPPED_TABLES stays exported only for its own test (AU-09 test-only
-   review). */
+/* UNMAPPED_TABLES stays exported only for its own test. */
 export const UNMAPPED_TABLES: Record<string, string> = {
-  // Preferences (ADR-0009): its own store, outside the journal's write
+  // Preferences use their own store, outside the journal's write
   // registry - nothing in writes.ts classifies a pref write or read.
   pref: 'preferences live outside the journal (ADR-0009); writes.ts never classifies a pref read or write',
   // SQLite's own autoincrement bookkeeping table, never named in app SQL.

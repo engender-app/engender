@@ -22,14 +22,12 @@ import { assertChanged, bool, mintUuid, now } from './support';
 export interface NormalizedPhoto {
   full: Uint8Array;
   thumb: Uint8Array;
-  /** The day this photo shows on, when it differs from whatever its owner
-      (entry or milestone) is dated to (ticket 47, ADR-0008/0015). Every
-      photo this app normalizes has already had its capture date stripped,
-      so a picked file never carries one to read - this is where the
-      add-photo flow's day prompt puts what the person typed. Undefined or
-      null leaves the day inherited, exactly as before this column existed
-      (ADR-0010: nothing here is derived, and nothing derives from it beyond
-      the read queries below). */
+  /** The day this photo shows on, when it differs from whatever its owner (entry or
+      milestone) is dated to (ADR-0008/0015). Every photo this app normalizes has already
+      had its capture date stripped, so a picked file never carries one to read - this is
+      where the add-photo flow's day prompt puts what the person typed. Undefined or null
+      leaves the day inherited, exactly as before this column existed (ADR-0010: nothing
+      here is derived, and nothing derives from it beyond the read queries below). */
   epochDayOverride?: number | null;
 }
 
@@ -61,9 +59,9 @@ export interface PhotosArea {
       of curation metadata should: a typo'd id and a successful toggle must
       not look alike. */
   setStarred(id: string, starred: boolean): Promise<void>;
-  /** Sets or clears which day this photo shows on (ticket 47, ADR-0008/
-      0015): null reverts it to whatever its owning entry or milestone is
-      dated to. Throws on an unknown id, the same reason setStarred does. */
+  /** Sets or clears which day this photo shows on (ADR-0008/ 0015): null reverts it to
+      whatever its owning entry or milestone is dated to. Throws on an unknown id, the same
+      reason setStarred does. */
   setEpochDayOverride(id: string, epochDay: number | null): Promise<void>;
 }
 
@@ -82,9 +80,9 @@ async function removePhotoFiles(files: PhotoFileStore, names: string[]): Promise
   for (const name of names) await files.remove(name);
 }
 
-/** The files of these photo rows that no committed row still names. Read
-    inside the deleting transaction, after the rows are gone, so a file two
-    rows share outlives the first delete (security scan GD-024). */
+/** The files of these photo rows that no committed row still names. Read inside the
+    deleting transaction, after the rows are gone, so a file two rows share outlives the
+    first delete. */
 const unownedPhotoFiles = (driver: SqliteDriver, rows: { file_path: string }[]) =>
   unownedNames(driver, rows.flatMap((row) => filesOf(row.file_path)));
 

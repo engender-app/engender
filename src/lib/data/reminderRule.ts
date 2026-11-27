@@ -1,7 +1,7 @@
-/* Keep reminders as local wall time plus a recurrence or one-off day
-   (ADR-0010). nextOccurrence previews the first fire strictly after now.
-   ReminderPlanner supplies Android scheduling. Add cases to the shared
-   reminder-rule.json fixture so both implementations stay aligned (ADR-0028). */
+/* Keep reminders as local wall time plus a recurrence or one-off day (ADR-0010).
+   nextOccurrence previews the first fire strictly after now. ReminderPlanner supplies
+   Android scheduling. Add cases to the shared reminder-rule.json fixture so both
+   implementations stay aligned. */
 
 import { epochDayFromLocalDate, timestampAtLocalTime } from './epochDay';
 

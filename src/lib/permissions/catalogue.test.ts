@@ -27,10 +27,9 @@ describe('the grantable list', () => {
     expect(grantRows('android', NOTHING, new Set()).map((row) => row.key)).toEqual(GRANT_KEYS);
   });
 
-  /* After-release 17 (UX-07, UI-07): the web list used to keep
-     Notifications and Exact timing as two rows marked "Android only", on
-     the first-run step and in Settings alike. A row a person can do nothing
-     with on this platform is payload; the web draws what applies to it. */
+  /* (UX-07, UI-07): the web list used to keep Notifications and Exact timing as two rows
+     marked "Android only", on the first-run step and in Settings alike. A row a person can
+     do nothing with on this platform is payload; the web draws what applies to it. */
   it('draws only what the web can ask for', () => {
     const web = grantRows('web', NOTHING, new Set());
     expect(web.map((row) => row.key)).toEqual(['microphone', 'camera']);

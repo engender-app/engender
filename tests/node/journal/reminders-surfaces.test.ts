@@ -1,8 +1,6 @@
-/* The rules the two reminders screens keep (phase 11 ticket 13, reshaped by
-   pre-release human 18). A stored reminder is a rule in the journal, and only
-   Android can fire it (ADR-0063), so the screens are
-   Android-only: the web has no branch of them left, and
-   reminders-android-only.test.ts holds the redirect. Mirrors
+/* The rules the two reminders screens keep. A stored reminder is a rule in the journal, and
+   only Android can fire it (ADR-0063), so the screens are Android-only: the web has no
+   branch of them left, and reminders-android-only.test.ts holds the redirect. Mirrors
    settings-surfaces.test.ts and unprompted-view.test.ts. */
 
 import { readFileSync } from 'node:fs';
@@ -36,10 +34,9 @@ describe('the reminders screens carry no web branch', () => {
 
 describe('the reminders list on Android', () => {
   it('keeps the denied and battery explanations, one notice per permission', () => {
-    /* Ticket 13 moves nothing on Android: each denied permission keeps its
-       own request action, and the battery note keeps its own link. Ticket
-       41 split the one shared notice in two, so each says only what its
-       own refusal costs and leaves with the collapse kit Notice owns. The
+    /* Moves nothing on Android: each denied permission keeps its own request action, and
+       the battery note keeps its own link. split the one shared notice in two, so each says
+       only what its own refusal costs and leaves with the collapse kit Notice owns. The
        slice starts at the check-in block. */
     const android = listMarkup.slice(listMarkup.indexOf('data-checkin'));
     expect(android).toContain("{#if status === 'unreadable'}");
@@ -57,10 +54,9 @@ describe('the reminders list on Android', () => {
   });
 
   it('re-reads permission status whenever the screen comes back to the front', () => {
-    /* Ticket 41 (U30): the way out of a refusal is Android's settings
-       screen, so a status read once at mount stays "denied" after the grant.
-       watchStatus owns the visibility listener, its teardown and the
-       refused-read rule (src/lib/permissions/watchStatus.test.ts). */
+    /* The way out of a refusal is Android's settings screen, so a status read once at mount
+       stays "denied" after the grant. watchStatus owns the visibility listener, its
+       teardown and the refused-read rule (src/lib/permissions/watchStatus.test.ts). */
     expect(list).toContain("from '$lib/permissions/watchStatus'");
     expect(list).toMatch(/watchStatus<AndroidReminderStatus \| 'unreadable'>\(\{[\s\S]*?read: \(\) => androidReminders\.getStatus\(\)/);
     expect(list).toContain("unreadable: 'unreadable'");
@@ -68,9 +64,8 @@ describe('the reminders list on Android', () => {
   });
 
   it('says it could not check when Android refuses the read, and offers another try', () => {
-    /* Ticket 41's spec review: a refused read is neither a grant nor a
-       refusal, so it gets its own notice rather than "Notifications are
-       off" over a permission that may be on. */
+    /* Spec review: a refused read is neither a grant nor a refusal, so it gets its own
+       notice rather than "Notifications are off" over a permission that may be on. */
     const android = listMarkup.slice(listMarkup.indexOf('data-checkin'));
     const unknown = android.slice(android.indexOf("{#if status === 'unreadable'}"), android.indexOf('{:else}', android.indexOf("{#if status === 'unreadable'}")));
     expect(unknown).toContain('key="reminders-permissions-unknown"');
@@ -82,12 +77,11 @@ describe('the reminders list on Android', () => {
   });
 });
 
-/* Functional audit ticket 08. The check-in had a switch here and a second
-   one on /settings/notifications, both writing `checkInEnabled`; the
-   reminders screen keeps it beside the time and the pause, and the other
-   screen links here. And the notifications screen's Reminders switch gates
-   every row on this list, so this list says when it is off rather than
-   showing every row switched on while nothing rings. */
+/* The check-in had a switch here and a second one on /settings/notifications, both writing
+   `checkInEnabled`; the reminders screen keeps it beside the time and the pause, and the
+   other screen links here. And the notifications screen's Reminders switch gates every row
+   on this list, so this list says when it is off rather than showing every row switched on
+   while nothing rings. */
 const notifications = read('src/routes/settings/notifications/+page.svelte');
 const notificationsMarkup = stripScript(notifications);
 
@@ -141,7 +135,7 @@ describe('deleting a reminder, from its editor on Android', () => {
   });
 });
 
-describe('the old reminder copy the phone could not lock (GD-031)', () => {
+describe('the old reminder copy the phone could not lock', () => {
   /* A reminders payload written by an older build is rewrapped on first read.
      When that fails the native side stops scheduling from it, and this screen
      is the only place that says so and offers the two ways out. */

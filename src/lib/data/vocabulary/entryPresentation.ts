@@ -21,7 +21,7 @@ export interface EntryPresentationLabel {
 /** Undefined for an entry that carries none: absence, not a label. A
     presentation hidden after being logged still resolves here - hiding only
     takes it out of the entry editor's chip, never off an entry that already
-    carries it (CONTEXT: "Hidden"). */
+    carries it. */
 export function entryPresentation(entry: Entry): EntryPresentationLabel | undefined {
   if (!entry.presentationId) return undefined;
   const presentation = vocabulary.presentation(entry.presentationId);

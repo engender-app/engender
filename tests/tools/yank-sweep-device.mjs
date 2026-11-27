@@ -89,8 +89,8 @@ const flag = (name, fallback) => {
   const at = args.indexOf(`--${name}`);
   return at >= 0 ? args[at + 1] : fallback;
 };
-/* Refuse before the first adb call: `dev.engender.app` is Alicja's real
-   journal and this script installs, force-stops and launches its package. */
+/* Refuse before the first adb call: `dev.engender.app` is the production journal and this
+   script installs, force-stops and launches its package. */
 let deviceTarget;
 try {
   deviceTarget = deviceTargetFromArgs(args);
@@ -109,10 +109,9 @@ const themes = flag('themes', 'light,dark')
 /** The hydration mode: the full screen inventory walked cold
  *  in both database profiles, rather than the gesture scenes. */
 const hydration = args.includes('--hydration');
-/** Trust the journal as it stands instead of re-running the demo jumps.
-    For a persona that means the reset and the fill are skipped, which on
-    a physical phone saves most of an hour of seeding; the operator answers
-    for the journal actually holding the state (ticket 139 rerun). */
+/** Trust the journal as it stands instead of re-running the demo jumps. For a persona that
+    means the reset and the fill are skipped, which on a physical phone saves most of an
+    hour of seeding; the operator answers for the journal actually holding the state. */
 const skipSeed = args.includes('--skip-seed');
 const profiles = flag('profiles', 'persona,empty')
   .split(',')
@@ -511,11 +510,9 @@ async function screencast(fn) {
 
 /* ---------- the render detector ---------- */
 
-/* The arithmetic itself lives in the shared core now (the hydration
-   sweep, ticket 108, points the same camera at a desktop cold load), so
-   the thresholds and the flood fill cannot drift between the phone and
-   the preview server; what stays here is everything that is this
-   transport's alone - the run, the evidence triples, the report. */
+/* The arithmetic itself lives in the shared core now, so the thresholds and the flood fill
+   cannot drift between the phone and the preview server; what stays here is everything that
+   is this transport's alone - the run, the evidence triples, the report. */
 
 /* ---------- the run ---------- */
 
@@ -724,9 +721,8 @@ async function hydrationTokens(profile, theme) {
     return { tokens, skipped };
   }
   for (const [key, need] of Object.entries(HYDRATION_NEEDS)) {
-    /* One list route that will not settle is a finding for the report, not
-       a reason to lose the hours of seeding the walk sits on (ticket 139's
-       /search/questions hang): record, skip, keep walking. */
+    /* One list route that will not settle is a finding for the report, not a reason to lose
+       the hours of seeding the walk sits on: record, skip, keep walking. */
     try {
       await settle(need.list, theme);
       const id = await ev(scrapeIdExpression(need));

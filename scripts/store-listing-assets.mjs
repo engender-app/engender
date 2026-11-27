@@ -14,7 +14,7 @@ const locales = [
   { code: 'pl-PL', language: 'pl', claim: 'Twoja tranzycja w jednym miejscu' }
 ];
 // Play orders the shots by file name: a scale being set, then what Look back
-// makes of it, then the rest (tester-report-02 ticket 06). The capture runs in
+// makes of it, then the rest. The capture runs in
 // the order below, Today first, because Today ends the demo's running binder
 // session and the shots after it were taken with that session ended.
 const screens = [

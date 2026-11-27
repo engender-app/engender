@@ -1,5 +1,4 @@
-/* One owner per stored file, and names every store reads the same way
-   (security scan ticket 04: GD-010, GD-020, GD-024). */
+/* One owner per stored file, and names every store reads the same way. */
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { CorruptArchiveError } from '../archive/container.ts';
@@ -155,7 +154,7 @@ for (const mode of ['merge', 'replace'] as const) {
   });
 }
 
-test('deleting one of two rows that name the same file leaves the bytes (GD-024)', async () => {
+test('deleting one of two rows that name the same file leaves the bytes', async () => {
   const made = await device();
   const [photo] = (await made.journal.entries.entriesForDay(20_000))[0].photos;
   await made.db.run('INSERT INTO progress_photo(uuid, epoch_day, pose, file_path, updated_at) VALUES (?, ?, ?, ?, ?)',

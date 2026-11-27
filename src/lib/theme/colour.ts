@@ -19,8 +19,7 @@ interface Rgb {
   b: number;
 }
 
-/* toRgb stays exported only for kit-roles.test.ts, which cross-checks
-   against it (AU-09 test-only review). */
+/* toRgb stays exported only for kit-roles.test.ts, which cross-checks against it. */
 export function toRgb(hex: string): Rgb {
   const raw = hex.trim().replace('#', '');
   return {
@@ -40,9 +39,8 @@ function linearToSrgb(c: number): number {
   return clamped <= 0.0031308 ? clamped * 12.92 : 1.055 * clamped ** (1 / 2.4) - 0.055;
 }
 
-/* Not exported: palette-contrast.test.ts read it directly until ticket 27
-   put mood's band behind `contrast` and the polar readings below, and
-   nothing else ever wanted a raw luminance. */
+/* Not exported: palette-contrast.test.ts read it directly put mood's band behind `contrast`
+   and the polar readings below, and nothing else ever wanted a raw luminance. */
 function luminance(hex: string): number {
   const { r, g, b } = toRgb(hex);
   return 0.2126 * srgbToLinear(r) + 0.7152 * srgbToLinear(g) + 0.0722 * srgbToLinear(b);

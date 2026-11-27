@@ -38,10 +38,9 @@ const TICK_STRIDES = [1, 2, 3, 6, 12];
 
 export type { EffectDirectionGroup } from './effectDirections';
 
-/** The two things that land on this axis (phase 11 all-four-doors ticket 13):
-    a personal effect's own catalogue entry, marked at the day it was first
-    noticed, and a side effect logged free-form at its own day. Telling them
-    apart is `NoticedAxis.svelte`'s job - a mark shape, never a colour alone
+/** The two things that land on this axis: a personal effect's own catalogue entry, marked
+    at the day it was first noticed, and a side effect logged free-form at its own day.
+    Telling them apart is `NoticedAxis.svelte`'s job - a mark shape, never a colour alone
     (ADR-0012) - and this is the one field it reads to do it. */
 export type NoticedChangeKind = 'personal-effect' | 'side-effect';
 

@@ -45,13 +45,11 @@
     hidden: false,
   });
 
-  /* Add the scale, then tick it, which is what makes it appear in the
-     editor. It used to take three writes: a dimension, a custom preset
-     holding the active preset's scales plus the new one, and a switch to
-     that preset - all because the stored choice was a preset and a preset
-     had to exist for a scale to be in one. Ticket 35 made the stored choice
-     the list itself, so the second and third writes have nothing left to
-     do. */
+  /* Add the scale, then tick it, which is what makes it appear in the editor. It used to
+     take three writes: a dimension, a custom preset holding the active preset's scales plus
+     the new one, and a switch to that preset - all because the stored choice was a preset
+     and a preset had to exist for a scale to be in one. made the stored choice the list
+     itself, so the second and third writes have nothing left to do. */
   const saving = writer();
   async function saveDimension() {
     let created: { key: string } | undefined;
@@ -86,7 +84,7 @@
   const listEstimate = readReserve('custom-scales');
   const listRemember = (px: number) => rememberReserve('custom-scales', px);
 
-  /* Hiding also unticks (CONTEXT: "Hidden" - out of every place a person
+  /* Hiding also unticks (out of every place a person
      picks), so a hidden scale is never drawn on the entry screen while the
      checklist that could untick it no longer lists it. Showing it again
      leaves it unticked: it comes back to the checklist, and ticking it is

@@ -42,10 +42,9 @@ export interface ProgressPhoto {
 }
 
 export interface ProgressPhotosArea {
-  /** Every progress photo, oldest first, all poses together. A stored pose
-      the pose list does not hold reads as front: the column carries no
-      CHECK (the functional audit's CHECK policy), and a row that dropped
-      out of every tab would be a photograph nobody can reach to delete. */
+  /** Every progress photo, oldest first, all poses together. A stored pose the pose list
+      does not hold reads as front: the column carries no CHECK, and a row that dropped out
+      of every tab would be a photograph nobody can reach to delete. */
   getPhotos(): Promise<ProgressPhoto[]>;
   /** The built-ins in seed order, then the person's own in the order they
       were added. Hidden ones included. */

@@ -20,19 +20,17 @@ export type AreaGroupKey =
 
 /** Which areas each group finishes, together.
 
-    Most of them front exactly one area. Voice fronts two: a benchmark and a practice take are both dated records of
-    the same practice, so `voice` finishes them together. A voice memo belongs to an entry and travels inside
-    `entries` (CONTEXT: "Area"), so the memos screen is not finishable and
-    has no group here.
+    Most of them front exactly one area. Voice fronts two: a benchmark and a practice take
+    are both dated records of the same practice, so `voice` finishes them together. A voice
+    memo belongs to an entry and travels inside `entries`, so the memos screen is not
+    finishable and has no group here.
 
-    `effects` is the fourth, from phase 11 all-four-doors ticket 13: a side
-    effect and a change you were hoping for both landed on one screen and one
-    axis, and the group followed the screen -
-    `personalEffects` and `sideEffects` finish together now, and the old
-    `side-effects` group is gone rather than renamed, for the reason `sizes`
-    was: `areaState.ts` keys what is finished by `sideEffects`, the archive
-    section, so nothing already finished is disturbed by the screen above it
-    merging. */
+    `effects` is the fourth, from a side effect and a change you were hoping for both landed
+    on one screen and one axis, and the group followed the screen - `personalEffects` and
+    `sideEffects` finish together now, and the old `side-effects` group is gone rather than
+    renamed, for the reason `sizes` was: `areaState.ts` keys what is finished by
+    `sideEffects`, the archive section, so nothing already finished is disturbed by the
+    screen above it merging. */
 export const AREA_GROUPS = {
   wear: ['wearSessions'],
   'hair-removal': ['hairRemovalSessions'],
@@ -54,7 +52,7 @@ type EveryFinishableAreaGrouped = AssertNoneUngrouped<Ungrouped>;
 /** `AreaGroupKey` as a value, read off `AREA_GROUPS` rather than typed out a
     second time. */
 /* AREA_GROUP_KEYS stays exported for its own test, and cross-checked in
-   AreaFinish.mounted.test.ts, hubRows.test.ts (AU-09 test-only review). */
+   AreaFinish.mounted.test.ts, hubRows.test.ts. */
 export const AREA_GROUP_KEYS = Object.keys(AREA_GROUPS) as readonly AreaGroupKey[];
 
 /** The day a group finished, or null while it has not.
@@ -90,8 +88,7 @@ export function finishedGroups(states: AreaStates): { key: AreaGroupKey; epochDa
     Derived from `SUSPENDABLE_AREAS` rather than typed out a second time - the
     same reason this file's own header exists: one list, checked, instead of
     a screen and a rule quietly disagreeing about which groups these are. */
-/* SUSPENDABLE_GROUPS stays exported only for its own test (AU-09 test-only
-   review). */
+/* SUSPENDABLE_GROUPS stays exported only for its own test. */
 export const SUSPENDABLE_GROUPS = AREA_GROUP_KEYS.filter((key) =>
   AREA_GROUPS[key].every((area): area is SuspendableArea => (SUSPENDABLE_AREAS as readonly string[]).includes(area))
 );
@@ -197,7 +194,7 @@ interface FinishOfferInput {
     that an area somebody said no about stays said-no-about. Re-asking is the
     failure this whole preference exists to prevent, and a group reading as
     un-declined because it grew a new section would be exactly that. */
-/* groupDeclined stays exported only for its own test (AU-09 test-only review). */
+/* groupDeclined stays exported only for its own test. */
 export function groupDeclined(key: AreaGroupKey, declined: readonly string[]): boolean {
   return AREA_GROUPS[key].some((area) => declined.includes(area));
 }

@@ -136,8 +136,7 @@ const DIRECTION_DRUG: Record<EffectDirection, HormoneDrug> = {
     literature supplies a tier-1 window for that direction. Unknown names,
     antiandrogens and progesterone alone match neither direction. Custom and
     later-tier effects without a window get no band. */
-/* literatureCovers stays exported only for its own test (AU-09 test-only
-   review). */
+/* literatureCovers stays exported only for its own test. */
 export function literatureCovers(effect: PersonalEffectType, drug: string): boolean {
   const window = EFFECT_LITERATURE_WINDOW[effect];
   return window !== undefined && resolveHormoneDrug(drug) === DIRECTION_DRUG[window.direction];
@@ -174,10 +173,9 @@ function afterAnchor(anchorEpochDay: number, months: number): number {
   return epochDayMonthsAgo(anchorEpochDay, -months);
 }
 
-/** Where HRT began, which drug its bands are read against, and where it
-    stopped (functional audit ticket 18, CONTEXT: "HRT start"). The three
-    parts of an answer `literatureWindowDays` needs, in the shape of an
-    episode so a single episode still passes as one. */
+/** Where HRT began, which drug its bands are read against, and where it stopped. The three
+    parts of an answer `literatureWindowDays` needs, in the shape of an episode so a single
+    episode still passes as one. */
 export type HrtAnchor = Pick<RegimenEpisode, 'drug' | 'startEpochDay' | 'endEpochDay'>;
 
 /**

@@ -1,4 +1,4 @@
-/* The journal (ADR-0017, CONTEXT: "Journal"): everything this device holds
+/* The journal (ADR-0017): everything this device holds
    about the user's transition, reached through one handle bound to a
    database driver. A factory takes a SqliteDriver and a photo file store
    and composes eleven area modules behind that handle. The interface is
@@ -70,7 +70,7 @@ import type { UndoableDelete } from './undoableDelete';
 
 /** Every write below that addresses a row by id answers the unknown-id
     case the same way, in every area, and the answer differs by operation
-    rather than by area (ADR-0053, CONTEXT: "Unknown id"). An **update**
+    rather than by area (ADR-0053). An **update**
     naming an id the journal does not hold throws: the caller acted on
     something stale, and the write it intended cannot be performed at all.
     A **delete** naming one succeeds and changes nothing: the state it asked
@@ -79,13 +79,11 @@ import type { UndoableDelete } from './undoableDelete';
 export interface Journal {
   entries: EntriesArea;
   tags: TagsArea;
-  /** Every body region an entry can log an intensity against (phase 5
-      ticket 30, CONTEXT: "Reference data" - amended): built-in rows seeded
-      by key the same way tags and dimensions are, and a custom row a
-      person adds of their own, addressed by a minted uuid. Hides rather
-      than deletes - entries.ts validates an incoming region key against
-      this area's rows instead of the closed BODY_REGION_KEYS list it used
-      to hold in code. */
+  /** Every body region an entry can log an intensity against: built-in rows seeded by key
+      the same way tags and dimensions are, and a custom row a person adds of their own,
+      addressed by a minted uuid. Hides rather than deletes - entries.ts validates an
+      incoming region key against this area's rows instead of the closed BODY_REGION_KEYS
+      list it used to hold in code. */
   bodyRegions: BodyRegionsArea;
   dimensions: DimensionsArea;
   milestones: MilestonesArea;
@@ -95,27 +93,22 @@ export interface Journal {
       table and writes nothing - `photos`, `hairRemoval`,
       `tryouts`, `procedures` and the entry editor keep every write. */
   photoLibrary: PhotoLibraryArea;
-  /** The paper a transition generates (phase 8 features ticket 52,
-      ADR-0065, CONTEXT: "Document"): an opinion, a diagnosis, a court
-      ruling. Its own area rather than a kind of photo, because a photo
-      belongs to an entry or a milestone and a document belongs to nothing -
-      it is a dated record of its own, with a title the person wrote and
-      which is the only thing about it anything ever reads. */
+  /** The paper a transition generates (ADR-0065): an opinion, a diagnosis, a court ruling.
+      Its own area rather than a kind of photo, because a photo belongs to an entry or a
+      milestone and a document belongs to nothing - it is a dated record of its own, with a
+      title the person wrote and which is the only thing about it anything ever reads. */
   documents: DocumentsArea;
-  /** The fluidity engine's named presentations (phase 5 deepening ticket 17,
-      ADR-0048, CONTEXT: "Presentation") - a name and a flag-role colour,
-      nothing more. `entries.upsertEntry` writes `presentationId` directly
-      onto the entry row; this area owns only the presentation rows
-      themselves. */
+  /** The fluidity engine's named presentations (ADR-0048) - a name and a flag-role colour,
+      nothing more. `entries.upsertEntry` writes `presentationId` directly onto the entry
+      row; this area owns only the presentation rows themselves. */
   presentations: PresentationsArea;
   /** Every voice recording, read back dated and oldest first for
       the voice compare picker - entry-only, so unlike photos
       this owns no attach/remove of its own; those stay on upsertEntry's
       attachRecordings/removeRecordingIds (voiceRecordings.ts). */
   voice: VoiceArea;
-  /** Standardized voice takes (phase 5 deepening ticket 15, CONTEXT: "Voice
-      benchmark") - a different kind of record from `voice`, on its own
-      table, so a memo and a benchmark can never be mistaken for each other. */
+  /** Standardized voice takes - a different kind of record from `voice`, on its own table,
+      so a memo and a benchmark can never be mistaken for each other. */
   voiceBenchmarks: VoiceBenchmarksArea;
   /** How a practice session went - a different
       activity from a benchmark and never compared to one, on its own table
@@ -127,12 +120,10 @@ export interface Journal {
       entries.ts owns the rows through attachVideos/removeVideoIds. */
   videos: VideoArea;
   labs: LabsArea;
-  /** The dilation taper schedule and its session log (phase 8 features
-      ticket 12, CONTEXT: "Taper"). One name for both, the same reasoning
-      `doses` gives for its schedule and its events: nothing reads a
-      session without knowing whether there is a schedule to compare it
-      against. Stores no expected session - the expansion is pure
-      arithmetic over the schedule and today (taperSchedule.ts, ADR-0010). */
+  /** The dilation taper schedule and its session log. One name for both, the same reasoning
+      `doses` gives for its schedule and its events: nothing reads a session without knowing
+      whether there is a schedule to compare it against. Stores no expected session - the
+      expansion is pure arithmetic over the schedule and today (taperSchedule.ts, ADR-0010). */
   taper: TaperArea;
   reminders: RemindersArea;
   regimen: RegimenArea;
@@ -154,38 +145,32 @@ A view over rows `doses`, `regimen` and
       `regimen` own, not a third owner for either one. */
   exposure: ExposureArea;
   sideEffects: SideEffectsArea;
-  /** Period occurred, spotting or nothing this month (phase 5 ticket 03,
-      CONTEXT: "Cycle event"). No episode reference of its own, the same
-      reason sideEffects has none - charted against regimen episode
-      history above this seam rather than owning a link to one. */
+  /** Period occurred, spotting or nothing this month. No episode reference of its own, the
+      same reason sideEffects has none - charted against regimen episode history above this
+      seam rather than owning a link to one. */
   cycleEvents: CycleEventsArea;
-  /** A dated note an entry's owner added afterwards, on rereading (phase 8
-      features ticket 07, CONTEXT: "Margin note"). Rows only, owned by an
-      entry's rowid directly - what a margin note is rendered as (a visibly
-      later layer) lives above this seam, the same split every other area
-      here keeps. */
+  /** A dated note an entry's owner added afterwards, on rereading. Rows only, owned by an
+      entry's rowid directly - what a margin note is rendered as (a visibly later layer)
+      lives above this seam, the same split every other area here keeps. */
   marginNotes: MarginNotesArea;
-  /** The person's own named stretches of their timeline (phase 6 ticket 01,
-      ADR-0049, CONTEXT: "Era"). Rows and the journal edge an open bound
-      clamps to, nothing else: an era owns no colour, no mute and no other
-      setting, and the surfaces that adopt it as a filter resolve days
-      through `eras.ts` rather than through this area. */
+  /** The person's own named stretches of their timeline (ADR-0049). Rows and the journal
+      edge an open bound clamps to, nothing else: an era owns no colour, no mute and no
+      other setting, and the surfaces that adopt it as a filter resolve days through
+      `eras.ts` rather than through this area. */
   eras: ErasArea;
-  /** Which of those eras are muted from resurfacing (phase 6 ticket 05,
-      ADR-0049, CONTEXT: "Resurfacing consent"). A second area rather than a
-      field on `eras`, for the same reason `era` owns no mute column: the
-      rows here outlive the era they name, and resurfacingConsent.ts is the
-      one place that reads the two areas together. */
+  /** Which of those eras are muted from resurfacing (ADR-0049). A second area rather than a
+      field on `eras`, for the same reason `era` owns no mute column: the rows here outlive
+      the era they name, and resurfacingConsent.ts is the one place that reads the two areas
+      together. */
   eraMutes: EraMutesArea;
   /** What was happening around the numbers a time chart draws: milestones, regimen episodes, dose pauses,
       tryouts, and a procedure's surgery day and recovery window, for one
       date range. A view over rows other areas own, storing nothing of
       its own - the same kind of area `exposure` and `clinicianSummary` are. */
   chartAnnotations: ChartAnnotationsArea;
-  /** The binder/tucking wear log (phase 5 ticket 04, CONTEXT: "Wear
-      session"). Owns its own optional Reminder by an auto_source marker,
-      the same way stock owns its run-out reminder - hence the dependency
-      on `reminders` below. */
+  /** The binder/tucking wear log. Owns its own optional Reminder by an auto_source marker,
+      the same way stock owns its run-out reminder - hence the dependency on `reminders`
+      below. */
   wearSessions: WearSessionsArea;
   /** A one-shot, printable assembly of labs, doses, regimen history, side
       effects and exposure counters for a chosen range.
@@ -230,16 +215,12 @@ A view over rows `doses`, `regimen` and
       and an inclusion the caller supplies rather than a fixed section list.
       Never a restore format: the archive stays the only one. */
   journalBook: JournalBookArea;
-  /** "First noticed" markers against an open effect catalogue (phase 4
-      ticket 07, widened well past its original four/eight by phase 5
-      ticket 41), read against the HRT start above this seam
-      (personalEffectWindow.ts's hrtAnchor). No episode
-      reference of its own, the same reason sideEffects has none. Bundles
-      the effect vocabulary itself too - getEffectTypes/
-      addCustomEffectType/setEffectTypeHidden. */
+  /** "First noticed" markers against an open effect catalogue, read against the HRT start
+      above this seam (personalEffectWindow.ts's hrtAnchor). No episode reference of its
+      own, the same reason sideEffects has none. Bundles the effect vocabulary itself too -
+      getEffectTypes/ addCustomEffectType/setEffectTypeHidden. */
   personalEffects: PersonalEffectsArea;
-  /** The toggleable groups the effect catalogue above is organised under
-      (phase 5 ticket 41, CONTEXT: "Effect category") - tag_group's own
+  /** The toggleable groups the effect catalogue above is organised under - tag_group's own
       semantics, reused. */
   effectCategories: EffectCategoriesArea;
   /** Electrolysis/laser sessions - date, area, method, pain rating, cost,
@@ -252,11 +233,9 @@ A view over rows `doses`, `regimen` and
       the person's own - to compare the same pose over time.
 Dated in their own right. */
   progressPhotos: ProgressPhotosArea;
-  /** The person's own comfort list (phase 6 ticket 14, CONTEXT: "Comfort
-      list"): who to text, which walk, which playlist, entirely their own
-      words. Reachable only from inside Safe space; nothing seeds it and
-      nothing offers it, so this area is only ever read and written from
-      the one screen. */
+  /** The person's own comfort list: who to text, which walk, which playlist, entirely their
+      own words. Reachable only from inside Safe space; nothing seeds it and nothing offers
+      it, so this area is only ever read and written from the one screen. */
   comfortItems: ComfortItemsArea;
   /** Which areas are hidden, and which the person has said are finished
       (ADR-0052). The rule these rows are read by is `areaState.ts`. */
@@ -267,9 +246,8 @@ Dated in their own right. */
       (ADR-0010) - this area owns only what it alone writes. Its
       felt-sense history lives in `feltSense` instead. */
   tryouts: TryoutsArea;
-  /** A tryout's felt-sense history (phase 5 ticket 24, CONTEXT:
-      "Felt-sense entry"). Never required - offering one is the tryout
-      screens' and the entry editor's business, not this area's. */
+  /** A tryout's felt-sense history. Never required - offering one is the tryout screens'
+      and the entry editor's business, not this area's. */
   feltSense: FeltSenseArea;
   /** Free-write letters to the person's future self, sealed until a
       chosen unlock day. Stores the text and the
@@ -281,56 +259,48 @@ Dated in their own right. */
       goals say is a bundled content module, not a table, so this area
       never validates a pack key it was handed. */
   roadmap: RoadmapArea;
-  /** Surgery journeys - a procedure's name, consult dates, surgery date and
-      recovery log (phase 5 ticket 07, CONTEXT: "Procedure"). Several can be
-      tracked at once. Stores no day counter: how far along recovery is comes
-      from the surgery date and today, above this seam (recoveryDay.ts). Its
-      recovery checklist is an ordinary `checklists` record owned by the
-      procedure, hence the dependency between the two below. */
+  /** Surgery journeys - a procedure's name, consult dates, surgery date and recovery log.
+      Several can be tracked at once. Stores no day counter: how far along recovery is comes
+      from the surgery date and today, above this seam (recoveryDay.ts). Its recovery
+      checklist is an ordinary `checklists` record owned by the procedure, hence the
+      dependency between the two below. */
   procedures: ProceduresArea;
-  /** Appointments (phase 8 features ticket 57, ADR-0066, CONTEXT:
-      "Appointment"): a day, a kind the person names, a place, a note, and
-      an optional link to a procedure. A consult is one of these rows with
-      the link filled in, which is why `procedures` above takes this area
-      rather than owning a table of its own. */
+  /** Appointments (ADR-0066): a day, a kind the person names, a place, a note, and an
+      optional link to a procedure. A consult is one of these rows with the link filled in,
+      which is why `procedures` above takes this area rather than owning a table of its own. */
   appointments: AppointmentsArea;
-  /** Free-text checklists (phase 5 ticket 05, CONTEXT: "Checklist"),
-      standalone or scoped to an owner record by a (kind, id) pair rather
-      than a foreign key - no owner table ships with this ticket. Distinct
-      from `roadmap`: an item here is entirely the user's own content, with
-      nothing bundled behind it. */
+  /** Free-text checklists, standalone or scoped to an owner record by a (kind, id) pair
+      rather than a foreign key - no owner table ships with this ticket. Distinct from
+      `roadmap`: an item here is entirely the user's own content, with nothing bundled
+      behind it. */
   checklists: ChecklistsArea;
   /** Read-only aggregates over everything above (ADR-0012). Nothing here
       is stored; a stat is recomputed whenever it is asked for. */
   stats: StatsArea;
-  /** Descriptive co-occurrence cards between a tag or a dose-log day and
-      mood or a gender dimension - a deliberate
-      reversal of phase 3's explicit exclusion of correlation analysis,
-      not scope drift. A view over rows `stats`, `doses` and `dimensions`
-      own, not a fourth owner for any of them. */
+  /** Descriptive co-occurrence cards between a tag or a dose-log day and mood or a gender
+      dimension - a deliberate reversal 's explicit exclusion of correlation analysis, not
+      scope drift. A view over rows `stats`, `doses` and `dimensions` own, not a fourth
+      owner for any of them. */
   correlationCards: CorrelationCardsArea;
   /** Everything above at once, in the shape an export carries it
       (ADR-0007), and one archive read back in - Replace or Merge, each a
       single operation whose order of writes is nobody else's business
       (ADR-0011). */
   archive: ArchiveArea;
-  /** Adds whatever built-in vocabulary is missing, by key, and touches
-      nothing else - safe on every boot and again before ticket 14's
-      Replace import applies. `unlessCurrent` is boot's: skip the work when
-      the journal was last reconciled against this build's catalogue
-      (builtInsStamp.ts, ticket 208). */
+  /** Adds whatever built-in vocabulary is missing, by key, and touches nothing else - safe
+      on every boot and again before Replace import applies. `unlessCurrent` is boot's: skip
+      the work when the journal was last reconciled against this build's catalogue
+      (builtInsStamp.ts). */
   reconcileBuiltIns(options?: { unlessCurrent?: boolean }): Promise<void | NothingWritten>;
   /** Every journal row gone, in one operation the section registry orders
-      (archiveSections.ts, phase 5 ticket 13). The same thing a Replace import
-      does before it installs an archive's rows, which is why it is one
-      operation and not a list each caller walks: the demo bar's state jumps
-      used to walk seven areas of their own, out of the thirty-six an archive
-      carries.
+      (archiveSections.ts). The same thing a Replace import does before it installs an
+      archive's rows, which is why it is one operation and not a list each caller walks: the
+      demo bar's state jumps used to walk seven areas of their own, out of the thirty-six an
+      archive carries.
 
-      Leaves the built-in vocabulary and preferences alone, as Replace's
-      row-discard step does (restore.ts's discardJournalRows). Deletes no photo file
-      either - the rows go, and the next boot's orphan sweep reclaims what
-      they named (photos.ts). */
+      Leaves the built-in vocabulary and preferences alone, as Replace's row-discard step
+      does (restore.ts's discardJournalRows). Deletes no photo file either - the rows go,
+      and the next boot's orphan sweep reclaims what they named (photos.ts). */
   discardEverything(): Promise<void>;
   /** Runs one deletion so that it can be taken back for a while: every row it removes or changes is recorded, its file
       removals wait, and the handle either puts the rows back or lets the

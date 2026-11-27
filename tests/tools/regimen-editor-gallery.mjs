@@ -37,7 +37,7 @@ try {
     await page.locator('[data-add]').click();
     await page.locator('[data-own]').click();
     assert.equal(await page.locator('[data-save-regimen]').isDisabled(), true);
-    // Left empty, the way the requirements are met in use (after-release 21).
+    // Left empty, the way the requirements are met in use.
     for (const field of ['#regimen-drug', '#regimen-dose']) {
       await page.locator(field).focus();
       await page.locator(field).blur();

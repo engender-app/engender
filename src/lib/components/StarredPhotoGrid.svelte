@@ -1,7 +1,6 @@
 <script lang="ts">
-  /* The starred photos under a Starred search, with their unstar mark. The
-     heading above it stays with the screen, which knows what else it is
-     showing (after-release ticket 16 follow-up). */
+  /* The starred photos under a Starred search, with their unstar mark. The heading above it
+     stays with the screen, which knows what else it is showing. */
   import { m } from '$lib/paraglide/messages';
   import { journal } from '$lib/data/live/journal.svelte';
   import { photoSourceLabel } from '$lib/data/vocabulary/photoLibraryLabels';

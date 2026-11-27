@@ -96,17 +96,14 @@
     return formatted;
   });
 
-  /* What is next for this procedure, which the card had nowhere to say
-     (audit item 13): the screen ended at 520px with the journey's own
-     forward fact locked inside the open card's consult list. The nearest
-     consult from today on, in ticket 12's grammar - `gapTo` and the same
-     two strings a hub row uses for a consult, so a row saying "Consult in
-     12 days" and this card cannot come to disagree about either the
-     arithmetic or the words.
+  /* What is next for this procedure, which the card had nowhere to say : the screen ended
+     at 520px with the journey's own forward fact locked inside the open card's consult
+     list. The nearest consult from today on, in grammar - `gapTo` and the same two strings
+     a hub row uses for a consult, so a row saying "Consult in 12 days" and this card cannot
+     come to disagree about either the arithmetic or the words.
 
-     Only a card still running: an archived procedure keeps no forward
-     reading (`open`'s own rule above), and a consult dated after one is a
-     record of something else. */
+     Only a card still running: an archived procedure keeps no forward reading (`open`'s own
+     rule above), and a consult dated after one is a record of something else. */
   let nextConsult = $derived(
     open
       ? [...procedure.consults]
@@ -154,11 +151,10 @@
     <!-- A row the width of the card answers a press with a wash rather than
          a scale: 0.94 on a 330px card walks its edges 10px inward while the
          list holds still, which reads as a yank. -->
-    <!-- A link to the procedure's own screen (prh12 bug 20), the way a
-         tryout's card links to its own (TryoutCard). It used to be a button
-         that slid the procedure's log open under the list. No aria-label:
-         the name, the phase, the number and the date are all inside the
-         link, and a label would replace them for a screen reader. -->
+    <!-- A link to the procedure's own screen, the way a tryout's card links to its own
+         (TryoutCard). It used to be a button that slid the procedure's log open under the
+         list. No aria-label: the name, the phase, the number and the date are all inside
+         the link, and a label would replace them for a screen reader. -->
     <a
       class="proc-face"
       href="/health/surgery/{procedure.id}"
@@ -192,10 +188,9 @@
     </a>
   </div>
 
-  <!-- Between the reading and the rail: the block says how far off the
-       operation is, this says what happens before it, and the rail draws
-       both without words (audit item 13). `aria-hidden` on the rail is why
-       the consult has to be written as well as drawn - the same reason the
+  <!-- Between the reading and the rail: the block says how far off the operation is, this
+       says what happens before it, and the rail draws both without words. `aria-hidden` on
+       the rail is why the consult has to be written as well as drawn - the same reason the
        consult count below it is kept. -->
   {#if nextConsultLine}
     <p class="proc-next" data-procedure-next={procedure.id}>{nextConsultLine}</p>
@@ -222,15 +217,13 @@
     </div>
   {/if}
 
-  <!-- The consult count stays written down even though the rail draws each
-       consult as its own mark, because the rail is `aria-hidden` and a
-       drawing nobody can hear is not where a fact may live. Each number
-       says what it counts in hidden words, since the glyph beside it is
-       hidden too and "2 3" is not a fact (after-release 21). The photo count
-       is here only on a collapsed card, which has no strip to count from.
-       `collapse` because selecting a procedure is what brings the milestone
-       and the checklist count in, and a row that cuts in is the yank the
-       standing clause forbids. -->
+  <!-- The consult count stays written down even though the rail draws each consult as its
+       own mark, because the rail is `aria-hidden` and a drawing nobody can hear is not
+       where a fact may live. Each number says what it counts in hidden words, since the
+       glyph beside it is hidden too and "2 3" is not a fact. The photo count is here only
+       on a collapsed card, which has no strip to count from. `collapse` because selecting a
+       procedure is what brings the milestone and the checklist count in, and a row that
+       cuts in is the yank the standing clause forbids. -->
   {#if linkedMilestone || checklistCount > 0 || procedure.consults.length > 0 || (!open && photos.length > 0) || cost}
     <span class="proc-badges" transition:collapse|global>
       {#if linkedMilestone}
@@ -465,11 +458,10 @@
     color: var(--text-2);
   }
 
-  /* The wash a full-width row answers a press with. It is the control's
-     own ground rather than a container's, which is the distinction carpet
-     30 settled - and it holds here because the face's hit area is the
-     card, so the card is the control rather than a box around one. The
-     wash fades rather than cutting in. */
+  /* The wash a full-width row answers a press with. It is the control's own ground rather
+     than a container's, which is the distinction settled - and it holds here because the
+     face's hit area is the card, so the card is the control rather than a box around one.
+     The wash fades rather than cutting in. */
   .proc-card:has(.proc-face:active) {
     background: var(--role-wash);
   }

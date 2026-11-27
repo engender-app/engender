@@ -61,8 +61,8 @@ describe('the home reserve', () => {
     expect(readReserve('above', throwing)).toBe(0);
   });
 
-  /* Security-scan ticket 08: a screen's own height named the screen, in
-     plaintext, so it lives in the encrypted journal now. */
+  /* A screen's own height named the screen, in plaintext, so it lives in the encrypted
+     journal now. */
   it('keeps every screen but Home out of Web Storage', () => {
     const storage = memoryStorage();
     let value: Record<string, number> = {};

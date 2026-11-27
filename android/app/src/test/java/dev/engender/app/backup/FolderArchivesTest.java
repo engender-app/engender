@@ -9,7 +9,7 @@ import java.util.Collections;
 import java.util.List;
 import org.junit.Test;
 
-/** Which archive in the auto-export folder a folder sync merges (FA 49). */
+/** Which archive in the auto-export folder a folder sync merges. */
 public class FolderArchivesTest {
     private static final class Document implements FolderArchives.Document {
         final String uri;
@@ -47,8 +47,8 @@ public class FolderArchivesTest {
         assertEquals("b", FolderArchives.newest(folder, Collections.emptyList(), 19, Collections.emptyList()).uri);
     }
 
-    /* Backups were .ttbackup before ticket 10 renamed them .gnd: a phone on an
-       older build shares the folder, so its archives still count. */
+    /* Backups were .ttbackup renamed them .gnd: a phone on an older build shares the folder,
+       so its archives still count. */
     @Test public void takesAnotherDevicesArchiveUnderEitherExtension() {
         List<Document> folder = Arrays.asList(
             new Document("old", "auto-backup-20.ttbackup", 20, 100),
@@ -74,9 +74,9 @@ public class FolderArchivesTest {
         assertNull(FolderArchives.newest(folder, Collections.emptyList(), 20, Arrays.asList("tried", "twin")));
     }
 
-    /* Re-check carpet 13: a device that ran out of space keeps the folder's
-       position, so the same archive is taken on the next open; any other
-       ending moves past it, and a cancelled one leaves it too. */
+    /* a device that ran out of space keeps the folder's position, so the same archive is
+       taken on the next open; any other ending moves past it, and a cancelled one leaves it
+       too. */
     @Test public void aMergeThatRanOutOfSpaceLeavesThePositionSoTheArchiveIsTakenAgain() {
         FolderArchives.Position before = new FolderArchives.Position(10, Collections.singletonList("older"));
         assertNull(FolderArchives.after(before, 30, "b", "no-space"));

@@ -1,6 +1,5 @@
-/* Lock timing at the seam watchLock() hands its leave events to
-   (lock-timing ticket 01), with a fake clock and a fake document, since the
-   node tier has neither a page to hide nor a minute to wait. */
+/* Lock timing at the seam watchLock() hands its leave events to, with a fake clock and a
+   fake document, since the node tier has neither a page to hide nor a minute to wait. */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -326,9 +325,9 @@ test('successive own-screen leaves keep grace and preserve the first leave time'
   expect(app.locks()).toBe(1);
 });
 
-/* Tester-report-02 ticket 07: Android covers its window on the way out when
-   a leave locks at once, and the page takes the cover off after every return
-   the activity reports, once the lock for that return has been decided. */
+/* Android covers its window on the way out when a leave locks at once, and the page takes
+   the cover off after every return the activity reports, once the lock for that return has
+   been decided. */
 test('tells the page about every native return, after the lock has been decided', () => {
   let clock = 1_000_000;
   const events: string[] = [];

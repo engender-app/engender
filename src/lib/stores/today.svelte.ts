@@ -1,18 +1,16 @@
 /* The current local day as something a screen can react to.
 
-   `todayEpochDay()` reads only `new Date()`, so a `$derived(todayEpochDay())`
-   or a `const today = todayEpochDay()` is computed once and never again: a
-   screen left open over midnight kept yesterday's greeting, tiles and
-   unlock checks until it was reloaded (phase 15 after-release 02). Reading
-   `currentDay()` inside a `$derived`, an `$effect` or a template does
-   subscribe, and the subscription wakes at the next local midnight and
-   whenever the page becomes visible again - a phone asleep over midnight
-   fires its timer late or not at all, and the visibility change is what
-   catches that.
+   `todayEpochDay()` reads only `new Date()`, so a `$derived(todayEpochDay())` or a `const
+   today = todayEpochDay()` is computed once and never again: a screen left open over
+   midnight kept yesterday's greeting, tiles and unlock checks until it was reloaded.
+   Reading `currentDay()` inside a `$derived`, an `$effect` or a template does subscribe,
+   and the subscription wakes at the next local midnight and whenever the page becomes
+   visible again - a phone asleep over midnight fires its timer late or not at all, and the
+   visibility change is what catches that.
 
-   Reads outside any reactive context just return today. A write must read
-   the day when it happens, so those keep calling `todayEpochDay()` inline
-   rather than a captured value (tests/node/journal/today-capture.test.ts). */
+   Reads outside any reactive context just return today. A write must read the day when it
+   happens, so those keep calling `todayEpochDay()` inline rather than a captured value
+   (tests/node/journal/today-capture.test.ts). */
 
 import { createSubscriber } from 'svelte/reactivity';
 import { msUntilNextLocalMidnight, todayEpochDay } from '../data/epochDay';

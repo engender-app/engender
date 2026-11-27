@@ -15,14 +15,12 @@ export const PEAK_CEILING = 0.98;
 /** Voice against room, in dB. Below this the formant estimate starts
     describing the room. */
 const MIN_SNR_DB = 15;
-/** Continuous voicing, in seconds. Continuous, not total: three seconds in
-    five bursts is not a sustained vowel. Asked only of the held vowel - the
-    sentence that used to follow, that "a passage read in fragments shorter
-    than this was not read", was the mistake redesign ticket 41 fixed. A
-    read passage is fragments by nature: every voiceless stop and fricative
-    breaks voicing, so an honest read's longest unbroken run is a few
-    hundred milliseconds and could never clear this. What the passage
-    answers to instead is `readingFloorSeconds`. */
+/** Continuous voicing, in seconds. Continuous, not total: three seconds in five bursts is
+    not a sustained vowel. Asked only of the held vowel - the sentence that used to follow,
+    that "a passage read in fragments shorter than this was not read", was fixed. A read
+    passage is fragments by nature: every voiceless stop and fricative breaks voicing, so an
+    honest read's longest unbroken run is a few hundred milliseconds and could never clear
+    this. What the passage answers to instead is `readingFloorSeconds`. */
 const MIN_VOICED_SECONDS = 1.5;
 /** Coefficient of variation of F0 across the voiced frames. Asked only of
     the sustained vowel - a read passage moves in pitch by design, which is
@@ -105,19 +103,17 @@ export function passageGate(wordCount: number, language: BandLanguage): QualityG
 
 /** **The rate a stored benchmark cannot honestly have been read at.**
 
-    Until redesign ticket 41 the passage had no working length gate, so a
-    take abandoned a few words in was stored with the whole passage's word
-    count over the seconds it actually ran: roughly double the true speaking
-    rate, and no stored field proves it (no benchmark records how much of the
-    passage was read). What is left is the number itself, and twice an
-    unhurried read is the signature of the bug rather than of a fast reader.
+    The passage had no working length gate, so a take abandoned a few words in was stored
+    with the whole passage's word count over the seconds it actually ran: roughly double the
+    true speaking rate, and no stored field proves it (no benchmark records how much of the
+    passage was read). What is left is the number itself, and twice an unhurried read is the
+    signature of the bug rather than of a fast reader.
 
-    Each is about 1.3 times the fastest read its language was measured at,
-    which is high enough that no honest read reaches it and low enough to
-    catch a half-read of the same passage at the slowest pace measured -
-    the one case the length floor above deliberately lets through: half a
-    passage read slowly carries as much voice as the whole read fast, and
-    voiced time alone cannot tell them apart. */
+    Each is about 1.3 times the fastest read its language was measured at, which is high
+    enough that no honest read reaches it and low enough to catch a half-read of the same
+    passage at the slowest pace measured - the one case the length floor above deliberately
+    lets through: half a passage read slowly carries as much voice as the whole read fast,
+    and voiced time alone cannot tell them apart. */
 const MAX_PLAUSIBLE_WPM: Record<BandLanguage, number> = { en: 300, pl: 200 };
 
 /** Whether a stored speaking rate is one a person could have read at.

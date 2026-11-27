@@ -1,4 +1,4 @@
-/* The in-memory last answers a warm revisit paints from (ux-carpet 201). */
+/* The in-memory last answers a warm revisit paints from. */
 
 import assert from 'node:assert/strict';
 import { beforeEach, test } from 'vitest';

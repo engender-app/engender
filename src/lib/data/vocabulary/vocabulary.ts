@@ -1,13 +1,12 @@
 /* What screens read the vocabulary through.
 
-   Storage holds built-ins as bare keys (builtins.ts) and the wording lives
-   in the message catalogue (labels.ts); this joins the two on the way out,
-   leaving custom rows - which carry the user's own words - untouched.
+   Storage holds built-ins as bare keys (builtins.ts) and the wording lives in the message
+   catalogue (labels.ts); this joins the two on the way out, leaving custom rows - which
+   carry the user's own words - untouched.
 
-   It sits above the mirror rather than inside it because the layer below
-   has to stay free of paraglide: ADR-0016 keeps the Node tier away from it,
-   and every journal area is under Node-tier tests. So the mirror answers
-   "which rows", and this answers "called what". */
+   It sits above the mirror rather than inside it because the layer below has to stay free
+   of paraglide: Node tests avoid Paraglide, and every journal area is under Node-tier
+   tests. So the mirror answers "which rows", and this answers "called what". */
 
 import { m } from '$lib/paraglide/messages';
 import { MOOD_RANGE, type MetricRange } from '../metricRange';
@@ -91,8 +90,7 @@ function localizeRegimenTemplate(t: RegimenTemplate): RegimenTemplate {
     rows at all - a template is a suggestion the app ships. */
 const milestoneTemplates: MilestoneTemplate[] = milestoneTemplateRows();
 
-/** Same shape as `milestoneTemplates` above, for regimen episodes (phase 5
-    ticket 42, CONTEXT: "Regimen template"). */
+/** Same shape as `milestoneTemplates` above, for regimen episodes. */
 const regimenTemplates: RegimenTemplate[] = regimenTemplateRows();
 
 export const vocabulary = {
@@ -106,7 +104,7 @@ export const vocabulary = {
   get activeDimensions(): GenderDimension[] {
     return reference.activeDimensions.map(localizeDimension);
   },
-  /** Every dimension that has not been hidden (CONTEXT: "Hidden") - what a
+  /** Every dimension that has not been hidden - what a
       template's pre-fill may set, the same "not hidden" filter
       `visibleTagGroups` already applies to tags. */
   get visibleDimensions(): GenderDimension[] {
@@ -125,15 +123,13 @@ export const vocabulary = {
     if (!dim.builtIn) return m.scale_custom_note({ low: dim.low, high: dim.high });
     return builtInDimensionNote(dim.key) ?? undefined;
   },
-  /** The lean the ticked scales carry -
-      `null` when both `femininity` and `masculinity` are ticked, or neither,
-      and every lean-tagged picker should render unranked. Shared by every
-      picker that ranks by lean, so the derivation is computed once rather
-      than at each call site.
+  /** The lean the ticked scales carry - `null` when both `femininity` and `masculinity` are
+      ticked, or neither, and every lean-tagged picker should render unranked. Shared by
+      every picker that ranks by lean, so the derivation is computed once rather than at
+      each call site.
 
-      Read off the scales actually drawn rather than off the stored list, so
-      a ticked scale this install no longer has cannot lean a picker
-      (ticket 35 replaced the preset the lean used to come from). */
+      Read off the scales actually drawn rather than off the stored list, so a ticked scale
+      this install no longer has cannot lean a picker. */
   get activeLean(): 'femme' | 'masc' | null {
     return scaleLean(this.activeDimensions.map((d) => d.key));
   },
@@ -148,15 +144,14 @@ export const vocabulary = {
   get tags(): Tag[] {
     return reference.tags.map(localizeTag);
   },
-  /** All five (or six) effect categories, in seed order, in the wording the
-      current language gives them (phase 5 ticket 41, CONTEXT: "Effect
-      category") - what the effects settings screen manages. */
+  /** All five (or six) effect categories, in seed order, in the wording the current
+      language gives them - what the effects settings screen manages. */
   get effectCategories(): EffectCategory[] {
     return reference.effectCategories.map(localizeEffectCategory);
   },
   /** Every personal-effect catalogue entry, built-in and custom, hidden
       ones and every tier included - what the effects settings screen
-      manages (CONTEXT: "Hidden", "Personal effect"). */
+      manages. */
   get personalEffectTypes(): PersonalEffectCatalogEntry[] {
     return reference.personalEffectTypes.map(localizePersonalEffectType);
   },
@@ -180,24 +175,20 @@ export const vocabulary = {
   get milestoneTemplates(): MilestoneTemplate[] {
     return milestoneTemplates.map(localizeTemplate);
   },
-  /** The built-in regimen episode suggestions (phase 5 ticket 42, CONTEXT:
-      "Regimen template"), in the wording the current language gives them -
-      what the regimen editor's "add new" picker offers above manual entry.
-      Ranked by the active preset's lean:
-      matching templates first, the rest after in their existing order -
-      every template still shown, just reordered. */
+  /** The built-in regimen episode suggestions, in the wording the current language gives
+      them - what the regimen editor's "add new" picker offers above manual entry. Ranked by
+      the active preset's lean: matching templates first, the rest after in their existing
+      order - every template still shown, just reordered. */
   get regimenTemplates(): RegimenTemplate[] {
     return rankByLean(regimenTemplates.map(localizeRegimenTemplate), this.activeLean);
   },
-  /** Every body region, hidden built-ins and custom ones included, in the
-      wording the user sees (ticket 09, reference-data area since ticket
-      30) - what an entry card or the trend chart resolves a logged
-      region's key against. */
+  /** Every body region, hidden built-ins and custom ones included, in the wording the user
+      sees - what an entry card or the trend chart resolves a logged region's key against. */
   get bodyRegions(): BodyRegion[] {
     return reference.bodyRegions.map(localizeBodyRegion);
   },
   /** What the entry editor and the body-map picker offer: hidden regions
-      removed (CONTEXT: "Hidden"), the same "not hidden" filter
+      removed, the same "not hidden" filter
       `visibleTagGroups` already applies to tags. */
   get visibleBodyRegions(): BodyRegion[] {
     return reference.visibleBodyRegions.map(localizeBodyRegion);

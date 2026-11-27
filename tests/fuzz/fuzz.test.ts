@@ -1,11 +1,9 @@
-/* Vitest entry for the importer fuzz harness (testing ticket 11).
-   Spawns child.mjs under a heap limit and a per-case watchdog, collects
-   the outcomes, writes a summary, and fails on any defect.
+/* Vitest entry for the importer fuzz harness. Spawns child.mjs under a heap limit and a
+   per-case watchdog, collects the outcomes, writes a summary, and fails on any defect.
 
-   FUZZ_SEED (default 1), FUZZ_COUNT cases per target (default 40),
-   FUZZ_LONG=1 raises the count to FUZZ_LONG_COUNT (default 2000),
-   FUZZ_TARGETS (comma list), FUZZ_OUT (summary dir),
-   FUZZ_HEAP_MB (at most 1024), FUZZ_WATCHDOG_MS (at most 30000). */
+   FUZZ_SEED (default 1), FUZZ_COUNT cases per target (default 40), FUZZ_LONG=1 raises the
+   count to FUZZ_LONG_COUNT (default 2000), FUZZ_TARGETS (comma list), FUZZ_OUT (summary
+   dir), FUZZ_HEAP_MB (at most 1024), FUZZ_WATCHDOG_MS (at most 30000). */
 import { spawn } from 'node:child_process';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';

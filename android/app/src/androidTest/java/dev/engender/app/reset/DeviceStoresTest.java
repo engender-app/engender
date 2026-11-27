@@ -113,11 +113,10 @@ public class DeviceStoresTest {
 
     @Test
     public void aResetDeletesTheKeystoreAliasTheRemindersWereWrappedUnder() throws Exception {
-        /* Audit finding G-02: the reminder payload gained a
-           wrapping key of its own, and it leaves for the same reason the
-           backup password's does. The ciphertext is only gone because the
-           preference file went with it, so a key left behind opens any copy
-           of that file taken before the reset. */
+        /* The reminder payload gained a wrapping key of its own, and it leaves for the same
+           reason the backup password's does. The ciphertext is only gone because the
+           preference file went with it, so a key left behind opens any copy of that file
+           taken before the reset. */
         createAlias(REMINDERS_ALIAS);
         assertTrue("the alias was not created", aliasExists(REMINDERS_ALIAS));
 

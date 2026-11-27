@@ -28,10 +28,9 @@
   $effect(() => {
     if (!resetOpen) resetError = '';
   });
-  /* Read once on mount, like the web gate's (ADR-0054, ticket sec-02). It
-     matters more here: the invalidated screen below is the state
-     JournalKeystore.java calls the cliff, and a recovery key is the one
-     thing that gets a journal back off it. */
+  /* Read once on mount, like the web gate's (ADR-0054). It matters more here: the
+     invalidated screen below is the state JournalKeystore.java calls the cliff, and a
+     recovery key is the one thing that gets a journal back off it. */
   refreshRecoveryKeyPresence();
   let usingRecoveryKey = $state(false);
   /* "There is no way to bring it back" is true of the Keystore alias and

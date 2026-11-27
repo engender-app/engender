@@ -1,6 +1,5 @@
-/* Ticket 09 characterization: pins the mapping that already worked (home,
-   calendar, stats, settings) so the refactor to a table only changes the
-   seven routes that lit no tab at all. */
+/* Characterization: pins the mapping that already worked (home, calendar, stats, settings)
+   so the refactor to a table only changes the seven routes that lit no tab at all. */
 import { describe, expect, it } from 'vitest';
 
 import { activeTabKey, borrowsTab, litTabKey, RAIL_SETTINGS, railTabKey } from './active-tab.ts';
@@ -19,9 +18,8 @@ describe('activeTabKey', () => {
   it('lights stats for stats and every wrapped view', () => {
     expect(activeTabKey('/stats')).toBe('stats');
     expect(activeTabKey('/wrapped')).toBe('stats');
-    /* The arbitrary range recap used to own is a wrapped now (phase 5 UX
-       ticket 23, spec 07), so the tab it lights comes from the /wrapped
-       prefix rather than from a prefix of the deleted route's own. */
+    /* The arbitrary range recap used to own is a wrapped now, so the tab it lights comes
+       from the /wrapped prefix rather than from a prefix of the deleted route's own. */
     expect(activeTabKey('/wrapped/month')).toBe('stats');
     expect(activeTabKey('/wrapped/month')).toBe('stats');
   });
@@ -34,28 +32,25 @@ describe('activeTabKey', () => {
     expect(activeTabKey('/recap')).toBe(activeTabKey('/nothing-here'));
   });
 
-  it('lights more, but borrows its origin for settings chrome (audit item 4)', () => {
+  it('lights more, but borrows its origin for settings chrome', () => {
     expect(activeTabKey('/more')).toBe('settings');
     expect(activeTabKey('/care/regimen')).toBe('settings');
-    /* Settings is chrome (ADR-0076), reached from a persistent gear rather
-       than a tab of its own - lighting the fourth tab for it read as
-       having left whichever tab the gear was pressed from. With nothing
-       to borrow (a cold load) it lights Today, where the gear lives, and
-       with an origin it borrows exactly
-       that, whatever it is - the caller (chrome-tab-origin.ts) decides
-       which tab counts as "came from", not this table. */
+    /* Settings is chrome, reached from a persistent gear rather than a tab of its own -
+       lighting the fourth tab for it read as having left whichever tab the gear was pressed
+       from. With nothing to borrow (a cold load) it lights Today, where the gear lives, and
+       with an origin it borrows exactly that, whatever it is - the caller
+       (chrome-tab-origin.ts) decides which tab counts as "came from", not this table. */
     expect(activeTabKey('/settings')).toBe('home');
     expect(activeTabKey('/settings/security')).toBe('home');
     expect(activeTabKey('/settings', 'home')).toBe('home');
     expect(activeTabKey('/settings/access-mode', 'calendar')).toBe('calendar');
   });
 
-  /* Phase 14 ticket 15 (V14): every screen under /settings follows the
-     chrome rule above, with no exceptions. Eras lit the fourth door and the
-     ignore list lit Look back whatever the person had come from, while
-     tags borrowed - settings subpages answering
-     different needs. Each of them now lights the tab the gear (or the
-     link) was pressed from, and Today on a cold load, like the hub. */
+  /* Every screen under /settings follows the chrome rule above, with no exceptions. Eras
+     lit the fourth door and the ignore list lit Look back whatever the person had come
+     from, while tags borrowed - settings subpages answering different needs. Each of them
+     now lights the tab the gear (or the link) was pressed from, and Today on a cold load,
+     like the hub. */
   it('lets every settings subpage borrow its origin, eras included', () => {
     for (const path of ['/settings/eras', '/settings/tags', '/settings/trash']) {
       expect(activeTabKey(path, 'calendar'), path).toBe('calendar');
@@ -82,19 +77,18 @@ describe('activeTabKey', () => {
     expect(activeTabKey('/care/labs')).toBe('settings');
   });
 
-  /* Features ticket 33: the 23 hub-row screens moved off /settings/<slug>
-     onto their own HubGroupKey-named address, and the tab still has to
-     light for all of them - one case per new prefix, not per moved route,
-     since the table matches on prefix rather than on the full path. */
+  /* Features the 23 hub-row screens moved off /settings/<slug> onto their own
+     HubGroupKey-named address, and the tab still has to light for all of them - one case
+     per new prefix, not per moved route, since the table matches on prefix rather than on
+     the full path. */
   it('lights settings for every group the hub rows moved onto', () => {
     expect(activeTabKey('/health/surgery')).toBe('settings');
     expect(activeTabKey('/transition/milestones')).toBe('settings');
     expect(activeTabKey('/media/photos')).toBe('settings');
   });
 
-  /* All-four-doors ticket 21: the retired Practice prefix's own screens
-     moved to addresses that say which door group holds them, and the tab
-     they light is unchanged - `/voice` alone got no door prefix. */
+  /* The retired Practice prefix's own screens moved to addresses that say which door group
+     holds them, and the tab they light is unchanged - `/voice` alone got no door prefix. */
   it('lights settings for every address the retired Practice prefix left behind', () => {
     expect(activeTabKey('/care/changes')).toBe('settings');
     expect(activeTabKey('/body/wear')).toBe('settings');
@@ -120,10 +114,9 @@ describe('activeTabKey', () => {
   });
 });
 
-/* After-release 17 (UX-18): the editor is reached from every door, and the
-   tab bar used to answer Journal whichever one it was. What the bar lights
-   now borrows the door the editor was opened from; the table above, which
-   screen transitions read, keeps calendar for /entry. */
+/* (UX-18): the editor is reached from every door, and the tab bar used to answer Journal
+   whichever one it was. What the bar lights now borrows the door the editor was opened
+   from; the table above, which screen transitions read, keeps calendar for /entry. */
 describe('litTabKey', () => {
   it('lets an open entry borrow the tab it was opened from', () => {
     expect(litTabKey('/entry/new/20000', 'home')).toBe('home');
@@ -142,9 +135,8 @@ describe('litTabKey', () => {
   });
 });
 
-/* After-release 17 (L04-07, UI-07): the desktop rail has a Settings row of
-   its own, so on every /settings route the rail lights that row rather
-   than borrowing a door, and the doors light nothing. */
+/* (L04-07, UI-07): the desktop rail has a Settings row of its own, so on every /settings
+   route the rail lights that row rather than borrowing a door, and the doors light nothing. */
 describe('railTabKey', () => {
   it('lights the Settings row on the hub and every subpage', () => {
     for (const path of ['/settings', '/settings/permissions', '/settings/reminders/new']) {

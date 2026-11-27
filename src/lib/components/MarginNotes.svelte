@@ -3,9 +3,9 @@
   import { offerUndo, undoable } from '$lib/stores/deleteUndo';
   import type { UndoableDelete } from '$lib/data/journal/undoableDelete';
   import { journalTextAutocomplete } from '$lib/platform';
-  /* Render a dated, indented margin note below its entry. The caller reads
-     notes for a page in one batch. The component writes through the journal,
-     where marginNotes.add validates its insert (ADR-0044). */
+  /* Render a dated, indented margin note below its entry. The caller reads notes for a page
+     in one batch. The component writes through the journal, where marginNotes.add validates
+     its insert. */
   import { m } from '$lib/paraglide/messages';
   import { deleter, writer } from '$lib/stores/attempt.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
@@ -26,10 +26,9 @@
   }: {
     entryId: number;
     notes: MarginNote[];
-    /** Off in a list of hits (audit UX-11): "Add a margin note" under every
-        result was 29 rows of the same words for one search, and about two
-        and a half results fitted a screen. A note is added from the
-        entry's own day, where this stays on. */
+    /** Off in a list of hits: "Add a margin note" under every result was 29 rows of the
+        same words for one search, and about two and a half results fitted a screen. A note
+        is added from the entry's own day, where this stays on. */
     addable?: boolean;
   } = $props();
 
@@ -50,9 +49,8 @@
     composeOpen = true;
   }
 
-  /* One note per tap: a double tap used to add two (after-release 06). The
-     sheet closes once the note is stored, and stays open with a toast when
-     it is not. */
+  /* One note per tap: a double tap used to add two. The sheet closes once the note is
+     stored, and stays open with a toast when it is not. */
   const saving = writer();
   const guard = leaveGuard({
     holding: () => composeOpen && composeText !== (editing?.text ?? ''),

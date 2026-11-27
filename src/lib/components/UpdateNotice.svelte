@@ -46,11 +46,10 @@
 
   $effect(() => onUpdateReadyChange((next) => (ready = next)));
 
-  /* Said through the app's standing live region (announcer.ts), which is on
-     the page long before this: the notice is inserted with its words in it,
-     possibly in the same render as the component itself, since this loads
-     after boot and an update can already be waiting, and a region that
-     arrives holding its words is often not read (after-release 21). */
+  /* Said through the app's standing live region (announcer.ts), which is on the page long
+     before this: the notice is inserted with its words in it, possibly in the same render
+     as the component itself, since this loads after boot and an update can already be
+     waiting, and a region that arrives holding its words is often not read. */
   $effect(() => {
     if (!ready) {
       announcedThisPage = false;

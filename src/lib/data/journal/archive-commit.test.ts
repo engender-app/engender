@@ -1,18 +1,15 @@
-/* What an import commit promises about what it committed (pre-production
-   audit A1). The audit reproduced two faults here, and both are kept as
-   regression tests because neither is visible from the outside without
-   breaking something on purpose: an import that restores rows and then
-   fails somewhere afterwards used to reject, which left the entries on
-   disk, the import history without a record of them, and every live read
-   showing the journal as it was before. The person is then looking at a
-   failure message over data that is really there, and the obvious next
-   move - import the file again - is the one that duplicates it.
+/* What an import commit promises about what it committed (pre-production). The audit
+   reproduced two faults here, and both are kept as regression tests because neither is
+   visible from the outside without breaking something on purpose: an import that restores
+   rows and then fails somewhere afterwards used to reject, which left the entries on disk,
+   the import history without a record of them, and every live read showing the journal as
+   it was before. The person is then looking at a failure message over data that is really
+   there, and the obvious next move - import the file again - is the one that duplicates it.
 
-   The faults are injected at the two places the audit hit: the history
-   insert, and a file-size read inside a snapshot the commit path no longer
-   takes. Both run through real SQLite and the observed journal seam, since
-   the whole claim is about what is on disk and what the read layer was
-   told. */
+   The faults are injected at the two places the audit hit: the history insert, and a
+   file-size read inside a snapshot the commit path no longer takes. Both run through real
+   SQLite and the observed journal seam, since the whole claim is about what is on disk and
+   what the read layer was told. */
 
 import assert from 'node:assert/strict';
 import { test } from 'vitest';

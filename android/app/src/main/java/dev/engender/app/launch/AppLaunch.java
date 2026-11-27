@@ -11,20 +11,18 @@ import dev.engender.app.reminders.ReminderScheduler;
 
 /**
  * Deep-link into an unlocked app route: a PendingIntent carrying the
- * destination as a route extra. Generalized out
- * of ReminderAlarmReceiver's own openAppIntent (tickets 26, 33, 34 all need
- * it) - MainActivity only ever stores the route (ReminderScheduler.
- * storeLaunchRoute); the JS side decides when it is safe to navigate there,
- * after app lock's own gate has cleared. So this helper never bypasses app
- * lock, it just queues where to land once it does.
+ * destination as a route extra. Generalized out of ReminderAlarmReceiver's
+ * own openAppIntent - MainActivity only ever stores the route
+ * (ReminderScheduler. storeLaunchRoute); the JS side decides when it is safe
+ * to navigate there, after app lock's own gate has cleared. So this helper
+ * never bypasses app lock, it just queues where to land once it does.
  *
  * <p>The intent names {@link #OPEN_ROUTE} within this package rather than
  * MainActivity's class. Only the launcher aliases declare that action and
  * exactly one of them is enabled, so the tap starts the same alias the
  * launcher would, and Recents and the window title wear its label and icon:
- * Notes under disguise. Resolution happens when the tap lands, so a widget
- * or notification built before a disguise flip still opens the live alias
- * (last-audit UI 04).
+ * Notes under disguise. Resolution happens when the tap lands, so a widget or
+ * notification built before a disguise flip still opens the live alias.
  */
 public final class AppLaunch {
 
@@ -70,10 +68,9 @@ public final class AppLaunch {
         );
     }
 
-    /** For a tap inside a notification's own layout, which autoCancel does
-        not cover: autoCancel answers only the notification's content
-        intent. The activity dismisses the notification when it arrives
-        (the check-in's faces, tester report 02 ticket 05). */
+    /** For a tap inside a notification's own layout, which autoCancel does not cover:
+        autoCancel answers only the notification's content intent. The activity dismisses
+        the notification when it arrives. */
     public static PendingIntent openAppIntent(Context context, String route, String key, int requestCode,
                                               int dismissNotificationId) {
         return PendingIntent.getActivity(

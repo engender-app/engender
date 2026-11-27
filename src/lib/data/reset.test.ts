@@ -76,13 +76,12 @@ test('a database that will not close is no reason to leave the data', async () =
   expect(log).toContain('clear cache');
 });
 
-/* The recovery key is swept by the same recursive walk and by no line of
-   its own (ADR-0054, ticket sec-01), which is worth a test precisely
-   because there is nothing in reset.ts naming it: a reset that left the
-   file behind would leave a written key that opens a journal the person
-   asked to be rid of - and, once a new journal is set up on the same
-   device, a stale wrap sitting next to it. Whoever narrows this sweep to a
-   list of known names has to fail here. */
+/* The recovery key is swept by the same recursive walk and by no line of its own
+   (ADR-0054), which is worth a test precisely because there is nothing in reset.ts naming
+   it: a reset that left the file behind would leave a written key that opens a journal the
+   person asked to be rid of - and, once a new journal is set up on the same device, a stale
+   wrap sitting next to it. Whoever narrows this sweep to a list of known names has to fail
+   here. */
 test('a reset takes the recovery key with everything else under the root', async () => {
   const { deps, log } = targets({
     entries: ['engender.sqlite3', 'keystore.json', RECOVERY_KEY_FILE, '.opfs-sahpool']
@@ -211,10 +210,9 @@ test('a completed reset leaves no key of this app behind in localStorage', async
 });
 
 test('the sweep takes every key the app actually writes, boot mirror excepted', () => {
-  /* Audit finding S3: stock_notice_snooze_until matched neither the
-     engender- prefix nor the letter_tile_snooze_until exception, so it
-     rode out a reset. Named here by the five keys the app is known to
-     write to localStorage, so a future stray write fails this the same
+  /* stock_notice_snooze_until matched neither the engender- prefix nor the
+     letter_tile_snooze_until exception, so it rode out a reset. Named here by the five keys
+     the app is known to write to localStorage, so a future stray write fails this the same
      way stock_notice_snooze_until did. */
   const storage = fakeStorage({
     'engender-entry-draft': '{"note":"first day on the patch"}',
@@ -247,8 +245,8 @@ test('the sweep leaves the boot mirror for clearBootCache to take last', async (
   expect(storage.getItem(BOOT_ACCESS_MODE_KEY)).not.toBeNull();
 });
 
-/* ux-carpet 214: the photos went nowhere on a start-over. They are sealed
-   under the data key, so they go with the database, before the key. */
+/* The photos went nowhere on a start-over. They are sealed under the data key, so they go
+   with the database, before the key. */
 test('the Android wipe takes the database and the photos before the key', async () => {
   const log: string[] = [];
   await wipeAndroidJournalFiles({
@@ -273,13 +271,12 @@ test('photos that will not delete keep the key, so the reset can be retried', as
   expect(log).toEqual(['database']);
 });
 
-/* Phase 14 ticket 15: Settings' Delete everything reaches resetApp on
-   Android too, where a journal in Unlocked mode has no gate. What resetApp
-   hands wipeLocalData there is built here, so the wiring is checked against
-   fake bridges: the database, the photo files, the data key, and the
-   device-reset plugin that takes the preference files and the alarms
-   scheduled off them (one native call; the files and alarms behind it are
-   the plugin's own, android/app/.../reset/DeviceResetPlugin.java). */
+/* Settings' Delete everything reaches resetApp on Android too, where a journal in Unlocked
+   mode has no gate. What resetApp hands wipeLocalData there is built here, so the wiring is
+   checked against fake bridges: the database, the photo files, the data key, and the
+   device-reset plugin that takes the preference files and the alarms scheduled off them
+   (one native call; the files and alarms behind it are the plugin's own,
+   android/app/.../reset/DeviceResetPlugin.java). */
 test('on Android the reset reaches every native store through its bridge', async () => {
   const log: string[] = [];
   const bridge = (name: string) => async () => {

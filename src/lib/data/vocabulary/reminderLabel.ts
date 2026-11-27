@@ -1,7 +1,6 @@
-/* The schedule wording for a reminder row (F25). Lived inside the
-   reminder repository as hardcoded English until ticket 07; it belongs on
-   this side of the seam because it speaks paraglide, which nothing the
-   Node tier touches may import (ADR-0016). */
+/* The schedule wording for a reminder row (F25). Lived inside the reminder repository as
+   hardcoded English; it belongs on this side of the seam because it speaks paraglide, which
+   nothing the Node tier touches may import. */
 
 import { m } from '$lib/paraglide/messages';
 import { relativeDayFromToday } from '../epochDay';

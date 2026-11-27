@@ -264,14 +264,11 @@
   </div>
 
   {#if placement.elsewhere.length}
-    <!-- Docked to the figure and sharing its card. A region with no one
-         place on a body - `body_facial_hair`, and every region somebody
-         added themselves - is a pill here, which is the shape this screen
-         has always given a region that has to carry its own name (Alicja,
-         2026-09-14: "for the 'elsewhere' parts, we want to preserve the nice
-         looking pills"). The reading rides in a swatch beside the name
-         rather than in the pill's own fill, because nothing may be written
-         on a region's fill. -->
+    <!-- Docked to the figure and sharing its card. A region with no one place on a body -
+         `body_facial_hair`, and every region somebody added themselves - is a pill here,
+         which is the shape this screen has always given a region that has to carry its own
+         name. The reading rides in a swatch beside the name rather than in the pill's own
+         fill, because nothing may be written on a region's fill. -->
     <div class="region-elsewhere">
       <p class="region-elsewhere-head">{m.body_map_elsewhere()}</p>
       <div class="region-elsewhere-pills">
@@ -443,13 +440,12 @@
     to { width: calc(var(--band-w) * 1px); }
   }
 
-  /* The cluster's pills are ordinary boxes, so they take the kit's own block
-     arrival rather than the figure's.
+  /* The cluster's pills are ordinary boxes, so they take the kit's own block arrival rather
+     than the figure's.
 
-     The wipe ends, and the pill rests, with half a touch target of room
-     around it rather than 3px. A clip-path clips hit testing as well as
-     paint, and 3px cut the pill's 48px target (its .tag-chip ::after) to 47
-     (after-release 18). Nothing the pill paints reaches past 3px, so the
+     The wipe ends, and the pill rests, with half a touch target of room around it rather
+     than 3px. A clip-path clips hit testing as well as paint, and 3px cut the pill's 48px
+     target (its .tag-chip ::after) to 47. Nothing the pill paints reaches past 3px, so the
      wider clip changes no pixel of the wipe. */
   .region-pill.region-arrive {
     clip-path: inset(calc(var(--touch-target) / -2) round var(--radius-pill));

@@ -207,9 +207,9 @@ test('works without a cache at all, which is what the Node tier and Android boot
   expect(prefs.get('theme')).toBe('dark');
 });
 
-/* Lock timing replaced the lock-on-leave switch (lock-timing ticket 01), and
-   version 117 moved the old row across in SQL (FA 44). Reading it here is
-   gone: a stray row from a build that never migrated is simply skipped. */
+/* Lock timing replaced the lock-on-leave switch, and version 117 moved the old row across
+   in SQL. Reading it here is gone: a stray row from a build that never migrated is simply
+   skipped. */
 test('a stray lock on leave row is skipped, like any key this build does not know', async () => {
   const driver = await migratedDb();
   await driver.run('INSERT INTO pref (key, value) VALUES (?, ?)', ['lockOnLeave', 'true']);
@@ -229,8 +229,8 @@ test('a timing chosen by the person is read back', async () => {
   expect(reopened.get('lockAfter')).toBe('five-minutes');
 });
 
-/* Functional audit ticket 44: a tile switch is portable, so one set before an
-   export is set after restoring that archive into a fresh journal. */
+/* A tile switch is portable, so one set before an export is set after restoring that
+   archive into a fresh journal. */
 test('a tile switch set before an export is set after restoring it into a fresh journal', async () => {
   const source = await openPreferences(await migratedDb());
   await source.set('surfaceOverrides', withSurface(source.get('surfaceOverrides'), 'wear-timer', false));
@@ -279,7 +279,7 @@ const ACKNOWLEDGED = {
   hasEntries: true
 };
 
-test('the boot mirror names the neutral palette while disguised, and the real one otherwise (FA 45, security-scan 08)', async () => {
+test('the boot mirror names the neutral palette while disguised, and the real one otherwise', async () => {
   const driver = await migratedDb();
   const { cache, current } = recordingCache();
   try {
@@ -300,7 +300,7 @@ test('the boot mirror names the neutral palette while disguised, and the real on
   } finally { await driver.close(); }
 });
 
-test('a reopen while disguised writes the neutral palette too (FA 45)', async () => {
+test('a reopen while disguised writes the neutral palette too', async () => {
   const driver = await migratedDb();
   try {
     const first = await openPreferences(driver);
@@ -312,7 +312,7 @@ test('a reopen while disguised writes the neutral palette too (FA 45)', async ()
   } finally { await driver.close(); }
 });
 
-test('acknowledgements survive a restart (FA 45)', async () => {
+test('acknowledgements survive a restart', async () => {
   const driver = await migratedDb();
   try {
     await (await openPreferences(driver)).set('acknowledgements', ACKNOWLEDGED);
@@ -320,7 +320,7 @@ test('acknowledgements survive a restart (FA 45)', async () => {
   } finally { await driver.close(); }
 });
 
-test('acknowledgements travel in a backup and come back sanitised on restore (FA 45)', async () => {
+test('acknowledgements travel in a backup and come back sanitised on restore', async () => {
   const source = await migratedDb();
   const target = await migratedDb();
   try {

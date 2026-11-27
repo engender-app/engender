@@ -173,12 +173,8 @@ describe('the five mood faces', () => {
   });
 });
 
-/* Ticket 279: a face is drawn in its own step's ink, not in the
-   palette's --text, because the deep end of a ramp is too dark for a dark
-   ink. The component hands the step's ink over as --face-ink the same way it
-   hands the fill over as --face-mood, and every rule that paints the eyes or
-   the mouth reads that. A rule reaching for --text again would put a dark
-   face back on a deep fill, and nothing else would notice. */
+/* Each step supplies its own ink through --face-ink. Using --text could put dark features
+   on a dark fill. */
 describe('the face draws in its own step\'s ink', () => {
   const rulesFor = (selector: RegExp) =>
     [...componentsCss.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)]
@@ -200,11 +196,8 @@ describe('the face draws in its own step\'s ink', () => {
     }
   });
 
-  /* The 4.5:1 the palette test proves is for the ink at full strength. The
-     features used to sit at 0.75 opacity, which blended them toward the
-     fill: measured on the composite, the worst face was 2.60:1 before ticket
-     279 and 2.49:1 on its new ramps. A resting face draws its ink solid; only
-     the picker's unchosen faces, which are dimmed on purpose, go lighter. */
+  /* The 4.5:1 contrast floor assumes full-strength ink. Lowering feature opacity blends the
+     ink into the fill. Dim only unchosen faces, as a whole. */
   it('draws a resting face in its ink at full strength', () => {
     const own = rulesFor(/^\s*\.mood-face-(eye|mouth)\s*$/);
     expect(own.length).toBe(2);
@@ -228,13 +221,7 @@ describe('the face draws in its own step\'s ink', () => {
     expect(Number(alpha) * 0.55).toBeCloseTo(19, 0);
   });
 
-  /* Picking a face (tester report 02, ticket 03, where the faces first sit
-     on a step of their own). The comment above says the face's opacity is
-     transitioned, but only the ring's colour was: sampled on every frame,
-     the dimming of the four unpicked faces, the picked one's 0.55 to 1 and
-     the previous pick's scale 1.18 to 1 each landed in a single frame (one
-     frame carried 78% of the change). The edge between a chosen and an
-     unchosen disc needs the same. */
+  /* Ease opacity, scale and border together when the selected face changes. */
   it('eases a face between picked and unpicked rather than swapping it', () => {
     const own = rulesFor(/^\s*\.mood-btn \.mood-face\s*$/);
     expect(own.length).toBe(1);
@@ -266,19 +253,15 @@ describe('the face draws in its own step\'s ink', () => {
   });
 });
 
-/* Pin the two shipped mood drawings by hash so a motion change cannot
-   redraw a face unnoticed. Update the hashes with an intentional redraw.
-
-   Ticket 279 moved MoodFace.svelte's hash and not the drawing: one line hands
-   the face its step's ink as --face-ink. moodFace.ts, which is
-   the drawing, is still ticket 27's byte for byte. */
-describe("the drawing is ticket 27's, byte for byte", () => {
+/* Pin the two shipped mood drawings by hash so a motion change cannot redraw a face
+   unnoticed. Update the hashes with an intentional redraw. */
+describe('pinned mood drawings', () => {
   const PINNED: Record<string, string> = {
-    'src/lib/components/moodFace.ts': '017aee0fa552cac1d3bcf09a146fbe8c85410e9d2b2019586a6a78a8de8885b2',
-    'src/lib/components/MoodFace.svelte': 'be3a3e8197fd78aa454019a2524b16bb0373c775acdb5bac8ddc51d5b3e17b73'
+    'src/lib/components/moodFace.ts': '1fee589946574f923938a35bb8372073240bdf97c7fd69740154d94b7586055a',
+    'src/lib/components/MoodFace.svelte': 'd70d9c884b36f1470175acedf7c8ea28689752e3718e4d9ddd5c5ad5ed4605e9'
   };
   for (const [file, sha256] of Object.entries(PINNED)) {
-    it(`${file} is unchanged since redesign ticket 27 (6b78081a)`, () => {
+    it(`${file} matches its pinned digest`, () => {
       const bytes = readFileSync(join(process.cwd(), file));
       expect(createHash('sha256').update(bytes).digest('hex')).toBe(sha256);
     });

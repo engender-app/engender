@@ -1,6 +1,6 @@
-/* Read route sources to check that each finishable area has its control
-   on its owning screen. Match the registry to routes so a new area cannot
-   ship with no way to finish it. Node cannot mount these files (ADR-0016). */
+/* Read route sources to check that each finishable area has its control on its owning
+   screen. Match the registry to routes so a new area cannot ship with no way to finish it.
+   Node cannot mount these files. */
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -58,14 +58,12 @@ describe('where the finish control is mounted', () => {
   });
 
   it('names groups the More hub has rows for, and the same screen owns both', () => {
-    /* `areaLabels.ts` claims each group's name is the hub row's own, and this
-       is what catches the two drifting apart. It used to grep the hub's route
-       for `key: '<group>'`, since the row list was written inline in a
-       route a data module could not import; phase 8 UX ticket 02 moved the
-       rows into `hubRows.ts`, which declares the mapping outright - so the
-       check can now be that the row fronting a group is on the same screen
-       the finish control is mounted on, rather than that the hub file happens
-       to contain a matching string. */
+    /* `areaLabels.ts` claims each group's name is the hub row's own, and this is what
+       catches the two drifting apart. It used to grep the hub's route for `key: '<group>'`,
+       since the row list was written inline in a route a data module could not import;
+       moved the rows into `hubRows.ts`, which declares the mapping outright - so the check
+       can now be that the row fronting a group is on the same screen the finish control is
+       mounted on, rather than that the hub file happens to contain a matching string. */
     for (const key of AREA_GROUP_KEYS) {
       expect(Object.keys(AREA_GROUP_ROW_KEYS), key).toContain(key);
     }

@@ -1,15 +1,12 @@
 /* Every day of one year, a month at a time, shaded at its step.
 
-   It was `moodYear`: the same calendar walk with mood's own five steps
-   baked in, drawn as a face per day - 365 svgs on one screen. Phase 11
-   ticket 07 made the year twelve shaded groups on the active scale's own
-   ramp, so the step function is the caller's now: mood hands in
-   `moodStep`, any other scale `heatLevel` over its range, and this module
-   only walks the calendar.
+   It was `moodYear`: the same calendar walk with mood's own five steps baked in, drawn as a
+   face per day - 365 svgs on one screen. made the year twelve shaded groups on the active
+   scale's own ramp, so the step function is the caller's now: mood hands in `moodStep`, any
+   other scale `heatLevel` over its range, and this module only walks the calendar.
 
-   The arithmetic is here rather than in the component because the awkward
-   parts are calendar rules: how long each month is, and what a leap year
-   does to February. */
+   The arithmetic is here rather than in the component because the awkward parts are
+   calendar rules: how long each month is, and what a leap year does to February. */
 
 import { epochDayFromLocalDate } from '../data/epochDay';
 

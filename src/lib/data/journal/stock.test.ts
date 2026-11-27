@@ -79,9 +79,8 @@ test('an entry gets a minted uuid id and round-trips every field', async () => {
   ]);
 });
 
-/* Functional audit ticket 47: describes the supply held now, so a fresh
-   count that says nothing about either clears it, the way the opened date
-   behaves. The app logs them and never reads them back as advice. */
+/* Describes the supply held now, so a fresh count that says nothing about either clears it,
+   the way the opened date behaves. The app logs them and never reads them back as advice. */
 test('an expiry day and a pharmacy note round-trip, edit and clear', async () => {
   const { journal } = await journalWithBuiltIns();
   const id = await journal.stock.upsertEntry({
@@ -596,10 +595,9 @@ test('a failed stock deletion rolls back reminder and row changes together', asy
   assert.deepEqual(await journal.reminders.getReminders(), []);
 });
 
-/* Phase 8 audit ticket 26: the projections used to be reduced out of every
-   dose the log held once one count was old. These pin the figures against
-   projectStock, which still counts the doses in JS, so the two ways of
-   arriving at a projection cannot drift. */
+/* The projections used to be reduced out of every dose the log held once one count was old.
+   These pin the figures against projectStock, which still counts the doses in JS, so the
+   two ways of arriving at a projection cannot drift. */
 async function assertProjectionsMatchTheDoses(journal: Journal, asOfEpochDay: number, what: string) {
   const rows = await journal.stock.getProjections(asOfEpochDay);
   const entries = await journal.stock.getEntries();
@@ -709,9 +707,8 @@ test('an entry counted after the day asked about consumes nothing and has no rat
   assert.deepEqual(row.projection, { remaining: 20, dailyRate: null, runOutEpochDay: null, excludedDoses: 0 });
 });
 
-/* Renaming a drug in the stock editor (after-release ticket 01, L07-01).
-   The save matched on the drug name alone, so a new name inserted a second
-   row and run-out and the reminder then tracked both. */
+/* Renaming a drug in the stock editor. The save matched on the drug name alone, so a new
+   name inserted a second row and run-out and the reminder then tracked both. */
 
 test('renaming a stock drug by its id leaves one row, under the new name', async () => {
   const { journal } = await journalWithBuiltIns();
@@ -763,8 +760,8 @@ test('saving with an id that names no entry refuses rather than inventing one', 
   assert.deepEqual(await journal.stock.getEntries(), []);
 });
 
-/* Doses per unit (after-release ticket 01, L03-04): stored on the entry and
-   divided into the projection, so two vials at five doses each last ten. */
+/* Doses per unit: stored on the entry and divided into the projection, so two vials at five
+   doses each last ten. */
 
 test('doses per unit round-trips and divides each dose into the remaining count', async () => {
   const { journal } = await journalWithBuiltIns();

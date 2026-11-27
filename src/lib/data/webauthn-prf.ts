@@ -51,18 +51,17 @@ export function randomPrfSalt(): Uint8Array<ArrayBuffer> {
 
 /** Whether this browser and device can do PRF *before* anything is offered.
 
-    A real capability check rather than a user-agent guess, and a
-    conservative one: `getClientCapabilities` is the only way to ask about
-    the extension without creating a credential, so a browser that supports
-    PRF but not that call reads as unavailable here. That is the right way
-    round for ticket 55's rule - an unavailable mode is one that is not
-    offered, never one that is offered and fails - and it costs a person on
-    such a browser nothing but a choice they still have three of.
+    A real capability check rather than a user-agent guess, and a conservative one:
+    `getClientCapabilities` is the only way to ask about the extension without creating a
+    credential, so a browser that supports PRF but not that call reads as unavailable here.
+    That is the right way round for the rule - an unavailable mode is one that is not
+    offered, never one that is offered and fails - and it costs a person on such a browser
+    nothing but a choice they still have three of.
 
-    Support at the time of writing (2026-08-31): PRF is in Chrome, Edge,
-    Safari and Firefox on the desktop platforms with a platform
-    authenticator, and `getClientCapabilities` shipped later than PRF itself
-    in each. Both move; this asks the browser rather than trusting the note. */
+    Support at the time of writing: PRF is in Chrome, Edge, Safari and Firefox on the
+    desktop platforms with a platform authenticator, and `getClientCapabilities` shipped
+    later than PRF itself in each. Both move; this asks the browser rather than trusting the
+    note. */
 export async function prfAvailable(): Promise<boolean> {
   try {
     const pkc = globalThis.PublicKeyCredential as typeof PublicKeyCredential | undefined;
@@ -83,11 +82,10 @@ export async function prfAvailable(): Promise<boolean> {
   }
 }
 
-/** The real thing. `credentials` is a parameter so the Node tier can drive
-    this against a stub authenticator: the two failure rules below - PRF
-    advertised but not enabled, PRF enabled but nothing returned - are the
-    ones ticket 55's acceptance names, and testing them through a fake
-    PrfAuthenticator would have tested the fake. */
+/** The real thing. `credentials` is a parameter so the Node tier can drive this against a
+    stub authenticator: the two failure rules below - PRF advertised but not enabled, PRF
+    enabled but nothing returned - are the ones acceptance names, and testing them through a
+    fake PrfAuthenticator would have tested the fake. */
 export function browserAuthenticator(credentials: CredentialsContainer = navigator.credentials): PrfAuthenticator {
   return {
     async enrol(salt) {
@@ -117,10 +115,9 @@ export function browserAuthenticator(credentials: CredentialsContainer = navigat
       if (credential === null) throw new BiometricUnavailableError('this device did not create an authenticator credential');
 
       const prf = credential.getClientExtensionResults().prf;
-      /* The honest signal, and the one ticket 55 named: a platform that
-         advertises PRF and then does not enable it has to fail here, as a
-         mode this device cannot do, rather than later as a secret that never
-         opens anything. */
+      /* The honest signal, and the one named: a platform that advertises PRF and then does
+         not enable it has to fail here, as a mode this device cannot do, rather than later
+         as a secret that never opens anything. */
       if (prf?.enabled !== true) {
         throw new BiometricUnavailableError('this authenticator does not release a stable secret (no PRF)');
       }

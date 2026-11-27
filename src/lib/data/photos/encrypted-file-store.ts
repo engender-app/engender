@@ -1,20 +1,17 @@
-/* Per-file encryption for what lives outside SQLite (ticket 09, ADR-0020's
-   consequence): photos and thumbnails are files, so whole-database
-   encryption never reaches them. This decorator wraps any PhotoFileStore -
-   OPFS on web, app-private files on Android - and encrypts each file with
-   AES-256-GCM under the same random data key that keys the database
-   (ADR-0018).
+/* Per-file encryption for what lives outside SQLite (ADR-0020's consequence): photos and
+   thumbnails are files, so whole-database encryption never reaches them. This decorator
+   wraps any PhotoFileStore - OPFS on web, app-private files on Android - and encrypts each
+   file with AES-256-GCM under the same random data key that keys the database (ADR-0018).
 
-   The file's name is the additional authenticated data, so a ciphertext
-   moved to another name fails decryption instead of decoding as the wrong
-   photo. Stored form: nonce, then ciphertext, nothing else - GCM's tag
-   already authenticates, so no separate header or magic is needed, and
-   size() can answer the plaintext length by arithmetic instead of a read
-   (packing an archive asks for every photo's length up front, ADR-0007).
+   The file's name is the additional authenticated data, so a ciphertext moved to another
+   name fails decryption instead of decoding as the wrong photo. Stored form: nonce, then
+   ciphertext, nothing else - GCM's tag already authenticates, so no separate header or
+   magic is needed, and size() can answer the plaintext length by arithmetic instead of a
+   read (packing an archive asks for every photo's length up front, ADR-0007).
 
-   remove() and list() pass through untouched: names were opaque uuids
-   before encryption and stay so, which is what keeps the orphan sweep and
-   delete working with no idea encryption exists. */
+   Remove() and list() pass through untouched: names were opaque uuids before encryption and
+   stay so, which is what keeps the orphan sweep and delete working with no idea encryption
+   exists. */
 
 import type { PhotoFileStore } from '../journal/journal';
 import { seal, open, SEAL_OVERHEAD } from '../../crypto/aesGcm';

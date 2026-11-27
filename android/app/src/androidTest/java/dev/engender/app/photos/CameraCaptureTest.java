@@ -68,9 +68,9 @@ public class CameraCaptureTest {
         assertFalse(new File(context.getCacheDir(), "camera-capture/capture.jpg").exists());
     }
 
-    /* GD-003: the camera path read capture.jpg whole and never applied the
-       50 MiB ceiling every other photo path has. A sparse file one byte over
-       it costs nothing to make and must be refused before it is read. */
+    /* The camera path read capture.jpg whole and never applied the 50 MiB ceiling every
+       other photo path has. A sparse file one byte over it costs nothing to make and must
+       be refused before it is read. */
     @Test
     public void captureOneByteOverTheCeilingIsRefusedAndRemoved() throws Exception {
         CameraCapture.prepare(context);

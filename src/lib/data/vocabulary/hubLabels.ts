@@ -1,12 +1,11 @@
-/* Localize hub titles, group headings and row descriptions here.
-   hubRows.ts stays independent of Paraglide for Node tests (ADR-0016).
-   Exhaustive Records require wording for every row and group.
+/* Localize hub titles, group headings and row descriptions here. hubRows.ts stays
+   independent of Paraglide for Node tests. Exhaustive Records require wording for every row
+   and group.
 
-   A reading replaces a row's description once there is data. Ten rows
-   always use their description. The three reading templates interpolate
-   no noun because Polish case would depend on the frame. The interpolated
-   duration stays nominative in both languages, and the title supplies
-   the noun. */
+   A reading replaces a row's description once there is data. Ten rows always use their
+   description. The three reading templates interpolate no noun because Polish case would
+   depend on the frame. The interpolated duration stays nominative in both languages, and
+   the title supplies the noun. */
 
 import { m } from '$lib/paraglide/messages';
 import { fmtDay, fmtDuration } from '$lib/data/dates';
@@ -29,11 +28,10 @@ const ROW_TITLE: Record<HubRowKey, () => string> = {
   letters: m.letters_title,
   tryouts: m.tryout_title,
   doubt: m.safe_space_title,
-  /* `vb_screen_title` ("Voice") rather than `vb_title` ("Voice benchmark"):
-     ticket 17 folded the memos row's screen into this one as a fourth tab,
-     so the row and the screen it opens say the same name now. `vb_title`
-     stays what it was for the two callers still specifically about the
-     benchmark - the search hit and the area label. */
+  /* `vb_screen_title` ("Voice") rather than `vb_title` ("Voice benchmark"): folded the
+     memos row's screen into this one as a fourth tab, so the row and the screen it opens
+     say the same name now. `vb_title` stays what it was for the two callers still
+     specifically about the benchmark - the search hit and the area label. */
   'voice-benchmark': m.vb_screen_title,
   wear: m.wear_log,
   effects: m.effects_timeline,
@@ -43,18 +41,15 @@ const ROW_TITLE: Record<HubRowKey, () => string> = {
   documents: m.documents_title
 };
 
-/** What every row says about what is behind it: the whole of a row that never
-    reads, and the standing line of one that does until it has a reading.
+/** What every row says about what is behind it: the whole of a row that never reads, and
+    the standing line of one that does until it has a reading.
 
-    Total over the row keys, so a row added here without one does not compile.
-    A row whose title already says what is behind it holds null and draws no
-    line.
-    Each is earned by a title that does not say what the screen is
-    on its own. "Eras", "Care" and "Safe space" name
-    something the app invented - and, on the reading rows, by a fresh journal
-    otherwise leaving thirteen rows mute. Each is a short form of that
-    screen's own intro rather than new copy, so the row and the screen behind
-    it say the same thing (ADR-0024). */
+    Total over the row keys, so a row added here without one does not compile. A row whose
+    title already says what is behind it holds null and draws no line. Each is earned by a
+    title that does not say what the screen is on its own. "Eras", "Care" and "Safe space"
+    name something the app invented - and, on the reading rows, by a fresh journal otherwise
+    leaving thirteen rows mute. Each is a short form of that screen's own intro rather than
+    new copy, so the row and the screen behind it say the same thing. */
 const ROW_LINE: Record<HubRowKey, (() => string) | null> = {
   'hair-removal': m.hub_sub_hair_removal,
   care: m.hub_sub_care,
@@ -102,17 +97,15 @@ export function hubGroupHeading(key: HubGroupKey | 'finished'): string {
 
 /** How long until a dated day, in the hub's own grammar.
 
-    `fmtDuration` rather than a bare day count, which is the grammar the two
-    backwards lines on this same row already use ("Last logged 1 year 4
-    months ago"). A forward line in a different unit beside them would read
-    as a different kind of measurement, and it degrades better: a letter
-    sealed for three years says "1 year 4 months", not "487 days".
+    `fmtDuration` rather than a bare day count, which is the grammar the two backwards lines
+    on this same row already use ("Last logged 1 year 4 months ago"). A forward line in a
+    different unit beside them would read as a different kind of measurement, and it
+    degrades better: a letter sealed for three years says "1 year 4 months", not "487 days".
 
-    Exported because a gap is no longer only a row's to state: ADR-0067's
-    amendment (phase 11 all-four-doors ticket 12) lets an area's own screen
-    say one too, and the visit screen saying "in 12 days" under a hub row
-    saying "Endocrinologist in 12 days" has to be the same arithmetic in the
-    same words. One function rather than two that agree today. */
+    Exported because a gap is no longer only a row's to state: ADR-0067's amendment lets an
+    area's own screen say one too, and the visit screen saying "in 12 days" under a hub row
+    saying "Endocrinologist in 12 days" has to be the same arithmetic in the same words. One
+    function rather than two that agree today. */
 export function gapTo(epochDay: number, todayEpochDay: number): string {
   return fmtDuration(calendarDuration(todayEpochDay, epochDay));
 }

@@ -52,7 +52,7 @@ test('every preset names dimensions that exist', () => {
   expect(dangling).toEqual([]);
 });
 
-test('built-in presets map to the exact dimension sets ticket 09 specifies, multi-axis presets leading (ticket 28)', () => {
+test('built-in presets map to their dimension sets, multi-axis presets first', () => {
   expect(BUILT_IN_PRESETS).toEqual([
     { key: 'p-fem-masc', dims: ['euphoria_dysphoria', 'femininity', 'masculinity'] },
     { key: 'p-fluid', dims: ['euphoria_dysphoria', 'femininity', 'masculinity', 'binary_nonbinary'] },
@@ -172,9 +172,8 @@ test('regimen templates seed with no display text, because wording is resolved b
   expect(rows.every((t) => t.name === '' && t.drug === '' && t.ester === null && t.route === '')).toBe(true);
 });
 
-/* Acceptance box 2: every regimen template carries a
-   hand-authored lean. Milestone templates carry none since functional
-   audit ticket 32: all eight were neutral, so the lean ordered nothing. */
+/* Acceptance box 2: every regimen template carries a hand-authored lean. Milestone
+   templates carry none all eight were neutral, so the lean ordered nothing. */
 test('milestone templates are a key and a name, in the order the picker lists them', () => {
   expect(milestoneTemplateRows()).toEqual(MILESTONE_TEMPLATE_KEYS.map((key) => ({ key, name: '' })));
 });

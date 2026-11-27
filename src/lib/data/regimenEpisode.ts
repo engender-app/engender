@@ -1,18 +1,15 @@
-/* Regimen episode resolution (CONTEXT: "Regimen episode", ADR-0010): pure
-   questions over a list of episodes and a timestamp, kept above the
-   journal seam the same way milestoneStatus.ts is - nothing here reads a
-   clock or a database, so downstream tickets (02 onward) call it against
-   whatever episodes journal.regimen.getEpisodes() already returned, rather
-   than each re-deriving "which episode was this logged under".
+/* Regimen episode resolution (ADR-0010): pure questions over a list of episodes and a
+   timestamp, kept above the journal seam the same way milestoneStatus.ts is - nothing here
+   reads a clock or a database, so downstream tickets (02 onward) call it against whatever
+   episodes journal.regimen.getEpisodes() already returned, rather than each re-deriving
+   "which episode was this logged under".
 
-   Phase 5 ticket 38 widened this from "the one episode active at a
-   timestamp" to "the set of episodes active at a timestamp": an episode's
-   end is now a stored, explicit day (types.ts), so more than one episode
-   can be active on the same day when they are for different drugs. A dose
-   still usually names no drug of its own, so most attribution still comes
-   down to "is exactly one episode active" - activeEpisodesAt and
-   attributeDose are the two questions everything else in this file used to
-   answer with resolveEpisodeAt alone. */
+   Widened this from "the one episode active at a timestamp" to "the set of episodes active
+   at a timestamp": an episode's end is now a stored, explicit day (types.ts), so more than
+   one episode can be active on the same day when they are for different drugs. A dose still
+   usually names no drug of its own, so most attribution still comes down to "is exactly one
+   episode active" - activeEpisodesAt and attributeDose are the two questions everything
+   else in this file used to answer with resolveEpisodeAt alone. */
 
 import { expectedSlots, isDailySchedule, nearestOpenSlotDistance, pauseCoversDay } from './doseSchedule';
 import { epochDayFromTimestamp, startOfDayTimestamp } from './epochDay';
@@ -60,19 +57,16 @@ export function activeEpisodesAt(episodes: readonly RegimenEpisode[], timestamp:
   return episodes.filter((episode) => isActiveOn(episode, day));
 }
 
-/** How a dose's episode attribution came out: `episode` set when it
-    resolved to exactly one; `episode: null, ambiguous: true` when it
-    could not be told apart from another equally plausible one (more than
-    one episode active, or a named drug that does not pick out exactly
-    one of them); `episode: null, ambiguous: false` when there was nothing
-    to resolve against at all (no episode covers the timestamp), which is
-    the pre-existing "logged before any episode existed" case and not a
-    new kind of failure ticket 38 introduces.
+/** How a dose's episode attribution came out: `episode` set when it resolved to exactly
+    one; `episode: null, ambiguous: true` when it could not be told apart from another
+    equally plausible one (more than one episode active, or a named drug that does not pick
+    out exactly one of them); `episode: null, ambiguous: false` when there was nothing to
+    resolve against at all (no episode covers the timestamp), which is the pre-existing
+    "logged before any episode existed" case and not a new kind of failure introduces.
 
-    The distinction exists so a caller can count only the new, ambiguous
-    kind of exclusion (ticket 38's "counted and surfaced") without
-    changing what an existing single-episode journal already showed for
-    the old kind. */
+    The distinction exists so a caller can count only the new, ambiguous kind of exclusion
+    without changing what an existing single-episode journal already showed for the old
+    kind. */
 export type DoseAttribution =
   | { episode: RegimenEpisode; ambiguous: false }
   | { episode: null; ambiguous: boolean };
@@ -84,14 +78,13 @@ export const showAttributionLabel = (
   drug: string | null
 ): boolean => attribution.episode ? drug === null || !sameDrug(attribution.episode.drug, drug) : drug === null;
 
-/** Which episode `dose` belongs to, for reading its drug, ester and route
-    parameters against - not only its drug's name (attributeDrug below is
-    for that). A dose's own `drug` (types.ts) wins when set: it must match
-    exactly one episode active at the dose's timestamp, or attribution is
-    ambiguous. With no `drug` of its own, the dose falls back to the sole
-    active episode, exactly as every single-episode journal already
-    resolved before ticket 38 - so an existing journal, where at most one
-    episode is ever active on any given day, is unaffected either way. */
+/** Which episode `dose` belongs to, for reading its drug, ester and route parameters
+    against - not only its drug's name (attributeDrug below is for that). A dose's own
+    `drug` (types.ts) wins when set: it must match exactly one episode active at the dose's
+    timestamp, or attribution is ambiguous. With no `drug` of its own, the dose falls back
+    to the sole active episode, exactly as every single-episode journal already resolved -
+    so an existing journal, where at most one episode is ever active on any given day, is
+    unaffected either way. */
 export function attributeDose(
   episodes: readonly RegimenEpisode[],
   dose: Pick<DoseEvent, 'drug' | 'timestamp'>
@@ -219,11 +212,10 @@ export function nearestActiveEpisode(
   return winners.length === 1 ? winners[0].episode : null;
 }
 
-/** One slot a schedule expects on a given day, with the episode it belongs
-    to named (phase 11 ticket 20, audit item 12). `dayAhead` answers which
-    days carry a slot and stops there - ADR-0067's mark is a day and a kind
-    and never an amount - so the forward day view asks this instead when it
-    has a day in hand and owes the person what is expected on it. */
+/** One slot a schedule expects on a given day, with the episode it belongs to named.
+    `dayAhead` answers which days carry a slot and stops there - ADR-0067's mark is a day
+    and a kind and never an amount - so the forward day view asks this instead when it has a
+    day in hand and owes the person what is expected on it. */
 export interface ExpectedDose {
   episodeId: string;
   drug: string;

@@ -40,8 +40,7 @@ type Travel<Row> = 'none' | 'whole' | { fields: readonly (keyof Row & string)[] 
 /** One area's declaration that it travels. Erased over the row type, because
     the list holds every section at once and because a test registers
     sections `ArchiveJournal` has never heard of. */
-/* ArchiveSection stays exported only for its own test (AU-09 test-only
-   review). */
+/* ArchiveSection stays exported only for its own test. */
 export interface ArchiveSection {
   name: string;
   /** Sections that must be applied before this one. Empty for most. */
@@ -176,11 +175,10 @@ const REMINDERS = {
 } as const satisfies FlatTable<ArchiveJournal['reminders'][number]>;
 
 const SECTIONS = [
-  /* What this device has deleted (functional audit ticket 48,
-     archiveMerge.ts). Declared first and depending on nothing, so it is
-     applied before every other section and discarded after all of them:
-     the deletion trigger records every row a Replace's discard removes, and
-     this statement is what empties those again. */
+  /* What this device has deleted (archiveMerge.ts). Declared first and depending on
+     nothing, so it is applied before every other section and discarded after all of them:
+     the deletion trigger records every row a Replace's discard removes, and this statement
+     is what empties those again. */
   section({
     name: 'deletions',
     discard: ['DELETE FROM deletion'],
@@ -198,7 +196,7 @@ const SECTIONS = [
     // `apply` afterwards, row by row.
     discard: ['DELETE FROM gender_dimension WHERE is_built_in = 0'],
     // A custom gender dimension is exactly the shape of thing a structure
-    // file exists for (ticket 04's own worked case).
+    // file exists for.
     travels: 'whole',
     read: read.readDimensions,
     apply: apply.applyDimensions
@@ -337,7 +335,7 @@ const SECTIONS = [
       title: 'title',
       file_path: 'fileName',
       // `whenAbsent: null` for the reason `passage_key`/`pitch_track` (v67,
-      // v74) have one: an archive written before ticket 56 carries no
+      // v74) have one: an older archive carries no
       // target at all, and the CHECK the schema puts over the pair (schema
       // v77) is exactly "both or neither". No FK to resolve against another
       // section, and no `after` either - `target_id` is a plain uuid (or,
@@ -355,34 +353,33 @@ const SECTIONS = [
     // milestone before its owner exists fails the same FK the reverse
     // order would fail on discard. `after` fixes both at once: reversed,
     // it clears milestones before tryout or procedure can be discarded out
-    // from under one (ticket 02's sweep found this empty by never having
+    // from under one (sweep found this empty by never having
     // linked either owner before running a full replace).
     after: ['tryouts', 'procedures'],
     // The other half of the photo table, per entries' own note above.
     discard: ['DELETE FROM photo WHERE milestone_id IS NOT NULL', 'DELETE FROM milestone'],
-    // Ticket 04's own worked case: a milestone set travels as names, not as
+    // The worked case: a milestone set travels as names, not as
     // dates. Everything else here is either a date (epochDay), a link into
     // this device's own records (roadmapGoalKey, procedureId, tryoutId,
     // photo), or the person's own record of what happened (description,
-    // ticket 15 - "cried in the car after" fails the shareable-structure
+    // - "cried in the car after" fails the shareable-structure
     // test far more often than it passes it), so `name` is the whole of
     // what is structure rather than record.
     travels: { fields: ['name'] },
     read: read.readMilestones,
     apply: apply.applyMilestones
   }),
-  /* The dosing context comes across as it was written, never re-derived
-     against this device's dose log: the log it was measured on is not the
-     one being imported into (ticket 03, and the argument at schema.ts).
+  /* The dosing context comes across as it was written, never re-derived against this
+     device's dose log: the log it was measured on is not the one being imported into (and
+     the argument at schema.ts).
 
-     Its last five columns declare what they are written from when the field
-     is absent, unlike every other column here, because they arrived after
-     lab results did. An archive is JSON.parse output cast to ArchivePayload
-     - the type is a claim about the file, not a guarantee - so a lab row
-     written by a build from before ticket 03 reaches the insert with the
-     fields simply missing, and `provider` is NOT NULL besides. An older
-     archive restores with an empty context instead, which is the same thing
-     a result logged before the feature carries. */
+     Its last five columns declare what they are written from when the field is absent,
+     unlike every other column here, because they arrived after lab results did. An archive
+     is JSON.parse output cast to ArchivePayload - the type is a claim about the file, not a
+     guarantee - so a lab row written by a build from reaches the insert with the fields
+     simply missing, and `provider` is NOT NULL besides. An older archive restores with an
+     empty context instead, which is the same thing a result logged before the feature
+     carries. */
   flat({
     name: 'labResults',
     travels: 'none',
@@ -404,15 +401,13 @@ const SECTIONS = [
       ...COST_COLUMNS
     }
   }),
-  /* The dilation taper schedule - a plan the person typed in,
-     not a record of anything that happened to them, so `travels: 'none'`
-     the same way a dose schedule would if it were archive-registered at
-     all.
+  /* The dilation taper schedule - a plan the person typed in, not a record of anything that
+     happened to them, so `travels: 'none'` the same way a dose schedule would if it were
+     archive-registered at all.
 
-     Not `flat` since schema v83 (audit item 7), and after `procedures` for
-     the same reason `appointments` is both: the procedure it dilates for is
-     a rowid on this device and a uuid on the wire, and the rows it resolves
-     against have to be written first. */
+     Not `flat` since schema v83, and after `procedures` for the same reason `appointments`
+     is both: the procedure it dilates for is a rowid on this device and a uuid on the wire,
+     and the rows it resolves against have to be written first. */
   section({
     name: 'taper',
     after: ['procedures'],
@@ -458,10 +453,9 @@ const SECTIONS = [
      Merge may keep two independently named overlapping eras. Dropping
      one would silently lose a name. The settings editor lets a person
      resolve the overlap. eraForDay returns the first covering era. */
-  /* Does not travel (ticket 04's own worked case). An era carries a name
-     and two dates and nothing else, so what would travel is a name with no
-     bounds - nearly nothing, and not worth a structure section over. Said
-     explicitly here rather than left to be rediscovered. */
+  /* Does not travel. An era carries a name and two dates and nothing else, so what would
+     travel is a name with no bounds - nearly nothing, and not worth a structure section
+     over. Said explicitly here rather than left to be rediscovered. */
   flat({
     name: 'eras',
     travels: 'none',
@@ -495,11 +489,10 @@ const SECTIONS = [
   }),
   section({
     name: 'effectCategories',
-    /* The one section with nothing to discard, and not by omission: the
-       table is built-in only - no custom-category creation is asked for,
-       ticket 41's own scope - so there is never a custom row to remove, and
-       a built-in row keeps what reconciling gave it the same way every other
-       reference row does. */
+    /* The one section with nothing to discard, and not by omission: the table is built-in
+       only - no custom-category creation is asked for, the scope - so there is never a
+       custom row to remove, and a built-in row keeps what reconciling gave it the same way
+       every other reference row does. */
     discard: [],
     // Every row is built-in, but `enabled` is the person's own toggle over
     // it - the same reference-vocabulary shape `dimensions`' own `hidden`
@@ -620,8 +613,7 @@ const SECTIONS = [
   // No rule validation of its own: the schema's recurrence CHECK is the same
   // rule reminderRule.ts states, and the insert is inside the transaction.
   // `auto_source` declares what it is written from when absent, the way lab
-  // results' dosing columns do - an archive written before ticket 04 has no
-  // such field at all.
+  // results' dosing columns do - older archives omit the field.
   {
     ...flat({
       name: 'reminders',
@@ -661,18 +653,17 @@ const SECTIONS = [
   section({
     name: 'roadmapChecks',
     discard: ['DELETE FROM roadmap_check'],
-    // Ticket 04's own worked case: a tick names bundled built-in content and
+    // The worked case: a tick names bundled built-in content and
     // records that the person did it, so unlike `roadmapGoals` below it does
     // not travel.
     travels: 'none',
     read: read.readRoadmapChecks,
     apply: apply.applyRoadmapChecks
   }),
-  /* The person's own roadmap categories (functional audit ticket 34, round
-     two), ahead of the goals that name them. Uuid-identified, so a merge
-     matches one already here and keeps whichever name was given last
-     (archiveMerge.ts). Absent from an archive written before them, which
-     reads as none. */
+  /* The person's own roadmap categories, ahead of the goals that name them.
+     Uuid-identified, so a merge matches one already here and keeps whichever name was given
+     last (archiveMerge.ts). Absent from an archive written before them, which reads as
+     none. */
   flat({
     name: 'roadmapCategories',
     travels: 'whole',
@@ -681,16 +672,15 @@ const SECTIONS = [
     orderBy: 'id',
     columns: { uuid: 'id', name: 'name' }
   }),
-  /* Uuid-identified like a checklist. A merge takes the copy of a goal
-     written last, its rewording and status together, and a
-     deleted goal's deletion the same way (archiveMerge.ts). Its track is 'legal' or a
-     category's uuid since ticket 34; a goal from an older archive under a
-     cut track gets that track's nameless category once the goals land
+  /* Uuid-identified like a checklist. A merge takes the copy of a goal written last, its
+     rewording and status together, and a deleted goal's deletion the same way
+     (archiveMerge.ts). Its track is 'legal' or a category's uuid; a goal from an older
+     archive under a cut track gets that track's nameless category once the goals land
      (adoptLegacyRoadmapTracks). */
   withAfterApply(
     flat({
       name: 'roadmapGoals',
-      // Ticket 04's own worked case: a custom goal carries its own text and
+      // The worked case: a custom goal carries its own text and
       // group rather than naming bundled content, so it travels whether or
       // not it is checked - unlike `roadmapChecks` above.
       travels: 'whole',
@@ -724,13 +714,12 @@ const SECTIONS = [
     orderBy: 'id',
     columns: { uuid: 'id', institution: 'institution', status: 'status', epoch_day: 'epochDay', note: 'note' }
   }),
-  // `end_epoch_day` is absent on an archive from before ticket 38 - read as
+  // `end_epoch_day` is absent on an archive from - read as
   // still ongoing, the same as every pre-existing episode's backfill (v40).
-  // `end_reason` is absent the same way on an archive from before ticket 43 -
+  // `end_reason` is absent the same way on an archive from -
   // read as no reason recorded, which is what every episode ended before
-  // this shipped actually has. `hidden` is absent before after-release 07
-  // and reads as shown, which is all an episode could be then. `drug_class`
-  // is absent before functional audit ticket 18 and is inferred from the
+  // this shipped actually has. Older archives omit `hidden` and restore those episodes as shown. `drug_class`
+  // is absent and is inferred from the
   // drug, the same rule the v93 migration applied to every stored episode.
   flat({
     name: 'regimenEpisodes',
@@ -756,7 +745,7 @@ const SECTIONS = [
   // Person-logged doses resolve their episode by timestamp above the seam
   // (regimenEpisode.ts). Automatic provenance carries a travelling episode
   // uuid, not a local rowid, so this still needs no `after`. `drug` is absent on an
-  // archive from before ticket 38 - null, same as every dose ever logged
+  // archive from - null, same as every dose ever logged
   // without one.
   flat({
     name: 'doseEvents',
@@ -778,10 +767,9 @@ const SECTIONS = [
       scheduled_route: 'scheduledRoute',
       scheduled_timestamp: 'scheduledTimestamp',
       drug: { field: 'drug', whenAbsent: null },
-      /* `whenAbsent: 'person'`, not null: an archive written before ticket
-         11 carries no source at all, and every row in one was logged by
-         hand, because nothing else could write a dose then. The column's
-         own default says the same thing (schema v82). */
+      /* `whenAbsent: 'person'`, not null: an older archive carries no source at all, and
+         every row in one was logged by hand, because nothing else could write a dose then.
+         The column's own default says the same thing (schema v82). */
       source: { field: 'source', whenAbsent: 'person' },
       auto_log_episode_uuid: { field: 'autoLogEpisodeId', whenAbsent: null },
       auto_log_epoch_day: { field: 'autoLogEpochDay', whenAbsent: null },
@@ -859,18 +847,16 @@ const SECTIONS = [
   section({
     name: 'checklists',
     discard: ['DELETE FROM checklist_item', 'DELETE FROM checklist'],
-    /* Ticket 04's own worked case: an appointment question list travels
-       whole. One `ArchiveChecklist` shape covers both the standalone
-       appointment checklist and a procedure's owned recovery list, so
-       there is no section boundary between the two to declare separately
-       - splitting them into two sections would be changing what a section
-       contains, which is out of this ticket's scope. `ownerKind`/`ownerId`,
-       `appointmentEpochDay` and each item's `checked`/`carriedForward` ride
-       along as a consequence: this declaration says the shape may travel,
-       the same way `Travel` cannot say "keep an item's text but not
-       whether it is checked" (it names top-level fields, not a nested
-       item's). Which checklist an export actually offers, and whether a
-       finer per-field cut is ever worth adding, is ticket 07's decision. */
+    /* The worked case: an appointment question list travels whole. One `ArchiveChecklist`
+       shape covers both the standalone appointment checklist and a procedure's owned
+       recovery list, so there is no section boundary between the two to declare separately
+       - splitting them into two sections would be changing what a section contains, which
+       is out of scope. `ownerKind`/`ownerId`, `appointmentEpochDay` and each item's
+       `checked`/`carriedForward` ride along as a consequence: this declaration says the
+       shape may travel, the same way `Travel` cannot say "keep an item's text but not
+       whether it is checked" (it names top-level fields, not a nested item's). Which
+       checklist an export actually offers, and whether a finer per-field cut is ever worth
+       adding, is decision. */
     travels: 'whole',
     read: read.readChecklists,
     apply: apply.applyChecklists
@@ -887,12 +873,11 @@ const SECTIONS = [
     orderBy: 'start_timestamp, id',
     columns: {
       uuid: 'id',
-      /* `whenAbsent` for the reason voiceBenchmarks' `passage_key` has one:
-         no archive written before ticket 50 carries the field, and the flat
-         writer binds an undefined as a raw driver error rather than a null.
-         The value matches the column's own v71 default, so a session
-         restored from an older archive and one that was already in the
-         journal end up saying the same thing. */
+      /* `whenAbsent` for the reason voiceBenchmarks' `passage_key` has one: older archives
+         omit the field, and the flat writer binds an undefined as a raw driver
+         error rather than a null. The value matches the column's own v71 default, so a
+         session restored from an older archive and one that was already in the journal end
+         up saying the same thing. */
       kind: { field: 'kind', whenAbsent: 'binder' },
       start_timestamp: 'startTimestamp',
       duration_ms: 'durationMs',
@@ -930,10 +915,9 @@ const SECTIONS = [
       f2_hz: 'f2Hz',
       snr_db: 'snrDb',
       note: 'note',
-      /* `pitch_track` has a `whenAbsent` for the same reason `passage_key`
-         does, and one of its own: archives written before ticket 09 do not
-         carry the field, and neither does a benchmark taken before schema
-         v58 that is still in the journal. Both restore as no track. */
+      /* `pitch_track` has a `whenAbsent` for the same reason `passage_key` does, and one of
+         its own: archives written do not carry the field, and neither does a benchmark
+         taken before schema v58 that is still in the journal. Both restore as no track. */
       pitch_track: { field: 'pitchTrack', whenAbsent: null },
       /* `capture_chain` the same way, one ticket later (ADR-0061): an archive written before it carries no chain, and
          neither does a benchmark from before schema v65. */
@@ -944,13 +928,11 @@ const SECTIONS = [
       resonance_scale: { field: 'resonanceScale', whenAbsent: null }
     }
   }),
-  /* The person's own comfort list (phase 6 ticket 14, CONTEXT: "Comfort
-     list"). Flat: one table, no children, no built-ins - nothing ships
-     seeded, so every row is the person's own and `uuid` alone tells two
-     devices' rows apart, the same reasoning `eras` above gives. `position`
-     travels as an ordinary column rather than being derived from array
-     order, so a merge that interleaves two devices' lists is at least
-     stable rather than silently reshuffled on every read. */
+  /* The person's own comfort list. Flat: one table, no children, no built-ins - nothing
+     ships seeded, so every row is the person's own and `uuid` alone tells two devices' rows
+     apart, the same reasoning `eras` above gives. `position` travels as an ordinary column
+     rather than being derived from array order, so a merge that interleaves two devices'
+     lists is at least stable rather than silently reshuffled on every read. */
   flat({
     name: 'comfortItems',
     // Authored text with no chronology, not a record of what happened to you.
@@ -1008,8 +990,7 @@ type Unregistered = Exclude<ArchiveSectionName, (typeof SECTIONS)[number]['name'
 type AssertNoneUnregistered<Missing extends never> = Missing;
 type EverySectionRegistered = AssertNoneUnregistered<Unregistered>;
 
-/* ARCHIVE_SECTIONS stays exported for its own test, and cross-checked in
-   archive.test.ts (AU-09 test-only review). */
+/* ARCHIVE_SECTIONS stays exported for its own test, and cross-checked in archive.test.ts. */
 export const ARCHIVE_SECTIONS: readonly ArchiveSection[] = SECTIONS;
 
 /** Every section's key, in wire order. */

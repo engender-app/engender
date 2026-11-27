@@ -1,15 +1,14 @@
 /* How an annotation is written.
 
-   The selection rule is in $lib/charts/annotations.ts, which stays Node-tier
-   safe and so imports no paraglide (ADR-0016). The words are here, beside the
-   component that draws them, which is the same split day.ts keeps from
-   vocabulary/dayLabels.ts and BarRows.svelte from barRow.ts.
+   The selection rule is in $lib/charts/annotations.ts, which stays Node-tier safe and so
+   imports no paraglide. The words are here, beside the component that draws them, which is
+   the same split day.ts keeps from vocabulary/dayLabels.ts and BarRows.svelte from
+   barRow.ts.
 
-   An annotation names a thing and a date.
-   None of these strings says a reading moved, rose, fell or responded, and
-   none of them puts an event and a value in the same sentence: a label that
-   read "estradiol started, dysphoria down" would be the causal claim the
-   ticket rules out, written by the label rather than by the data. */
+   An annotation names a thing and a date. None of these strings says a reading moved, rose,
+   fell or responded, and none of them puts an event and a value in the same sentence: a
+   label that read "estradiol started, dysphoria down" would be the causal claim the ticket
+   rules out, written by the label rather than by the data. */
 
 import { m } from '$lib/paraglide/messages';
 import { fmtDay } from '$lib/data/dates';
@@ -31,15 +30,12 @@ const KIND_WORD: Record<ChartAnnotationKind, () => string> = {
   dosePause: m.chart_annotation_dose_pause,
   tryout: m.chart_annotation_tryout,
   era: m.chart_annotation_era,
-  /* Phase 8 features ticket 59, ADR-0066: what a past appointment is called
-     when the person typed no kind of their own. */
+  /* ADR-0066: what a past appointment is called when the person typed no kind of their own. */
   appointment: m.chart_annotation_appointment,
-  /* Phase 8 features ticket 04. "finished", never "completed" or "done" -
-     nothing here is an achievement and a stream that restarts was not
-     completed (CONTEXT: "Finished"). */
+  /* "finished", never "completed" or "done" - nothing here is an achievement and a stream
+     that restarts was not completed. */
   finishedArea: m.chart_annotation_finished_area,
-  /* Phase 8 features ticket 51. "paused", never "done" or "finished" - the
-     whole point of the word this ticket added. */
+  /* "paused", never "done" or "finished" - the whole point of the word this ticket added. */
   suspendedArea: m.chart_annotation_suspended_area
 };
 
@@ -47,15 +43,14 @@ function kindWord(kind: ChartAnnotationKind): string {
   return KIND_WORD[kind]();
 }
 
-/** What the record calls itself, with the one kind whose `name` is a key
-    rather than a name resolved here.
+/** What the record calls itself, with the one kind whose `name` is a key rather than a name
+    resolved here.
 
-    A finished area's `name` is its group key, because journal/chartAnnotations.ts
-    is Node-tier and cannot reach paraglide (ADR-0016). The chart
-    resolves its body-region keys on the screen instead; that works there
-    because exactly one screen draws those markers, and this kind reaches
-    every chart that opted into annotations at all. Five screens each keeping
-    their own lookup is the second list this file exists not to need. */
+    A finished area's `name` is its group key, because journal/chartAnnotations.ts is
+    Node-tier and cannot reach paraglide. The chart resolves its body-region keys on the
+    screen instead; that works there because exactly one screen draws those markers, and
+    this kind reaches every chart that opted into annotations at all. Five screens each
+    keeping their own lookup is the second list this file exists not to need. */
 function recordName(annotation: ChartAnnotation): string | undefined {
   const name = annotation.name?.trim();
   if (!name) return undefined;
@@ -89,7 +84,7 @@ export function annotationLine(annotation: ChartAnnotation): string {
     from: fmtDay(annotation.fromEpochDay, short),
     to: fmtDay(annotation.toEpochDay, short)
   });
-  // Ticket 43. Gated on endsInRange, not just on endReason being set: the
+  // Gated on endsInRange, not just on endReason being set: the
   // edge this line names might be the chart's own boundary rather than the
   // episode's real end, and a reason attached to the wrong date would be a
   // false claim about when it happened.
@@ -104,17 +99,16 @@ export function annotationLine(annotation: ChartAnnotation): string {
     exactly where that happens. */
 const READOUT_LABELS = 2;
 
-/** The line a tick draws under its own name: what the record behind it
-    actually says, in the record's own words (phase 11 UI/UX ticket 49).
+/** The line a tick draws under its own name: what the record behind it actually says, in
+    the record's own words.
 
-    Undefined rather than an empty string where there is nothing to print.
-    A milestone nobody wrote a description for reaches here without an
-    added line, since there was no text to lose.
+    Undefined rather than an empty string where there is nothing to print. A milestone
+    nobody wrote a description for reaches here without an added line, since there was no
+    text to lose.
 
-    An era is the one kind whose line is not something written behind the
-    tick: the tick is the boundary and the boundary is the fact, so the
-    sentence is composed here and (see `readoutEntry`) stands in place of
-    the `{name}, {kind}` pair rather than under it. */
+    An era is the one kind whose line is not something written behind the tick: the tick is
+    the boundary and the boundary is the fact, so the sentence is composed here and (see
+    `readoutEntry`) stands in place of the `{name}, {kind}` pair rather than under it. */
 function annotationNote(annotation: ChartAnnotation): string | undefined {
   if (annotation.kind === 'era') {
     const name = recordName(annotation);

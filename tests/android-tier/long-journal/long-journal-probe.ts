@@ -324,11 +324,10 @@ async function run(days: number) {
     fixtureIntegrity: { ...fixtureIntegrity, setupFramesAfterMeasurements: setupFrames } };
 }
 
-/* The probe shares the app's origin, so it hands the origin back before it
-   reports (origin-snapshot.ts, ux-carpet 216): the Java test ends the moment
-   the result appears. A restore that fails is reported as the run's error,
-   because a phone left holding the probe's keystore is worse than a failed
-   benchmark. */
+/* The probe shares the app's origin, so it hands the origin back before it reports
+   (origin-snapshot.ts): the Java test ends the moment the result appears. A restore that
+   fails is reported as the run's error, because a phone left holding the probe's keystore
+   is worse than a failed benchmark. */
 async function main() {
   const restoreOrigin = await snapshotOrigin(
     (await navigator.storage.getDirectory()) as unknown as OriginDirectory,

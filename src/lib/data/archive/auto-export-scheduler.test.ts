@@ -140,7 +140,7 @@ describe('auto-export scheduler', () => {
     expect(runAndroidAutoExport).toHaveBeenCalled();
   });
 
-  describe('folder sync (FA 49)', () => {
+  describe('folder sync', () => {
     const syncing = () => status.mockResolvedValue({
       enabled: true, schedule: 'weekly', destinationUri: 'content://tree/backup', destinationLabel: 'backup',
       hasPassword: true, nextDueAt: 0, lastSuccessAt: null, lastFailureAt: null, lastFailureReason: null,

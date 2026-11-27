@@ -41,13 +41,11 @@ export async function readAgenda(
   return { todayEpochDay, marks, doses, todayAppointments };
 }
 
-/** Withhold the `doseSlot` kind while Today's dose panel is drawn. Filter
-    before capping, so a withheld dose never takes another row's room. The
-    panel names every regimen that produces dose-slot marks,
-    so drawn is the whole condition.
+/** Withhold the `doseSlot` kind while Today's dose panel is drawn. Filter before capping,
+    so a withheld dose never takes another row's room. The panel names every regimen that
+    produces dose-slot marks, so drawn is the whole condition.
 
-    Every other kind is drawn: the five per-kind switches went in
-    functional-audit ticket 14. */
+    Every other kind is drawn: the five per-kind switches went. */
 export function projectAgenda(
   facts: AgendaInput | null | undefined,
   dosePanelDrawn = false

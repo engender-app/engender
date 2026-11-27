@@ -7,14 +7,13 @@
   import { takeLegacyCareDrug } from '$lib/navigation/journalTextParams';
   import { replaceRoute } from '$lib/navigation/smart-back';
   import { navigating, page } from '$app/state';
-  /* Care is a feature surface in the More hub (ADR-0036). Read draw timing,
-     exposure and stock from their existing modules. careSpine.ts only
-     positions dates on the shared axis.
+  /* Care is a feature surface in the More hub. Read draw timing, exposure and stock from
+     their existing modules. careSpine.ts only positions dates on the shared axis.
 
-     Each active drug gets a lane with last dose, next dose and run-out.
-     Today and the latest draw cross the shared axis. Stripes distinguish
-     drugs without ranking them (ADR-0012). Report dates and projections
-     without judging schedules or interpreting lab values. */
+     Each active drug gets a lane with last dose, next dose and run-out. Today and the
+     latest draw cross the shared axis. Stripes distinguish drugs without ranking them
+     (ADR-0012). Report dates and projections without judging schedules or interpreting lab
+     values. */
   import { m } from '$lib/paraglide/messages';
   import { scrollToHash } from '$lib/navigation/scroll-region';
   import { collapse, disclose, maskHeight } from '$lib/motion/reveal';
@@ -88,13 +87,12 @@
      says nothing about a day that long ago. */
   const longDay = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
 
-  /* The link to cycle events is gated here (ADR-0043): an active testosterone
-     regimen or the explicit opt-in. The card waits for the episodes, so the
-     row never arrives after the rows around it. */
+  /* The link to cycle events is gated here: an active testosterone regimen or the explicit
+     opt-in. The card waits for the episodes, so the row never arrives after the rows around
+     it. */
   let episodesQuery = liveList((j) => j.regimen.getEpisodes());
   let cycleShown = $derived(cycleTrackingVisible(episodesQuery.rows, Date.now(), prefs.cycleTrackingChoice));
-  /* The three most recent cycle events, drawn at the head of that link's card
-     (they went with it when the log left Changes, pre-release-human 12). */
+  /* The three most recent cycle events, drawn at the head of that link's card. */
   let cycleEventsQuery = liveList((j) => j.cycleEvents.getCycleEvents());
   let recentCycleEvents = $derived([...cycleEventsQuery.rows].sort((a, b) => b.epochDay - a.epochDay).slice(0, 3));
 
@@ -299,10 +297,9 @@
     if (stockEditor === editor) stockSavedId = id;
   }
 
-  /* Stopping tracking takes the automatic run-out reminder with it, so it
-     asks first, over the editor, and says it happened (after-release 07).
-     Named by the saved drug rather than the draft, which may already have
-     been retyped. */
+  /* Stopping tracking takes the automatic run-out reminder with it, so it asks first, over
+     the editor, and says it happened. Named by the saved drug rather than the draft, which
+     may already have been retyped. */
   let stockDeleteTarget = $state<{ id: string; drug: string } | null>(null);
 
   function askToDeleteStock() {
@@ -377,11 +374,9 @@
     )
   );
 
-  /* A mark's label. The run-out one reads off that lane's own stock row,
-     because the mark's day is the reorder-by day once a lead time is set
-     and the label has to say which day it is naming rather than always
-     reading "Runs out" over an order deadline (redesign phase 10 ticket
-     16). */
+  /* A mark's label. The run-out one reads off that lane's own stock row, because the mark's
+     day is the reorder-by day once a lead time is set and the label has to say which day it
+     is naming rather than always reading "Runs out" over an order deadline. */
   const markLabel = (kind: SpineMarkKind, leadTimeDays: number | null = null): string => {
     switch (kind) {
       case 'labDraw':
@@ -465,11 +460,10 @@
 
   let regimenSheet: ReturnType<typeof RegimenEditorSheet>;
 
-  /** The lane's name travels down to its block rather than taking the
-      fragment's own jump, which landed the whole way in one frame (prh12
-      bug 14, "should take you lower smoothly"). The eased scroll is
-      scroll-region.ts's, the same one a linked record lands with; the
-      focus still moves to the block, without a scroll of its own. */
+  /** The lane's name travels down to its block rather than taking the fragment's own jump,
+      which landed the whole way in one frame ("should take you lower smoothly"). The eased
+      scroll is scroll-region.ts's, the same one a linked record lands with; the focus still
+      moves to the block, without a scroll of its own. */
   function travelToBlock(event: MouseEvent, episodeId: string) {
     if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
     event.preventDefault();
@@ -606,19 +600,15 @@
           {#each spine.lanes as lane, index (lane.episodeId)}
             {@const leadTimeDays = lanes.find((l) => l.episode.id === lane.episodeId)?.runOut?.entry.leadTimeDays ?? null}
             <div class="care-lane" data-care-lane={lane.drug} class:is-source-lane={sourceLane !== null && lane.episodeId === sourceLane} {...laneAttrs(index, labelRows(lane.marks))}>
-              <!-- The name labels its own line from the left, above it
-                   rather than beside it: a name column would take around a
-                   hundred of the three hundred and thirty pixels a 390px
-                   screen leaves for the rail, and careSpine's collision rule
-                   is sized against the full width (careSpine.ts:62-86).
+              <!-- The name labels its own line from the left, above it rather than beside
+                   it: a name column would take around a hundred of the three hundred and
+                   thirty pixels a 390px screen leaves for the rail, and careSpine's
+                   collision rule is sized against the full width (careSpine.ts:62-86).
 
-                   And it is the way down to that medication's own rows
-                   (phase 11 UI/UX ticket 25, screen 7's "link lane labels
-                   directly to their corresponding row"): a lane says which
-                   drug it draws and the block below says what that drug is
-                   and offers Log a dose, with the whole rail in between.
-                   Sized to the name rather than to the lane, so the press
-                   is a control's press and not a full-width row's. -->
+                   And it is the way down to that medication's own rows: a lane says which
+                   drug it draws and the block below says what that drug is and offers Log a
+                   dose, with the whole rail in between. Sized to the name rather than to
+                   the lane, so the press is a control's press and not a full-width row's. -->
               <a class="care-lane-name" href={`#${blockAnchor(lane.episodeId)}`} data-care-lane-jump={lane.drug} onclick={(event) => travelToBlock(event, lane.episodeId)}>
                 <span class="care-lane-drug">{lane.drug}</span>
                 <Icon name="chevronDown" size={18} cls="care-lane-go" />
@@ -699,9 +689,8 @@
         tabindex="-1"
         data-care-regimen-block={lane.episode.drug}
       >
-        <!-- Opens this episode's own editor over Care (prh12 bug 16): the
-             same sheet the regimen screen opens, without the trip to that
-             screen to tap the episode a second time. -->
+        <!-- Opens this episode's own editor over Care: the same sheet the regimen screen
+             opens, without the trip to that screen to tap the episode a second time. -->
         <button type="button" class="care-regimen" data-care-regimen={lane.episode.drug} onclick={() => regimenSheet.open(lane.episode)}>
           <span class="care-regimen-lines">
             <span class="care-regimen-drug">{blockName(lane.episode)}</span>
@@ -731,19 +720,16 @@
             {/if}
           </p>
         {/if}
-        <!-- The whole of /settings/exposure's one useful row, ticket 09
-             (ADR-0084): a fact with its unit and window, no comparison,
-             no picker. -->
+        <!-- The whole of /settings/exposure's one useful row, (ADR-0084): a fact with its
+             unit and window, no comparison, no picker. -->
         {#each lane.doseTotals as total (`${total.drug}-${total.route}-${total.doseUnit}`)}
           {@const label = routeLabel(total.route)}
           <p class="care-regimen-total" data-care-regimen-total>
             {m.care_regimen_dose_total({
               total: String(total.total),
               unit: total.doseUnit,
-              /* routeLabel() is capitalised everywhere else it's used - a
-                 standalone label or table cell - but this is the one place
-                 it sits mid-sentence (ticket 09's own spec gives the line in
-                 lowercase: "48 mg intramuscular in the last 90 days"). */
+              /* RouteLabel() is capitalised everywhere else it's used - a standalone label
+                 or table cell - but this is the one place it sits mid-sentence. */
               route: label.charAt(0).toLowerCase() + label.slice(1),
               days: String(CARE_DOSE_TOTAL_WINDOW_DAYS)
             })}
@@ -811,13 +797,12 @@
     {:else if stock.length === 0}
       <ListRow key="stock" icon="package" title={m.stock_title()} subtitle={m.care_row_stock_none()} onclick={openStockList} />
     {/if}
-    <!-- Ticket 59: the summary is an export over these readings, not one of
-         its own, so it joins the card that already reads them. Written by
-         hand rather than through HostedRows (ADR-0072) - that registry is
-         for an *area* moved off the hub, and the summary fronts no area
-         (`hubRows.ts` never gave it one). It states the range and the
-         section count it would print by default, read off the same two
-         modules its own screen reads them from. -->
+    <!-- The summary is an export over these readings, not one of its own, so it joins the
+         card that already reads them. Written by hand rather than through HostedRows - that
+         registry is for an *area* moved off the hub, and the summary fronts no area
+         (`hubRows.ts` never gave it one). It states the range and the section count it
+         would print by default, read off the same two modules its own screen reads them
+         from. -->
     <ListRow
       key="clinician-summary"
       icon="share"
@@ -827,14 +812,13 @@
     />
   </ListCard>
 
-  <!-- A link to the cycle log, only behind
-       `cycleTrackingVisible` (ADR-0043), with the last three events under
-       it. The module itself is on the More hub, in Health. The events are
-       static rows (the shape regimen's pause rows use): they name nothing to
-       press, and the link row heading them is the way in. No icon disc on
-       them, since a disc is what marks a row as one to press, and the cycle
-       screen has no address for one event to link them to. They sit in the
-       link's own reserve, so the card waits for their read and arrives whole. -->
+  <!-- A link to the cycle log, only behind `cycleTrackingVisible`, with the last three
+       events under it. The module itself is on the More hub, in Health. The events are
+       static rows (the shape regimen's pause rows use): they name nothing to press, and the
+       link row heading them is the way in. No icon disc on them, since a disc is what marks
+       a row as one to press, and the cycle screen has no address for one event to link them
+       to. They sit in the link's own reserve, so the card waits for their read and arrives
+       whole. -->
   <HostedRows
     host="care"
     keys={cycleShown ? ['cycle-events'] : []}
@@ -1210,18 +1194,15 @@
   }
 
   .care-rail {
-    /* One caption is a label over a date; one lane is its name, its line and
-       however many caption rows its own marks need. --care-stem is how far
-       the first caption row hangs below its line, which is also how long the
-       stem from the line down to it is.
+    /* One caption is a label over a date; one lane is its name, its line and however many
+       caption rows its own marks need. --care-stem is how far the first caption row hangs
+       below its line, which is also how long the stem from the line down to it is.
 
-       A caption row is the product's touch target, not the height of the two
-       lines of type in it (phase 11 UI/UX ticket 25, first audit U4: the
-       captions measured 32px). The row's height and the caption's target are
-       one number on purpose - a taller target inside a shorter row is a
-       caption whose invisible half lies over the caption in the row below,
-       and captions land in two rows precisely when they are too close in x
-       to share one. */
+       A caption row is the product's touch target, not the height of the two lines of type
+       in it. The row's height and the caption's target are one number on purpose - a taller
+       target inside a shorter row is a caption whose invisible half lies over the caption
+       in the row below, and captions land in two rows precisely when they are too close in
+       x to share one. */
     --care-label-h: var(--touch-target);
     /* Half what it was, because the caption row above pays the other half:
        a caption is centred in its 48px row, so 8px of the row is air over
@@ -1388,14 +1369,13 @@
     transform: translateX(calc(var(--care-at) * 100%));
     transition: transform var(--dur-med) var(--ease-out);
     pointer-events: none;
-    /* A deep row's stem reaches back past every row between it and the line,
-       so a shallow neighbour close in x - a day or two apart is well inside
-       a caption's width - sits behind that stem unless shallower always
-       wins. Here rather than on the caption inside, and that is the whole
-       point: the transform above makes each mark its own stacking context,
-       so a z-index within one never compares against another's and the
-       marks paint in document order instead - which put the next dose's
-       stem straight through the last dose's date (Alicja, on the render). */
+    /* A deep row's stem reaches back past every row between it and the line, so a shallow
+       neighbour close in x - a day or two apart is well inside a caption's width - sits
+       behind that stem unless shallower always wins. Here rather than on the caption
+       inside, and that is the whole point: the transform above makes each mark its own
+       stacking context, so a z-index within one never compares against another's and the
+       marks paint in document order instead - which put the next dose's stem straight
+       through the last dose's date. */
     z-index: calc(10 - var(--care-row));
   }
   /* The inner box is what is centred on the mark, and what presses. */

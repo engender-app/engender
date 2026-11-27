@@ -169,19 +169,16 @@ const TRUNK_SIDE: Edge = edge(p(67.8, CANON.collar), [
     top a little outside it grew a slit. */
 const SHOULDER_POINT = p(74.6, 44.4);
 
-/** Where the torso's own shoulder line lands back on the trunk's side,
-    under the arm. Below it the armpit is open.
+/** Where the torso's own shoulder line lands back on the trunk's side, under the arm. Below
+    it the armpit is open.
 
-    It is as low as the drawing can put it, and the arm's inner edge hugs
-    the shoulder line down to nearly the same height, because the notch
-    between the two is the armpit and a long one reads as a cut into the
-    body (Alicja, on the first renders: "please make those armpit cuts a
-    little smaller"). What bounds it from below is the chest's own band at
-    y=48: the arm has to hang clear of the torso by then, or a band of the
-    torso would pick up a piece of an arm, and the contour below that height
-    has to be the trunk's own side for the neutrality measurements to be
-    measuring the drawing. So the shoulder line lands on the trunk's side at
-    exactly 48 and the notch above it is about a unit long. */
+    It is as low as the drawing can put it, and the arm's inner edge hugs the shoulder line
+    down to nearly the same height, because the notch between the two is the armpit and a
+    long one reads as a cut into the body. What bounds it from below is the chest's own band
+    at y=48: the arm has to hang clear of the torso by then, or a band of the torso would
+    pick up a piece of an arm, and the contour below that height has to be the trunk's own
+    side for the neutrality measurements to be measuring the drawing. So the shoulder line
+    lands on the trunk's side at exactly 48 and the notch above it is about a unit long. */
 const ARMPIT = 48;
 const armpitJoin = p(xAtY(TRUNK_SIDE, ARMPIT), ARMPIT);
 
@@ -259,19 +256,15 @@ const INSTANCES: Instance[] = [
   { key: 'leg-left', outer: mirror(LEG_OUTER), inner: mirror(LEG_INNER), mirrored: true }
 ];
 
-/** One piece as a closed subpath: down one edge, across, and back up the
-    other.
+/** One piece as a closed subpath: down one edge, across, and back up the other.
 
-    Which edge it goes down matters, and this is the one place the mirror is
-    not free. The fill rule is nonzero, so two overlapping subpaths wound
-    opposite ways cancel each other and their overlap becomes a hole rather
-    than part of the union - and mirroring a loop is what flips the way it
-    is wound. An arm overlaps the shoulder it hangs from, so the left arm
-    punched a lens-shaped hole out of the left shoulder while the right one
-    was solid (Alicja, on the second set of renders: "the right one looks
-    good, but the left one now has this very little stroke glitch"). A
-    mirrored piece is emitted down its inner edge and back up its outer one,
-    which winds it the same way as its twin. */
+    Which edge it goes down matters, and this is the one place the mirror is not free. The
+    fill rule is nonzero, so two overlapping subpaths wound opposite ways cancel each other
+    and their overlap becomes a hole rather than part of the union - and mirroring a loop is
+    what flips the way it is wound. An arm overlaps the shoulder it hangs from, so the left
+    arm punched a lens-shaped hole out of the left shoulder while the right one was solid. A
+    mirrored piece is emitted down its inner edge and back up its outer one, which winds it
+    the same way as its twin. */
 const closed = ({ outer, inner, mirrored }: Instance): string => {
   const [down, up] = mirrored ? [inner, outer] : [outer, inner];
   const back = reverse(up);

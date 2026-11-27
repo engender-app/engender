@@ -1,16 +1,13 @@
-/* Era mutes (phase 6 ticket 05, ADR-0049, CONTEXT: "Resurfacing consent"):
-   which of the person's eras are muted from resurfacing. Rows only, keyed by
-   era uuid - whether a day the row names is what a resurfacing surface is
-   about to show is resurfacingConsent.ts's pure question, read from here by
-   every surface that needs it, the same split eras.ts/journal/eras.ts
-   already draws.
+/* Era mutes (ADR-0049): which of the person's eras are muted from resurfacing. Rows only,
+   keyed by era uuid - whether a day the row names is what a resurfacing surface is about to
+   show is resurfacingConsent.ts's pure question, read from here by every surface that needs
+   it, the same split eras.ts/journal/eras.ts already draws.
 
-   `era_uuid` names an era by free text rather than by a foreign key
-   (schema.ts). A mute naming an era that later gets deleted
-   is left exactly where it is: nothing here resolves it against `era`, so
-   there is nothing to cascade and no cleanup job to run. It simply stops
-   matching anything eraForDay can still return - the same resting state a
-   day in no era already has (ADR-0049). */
+   `era_uuid` names an era by free text rather than by a foreign key (schema.ts). A mute
+   naming an era that later gets deleted is left exactly where it is: nothing here resolves
+   it against `era`, so there is nothing to cascade and no cleanup job to run. It simply
+   stops matching anything eraForDay can still return - the same resting state a day in no
+   era already has (ADR-0049). */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import { now } from './support';

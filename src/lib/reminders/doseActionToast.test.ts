@@ -1,5 +1,4 @@
-/* Functional audit ticket 20: what the app says for each kept Taken or Skip
-   tap it applied on unlock. */
+/* What the app says for each kept Taken or Skip tap it applied on unlock. */
 
 import { beforeEach, expect, test, vi } from 'vitest';
 

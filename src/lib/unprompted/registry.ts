@@ -1,14 +1,13 @@
-/* Register everything the app can show or send unprompted. Today
-   edits live tiles, and Settings handles other surface switches and
-   notifications. Each switch applies to the whole kind. A running
-   session keeps its real-time surface (ADR-0039).
+/* Register everything the app can show or send unprompted. Today edits live tiles, and
+   Settings handles other surface switches and notifications. Each switch applies to the
+   whole kind. A running session keeps its real-time surface.
 
-   Only a scheduled time or a failure can prompt a notification.
-   Reminders, check-in and wear-elapsed are scheduled. Export failure
-   reports an error. Insights and offers wait inside the app.
+   Only a scheduled time or a failure can prompt a notification. Reminders, check-in and
+   wear-elapsed are scheduled. Export failure reports an error. Insights and offers wait
+   inside the app.
 
-   Quiet hours delay notifications until the window ends. Disguise
-   hides titles for every notification kind, enforced by its type. */
+   Quiet hours delay notifications until the window ends. Disguise hides titles for every
+   notification kind, enforced by its type. */
 /* Relative rather than $lib: registry.test.ts imports this file on the node
    tier, where no $lib alias exists - the one svelte-kit-ism the tests can't
    follow (see vitest.config.ts). */
@@ -44,33 +43,30 @@ export type UnpromptedKind =
 type NotificationChannel = 'reminders' | 'checkIn' | 'exportFailure';
 
 export interface UnpromptedRow {
-  /** Stable handle for the walkthrough (ADR-0029) - never the title, which
-      is copy. */
+  /** Stable handle for the walkthrough - never the title, which is copy. */
   key: UnpromptedKind;
   /** What the kind is. Shared by both views: a row on one screen and a row
       on the other are the same kind, and calling it two things would be the
       "two registries" this file exists not to be. */
   title: () => string;
   /**
-   * Name the area whose hidden or finished state quiets this kind
-   * (ADR-0052). Use null for kinds that concern the journal as a whole,
-   * such as export failure or the retrospectives. The field is required
-   * so every new kind makes that choice.
+   * Name the area whose hidden or finished state quiets this kind (ADR-0052).
+   * Use null for kinds that concern the journal as a whole, such as export
+   * failure or the retrospectives. The field is required so every new kind
+   * makes that choice.
    *
    * unpromptedQuiet applies the area rule on top of each kind's own
-   * preference. Hiding an area does not change its surfaceOverrides
-   * or notification switch (ADR-0039).
+   * preference. Hiding an area does not change its surfaceOverrides or
+   * notification switch.
    */
   area: HideableArea | null;
-  /** Present when this kind shows something in the app of its own, carrying
-      a subtitle saying what it puts in front of you where the title does not
-      already say it, and whether it shows until the person says otherwise
-      (`defaultOn`). The switch is one entry in the `surfaceOverrides`
-      preference, keyed by this row's key, and
-      sits in Today's editor for a live tile and on
-      `/settings/notifications` for everything else. Absent is "shows
-      nothing in the app of its own": the four producers ticket 04 folded in
-      all fire and none surfaces. */
+  /** Present when this kind shows something in the app of its own, carrying a subtitle
+      saying what it puts in front of you where the title does not already say it, and
+      whether it shows until the person says otherwise (`defaultOn`). The switch is one
+      entry in the `surfaceOverrides` preference, keyed by this row's key, and sits in
+      Today's editor for a live tile and on `/settings/notifications` for everything else.
+      Absent is "shows nothing in the app of its own": the four producers folded in all fire
+      and none surfaces. */
   surface?: { subtitle?: () => string; defaultOn: boolean };
   /** Present when this kind may become a notification, and what firing
       means: the preference the notifications view's switch writes, the
@@ -290,8 +286,7 @@ export const SURFACE_ROWS: readonly SurfaceRow[] = UNPROMPTED_ROWS.filter(isSurf
 
 /** The notifications view's rows, in registry order - every kind that may
     reach the phone rather than only the app. */
-/* NOTIFICATION_ROWS stays exported only for its own test (AU-09 test-only
-   review). */
+/* NOTIFICATION_ROWS stays exported only for its own test. */
 export const NOTIFICATION_ROWS: readonly NotificationRow[] = UNPROMPTED_ROWS.filter(
   (row): row is NotificationRow => row.notify !== undefined
 );
@@ -303,9 +298,8 @@ export const NOTIFICATION_ROWS: readonly NotificationRow[] = UNPROMPTED_ROWS.fil
     what today's registry actually holds for `unregisteredKinds` to check a
     *shortened copy* against, not stand as its own independent source of
     truth - that job is `UnpromptedKind`'s. */
-/* UNPROMPTED_KINDS stays exported only for liveTiles.grid.test.ts,
-   home-contracts.ts, which cross-check against it (AU-09 test-only
-   review). */
+/* UNPROMPTED_KINDS stays exported only for liveTiles.grid.test.ts, home-contracts.ts, which
+   cross-check against it. */
 export const UNPROMPTED_KINDS: readonly UnpromptedKind[] = ROWS.map((row) => row.key);
 
 /** The runtime half of `EveryKindRegistered`: which kinds a given list of
@@ -313,8 +307,7 @@ export const UNPROMPTED_KINDS: readonly UnpromptedKind[] = ROWS.map((row) => row
     rather than against the list's own contents - so registry.test.ts can
     show the completeness rule actually failing on a named, shortened
     registry, not only assert that it never does. */
-/* unregisteredKinds stays exported only for its own test (AU-09 test-only
-   review). */
+/* unregisteredKinds stays exported only for its own test. */
 export function unregisteredKinds(rows: readonly Pick<UnpromptedRow, 'key'>[]): UnpromptedKind[] {
   const present = new Set(rows.map((row) => row.key));
   return UNPROMPTED_KINDS.filter((kind) => !present.has(kind));

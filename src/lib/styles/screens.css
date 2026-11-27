@@ -5,11 +5,10 @@
 
 /* ---------- Entry editor and friends ---------- */
 
-/* The entry editor's save bar and every other screen's foot left screens.css
-   with carpet 26: a foot is the frame's now, drawn as `.app-savebar` in
-   app.css and written as `<SaveBar>` by the screen that owns its buttons.
-   What was here was `position: sticky` with a negative offset, which is
-   what put it over the column rather than under it. */
+/* The entry editor's save bar and every other screen's foot left screens.css with: a foot
+   is the frame's now, drawn as `.app-savebar` in app.css and written as `<SaveBar>` by the
+   screen that owns its buttons. What was here was `position: sticky` with a negative
+   offset, which is what put it over the column rather than under it. */
 
 .photo-row { display: flex; gap: var(--space-3); flex-wrap: wrap; }
 .photo-wrap { position: relative; }
@@ -39,10 +38,9 @@
 }
 .photo-add:hover { background: var(--accent-soft); }
 
-/* The live preview's box. The stored note shared this rule until ticket 46,
-   which gave the note a transport, a frame and a full-screen state of its
-   own - one shape in two states is one component's business, and what is
-   left here belongs to the preview alone. */
+/* The live preview's box. The stored note shared this rule, which gave the note a
+   transport, a frame and a full-screen state of its own - one shape in two states is one
+   component's business, and what is left here belongs to the preview alone. */
 .video-preview video {
   width: 100%; max-height: 40vh;
   border-radius: var(--r-block);
@@ -60,10 +58,9 @@
    (components.css, a.segment) rather than this screen's. */
 
 /* Weekly and monthly. */
-/* The period's name, with room either side of it. It is the one line on the
-   screen that says which period every figure below belongs to, and it sat
-   close enough to the switcher above and the figures below to read as part of
-   one of them (Alicja, 2026-08-25). */
+/* The period's name, with room either side of it. It is the one line on the screen that
+   says which period every figure below belongs to, and it sat close enough to the switcher
+   above and the figures below to read as part of one of them. */
 .wrapped-head { padding: var(--space-5) 0 var(--space-5); text-align: center; }
 .wrapped-title { font-family: var(--font-display); font-size: var(--text-3xl); font-weight: var(--weight-display); line-height: var(--leading-display); }
 .wrapped-sub { color: var(--text-2); font-size: var(--text-sm); margin-top: var(--space-2); }
@@ -97,21 +94,17 @@
   margin-bottom: var(--space-4);
   background: linear-gradient(105deg, var(--motif-stripes));
 }
-/* The art is the card's content, not decoration behind it, so it prints
-   even though a printer drops background colours by default (phase 5
-   ticket 17: a journal book's opening page is a palette and three numbers,
-   and without the palette it is three numbers). */
-/* The clinician summary is the one thing this app prints for somebody else to
-   read, and it was printing in Nunito over Outfit headings - the app's own
-   rounded voice, on a page a doctor is handed (Alicja, 2026-08-26: "needs
-   more neutral/professional font").
+/* The art is the card's content, not decoration behind it, so it prints even though a
+   printer drops background colours by default. */
+/* The clinician summary is the one thing this app prints for somebody else to read, and it
+   was printing in Nunito over Outfit headings - the app's own rounded voice, on a page a
+   doctor is handed.
 
-   A system stack rather than a webfont, because a print-to-PDF pass should
-   not depend on a font request landing, and because the whole point is a
-   face that carries no personality of its own. Print only: on screen the
-   summary is still a screen in this app, and the journal book - the other
-   print surface, and the one a person prints for themselves - keeps the
-   app's face deliberately. */
+   A system stack rather than a webfont, because a print-to-PDF pass should not depend on a
+   font request landing, and because the whole point is a face that carries no personality
+   of its own. Print only: on screen the summary is still a screen in this app, and the
+   journal book - the other print surface, and the one a person prints for themselves -
+   keeps the app's face deliberately. */
 @media print {
   .clinician-summary,
   .clinician-summary h1,
@@ -170,10 +163,8 @@
   margin: 0 calc(-1 * var(--screen-inset)); padding-left: var(--screen-inset); padding-right: var(--screen-inset);
 }
 
-/* ---------- The day detail ----------
-   The calendar's own classes moved into the calendar screen's <style> block
-   in phase 10 ticket 10, where its one consumer is; what is left here is the
-   day. */
+/* ---------- The day detail ---------- The calendar's own classes moved into the calendar
+   screen's <style> block, where its one consumer is; what is left here is the day. */
 
 /* ---------- One day ----------
    The entries are the kit's day card now, so the hand-built time gutter that
@@ -192,13 +183,12 @@
   color: var(--text-2);
 }
 .search-box:focus-within { border-color: var(--accent); }
-/* The magnifier is a glyph, not something to be squeezed: a flex item's
-   automatic minimum is its content, and an `<input>`'s is roughly twenty
-   characters, so the input claimed the whole row and the icon shrank to
-   nothing. Both halves of the fix are needed - the icon refuses to shrink,
-   and the input is allowed to. Found at 195px, which is what 200% zoom on a
-   390px phone leaves: the icon had vanished and the Polish placeholder ran
-   out of the box and off the screen (redesign ticket 15's renders). */
+/* The magnifier is a glyph, not something to be squeezed: a flex item's automatic minimum
+   is its content, and an `<input>`'s is roughly twenty characters, so the input claimed the
+   whole row and the icon shrank to nothing. Both halves of the fix are needed - the icon
+   refuses to shrink, and the input is allowed to. Found at 195px, which is what 200% zoom
+   on a 390px phone leaves: the icon had vanished and the Polish placeholder ran out of the
+   box and off the screen. */
 .search-box .icon { flex: 0 0 auto; }
 .search-input {
   flex: 1; min-width: 0; border: none; background: none; font: inherit; color: var(--text);
@@ -514,10 +504,8 @@
    computed to 2.66-4.05:1, failing 16/16 combinations. The strikethrough
    already carries the "hidden" meaning; --text-2 gives the same
    de-emphasised look at a contrast the token layer already guarantees. */
-/* The strike is always drawn and only its colour changes, so hiding a row
-   fades the line in with the grey rather than painting it in one frame
-   (functional audit ticket 41: a `text-decoration` switch cannot
-   transition, `text-decoration-color` can). */
+/* The strike is always drawn and only its colour changes, so hiding a row fades the line in
+   with the grey rather than painting it in one frame. */
 .managed-tag.is-hidden .managed-label { color: var(--text-2); text-decoration-color: currentColor; }
 .managed-label {
   flex: 1; font-size: var(--text-sm);
@@ -533,12 +521,10 @@
 [data-up] svg { transform: rotate(90deg); }
 
 /* ---------- Reminders ---------- */
-/* `.checkin-card` retired here (carpet 30). Its 1.5px `--accent-border` edge
-   and the `--surface` ground under it were the group claiming to be featured,
-   which rule 4 has no treatment for; the rows are flush on the page now and
-   the screen's own markup carries the shape. The 8px the time row needed
-   under the sentence above it (Alicja, on carpet 28's crop: "give a couple of
-   px more of a breathing space") comes from `.stack-3`'s 12px instead. */
+/* `.checkin-card` retired here. Its 1.5px `--accent-border` edge and the `--surface` ground
+   under it were the group claiming to be featured, which rule 4 has no treatment for; the
+   rows are flush on the page now and the screen's own markup carries the shape. The 8px the
+   time row needed under the sentence above it comes from `.stack-3`'s 12px instead. */
 .next-preview {
   display: flex; align-items: center; gap: 6px;
   font-size: var(--text-sm); color: var(--on-accent-soft);
@@ -586,27 +572,23 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  /* The app's own column, so a gate lines up with the screens behind it
-     (bug session 18, item 52: 420 read as a narrow card in a wide window). */
+  /* The app's own column, so a gate lines up with the screens behind it. */
   max-width: calc(var(--content-max) + 2 * var(--space-5));
   margin: 0 auto;
   position: relative;
-  /* Where the edge rests before stepBlind's first measurement, and the only
-     frame this value is read on: the top inset, the field's own 8 above the
-     title, a one-line title at 48 set solid, and the field's 16 under it.
-     A two-line title measures taller and travels there from here. An
-     unlock's sun field adds its room here as well (tester-report-02 ticket
-     07): without it the edge started 32px short and grew into place over
-     the first 200ms of the gate, an entrance on a screen that arrives as a
-     cut. */
+  /* Where the edge rests before stepBlind's first measurement, and the only frame this
+     value is read on: the top inset, the field's own 8 above the title, a one-line title at
+     48 set solid, and the field's 16 under it. A two-line title measures taller and travels
+     there from here. An unlock's sun field adds its room here as well: without it the edge
+     started 32px short and grew into place over the first 200ms of the gate, an entrance on
+     a screen that arrives as a cut. */
   --blind-edge: calc(var(--space-2) + 46px + var(--space-4));
 }
 
-/* 48 in the display face at 800, tracked one step tighter than the scale's
-   own -0.04em and set solid: the door title's treatment (rule 2). On a gate
-   this is a gate's own title, or the decoy's name on a disguised unlock. An
-   unlock without disguise draws the flag instead and keeps the wordmark
-   only as its accessible name (tester-report-02 ticket 07). */
+/* 48 in the display face at 800, tracked one step tighter than the scale's own -0.04em and
+   set solid: the door title's treatment (rule 2). On a gate this is a gate's own title, or
+   the decoy's name on a disguised unlock. An unlock without disguise draws the flag instead
+   and keeps the wordmark only as its accessible name. */
 .gate-title {
   margin: 0;
   font-family: var(--font-display);
@@ -670,14 +652,12 @@
    on the screens where the control is the whole page. */
 .gate-foot > * + * { margin-top: var(--space-2); }
 
-/* A pad sits in the middle of the room it has (Alicja, round one on this
-   ticket: "can the pin pad be actually in the center of the screen"). Two
-   auto gaps - one above the dots, one under the status line - so the free
-   space between the line and the way out splits evenly around the pad
-   instead of piling up under it. The foot's own `margin-top: auto` is turned
-   off here, or the space would divide three ways and the pad would sit high.
-   Where there is no free space, on a short window or a long gate, every auto
-   collapses to nothing and this rule does not apply itself. */
+/* A pad sits in the middle of the room it has. Two auto gaps - one above the dots, one
+   under the status line - so the free space between the line and the way out splits evenly
+   around the pad instead of piling up under it. The foot's own `margin-top: auto` is turned
+   off here, or the space would divide three ways and the pad would sit high. Where there is
+   no free space, on a short window or a long gate, every auto collapses to nothing and this
+   rule does not apply itself. */
 .gate-page:has(.pin-pad) .pin-dots { margin-top: auto; }
 .gate-page:has(.pin-pad) .pin-status { margin-bottom: auto; }
 .gate-page:has(.pin-pad) .gate-foot { margin-top: 0; }
@@ -875,11 +855,10 @@
 /* ---------- desktop adaptation ---------- */
 @container app (min-width: 1024px) {
   .palette-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); }
-  /* Eight across gives a name 69.5px at 1280, and the widest one on a line
-     is 75.2px ("Panseksualna"), so overflow-wrap: anywhere broke
-     "Genderqueer" as "Genderquee/r" (after-release 17, UI-07). A name is
-     one word or two, so it wraps between words or not at all, and the
-     longest steps its type down to fit (pre-publish 03, above). */
+  /* Eight across gives a name 69.5px at 1280, and the widest one on a line is 75.2px
+     ("Panseksualna"), so overflow-wrap: anywhere broke "Genderqueer" as "Genderquee/r". A
+     name is one word or two, so it wraps between words or not at all, and the longest steps
+     its type down to fit (pre-publish 03, above). */
   .palette-grid .swatch-name,
   .palette-grid .palette-swatch.is-active .swatch-name { overflow-wrap: normal; }
   /* With the text-size boost a name is 12.5% wider and the longest would
@@ -892,19 +871,18 @@
 
 /* ---------- Stats hub ---------- */
 
-/* A line of context inside a chart card, above or below the plot: which
-   analyte is drawn, that a fold reads the whole journal, which tags were
-   left out, the day a stream ended. Shared by /stats and, since redesign
-   ticket 05 moved the two interval folds there, /care.
+/* A line of context inside a chart card, above or below the plot: which analyte is drawn,
+   that a fold reads the whole journal, which tags were left out, the day a stream ended.
+   Shared by /stats and moved the two interval folds there, /care.
 
-   Inside the card because it belongs to that chart and is gated on the same
-   read. `.stats-note` used to hang these under the card instead, and the
-   spacing gave the game away: its `margin-top` of 8 collapsed under the
-   card's own 24, so a sentence sat 24px below the chart it qualified and
-   16px above the next one, reading as a preamble to the wrong card.
+   Inside the card because it belongs to that chart and is gated on the same read.
+   `.stats-note` used to hang these under the card instead, and the spacing gave the game
+   away: its `margin-top` of 8 collapsed under the card's own 24, so a sentence sat 24px
+   below the chart it qualified and 16px above the next one, reading as a preamble to the
+   wrong card.
 
-   ChartCard takes no prop for a paragraph and does not need one; this is
-   body content, which is what its `children` slot is for. */
+   ChartCard takes no prop for a paragraph and does not need one; this is body content,
+   which is what its `children` slot is for. */
 
 /* The figures, as rows of a list card rather than a row of small tiles.
    What the list buys is room for a supporting line

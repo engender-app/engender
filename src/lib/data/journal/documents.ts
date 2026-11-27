@@ -1,8 +1,8 @@
-/* Store documents under the photo data key (ADR-0065). Search titles only.
-   Normalize images to remove metadata (ADR-0015). Keep original PDF bytes
-   and render a first-page thumbnail when possible. Share documentThumbName.
-   Write files before inserting rows and delete rows before removing files.
-   The orphan sweep handles interruptions. Clear links before deleting targets. */
+/* Store documents under the photo data key (ADR-0065). Search titles only. Normalize images
+   to remove metadata. Keep original PDF bytes and render a first-page thumbnail when
+   possible. Share documentThumbName. Write files before inserting rows and delete rows
+   before removing files. The orphan sweep handles interruptions. Clear links before
+   deleting targets. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import { afterCommit } from '../sqlite/transactor';

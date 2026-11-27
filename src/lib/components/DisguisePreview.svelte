@@ -1,15 +1,12 @@
 <script lang="ts">
-  /* What the disguise looks like from outside the app, and what it does not
-     cover. Settings has drawn this since ticket 15; setup's last question
-     asks for the same thing, and two copies
-     of a block whose whole job is to be accurate about the launcher is how
-     the two drift.
+  /* What the disguise looks like from outside the app, and what it does not cover. Settings
+     has drawn this; setup's last question asks for the same thing, and two copies of a
+     block whose whole job is to be accurate about the launcher is how the two drift.
 
-     It says the same thing on both screens on purpose. Settings binds `on`
-     to the stored preference, or to the answer its switch is saving while
-     that write runs; setup binds it to the answer it is holding - but the
-     icon, the name and the note do not vary with it. The disguise
-     is what it is; `on` only says whether it is in force, which is the
+     It says the same thing on both screens on purpose. Settings binds `on` to the stored
+     preference, or to the answer its switch is saving while that write runs; setup binds it
+     to the answer it is holding - but the icon, the name and the note do not vary with it.
+     The disguise is what it is; `on` only says whether it is in force, which is the
      difference between a proposal and a description. */
 
   import { appWordmark } from '$lib/disguise/identity';
@@ -46,11 +43,10 @@
     <figcaption class="muted small">{m.disguise_preview_lock()}</figcaption>
   </figure>
 </div>
-<!-- On Android the launcher alias switches at once, so there is nothing to
-     warn about there - but the system's own screens never get a disguised
-     variant, so the sheet names them plainly, along with the one thing
-     disguise turns off while it is on (FA 43). On web the manifest is the
-     browser's to refresh, and a promise the app cannot keep is worse than
+<!-- On Android the launcher alias switches at once, so there is nothing to warn about there
+     - but the system's own screens never get a disguised variant, so the sheet names them
+     plainly, along with the one thing disguise turns off while it is on. On web the
+     manifest is the browser's to refresh, and a promise the app cannot keep is worse than
      none. -->
 <p class="muted small">{isAndroid() ? m.disguise_android_gap_note() : `${m.disguise_installed_note({ appName: appWordmark(prefs.disguise, m.app_name(), m.disguise_name()) })} ${m.disguise_web_gap_note({ appName: appWordmark(prefs.disguise, m.app_name(), m.disguise_name()) })}`}</p>
 

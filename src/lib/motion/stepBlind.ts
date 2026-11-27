@@ -15,10 +15,9 @@ import { EASE_OUT_CSS, isReducedMotion, motionDuration } from './tokens';
 /** What the hold is stamped on while the old geometry is being painted. */
 const HOLD = 'blindHold';
 
-/** What is printed on the field and has to ride with its edge. The shared
-    class, not a per-surface one: setup and the gates wear the same field
-    (components.css, redesign ticket 34) and this action is the only thing
-    that measures where the words sit inside it. */
+/** What is printed on the field and has to ride with its edge. The shared class, not a
+    per-surface one: setup and the gates wear the same field (components.css) and this
+    action is the only thing that measures where the words sit inside it. */
 const ASK = '.step-field-ask';
 /** How long after a heading arrives its rest is left alone. */
 const ARRIVAL_SETTLE_MS = 600;

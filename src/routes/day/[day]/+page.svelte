@@ -59,18 +59,15 @@
     parsedDay === null ? Promise.resolve([]) : j.dayAhead.getDayAhead(epochDay, epochDay, currentDay())
   );
 
-  /* What the schedules expect on this day, which a mark cannot say
-     (audit item 12): a mark is a day and a kind, never an amount
-     (ADR-0067), so the row that says "Dose" and nothing else was the
-     Today agenda's row with less on it. Read here rather than folded into
-     `dayAhead`, the call `rowForward.ts` makes for the same reason - names
-     and amounts come off the records, and the registry keeps answering
-     only which days carry a mark.
+  /* What the schedules expect on this day, which a mark cannot say: a mark is a day and a
+     kind, never an amount (ADR-0067), so the row that says "Dose" and nothing else was the
+     Today agenda's row with less on it. Read here rather than folded into `dayAhead`, the
+     call `rowForward.ts` makes for the same reason - names and amounts come off the
+     records, and the registry keeps answering only which days carry a mark.
 
-     All three reads are issued before the first await, which is what makes
-     a liveQuery find its dependencies on the first run (journal.svelte.ts).
-     Bounded to a future day: a past day's doses are records, and `day.ts`
-     already draws them. */
+     All three reads are issued before the first await, which is what makes a liveQuery find
+     its dependencies on the first run (journal.svelte.ts). Bounded to a future day: a past
+     day's doses are records, and `day.ts` already draws them. */
   let expectedDosesRead = liveQuery(async (j) => {
     const asked = epochDay;
     if (parsedDay === null || asked <= currentDay()) return [];
@@ -83,15 +80,13 @@
   });
   let expectedDoses = $derived(expectedDosesRead.value ?? []);
 
-  /* The marks, less the ones the day's own records name better (audit item
-     12). An appointment and a milestone both put a row on this screen
-     through `day.ts` carrying what they are - a kind and a place, a name -
-     and the mark beside it would be the same fact drawn again with less on
-     it. A surgery day and a letter unlock have no such row: a procedure's
-     own record on a day is its recovery photos, and a letter that has not
-     opened deliberately carries no title anywhere (letters.ts's
-     `getUnlockDaysInRange`). The dose slot keeps its row and gains what the
-     schedule expects. */
+  /* The marks, less the ones the day's own records name better. An appointment and a
+     milestone both put a row on this screen through `day.ts` carrying what they are - a
+     kind and a place, a name - and the mark beside it would be the same fact drawn again
+     with less on it. A surgery day and a letter unlock have no such row: a procedure's own
+     record on a day is its recovery photos, and a letter that has not opened deliberately
+     carries no title anywhere (letters.ts's `getUnlockDaysInRange`). The dose slot keeps
+     its row and gains what the schedule expects. */
   let namedByRecords = $derived(
     new Set([
       // A visit only: a referral or an update on this day is not the visit
@@ -126,15 +121,14 @@
     day != null && DAY_SECTION_KEYS.some((key) => (day![key] as unknown[]).length > 0)
   );
 
-  /* Whether a chained read's landed value actually answers for the ids the
-     screen is asking about right now, rather than an earlier (or the very
-     first, vacuous) set - the same keyed-answer idiom detailDraft.svelte.ts
-     uses for a route id, widened to a list. Needed because `LiveQuery.loading`
-     is one-way (readState.ts): `marginNotesRead`'s and `doseDrugsRead`'s very
-     first run answers for an empty id list (the day read hasn't landed yet),
-     which settles in a frame or two and never reports loading again, so a
-     gate that trusted `.loading` alone would open on that empty answer and
-     the real one would land a few frames later - ticket 174's bug. */
+  /* Whether a chained read's landed value actually answers for the ids the screen is asking
+     about right now, rather than an earlier (or the very first, vacuous) set - the same
+     keyed-answer idiom detailDraft.svelte.ts uses for a route id, widened to a list. Needed
+     because `LiveQuery.loading` is one-way (readState.ts): `marginNotesRead`'s and
+     `doseDrugsRead`'s very first run answers for an empty id list (the day read hasn't
+     landed yet), which settles in a frame or two and never reports loading again, so a gate
+     that trusted `.loading` alone would open on that empty answer and the real one would
+     land a few frames later - bug. */
   function sameIds<K>(a: readonly K[], b: readonly K[]): boolean {
     return a.length === b.length && a.every((id, i) => id === b[i]);
   }
@@ -206,13 +200,12 @@
     records ? DAY_SECTION_KEYS.flatMap((key) => records[key] as unknown[]) : []
   );
 
-  /* `everythingLogged` widened to also hold for the day's two chained reads,
-     the same "reveal once, when everything has answered" call ticket 146
-     made for Home's fold: the records draw once, already carrying their
-     margin notes and dose drug names, rather than gaining them a few frames
-     after the gate opens. A day with no records needs neither
-     chained read to have anything real to wait for - `entryIds`/`dayDoses`
-     are `[]` there, so both settle on the same frame the day read does. */
+  /* `everythingLogged` widened to also hold for the day's two chained reads, the same
+     "reveal once, when everything has answered" call made for Home's fold: the records draw
+     once, already carrying their margin notes and dose drug names, rather than gaining them
+     a few frames after the gate opens. A day with no records needs neither chained read to
+     have anything real to wait for - `entryIds`/`dayDoses` are `[]` there, so both settle
+     on the same frame the day read does. */
   let dayRecordsReady = $derived(!everythingLogged.loading && marginNotesReady && doseDrugsReady);
   let dayRecordsRead = {
     get rows() {
@@ -291,12 +284,11 @@
   {/if}
 
   {#if isFuture}
-    <!-- What this day already holds, in the words a past day uses for the
-         same records (audit item 12): an appointment says its kind and its
-         place, a milestone says its name. No gate and no empty state - the
-         notice above covers a day with nothing on it, and a skeleton in
-         front of a day that may hold nothing would flash on every future
-         day somebody opens. -->
+    <!-- What this day already holds, in the words a past day uses for the same records: an
+         appointment says its kind and its place, a milestone says its name. No gate and no
+         empty state - the notice above covers a day with nothing on it, and a skeleton in
+         front of a day that may hold nothing would flash on every future day somebody
+         opens. -->
     {#if hasRecords}
       <DayRecordsView {epochDay} records={day!} {entriesRole} {alsoRole} {marginNotesByEntry} {doseDrugs} />
     {/if}
@@ -318,17 +310,15 @@
       {/snippet}
     </ReadGate>
 
-    <!-- "Start an era here": naming a stretch of your own
-         timeline is a thought that arrives while looking at the day it starts
-         on, so the action is offered where the thought is rather than only on
-         /settings/eras (redesign ticket 16: the era manager, moved). A link
-         and not a button, because it goes somewhere - the era editor opens
-         there with this day already in its start bound. At ghost weight,
-         under the entry button: adding an entry is what this screen is for,
-         and two soft buttons would put the rarer action beside it as a peer.
-         A milestone offers nothing of the kind: a milestone is a day and an
-         era is a span, and the bridge is one action on a milestone if it is
-         ever wanted, not a rule (ADR-0049). -->
+    <!-- "Start an era here": naming a stretch of your own timeline is a thought that
+         arrives while looking at the day it starts on, so the action is offered where the
+         thought is rather than only on /settings/eras. A link and not a button, because it
+         goes somewhere - the era editor opens there with this day already in its start
+         bound. At ghost weight, under the entry button: adding an entry is what this screen
+         is for, and two soft buttons would put the rarer action beside it as a peer. A
+         milestone offers nothing of the kind: a milestone is a day and an era is a span,
+         and the bridge is one action on a milestone if it is ever wanted, not a rule
+         (ADR-0049). -->
     <div class="day-add">
       <button class="btn btn-soft" data-add onclick={() => goto(withListReturn(`/entry/new/${epochDay}`, page.url))}>
         <Icon name="plus" size={20} /><span>{noEntryYet ? m.add_entry_for_day() : m.add_another_entry()}</span>

@@ -67,11 +67,10 @@ test('no helper module reaches a charting library', () => {
   expect(helpers).toEqual(HELPERS_THAT_LOAD);
 });
 
-/* The three above pass on a tree that has nothing wrong with it, which is
-   also what they would do if `reach` never found anything. This runs the same
-   rule over the shape ticket 02 described - a kit helper importing three lines
-   of arithmetic out of the module that loads the library, and a shell that
-   reaches the helper - and both have to fail. */
+/* The three above pass on a tree that has nothing wrong with it, which is also what they
+   would do if `reach` never found anything. This runs the same rule over the shape
+   described - a kit helper importing three lines of arithmetic out of the module that loads
+   the library, and a shell that reaches the helper - and both have to fail. */
 test('the rule catches a helper that imports out of a module holding a library', () => {
   const chains = reach(
     new Map([

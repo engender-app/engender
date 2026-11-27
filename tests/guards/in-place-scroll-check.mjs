@@ -1,18 +1,14 @@
-/* A screen that rewrites its own address keeps its scroll (last-audit UI
-   ticket 12, audit U11).
+/* A screen that rewrites its own address keeps its scroll.
 
-   Opening a photo, picking a filter chip, zooming or paging a document all
-   go through `replaceRoute(url, { noScroll: true })`, which is a real
-   navigation. The layout's own scroll restore ran after every one of them
-   and, the navigation being a `goto` rather than a popstate, sent the scroll
-   region to the top: open a photo half way down the library, close it, and
-   the grid was back at its first row. This drives the photo library, which
-   has both cases on one screen, and then checks the two things the fix must
-   not take away: a forward visit still starts at the top, and back still
-   lands where the screen was left.
+   Opening a photo, picking a filter chip, zooming or paging a document all go through
+   `replaceRoute(url, { noScroll: true })`, which is a real navigation. The layout's own
+   scroll restore ran after every one of them and, the navigation being a `goto` rather than
+   a popstate, sent the scroll region to the top: open a photo half way down the library,
+   close it, and the grid was back at its first row. This drives the photo library, which
+   has both cases on one screen, and then checks the two things the fix must not take away:
+   a forward visit still starts at the top, and back still lands where the screen was left.
 
-   Run against the dev server (no build needed):
-     node tests/guards/in-place-scroll-check.mjs */
+   Run against the dev server (no build needed): node tests/guards/in-place-scroll-check.mjs */
 import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { createServer } from 'vite';

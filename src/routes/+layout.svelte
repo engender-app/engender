@@ -124,11 +124,10 @@
     return () => { stopSession(); stopLock(); };
   });
 
-  /* A side effect with nothing above it to order against, unlike startBoot():
-     the registration is not awaited and the worker precaches the shell in the
-     background, whenever it gets there - which is after boot has answered and
-     the browser is idle, so the precache does not compete with the first
-     screen for the connection (phase 14 pre-release ticket 13). */
+  /* A side effect with nothing above it to order against, unlike startBoot(): the
+     registration is not awaited and the worker precaches the shell in the background,
+     whenever it gets there - which is after boot has answered and the browser is idle, so
+     the precache does not compete with the first screen for the connection. */
   $effect(() => {
     registerServiceWorkerAfterBoot(bootState.status);
   });
@@ -159,21 +158,19 @@
 
   let needsDeviceRecovery = $derived(gate === 'device-recovery');
 
-  /* A recovery unlock owes the person a new access mode before the app shows
-     them anything (ADR-0054, ticket sec-02). Not a gate - the journal is
-     open behind this - so it sits with the lock in the chain below rather
-     than with the gates above, and for the lock's own reason: instead of the
-     route, not over it, so no screen mounts and no query runs behind a
+  /* A recovery unlock owes the person a new access mode before the app shows them anything
+     (ADR-0054). Not a gate - the journal is open behind this - so it sits with the lock in
+     the chain below rather than with the gates above, and for the lock's own reason:
+     instead of the route, not over it, so no screen mounts and no query runs behind a
      screen somebody has not finished. */
   let needsAccessModeAfterRecovery = $derived(isReadyState(bootState) && recoveryUnlock.used);
   /* Older code against a newer Journal. Its own screen rather
      than the boot-error notice: nothing is wrong with the Journal, and there
      is something the person can do. */
   let schemaTooNew = $derived(gate === 'schema-too-new');
-  /* A boot that failed has no journal behind it, so nothing a booted app
-     draws belongs on screen: the notice above <main> and its ways out are
-     the whole page. Until ux-carpet 213 no gate claimed this state and
-     Today mounted under the notice, greeting and mood row and all, which
+  /* A boot that failed has no journal behind it, so nothing a booted app draws belongs on
+     screen: the notice above <main> and its ways out are the whole page. no gate claimed
+     this state and Today mounted under the notice, greeting and mood row and all, which
      read as a boot to a person and to every walk keyed on the greeting. */
   let bootFailed = $derived(isErrorState(bootState));
 
@@ -211,8 +208,8 @@
     if (locked) dropJournalScreens();
     else if (browserSession.recovering) dropRetainedDoors();
   });
-  /* The lock screen keeps the address it locked on, so whatever journal
-     text that address still carried goes before the gate shows (GD-025). */
+  /* The lock screen keeps the address it locked on, so whatever journal text that address
+     still carried goes before the gate shows. */
   $effect(() => {
     if (!locked) return;
     const clean = withoutJournalText(new URL(location.href));
@@ -277,14 +274,13 @@
        before Care carried episode ids - is replaced as it lands. */
     const clean = navigation.to && arriveWithoutJournalText(navigation.to.url);
     if (clean) void replaceRoute(clean, { noScroll: true, keepFocus: true });
-    /* What the gear will borrow next time it opens settings chrome
-       (ADR-0076, audit item 4) - noted from every settled navigation, not
-       only ones into a tab, since a screen already inside settings can
-       still carry the tab it borrowed forward (chrome-tab-origin.ts). */
+    /* What the gear will borrow next time it opens settings chrome - noted from every
+       settled navigation, not only ones into a tab, since a screen already inside settings
+       can still carry the tab it borrowed forward (chrome-tab-origin.ts). */
     if (navigation.to) noteTabVisit(litTabKey(navigation.to.url.pathname, chromeTabOrigin()));
-    /* A borrowing page opened cold has no onNavigate to key it, so it keeps
-       the tab it just resolved to here: back to it from Today, it lights
-       that tab again rather than Today (after-release 17 review). */
+    /* A borrowing page opened cold has no onNavigate to key it, so it keeps the tab it just
+       resolved to here: back to it from Today, it lights that tab again rather than Today
+       (review). */
     if (navigation.type === 'enter' && navigation.to && borrowsTab(navigation.to.url.pathname)) {
       noteBorrowingArrival(`0:${navigation.to.url.pathname}`, false);
     }
@@ -335,11 +331,11 @@
     return () => { cancelled = true; observer?.disconnect(); };
   });
 
-  /* The width the scroll region's scrollbar takes, which is 0 now that none
-     is drawn (app.css) but is still measured rather than assumed, published for the toast, which centres on the content
-     column and so has to leave that strip out too (after-release 17
-     review: 5px off centre at 1280). Measured, since a classic scrollbar
-     has a width only the browser knows and an overlay one has none. */
+  /* The width the scroll region's scrollbar takes, which is 0 now that none is drawn
+     (app.css) but is still measured rather than assumed, published for the toast, which
+     centres on the content column and so has to leave that strip out too (review: 5px off
+     centre at 1280). Measured, since a classic scrollbar has a width only the browser knows
+     and an overlay one has none. */
   function publishScrollGutter(node: HTMLElement) {
     const publish = () =>
       document.documentElement.style.setProperty('--scroll-gutter', `${node.offsetWidth - node.clientWidth}px`);
@@ -375,11 +371,10 @@
     const chrome = documentChrome(
       prefs,
       { prefersDark: systemDark.current, prefersReducedMotion: systemReducedMotion.current },
-      /* Disguised, the person's flag waits for the journal (security-scan
-         ticket 08). The unlock flips this inside openApp's view transition,
-         so the gate is photographed in the neutral palette and the app in
-         its own, and the change happens under the opening rather than as a
-         frame of its own. */
+      /* Disguised, the person's flag waits for the journal. The unlock flips this inside
+         openApp's view transition, so the gate is photographed in the neutral palette and
+         the app in its own, and the change happens under the opening rather than as a frame
+         of its own. */
       journalShown
     );
     root.dataset.palette = chrome.palette;
@@ -433,12 +428,11 @@
     syncLeaveCover(cover, getComputedStyle(document.documentElement).getPropertyValue('--bg').trim());
   });
 
-  /* Document language (pre-production audit U1). app.html ships `lang="en"`
-     as a valid fallback; this stamps the resolved locale so assistive
-     technology pronounces in the right language after a cold start on a
-     Polish preference or a browser whose navigator.language is Polish.
-     setLocale() reloads the page, so a language switch re-enters here
-     with the new value rather than needing a reactive update. */
+  /* Document language (pre-production). app.html ships `lang="en"` as a valid fallback;
+     this stamps the resolved locale so assistive technology pronounces in the right
+     language after a cold start on a Polish preference or a browser whose
+     navigator.language is Polish. setLocale() reloads the page, so a language switch
+     re-enters here with the new value rather than needing a reactive update. */
   $effect(() => {
     document.documentElement.lang = getLocale();
   });
@@ -527,10 +521,9 @@
     const checkInTime = prefs.checkInTime;
     const checkInPausedThrough = prefs.checkInPausedThrough;
     const hideNotificationTitles = prefs.hideNotificationTitles;
-    /* Read here rather than inside platform-sync.ts for the same reason every
-       preference above is: only a .svelte file has the reactivity that
-       re-runs this effect, and so re-syncs the schedule, when one of them
-       changes (phase 6 ticket 04's registry switches and quiet window). */
+    /* Read here rather than inside platform-sync.ts for the same reason every preference
+       above is: only a .svelte file has the reactivity that re-runs this effect, and so
+       re-syncs the schedule, when one of them changes. */
     const remindersEnabled = prefs.remindersEnabled;
     const wearElapsedEnabled = prefs.wearElapsedEnabled;
     const quietHoursEnabled = prefs.quietHoursEnabled;
@@ -697,19 +690,16 @@
       <AppNav />
     {/if}
 
-    <!-- The scroll region and the foot a screen may ask for, stacked. The
-         box is what lets the column reserve the foot's room by layout
-         rather than by arithmetic: the foot is the region's flex sibling
-         rather than a second pinned thing inside it, so no screen can end
-         up with a control under it (carpet 26, and
-         $lib/stores/saveBar.svelte for what that cost before). It is also
-         what puts the pair beside the rail rather than under it at desktop
-         width, where `.app` itself is a row.
+    <!-- The scroll region and the foot a screen may ask for, stacked. The box is what lets
+         the column reserve the foot's room by layout rather than by arithmetic: the foot is
+         the region's flex sibling rather than a second pinned thing inside it, so no screen
+         can end up with a control under it (and $lib/stores/saveBar.svelte for what that
+         cost before). It is also what puts the pair beside the rail rather than under it at
+         desktop width, where `.app` itself is a row.
 
-         The landmark is on this box rather than on the scroll region
-         inside it, because the foot moved: a screen's one commitment is
-         part of the screen, and left outside <main> it would be a group of
-         controls belonging to no landmark at all. -->
+         The landmark is on this box rather than on the scroll region inside it, because the
+         foot moved: a screen's one commitment is part of the screen, and left outside
+         <main> it would be a group of controls belonging to no landmark at all. -->
     <main class="app-column" class:has-savebar={saveBar.count > 0} data-app-column>
       <div class="app-main" data-app-scroll-region id="app-main" tabindex="-1" use:publishScrollGutter
         inert={browserSession.recovering} style:display={browserSession.recovering ? 'none' : undefined}>
@@ -765,12 +755,11 @@
     <div class="app-strip" aria-hidden="true"></div>
 
     <div inert={browserSession.recovering} style:display={browserSession.recovering ? 'none' : 'contents'}>
-    <!-- Not while locked (security-scan ticket 08, GD-040). The lock used to
-         close the fan and leave quick add mounted, so its cards stayed in
-         the document for their fade and a tap there in the lock's first
-         frame opened the backdate sheet over the gate or queued a tally for
-         the next session. Unmounted, what is still fading is inert and goes
-         with it, and its sheets go at once. -->
+    <!-- Not while locked. The lock used to close the fan and leave quick add mounted, so
+         its cards stayed in the document for their fade and a tap there in the lock's first
+         frame opened the backdate sheet over the gate or queued a tally for the next
+         session. Unmounted, what is still fading is inert and goes with it, and its sheets
+         go at once. -->
     {#if !locked}<QuickAdd />{/if}
     {#if managersRequested && !replacesApp}
       {#await import('$lib/components/VocabularyManagerSheets.svelte') then { default: VocabularyManagerSheets }}
@@ -813,10 +802,9 @@
 </div>
 
 <style>
-  /* A toast centres in what the rail leaves, the strip the column and the
-     sheets centre in too (after-release 17). A chromeless screen
-     (/coming-back) has no rail to leave room for, and its column centres in
-     the whole width. Here rather than in components.css because .app and
+  /* A toast centres in what the rail leaves, the strip the column and the sheets centre in
+     too. A chromeless screen (/coming-back) has no rail to leave room for, and its column
+     centres in the whole width. Here rather than in components.css because .app and
      .is-chromeless are this file's own classes. */
   @container app (min-width: 1024px) {
     .app:not(.is-chromeless) :global(.toast-stack) {

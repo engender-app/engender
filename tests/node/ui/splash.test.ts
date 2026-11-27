@@ -1,6 +1,5 @@
-/* The first frame in src/app.html (phase 14 pre-release ticket 13): that it
-   says what palettes.css says, that it holds still, and that the handover
-   adds the one class the CSS reads. */
+/* The first frame in src/app.html: that it says what palettes.css says, that it holds
+   still, and that the handover adds the one class the CSS reads. */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import { SPLASH_INK, SPLASH_BEGIN, SPLASH_END, readSplashPalettes, splashBlock, sunStops } from '../../../src/lib/theme/splash.ts';
@@ -58,8 +57,7 @@ describe("the first frame is the mark's own numbers", () => {
 });
 
 describe('the first frame holds still', () => {
-  /* Alicja's pick in after-release ticket 31: the fade, on the soft
-     ease-out base.css gives the blind, over the rising edge. */
+  /* Crossfade, on the soft ease-out base.css gives the blind, over the rising edge. */
   it('has no animation, keyframes, transform or second handover: it only fades, on --ease-out-soft', () => {
     expect(handwritten).not.toMatch(/@keyframes|animation|transform\s*:|data-splash-handover/);
     expect(handwritten).toMatch(/#splash \{[^}]*transition: opacity 280ms var\(--ease-out-soft,/);
@@ -131,11 +129,10 @@ describe('the handover', () => {
     return { doc, splash, classes, documentElement, frames, play };
   }
 
-  /* After-release ticket 31. It used to start leaving when the layout
-     mounted, while boot was still working. On a first visit boot then
-     answered "set up", the layout unmounted Home and drew nothing while it
-     navigated to onboarding, so the first frame faded onto an empty ground
-     and onboarding appeared whole in one frame 0.5 s later. */
+  /* It used to start leaving when the layout mounted, while boot was still working. On a
+     first visit boot then answered "set up", the layout unmounted Home and drew nothing
+     while it navigated to onboarding, so the first frame faded onto an empty ground and
+     onboarding appeared whole in one frame 0.5 s later. */
   it('waits for boot to answer, and for the screen it answered with to be the one on show', () => {
     expect(splashMayLeave('booting', false)).toBe(false);
     expect(splashMayLeave('needs-setup', true)).toBe(false);
@@ -144,10 +141,9 @@ describe('the handover', () => {
     expect(splashMayLeave('error', false)).toBe(true);
   });
 
-  /* Alicja, on the flipbooks: "splash with crossfade". The screen waits
-     under the first frame (html[data-splash]) and fades in while the first
-     frame fades out, so nothing of the app sits at full opacity under a
-     half-transparent mark. */
+  /* The screen waits under the first frame (html[data-splash]) and fades in while the first
+     frame fades out, so nothing of the app sits at full opacity under a half-transparent
+     mark. */
   it('crossfades: once the screen has settled, it fades in with the first frame fading out, and both end together', () => {
     vi.useFakeTimers();
     const { doc, splash, classes, documentElement, play } = handoverDoc();
@@ -164,9 +160,9 @@ describe('the handover', () => {
     vi.useRealTimers();
   });
 
-  /* Ticket 08. Blink does not paint a subtree at opacity 0, and nothing
-     under an opaque layer is rastered, so at 0 under 1 the WebView met
-     every GPU pipeline the screen needs on the fade's first frame. */
+  /* Blink does not paint a subtree at opacity 0, and nothing under an opaque layer is
+     rastered, so at 0 under 1 the WebView met every GPU pipeline the screen needs on the
+     fade's first frame. */
   it('holds the screen under the first frame at a nil opacity Blink still paints, and fades it in on the same curve and length', () => {
     expect(html).toMatch(/<html [^>]*data-splash[ >]/);
     const root = handwritten.match(/html\[data-splash\] \[data-app-root\] \{\s*opacity: ([\d.]+);\s*will-change: opacity;\s*\}/);

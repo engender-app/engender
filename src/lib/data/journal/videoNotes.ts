@@ -21,7 +21,7 @@ type VideoRow = { uuid: string; file_path: string };
 export type StagedVideo = { id: string; fileName: string };
 
 /** A video note placed in time, mirroring DatedRecording. Entry-only
-    (CONTEXT: "Video note"), so unlike DatedPhoto there is no owner name to
+, so unlike DatedPhoto there is no owner name to
     carry - a note's date is always its entry's epoch day, no COALESCE. */
 interface DatedVideo extends VideoNote {
   epochDay: number;

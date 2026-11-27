@@ -33,9 +33,8 @@ function palettes() {
   for (const m of css.matchAll(/\[data-palette="([a-z]+)"\]\s*\{\s*--motif-stripes:\s*([^;]+);/g)) {
     out[m[1]] = m[2].split(',').map((s) => s.trim());
   }
-  /* `notes` is the disguised gate's neutral palette (DISGUISED_PALETTE,
-     security-scan ticket 08), not a flag: it has no mark and no launcher
-     alias, and favicon-notes.svg is the hand-drawn decoy icon, which a mark
+  /* `notes` is the disguised gate's neutral palette, not a flag: it has no mark and no
+     launcher alias, and favicon-notes.svg is the hand-drawn decoy icon, which a mark
      rendered here would overwrite. */
   delete out.notes;
   return out;
@@ -45,21 +44,18 @@ const write = (path, text) => writeFileSync(path, text.endsWith('\n') ? text : t
 
 /* ---- Android ----
 
-   An adaptive icon is a background and a foreground, and the launcher picks
-   its own mask. The background is @color/ic_launcher_background, which is
-   the white the tile is; the foreground is the whole stroked tile, laid in
-   the middle of the 108dp canvas at MARK_SAFE_TILE.
+   An adaptive icon is a background and a foreground, and the launcher picks its own mask.
+   The background is @color/ic_launcher_background, which is the white the tile is; the
+   foreground is the whole stroked tile, laid in the middle of the 108dp canvas at
+   MARK_SAFE_TILE.
 
-   Drawn small rather than full bleed because the black edge is not optional
-   (Alicja, 2026-09-21: "no stroke around the square, or its white - its
-   supposed to be black always") and a file cannot know which mask will cut
-   it. Inside the guaranteed circle the whole outline survives every mask,
-   which is the only arrangement where "always black" is true. mark.ts's
-   MARK_SAFE_TILE carries the arithmetic.
+   Drawn small rather than full bleed because the black edge is not optional and a file
+   cannot know which mask will cut it. Inside the guaranteed circle the whole outline
+   survives every mask, which is the only arrangement where "always black" is true.
+   mark.ts's MARK_SAFE_TILE carries the arithmetic.
 
-   A vector drawable rather than a PNG per density: the drawing is two to
-   seven circles, and sixteen palettes times five densities is eighty files to
-   keep in step for nothing. */
+   A vector drawable rather than a PNG per density: the drawing is two to seven circles, and
+   sixteen palettes times five densities is eighty files to keep in step for nothing. */
 const CANVAS = 108;
 const n2 = (value) => value.toFixed(2);
 

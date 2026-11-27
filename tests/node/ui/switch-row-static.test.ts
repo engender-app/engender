@@ -1,18 +1,14 @@
-/* A ListRow that holds a switch has to be static (release blockers 09,
-   accessibility audit A01).
+/* A ListRow that holds a switch has to be static (release blockers 09, accessibility).
 
-   ListRow renders a button unless it is told it is a link, a checkbox or
-   static, and Switch is a button too. A switch in the trailing slot of a
-   default row is a button inside a button: axe's nested-interactive, and a
-   row that Tab stops on twice while only one of the two stops does
-   anything. The audit found it on the onboarding disguise step; this
-   reads every screen, so a new
-   row written the old way fails here before an audit has to find it.
+   ListRow renders a button unless it is told it is a link, a checkbox or static, and Switch
+   is a button too. A switch in the trailing slot of a default row is a button inside a
+   button: axe's nested-interactive, and a row that Tab stops on twice while only one of the
+   two stops does anything. The audit found it on the onboarding disguise step; this reads
+   every screen, so a new row written the old way fails here before an audit has to find it.
 
-   A source read, because which ListRows hold a switch is a fact about the
-   templates and nothing at runtime enumerates them. The rendered half,
-   that a static row holding a switch gives Tab one stop and Space one
-   change, is in tests/browser-tier/run.mjs. */
+   A source read, because which ListRows hold a switch is a fact about the templates and
+   nothing at runtime enumerates them. The rendered half, that a static row holding a switch
+   gives Tab one stop and Space one change, is in tests/browser-tier/run.mjs. */
 
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';

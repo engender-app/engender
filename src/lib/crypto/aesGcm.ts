@@ -23,11 +23,10 @@ interface Encrypted {
   ciphertext: Uint8Array<ArrayBuffer>;
 }
 
-/** Thrown on any decryption failure - a wrong key and a corrupted file
-    fail AES-GCM's authentication tag check identically, so this class
-    can't and doesn't distinguish them. Callers show the user only "wrong
-    password" (ticket 12's acceptance), never a more specific diagnosis
-    that would help an attacker probe for corruption vs a bad guess. */
+/** Thrown on any decryption failure - a wrong key and a corrupted file fail AES-GCM's
+    authentication tag check identically, so this class can't and doesn't distinguish them.
+    Callers show the user only "wrong password", never a more specific diagnosis that would
+    help an attacker probe for corruption vs a bad guess. */
 export class DecryptionFailedError extends Error {
   constructor(cause: unknown) {
     super('wrong password');

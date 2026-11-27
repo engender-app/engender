@@ -1,8 +1,7 @@
-/* Ticket 10: the widget-picker prints each provider's description under
-   the app's real group header, disguise on or off, and nothing flips it -
-   unlike the placed widget's own header, the OS gives no disguised variant
-   here. Guards the two descriptions against the words that would give
-   the app away to anyone scrolling the picker. */
+/* The widget-picker prints each provider's description under the app's real group header,
+   disguise on or off, and nothing flips it - unlike the placed widget's own header, the OS
+   gives no disguised variant here. Guards the two descriptions against the words that would
+   give the app away to anyone scrolling the picker. */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 

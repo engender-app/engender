@@ -7,12 +7,11 @@ export type BreathingPhase = 'inhale' | 'hold-in' | 'exhale' | 'hold-out';
 /** In order, PHASE_MS each. */
 export const BOX_BREATHING_PHASES: readonly BreathingPhase[] = ['inhale', 'hold-in', 'exhale', 'hold-out'];
 
-/* One clock for everything the exercise draws (breathing ticket 01). The
-   ring, the figure and the phase word used to follow three separate CSS
-   transitions off a one-second interval, so they drifted apart and the
-   ring dropped from full to empty in a single frame at every boundary.
-   Now each frame reads one elapsed time, and every visual is a function
-   of it: nothing can disagree and nothing can jump. */
+/* One clock for everything the exercise draws. The ring, the figure and the phase word used
+   to follow three separate CSS transitions off a one-second interval, so they drifted apart
+   and the ring dropped from full to empty in a single frame at every boundary. Now each
+   frame reads one elapsed time, and every visual is a function of it: nothing can disagree
+   and nothing can jump. */
 export const PHASE_MS = 4000;
 export const CYCLE_MS = PHASE_MS * BOX_BREATHING_PHASES.length;
 

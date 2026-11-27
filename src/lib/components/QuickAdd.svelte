@@ -207,7 +207,7 @@
   }
 
   /* The wear session, and the reason it earns a slot the others would not
-     (CONTEXT: "Wear session"). Starting one writes a row with no duration
+. Starting one writes a row with no duration
      and stopping it later fills the duration in, so the moment you log it
      is the data rather than a note about when you remembered. Everything
      else in this fan can be reached a screen later at no cost; a session
@@ -355,13 +355,11 @@
     };
   }
 
-  /* The action card sits in its own `{#if}`, so a transition written
-     plainly on it never plays when the fan opens or closes: the block that
-     changed is the fan's, an ancestor (carpet 15 row 45, the card painted
-     opaque in the first frame and gone opaque in one). Global, and it picks
-     its motion by what changed. While the fan is arriving or leaving it
-     travels with the other cards; a change of availability while the fan
-     stays up discloses its height. */
+  /* The action card sits in its own `{#if}`, so a transition written plainly on it never
+     plays when the fan opens or closes: the block that changed is the fan's, an ancestor
+     (the card painted opaque in the first frame and gone opaque in one). Global, and it
+     picks its motion by what changed. While the fan is arriving or leaving it travels with
+     the other cards; a change of availability while the fan stays up discloses its height. */
   let fanSettled = false;
   $effect(() => {
     if (!ui.chooserOpen) fanSettled = false;
@@ -514,11 +512,10 @@
     };
   });
 
-  /* Focus moves in once the cards have arrived, the way a sheet's does:
-     focusing while the entrance is being set up forces a layout before its
-     keyframes attach, which ticket 115 measured as a teleport on Android.
-     Not while a press is still sliding, where focus would only chase the
-     finger, and not if Tab already went in. */
+  /* Focus moves in once the cards have arrived, the way a sheet's does: focusing while the
+     entrance is being set up forces a layout before its keyframes attach, which measured as
+     a teleport on Android. Not while a press is still sliding, where focus would only chase
+     the finger, and not if Tab already went in. */
   function focusFirstTarget() {
     if (!fanEl || ui.chooserPressing || fanEl.contains(document.activeElement)) return;
     firstFocusable(fanEl)?.focus({ preventScroll: true });
@@ -536,9 +533,8 @@
 />
 
 {#if ui.chooserOpen}
-  <!-- The scrim is the withdrawal ticket 28 built and nothing had spent yet:
-       the screen behind the fan is plainly still there and plainly not what
-       is being read. -->
+  <!-- The scrim is the withdrawal built and nothing had spent yet: the screen behind the
+       fan is plainly still there and plainly not what is being read. -->
   <div
     bind:this={scrimEl}
     class="fan-scrim scrim-withdraw"

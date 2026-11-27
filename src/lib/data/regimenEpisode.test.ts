@@ -114,7 +114,7 @@ test('a dose naming a drug that matches no active episode is ambiguous, not sile
 });
 
 test('case 4: a non-hormone oral dose alongside a concurrent estradiol episode never resolves to the estradiol episode', () => {
-  // The bug this ticket exists to close: before ticket 38, a spironolactone
+  // The bug this ticket exists to close:, a spironolactone
   // tablet logged by the same oral route as an active estradiol episode
   // resolved to that estradiol episode purely because it was the only one
   // active, and got drawn into its curve at full value.
@@ -152,7 +152,7 @@ test('attributeDrug falls back to the sole active episode, tolerates several agr
   // "nothing to attribute" case, and not the new ambiguous kind.
   assert.deepEqual(attributeDrug(none, { drug: null, timestamp }), { drug: null, ambiguous: false });
   // Two episodes actively disagreeing on the drug is the only new kind of
-  // failure ticket 38 introduces.
+  // failure introduces.
   assert.deepEqual(attributeDrug(differentDrugs, { drug: null, timestamp }), { drug: null, ambiguous: true });
   // A dose naming its own drug is never ambiguous for this question, even
   // among several active episodes disagreeing - attributeDrug takes it as-is.
@@ -299,8 +299,7 @@ test("nearestActiveEpisode scopes a pause to its own episode - one episode's pau
   assert.equal(nearestActiveEpisode(episodes, episodes, schedules, [e1PausedToday], [], 200, 30), e2);
 });
 
-/* expectedDosesOnDay: what a schedule expects on one day, with the episode
-   named (phase 11 ticket 20, audit item 12). */
+/* ExpectedDosesOnDay: what a schedule expects on one day, with the episode named. */
 
 const everyThirdDay = (episodeId: string, dosesPerDay = 1, amounts: DoseScheduleAmount[] | null = null): DoseSchedule => ({
   id: `s-${episodeId}`,

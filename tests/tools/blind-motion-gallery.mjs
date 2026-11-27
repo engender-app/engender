@@ -28,8 +28,8 @@ const PHONE = { width: 390, height: 844 };
     the edge down. */
 const CROP = { left: 0, width: 390, top: 0, height: 420 };
 
-/** Where each door's tab leads. The fourth is /more rather than /settings,
-    and its key is 'settings' anyway (ADR-0036). */
+/** Where each door's tab leads. The fourth is /more rather than /settings, and its key is
+    'settings' anyway. */
 const ROUTE = { home: '/', calendar: '/calendar', stats: '/stats', settings: '/more' };
 const tab = (key) => `[data-nav-item="${key}"]`;
 

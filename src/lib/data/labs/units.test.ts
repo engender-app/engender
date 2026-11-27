@@ -82,7 +82,7 @@ describe('labs unit conversion', () => {
     expect(raw.value).toBeCloseTo(converted.value, 4);
   });
 
-  test('prolactin is off the allowlist, so canonicalizing never relabels its unit (ticket 14)', () => {
+  test('prolactin is off the allowlist, so canonicalizing never relabels its unit', () => {
     // The trap this guards: with the factor gone but the analyte still
     // allowlisted, canonicalize would find a canonical unit, fail to
     // convert, and fall through to stamping the base unit on an
@@ -119,7 +119,7 @@ describe('the secondary value beside a native one (ADR-0026)', () => {
     expect(secondaryLabValue('testosterone', 100, 'ng/dL')?.unit).toBe('nmol/L');
   });
 
-  test('prolactin gets no secondary value: a calibration-standard factor is not a physical constant (ticket 14)', () => {
+  test('prolactin gets no secondary value: a calibration-standard factor is not a physical constant', () => {
     expect(secondaryLabValue('prolactin', 10, 'ng/mL')).toBeNull();
   });
 });

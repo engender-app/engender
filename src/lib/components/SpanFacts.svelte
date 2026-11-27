@@ -1,8 +1,7 @@
 <script lang="ts">
-  /* The rail's marks can be as small as 6px. The disclosed list supplies
-     full-width targets and exact dates for the same facts. Keep each
-     row's selection aligned with factSpan so it chooses the same span
-     as the rail. Use BatchedList for long journals (ADR-0069). */
+  /* The rail's marks can be as small as 6px. The disclosed list supplies full-width targets
+     and exact dates for the same facts. Keep each row's selection aligned with factSpan so
+     it chooses the same span as the rail. Use BatchedList for long journals. */
   import { m } from '$lib/paraglide/messages';
   import { factSpan, type RailFact, type RailFactKind, type Span } from '$lib/data/lookBackSpan';
   import { dayLabel, spanLabel } from '$lib/data/spanLabel';

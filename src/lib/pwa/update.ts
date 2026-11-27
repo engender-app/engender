@@ -12,8 +12,7 @@ import { onJournalBusyChange, journalIsBusy, prepareJournalHandover } from '../d
 /** Just enough of ServiceWorkerRegistration for this. `waiting` is read
     afresh every time rather than remembered, so the browser stays the single
     source of truth for whether a release is there. */
-/* WatchedRegistration stays exported only for its own test (AU-09 test-only
-   review). */
+/* WatchedRegistration stays exported only for its own test. */
 export interface WatchedRegistration {
   /** The release this page runs on; null until a first install activates. */
   readonly active: object | null;

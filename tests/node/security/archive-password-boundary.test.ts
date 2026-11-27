@@ -3,9 +3,9 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { deriveKey } from '../../../src/lib/crypto/argon2id.ts';
 
-/* Phase 5 security ticket 06, F-04: The archive password never reaches JavaScript.
-   The Argon2id derivation runs behind the Android bridge and hands back a single-use
-   derived key for one archive instead of the cleartext password. */
+/* F-04: The archive password never reaches JavaScript. The Argon2id derivation runs behind
+   the Android bridge and hands back a single-use derived key for one archive instead of the
+   cleartext password. */
 
 const root = new URL('../../../', import.meta.url);
 

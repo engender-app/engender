@@ -24,16 +24,16 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Ticket 19's write channel, exercised end to end through the real WebView:
- * the registration this device's WebView gets, a write landing on disk where
- * the plugin's own {@code sizeFile}/{@code directoryPath} calls can see it,
- * and a path-traversal name rejected rather than silently written somewhere
- * unexpected - the one failure mode the ticket's "watch out for" section
- * names explicitly, on the one operation the user has no other copy of.
+ * Exercise the write channel through the WebView. the registration this
+ * device's WebView gets, a write landing on disk where the plugin's own
+ * {@code sizeFile}/{@code directoryPath} calls can see it, and a
+ * path-traversal name rejected rather than silently written somewhere
+ * unexpected - the one failure mode "watch out for" section names explicitly,
+ * on the one operation the user has no other copy of.
  *
  * <p>Plain {@code evaluateJavascript} rather than a built probe bundle
- * (unlike {@code LongJournalBenchmarkTest}/{@code JournalContractTest}):
- * this only needs the WebView's own APIs and the plugins {@code MainActivity}
+ * (unlike {@code LongJournalBenchmarkTest}/{@code JournalContractTest}): this
+ * only needs the WebView's own APIs and the plugins {@code MainActivity}
  * already registers, so there is nothing here for a bundle to add.
  */
 @RunWith(AndroidJUnit4.class)
@@ -97,9 +97,9 @@ public class PhotoWriteChannelTest {
         }
     }
 
-    /* GD-010: a name with a trailing space used to be trimmed by PhotoFiles and
-       land on the real file. Both transports must now refuse it, and the
-       original bytes must be exactly as they were. */
+    /* A name with a trailing space used to be trimmed by PhotoFiles and land on the real
+       file. Both transports must now refuse it, and the original bytes must be exactly as
+       they were. */
     @Test
     public void aTrailingSpaceNameNeverReachesTheFileItTrimsTo() throws Exception {
         File original = PhotoFiles.fileFor(InstrumentationRegistry.getInstrumentation().getTargetContext(),

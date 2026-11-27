@@ -1,15 +1,13 @@
 <script lang="ts">
-  /* A currency field: the code in a button that looks like the select it
-     replaces, and the choices in the app's own picker host
-     (pickerField.svelte.ts) - a popover hung from the button on a desktop,
-     the bottom sheet on a phone. The platform's `<select>` left where its
-     list opened to the browser, and with 160 codes on Chromium that was a
-     column starting far above the field ("can the dropdown be better?
-     currently it opens very high at least on web", Alicja, 2026-11-26).
+  /* A currency field: the code in a button that looks like the select it replaces, and the
+     choices in the app's own picker host (pickerField.svelte.ts) - a popover hung from the
+     button on a desktop, the bottom sheet on a phone. The platform's `<select>` left where
+     its list opened to the browser, and with 160 codes on Chromium that was a column
+     starting far above the field.
 
-     One of the list, so every row carries a check and only the chosen one
-     shows it, the shape LockAfterChoice has. A pick closes the picker and
-     the arrow keys move between rows, the date picker's contract. */
+     One of the list, so every row carries a check and only the chosen one shows it, the
+     shape LockAfterChoice has. A pick closes the picker and the arrow keys move between
+     rows, the date picker's contract. */
   import { m } from '$lib/paraglide/messages';
   import { CURRENCY_CHOICES } from '$lib/data/cost';
   import Icon from './Icon.svelte';

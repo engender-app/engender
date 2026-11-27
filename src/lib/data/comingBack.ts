@@ -1,14 +1,11 @@
-/* Select what is waiting after time away (ADR-0039, ADR-0045).
-   Keep gaps in the journal and report available items without counting
-   missed doses, absent entries or elapsed days. A letter or milestone
-   appears before housekeeping. Ask about only the latest dose slot.
-   The layout reads this once per return, so logging it cannot promote
-   another missed slot.
+/* Select what is waiting after time away (ADR-0045). Keep gaps in the journal and report
+   available items without counting missed doses, absent entries or elapsed days. A letter
+   or milestone appears before housekeeping. Ask about only the latest dose slot. The layout
+   reads this once per return, so logging it cannot promote another missed slot.
 
-   Read existing rows and the last-write registry through
-   comingBackReads.ts. Only comingBackSeenSince records that the return
-   was shown. This selection receives today and uses no clock, journal
-   handle or localized copy, so it runs on the Node tier. */
+   Read existing rows and the last-write registry through comingBackReads.ts. Only
+   comingBackSeenSince records that the return was shown. This selection receives today and
+   uses no clock, journal handle or localized copy, so it runs on the Node tier. */
 
 import { mostRecentPassedSlot } from './doseSchedule';
 import { epochDayFromTimestamp } from './epochDay';
@@ -25,7 +22,7 @@ import type { Era, Letter, Milestone, WearKind, WearSession } from './types';
  * app and every row can be left alone.
  */
 /* RETURN_GAP_DAYS stays exported for its own test, and cross-checked in
-   comingBackReads.test.ts (AU-09 test-only review). */
+   comingBackReads.test.ts. */
 export const RETURN_GAP_DAYS = 21;
 
 /** How many rows one kind may contribute.
@@ -39,8 +36,7 @@ export const RETURN_GAP_DAYS = 21;
     Deliberately no "and four more": that is a count, and a count of what
     was waiting is one editing pass away from a count of what was
     missed. */
-/* WAITING_PER_KIND stays exported only for its own test (AU-09 test-only
-   review). */
+/* WAITING_PER_KIND stays exported only for its own test. */
 export const WAITING_PER_KIND = 3;
 
 /** One thing the journal is holding. Each arm carries only what its own
@@ -89,9 +85,8 @@ export type WaitingItem =
       doseUnit: string;
     };
 
-/** Stable item key for dismissals during this visit and for walkthrough
-    handles (ADR-0029). Combine the kind with its row ID. A dose uses its
-    slot ID because it has no row yet. */
+/** Stable item key for dismissals during this visit and for walkthrough handles. Combine
+    the kind with its row ID. A dose uses its slot ID because it has no row yet. */
 export function waitingItemKey(item: WaitingItem): string {
   switch (item.kind) {
     case 'letter':
@@ -148,7 +143,7 @@ export interface ComingBack {
     so the gap is the newest write anywhere and not any one area's. An area
     that answers null - nothing ever written there, or a deliberate opt-out
     from the registry - does not drag the gap backwards. */
-/* lastWriteDay stays exported only for its own test (AU-09 test-only review). */
+/* lastWriteDay stays exported only for its own test. */
 export function lastWriteDay(lastWrites: Partial<Record<string, number | null>>): number | null {
   let newest: number | null = null;
   for (const day of Object.values(lastWrites)) {
@@ -172,7 +167,7 @@ function newestFew<T>(items: T[], dayOf: (item: T) => number): T[] {
  * last-write registry report a recent day and hide the return moment.
  * The registry still answers correctly for its other callers.
  */
-/* PLANNED_AREAS stays exported only for its own test (AU-09 test-only review). */
+/* PLANNED_AREAS stays exported only for its own test. */
 export const PLANNED_AREAS = ['milestones', 'procedures', 'appointments'] as const;
 
 /** How far back the median looks for a write to count. "Roughly the last year": long enough to see a person's own

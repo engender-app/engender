@@ -4,7 +4,7 @@ import { test, expect } from 'vitest';
 import { scaleLean, rankByLean } from './lean.ts';
 import { BUILT_IN_PRESETS } from './vocabulary/builtins.ts';
 
-test('every built-in preset derives the lean ticket 43 expects', () => {
+test('derives the expected lean for each built-in preset', () => {
   const expected: Record<string, 'femme' | 'masc' | null> = {
     'p-fem-masc': null,
     'p-fluid': null,

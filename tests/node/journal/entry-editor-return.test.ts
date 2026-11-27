@@ -1,7 +1,6 @@
-/* Phase 14 pre-release ticket 03: the entry editor's Save keeps its own
-   accessible name, the date line clears the header, and delete and save
-   return to where the entry was opened from. Structural half; the rendered
-   half is tests/guards/entry-editor-return.mjs. */
+/* The entry editor's Save keeps its own accessible name, the date line clears the header,
+   and delete and save return to where the entry was opened from. Structural half; the
+   rendered half is tests/guards/entry-editor-return.mjs. */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';

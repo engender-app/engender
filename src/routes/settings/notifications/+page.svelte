@@ -1,13 +1,12 @@
 <script lang="ts">
-  /* Draw one RegistryRow per registered kind with separate Show and Notify
-     controls (ADR-0039). isLiveTileKind keeps Today's live tiles in the
-     Today editor. The writing prompt below the list is a single preference
-     and has no registry kind of its own.
+  /* Draw one RegistryRow per registered kind with separate Show and Notify controls.
+     isLiveTileKind keeps Today's live tiles in the Today editor. The writing prompt below
+     the list is a single preference and has no registry kind of its own.
 
-     Web keeps Show and the prompts. It omits Notify, the permission notice
-     and the notification-only cards because a closed browser cannot deliver
-     these scheduled notifications. Put the platform notice above the rows
-     to explain the controls available there. */
+     Web keeps Show and the prompts. It omits Notify, the permission notice and the
+     notification-only cards because a closed browser cannot deliver these scheduled
+     notifications. Put the platform notice above the rows to explain the controls available
+     there. */
   import { m } from '$lib/paraglide/messages';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -42,7 +41,7 @@
 
   let isWeb = $derived(!isAndroid());
   let visibleRows = $derived(isWeb ? ROWS.filter((row) => row.surface) : ROWS);
-  // No row carries both switches since FA 13, so Home switches and
+  // No row carries both switches since, so Home switches and
   // notification switches get a card each rather than a column each.
   let homeRows = $derived(visibleRows.filter((row) => row.surface));
   let notifyRows = $derived(visibleRows.filter((row) => !row.surface));
@@ -51,10 +50,9 @@
      permission, so one status/request pair covers the whole list. */
   let notifyStatus = $state<AndroidReminderStatus | 'unreadable'>({ notifications: 'not-required', exactAlarms: 'not-required' });
 
-  /* Re-read whenever the screen comes back to the front, because the way
-     out of a refusal is Android's settings screen (last-audit UI ticket 41,
-     U30). A read the bridge refuses says it could not check, rather than
-     calling notifications either on or off. */
+  /* Re-read whenever the screen comes back to the front, because the way out of a refusal
+     is Android's settings screen. A read the bridge refuses says it could not check, rather
+     than calling notifications either on or off. */
   let statusWatch: ReturnType<typeof watchStatus<AndroidReminderStatus | 'unreadable'>> | null = null;
 
   async function requestNotifications() {
@@ -121,7 +119,7 @@
      A named shape rather than an inline one, the way the registry names
      `UnpromptedRow`: the four fields travel together everywhere they go. */
   interface PromptRow {
-    /** The walkthrough's handle (ADR-0029), never the title, which is copy. */
+    /** The walkthrough's handle, never the title, which is copy. */
     key: string;
     prefKey: BooleanPrefKey;
     title: () => string;

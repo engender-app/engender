@@ -1,14 +1,13 @@
-/* What a tick says beyond its name (phase 11 UI/UX ticket 49).
+/* What a tick says beyond its name.
 
-   `annotationLabel` writes "{name}, {kind}" and stops, which tells a reader
-   that a milestone happened on the day under their finger and nothing about
-   what the milestone was. The line builder here is the second half of that
-   sentence, and every rule it follows is a rule about what a mark is allowed
-   to say: a record with nothing written behind it draws no line, and an era's own sentence replaces the pair
-   rather than joining it.
+   `annotationLabel` writes "{name}, {kind}" and stops, which tells a reader that a
+   milestone happened on the day under their finger and nothing about what the milestone
+   was. The line builder here is the second half of that sentence, and every rule it follows
+   is a rule about what a mark is allowed to say: a record with nothing written behind it
+   draws no line, and an era's own sentence replaces the pair rather than joining it.
 
-   The assertions read the text a person sees rather than the fields behind
-   it, so a kind that quietly stopped resolving its words would fail here. */
+   The assertions read the text a person sees rather than the fields behind it, so a kind
+   that quietly stopped resolving its words would fail here. */
 
 import assert from 'node:assert/strict';
 import { test, vi } from 'vitest';

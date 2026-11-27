@@ -87,9 +87,8 @@ test('spreading never runs a label off the top or bottom of the box', () => {
   }
 });
 
-/* The vowel step's own instrument (Alicja, 2026-09-04): semitones around
-   the note being held, because that step's task is keeping one pitch rather
-   than reaching one. */
+/* The vowel step's own instrument: semitones around the note being held, because that
+   step's task is keeping one pitch rather than reaching one. */
 
 test('a held note is judged on semitones around itself, not on hertz', () => {
   const axis = steadinessAxis(200);

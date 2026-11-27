@@ -295,7 +295,7 @@ test('plaintext bytes after the declared files are refused as corrupt', async ()
   }, CorruptArchiveError);
 });
 
-// Re-check carpet 11, F7: a name the file stores refuse reached the store
+// a name the file stores refuse reached the store
 // mid-restore and failed there with an untyped "invalid photo file name".
 for (const name of ['a/b.jpg', '../b.jpg', 'a\\b.jpg', '..', '   ', '']) {
   test(`a manifest naming the file ${JSON.stringify(name)} is refused before its files are read`, async () => {

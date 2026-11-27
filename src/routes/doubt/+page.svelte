@@ -1,12 +1,11 @@
 <script lang="ts">
-  /* Safe space opens on the breathing exercise with the same choices from
-     Today, the hub or an Android launch (ADR-0028). Link personal
-     support above the breath so it is reachable without starting the
-     exercise.
+  /* Safe space opens on the breathing exercise with the same choices from Today, the hub or
+     an Android launch. Link personal support above the breath so it is reachable without
+     starting the exercise.
 
-     The breath renders before SQLite answers. A bounded pool read decides
-     whether to offer Good moments, which stays absent until the read
-     finds something. Each destination owns its full reads. */
+     The breath renders before SQLite answers. A bounded pool read decides whether to offer
+     Good moments, which stays absent until the read finds something. Each destination owns
+     its full reads. */
   import { m } from '$lib/paraglide/messages';
   import BreathingExercise from '$lib/components/BreathingExercise.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -22,9 +21,8 @@
 
   const evidenceQuery = liveList((j) => j.entries.counterevidencePool(EUPHORIA_TAG_KEYS, 1));
 
-  /* The words for each way, beside the list rather than in it: the order is
-     a fact about the product and lives in the module (ADR-0016 keeps
-     paraglide out of the node tier). */
+  /* The words for each way, beside the list rather than in it: the order is a fact about
+     the product and lives in the module. */
   const WAY_COPY: Record<SafeSpaceWayKey, { title: () => string; sub?: () => string }> = {
     resources: { title: m.resources_title },
     evidence: { title: m.safe_space_counterevidence_title, sub: m.safe_space_evidence_sub }

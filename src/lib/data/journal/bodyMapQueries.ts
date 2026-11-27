@@ -46,8 +46,7 @@ const REGION_HAIR_REMOVAL_AREAS_MAP: Record<string, string[]> = {
   whole_body: [...HAIR_REMOVAL_AREAS]
 };
 
-/* linkedHairRemovalAreasForRegion stays exported only for its own test (AU-09
-   test-only review). */
+/* linkedHairRemovalAreasForRegion stays exported only for its own test. */
 export function linkedHairRemovalAreasForRegion(region: string): string[] {
   const linked = REGION_HAIR_REMOVAL_AREAS_MAP[region];
   if (linked) return linked;

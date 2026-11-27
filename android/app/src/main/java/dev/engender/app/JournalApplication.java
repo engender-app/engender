@@ -11,10 +11,9 @@ import androidx.work.WorkManager;
 public final class JournalApplication extends Application implements Configuration.Provider {
     private static volatile long schedulingFailureAt;
 
-    /** Whatever process starts the app (a scheduled backup, an alarm, a
-        widget) clears a camera capture a killed process left behind, not
-        only the activity's plugin (GD-012): the plaintext JPEG is on disk
-        only while the camera holds it. */
+    /** Whatever process starts the app (a scheduled backup, an alarm, a widget) clears a
+        camera capture a killed process left behind, not only the activity's plugin: the
+        plaintext JPEG is on disk only while the camera holds it. */
     @Override public void onCreate() {
         super.onCreate();
         dev.engender.app.photos.CameraCapture.cancel(this);

@@ -1,6 +1,5 @@
-/* The wording a dose row's trailing attribution uses (audit U8, ticket 17).
-   Whether the row shows it at all is `showAttributionLabel`'s question,
-   tested with the rest of regimenEpisode. */
+/* The wording a dose row's trailing attribution uses. Whether the row shows it at all is
+   `showAttributionLabel`'s question, tested with the rest of regimenEpisode. */
 
 import assert from 'node:assert/strict';
 import { test, vi } from 'vitest';
@@ -47,9 +46,9 @@ test('the three attribution states each have their own wording', () => {
   );
 });
 
-/* Audit U50: the Polish regimen row read "50 mg ·
-   Doustnie · daily · lut 2026 do trwa" - the stored interval went out raw,
-   and the ongoing word was dropped into the end of a from-to sentence. */
+/* the Polish regimen row read "50 mg · Doustnie · daily · lut 2026 do trwa" - the stored
+   interval went out raw, and the ongoing word was dropped into the end of a from-to
+   sentence. */
 test('the interval values the app itself stores read in the reader\'s language', () => {
   inLocale('pl', () => {
     assert.equal(regimenIntervalLabel('daily'), 'codziennie');

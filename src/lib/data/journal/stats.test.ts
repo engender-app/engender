@@ -43,7 +43,7 @@ test('one metric, one number: every aggregate reports mood on the 1-to-5 range i
   assert.equal(recap.averageMood, 3);
 });
 
-test('a trashed entry is invisible everywhere in stats (phase 5 ticket 19)', async () => {
+test('a trashed entry is invisible everywhere in stats', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.entries.upsertEntry({ epochDay: 100, mood: 4, tags: ['e-happy'] });
   const trashed = await journal.entries.upsertEntry({ epochDay: 101, mood: 5, tags: ['e-happy'] });
@@ -102,7 +102,7 @@ test('an entry without the metric contributes nothing, and neither does a day ou
   );
 });
 
-/* the day's spread (phase 6 unprompted ticket 11) */
+/* The day's spread */
 
 test('a day reports the lowest and the highest of what was logged on it', async () => {
   const { journal } = await journalWithBuiltIns();
@@ -179,10 +179,9 @@ test('the spread agrees with the average about which days and which entries coun
 });
 
 test('a day reports its earliest and latest reading, which is not its lowest and highest', async () => {
-  /* The calendar splits a two-reading day chronologically (Alicja,
-     2026-09-02), so the read has to answer "which came first" separately
-     from "which was smaller" - and a day that went from good to bad is
-     exactly where the two answers come apart. */
+  /* The calendar splits a two-reading day chronologically, so the read has to answer "which
+     came first" separately from "which was smaller" - and a day that went from good to bad
+     is exactly where the two answers come apart. */
   const { journal } = await journalWithBuiltIns();
   await journal.entries.upsertEntry({ epochDay: 100, timestamp: startOfDayTimestamp(100) + 3600000, mood: 5 });
   await journal.entries.upsertEntry({ epochDay: 100, timestamp: startOfDayTimestamp(100) + 7200000, mood: 2 });
@@ -285,7 +284,7 @@ test('a region nothing was ever logged against comes back empty rather than thro
   assert.deepEqual(await journal.stats.bodyRegionTrend('genitals', 'dysphoria', 100, 100), []);
 });
 
-test('a body-region trend filters by presentation, and partitions the unfiltered view (ADR-0048, ticket 18)', async () => {
+test('a body-region trend filters by presentation, and partitions the unfiltered view (ADR-0048)', async () => {
   const { journal } = await journalWithBuiltIns();
   const girl = await journal.presentations.addPresentation('Girl mode', 0);
   const boy = await journal.presentations.addPresentation('Boy mode', 1);
@@ -568,9 +567,8 @@ test("a milestone's photo is a highlight too, and a photo outside the range is n
   ]);
 });
 
-/* A photo moved to another day (the library's "this was taken on") belongs
-   to that day's period, the same way the library itself files it
-   (after-release 27, audit L01-08). */
+/* A photo moved to another day (the library's "this was taken on") belongs to that day's
+   period, the same way the library itself files it. */
 test('a photo with a day override counts in the period of its override, not of its entry', async () => {
   const { journal } = await journalWithBuiltIns();
   const before = await journal.entries.upsertEntry({ epochDay: 50, mood: 3 });
@@ -671,9 +669,8 @@ test('entryCountsByDay over a range with nothing in it is empty', async () => {
   assert.deepEqual(await journal.stats.entryCountsByDay(200, 230), []);
 });
 
-/* On-this-day's good-day rule (ticket 03, CONTEXT: Good day): a day average
-   mood at or above the mood scale's midpoint, a euphoria capture, or
-   either - and nothing else ever qualifies a day. */
+/* On-this-day's good-day rule: a day average mood at or above the mood scale's midpoint, a
+   euphoria capture, or either - and nothing else ever qualifies a day. */
 
 test('a day averaging at or above the mood midpoint is a good day', async () => {
   const { journal } = await journalWithBuiltIns();
@@ -711,7 +708,7 @@ test('a trashed entry\'s body-region euphoria does not make a day good', async (
 });
 
 test('a body region logged with high euphoria makes a day good, with no euphoria tag at all', async () => {
-  // The case ticket 44 was found by: someone whose good day shows up as a
+  // Someone whose good day shows up as a
   // high euphoria on a body region and never a tag.
   const { journal } = await journalWithBuiltIns();
   await journal.entries.upsertEntry({
@@ -777,7 +774,7 @@ test('a euphoria capture on one of several entries is enough, even with a low da
   assert.equal(await journal.stats.isGoodDay(100), true);
 });
 
-// The case ticket 32 was found by: someone whose euphoria is entirely
+// Someone whose euphoria is entirely
 // social or body-specific tags g-soc-eu/g-body-eu faithfully for months
 // and the general g-euphoria tag never once. Neither is the general tag,
 // so the bar must clear on either alone.
@@ -800,7 +797,7 @@ test('a day with nothing logged on it is not a good day', async () => {
   assert.equal(await journal.stats.isGoodDay(100), false);
 });
 
-test('the constellation reads one row per entry that carries both scales (ticket 19)', async () => {
+test('the constellation reads one row per entry that carries both scales', async () => {
   const { journal } = await journalWithBuiltIns();
   const girl = await journal.presentations.addPresentation('Girl mode', 0);
 
@@ -864,7 +861,7 @@ test('a constellation axis naming no scale plots nothing', async () => {
   assert.deepEqual(await journal.stats.constellationReadings('femininity', 'nope', 100, 100), []);
 });
 
-// The plane offers only pairs it can draw (bug session 18, item 41): a pair
+// The plane offers only pairs it can draw: a pair
 // of scales no entry carries together in the range is not a choice.
 test('constellationPairs counts the entries carrying each pair of scales in the range', async () => {
   const { journal } = await journalWithBuiltIns();
@@ -881,7 +878,7 @@ test('constellationPairs counts the entries carrying each pair of scales in the 
   assert.deepEqual(await journal.stats.constellationPairs(102, 110), []);
 });
 
-test('presentationDays names the distinct days a presentation was logged under, and only those (ticket 17, ADR-0048)', async () => {
+test('presentationDays names the distinct days a presentation was logged under, and only those (ADR-0048)', async () => {
   const { journal } = await journalWithBuiltIns();
   const girl = await journal.presentations.addPresentation('Girl mode', 0);
   const boy = await journal.presentations.addPresentation('Boy mode', 1);
@@ -916,7 +913,7 @@ test('a presentation with no days in the range answers with none, not an error',
   assert.deepEqual(await journal.stats.presentationDays(girl.id, 100, 100), []);
 });
 
-test('tagShare counts every tag, uncapped, so a ring can be a ring of the whole (phase 8 UX ticket 03)', async () => {
+test('tagShare counts every tag, uncapped, so a ring can be a ring of the whole', async () => {
   const { journal } = await journalWithBuiltIns();
   /* Four distinct tags, so the recap's own LIMIT 3 would drop one. That drop
      is the whole reason this read exists: a parts-of-a-whole form computes
@@ -964,10 +961,9 @@ test('tagShare is bounded by its range at both ends', async () => {
   assert.deepEqual(await journal.stats.tagShare(100, 101), [{ id: 'e-tired', count: 2 }]);
 });
 
-/* Functional audit ticket 12: the share ring on Tags has an "on good days"
-   filter, and a good day here is the same bar on-this-day holds a day to
-   (CONTEXT: Good day) - checked day by day against isGoodDay so the two can
-   never disagree. */
+/* The share ring on Tags has an "on good days" filter, and a good day here is the same bar
+   on-this-day holds a day to - checked day by day against isGoodDay so the two can never
+   disagree. */
 test('tagShare on good days counts only the days that clear the good-day bar', async () => {
   const { journal } = await journalWithBuiltIns();
   // 100: mood average 4, good. 101: mood 1, not good. 102: mood 1 but a

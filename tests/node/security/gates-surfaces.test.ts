@@ -1,16 +1,15 @@
-/* The rules the chromeless screens keep after the rebuild, at the level their source can be held to.
+/* The rules the chromeless screens keep after the rebuild, at the level their source can be
+   held to.
 
-   What makes them right is mostly proportion and copy, which an eye and the
-   walkthrough settle between them. What is left is mechanical, and every
-   one of these is something a later ticket could quietly put back: a sixth
-   copy of the gate frame, a shadow on a screen the redesign gave no
-   shadows, a journal read on a screen that renders before the journal is
-   open, or the flag showing on a screen someone reached while disguised.
+   What makes them right is mostly proportion and copy, which an eye and the walkthrough
+   settle between them. What is left is mechanical, and every one of these is something a
+   later ticket could quietly put back: a sixth copy of the gate frame, a shadow on a screen
+   the redesign gave no shadows, a journal read on a screen that renders before the journal
+   is open, or the flag showing on a screen someone reached while disguised.
 
-   All of those are greps because all of them are negatives: a screen may
-   not draw this, may not import that. There is nothing to call. The one
-   rule these screens do state - which steps onboarding offers - is
-   asserted by calling onboardingSteps, which is the shape ticket 08 asks
+   All of those are greps because all of them are negatives: a screen may not draw this, may
+   not import that. There is nothing to call. The one rule these screens do state - which
+   steps onboarding offers - is asserted by calling onboardingSteps, which is the shape asks
    every rule to take. */
 
 import { readFileSync } from 'node:fs';
@@ -40,10 +39,10 @@ function ruleBody(css: string, prelude: string): string {
   return css.slice(at, css.indexOf('\n}', at));
 }
 
-/* Ticket 53 split LockScreen and PassphraseGate into three: the boot gate,
-   the mid-session one, and the setup module the first of them renders. The
-   module is not in this list because it is not a gate - it draws inside one,
-   and its frame is whichever gate or settings card mounted it. */
+/* Split LockScreen and PassphraseGate into three: the boot gate, the mid-session one, and
+   the setup module the first of them renders. The module is not in this list because it is
+   not a gate - it draws inside one, and its frame is whichever gate or settings card
+   mounted it. */
 const GATES = [
   'src/lib/components/SessionUnlock.svelte',
   'src/lib/components/JournalGate.svelte',
@@ -85,9 +84,9 @@ describe('the gates are one object, not six copies of one', () => {
   });
 
   it('keeps the classes the screens outside this ticket still use', () => {
-    /* .ob-text, .ob-dot and .ob-actions belong to recap and two settings
-       screens, which ticket 25 owns. Deleting them with the rest of the
-       onboarding vocabulary is the tempting mistake here. */
+    /* Ob-text,.ob-dot and .ob-actions belong to recap and two settings screens, which owns.
+       Deleting them with the rest of the onboarding vocabulary is the tempting mistake
+       here. */
     const screens = read('src/lib/styles/screens.css');
     for (const kept of ['.ob-text', '.ob-dot', '.ob-actions', '.recap-progress']) {
       expect(screens, kept).toContain(kept);
@@ -105,18 +104,16 @@ describe('what a gate may show', () => {
   });
 
   it('draws the sun only through the shell, and never names the app except through the wordmark', () => {
-    /* Tester-report-02 ticket 07 moved the line. A gate used to draw no flag
-       at all: the field was the flag's second colour and nothing more. An
-       unlock now carries Today's sun on its field, so the rule is where the
-       sun may come from - GateScreen alone, behind $lib/theme/gateFlag's
-       decision, which answers no under disguise or on a gate that is not an
-       unlock. No gate reaches for the sun, the stripes or the mark itself.
+    /* Moved the line. A gate used to draw no flag at all: the field was the flag's second
+       colour and nothing more. An unlock now carries Today's sun on its field, so the rule
+       is where the sun may come from - GateScreen alone, behind $lib/theme/gateFlag's
+       decision, which answers no under disguise or on a gate that is not an unlock. No gate
+       reaches for the sun, the stripes or the mark itself.
 
-       The app's name is the other half. Rule 15 makes the wordmark the
-       title of every unlock, painted or not, so "names the app nowhere" is
-       not the rule; the rule is that it may only be named through
-       `appWordmark`, which is what turns it into the decoy's name under
-       disguise. A raw `m.app_name()` on a lock screen shows the real name to
+       The app's name is the other half. Rule 15 makes the wordmark the title of every
+       unlock, painted or not, so "names the app nowhere" is not the rule; the rule is that
+       it may only be named through `appWordmark`, which is what turns it into the decoy's
+       name under disguise. A raw `m.app_name()` on a lock screen shows the real name to
        exactly the person the disguise exists for. */
     for (const path of GATES) {
       /* Comments out first, so this rule can be argued for in prose beside
@@ -164,13 +161,11 @@ describe('what a gate may show', () => {
   });
 
   it('draws one pad, in setup and at every gate', () => {
-    /* Redesign ticket 34's own acceptance: "the pad is one component and one
-       drawing across setup and the gates". It was already one component -
-       ticket 53 extracted it when the PIN got three jobs - and the thing that
-       could quietly stop being true is the drawing: a second `.pin-key` or
-       `.pin-dot` rule in a screen's own block, or a mount that reaches for
-       something other than PinPad. Both are greps because both are
-       negatives. */
+    /* Own acceptance: "the pad is one component and one drawing across setup and the
+       gates". It was already one component - extracted it when the PIN got three jobs - and
+       the thing that could quietly stop being true is the drawing: a second `.pin-key` or
+       `.pin-dot` rule in a screen's own block, or a mount that reaches for something other
+       than PinPad. Both are greps because both are negatives. */
     const mounts = ['src/lib/components/PinEntry.svelte', 'src/lib/components/AccessModeSetup.svelte'];
     for (const path of mounts) {
       expect(read(path), path).toContain("import PinPad from './PinPad.svelte'");
@@ -233,7 +228,7 @@ describe('what a gate may show', () => {
 
 describe('the first run', () => {
   it('asks about genital and sexual changes as two rows and writes each category from its own answer', () => {
-    // Pre-release-human 12: one 'genital_sexual' switch became two.
+    // One 'genital_sexual' switch became two.
     expect(onboarding).not.toContain('genital_sexual');
     expect(onboardingMarkup).toContain('key="feature-genital-effects"');
     expect(onboardingMarkup).toContain('key="feature-sexual-effects"');
@@ -276,14 +271,12 @@ describe('the first run', () => {
   });
 
   it('applies the disguise through the module that orders it, never inline', () => {
-    /* Ticket 32. The route may hold the answer and may supply the four
-       steps, but the sequence - write, flush, disguise, leave - is
-       onboarding/complete.ts's, where the Node tier can hold it to the
-       order. An assignment to prefs.disguise anywhere in this file that is
-       not the durable one handed to completeSetup is the defect this
-       catches: on Android it flips the launcher alias and kills the
-       process, so writing it early ends the first run rather than the
-       step. */
+    /* The route may hold the answer and may supply the four steps, but the sequence -
+       write, flush, disguise, leave - is onboarding/complete.ts's, where the Node tier can
+       hold it to the order. An assignment to prefs.disguise anywhere in this file that is
+       not the durable one handed to completeSetup is the defect this catches: on Android it
+       flips the launcher alias and kills the process, so writing it early ends the first
+       run rather than the step. */
     expect(onboarding).toContain('completeSetup({');
     expect(onboarding).toContain("setPreferenceDurably('disguise', true)");
     expect(onboarding.match(/prefs\.disguise\s*=/g) ?? []).toHaveLength(0);
@@ -304,10 +297,9 @@ describe('the first run', () => {
   });
 
   it('offers one flow whatever disguise says, and reads it off the model', () => {
-    /* ADR-0079: the flag step used to leave the flow under disguise, which
-       guarded a state no real install can reach. One list now, and the
-       route still asks steps.ts for it rather than counting for itself,
-       which is what keeps a change to the list correct everywhere at
+    /* The flag step used to leave the flow under disguise, which guarded a state no real
+       install can reach. One list now, and the route still asks steps.ts for it rather than
+       counting for itself, which is what keeps a change to the list correct everywhere at
        once. */
     expect(onboardingSteps.length).toBe(0);
     expect(onboardingSteps()).toContain('flag');
@@ -317,10 +309,8 @@ describe('the first run', () => {
   });
 
   it('counts its steps for a screen reader on the sun, not on a rail', () => {
-    /* Ticket 29: the sun is the only progress meter. The step count is its
-       accessible name rather than visible text, so the growing circle still
-       says which step this is. Ticket 33 moved the sun inside the field's
-       own paint, where the moving edge clips it. */
+    /* The sun is the only progress meter. The step count is its accessible name rather than
+       visible text. The field clips the sun as its edge moves. */
     expect(onboardingMarkup).not.toContain('role="progressbar"');
     expect(onboardingMarkup).toMatch(
       /class="setup-sun"[\s\S]*?role="img"[\s\S]*?aria-label=\{m\.ob_step_of/

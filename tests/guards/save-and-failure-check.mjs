@@ -1,11 +1,10 @@
-/* After-release ticket 06: every save says it worked, every failure says so,
-   and a double tap writes once. One check per class of save rather than one
-   per screen: a save that leaves
-   the screen (a reminder), surgery's notes, and Today's acknowledgement of
-   an entry saved today. Then the eight action sites UI 17 brought under
-   the same rule, each failing once and then double tapped while held. Failures come from a journal operation replaced in
-   the page with one that rejects, the same seam letter-composition-check
-   uses; nothing may end as an unhandled rejection. */
+/* Every save says it worked, every failure says so, and a double tap writes once. One check
+   per class of save rather than one per screen: a save that leaves the screen (a reminder),
+   surgery's notes, and Today's acknowledgement of an entry saved today. Then the eight
+   action sites UI 17 brought under the same rule, each failing once and then double tapped
+   while held. Failures come from a journal operation replaced in the page with one that
+   rejects, the same seam letter-composition-check uses; nothing may end as an unhandled
+   rejection. */
 import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { createServer } from 'vite';
@@ -81,9 +80,8 @@ async function doubleTapWhilePending(button, field) {
   return before;
 }
 
-/* UI ticket 17: the action sites after-release 06 missed. A rejected write
-   says the catalogued failure and leaves the control ready for a retry; a
-   held write plus a second tap then admits one write. */
+/* UI the acti missed. A rejected write says the catalogued failure and leaves the control
+   ready for a retry; a held write plus a second tap then admits one write. */
 async function failsThenRetries(button, kept) {
   // Only a toast raised by this tap counts, not one still up from before.
   await page.evaluate(() => document.querySelectorAll('[data-toast]').forEach((t) => t.setAttribute('data-seen', '')));

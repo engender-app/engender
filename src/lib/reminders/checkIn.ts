@@ -1,16 +1,13 @@
-/* The daily check-in's rule (CONTEXT: "Check-in"; functional audit ticket
-   08). Fires once a day at a wall-clock time, skips a day that already has
-   an entry, and stays silent through `pausedThroughEpochDay` when the person
+/* The daily check-in's rule. Fires once a day at a wall-clock time, skips a day that
+   already has an entry, and stays silent through `pausedThroughEpochDay` when the person
    paused it: the day after is the first one it may fire on again.
 
-   What schedules the alarm is ReminderPlanner.nextCheckIn in Java, which
-   runs before any WebView exists and cannot import this file. This side
-   answers the same question for the reminders screen, which says when a
-   paused check-in comes back. The two are held to the same answers by
-   src/lib/android/fixtures/check-in-rule.json, which both suites iterate
-   (ADR-0028's shape, the one reminderRule.ts follows). Quiet hours are not
-   applied here: QuietHours.java holds the delivery, and the screen names
-   the day, not the minute it lands. */
+   What schedules the alarm is ReminderPlanner.nextCheckIn in Java, which runs before any
+   WebView exists and cannot import this file. This side answers the same question for the
+   reminders screen, which says when a paused check-in comes back. The two are held to the
+   same answers by src/lib/android/fixtures/check-in-rule.json, which both suites iterate
+   (the one reminderRule.ts follows). Quiet hours are not applied here: QuietHours.java
+   holds the delivery, and the screen names the day, not the minute it lands. */
 
 import { epochDayFromLocalDate, timestampAtLocalTime } from '../data/epochDay';
 

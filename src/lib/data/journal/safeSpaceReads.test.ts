@@ -1,18 +1,15 @@
-/* Safe Space's read-only contract, held across every source the screen now
-   draws from (phase 5 deepening ticket 14, ADR-0037, CONTEXT: "Safe space").
+/* Safe Space's read-only contract, held across every source the screen now draws from
+   (ADR-0037).
 
-   ADR-0037 made opening this screen write nothing, and ticket 52 built the
-   dashboard on that promise. This ticket adds three more reads (letters,
-   starred photos, and later a voice benchmark) beside the pool, the entry
-   count and the day averages the screen already
-   read - every one of them a place a future edit could slip in a write
-   without the screen itself changing shape. So the contract is pinned
-   here at the driver, on every read `src/routes/doubt/+page.svelte`
+   ADR-0037 made opening this screen write nothing, and built the dashboard on that promise.
+   adds three more reads (letters, starred photos, and later a voice benchmark) beside the
+   pool, the entry count and the day averages the screen already read - every one of them a
+   place a future edit could slip in a write without the screen itself changing shape. So
+   the contract is pinned here at the driver, on every read `src/routes/doubt/+page.svelte`
    performs on mount, rather than trusted to a re-reading of the diff.
 
-   Phase 6 ticket 14 adds a fourth: the comfort list's own `getItems`,
-   held to the same promise the ticket itself states outright ("opening a
-   Safe space must not write anything"). */
+   Adds a fourth: the comfort list's own `getItems`, held to the same promise itself states
+   outright ("opening a Safe space must not write anything"). */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

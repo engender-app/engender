@@ -35,10 +35,10 @@ interface BenchmarkTake {
 }
 
 export interface TakeSession {
-  /** What this take is being recorded through, read off the track the
-      moment it opened (audio/captureChain.ts, ticket 28). Here rather than
-      on the finished take because it is a fact about the open microphone,
-      and `getSettings()` is only answerable while the track is live. */
+  /** What this take is being recorded through, read off the track the moment it opened
+      (audio/captureChain.ts). Here rather than on the finished take because it is a fact
+      about the open microphone, and `getSettings()` is only answerable while the track is
+      live. */
   readonly captureChain: string;
   /** The gate's live reading. */
   read(): QualityReport;

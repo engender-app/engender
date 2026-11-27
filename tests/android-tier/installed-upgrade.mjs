@@ -99,10 +99,10 @@ async function connect() {
   throw new Error('Installed-upgrade WebView did not become available');
 }
 async function launch() {
-  /* The component is resolved rather than named: the launch runs on both
-     APKs, and the launcher aliases were renamed between them (FA 43). Not
-     `am start -c LAUNCHER -p`, which resolves with MATCH_DEFAULT_ONLY and
-     so never finds a launcher filter, which has no DEFAULT category. */
+  /* The component is resolved rather than named: the launch runs on both APKs, and the
+     launcher aliases were renamed between them. Not `am start -c LAUNCHER -p`, which
+     resolves with MATCH_DEFAULT_ONLY and so never finds a launcher filter, which has no
+     DEFAULT category. */
   const component = device('shell', 'cmd', 'package', 'resolve-activity', '--brief', '-c', 'android.intent.category.LAUNCHER', packageId)
     .trim().split(/\r?\n/).at(-1);
   if (!component?.startsWith(`${packageId}/`)) throw new Error(`No launcher activity for ${packageId}: ${component}`);
@@ -112,10 +112,9 @@ async function launch() {
 async function unlock(page, failure = false) {
   await page.locator('[data-key="2"], [data-nav-item="home"], [data-rail-item="home"]').first().waitFor({ state: 'attached' });
   if (await page.locator('[data-key="2"]').count()) for (const digit of '2468') await page.locator(`[data-key="${digit}"]`).click();
-  /* Ready, not home: the nav is attached while data-boot is still
-     "booting", and a snapshot taken then read a half-migrated schema
-     (re-check carpet 06, finding 1: user_version 88 with provider present
-     and deletion absent). */
+  /* Ready, not home: the nav is attached while data-boot is still "booting", and a snapshot
+     taken then read a half-migrated schema (finding 1: user_version 88 with provider
+     present and deletion absent). */
   await page.locator(failure ? '[data-boot-failure]' : '[data-app-root][data-boot="ready"]').first().waitFor({ state: 'attached' });
 }
 async function snapshot(page) {

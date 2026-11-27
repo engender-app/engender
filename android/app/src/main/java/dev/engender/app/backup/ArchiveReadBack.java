@@ -12,13 +12,13 @@ import javax.crypto.spec.SecretKeySpec;
 import org.json.JSONObject;
 
 /**
- * Opens a written archive with the saved backup password, every chunk of it
- * (FA 56). The container is src/lib/data/archive/container.ts: "GDIARY", a
- * u16 format version, a u32 header length, the header JSON, then AES-256-GCM
- * chunks of nonce, ciphertext and tag, each authenticated against the header
- * bytes followed by its big-endian u32 index. A wrong password, a damaged
- * chunk, a truncated file and trailing bytes all fail here, which a byte
- * comparison with what was meant to be written cannot see.
+ * Opens a written archive with the saved backup password, every chunk of it.
+ * The container is src/lib/data/archive/container.ts: "GDIARY", a u16 format
+ * version, a u32 header length, the header JSON, then AES-256-GCM chunks of
+ * nonce, ciphertext and tag, each authenticated against the header bytes
+ * followed by its big-endian u32 index. A wrong password, a damaged chunk, a
+ * truncated file and trailing bytes all fail here, which a byte comparison
+ * with what was meant to be written cannot see.
  *
  * <p>The key is derived from the header's own KDF parameters, bounded by the
  * archive ceiling (ARCHIVE_ARGON2_MAX_PARAMS in src/lib/crypto/params.ts),

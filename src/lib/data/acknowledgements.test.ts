@@ -139,7 +139,7 @@ describe('moving the plaintext keys on first unlock', () => {
     expect(foldLegacyAcknowledgements(NO_ACKNOWLEDGEMENTS, storage, storage.keys())).toEqual(NO_ACKNOWLEDGEMENTS);
   });
 
-  /* Security-scan ticket 08 (GD-035, GD-041). */
+
   it('moves the stock notice snooze, under either of its names, to the stock-notice tile', async () => {
     const storage = new MemoryStorage({
       'engender-stock-notice-snooze-until': String(NOW + 3000),

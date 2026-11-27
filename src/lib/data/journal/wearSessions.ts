@@ -54,10 +54,9 @@ export interface WearSessionsArea {
       wear sheet's blank draft, and quick add's one-tap start, which has no
       picker to offer at all. */
   latestKind(): Promise<WearKind | null>;
-  /** The day the most recent session started, at or before `todayEpochDay`,
-      or null if there is none (phase 8 features ticket 03, lastWrite.ts).
-      The table stores a `start_timestamp`, not an `epoch_day`, the same
-      timestamp-bound reasoning doses.ts's own version gives. */
+  /** The day the most recent session started, at or before `todayEpochDay`, or null if
+      there is none (lastWrite.ts). The table stores a `start_timestamp`, not an
+      `epoch_day`, the same timestamp-bound reasoning doses.ts's own version gives. */
   lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
   /** Returns the session's id. Updating an unknown id throws. */
   upsertSession(input: WearSessionInput): Promise<string>;
@@ -105,8 +104,7 @@ export const WEAR_KINDS: readonly WearKind[] = ['binder', 'tucking', 'compressio
     binding's four and is already exceeded by 44.8% of daily tuckers (Malik
     et al. 2024), and no source of any kind gives a compression figure, so
     neither kind gets a threshold rather than getting a borrowed one. */
-/* BINDER_CUE_HOURS stays exported only for its own test (AU-09 test-only
-   review). */
+/* BINDER_CUE_HOURS stays exported only for its own test. */
 export const BINDER_CUE_HOURS = 8;
 
 /** The day the wear screen's safety facts (wearLabels.ts) and the figure
@@ -148,10 +146,9 @@ export function hoursMinutesSecondsOf(ms: number): { hours: number; minutes: num
   return { hours, minutes, seconds };
 }
 
-/** Where this session's reminder marks which session it belongs to -
-    `feature:id`, the same shape stock.ts's own marker has. Both live in
-    autoSource.ts now, since phase 6 ticket 04 gave the registry a switch
-    that has to recognise this subset. */
+/** Where this session's reminder marks which session it belongs to - `feature:id`, the same
+    shape stock.ts's own marker has. Both live in autoSource.ts now gave the registry a
+    switch that has to recognise this subset. */
 const autoSourceFor = wearAutoSource;
 
 /** A one-off Reminder rule for `hours` after `startTimestamp`, as the local

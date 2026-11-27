@@ -1,9 +1,7 @@
-/* Query-plan assertions for phase 8 audit ticket 18's five indexes and the
-   entriesWithTag join rewrite - proof the planner actually uses what v68
-   adds, since a passing timing budget can't tell an index seek from a scan
-   that happened to be fast on a small fixture (the ticket's own discipline:
-   assert the plan, not the timing). Part of the Node tier; run with
-   `npm test`. */
+/* Query-plan assertions for five indexes and the entriesWithTag join rewrite - proof the
+   planner actually uses what v68 adds, since a passing timing budget can't tell an index
+   seek from a scan that happened to be fast on a small fixture (own discipline: assert the
+   plan, not the timing). Part of the Node tier; run with `npm test`. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

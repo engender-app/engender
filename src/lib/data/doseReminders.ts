@@ -1,13 +1,11 @@
-/* Which reminders a dose schedule stands for (functional audit ticket 21,
-   CONTEXT: "Dose reminder"). Pure, and kept above the journal seam beside
-   doseSchedule.ts: what rule a rhythm becomes, and which existing reminder
-   is about which drug, are questions about values rather than rows.
+/* Which reminders a dose schedule stands for. Pure, and kept above the journal seam beside
+   doseSchedule.ts: what rule a rhythm becomes, and which existing reminder is about which
+   drug, are questions about values rather than rows.
 
-   A schedule's reminder times are not stored on the schedule. They live on
-   the reminders themselves, each marked `dose:<episodeId>` (autoSource.ts),
-   so the reminders the Android scheduler already reads are the only copy:
-   nothing has to be kept in step with a second list of times. The rhythm
-   comes from the schedule every time it is written. */
+   A schedule's reminder times are not stored on the schedule. They live on the reminders
+   themselves, each marked `dose:<episodeId>` (autoSource.ts), so the reminders the Android
+   scheduler already reads are the only copy: nothing has to be kept in step with a second
+   list of times. The rhythm comes from the schedule every time it is written. */
 
 import { sameDrug } from './regimenEpisode';
 import { weekdayOfEpochDay } from './epochDay';
@@ -83,14 +81,12 @@ export function reminderTimesOf(reminders: readonly Pick<Reminder, 'time'>[]): s
   return [...new Set(reminders.map((reminder) => reminder.time))].sort();
 }
 
-/** Whether a reminder made before reminders could name a drug is this
-    drug's: it names no drug and is titled with the drug's name and nothing
-    else. These are what a schedule's first reminders replace, so nothing
-    rings twice for one dose. A title that merely contains the name
-    ("Progesterone refill") is left alone, and so is any reminder that names
-    a drug: it was made with functional audit ticket 20's picker, or taken
-    over from a schedule in the reminders editor, and either is the
-    person's own decision to keep. */
+/** Whether a reminder made before reminders could name a drug is this drug's: it names no
+    drug and is titled with the drug's name and nothing else. These are what a schedule's
+    first reminders replace, so nothing rings twice for one dose. A title that merely
+    contains the name ("Progesterone refill") is left alone, and so is any reminder that
+    names a drug: it was made picker, or taken over from a schedule in the reminders editor,
+    and either is the person's own decision to keep. */
 export function isHandMadeReminderFor(reminder: Reminder, drug: string): boolean {
   return reminder.autoSource === null && reminder.drug === null && sameDrug(reminder.title, drug);
 }

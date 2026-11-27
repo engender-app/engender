@@ -110,9 +110,8 @@ describe('what a day is drawn as on the calendar', () => {
   });
 
   it('splits a day of three or more readings on its first and last', () => {
-    /* Ticket 280: the split replaces the stack. Whatever happened in the
-       middle, the two halves are the day's two ends in time, which is what
-       the two-reading split already drew. */
+    /* The split replaces the stack. Whatever happened in the middle, the two halves are the
+       day's two ends in time, which is what the two-reading split already drew. */
     expect(dayShape(day(1, 3, 5), moodStep)).toEqual({ kind: 'split', first: 1, last: 5 });
     expect(dayShape(day(2, 3, 4, 5), moodStep)).toEqual({ kind: 'split', first: 2, last: 5 });
     expect(dayShape(day(90, 10, 40, 60), onRamp(FEMININITY))).toEqual({ kind: 'split', first: 4, last: 3 });
@@ -137,10 +136,9 @@ describe('what a day is drawn as on the calendar', () => {
   });
 
   it('puts the earlier reading on the left even when it is the higher one', () => {
-    /* The split is chronological (Alicja, 2026-09-02), so a day that went
-       from good to bad and a day that went from bad to good are not the
-       same picture. This is the assertion that would still pass if the
-       halves were ordered by size, which is what it exists to stop. */
+    /* The split is chronological, so a day that went from good to bad and a day that went
+       from bad to good are not the same picture. This is the assertion that would still
+       pass if the halves were ordered by size, which is what it exists to stop. */
     expect(dayShape(day(5, 2), moodStep)).toEqual({ kind: 'split', first: 5, last: 2 });
     expect(dayShape(day(2, 5), moodStep)).toEqual({ kind: 'split', first: 2, last: 5 });
   });

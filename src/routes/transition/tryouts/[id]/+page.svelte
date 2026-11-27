@@ -58,7 +58,7 @@
   const KIND_OPTIONS = TRYOUT_KINDS.map((value) => ({ value, label: tryoutKindName(value) }));
 
   // A name or pronoun set already gets a placeholder shaped for it; every
-  // other kind gets the free-text description instead (ticket 13's own
+  // other kind gets the free-text description instead (own
   // scope split).
   const hasDescription = (kind: TryoutKind) => kind !== 'name' && kind !== 'pronouns';
 
@@ -179,15 +179,13 @@
   let feelingQuery = liveList((j) => (detail.isNew ? Promise.resolve([]) : j.feltSense.forTryout(detail.id)));
   let feeling = $derived(feelingQuery.rows);
 
-  /* Phase 5 performance ticket 07/08: an open-ended tryout's range has no
-     upper bound, so a page limit is the only thing that keeps this bounded.
-     Newest first, same as the query's own ORDER BY - "load more" reaches
-     further back, the same shape search/+page.svelte already uses.
+  /* An open-ended tryout's range has no upper bound, so a page limit is the only thing that
+     keeps this bounded. Newest first, same as the query's own ORDER BY - "load more"
+     reaches further back, the same shape search/+page.svelte already uses.
 
-     Five rather than search's thirty (final audit U14): a months-long
-     tryout put forty entries between the felt-sense log and the end of the
-     screen, and this list is a glance at what was written while it ran, not
-     the place to read it all. */
+     Five rather than search's thirty: a months-long tryout put forty entries between the
+     felt-sense log and the end of the screen, and this list is a glance at what was written
+     while it ran, not the place to read it all. */
   const PAGE = 5;
   let pages = $state(1);
 
@@ -227,12 +225,11 @@
     Math.max(0, (entriesQuery.value ?? NOTHING_IN_RANGE).total - entriesInRange.length)
   );
 
-  /* Ticket 18: this stretch as one side of `/compare`, and the same-length
-     window before it as the other - an open-ended tryout's own end clamps
-     to today at read time and is never stored (ADR-0049, ADR-0010), the
-     same clamp `periodFromEra` already gives an open era on `/compare`
-     itself. `compareStretchLink` answers whether there is enough journal
-     to offer that at all. */
+  /* This stretch as one side of `/compare`, and the same-length window before it as the
+     other - an open-ended tryout's own end clamps to today at read time and is never stored
+     (ADR-0049, ADR-0010), the same clamp `periodFromEra` already gives an open era on
+     `/compare` itself. `compareStretchLink` answers whether there is enough journal to
+     offer that at all. */
   let openEnded = $derived(detail.record ? detail.record.endEpochDay === null : false);
   let stretch = $derived(
     detail.record ? { start: detail.record.startEpochDay, end: detail.record.endEpochDay ?? currentDay() } : null
@@ -320,10 +317,9 @@
     saveFailed = false;
     try {
       if (await answerOffer(ADOPT_OFFER, subject, given, journal)) {
-        /* The stored name, never the milestone's title or an unsaved edit
-           in the label field: the switch promised "use {name}", and a
-           milestone renamed "Started going by Alex" is not what anyone
-           wants to be called (phase 15 after-release ticket 15). */
+        /* The stored name, never the milestone's title or an unsaved edit in the label
+           field: the switch promised "use {name}", and a milestone renamed "Started going
+           by Alex" is not what anyone wants to be called. */
         if (options?.updateProfileName && detail.record?.kind === 'name') {
           prefs.name = detail.record.label;
         }
@@ -354,9 +350,8 @@
   {:else if detail.isNew || detail.record}
 
   <fieldset disabled={saving || detail.isNew && creationId !== null} aria-busy={saving}>
-    <!-- Two named parts, what and when (bug session 18, item 74): the form
-         was five fields in a row, and its first two labels, "What are you
-         trying?" and "What is it?", asked nearly the same thing. -->
+    <!-- Two named parts, what and when: the form was five fields in a row, and its first
+         two labels, "What are you trying?" and "What is it?", asked nearly the same thing. -->
     <FieldGroupHeading legend={m.tryout_group_what()} />
     <Field label={m.tryout_kind_label()} legend>
       {#snippet children()}
@@ -461,10 +456,9 @@
 
   {#if !detail.isNew}
     <SectionHeading text={m.tryout_feeling_title()} />
-    <!-- First in how it has felt rather than after the entries (final
-         audit U14, Alicja 2026-09-22): the one control that acts on the
-         whole stretch, so it opens the section instead of sitting behind
-         forty rows of what was written during it. -->
+    <!-- First in how it has felt rather than after the entries: the one control that acts
+         on the whole stretch, so it opens the section instead of sitting behind forty rows
+         of what was written during it. -->
     {#if compareLink.state.status !== 'hidden'}
       {@const compareNotice = compareStretchNoticeProps(compareLink.state, openEnded, TRYOUT_COMPARE_COPY)}
       <div class="screen-part">
@@ -507,11 +501,10 @@
       {#snippet rows()}
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.feeling)}>
           {#each feeling.slice(0, HISTORY_LIMIT) as f (f.id)}
-            <!-- The reading first, then when (phase 15 after-release ticket
-                 15): this log is "how it's felt", and rows that held only a
-                 date never said how. A reading saved or deleted here opens
-                 or closes its row rather than appearing or vanishing in one
-                 frame; the rows already there when the log loads do not. -->
+            <!-- The reading first, then when: this log is "how it's felt", and rows that
+                 held only a date never said how. A reading saved or deleted here opens or
+                 closes its row rather than appearing or vanishing in one frame; the rows
+                 already there when the log loads do not. -->
             <div class="rows-divide" transition:disclose>
               <ListRow
                 static
@@ -574,8 +567,7 @@
     <SectionHeading text={m.tryout_entries_title()} />
     <ReadGate read={entriesInRangeRead} variant="card" count={2}>
       {#snippet rows()}
-        <!-- Days of entries, the drawing every list of entries uses (release
-             audit U9). -->
+        <!-- Days of entries, the drawing every list of entries uses (release). -->
         <EntryDays groups={entryDayGroups(entriesInRange)} />
       {/snippet}
       {#snippet empty()}

@@ -66,9 +66,8 @@ behavior.
 Explain the behavior a maintainer needs to preserve and why it matters.
 Refer to decisions by ADR number and evidence by a public source. Leave
 private tickets, sessions, audit labels and working documents out of comments.
-`npm run check:comments` checks tracked source and test comments against a
-baseline. After removing old references, run
-`npm run check:comments -- --update` to record the lower counts.
+`npm run check:comments` fails if a tracked source or test comment contains
+an internal reference.
 
 ## Adding a module
 

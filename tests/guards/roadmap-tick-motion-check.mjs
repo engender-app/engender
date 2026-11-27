@@ -96,7 +96,7 @@ try {
     `() => { const s = getComputedStyle(document.querySelector('${rowSel} .roadmap-box')); const m = s.borderColor.match(/[\\d.]+/g) || [0,0,0]; return (+m[0]) + (+m[1]) + (+m[2]); }`,
     `() => +getComputedStyle(document.querySelector('${rowSel} .roadmap-tick')).opacity`,
     `() => { const m = getComputedStyle(document.querySelector('${rowSel} .roadmap-tick')).transform.match(/[\\d.-]+/g) || [1]; return +m[0]; }`, // scale, matrix(a,...)
-    // Since after-release 28 the strike is a clipped copy of the title (one
+    // Since the strike is a clipped copy of the title (one
     // line per wrapped line): how far its clip has opened, 0 to 1.
     `() => { const n = getComputedStyle(document.querySelector('${rowSel} .roadmap-strike-lines')).clipPath.match(/[\\d.]+/g) || []; return 1 - (+n[1] || 0) / 100; }`
   ];
@@ -164,7 +164,7 @@ try {
   assert(skipScaleMid >= 2, `the x-glyph's scale should pass through at least two intermediate frames, got ${skipScaleMid}`);
 
   // A title that wraps is struck through every line, each through its own
-  // middle (after-release 28, audit V08: one line across the inline-block
+  // middle (: one line across the inline-block
   // sat in the gap between two lines and read as an underline). Read off
   // the painted pixels: at each line's strike height, the strike covers
   // the whole run of the line, where letters alone cover far less.

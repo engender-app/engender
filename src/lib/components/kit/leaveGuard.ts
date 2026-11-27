@@ -34,9 +34,8 @@ export type LeaveGuardOptions = {
       the browser's Back on a stepped editor's second step goes one step
       back. Answering true cancels the departure and asks nothing. */
   ownsDeparture?: (departure: Departure) => boolean;
-  /** A navigation that keeps this screen and its draft where they are: a
-      query that opens a sheet over it. Answering true lets it through and
-      asks nothing (bug session 18, item 91). */
+  /** A navigation that keeps this screen and its draft where they are: a query that opens a
+      sheet over it. Answering true lets it through and asks nothing. */
   staysOnScreen?: (departure: Departure) => boolean;
 };
 

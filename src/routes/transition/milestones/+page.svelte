@@ -188,10 +188,9 @@
     return [{ id: 'milestone-photo', fileName: photo.kind === 'stored' ? photo.photo.fileName : null }];
   }
 
-  /* The day-prompt (ticket 47, ADR-0008/0015): normalizing always strips
-     whatever date the picked file carried, so a photo picked or captured
-     here is asked for a day before it lands in the draft. A milestone
-     shows at most one photo, so this holds at most one pending pick -
+  /* The day-prompt (ADR-0008/0015): normalizing always strips whatever date the picked file
+     carried, so a photo picked or captured here is asked for a day before it lands in the
+     draft. A milestone shows at most one photo, so this holds at most one pending pick -
      unlike the entry editor's queue, there is never a second to lose. */
   let pendingMilestonePhoto = $state<NormalizedPhoto | null>(null);
   let pendingMilestoneDay = $state('');
@@ -269,9 +268,9 @@
       <!-- What is true now, before what was true before. The rail carries today's place among the milestones and the
            hollow marks ahead of it; the list under it is the same set as
            rows, which is where a milestone is opened, edited or deleted. -->
-      <!-- Wrapped so the whole of it can leave as one when the last
-           milestone is deleted, and the empty notice can arrive, instead of
-           one swapping for the other in a frame (carpet 15 row 48). -->
+      <!-- Wrapped so the whole of it can leave as one when the last milestone is deleted,
+           and the empty notice can arrive, instead of one swapping for the other in a
+           frame. -->
       <div out:crossfade>
       <MilestoneRail
         milestones={sorted}

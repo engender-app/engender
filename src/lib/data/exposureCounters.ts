@@ -96,10 +96,9 @@ function overlapDays(episode: RegimenEpisode, fromEpochDay: number, toEpochDay: 
 }
 
 /** Every episode's own time on it within `[fromEpochDay, toEpochDay]` -
-    "regimen" always means one specific dated episode (CONTEXT: "Regimen
-    episode"), never a recurring plan, so this is per episode and not
+    "regimen" always means one specific dated episode, never a recurring plan, so this is per episode and not
     grouped by drug or dose. Hidden episodes still count: hiding takes an
-    episode out of a picker, not out of history (CONTEXT: "Hidden"). */
+    episode out of a picker, not out of history. */
 export function timeOnEachRegimen(
   episodes: readonly RegimenEpisode[],
   fromEpochDay: number,

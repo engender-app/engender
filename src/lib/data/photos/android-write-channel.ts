@@ -1,13 +1,11 @@
-/* The JS side of ticket 19's fast write path: a small MessageChannel
-   handshake against `window.androidPhotoWriteChannel`, which native
-   registers with `WebViewCompat.addWebMessageListener` when the WebView can
-   carry an ArrayBuffer across as a structured clone (PhotoWriteChannel.java
-   has the other half and the full protocol).
+/* The JS side of fast write path: a small MessageChannel handshake against
+   `window.androidPhotoWriteChannel`, which native registers with
+   `WebViewCompat.addWebMessageListener` when the WebView can carry an ArrayBuffer across as
+   a structured clone (PhotoWriteChannel.java has the other half and the full protocol).
 
-   `globalThis` rather than `window`: they are the same object in a WebView,
-   and this keeps the module reachable from a plain Node test with
-   `vi.stubGlobal`, the same way android-file-store.test.ts already stubs
-   `fetch`. */
+   `globalThis` rather than `window`: they are the same object in a WebView, and this keeps
+   the module reachable from a plain Node test with `vi.stubGlobal`, the same way
+   android-file-store.test.ts already stubs `fetch`. */
 
 import { PhotoChannelTimeoutError, PHOTO_CHANNEL_TIMEOUT_MS } from './channel-timeout';
 

@@ -1,15 +1,13 @@
-/* A ceiling on the practise take and the passage step (phase 8 audit issue
-   04), in the shape the vowel step's own ceiling already takes: a constant
-   compared against `session.secondsCaptured()` inside the poll, calling the
-   same `stop()` a manual Stop press calls rather than `discard()`, so the
+/* A ceiling on the practise take and the passage step, in the shape the vowel step's own
+   ceiling already takes: a constant compared against `session.secondsCaptured()` inside the
+   poll, calling the same `stop()` a manual Stop press calls rather than `discard()`, so the
    take is closed properly and stays analysable and saveable.
 
    A source contract, the same shape EntryEditor.gates.test.ts and
-   BodyRegionInspectorSheet.test.ts already use: a `.svelte` file has no
-   node-tier mount (ADR-0016), and proving the auto-stop by real elapsed
-   time would mean waiting out the ceiling itself - the fake microphone is a
-   real oscillator on a real AudioContext clock (tests/fake-microphone.mjs),
-   with no way to run it faster than real time. */
+   BodyRegionInspectorSheet.test.ts already use: a `.svelte` file has no node-tier mount,
+   and proving the auto-stop by real elapsed time would mean waiting out the ceiling itself
+   - the fake microphone is a real oscillator on a real AudioContext clock
+   (tests/fake-microphone.mjs), with no way to run it faster than real time. */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

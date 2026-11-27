@@ -23,15 +23,14 @@ export function recordNavigation(type: string, delta?: number | null, sameUrl = 
   replacing = false;
 }
 
-/** The depth `recordNavigation` will record for a navigation still under
-    way, without recording it: the shell keys what a history entry borrowed
-    by it before the page changes (chrome-tab-origin.ts).
+/** The depth `recordNavigation` will record for a navigation still under way, without
+    recording it: the shell keys what a history entry borrowed by it before the page changes
+    (chrome-tab-origin.ts).
 
-    `sameUrl` is a link or form to the address already showing - tapping
-    the lit tab - which SvelteKit turns into a replaceState of its own
-    accord, so it adds no entry either (a goto() to the same address still
-    pushes, and the caller does not pass it) (after-release 17 review: counted, it put every
-    entry behind it one deep too many). */
+    `sameUrl` is a link or form to the address already showing - tapping the lit tab - which
+    SvelteKit turns into a replaceState of its own accord, so it adds no entry either (a
+    goto() to the same address still pushes, and the caller does not pass it) (review:
+    counted, it put every entry behind it one deep too many). */
 export function depthAfter(type: string, delta?: number | null, sameUrl = false): number {
   if (type === 'enter') return 0;
   if (type === 'popstate') return Math.max(0, depth + (delta ?? 0));

@@ -13,14 +13,13 @@ import {
   TIMELAPSE_MS_PER_PHOTO
 } from './journey';
 
-/** One photo's place in the export. The caption is already worded and
-    formatted by the screen: dates read differently per locale and ADR-0016
-    keeps paraglide out of anything the Node tier imports.
+/** One photo's place in the export. The caption is already worded and formatted by the
+    screen: dates read differently per locale and Node imports avoid Paraglide.
 
-    `fileName` is nullable because Photo.fileName is (types.ts): a photo with
-    no stored file draws the same gap as one whose file has gone, which is what
-    PhotoThumb does with the same case rather than the screen having to filter
-    the selection down and disagree with the count it showed. */
+    `fileName` is nullable because Photo.fileName is (types.ts): a photo with no stored file
+    draws the same gap as one whose file has gone, which is what PhotoThumb does with the
+    same case rather than the screen having to filter the selection down and disagree with
+    the count it showed. */
 export interface JourneyFrame {
   fileName: string | null;
   caption: string;

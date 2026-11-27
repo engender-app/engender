@@ -108,10 +108,9 @@ test('hiding is independent of finishing in both directions, and un-finishing le
   });
 });
 
-/* Phase 8 features ticket 51: a stream is active, suspended or finished,
-   never two of those at once. Both directions, since a writer clearing the
-   other column wrong in either direction would leave a row this build's own
-   gate (`areaQuiet`) would still read as quiet either way - the kind of bug
+/* A stream is active, suspended or finished, never two of those at once. Both directions,
+   since a writer clearing the other column wrong in either direction would leave a row this
+   build's own gate (`areaQuiet`) would still read as quiet either way - the kind of bug
    that hides behind its own safety net. */
 test('finishing a suspended area clears the suspended day, and suspending a finished one clears the finished day', async () => {
   const { journal } = await journalWithBuiltIns();
@@ -146,13 +145,12 @@ test('un-suspending an area leaves hiding and a resting finish day alone, and hi
   });
 });
 
-test('a cycle row an archive carried in is not readable back out (ADR-0043)', async () => {
+test('a cycle row an archive carried in is not readable back out', async () => {
   const { journal, db } = await journalWithBuiltIns();
 
-  /* No setter in this build can write this - `cycleEvents` is not a key of
-     the record - but an area_state row travels, so an archive written
-     somewhere else is a way in. ADR-0043's rule is one-directional, and an
-     imported row must not be what reverses it. */
+  /* No setter in this build can write this - `cycleEvents` is not a key of the record - but
+     an area_state row travels, so an archive written somewhere else is a way in. rule is
+     one-directional, and an imported row must not be what reverses it. */
   await db.run('INSERT INTO area_state (area, hidden, updated_at) VALUES (?, 1, ?)', ['cycleEvents', 1_700_000_000_000]);
   await db.run('INSERT INTO area_state (area, hidden, updated_at) VALUES (?, 1, ?)', ['wearSessions', 1_700_000_000_000]);
 

@@ -1,7 +1,6 @@
-/* Seeded mutators for the importer fuzz harness (testing ticket 11).
-   No dependencies beyond fflate (already the repo's zip reader).
-   Every function takes the rng so a case is reproducible from
-   (master seed, target, index). */
+/* Seeded mutators for the importer fuzz harness. No dependencies beyond fflate (already the
+   repo's zip reader). Every function takes the rng so a case is reproducible from (master
+   seed, target, index). */
 
 import { unzipSync, zipSync, type Zippable } from 'fflate';
 

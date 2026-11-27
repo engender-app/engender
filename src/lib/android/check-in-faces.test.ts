@@ -95,10 +95,9 @@ describe('check-in notification faces', () => {
   }
 });
 
-/* Alicja's answer to the folded view (2026-11-11, "lets go with unfolded"):
-   what the unfolded notification shows, the question with the faces, is what
-   a person sees without opening it. Android will not force a notification
-   open, so the folded layout carries the question itself. */
+/* Check what the unfolded notification shows, the question with the faces, is what a person
+   sees without opening it. Android will not force a notification open, so the folded layout
+   carries the question itself. */
 describe('the folded check-in layout', () => {
   const folded = res('layout/check_in_collapsed.xml');
 

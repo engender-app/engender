@@ -49,12 +49,11 @@
        rather than jump. -->
   <div class="gate step-field-host" {...rest}>
     <div class="gate-field step-field" data-gate-field {@attach (node) => blindEdge(node)?.destroy}>
-      <!-- The paint, split from the box that measures it (ticket 28's
-           mechanism): a block a window tall whose bottom edge is a clip, so
-           the edge moves without a frame ever deforming the two bottom
-           corners. `data-field-blind` is what hands it the blind's name for a
-           navigation, which is how the unlock's handover closes this field
-           into the app's rather than fading one out under another. -->
+      <!-- The paint, split from the box that measures it: a block a window tall whose
+           bottom edge is a clip, so the edge moves without a frame ever deforming the two
+           bottom corners. `data-field-blind` is what hands it the blind's name for a
+           navigation, which is how the unlock's handover closes this field into the app's
+           rather than fading one out under another. -->
       <div class="step-field-paint" data-field-blind>
         <!-- Today's sun, inside the blind as Today nests its own:
              unnamed in the opening, it rides the blind's capture rather than

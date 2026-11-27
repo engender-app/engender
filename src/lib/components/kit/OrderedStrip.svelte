@@ -158,16 +158,14 @@
        wrapper's own top edge is the track's, since the track is its
        first child with nothing above it. */
     position: relative;
-    /* ChartCard's own head-to-body gap (--space-3, 12px) collapses with
-       this margin rather than adding to it (both are top margins with
-       nothing - no border, no padding - between them), so this has to be
-       the tooltip's whole clearance on its own, not a top-up: without it
-       the tooltip overlapped the card's heading text (ticket 09 gallery
-       screenshots). 32px covers the tooltip's own height (26px) plus its
-       --space-1 gap above the track, with a couple of pixels left over. A
-       literal rather than a spacing step, because this is clearance for a
-       thing drawn over the track, not rhythm between two blocks - which is
-       what the spacing scale's steps above 20 are reserved for. */
+    /* ChartCard's own head-to-body gap (--space-3, 12px) collapses with this margin rather
+       than adding to it (both are top margins with nothing - no border, no padding -
+       between them), so this has to be the tooltip's whole clearance on its own, not a
+       top-up: without it the tooltip overlapped the card's heading text. 32px covers the
+       tooltip's own height (26px) plus its --space-1 gap above the track, with a couple of
+       pixels left over. A literal rather than a spacing step, because this is clearance for
+       a thing drawn over the track, not rhythm between two blocks - which is what the
+       spacing scale's steps above 20 are reserved for. */
     margin-top: 32px;
     animation: kit-ordered-in var(--dur-slow) var(--ease-out) both;
   }

@@ -1,9 +1,9 @@
-/* The milestones area (PRD F6/F26). No kind column and no order: whether
-   a milestone reads as a countdown or an anniversary follows from its
-   date and today (ADR-0010), computed by milestoneStatus() above the seam.
+/* The milestones area (PRD F6/F26). No kind column and no order: whether a milestone reads
+   as a countdown or an anniversary follows from its date and today (ADR-0010), computed by
+   milestoneStatus() above the seam.
 
-   Photos become writable in ticket 11; deleting a milestone already takes
-   its photo rows and files along, mirroring deleteEntry. */
+   Photos become writable; deleting a milestone already takes its photo rows and files
+   along, mirroring deleteEntry. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Milestone } from '../types';
@@ -54,9 +54,8 @@ export interface MilestonesArea {
   upsertMilestone(input: MilestoneInput): Promise<string>;
   /** Idempotent. Takes the milestone's photo rows and files with it. */
   deleteMilestone(id: string): Promise<void>;
-  /** The day of the most recent milestone at or before `todayEpochDay`, or
-      null if there is none (phase 8 features ticket 03, lastWrite.ts). One
-      bounded `MAX`, not a fetched list reduced in JS. */
+  /** The day of the most recent milestone at or before `todayEpochDay`, or null if there is
+      none (lastWrite.ts). One bounded `MAX`, not a fetched list reduced in JS. */
   lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
 }
 
@@ -237,7 +236,7 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
       await driver.transaction(async (driver) => {
         await driver.run('DELETE FROM photo WHERE milestone_id IN (SELECT id FROM milestone WHERE uuid = ?)', [id]);
         // A document's link is a (kind, id) pair rather than a foreign key
-        // (documents.ts), so nothing cascades it either - ticket 56.
+        // (documents.ts), so nothing cascades it either -.
         await driver.run(
           "UPDATE document SET target_kind = NULL, target_id = NULL WHERE target_kind = 'milestone' AND target_id = ?",
           [id]

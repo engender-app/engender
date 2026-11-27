@@ -28,14 +28,13 @@ import { InterruptedRestoreError, JournalBelowBaselineError, JournalBetweenSteps
 const toHex = (bytes: Uint8Array): string =>
   Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 
-/* The recovery worker in flight, if any (ux-carpet 222). The pool's access
-   handles belong to one worker at a time, and after a failed boot the copy
-   check holds them on a worker of its own for a few hundred ms (219). A
-   "Try opening again" pressed in that window started a new worker that
-   asked for the pool at once and failed with "Access Handles cannot be
-   created" - every time, measured, while a retry a moment later worked. So
-   a new connection holds its messages until that worker has closed. Settled
-   either way: a recovery that failed has still let the pool go. */
+/* The recovery worker in flight, if any. The pool's access handles belong to one worker at
+   a time, and after a failed boot the copy check holds them on a worker of its own for a
+   few hundred ms (219). A "Try opening again" pressed in that window started a new worker
+   that asked for the pool at once and failed with "Access Handles cannot be created" -
+   every time, measured, while a retry a moment later worked. So a new connection holds its
+   messages until that worker has closed. Settled either way: a recovery that failed has
+   still let the pool go. */
 let recovering: Promise<void> | null = null;
 let releasing: Promise<void> | null = null;
 
@@ -75,11 +74,10 @@ function connectWorker(wasmBinary?: Promise<ArrayBuffer>) {
      every caller waiting on it would wait for the rest of the session.
      Failing them all is the only honest answer, and it is what turns that
      class of fault into a boot error the layout can show. */
-  /* And every caller after it: a worker started ahead of the key (ticket
-     209, `prewarmJournalWorker`) can die before anything but `attach` has
-     been posted, and a message posted to a dead worker is never answered.
-     Remembered, so the `open` that comes later fails with the same cause
-     and boot reports it rather than waiting forever. */
+  /* And every caller after it: a worker started ahead of the key can die before anything
+     but `attach` has been posted, and a message posted to a dead worker is never answered.
+     Remembered, so the `open` that comes later fails with the same cause and boot reports
+     it rather than waiting forever. */
   let stopped: Error | null = null;
   function fail(failure: Error) {
     stopped = failure;
@@ -122,11 +120,10 @@ function connectWorker(wasmBinary?: Promise<ArrayBuffer>) {
     });
   }
 
-  /* Closed is stopped too (ux-carpet 215). A terminated worker answers
-     nothing, so a message posted after terminate() waited for the rest of
-     the session - and a failed boot closes its driver twice, once in boot()
-     and once in closeActiveDriver(), so the second close never came back
-     and the boot sat at 'booting' with no notice. */
+  /* Closed is stopped too. A terminated worker answers nothing, so a message posted after
+     terminate() waited for the rest of the session - and a failed boot closes its driver
+     twice, once in boot() and once in closeActiveDriver(), so the second close never came
+     back and the boot sat at 'booting' with no notice. */
   function terminate() {
     worker.terminate();
     stopped ??= new Error('the database worker was closed');
@@ -272,17 +269,15 @@ export function createEncryptedWebSqlite(databasePath: string, dataKey: Uint8Arr
   // The wrapped driver owns transaction draining and bounded-disposal rejection.
   connection.release = () => driver.close();
 
-  /* The copy check and the restore, which are what a failed boot does next
-     (ux-carpet 219). boot() closes this driver when migrating fails, and
-     closing terminates the worker, so the failure screen's question - is
-     there a copy to go back to? - and the restore itself were both sent to
-     a worker that was gone: the answer was always "no copy", and the safety
-     net ticket 04 built never caught anything on the web. Once this
-     driver's worker has gone they run on one of their own, pointed at the
-     same files and key without opening the live database, and closed again
-     before the answer is handed back so the next boot's worker can take
-     the pool. While it is still alive - the runner asks before migrating -
-     they go through it as before, since the pool is its. */
+  /* The copy check and the restore, which are what a failed boot does next. boot closes
+     this driver when migrating fails, and closing terminates the worker, so the failure
+     screen's question - is there a copy to go back to? - and the restore itself were both
+     sent to a worker that was gone: the answer was always "no copy", and the safety net
+     built never caught anything on the web. Once this driver's worker has gone they run on
+     one of their own, pointed at the same files and key without opening the live database,
+     and closed again before the answer is handed back so the next boot's worker can take
+     the pool. While it is still alive - the runner asks before migrating - they go through
+     it as before, since the pool is its. */
   async function recover<T>(op: string): Promise<T> {
     if (!connection.gone()) return post<T>(op);
     const own = connectWorker();
@@ -345,8 +340,8 @@ export function createEncryptedWebSqlite(databasePath: string, dataKey: Uint8Arr
         .then((result) => {
           if (typeof result === 'boolean') return result;
           if ('foundVersion' in result) throw new SchemaTooNewError(result.foundVersion, result.knownVersion);
-          /* Above the baseline means between two steps (pre-publish ticket
-             01); the worker sends both kinds in one shape. */
+          /* Above the baseline means between two steps; the worker sends both kinds in one
+             shape. */
           if ('belowBaseline' in result) {
             throw result.belowBaseline > result.baselineVersion
               ? new JournalBetweenStepsError(result.belowBaseline, result.baselineVersion)

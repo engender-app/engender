@@ -1,16 +1,15 @@
-/* The era area (phase 6 ticket 01, ADR-0049, CONTEXT: "Era"). Rows only:
-   whether a day falls in an era, and what an open bound resolves to, are
-   `eras.ts`'s pure functions, read from here by the editor while someone is
-   still typing and by this area before it writes.
+/* The era area (ADR-0049). Rows only: whether a day falls in an era, and what an open bound
+   resolves to, are `eras.ts`'s pure functions, read from here by the editor while someone
+   is still typing and by this area before it writes.
 
-   No `key` column and no built-ins: an era is the person's own name for
-   their own stretch of time, so nothing ships seeded and a minted uuid is
-   its only travelling identity (ADR-0002).
+   No `key` column and no built-ins: an era is the person's own name for their own stretch
+   of time, so nothing ships seeded and a minted uuid is its only travelling identity
+   (ADR-0002).
 
-   Deleting is a plain delete rather than a hide. Nothing holds a foreign key
-   to an era: the resurfacing consent layer keys its own rows by this uuid
-   and reads a rule pointing at a deleted era as no rule (ADR-0049), which is
-   the same resting state a day in no era already has. */
+   Deleting is a plain delete rather than a hide. Nothing holds a foreign key to an era: the
+   resurfacing consent layer keys its own rows by this uuid and reads a rule pointing at a
+   deleted era as no rule (ADR-0049), which is the same resting state a day in no era
+   already has. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Era } from '../types';

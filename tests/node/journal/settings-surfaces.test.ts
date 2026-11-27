@@ -30,32 +30,30 @@ describe('what Settings is built from', () => {
   });
 
   it("draws rule 7's chrome case: the field with its own title, and back to Today", () => {
-    /* Carpet 25. This screen hid its title from ticket 24 until now, for a
-       reason that stopped being true when the field arrived: a visible
-       "Settings" sitting on the page directly above "Appearance" was two
-       headers stacked (Alicja, 2026-08-25), and a title on the field is not
-       on the page at all - it is on a block of the flag's colour, which is
-       where every deep screen in the app puts its own. Rule 7's third case
-       decides both answers for chrome; `chrome` is how a screen asks for
-       them, and the back control it brings is hidden on the desktop by
+    /* This screen hid its title until now, for a reason that stopped being true when the
+       field arrived: a visible "Settings" sitting on the page directly above "Appearance"
+       was two headers stacked, and a title on the field is not on the page at all - it is
+       on a block of the flag's colour, which is where every deep screen in the app puts its
+       own. Rule 7's third case decides both answers for chrome; `chrome` is how a screen
+       asks for them, and the back control it brings is hidden on the desktop by
        components.css rather than by a second call here. */
     const header = /<ScreenHeader[^>]*\/?>/s.exec(withoutScript)?.[0] ?? '';
     expect(header).toContain('title={m.nav_settings()}');
     expect(header).not.toContain('titleHidden');
     expect(header).toContain('chrome');
-    /* Today, because the phone's gear is in Today's foot (ADR-0076). A
-       string, so ScreenHeader's smartBack answers the rail and every deep
-       link into the screen and keeps this as the fallback. */
+    /* Today, because the phone's gear is in Today's foot. A string, so ScreenHeader's
+       smartBack answers the rail and every deep link into the screen and keeps this as the
+       fallback. */
     expect(header).toContain('back="/"');
   });
 
-  it('names five areas and keeps every one of them open (ticket 277)', () => {
+  it('names five areas and keeps every one of them open', () => {
     for (const key of ['settings_appearance', 'settings_tracking', 'settings_reminders', 'settings_lists', 'settings_privacy']) {
       expect(withoutScript).toContain(`<SectionHeading text={m.${key}()} />`);
     }
-    /* Ticket 268 folded the areas and the pickers into <details>; this one
-       asked for nothing on the hub to need expanding. Detail controls open
-       as sheets from a row of their own instead. */
+    /* Folded the areas and the pickers into <details>; this one asked for nothing on the
+       hub to need expanding. Detail controls open as sheets from a row of their own
+       instead. */
     expect(outsideSheets).not.toContain('<details');
     for (const row of ['mood-colours', 'language', 'accessibility', 'tag-groups']) {
       expect(outsideSheets).toContain(`key="${row}"`);
@@ -145,19 +143,15 @@ describe('what Settings is built from', () => {
   });
 
   it('gives rows that carry a switch instead of a chevron no interactive wrapper of their own', () => {
-    /* A ListRow always renders as an <a> or a <button>; a row whose only
-       job is to hold a Switch would make that switch's own button a nested
-       control. Those stay plain .kit-row divs. The wrapped and on-this-day
-       rows moved to the unprompted registry's own screen (ticket 51, merged
-       to one screen by deepening ticket 09), and the four prompt toggles
-       followed them there in phase 11 ticket 04 - unprompted-view.test.ts
-       holds all of them to the same rule. Cycle tracking is the switch row
-       this screen has left.
+    /* A ListRow always renders as an <a> or a <button>; a row whose only job is to hold a
+       Switch would make that switch's own button a nested control. Those stay plain .kit-row
+       divs. The wrapped and on-this-day rows moved to the unprompted registry's own screen,
+       and the four prompt toggles followed them there - unprompted-view.test.ts holds all
+       of them to the same rule. Cycle tracking is the switch row this screen has left.
 
-       The Features rows are a <label> round their switch rather than a
-       div (pre-release-human 12 audit): a label is no control of its own,
-       so the switch stays the one thing announced, and a tap anywhere on
-       the row reaches it, the way a ListRow checkbox row takes one. */
+       The Features rows are a <label> round their switch rather than a div: a label is no
+       control of its own, so the switch stays the one thing announced, and a tap anywhere
+       on the row reaches it, the way a ListRow checkbox row takes one. */
     expect(withoutScript).toMatch(/<label class="kit-row" data-cycle-tracking-toggle>/);
   });
 
@@ -174,7 +168,7 @@ describe('what Settings is built from', () => {
   });
 
   it('gives genital and sexual changes a switch each, writing only its own category', () => {
-    // Pre-release-human 12: one 'genital_sexual' switch became two.
+    // One 'genital_sexual' switch became two.
     const manager = /<Sheet bind:open=\{featuresSheet\}[\s\S]*?<\/Sheet>/.exec(withoutScript)?.[0] ?? '';
     const row = (handle: string) => new RegExp(`<label class="kit-row" ${handle}>[\\s\\S]*?</label>`).exec(manager)?.[0] ?? '';
     expect(row('data-genital-effects-toggle')).toContain("setCategoryEnabled('genital', on)");
@@ -193,8 +187,7 @@ describe('what Settings is built from', () => {
   });
 
   it('keeps no switch for a prompt the notifications screen now carries', () => {
-    /* Phase 11 ticket 04 moved these prompts to notifications settings.
-       Entry nudges have since been removed. */
+    /* Moved these prompts to notifications settings. Entry nudges have since been removed. */
     for (const gone of ['data-entry-nudges', 'data-guided-prompts', 'data-wear-duration-cue-toggle', 'data-roadmap-milestone-sync']) {
       expect(settings).not.toContain(gone);
     }
@@ -203,7 +196,7 @@ describe('what Settings is built from', () => {
     }
   });
 
-  it('sends the live tiles and their toggles to one consolidated screen (deepening ticket 09)', () => {
+  it('sends the live tiles and their toggles to one consolidated screen', () => {
     expect(withoutScript).toContain('href="/settings/notifications"');
     expect(withoutScript).not.toContain('href="/settings/live-tiles"');
     for (const gone of ['data-wrapped-toggle', 'data-wrapped-notify-toggle', 'data-on-this-day-toggle', 'data-on-this-day-notify-toggle']) {
@@ -211,7 +204,7 @@ describe('what Settings is built from', () => {
     }
   });
 
-  it('draws every flag swatch in its own stripes (ticket 277)', () => {
+  it('draws every flag swatch in its own stripes', () => {
     /* Eight palettes arrived with only their theme blocks, so setup and
        Settings drew them as empty outlines. The stripes are already
        palettes.css's --motif-stripes; the swatch has to repeat them in
@@ -248,7 +241,7 @@ describe('what Settings is built from', () => {
     expect(rule).toContain('background-origin: border-box');
   });
 
-  it('has no Home & calendar colour row (functional-audit ticket 14)', () => {
+  it('has no Home & calendar colour row', () => {
     /* The metric preference stays: Calendar and Look back's day-by-day
        reading set it from their own pickers. Only the Settings row and its
        sheet went. */
@@ -271,10 +264,9 @@ describe('what Settings is built from', () => {
 
 describe('the permissions list', () => {
   it('re-reads through the same watcher as Reminders and Notifications', () => {
-    /* Last-audit UI ticket 41: the list was the one surface that re-read on
-       the way back from Android's settings, with its own listener. The two
-       screens that did not now share one owner with it, so the listener,
-       its teardown and the newest-read-wins rule cannot drift apart. */
+    /* The list was the one surface that re-read on the way back from Android's settings,
+       with its own listener. The two screens that did not now share one owner with it, so
+       the listener, its teardown and the newest-read-wins rule cannot drift apart. */
     const list = read('src/lib/components/PermissionList.svelte');
     expect(list).toContain("from '$lib/permissions/watchStatus'");
     expect(list).toMatch(/watchStatus<GrantStates>\(\{[\s\S]*?read: readGrantStates/);

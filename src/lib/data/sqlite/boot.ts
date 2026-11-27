@@ -26,12 +26,11 @@ interface BootDeps {
   purgeExpiredTrash?: (driver: SqliteDriver) => Promise<void>;
   sweepOrphanPhotos?: (driver: SqliteDriver) => Promise<void>;
   shouldSweepOrphans?: () => boolean;
-  /** The auto-log pass (ADR-0086): each schedule the
-      person switched on gets a `taken` dose per slot it still owes, up to
-      yesterday. Last of the three, and here rather than on a clock of its
-      own, because a standing instruction has to be carried out on a device
-      that was closed for a week just as much as on one opened every day, and
-      boot is when the app finds out how long that was. */
+  /** The auto-log pass: each schedule the person switched on gets a `taken` dose per slot
+      it still owes, up to yesterday. Last of the three, and here rather than on a clock of
+      its own, because a standing instruction has to be carried out on a device that was
+      closed for a week just as much as on one opened every day, and boot is when the app
+      finds out how long that was. */
   autoLogDueDoses?: (driver: SqliteDriver) => Promise<void>;
   /** When to run the housekeeping passes, given the work to run. The app
       passes an idle callback (whenIdle, ../../idle.ts); leave it out and they
@@ -51,15 +50,13 @@ export async function migrateJournal(driver: SqliteDriver, fileOps: MigrationFil
 function isDatabaseLockedError(error: unknown): boolean {
   if (!error) return false;
   const message = error instanceof Error ? error.message : String(error);
-  /* "Access Handles cannot be created" (ux-carpet 243) is the web driver's
-     own version of the same fact the rest of this pattern already covers:
-     something else still has the file. It shows up when a tab that just
-     navigated away or reloaded held the OPFS SAH pool a worker of this tab's
-     own is now trying to acquire, and the browser has not yet let go of the
-     old worker's access handles - a race `mc-driver.ts`'s `pagehide` release
-     narrows but cannot close, since nothing here can await another page's
-     teardown. A moment is what it needs, the same as a locked SQLite file
-     needing another connection's transaction to end. */
+  /* "Access Handles cannot be created" is the web driver's own version of the same fact the
+     rest of this pattern already covers: something else still has the file. It shows up
+     when a tab that just navigated away or reloaded held the OPFS SAH pool a worker of this
+     tab's own is now trying to acquire, and the browser has not yet let go of the old
+     worker's access handles - a race `mc-driver.ts`'s `pagehide` release narrows but cannot
+     close, since nothing here can await another page's teardown. A moment is what it needs,
+     the same as a locked SQLite file needing another connection's transaction to end. */
   const pattern =
     /database is locked|\bcode 5\b|sqlite_busy|database table is locked|SQLiteDatabaseLockedException|SQLiteBusyException|\bbusy\b|Access Handles cannot be created/i;
   if (pattern.test(message)) return true;
@@ -127,7 +124,7 @@ export async function boot(deps: BootDeps): Promise<BootResult> {
       // Migrations run before anything reads or writes app data, so a
       // failure here means the caller must show a handled error state
       // instead of going on to render screens over a database that isn't
-      // there (ticket 04's acceptance: not a blank screen).
+      // there.
       failed = true;
       return { phase: 'error', error };
     } finally {

@@ -74,9 +74,8 @@ describe('the foot\'s way on', () => {
   });
 
   it('opens its width in a row after the finish control, taking the gap before it (item 84)', () => {
-    /* A new entry's foot since bug session 18: Save entry first, the way on
-       after it, and the foot's live region after that, which is no control
-       and must not decide the side. */
+    /* A new entry's foot Save entry first, the way on after it, and the foot's live region
+       after that, which is no control and must not decide the side. */
     const node = foot('row', { width: 200, height: 48 }) as unknown as { previousElementSibling: object; nextElementSibling: object };
     node.previousElementSibling = {};
     node.nextElementSibling = {};
@@ -99,8 +98,8 @@ describe('the foot\'s way on', () => {
   });
 });
 
-/* The step back under Android's back gesture (ticket 04, box 5): the same
-   motion as a tap on Back, driven by the gesture's progress instead of time. */
+/* The step back under Android's back gesture: the same motion as a tap on Back, driven by
+   the gesture's progress instead of time. */
 describe('a step back scrubbed by the back gesture', () => {
   class FakeClock implements ScrubClock {
     t = 0;

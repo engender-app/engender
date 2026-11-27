@@ -74,11 +74,9 @@
   let series = $derived(seriesQuery.value ?? new Map<string, DayAverage[]>());
   let seriesFor = $derived((key: string): DayAverage[] => series.get(key) ?? []);
 
-  /* Only scales with readings in the span are offered, and a stored choice
-     with none here falls back to the first that has some (bug session 18,
-     item 40: picking an empty scale took the whole tile off the door, and
-     with it the way back to the picker). The stored preference is kept, so
-     a span where that scale has readings shows it again. */
+  /* Only scales with readings in the span are offered, and a stored choice with none here
+     falls back to the first that has some. The stored preference is kept, so a span where
+     that scale has readings shows it again. */
   let withData = $derived(metrics.filter((mt) => seriesFor(mt.key).length > 0));
   let shown = $derived(withData.find((mt) => mt.key === shownMetric(metrics).key) ?? withData[0] ?? shownMetric(metrics));
   let metricOptions = $derived(withData.map((mt) => ({ value: mt.key, label: mt.name })));
@@ -228,9 +226,8 @@
     </ReadingTile>
   {/if}
 {:else}
-  <!-- Its own heading rather than the screen's title a second time
-       (release audit U14): this card is one scale across the days, and the
-       card under it is every scale across the period. -->
+  <!-- Its own heading rather than the screen's title a second time (release): this card is
+       one scale across the days, and the card under it is every scale across the period. -->
   <ChartCard level={2} heading={m.stats_scale_each_day()} kind="day-by-day" role={roleAt(activeFlag.roles, CHART_ROLE)}>
     {#snippet control()}
       <ChartPicker

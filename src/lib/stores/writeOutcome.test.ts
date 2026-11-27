@@ -14,7 +14,7 @@ describe('attemptWith', () => {
     const refused = new Error('database is locked');
     const result = attemptWith(() => Promise.reject(refused), 'Could not save.', report);
     await expect(result).resolves.toBe(false);
-    // The error goes along, so the toast can name a full disk (last-audit ui 37).
+    // The error goes along, so the toast can name a full disk.
     expect(report).toHaveBeenCalledWith('Could not save.', refused);
   });
 

@@ -148,9 +148,9 @@ test('an older journal keeps its chosen onboarding pins', () => {
 });
 
 test('the default set is drawn in registry order rather than in ticking order', () => {
-  /* Which order somebody happened to tick a list of checkboxes in is an
-     artefact of reading down the page, not an arrangement. The hub's order
-     is one they have already met; ticket 14 is where they change it. */
+  /* Which order somebody happened to tick a list of checkboxes in is an artefact of reading
+     down the page, not an arrangement. The hub's order is one they have already met; is
+     where they change it. */
   assert.deepEqual(defaultPins(['tryouts', 'effects']), defaultPins(['tryouts', 'effects']));
 });
 
@@ -171,9 +171,9 @@ test('the default set names only rows the registry holds, and no bad-hour row', 
   const keys = HUB_ROWS.map((row) => row.key);
   for (const key of DEFAULT_ONBOARDING_AREAS) assert.ok(keys.includes(key), `${key} is not a hub row`);
 
-  /* The counterevidence check, the letters and the resource list are what
-     somebody reaches for on a bad hour. Ticket 14 makes all three pinnable;
-     none of them is on the front page until somebody asks for it. */
+  /* The counterevidence check, the letters and the resource list are what somebody reaches
+     for on a bad hour. makes all three pinnable; none of them is on the front page until
+     somebody asks for it. */
   for (const key of ['doubt', 'letters', 'resources']) {
     assert.ok(!(DEFAULT_ONBOARDING_AREAS as readonly string[]).includes(key), `${key} is pinned by default`);
   }
@@ -286,10 +286,9 @@ test('a hidden area cannot be added', () => {
 });
 
 test('the cycle log is offered only where its own gate is already open', () => {
-  /* ADR-0043 one-directionally: pinning it is the person asking for it, so
-     the pin resolves either way, but a list that offered it cold would be
-     the app putting a cycle prompt in front of somebody who will never
-     have one. */
+  /* Pinning it is the person asking for it, so the pin resolves either way, but a list that
+     offered it cold would be the app putting a cycle prompt in front of somebody who will
+     never have one. */
   assert.ok(!addable(arranged([])).includes('cycle-events'));
   assert.ok(addable(arranged([]), {}, true).includes('cycle-events'));
 });
@@ -316,12 +315,11 @@ test('a finished area can still be added, and says the day it ended', () => {
 
 // --- what the default pins say facing forwards ------------------------------
 
-/* Phase 11 all-four-doors ticket 02. The pinned rows on Today drew the same
-   backwards lines the Transition door did - "Last logged 8 days ago",
-   "Nothing logged for 1 year 4 months" - and they draw the forward ones now
-   through the same function, so a row cannot say one thing on one screen and
-   something else on the other. The rows here are `DEFAULT_ONBOARDING_AREAS`,
-   which is the ticket's own sign-off set. */
+/* The pinned rows on Today drew the same backwards lines the Transition door did - "Last
+   logged 8 days ago", "Nothing logged for 1 year 4 months" - and they draw the forward ones
+   now through the same function, so a row cannot say one thing on one screen and something
+   else on the other. The rows here are `DEFAULT_ONBOARDING_AREAS`, which is the ticket's
+   own sign-off set. */
 
 test('the default pins draw whatever the forward read gave them', () => {
   const forward = {
@@ -353,8 +351,8 @@ test('a forward fact replaces the gap a pinned row used to report', () => {
     })
   );
 
-  /* 'last' rather than 'quiet' since after-release 17: milestones have
-     nothing to finish, so the gap is a plain last-written line. */
+  /* 'last' rather than 'quiet' since: milestones have nothing to finish, so the gap is a
+     plain last-written line. */
   assert.equal(backwards[0].line.kind, 'last');
   assert.equal(forwards[0].line.kind, 'next');
 });

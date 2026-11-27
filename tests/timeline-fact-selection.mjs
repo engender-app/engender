@@ -202,11 +202,10 @@ try {
   const jump = page.locator('[data-care-lane-jump="Estradiol"]');
   const jumpBox = await jump.boundingBox();
   assert.ok(jumpBox.height >= FLOOR - SLACK, `the lane name is ${jumpBox.height.toFixed(1)}px tall`);
-  /* And it travels there (prh12 bug 14): the fragment's own jump covered
-     the whole distance in one frame. Every frame's scroll offset from the
-     tap until the region holds still, and no single frame may carry half
-     the trip. With motion allowed for this one check: under reduced motion
-     the trip is meant to be instant. */
+  /* And it travels there: the fragment's own jump covered the whole distance in one frame.
+     Every frame's scroll offset from the tap until the region holds still, and no single
+     frame may carry half the trip. With motion allowed for this one check: under reduced
+     motion the trip is meant to be instant. */
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await jump.evaluate((el) => el.scrollIntoView({ block: 'center' }));
   await page.evaluate(() => {
@@ -321,10 +320,9 @@ try {
   const kinds = await page.$$eval('[data-span-fact]', (els) => [...new Set(els.map((el) => el.dataset.spanFact))].sort());
   assert.deepEqual(kinds, ['era', 'milestone', 'regimen', 'surgery', 'tryout'], 'the list holds every kind the rail draws');
 
-  /* Bounded before anything scrolls it: forty-one milestones and a handful
-     of stretches, rendered a batch at a time. Asked first because the list
-     grows as it is scrolled (ADR-0069) and the measuring below scrolls
-     every row into view. */
+  /* Bounded before anything scrolls it: forty-one milestones and a handful of stretches,
+     rendered a batch at a time. Asked first because the list grows as it is scrolled and
+     the measuring below scrolls every row into view. */
   const shown = await page.locator('[data-span-fact]').count();
   assert.ok(shown <= 30, `the list renders one batch (${shown} rows) rather than every fact`);
   assert.equal(await page.locator('[data-batched-more="lookback-facts"]').count(), 1, 'and says how to see more');

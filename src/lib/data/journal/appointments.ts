@@ -40,8 +40,8 @@ export interface AppointmentInput {
   kind: string | null;
   place: string | null;
   note: string | null;
-  /** What it cost (FA 30). Absent is none, on an update as on a create, like
-      `referredEpochDay`: the editor always passes it. Throws if invalid. */
+  /** What it cost. Absent is none, on an update as on a create, like `referredEpochDay`:
+      the editor always passes it. Throws if invalid. */
   cost?: CostInput;
 }
 
@@ -83,8 +83,8 @@ export interface AppointmentsArea {
   /** Idempotent (ADR-0053). */
   deleteStatusUpdate(id: string): Promise<void>;
   /** One appointment with a day by id, or undefined - the debrief deep link's own read
-      (EntryEditor.svelte, ticket 58), which arrives with only an id and
-      needs the day it was on to scope its "since then" reads. */
+      (EntryEditor.svelte), which arrives with only an id and needs the day it was on to
+      scope its "since then" reads. */
   getAppointment(id: string): Promise<Appointment | undefined>;
   /** Returns the appointment's id. Updating an unknown id throws, as does
       naming a procedure this journal does not hold (ADR-0053). */

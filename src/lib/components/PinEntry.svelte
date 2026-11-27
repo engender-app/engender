@@ -74,9 +74,8 @@
     countdown = null;
   }
 
-  /* The line under the pad redraws the seconds every tick and is not a live
-     region; only the wait starting and the wait ending are said, as an
-     interruption and then politely (after-release 21). */
+  /* The line under the pad redraws the seconds every tick and is not a live region; only
+     the wait starting and the wait ending are said, as an interruption and then politely. */
   function setWait(remaining: number) {
     const said = pinWaitSpeech(waitMs, remaining);
     waitMs = remaining;
@@ -186,10 +185,9 @@
       if (outcome === 'device-gone') {
         /* Not counted against the throttle: nothing was guessed and no
            number of tries would get anywhere. */
-        /* Two sentences for one state, because the key is in two different
-           places: the browser's own store on the web, and Android Keystore
-           on a phone (ticket sec-02-06). "This browser" on a phone would be
-           telling somebody about a store their PIN was never bound to. */
+        /* Two sentences for one state, because the key is in two different places: the
+           browser's own store on the web, and Android Keystore on a phone. "This browser"
+           on a phone would be telling somebody about a store their PIN was never bound to. */
         fail(isAndroid() ? m.su_device_key_gone_android() : m.su_device_key_gone());
         return;
       }

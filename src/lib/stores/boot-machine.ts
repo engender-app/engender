@@ -112,12 +112,9 @@ export interface BootMachine {
   boot: BootState;
   /** Demo journals use a fixed passphrase, but still refuse legacy storage. */
   demo: boolean;
-  /** A `persist-request-denied` seen before the journal reached `ready`
-      (ticket 202: the request is no longer awaited, so its answer can land
-      before or after `journal-opened` - Chromium in particular denies fast
-      enough that the race is not exotic). Consumed and cleared the moment
-      `journal-opened` arrives; a denial seen after `ready` is applied right
-      away instead, without ever setting this. */
+  /** A `persist-request-denied` seen before the journal reached `ready`. Consumed and
+      cleared the moment `journal-opened` arrives; a denial seen after `ready` is applied
+      right away instead, without ever setting this. */
   persistDeniedPending: boolean;
   /** Distinguishes the initial survey from an open already using a key. */
   journalOpening: boolean;

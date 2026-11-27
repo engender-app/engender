@@ -1,7 +1,5 @@
-/* What a dose reminder says it is reminding about (functional audit ticket
-   21, Alicja's sign-off note of 2026-10-30: "make the reminders say what they
-   are reminding about"). One wording for the reminders list and the
-   notification. */
+/* What a dose reminder says it is reminding about. One wording for the reminders list and
+   the notification. */
 
 import assert from 'node:assert/strict';
 import { test, vi } from 'vitest';
@@ -161,8 +159,7 @@ test('a reminder that is not about a drug is left as it is', () => {
   assert.deepEqual(reminderNotification(r, context), { title: 'Call the clinic', text: '11:30' });
 });
 
-/* Re-check carpet 12, row 14: the amount and autoSource branches below had
-   surviving mutants. */
+/* row 14: the amount and autoSource branches below had surviving mutants. */
 test('an empty list of amounts reads as the regimen\'s own dose', () => {
   const r = reminder({ title: 'Estradiol valerate', drug: 'Estradiol valerate', autoSource: 'dose:ep-ev' });
   const context = { reminders: [r], episodes: [ev], schedules: [schedule({ episodeId: 'ep-ev', doseAmounts: [] })], todayEpochDay: TODAY };

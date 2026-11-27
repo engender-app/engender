@@ -4,8 +4,8 @@
    Framework-free so the node tier can drive it; attempt.svelte.ts binds it to
    the toast and to a reactive busy flag. */
 
-/** `error` is what the write threw, so a report can say something truer than
-    `message` when it knows the failure (a full disk, last-audit ui 37). */
+/** `error` is what the write threw, so a report can say something truer than `message` when
+    it knows the failure. */
 export type Report = (message: string, error: unknown) => void;
 
 /** Runs a write. Resolves true once it lands; on a rejection (or a throw

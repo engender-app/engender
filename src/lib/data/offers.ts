@@ -1,8 +1,7 @@
-/* Register offers that write records (ADR-0045, ADR-0044). Screens choose
-   when to ask and the owning area commits the write. Links that open a
-   prefilled era editor leave saving to that editor.
-   Tryout adoption can create a milestone in the same transaction. Each
-   source uses its existing milestone or end day to suppress repeats. */
+/* Register offers that write records (ADR-0045). Screens choose when to ask and the owning
+   area commits the write. Links that open a prefilled era editor leave saving to that
+   editor. Tryout adoption can create a milestone in the same transaction. Each source uses
+   its existing milestone or end day to suppress repeats. */
 
 import { m } from '../paraglide/messages';
 import type { FinishableArea, SuspendableArea } from './areaState';
@@ -15,7 +14,7 @@ import type { TryoutsArea } from './journal/tryouts';
 /** Every offer this registry knows about. A key here with no entry in
     `OFFERS` does not compile, because `OFFERS` is a total `Record` over
     this union - demonstrated by deleting an entry below. */
-/* OfferKey stays exported only for its own test (AU-09 test-only review). */
+/* OfferKey stays exported only for its own test. */
 export type OfferKey =
   | 'roadmap-goal-milestone'
   | 'surgery-day-milestone'
@@ -46,7 +45,7 @@ export interface OfferCopy {
 /** The areas an offer's `write` may reach: the ones `openJournal` already
     built, so a confirmed offer writes through exactly the path the owning
     screen would. */
-/* OfferJournal stays exported only for its own test (AU-09 test-only review). */
+/* OfferJournal stays exported only for its own test. */
 export interface OfferJournal {
   areaStates: AreaStatesArea;
   milestones: MilestonesArea;
@@ -183,14 +182,12 @@ export const OFFERS = {
     }
   },
 
-  /* Phase 8 features ticket 51. Manual only, with no automatic trigger and
-     no declined-forever preference the way `area-finished` has one: nothing
-     about a stopped stream implies a pause the way nothing added for
-     `FINISH_SUGGESTION_QUIET_DAYS` implies a finish, so there is no
-     observation here to suggest from. It is registered anyway, rather than
-     the sheet writing `setAreasSuspended` directly, for the same reason
-     every other write in this file is: one path to the record, and the sheet
-     is the confirmation regardless of what opened it. */
+  /* Manual only, with no automatic trigger and no declined-forever preference the way
+     `area-finished` has one: nothing about a stopped stream implies a pause the way nothing
+     added for `FINISH_SUGGESTION_QUIET_DAYS` implies a finish, so there is no observation
+     here to suggest from. It is registered anyway, rather than the sheet writing
+     `setAreasSuspended` directly, for the same reason every other write in this file is:
+     one path to the record, and the sheet is the confirmation regardless of what opened it. */
   'area-suspended': {
     key: 'area-suspended',
     trigger: "opened by hand from the area's own screen; no automatic trigger offers this",
@@ -219,7 +216,7 @@ export const OFFERS = {
     derived from `OFFERS` could only ever fail on a copy of `OFFERS` that a
     test shortened by hand, which is a check of `filter` wearing this
     registry's name. */
-/* OFFER_KEYS stays exported only for its own test (AU-09 test-only review). */
+/* OFFER_KEYS stays exported only for its own test. */
 export const OFFER_KEYS = Object.keys(OFFERS) as readonly OfferKey[];
 
 /** The milestone a roadmap goal has already minted, if it has one.

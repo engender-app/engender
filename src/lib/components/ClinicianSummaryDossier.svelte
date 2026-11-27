@@ -1,18 +1,13 @@
 <script lang="ts">
-  /* The clinician summary as the page it prints. One
-     snippet per registered section (clinicianSummary.ts, ADR-0031), drawn
-     in the registry's order by walking its keys; a section switched off
-     arrives as null and draws nothing. `SECTION_SNIPPETS` is a full record
-     over the keys, so registering a part with no rows to draw is a
-     typecheck failure here, the way a part with no name is one in
-     clinicianSummaryLabels.ts.
+  /* The clinician summary as the page it prints. One snippet per registered section
+     (clinicianSummary.ts), drawn in the registry's order by walking its keys; a section
+     switched off arrives as null and draws nothing. `SECTION_SNIPPETS` is a full record
+     over the keys, so registering a part with no rows to draw is a typecheck failure here,
+     the way a part with no name is one in clinicianSummaryLabels.ts.
 
-     Every regimen and dose row links back to its own record across a hash
-     (phase 8 features ticket 67, restoring what ticket 09's rewrite dropped
-     when the flat, static rows here became a printed table) - `.dossier-
-     row-link` in clinician-print.css keeps that plain text once actually
-     printed, since a clinician reading the page on paper has nowhere to
-     click it. */
+     Every regimen and dose row links back to its own record across a hash - `.dossier-
+     row-link` in clinician-print.css keeps that plain text once actually printed, since a
+     clinician reading the page on paper has nowhere to click it. */
 
   import DossierTable from './DossierTable.svelte';
   import { m } from '$lib/paraglide/messages';
@@ -58,16 +53,14 @@
   /** What one section's snippet is handed: its part, never null. */
   type Section<Key extends ClinicianSummarySectionKey> = NonNullable<ClinicianSummarySections[Key]>;
 
-  /* Ticket 08: a section's table shows its first rows on screen and every
-     row in print - the preview is the page, not a scrollable assembly of
-     the whole range. Twelve was the ticket's own proposal and nothing in
-     the dossier's data pushed it either way, so it stands as written. One
-     floor for every table, applied independently, so the regimen table
-     and the dose log each truncate on their own row count rather than
-     sharing a budget - a range with three regimen episodes and ninety
-     doses prints a full regimen table and a truncated dose log, not half
-     of each. A row past the floor carries `dossier-row-overflow`
-     (clinician-print.css); the note under a truncated table carries
+  /* A section's table shows its first rows on screen and every row in print - the preview
+     is the page, not a scrollable assembly of the whole range. Twelve was the ticket's own
+     proposal and nothing in the dossier's data pushed it either way, so it stands as
+     written. One floor for every table, applied independently, so the regimen table and the
+     dose log each truncate on their own row count rather than sharing a budget - a range
+     with three regimen episodes and ninety doses prints a full regimen table and a
+     truncated dose log, not half of each. A row past the floor carries
+     `dossier-row-overflow` (clinician-print.css); the note under a truncated table carries
      `data-dossier-truncate`, for a test to find either. */
   const PREVIEW_ROW_FLOOR = 12;
 
@@ -170,10 +163,9 @@
   const isSummaryEmpty = $derived(CLINICIAN_SUMMARY_SECTION_KEYS.every((key) => summary.sections[key] === null));
 </script>
 
-<!-- A date in a table cell never breaks between its words on screen ("11 /
-     Jul / 2026" stacked one word a line at 390, after-release 22). Print
-     keeps its own wrapping: clinician-print.css scopes the rule to screen.
-     `after` keeps a list's comma on its date's line. -->
+<!-- A date in a table cell never breaks between its words on screen ("11 / Jul / 2026"
+     stacked one word a line at 390). Print keeps its own wrapping: clinician-print.css
+     scopes the rule to screen. `after` keeps a list's comma on its date's line. -->
 {#snippet date(epochDay: number, after = '')}<span class="dossier-date">{dayShort(epochDay)}{after}</span>{/snippet}
 
 {#snippet truncateNote(hidden: number)}
@@ -192,10 +184,9 @@
           {demographics.name.trim() || m.clinician_summary_not_set()}
         </span>
       </div>
-      <!-- Drawn only when given, like the date of birth under it: both
-           come from a field on this screen that is empty by default, and a
-           row reading "Not specified" told the doctor something the
-           person never said (after-release 22). -->
+      <!-- Drawn only when given, like the date of birth under it: both come from a field on
+           this screen that is empty by default, and a row reading "Not specified" told the
+           doctor something the person never said. -->
       {#if demographics.pronouns?.trim()}
         <div class="dossier-profile-item" data-profile-item="pronouns" in:profileArrive out:profileLeave>
           <span class="dossier-profile-label">{m.clinician_summary_pronouns_label()}</span>
@@ -342,12 +333,11 @@
                 </td>
                 <td data-label={m.status_label()}>
                   {dose.status !== 'taken' ? statusLabel(dose.status) : m.dose_status_taken()}
-                  <!-- The footnote marker for a dose a schedule wrote
-                       rather than the person (ADR-0086). In the status cell, because what it
-                       qualifies is the status: "taken" on this row is the
-                       schedule's word for it. aria-hidden, with the
-                       legend under the table carrying the meaning in
-                       words - a dagger read aloud is noise. -->
+                  <!-- The footnote marker for a dose a schedule wrote rather than the
+                       person. In the status cell, because what it qualifies is the status:
+                       "taken" on this row is the schedule's word for it. aria-hidden, with
+                       the legend under the table carrying the meaning in words - a dagger
+                       read aloud is noise. -->
                   {#if dose.source === 'schedule'}<span
                       class="dossier-footnote-mark"
                       data-dose-auto-logged
@@ -524,11 +514,10 @@
   </section>
 {/snippet}
 
-<!-- 5. Side effects, ongoing and resolved. Two tables under their own
-     headings rather than one under "Active": the part reads every side
-     effect active at some point in the range (clinicianSummary.ts), and
-     one that resolved in it was not active when the page was printed
-     (functional audit ticket 39, off ticket 23's resolved day). -->
+<!-- 5. Side effects, ongoing and resolved. Two tables under their own headings rather than
+     one under "Active": the part reads every side effect active at some point in the range
+     (clinicianSummary.ts), and one that resolved in it was not active when the page was
+     printed. -->
 {#snippet sideEffectRows(effects: SideEffect[], resolved: boolean)}
   <DossierTable label={resolved ? m.clinician_summary_side_effects_resolved() : m.clinician_summary_side_effects_ongoing()}>
     <table class="dossier-table">
@@ -814,10 +803,9 @@
 {/snippet}
 
 <div class="clinician-dossier" data-clinician-dossier>
-  <!-- A part switched on or off on the sheet opens or closes its own
-       height, so the parts under it travel rather than jump (functional
-       audit ticket 39, which added the changes part and its switch). Local
-       transitions, so the parts drawn with the page do not play them. -->
+  <!-- A part switched on or off on the sheet opens or closes its own height, so the parts
+       under it travel rather than jump. Local transitions, so the parts drawn with the page
+       do not play them. -->
   {#each CLINICIAN_SUMMARY_SECTION_KEYS as key (key)}
     {@const content = summary.sections[key]}
     {#if content !== null}<div class="dossier-part" data-dossier-part={key} transition:partDisclose>{@render sectionSnippet(key)(content)}</div>{/if}

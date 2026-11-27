@@ -1,11 +1,9 @@
-/* Collect Home tile queries, preferences, snoozes and writes here.
-   liveTiles.ts owns the pure composition, ordering and contents
-   (ADR-0016, ADR-0017). Call homeTiles() once while Home initializes to
-   create the liveQuery and liveList effects.
+/* Collect Home tile queries, preferences, snoozes and writes here. liveTiles.ts owns the
+   pure composition, ordering and contents (ADR-0017). Call homeTiles() once while Home
+   initializes to create the liveQuery and liveList effects.
 
-   Read only the fact each tile displays. Eighteen narrow reads cross
-   the worker boundary with fewer bytes than the previous sixteen wide
-   reads (tests/long-journal, mount-home). */
+   Read only the fact each tile displays. Eighteen narrow reads cross the worker boundary
+   with fewer bytes than the previous sixteen wide reads (tests/long-journal, mount-home). */
 
 import { liveList, liveQuery, liveQueryWhen, journal } from './live/journal.svelte';
 import { AREA_STATES_BEFORE_READ } from './areaState';
@@ -36,10 +34,9 @@ interface HomeTileGrid {
   /** The grid's own second hand, so a surface next to it that also counts
       up reads the same tick rather than starting a loop of its own. */
   readonly nowMs: number;
-  /** Whether the dose panel is drawn, which is what Today withholds the
-      agenda's `doseSlot` kind on. Drawn is enough since
-      functional-audit ticket 15: the panel names every regimen the agenda
-      would have drawn a row for (`liveTiles.ts`, `panelDoses`). */
+  /** Whether the dose panel is drawn, which is what Today withholds the agenda's `doseSlot`
+      kind on. Drawn is enough the panel names every regimen the agenda would have drawn a
+      row for (`liveTiles.ts`, `panelDoses`). */
   readonly dosePanelDrawn: boolean;
   /** Snoozes a tile for 24 hours. Home calls it for the ready letter, whose
       dismiss opens a sheet on the route rather than acting in place; the
@@ -240,11 +237,9 @@ export function homeTiles(
     get ready() {
       return composable;
     },
-    /* The grid's own clock, handed out so Home's pinned rows ride it rather
-       than opening a second one. The wear row counts up beside
-       the wear tile and the two may not disagree by a second, which is only
-       true while both read the same tick (phase 11 all-four-doors ticket
-       02). */
+    /* The grid's own clock, handed out so Home's pinned rows ride it rather than opening a
+       second one. The wear row counts up beside the wear tile and the two may not disagree
+       by a second, which is only true while both read the same tick. */
     get nowMs() {
       return nowTick;
     },

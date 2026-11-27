@@ -26,8 +26,8 @@ const exists = (path: string) => existsSync(fileURLToPath(new URL(path, root)));
     different set from the one that ships. */
 const palettes = [...read('src/lib/theme/palettes.css').matchAll(/\[data-palette="([a-z]+)"\]\s*\{\s*--motif-stripes:/g)]
   .map((match) => match[1])
-  /* The disguised gate's neutral palette is not a flag and has no mark
-     (security-scan ticket 08), the same skip render-mark.mjs makes. */
+  /* The disguised gate's neutral palette is not a flag and has no mark, the same skip
+     render-mark.mjs makes. */
   .filter((name) => name !== DISGUISED_PALETTE);
 
 const manifest = read('android/app/src/main/AndroidManifest.xml');
@@ -104,9 +104,9 @@ describe('the mark is generated for every palette the app ships', () => {
   });
 
   it('names no alias after a flag, the app or the disguise', () => {
-    /* Apps that list launcher activities print these class names, and the
-       names are fixed for good at 1.0 (FA 43). Which flag or shape an alias
-       draws is meta-data, read by DisguiseAlias, not part of the name. */
+    /* Apps that list launcher activities print these class names, and the names are fixed
+       for good at 1.0. Which flag or shape an alias draws is meta-data, read by
+       DisguiseAlias, not part of the name. */
     const names = [...manifest.matchAll(/<activity-alias[\s\S]*?android:name="([^"]+)"/g)].map((m) => m[1]);
     expect(names).toHaveLength(palettes.length * 2 + 1);
     const banned = [...palettes, 'default', 'round', 'disguis', 'notes', 'engender', 'gender', 'flag'];

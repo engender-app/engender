@@ -45,7 +45,7 @@ describe('tryout-to-milestone adoption pipeline', () => {
     expect(createdMilestone?.name).toBe('Adopted name Alicja');
     expect(createdMilestone?.epochDay).toBe(19042);
 
-    // A milestone holds no felt-sense readings (functional audit ticket
+    // A milestone holds no felt-sense readings ( ticket
     // 32): the tryout's stay where they were, and nothing else is written.
     const readings = await journal.feltSense.byTryout();
     expect([...readings.keys()]).toEqual([tryoutId]);

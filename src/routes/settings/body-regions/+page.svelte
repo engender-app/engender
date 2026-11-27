@@ -21,15 +21,14 @@
   let addOpen = $state(false);
   let newName = $state('');
 
-  /* A custom region carries the same hide control the built-ins have, plus
-     a rename, since a typo in one otherwise sat in every picker for good
-     (after-release 07). A built-in keeps the catalogue's name. */
+  /* A custom region carries the same hide control the built-ins have, plus a rename, since
+     a typo in one otherwise sat in every picker for good. A built-in keeps the catalogue's
+     name. */
   let renameTarget = $state<{ id: string; name: string } | null>(null);
   /* Open on arrival, so the regions are there to read. */
   let builtinOpen = $state(true);
 
-  /* Both sheets close once their write lands, and stay open with a toast
-     when it does not (after-release 06). */
+  /* Both sheets close once their write lands, and stay open with a toast when it does not. */
   const renaming = writer();
   const adding = writer();
   async function rename() {
@@ -77,8 +76,8 @@
     <Icon name="plus" size={20} /><span>{m.body_regions_add()}</span>
   </button>
 
-  <!-- Gated on the vocabulary mirror (ticket 152's gap): a cold open paints
-       before it fills, so the lists cut in at full opacity when it did. Held at last visit's height, faded in. -->
+  <!-- Gated on the vocabulary mirror: a cold open paints before it fills, so the lists cut
+       in at full opacity when it did. Held at last visit's height, faded in. -->
   <ReadReserve ready={listsRevealed} estimate={listsEstimate} onrest={listsRemember}>
     <div class="managed-tags">
       {#each customs as r (r.id)}

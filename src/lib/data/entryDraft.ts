@@ -4,7 +4,7 @@
    removed photo ids, isEmpty and the upsertEntry payload. The component
    keeps only a thin `$state` binding around what this returns; the save
    and delete-sheet guards stay in the component because they are UI-local,
-   not draft content (CONTEXT: "Entry").
+   not draft content.
 
    Nothing here is a Svelte rune, so it runs and is tested under the Node
    tier the same way entryContent.ts and entries.ts already are. */

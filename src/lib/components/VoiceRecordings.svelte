@@ -1,12 +1,10 @@
 <script lang="ts">
-  /* This tab reads entry-attached memos via journal.voice.inJournal().
-     Recording and deletion stay with the entry. The tab owns no records
-     or archive section (ADR-0036).
+  /* This tab reads entry-attached memos via journal.voice.inJournal(). Recording and
+     deletion stay with the entry. The tab owns no records or archive section.
 
-     Keep VoicePlayer and the entry link as siblings to avoid nesting a
-     button inside an anchor. The tab starts with count and total duration.
-     Sum durations as players load file metadata
-     because duration is derived from the file (ADR-0010). */
+     Keep VoicePlayer and the entry link as siblings to avoid nesting a button inside an
+     anchor. The tab starts with count and total duration. Sum durations as players load
+     file metadata because duration is derived from the file (ADR-0010). */
   import { page } from '$app/state';
   import { withListReturn } from '$lib/navigation/sourceRecord';
   import { m } from '$lib/paraglide/messages';
@@ -96,13 +94,12 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* Two lines: the day it belongs to with the way through to it, and the
-     transport under them across the row's whole width. The leading mic
-     square this row used to carry went with ticket 46 - the play control
-     says what the row holds, and 36px of icon was 36px the waveform wanted.
-     The row's main span is still a static container rather than a link: the
-     entry link and the player are the two real controls (kit.css's own note
-     on .kit-row.is-split makes the same split for a different pair). */
+  /* Two lines: the day it belongs to with the way through to it, and the transport under
+     them across the row's whole width. The leading mic square this row used to carry went -
+     the play control says what the row holds, and 36px of icon was 36px the waveform
+     wanted. The row's main span is still a static container rather than a link: the entry
+     link and the player are the two real controls (kit.css's own note on .kit-row.is-split
+     makes the same split for a different pair). */
   .memo-row-body {
     flex: 1;
     min-width: 0;

@@ -83,7 +83,7 @@ test('a chain nothing recorded breaks the series without naming equipment', () =
   assert.equal(series.runs.length, 2);
 });
 
-/* CONTEXT: "Capture chain" - changing phone breaks a series the way
+/* Capture chain. changing phone breaks a series the way
    changing the passage does, and the passage is the wider break: two
    passages leave nothing to compare at all. */
 test('a different passage breaks the series, and says so even when the phone changed as well', () => {
@@ -212,12 +212,10 @@ test('only a two-ended figure says its second line shares the scale', () => {
 });
 
 test('a rate nobody could have read at is a gap in the trend, not a reading', () => {
-  /* Redesign ticket 41. Before the passage had a working length gate, a
-     take abandoned part-way through was stored with the whole passage's
-     word count over the seconds it ran, so it reports roughly twice the
-     true speaking rate. No stored field proves it either way, so the
-     impossible ones are dropped from the line rather than drawn beside the
-     honest ones. */
+  /* Before the passage had a working length gate, a take abandoned part-way through was
+     stored with the whole passage's word count over the seconds it ran, so it reports
+     roughly twice the true speaking rate. No stored field proves it either way, so the
+     impossible ones are dropped from the line rather than drawn beside the honest ones. */
   const rows = [
     take(1, PIXEL, { passageKey: 'builtin-en', wordsPerMinute: 148 }),
     take(2, PIXEL, { passageKey: 'builtin-en', wordsPerMinute: 372 }),
@@ -242,7 +240,7 @@ test('a rate nobody could have read at is a gap in the trend, not a reading', ()
   assert.equal(ownSeries(rows, 'spread').runs[0].points[1].y, 2.02);
 });
 
-// --- latestReading (the metric reference sheet's own mini figure, ticket 17) -
+// --- latestReading -
 
 test('latestReading is the newest benchmark that measured the figure', () => {
   const rows = [take(1, PIXEL), take(2, PIXEL), take(3, PIXEL)];

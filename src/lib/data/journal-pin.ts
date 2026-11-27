@@ -37,7 +37,7 @@ import { androidPinAttempts } from '../lock/lock-timing-bridge';
 
 /** Where a PIN keystore's two halves live. Defaults to this platform's own;
     the tests hand in memory. */
-/* PinPorts stays exported only for its own test (AU-09 test-only review). */
+/* PinPorts stays exported only for its own test. */
 export interface PinPorts {
   journalExists(): Promise<boolean>;
   /** The key store a wrap written now binds to. */
@@ -52,9 +52,8 @@ export interface PinPorts {
   legacyBinding?: DeviceBinding;
   readKeystore(): Promise<KeystoreMetadata | null>;
   writeKeystore(metadata: KeystoreMetadata, current?: () => void): Promise<void>;
-  /** Runs the write of a changed PIN with any recovery key nobody confirmed
-      taken away (last-audit UI 42). Optional so the tests' in-memory ports
-      need not carry a recovery store. */
+  /** Runs the write of a changed PIN with any recovery key nobody confirmed taken away.
+      Optional so the tests' in-memory ports need not carry a recovery store. */
   withoutPendingRecoveryKey?<T>(work: (doNotRestorePending: () => void) => Promise<T>): Promise<T>;
   /** Android admits durably before derivation; web counts at its gate. */
   attempts?: {
@@ -88,7 +87,7 @@ const platformPorts = (): PinPorts =>
 /** Exactly four digits (crypto/params.ts states why four). A floor and a
     ceiling both, because the pad collects a fixed count and submits itself on
     the last one. */
-/* isValidPin stays exported only for its own test (AU-09 test-only review). */
+/* isValidPin stays exported only for its own test. */
 export function isValidPin(pin: string): boolean {
   return new RegExp(`^[0-9]{${PIN_LENGTH}}$`).test(pin);
 }
@@ -217,14 +216,13 @@ async function unlockPin(pin: string, ports: PinPorts, current: () => void, migr
   }
 }
 
-/** An Android PIN journal from before ticket sec-02-06, rewrapped under the
-    phone's Keystore the first time the right PIN opens it.
+/** An Android PIN journal from, rewrapped under the phone's Keystore the first time the
+    right PIN opens it.
 
-    Write then clear, which is the order every other rewrap in the app uses
-    and here is the crash safety. Minting the new key touches nothing that
-    opens the keystore on disk - that is the old key, and it is untouched
-    until the write lands - so an interruption before the write leaves a
-    journal that opens under the old binding, and one after it leaves a
+    Write then clear, which is the order every other rewrap in the app uses and here is the
+    crash safety. Minting the new key touches nothing that opens the keystore on disk - that
+    is the old key, and it is untouched until the write lands - so an interruption before
+    the write leaves a journal that opens under the old binding, and one after it leaves a
     journal that opens under the new one. Never neither. */
 async function rebindOnUnlock(
   dataKey: Uint8Array<ArrayBuffer>,
@@ -271,9 +269,8 @@ export async function changeJournalPin(
       ),
       ports
     );
-    /* After the current PIN is proven: a wrong PIN touches nothing, and a
-       recovery key nobody confirmed does not outlive the PIN it was made
-       under (last-audit UI 42). */
+    /* After the current PIN is proven: a wrong PIN touches nothing, and a recovery key
+       nobody confirmed does not outlive the PIN it was made under. */
     const write = (doNotRestorePending: () => void = () => {}) => {
       doNotRestorePending();
       return ports.writeKeystore(rewrapped);

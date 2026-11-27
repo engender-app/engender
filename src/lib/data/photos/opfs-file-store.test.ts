@@ -45,10 +45,9 @@ test('batch reads reject storage failures rather than treating them as missing',
 });
 
 test('a write the browser refuses leaves no empty file and keeps the refusal', async () => {
-  /* getFileHandle({ create: true }) makes the file before a byte is written, so
-     a quota refusal used to leave it behind at 0 bytes. And close() on a
-     stream whose write failed rejects too, which replaced the quota error
-     with a generic one (last-audit ui 37). */
+  /* GetFileHandle({ create: true }) makes the file before a byte is written, so a quota
+     refusal used to leave it behind at 0 bytes. And close() on a stream whose write failed
+     rejects too, which replaced the quota error with a generic one. */
   const quota = new DOMException('The quota has been exceeded.', 'QuotaExceededError');
   const names = new Set<string>();
   const abort = vi.fn(async () => {});

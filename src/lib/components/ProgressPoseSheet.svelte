@@ -39,12 +39,11 @@
 
   const visibleCount = $derived(poses.filter((pose) => !pose.hidden).length);
 
-  /* What the field and its button say. Each crossfades in place over a
-     still surface: switching between naming a new pose and
-     renaming one swapped both texts in one frame (Alicja's rule: content
-     may crossfade, never swap). The label is keyed and its leaving line is
-     pinned out of flow by `crossfade`; the button's two words are both
-     always there (below). Neither the label's line nor the button moves. */
+  /* What the field and its button say. Each crossfades in place over a still surface:
+     switching between naming a new pose and renaming one swapped both texts in one frame.
+     The label is keyed and its leaving line is pinned out of flow by `crossfade`; the
+     button's two words are both always there (below). Neither the label's line nor the
+     button moves. */
   const fieldLabel = $derived(renaming ? m.pph_pose_rename({ pose: label(renaming) }) : m.pph_pose_new());
   const textIn = (node: Element) => crossfade(node, undefined, { direction: 'in' });
 

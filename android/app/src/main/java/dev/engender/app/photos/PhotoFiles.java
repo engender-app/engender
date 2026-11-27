@@ -26,12 +26,12 @@ final class PhotoFiles {
 
     /**
      * Writes and syncs the whole file, or leaves nothing under its name.
-     * Opening the stream creates the file before a byte lands, so a disk
-     * that refused the bytes (ENOSPC) used to leave an empty photo behind
-     * (last-audit ui 37). Removing it is safe because every caller writes a
-     * fresh name - a new uuid, or restore's fresh replacement - and no row
-     * names a file until its write has succeeded. The failure itself is
-     * rethrown untouched, so the WebView still reads ENOSPC in its message.
+     * Opening the stream creates the file before a byte lands, so a disk that
+     * refused the bytes (ENOSPC) used to leave an empty photo behind.
+     * Removing it is safe because every caller writes a fresh name - a new
+     * uuid, or restore's fresh replacement - and no row names a file until
+     * its write has succeeded. The failure itself is rethrown untouched, so
+     * the WebView still reads ENOSPC in its message.
      */
     static void writeWhole(File target, byte[] bytes) throws IOException {
         try (FileOutputStream out = new FileOutputStream(target, false)) {
@@ -74,12 +74,12 @@ final class PhotoFiles {
     }
 
     /**
-     * Deletes the photo directory and everything in it, for the reset
-     * (ux-carpet 214). Nothing else ever removed it: the web's reset empties
-     * OPFS, which is not where these live, and the orphan sweep that would
-     * reach them skips any boot that writes, which a first run always does.
-     * So every photo a journal had outlived its start-over, sealed under a
-     * key that no longer exists, and kept its space.
+     * Deletes the photo directory and everything in it, for the reset.
+     * Nothing else ever removed it: the web's reset empties OPFS, which is
+     * not where these live, and the orphan sweep that would reach them skips
+     * any boot that writes, which a first run always does. So every photo a
+     * journal had outlived its start-over, sealed under a key that no longer
+     * exists, and kept its space.
      *
      * <p>Flat by construction - names are validated as single path segments
      * on the way in - so one level is everything. Throws rather than leaving
@@ -110,12 +110,11 @@ final class PhotoFiles {
     }
 
     /**
-     * The same rule as isStorableFileName in photos/names.ts, so a name
-     * means one file on every store. A name is refused rather than trimmed:
-     * a trimmed " target.jpg" used to land on the real target.jpg, which
-     * then never decrypted because its sealed name is the other one
-     * (security scan GD-010). Everything the app writes is
-     * "uuid.extension", which passes.
+     * The same rule as isStorableFileName in photos/names.ts, so a name means
+     * one file on every store. A name is refused rather than trimmed: a
+     * trimmed " target.jpg" used to land on the real target.jpg, which then
+     * never decrypted because its sealed name is the other one. Everything
+     * the app writes is "uuid.extension", which passes.
      */
     static boolean isCanonicalName(String name) {
         if (name == null || name.isEmpty() || !name.equals(name.trim()) || name.startsWith(".")) return false;

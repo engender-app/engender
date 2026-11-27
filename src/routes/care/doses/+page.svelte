@@ -13,17 +13,15 @@
      The three states the schedule view can be in - several episodes
      running, none, or one with no schedule - were `.notice notice-info`
      paragraphs, which is the old world's notice. They are the kit's. */
-  /* The dose log (phase 4 ticket 02, widened to concurrent episodes by
-     phase 5 ticket 38). Two views: what was logged, and how it sits against
-     what the active episode's schedule expected. The second one is a single
-     question asked of the dose log area (phase 5 audit-deepening ticket 17).
+  /* The dose log. Two views: what was logged, and how it sits against what the active
+     episode's schedule expected. The second one is a single question asked of the dose log
+     area.
 
-     A dose usually stores no drug or regimen episode of its own - every
-     row asks attributeDose with the dose's own timestamp, which is why
-     correcting a date in the editor below moves the dose to a different
-     episode with nothing else to update. `drug` only exists to break a
-     tie when more than one episode is active at once for different drugs
-     (regimenEpisode.ts). */
+     A dose usually stores no drug or regimen episode of its own - every row asks
+     attributeDose with the dose's own timestamp, which is why correcting a date in the
+     editor below moves the dose to a different episode with nothing else to update. `drug`
+     only exists to break a tie when more than one episode is active at once for different
+     drugs (regimenEpisode.ts). */
   import { travelOnChange } from '$lib/motion/reorder.svelte';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
@@ -97,9 +95,8 @@
   const through = $derived(Math.max(today, extendedTo ?? today));
   let from = $derived(today - windowDays);
 
-  /* Deep link handling (phase 8 features ticket 67, phase 11 ticket 18): a
-     dose outside the window widens it to contain the dose, and a missing
-     one shows an explicit notice instead of scrolling to an unrelated row. */
+  /* Deep link handling: a dose outside the window widens it to contain the dose, and a
+     missing one shows an explicit notice instead of scrolling to an unrelated row. */
   let deepLinkedDoseId = $derived(page.url.searchParams.get('dose') ?? hashRowId(page.url.hash));
   let targetSlotDate = $derived(page.url.searchParams.get('date'));
   let sourceEpisodeId = $derived(careEpisodeId(page.url));
@@ -184,10 +181,9 @@
   const fmtDayShort = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short' });
   const whenOf = (dose: DoseEvent) => `${fmtDayShort(epochDayFromTimestamp(dose.timestamp))}, ${fmtTime(dose.timestamp)}`;
 
-  /** What an auto-logged dose says about itself on its second line, or null
-      for one the person logged (ADR-0086). A skipped one says
-      both things at once rather than wearing the status chip beside the
-      marker: "skipped" and "was logged from your schedule" are one sentence
+  /** What an auto-logged dose says about itself on its second line, or null for one the
+      person logged. A skipped one says both things at once rather than wearing the status
+      chip beside the marker: "skipped" and "was logged from your schedule" are one sentence
       about the same row. */
   const sourceNoteOf = (dose: DoseEvent): string | null => {
     if (dose.source !== 'schedule') return null;
@@ -232,12 +228,10 @@
     findById: (id) => allDoses.find((dose) => dose.id === id)
   });
   let editor = $derived(record.editor);
-  /** True only for a *new* dose, while it is genuinely ambiguous which of
-      several active episodes it is for (ticket 40: two schedules tied for
-      nearest, or neither has a schedule to break the tie with) - not for
-      editing an old dose, whose own drug (if any) is shown but never
-      forced, and not merely for having more than one episode active, now
-      that activeEpisode already resolves the common case on its own. */
+  /** True only for a *new* dose, while it is genuinely ambiguous which of several active
+      episodes it is for - not for editing an old dose, whose own drug (if any) is shown but
+      never forced, and not merely for having more than one episode active, now that
+      activeEpisode already resolves the common case on its own. */
   let editorNeedsDrugPick = $derived(
     editor !== null && !editor.id && activeDrugChoices.length > 1 && activeEpisode === null && !editor.drug
   );
@@ -252,15 +246,14 @@
   let validationTouched = $state(false);
   const toggleGroup = (group: RecordGroup) => (openGroup = openGroup === group ? null : group);
 
-  /* Quick add's dose option (phase 5 ticket 18, spec 04): the log is the
-     surface that records a dose, and it supports seeding, so arriving from
-     the sheet opens the same editor its own add button opens rather than
-     leaving the person to find it. The param is cleared as it is read, so
-     going back or reloading never reopens the editor over an entry that was
-     just saved - the same shape Home uses for its own one-shot params.
+  /* Quick add's dose option: the log is the surface that records a dose, and it supports
+     seeding, so arriving from the sheet opens the same editor its own add button opens
+     rather than leaving the person to find it. The param is cleared as it is read, so going
+     back or reloading never reopens the editor over an entry that was just saved - the same
+     shape Home uses for its own one-shot params.
 
-     Not a launch route: /doses is not in launch-routes.json (ADR-0028) and
-     this is reached from inside the app only. */
+     Not a launch route: /doses is not in launch-routes.json and this is reached from inside
+     the app only. */
   $effect(() => {
     if (loading) return;
     const adding = page.url.searchParams.get('add') === '1';
@@ -279,15 +272,11 @@
       if (legacyEpisode) void replaceRoute(url, { noScroll: true, keepFocus: true });
       return;
     }
-    /* Seeded with the drug the caller already knew (phase 11 ticket 10:
-       Care's regimen blocks each carry a Log button, and somebody on three
-       regimens said which one by pressing that block's button rather than
-       the one two blocks down). Handed to openEditor rather than applied
-       after it: this runs inside an effect, and `pickDrug` reads `editor`
-       back, which would make the effect depend on the state it had just
-       written - the loop the comment in openEditor below is about. A drug
-       that is not one of the active ones falls through to the picker, same
-       as arriving with no drug at all. */
+    /* Seeded with the drug the caller already knew. Handed to openEditor rather than
+       applied after it: this runs inside an effect, and `pickDrug` reads `editor` back,
+       which would make the effect depend on the state it had just written - the loop the
+       comment in openEditor below is about. A drug that is not one of the active ones falls
+       through to the picker, same as arriving with no drug at all. */
     const episodeId = legacyEpisode?.id ?? sourceEpisodeId;
     openEditor(null, activeEpisodes.find((episode) => episode.id === episodeId)?.drug ?? null);
     // A shallow replacement leaves page.url unchanged and replays this arrival.
@@ -763,12 +752,11 @@
         {#if openGroup === 'what'}
           <div class="disclosed" transition:disclose|local>
             {#if editorNeedsDrugPick}
-              <!-- No visible legend: the line that opened this group already
-                   asks "Which drug was this?", and a legend under it asked
-                   the same question a second time (audit UX-11). The group
-                   keeps the question as its accessible name. Picking one
-                   answers it, so the chips close their own height then
-                   rather than leaving in one frame. -->
+              <!-- No visible legend: the line that opened this group already asks "Which
+                   drug was this?", and a legend under it asked the same question a second
+                   time. The group keeps the question as its accessible name. Picking one
+                   answers it, so the chips close their own height then rather than leaving
+                   in one frame. -->
               <div class="field" transition:disclose|local>
                 <div class="tag-row" role="group" aria-label={m.dose_drug_label()}>
                   {#each activeDrugChoices as drug (drug)}
@@ -1017,10 +1005,9 @@
         </Field>
       {/if}
 
-      <!-- Beside Save whenever Save is refused, from the first frame: an
-           injection opens with no site picked and a dose that several
-           regimens could own opens with no drug, and a greyed button with
-           no reason was the whole of what those sheets said (audit UX-11).
+      <!-- Beside Save whenever Save is refused, from the first frame: an injection opens
+           with no site picked and a dose that several regimens could own opens with no
+           drug, and a greyed button with no reason was the whole of what those sheets said.
            The fields themselves only turn invalid once they have been left. -->
       {#if !editorCanSave}
         <div id="dose-requirements" class="muted small" aria-live="polite" transition:disclose|local>

@@ -97,8 +97,8 @@ let machine: BootMachine = initialBoot(readCachedAccessMode());
 
 export const bootState = $state<BootState>({ ...machine.boot });
 
-/** Whether the browser refused to keep this journal's storage, as this
-    boot heard it. Home's storage notice reads it (after-release 17). */
+/** Whether the browser refused to keep this journal's storage, as this boot heard it.
+    Home's storage notice reads it. */
 export const storageRisk = $state({ persistDenied: false });
 
 /** One event in, the reducer's answer mirrored out, and whatever it asked for
@@ -128,9 +128,8 @@ function dispatch(event: BootEvent): void {
      another gate is not it - a refusal is the same screen changing its mind,
      and it moves on the field's own edge without a transition (stepBlind). */
   const opensApp = bootGate(bootState) !== 'none' && bootGate(step.machine.boot) === 'none';
-  /* A boot failing while the route is drawn, or a retry leaving the
-     failure (ux-carpet 213): the layout swaps the route for the notice
-     alone and back, and that swap moves. */
+  /* A boot failing while the route is drawn, or a retry leaving the failure: the layout
+     swaps the route for the notice alone and back, and that swap moves. */
   const crossesFailure =
     (bootState.status === 'booting' && step.machine.boot.status === 'error') ||
     (bootState.status === 'error' && step.machine.boot.status !== 'error');
@@ -205,10 +204,9 @@ let started = false;
    will let go of the file. Nothing else reaches for it: screens go through
    data/live/, and bootState.journal is the handle for everything else. */
 let openDriver: SqliteDriver | null = null;
-/* The open journal's data key and its database, for as long as the journal
-   is open - which on the web, since after-release ticket 10, is until the
-   next lock rather than until the tab closes (journal-session.ts says what
-   a lock does and why). */
+/* The open journal's data key and its database, for as long as the journal is open - which
+   on the web, is until the next lock rather than until the tab closes (journal-session.ts
+   says what a lock does and why). */
 const session = journalSession<Uint8Array<ArrayBuffer>, SqliteDriver>({
   async suspend() {
     /* The handle boot state published goes first: it holds the driver and
@@ -349,15 +347,14 @@ function useJournalFiles(files: PhotoFileStore | null): void {
   setPhotoFiles(files);
 }
 
-/** The mid-session unlock's half: the gate has derived the key from the
-    access mode's own secret, the same derivation a cold start makes, and
-    this opens the journal again under it. Does nothing where no lock closed
-    the journal. Rejects if the database will not open - most likely because
-    another tab has it now - and the gate says so.
+/** The mid-session unlock's half: the gate has derived the key from the access mode's own
+    secret, the same derivation a cold start makes, and this opens the journal again under
+    it. Does nothing where no lock closed the journal. Rejects if the database will not open
+    - most likely because another tab has it now - and the gate says so.
 
-    Through the boot machine's `key-obtained`, like every other key, so the
-    guard ticket 29 put there sees this one too: a second key while a reopen
-    is under way starts nothing and waits on the first. */
+    Through the boot machine's `key-obtained`, like every other key, so the guard put there
+    sees this one too: a second key while a reopen is under way starts nothing and waits on
+    the first. */
 export function reopenJournalAfterUnlock(dataKey: Uint8Array<ArrayBuffer>, current: () => void = () => {}): Promise<void> {
   /* The unlock screen only draws over a ready journal, but its derivation
      can outlast that; a key arriving anywhere else would start a boot. */
@@ -439,13 +436,11 @@ function reportReopenPreparationFailure(error: ReopenPreparationError, current: 
 let openFileOps: MigrationFileOps | null = null;
 const bootCache = localStorageCache();
 
-/** Functional audit ticket 45: the tile snoozes, letter ids and entries hint
-    (and since security-scan ticket 08 the stock notice snooze) older builds
-    kept in plaintext localStorage move into the encrypted `acknowledgements`
-    preference on the first unlock. Awaits the handle's own write, which
-    rejects on failure, rather than the reactive setter, which logs and
-    carries on - the plaintext keys are deleted only after it lands. Runs
-    before attach so the projection starts from the merged value. */
+/** The tile snoozes, letter ids and entries hint older builds kept in plaintext
+    localStorage move into the encrypted `acknowledgements` preference on the first unlock.
+    Awaits the handle's own write, which rejects on failure, rather than the reactive
+    setter, which logs and carries on - the plaintext keys are deleted only after it lands.
+    Runs before attach so the projection starts from the merged value. */
 async function moveLegacyAcknowledgements(preferences: Preferences): Promise<void> {
   let storage: Storage | null = null;
   try {
@@ -456,8 +451,8 @@ async function moveLegacyAcknowledgements(preferences: Preferences): Promise<voi
   await migrateLegacyAcknowledgements(storage, preferences.get('acknowledgements'), (next) =>
     preferences.set('acknowledgements', next)
   );
-  /* And the screens' held heights, which named the screens (security-scan
-     ticket 08). Same order: the keys go only once the write has landed. */
+  /* And the screens' held heights, which named the screens. Same order: the keys go only
+     once the write has landed. */
   if (!storage) return;
   try {
     const { next, keys } = foldLegacyReserves(storage, preferences.get('layoutReserves'));
@@ -476,15 +471,14 @@ const RESET_DESTINATION = {
   erased: '/onboarding?erased=1'
 } as const;
 
-/** The forgotten-PIN escape hatch (ADR-0014): wipes what this device holds
-    and comes back up at onboarding. Reloads rather than resetting the
-    modules in place - boot() has already run, the journal is attached, and
-    unwinding all of that in the browser is a far bigger surface than
-    starting the page again.
+/** The forgotten-PIN escape hatch: wipes what this device holds and comes back up at
+    onboarding. Reloads rather than resetting the modules in place - boot() has already run,
+    the journal is attached, and unwinding all of that in the browser is a far bigger
+    surface than starting the page again.
 
-    `erased` is the same wipe asked for from Settings rather than from a
-    gate: setup's welcome then says what happened,
-    since nobody there forgot anything and the result cannot be undone. */
+    `erased` is the same wipe asked for from Settings rather than from a gate: setup's
+    welcome then says what happened, since nobody there forgot anything and the result
+    cannot be undone. */
 export async function resetApp(next: keyof typeof RESET_DESTINATION = 'welcome'): Promise<void> {
   invalidateCredentialApprovals();
   recoveryApproval = null;
@@ -503,8 +497,8 @@ async function stopJournalTransfers(): Promise<void> {
 
 async function resetAppOwned(next: keyof typeof RESET_DESTINATION = 'welcome'): Promise<void> {
   await stopJournalTransfers();
-  /* The reads' last answers are journal content held in the page
-     (lastResults.ts, ux-carpet 201); a reset takes them first. */
+  /* The reads' last answers are journal content held in the page (lastResults.ts); a reset
+     takes them first. */
   forgetLastResults();
   await wipeLocalData({
     closeDatabase: async () => {
@@ -529,10 +523,9 @@ async function resetAppOwned(next: keyof typeof RESET_DESTINATION = 'welcome'): 
           wipeDeviceState: () => androidDeviceReset.wipe()
         })
       : {}),
-    /* And the tab's session storage, where Search holds the query and filters
-       it was showing for the way back from an entry: a wiped journal's search
-       turned up in the next journal's Search (after-release ticket 10, audit
-       L09-02). */
+    /* And the tab's session storage, where Search holds the query and filters it was
+       showing for the way back from an entry: a wiped journal's search turned up in the
+       next journal's Search. */
     clearBrowserMirrors: () => {
       clearBrowserMirrors(localStorage);
       clearBrowserMirrors(sessionStorage);
@@ -557,12 +550,11 @@ async function resetAppOwned(next: keyof typeof RESET_DESTINATION = 'welcome'): 
   await deleteDeviceKeyDatabase().catch((error) => {
     console.warn('could not remove the browser device keys during the reset', error);
   });
-  /* And PIN mode's binding key where the platform holds it somewhere that
-     sweep cannot reach: on Android it is a Keystore alias rather than an
-     IndexedDB row (ticket sec-02-06), so nothing above this line touches it.
-     Overlaps the sweep on the web deliberately - removing a key twice costs
-     nothing, and a reset should not depend on which of the two calls covers
-     which store. */
+  /* And PIN mode's binding key where the platform holds it somewhere that sweep cannot
+     reach: on Android it is a Keystore alias rather than an IndexedDB row, so nothing above
+     this line touches it. Overlaps the sweep on the web deliberately - removing a key twice
+     costs nothing, and a reset should not depend on which of the two calls covers which
+     store. */
   await removeEveryPinBinding().catch((error) => {
     console.warn('could not remove the PIN binding key during the reset', error);
   });
@@ -591,14 +583,12 @@ export async function restorePreviousJournal(): Promise<void> {
   if (!openFileOps) throw new Error('there is no failed boot to recover from');
   await stopJournalTransfers();
   await openFileOps.restorePreMigrationCopy();
-  /* Closed before the reload, the way resetApp does it: the restore left the
-     database connection gone but the pool still held, and pauseVfs() is what
-     lets go of its access handles so the next boot's worker can acquire them
-     (ADR-0020's one connection per origin). Caught, because on the web the
-     failed boot has usually closed it already, and a closed driver refuses a
-     second close (ux-carpet 215) - the restore then ran on a worker of its
-     own and let the pool go itself (219). A refusal here is not the restore
-     failing. */
+  /* Closed before the reload, the way resetApp does it: the restore left the database
+     connection gone but the pool still held, and pauseVfs() is what lets go of its access
+     handles so the next boot's worker can acquire them (ADR-0020's one connection per
+     origin). Caught, because on the web the failed boot has usually closed it already, and
+     a closed driver refuses a second close - the restore then ran on a worker of its own
+     and let the pool go itself (219). A refusal here is not the restore failing. */
   await openDriver?.close().catch(() => {});
   await closeActiveDriver();
   location.reload();
@@ -707,16 +697,14 @@ export async function submitBiometricUnlock(): Promise<void> {
   dispatch({ type: 'key-obtained', dataKey, accessMode: 'biometric', unlocked: true, secretAuthenticated: true });
 }
 
-/** Whether a recovery unlock happened this page-load, and therefore whether
-    the app owes the person a new access mode before it shows them anything
-    (ADR-0054, ticket sec-02).
+/** Whether a recovery unlock happened this page-load, and therefore whether the app owes
+    the person a new access mode before it shows them anything (ADR-0054).
 
-    Deliberately not in `BootState`. The machine holds what a boot found and
-    what it decided, and this is neither: it is one page-load's worth of UI
-    consequence, the way the data key itself is kept out of that state for
-    its own reasons. A reload while it is set is not a hole either - the
-    keystore still names the mode the person could not open, so a reload
-    lands back at the gate and the written key still works. */
+    Deliberately not in `BootState`. The machine holds what a boot found and what it
+    decided, and this is neither: it is one page-load's worth of UI consequence, the way the
+    data key itself is kept out of that state for its own reasons. A reload while it is set
+    is not a hole either - the keystore still names the mode the person could not open, so a
+    reload lands back at the gate and the written key still works. */
 export const recoveryUnlock = $state({ used: false });
 let recoveryApproval: { key: WeakRef<Uint8Array<ArrayBuffer>>; current: () => void; identity: string; adopted: boolean } | null = null;
 
@@ -734,21 +722,18 @@ async function protectionIdentity(): Promise<string> {
   ]);
 }
 
-/** The recovery-key gate's submit (ADR-0054, ticket sec-02). Opens the same
-    data key the access mode would have opened, so nothing about the journal
-    changes and nothing is re-encrypted.
+/** The recovery-key gate's submit (ADR-0054). Opens the same data key the access mode would
+    have opened, so nothing about the journal changes and nothing is re-encrypted.
 
-    The mode dispatched is the one the keystore still names, because that is
-    what is true: a recovery key is not an access mode and using it does not
-    make the journal into one. What it does set is `recoveryUnlock`, which is
-    what puts the access-mode module in front of the app until a secret the
-    person actually has is chosen - without that, the forgotten secret would
-    still be the journal's only door and the written key would quietly become
+    The mode dispatched is the one the keystore still names, because that is what is true: a
+    recovery key is not an access mode and using it does not make the journal into one. What
+    it does set is `recoveryUnlock`, which is what puts the access-mode module in front of
+    the app until a secret the person actually has is chosen - without that, the forgotten
+    secret would still be the journal's only door and the written key would quietly become
     the daily credential.
 
-    Throws RecoveryKeyMistypedError, RecoveryKeyAbsentError and
-    DecryptionFailedError separately, because the gate says three different
-    things (data/recovery-key.ts). */
+    Throws RecoveryKeyMistypedError, RecoveryKeyAbsentError and DecryptionFailedError
+    separately, because the gate says three different things (data/recovery-key.ts). */
 export async function submitRecoveryKeyUnlock(typed: string): Promise<void> {
   const sessionCurrent = beginSessionUnlock();
   const credentialsCurrent = currentCredentials();
@@ -772,13 +757,12 @@ export async function submitRecoveryKeyUnlock(typed: string): Promise<void> {
   dispatch({ type: 'key-obtained', dataKey, accessMode: bootState.accessMode, unlocked: true });
 }
 
-/** The setup module's device-bound choice (ADR-0018, ADR-0041). Whether the
-    platform would mint the key is the screen's answer to render, not a boot
-    transition - a refusal leaves the module exactly where it was.
+/** The setup module's device-bound choice (ADR-0018, ADR-0041). Whether the platform would
+    mint the key is the screen's answer to render, not a boot transition - a refusal leaves
+    the module exactly where it was.
 
-    This was `submitSkipSetup` until ticket 53. Device-bound is one of the
-    module's equal choices now rather than the way past a wall, and the name
-    was the last place the old framing survived. */
+    This was `submitSkipSetup`. Device-bound is one of the module's equal choices now rather
+    than the way past a wall, and the name was the last place the old framing survived. */
 async function submitDeviceBoundSetup(options?: { authRequired?: boolean }): Promise<DeviceBoundSetupResult> {
   if (isAndroid()) {
     const authRequired = options?.authRequired ?? true;
@@ -889,16 +873,14 @@ export function prepareAccessModeChange(
   return prepareProtectionChange(prompt, current, (_key, check) => changeAccessModeOwned(target, secret, check));
 }
 
-/** Changing access mode with the journal already open (ticket 53's Settings
-    screen). The data key is in memory, so every direction is a rewrap of the
-    same key: the journal is never re-encrypted and the change is instant
-    whatever the journal's size.
+/** Changing access mode with the journal already open. The data key is in memory, so every
+    direction is a rewrap of the same key: the journal is never re-encrypted and the change
+    is instant whatever the journal's size.
 
-    Write-then-clear, in that order, because the order is the crash safety.
-    A new keystore lands before the old material goes, and
-    chooseJournalAccessMode prefers a secret keystore over leftover
-    device-bound material - so an interruption anywhere in here leaves a
-    journal that still opens, under one mode or the other, never neither. */
+    Write-then-clear, in that order, because the order is the crash safety. A new keystore
+    lands before the old material goes, and chooseJournalAccessMode prefers a secret
+    keystore over leftover device-bound material - so an interruption anywhere in here
+    leaves a journal that still opens, under one mode or the other, never neither. */
 export async function changeAccessModeAfterRecovery(
   target: Exclude<JournalAccessMode, null>, secret: string,
   current: () => void, typedRecoveryKey = ''
@@ -1114,10 +1096,9 @@ async function perform(effect: BootEffect): Promise<void> {
               console.warn('could not ask whether the pre-migration copy is usable; not offering the restore', error);
               return false;
             });
-      /* Dropped unless the failure that asked is still the one on screen
-         (ux-carpet 222): a "Try opening again" pressed while the check was
-         running has moved the boot on - dispatched then, it was an invalid
-         transition that failed the retry's own boot - or has failed again
+      /* Dropped unless the failure that asked is still the one on screen: a "Try opening
+         again" pressed while the check was running has moved the boot on - dispatched then,
+         it was an invalid transition that failed the retry's own boot - or has failed again
          with a check of its own coming, which answers for that failure. */
       if (machine.boot !== askedFor) return;
       dispatch({ type: 'pre-migration-copy-checked', usable });
@@ -1125,7 +1106,7 @@ async function perform(effect: BootEffect): Promise<void> {
     }
 
     case 'warn-persist-denied':
-      // Recorded rather than said (after-release 17, U2): this was a toast,
+      // Recorded rather than said: this was a toast,
       // and on a first visit it covered the Welcome screen's two buttons
       // for four seconds. Home reads the flag and draws a notice that asks
       // for the one thing a person can do about it (storageNoticeShows).
@@ -1213,39 +1194,36 @@ async function prepareJournal(dataKey: Uint8Array<ArrayBuffer>, current: () => v
         ? activeSqlite.requestPersistentStorage()
         : Promise.resolve(true),
     // Step 3: built-ins reconcile by key - not seed-if-empty, so a journal
-    // can never end up short of one (ADR-0002; ticket 14's Replace calls the
+    // can never end up short of one (ADR-0002; Replace calls the
     // same operation before an import applies). Skipped when the journal
     // already holds this build's catalogue, which is one header read instead
-    // of a transaction and a module fetch (builtInsStamp.ts, ticket 208).
+    // of a transaction and a module fetch (builtInsStamp.ts).
     // Then the mirror is filled from what that left behind (ADR-0004).
     loadReferenceData: async () => {
       current();
       await journal!.reconcileBuiltIns({ unlessCurrent: true });
       await hydrateReference(journal!, current);
     },
-    /* Step 4: after the database is open and migrated, so the rows it
-       compares against are the current ones (ADR-0008), and behind an idle
-       callback since phase 5 audit ticket 02 - nothing on screen reads what
-       either pass produces, and both grow with the journal.
+    /* Step 4: after the database is open and migrated, so the rows it compares against are
+       the current ones (ADR-0008), and behind an idle callback - nothing on screen reads
+       what either pass produces, and both grow with the journal.
 
-       Which is also why the purge announces itself: it now runs with the
-       screens already live, so a Trash list somebody is looking at would
-       otherwise keep showing entries the purge has taken. It announces
-       deleteEntry's own tables, asked of writes.ts rather than listed again
-       here, because that is the delete this is finishing. The sweep needs no
-       announcement - it only ever removes files no row references. */
+       Which is also why the purge announces itself: it now runs with the screens already
+       live, so a Trash list somebody is looking at would otherwise keep showing entries the
+       purge has taken. It announces deleteEntry's own tables, asked of writes.ts rather
+       than listed again here, because that is the delete this is finishing. The sweep needs
+       no announcement - it only ever removes files no row references. */
     purgeExpiredTrash: async (opened) => {
       const reclaimed = await purgeExpiredTrash(opened, photoFiles);
       if (reclaimed > 0) bump(tablesWrittenBy('entries', 'deleteEntry'));
     },
     sweepOrphanPhotos: (opened) => sweepOrphanPhotos(opened, photoFiles),
     shouldSweepOrphans,
-    /* The standing instruction, carried out (ADR-0086).
-       Through the journal rather than the driver, unlike the two passes
-       above: this one is an ordinary area operation, so it takes the write
-       guard and the write recorder on the way like every other write does.
-       It announces what it wrote for the same reason the purge does - the
-       dose log and Today are live while this runs. */
+    /* The standing instruction, carried out. Through the journal rather than the driver,
+       unlike the two passes above: this one is an ordinary area operation, so it takes the
+       write guard and the write recorder on the way like every other write does. It
+       announces what it wrote for the same reason the purge does - the dose log and Today
+       are live while this runs. */
     autoLogDueDoses: async () => {
       const { ROUTE_OPTIONS } = await import('../data/vocabulary/doseLabels');
       await journal!.doses.autoLogDueDoses(todayEpochDay(), ROUTE_OPTIONS);

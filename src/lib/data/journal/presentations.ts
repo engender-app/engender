@@ -1,9 +1,7 @@
-/* The fluidity engine's presentation area (phase 5 deepening ticket 17,
-   ADR-0048, CONTEXT: "Presentation"). No `key` column and no built-ins - a
-   presentation ships nothing seeded (ADR-0048), so a minted uuid is its
-   only travelling identity and there is no id-or-key addressing the way
-   tags.ts needs. Hides rather than deletes (CONTEXT: "Hidden"); there is no
-   deletePresentation. */
+/* The fluidity engine's presentation area (ADR-0048). No `key` column and no built-ins - a
+   presentation ships nothing seeded (ADR-0048), so a minted uuid is its only travelling
+   identity and there is no id-or-key addressing the way tags.ts needs. Hides rather than
+   deletes; there is no deletePresentation. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Presentation } from '../types';

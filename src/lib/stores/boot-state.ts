@@ -248,10 +248,9 @@ function withJournal(state: BootState, journal: Journal | null): BootState {
   return { ...state, journal };
 }
 
-/** The persistence request's answer, arriving whenever the browser gets to
-    it (ticket 202: no longer awaited before `ready`). A no-op once the
-    journal has moved past `ready` - a late answer is still true, but there
-    is no `persistDenied` left on a state whose type pins it to `false`. */
+/** The persistence request's answer, arriving whenever the browser gets to it. A no-op once
+    the journal has moved past `ready` - a late answer is still true, but there is no
+    `persistDenied` left on a state whose type pins it to `false`. */
 function markPersistDenied(state: BootState): BootState {
   if (state.status !== 'ready') return state;
   return { ...state, persistDenied: true };
@@ -324,17 +323,15 @@ export function bootGate(state: BootState): BootGate {
 
 /** Whether the mid-session lock may render at all.
 
-    "Mid-session" is literally "the journal is open", and saying so here is
-    load-bearing rather than pedantic. `bootGate` returns 'none' while a boot
-    is still in flight, so nothing above the lock in the layout's chain claims
-    the screen during `booting` - and the moment the survey records an access
-    mode, that mode has a secret and the session has not been marked unlocked
-    yet, so the lock would render *over a boot that was about to finish on its
-    own*. Ticket 53 shipped exactly that for a moment: the old check read
-    `prefs.pinHash`, which is null until the real preferences load, so the
-    window existed and was never entered. Reading the access mode instead
-    opened it, and a cold start flashed the re-entry screen. The walkthrough
-    caught it as a draft lost across a reload. */
+    "Mid-session" is literally "the journal is open", and saying so here is load-bearing
+    rather than pedantic. `bootGate` returns 'none' while a boot is still in flight, so
+    nothing above the lock in the layout's chain claims the screen during `booting` - and
+    the moment the survey records an access mode, that mode has a secret and the session has
+    not been marked unlocked yet, so the lock would render *over a boot that was about to
+    finish on its own*. shipped exactly that for a moment: the old check read
+    `prefs.pinHash`, which is null until the real preferences load, so the window existed
+    and was never entered. Reading the access mode instead opened it, and a cold start
+    flashed the re-entry screen. The walkthrough caught it as a draft lost across a reload. */
 export function midSessionLockApplies(state: BootState): boolean {
   return state.status === 'ready';
 }

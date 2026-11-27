@@ -1,4 +1,4 @@
-/* Letter sealed/unlocked status (phase 4 ticket 19, phase 5 ticket 01). */
+/* Letter sealed/unlocked status. */
 
 import assert from 'node:assert/strict';
 import { beforeEach, describe, it } from 'vitest';
@@ -63,10 +63,10 @@ describe('letterStatus', () => {
     assert.deepEqual(Array.from(getReadLetterIds(storage)), ['let-1', 'let-2']);
   });
 
-  /* Ticket 45: a letter whose unlock day is today takes the whole screen
-     once, and only once. "Once" is a per-letter fact that has to survive a
-     reload, so it lives beside the read set rather than in component state,
-     and the arrival is refused for a letter already met either way. */
+  /* A letter whose unlock day is today takes the whole screen once, and only once. "Once"
+     is a per-letter fact that has to survive a reload, so it lives beside the read set
+     rather than in component state, and the arrival is refused for a letter already met
+     either way. */
   describe('the arrival', () => {
     const seal = (id: string, epochDay: number, unlockEpochDay: number) => ({
       id,

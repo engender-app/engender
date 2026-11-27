@@ -1,19 +1,16 @@
-/* Rows written into a copy of the rc.1 released journal (schema 88) so that
-   every data conversion between 88 and 119 has something to convert. The
-   released fixture holds one of most things but not the cases those steps
-   were written for: two tapers on one procedure, a WEEKLY reminder, a debrief
-   in the checklist columns, a garment tryout, ticks on cut roadmap goals,
-   stored preferences, a cost that does not parse, duplicate stock rows.
+/* Rows written into a copy of the rc.1 released journal (schema 88) so that every data
+   conversion between 88 and 119 has something to convert. The released fixture holds one of
+   most things but not the cases those steps were written for: two tapers on one procedure,
+   a WEEKLY reminder, a debrief in the checklist columns, a garment tryout, ticks on cut
+   roadmap goals, stored preferences, a cost that does not parse, duplicate stock rows.
 
    The pre-squash chain's output for the seeded copy is frozen in
-   schema-v119-rc1-seeded-rows.txt, and the squash is held to it
-   (pre-publish ticket 01). This text is frozen with that file: changing it
-   means the frozen rows no longer describe it.
+   schema-v119-rc1-seeded-rows.txt, and the squash is held to it. This text is frozen with
+   that file: changing it means the frozen rows no longer describe it.
 
-   Nothing here depends on the device. The WEEKLY reminder's updated_at is
-   noon UTC, so its local date is the same in every zone from UTC-11 to
-   UTC+11, and no cost is a bare number (which would take the locale's
-   currency). */
+   Nothing here depends on the device. The WEEKLY reminder's updated_at is noon UTC, so its
+   local date is the same in every zone from UTC-11 to UTC+11, and no cost is a bare number
+   (which would take the locale's currency). */
 
 export const RC1_CONVERSION_SEED = `
 -- 112: two more tapers on procedure 1 (the newest wins) and two tied ones on

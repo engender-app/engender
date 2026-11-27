@@ -1,9 +1,9 @@
-/* Add labels, icons and destinations to textSearch.ts results (ADR-0016).
-   Use the owning screen's icon from the More hub and name the record kind
-   in its subtitle. Keep results in one newest-first list across all areas.
+/* Add labels, icons and destinations to textSearch.ts results. Use the owning screen's icon
+   from the More hub and name the record kind in its subtitle. Keep results in one
+   newest-first list across all areas.
 
-   Link to the individual record if it has a route. Otherwise, link to the
-   screen that owns it. The search registry owns reads and tables. */
+   Link to the individual record if it has a route. Otherwise, link to the screen that owns
+   it. The search registry owns reads and tables. */
 
 import { m } from '$lib/paraglide/messages';
 import { photoCaptionDate } from '$lib/data/dates';
@@ -16,7 +16,7 @@ import { iconOf } from './rowIcon';
 
 /** One hit as a row: where it goes, and what it says. */
 interface SearchHitRow extends Pick<HubRow, 'icon'> {
-  /** The row's own walkthrough handle (ADR-0029) - stable, never the copy. */
+  /** The row's own walkthrough handle - stable, never the copy. */
   key: string;
   /** The registered area's key, for the walkthrough's handle on the row. */
   area: SearchAreaKey;
@@ -61,12 +61,11 @@ const AREA_ROWS: Record<
     // Its own screen (prh12), the way a tryout's hit opens that tryout.
     href: (hit) => `${hubRow('appointments').href}/${hit.id}`
   },
-  /* One area, two screens. A question written for an appointment belongs to
-     the prep list, which is a section of the visit screen since phase 11
-     all-four-doors ticket 12; a line of a procedure's recovery checklist
-     belongs to that journey, and the owner's id on the row is what tells
-     them apart and names the procedure to open (textSearch.ts). The prep list is the more common of the two,
-     so its screen is what the row's own icon names. */
+  /* One area, two screens. A question written for an appointment belongs to the prep list,
+     which is a section of the visit screen; a line of a procedure's recovery checklist
+     belongs to that journey, and the owner's id on the row is what tells them apart and
+     names the procedure to open (textSearch.ts). The prep list is the more common of the
+     two, so its screen is what the row's own icon names. */
   checklistItems: {
     ...iconOf('appointments'),
     label: () => m.appointment_prep_title(),

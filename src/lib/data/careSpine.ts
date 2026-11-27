@@ -26,8 +26,7 @@ import type { DoseEvent, DosePause, DoseSchedule, RegimenEpisode } from './types
     Forwards there are two, and a run-out projection on a full box
     routinely lands months out; a hundred and twenty days is a whole
     quarter of runway, past which "a long way off" is the honest reading. */
-/* SPINE_BACK_DAYS stays exported only for its own test (AU-09 test-only
-   review). */
+/* SPINE_BACK_DAYS stays exported only for its own test. */
 export const SPINE_BACK_DAYS = 60;
 export const SPINE_FORWARD_DAYS = 120;
 
@@ -38,8 +37,7 @@ export const SPINE_FORWARD_DAYS = 120;
     next dose against the right - two marks at the ends of a line, which
     says nothing about the gap between them. A fortnight each way gives
     every arrangement a middle to be near. */
-/* SPINE_MIN_BACK_DAYS, SPINE_MIN_FORWARD_DAYS stay exported only for their own
-   test (AU-09 test-only review). */
+/* SPINE_MIN_BACK_DAYS, SPINE_MIN_FORWARD_DAYS stay exported only for their own test. */
 export const SPINE_MIN_BACK_DAYS = 14;
 export const SPINE_MIN_FORWARD_DAYS = 14;
 
@@ -48,7 +46,7 @@ export const SPINE_MIN_FORWARD_DAYS = 14;
     Next dose label. A 0.34 gap leaves about 8px of air. The labels cannot
     wrap, so crowding moves a label to a higher row. Shorter labels use
     the same gap. */
-/* MIN_LABEL_GAP stays exported only for its own test (AU-09 test-only review). */
+/* MIN_LABEL_GAP stays exported only for its own test. */
 export const MIN_LABEL_GAP = 0.34;
 
 /** Compute caption spacing from measured rail width. The widest
@@ -164,8 +162,7 @@ function lastLoggedDose(doses: readonly DoseEvent[]): DoseEvent | null {
 /** The day of the most recent dose that actually happened, or null when
     none did. A skipped dose is a gap someone recorded rather than a dose,
     the same reading labTiming.ts takes of one. */
-/* lastLoggedDoseDay stays exported only for its own test (AU-09 test-only
-   review). */
+/* lastLoggedDoseDay stays exported only for its own test. */
 export function lastLoggedDoseDay(doses: readonly DoseEvent[]): number | null {
   const latest = lastLoggedDose(doses);
   return latest ? epochDayFromTimestamp(latest.timestamp) : null;
@@ -183,8 +180,7 @@ export function lastLoggedDoseDay(doses: readonly DoseEvent[]): number | null {
     Not a judgement about a dose being due. A slot with nothing in it is a
     slot with nothing in it; expectedAmountOn (doseSchedule.ts) reads the
     same rows the same way for the same reason. */
-/* nextExpectedSlot stays exported only for its own test (AU-09 test-only
-   review). */
+/* nextExpectedSlot stays exported only for its own test. */
 export function nextExpectedSlot(
   schedule: DoseSchedule,
   anchorEpochDay: number,

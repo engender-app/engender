@@ -279,19 +279,17 @@ export async function measureLongJournal(
 
   /* --- search -------------------------------------------------------------
 
-     Three questions, because they take different plans. A term in a third
-     of the notes pages 30 hits out of thousands; a term in a handful reads
-     the index and finds almost nothing; and a term that is also a tag's
-     label unions a second query over `entry_tag` onto the FTS clause
-     (entries.ts), which is the one a note-only word never reaches.
+     Three questions, because they take different plans. A term in a third of the notes
+     pages 30 hits out of thousands; a term in a handful reads the index and finds almost
+     nothing; and a term that is also a tag's label unions a second query over `entry_tag`
+     onto the FTS clause (entries.ts), which is the one a note-only word never reaches.
 
-     Every one of them goes through `tagIdsMatching` rather than being
-     handed an empty list, because that is what the screen does - it never
-     passes `[]`, it passes whatever the typed text matched. The labels
-     reachable here are the custom ones: a built-in tag stores a key and its
-     wording comes from the message catalogue above this seam (ADR-0016), so
-     a fixture below the seam sees an empty label. The count is its own
-     query beside the page, as the screen runs it. */
+     Every one of them goes through `tagIdsMatching` rather than being handed an empty list,
+     because that is what the screen does - it never passes `[]`, it passes whatever the
+     typed text matched. The labels reachable here are the custom ones: a built-in tag
+     stores a key and its wording comes from the message catalogue above this seam, so a
+     fixture below the seam sees an empty label. The count is its own query beside the page,
+     as the screen runs it. */
   const knownTags = (await journal.tags.getTagGroups()).flatMap((group) => group.tags);
 
   for (const [name, word, expected] of [
@@ -397,7 +395,7 @@ export async function measureLongJournal(
     return { result: bytes, detail: `${mb(bytes)} archive` };
   });
 
-  // --- phase 5 features ---------------------------------------
+
   // Five features landed without a line here: this section checks the four
   // that turned out to be genuinely new reads. The fifth, regimen templates
   // (care/regimen/+page.svelte's vocabulary.regimenTemplates), is a
@@ -431,7 +429,7 @@ export async function measureLongJournal(
 
   // The doubt journal (doubt/+page.svelte) always runs this pool, not from
   // a sheet someone opens: the same EUPHORIA_TAG_KEYS and limit (20) the
-  // screen itself uses. Widened by the same ticket 44 to include a
+  // screen itself uses. Widened by 44 to include a
   // body-region euphoria clause alongside starred entries and euphoria
   // tags.
   await measure('doubt-counterevidence', 'doubt journal, the counterevidence pool', async () => {
@@ -440,7 +438,7 @@ export async function measureLongJournal(
     return { result: pool, detail: `${pool.length} counterevidence entries` };
   });
 
-  // Body-region tracking (afdae70, phase 5 ticket 31): the body-map and
+  // Body-region tracking: the body-map and
   // wear screens each query one region's two axes over a range someone
   // picked, never every region at once - unlike stats-year-series, which
   // charts every gender dimension in one call but has never read a body
@@ -478,11 +476,11 @@ export async function measureLongJournal(
     };
   });
 
-  // --- phase 5 ticket 36 features ------------------------------
-  // Nine more More-hub areas ticket 36 seeded real content for, surveyed
+
+  // Nine more More-hub areas seeded real content for, surveyed
   // against their actual data-layer calls and found genuinely uncovered.
   // sizes, wear and the overlapping-episode fan-out were surveyed too and
-  // found not to need a line here - see ticket 05's Comments for why.
+  // found not to need a line here - see Comments for why.
 
   // Labs (care/labs/+page.svelte): the screen's own five concurrent
   // queries for whichever analyte is selected, none date-bounded or LIMITed
@@ -514,7 +512,7 @@ export async function measureLongJournal(
   // Cycle events (settings/cycle-events/+page.svelte): getCycleEvents()
   // reads the whole table (cycleEvents.ts:37) even though a ranged variant
   // already exists (cycleEvents.ts:44) - the screen just doesn't call it,
-  // named rather than fixed (ticket 05's scope).
+  // named rather than fixed.
   await measure('cycle-events-log', 'cycle events, every event', async () => {
     const events = await journal.cycleEvents.getCycleEvents();
     return { result: events, detail: `${events.length} events` };
@@ -538,7 +536,7 @@ export async function measureLongJournal(
   // Stock (care/+page.svelte's stock sheet): getProjections(today) used to read
   // every dose from the oldest stock entry forward and reduce three numbers
   // per entry out of them - O(entries x doses) at decade scale, and 538KB of
-  // Home's mount on this fixture. Phase 8 audit ticket 26 replaced that with
+  // Home's mount on this fixture. replaced that with
   // one grouped count per date window (stockProjection.ts's projectEveryStock),
   // so what this now measures is a handful of counts whatever the log's
   // length, and mount-home's byte figure below is the ratchet that keeps it
@@ -558,16 +556,16 @@ export async function measureLongJournal(
     };
   });
 
-  // Tryout detail (settings/tryouts/[id]/+page.svelte): performance ticket 07
+  // Tryout detail (settings/tryouts/[id]/+page.svelte): performance
   // found searchEntries('', [], {startEpochDay, endEpochDay}) ran with no
   // word and no page limit over a tryout's whole date span - 3634ms/3518ms
   // on Android for the fixture's open-ended tryout, too slow to ship
-  // (Alicja, 2026-08-27). Ticket 08 bounded the real screen's call with
+  // Bounded the real screen's call with
   // `PAGE * pages` and a "load more" control, the same shape the three
   // search-* measurements above already use; this measurement now mirrors
   // that bounded call rather than the unbounded one it used to guard, since
   // the unbounded shape is exactly what's gone from the app. The page is
-  // five since phase 12 ticket 23, not search's thirty.
+  // five, not search's thirty.
   await measure('tryout-detail-entries', 'tryout detail, one page and the total across its open-ended span', async () => {
     const range = { startEpochDay: summary.tryoutWideOpenStartEpochDay, endEpochDay: null };
     const [entries, total] = await Promise.all([
@@ -580,10 +578,9 @@ export async function measureLongJournal(
     };
   });
 
-  /* Read registered areas' last writes and the area record concurrently.
-     One bounded MAX per area fits in the assembled last-write call.
-     The area record supplies hidden and finished state. The cycle
-     gate's small regimen lookup (ADR-0043) is outside this budget. */
+  /* Read registered areas' last writes and the area record concurrently. One bounded MAX
+     per area fits in the assembled last-write call. The area record supplies hidden and
+     finished state. The cycle gate's small regimen lookup is outside this budget. */
   await measure('hub-last-writes', 'More hub, the last write in every area plus the area record', async () => {
     const [lastWrites, states] = await Promise.all([
       journal.lastWrite.getLastWrites(today),
@@ -703,11 +700,10 @@ export async function measureLongJournal(
   });
 
   await mount('mount-more-hub', 'the More hub, every row it draws a live line for', async () => {
-    /* `hub-last-writes` above times the two reads that answer the rows;
-       this counts what the whole screen crosses for, which is those two
-       plus the regimen episode list ADR-0043's cycle gate reads. Both are
-       worth having: one says which read is slow, this says what the screen
-       costs. */
+    /* `hub-last-writes` above times the two reads that answer the rows; this counts what
+       the whole screen crosses for, which is those two plus the regimen episode list cycle
+       gate reads. Both are worth having: one says which read is slow, this says what the
+       screen costs. */
     const reads = await together({
       episodes: journal.regimen.getEpisodes(),
       lastWrites: journal.lastWrite.getLastWrites(today),

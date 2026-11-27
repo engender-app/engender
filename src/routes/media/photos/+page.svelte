@@ -96,16 +96,14 @@
     }
   }
 
-  /* Batches of the grid rendered into the DOM, so a journal with thousands
-     of photos paints as fast as one with a few hundred (this ticket, audit
-     finding P3). The same arithmetic and remembered-count store the dose
-     log's BatchedList uses (batchedList.ts, scroll-region.ts) - inlined
-     here rather than wrapped in that component, because BatchedList wraps
-     its rows in ListCard, a bordered list surface with a row hairline, and
-     this screen is a CSS grid of square tiles. What is bounded is the DOM
-     alone: `library` and `shown` stay full reads, so the source chips
-     (chipsFor, over `library`) keep seeing every photo regardless of what
-     the grid has painted. */
+  /* Batches of the grid rendered into the DOM, so a journal with thousands of photos paints
+     as fast as one with a few hundred (this ticket). The same arithmetic and
+     remembered-count store the dose log's BatchedList uses (batchedList.ts,
+     scroll-region.ts) - inlined here rather than wrapped in that component, because
+     BatchedList wraps its rows in ListCard, a bordered list surface with a row hairline,
+     and this screen is a CSS grid of square tiles. What is bounded is the DOM alone:
+     `library` and `shown` stay full reads, so the source chips (chipsFor, over `library`)
+     keep seeing every photo regardless of what the grid has painted. */
   const photosPath = page.url.pathname;
   let batches = $state(restoredBatches(photosPath, 'photos'));
   let rendered = $derived(shown.slice(0, shownCount(batches, shown.length)));
@@ -181,10 +179,9 @@
     });
   }
 
-  /* The scrubber appears once the grid is taller than the screen, which is
-     the point at which scrolling to a year stops being something a thumb
-     can do (the ticket's own rule). Measured rather than counted: how many
-     thumbnails a screen holds depends on the width, the text size and
+  /* The scrubber appears once the grid is taller than the screen, which is the point at
+     which scrolling to a year stops being something a thumb can do . Measured rather than
+     counted: how many thumbnails a screen holds depends on the width, the text size and
      whether the grid is narrowed. */
   let gridTall = $state(false);
   $effect(() => {
@@ -203,15 +200,13 @@
     };
   });
 
-  /* The rail shows while the page is moving and for a moment after, and
-     fades away at rest (release audit U12): standing over the grid's last
-     column all the time, its pills covered x 313 to 360 of every third
-     photograph at 390px. A scrubber that answers a scroll is the shape the
-     photo apps use, and it is the scroll the rail is for - the ticket's
-     own rule above only offers it once the grid outgrows a screen. Hover
-     and keyboard focus hold it (CSS, :hover and :focus-within), so a mouse
-     on its way to a year and a Tab through them never chase a fading
-     target. */
+  /* The rail shows while the page is moving and for a moment after, and fades away at rest
+     (release): standing over the grid's last column all the time, its pills covered x 313
+     to 360 of every third photograph at 390px. A scrubber that answers a scroll is the
+     shape the photo apps use, and it is the scroll the rail is for - the ticket's own rule
+     above only offers it once the grid outgrows a screen. Hover and keyboard focus hold it
+     (CSS, :hover and :focus-within), so a mouse on its way to a year and a Tab through them
+     never chase a fading target. */
   const RAIL_REST_MS = 1500;
   let railAwake = $state(false);
   $effect(() => {
@@ -245,18 +240,17 @@
     });
   }
 
-  /* Editing a single photo's day (ticket 47, ADR-0008/0015): every photo
-     this app can normalize has had its capture date stripped on import, so
-     this is the only place after the fact to say when one is really from -
-     Persona 1's shoebox print, dated to 1994 rather than to the day it was
-     scanned in. Held by id rather than by the photo object itself: the
-     list is a live query, and re-opening the sheet after a write should
-     read the row it just changed rather than a stale copy of it.
+  /* Editing a single photo's day (ADR-0008/0015): every photo this app can normalize has
+     had its capture date stripped on import, so this is the only place after the fact to
+     say when one is really from - Persona 1's shoebox print, dated to 1994 rather than to
+     the day it was scanned in. Held by id rather than by the photo object itself: the list
+     is a live query, and re-opening the sheet after a write should read the row it just
+     changed rather than a stale copy of it.
 
-     Offered on an entry's and a milestone's photographs alone, because
-     `epoch_day_override` is a column the `photo` table alone has: the other
-     five tables date a row from the record it belongs to, and a photograph
-     dated to its hair-removal session has no day of its own to override. */
+     Offered on an entry's and a milestone's photographs alone, because `epoch_day_override`
+     is a column the `photo` table alone has: the other five tables date a row from the
+     record it belongs to, and a photograph dated to its hair-removal session has no day of
+     its own to override. */
   let dayEditorId = $state<string | null>(null);
   let dayEditorValue = $state('');
 
@@ -286,8 +280,8 @@
     <ReadGate read={libraryQuery} variant="block" count={2}>
       {#snippet rows()}
         <PhotoChipRow {chips} {chip} onPick={pickChip} />
-        <!-- The number changes with a chip, so it crossfades rather than
-             swapping in the frame of the press (carpet 15 row 49). -->
+        <!-- The number changes with a chip, so it crossfades rather than swapping in the
+             frame of the press. -->
         <div class="photo-count-row">
           <p class="photo-count" data-photo-count>
             {#key shown.length}<span in:countIn out:crossfade>{m.ph_count({ count: shown.length })}</span>{/key}
@@ -470,17 +464,14 @@
      with the grid and leaves with it rather than riding the whole screen. */
   .photo-library { position: relative; }
 
-  /* The gap the grid and the card below it would have had as siblings of
-     the screen (screens.css's own .screen-part rhythm), now that this
-     control sits between them instead (Alicja, sign-off on this ticket:
-     wanted more room off the tiles' own date row above it). */
+  /* The gap the grid and the card below it would have had as siblings of the screen
+     (screens.css's own .screen-part rhythm), now that this control sits between them
+     instead. */
   .photo-grid-more { margin-top: var(--space-3); }
 
-  /* In the screen's own right gutter (.screen's --space-5), not over the
-     grid: a 47px pill at the grid's edge covered x 313 to 360 of every third
-     photograph while it was showing (release audit U12, and the review of
-     ticket 18). So the rail is a thin scrubber the width of the gutter, its
-     years set on their side. */
+  /* In the screen's own right gutter (.screen's --space-5), not over the grid: a 47px pill
+     at the grid's edge covered x 313 to 360 of every third photograph while it was showing.
+     So the rail is a thin scrubber the width of the gutter, its years set on their side. */
   .photo-years {
     position: absolute;
     top: 0; bottom: 0;
@@ -522,12 +513,11 @@
     color: var(--text-2);
     transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
   }
-  /* The drawn tab is 18px; the target is the 48px floor, reaching left
-     over the grid's edge. Only a target, never paint, and only while the
-     rail is awake: at rest the rail takes no pointer at all. The insets
-     count from inside the tab's 1px border, so the right one takes the
-     border in and the left one starts 17px in: measured from the border's
-     outside edge they left a 47px target (last-audit UI 25). */
+  /* The drawn tab is 18px; the target is the 48px floor, reaching left over the grid's
+     edge. Only a target, never paint, and only while the rail is awake: at rest the rail
+     takes no pointer at all. The insets count from inside the tab's 1px border, so the
+     right one takes the border in and the left one starts 17px in: measured from the
+     border's outside edge they left a 47px target. */
   .photo-year::after { content: ''; position: absolute; inset: -2px -1px -2px calc(17px - var(--touch-target)); }
   .photo-year:hover { color: var(--text); border-color: var(--accent-border); }
 
@@ -540,10 +530,9 @@
     width: 100%;
     aspect-ratio: 1;
   }
-  /* The label in the text colour on a solid strip of the card. The shared
-     .photo-label is a 35% black scrim made for a photograph, and over this
-     flat tile it left "Video note" at 1.9:1 (after-release 21, audit
-     A11Y-10). */
+  /* The label in the text colour on a solid strip of the card. The shared .photo-label is a
+     35% black scrim made for a photograph, and over this flat tile it left "Video note" at
+     1.9:1. */
   .photo-video-thumb .photo-label {
     background: var(--surface);
     color: var(--text);

@@ -97,16 +97,15 @@ describe("the mark's signed-off numbers", () => {
   });
 
   it('draws its edge outside the clip, so the silhouette rasterises once', () => {
-    /* Chromium antialiases a clip path per element rather than over a
-       flattened group, so a white ground clipped to the silhouette keeps a
-       boundary of its own that a stroke inside the same clip cannot cover:
-       partial white plus partial ink is lighter than ink, which is the halo
-       Alicja caught. The edge therefore sits after the clipped group and is
-       not clipped at all, and the clip stops on the edge's centre line so
-       the stroke's inner half covers what it clipped.
+    /* Chromium antialiases a clip path per element rather than over a flattened group, so a
+       white ground clipped to the silhouette keeps a boundary of its own that a stroke
+       inside the same clip cannot cover: partial white plus partial ink is lighter than
+       ink, which leaves a halo. The edge therefore sits after the clipped
+       group and is not clipped at all, and the clip stops on the edge's centre line so the
+       stroke's inner half covers what it clipped.
 
-       tests/guards/mark-edge-fringe.mjs is what measures the result; this is only
-       the shape of the markup that produces it. */
+       Tests/guards/mark-edge-fringe.mjs is what measures the result; this is only the shape
+       of the markup that produces it. */
     for (const crop of ['tile', 'round'] as const) {
       const svg = markSvg(flags.trans, crop, 512);
       const closed = svg.indexOf('</g>');
@@ -137,10 +136,9 @@ describe('the monochrome mark', () => {
   });
 
   it('keeps its square, in the same ink, and drops the ground', () => {
-    /* "THE STROKE IS AN INTEGRAL PART OF THE LOGO! THERE IS NO LOGO WITHOUT
-       THE STROKE!" (Alicja, 2026-09-21). One ink means the edge is that ink
-       too, not a second colour, and paper is the ground, so nothing is
-       painted under it. */
+    /* The stroke is part of the mark. Use the same ink for the stroke and
+       the rings. Paper is the ground,
+       so nothing is painted under it. */
     const svg = markSvg(flags.trans, 'tile', 512, { ink: '#1E1B16' });
     expect(svg).toMatch(/<rect x="1\.5"[^>]*stroke="#1E1B16"/);
     expect(svg).not.toMatch(/<rect[^>]*fill="#/);
@@ -157,10 +155,8 @@ describe('the tile belongs to the icon, not to the app', () => {
   });
 
   it('keeps the black edge whatever mask a launcher cuts, by drawing small', () => {
-    /* Alicja, 2026-09-21: "no stroke around the square, or its white - its
-       supposed to be black always". A launcher picks its own mask, so the
-       only arrangement where that is true is the whole stroked tile inside
-       the circle every mask keeps - ground to the corners, tile in the
+    /* The edge stays black. A launcher picks its own mask, so the whole
+       stroked tile inside the circle every mask keeps - ground to the corners, tile in the
        middle at MARK_SAFE_TILE. */
     const svg = markSvg(flags.trans, 'bleed', 512);
     const offset = (100 - MARK_SAFE_TILE) / 2;
@@ -211,10 +207,9 @@ describe('the tile belongs to the icon, not to the app', () => {
 
 describe('markSvg cannot emit markup from its arguments', () => {
   it('a stripe and a label carrying a breakout emit no new element or attribute', () => {
-    /* No call site passes either from outside the app today (stripes come
-       from palettes.css), the way icons.ts's parameters were never called
-       with anything but literals - constrained here anyway, on the same
-       reasoning (phase 12 audit finding S4). */
+    /* No call site passes either from outside the app today (stripes come from
+       palettes.css), the way icons.ts's parameters were never called with anything but
+       literals - constrained here anyway, on the same reasoning. */
     const svg = markSvg(['#fff"/><script>x</script><circle fill="#000'], 'tile', 48, {
       label: '"><img>'
     });
@@ -233,11 +228,10 @@ describe('markSvg cannot emit markup from its arguments', () => {
 });
 
 describe('the mark never moves', () => {
-  /* Alicja, 2026-09-21, unprompted mid-round: "the logos ARE NOT SUPPOSED
-     TO MOVE AT ALL". No entrance, no breathing, no hover, no
-     view-transition name, on any surface. Home's sun keeps its 700ms
-     entrance and its 7s loop, because that is the motif on a screen and not
-     the mark - which is why the two must not share a module. */
+  /* No entrance, breathing, hover or
+     view-transition name, on any surface. Home's sun keeps its 700ms entrance and its 7s
+     loop, because that is the motif on a screen and not the mark - which is why the two
+     must not share a module. */
   const sources = {
     'mark.ts': read('src/lib/components/mark.ts'),
     'Mark.svelte': read('src/lib/components/Mark.svelte')

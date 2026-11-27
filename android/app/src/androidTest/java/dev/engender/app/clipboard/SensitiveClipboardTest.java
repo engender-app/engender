@@ -136,8 +136,8 @@ public class SensitiveClipboardTest {
         }
     }
 
-    /* GD-013: the reset used to delete the record of the pending clear and
-       leave the key on the clipboard, where nothing would ever take it off. */
+    /* The reset used to delete the record of the pending clear and leave the key on the
+       clipboard, where nothing would ever take it off. */
     @Test
     public void aResetTakesTheKeyOffTheClipboardAndDropsTheClear() throws Exception {
         try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {

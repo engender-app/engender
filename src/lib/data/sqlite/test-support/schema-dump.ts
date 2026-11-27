@@ -1,13 +1,9 @@
-/* A database's shape, as text, for comparing two databases that were built
-   different ways (the squashes: one baseline statement against the chain
-   it replaced, the 78 steps in ticket 34 and the v78 baseline plus 79 to 88
-   in after-release ticket 42).
+/* A database's shape, as text, for comparing two databases that were built different ways.
 
-   Everything compared here comes out of `sqlite_master`, which is the only
-   place some of it is written down - a CHECK constraint appears in no pragma,
-   and neither does the option list on a virtual table. The stored text is
-   verbatim, though, so three differences that are not shape differences have
-   to be forgiven first, which is what normalizeSql is for. */
+   Everything compared here comes out of `sqlite_master`, which is the only place some of it
+   is written down - a CHECK constraint appears in no pragma, and neither does the option
+   list on a virtual table. The stored text is verbatim, though, so three differences that
+   are not shape differences have to be forgiven first, which is what normalizeSql is for. */
 
 import type { DatabaseSync } from 'node:sqlite';
 

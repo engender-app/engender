@@ -7,7 +7,7 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
 
-/** The leave cover's decision (tester-report-02 ticket 07, return from Home). */
+/** The leave cover's decision. */
 public class LeaveCoverTest {
     @Before
     public void reset() {

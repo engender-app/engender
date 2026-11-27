@@ -10,12 +10,9 @@
     grew far enough would lose its own top. */
 const PEAK = 1.24;
 
-/** The plain rows' peak. The fan's 1.24 rides on a small face in a card
-    that frames it; the same number on a bare row read as barely anything -
-    "still no sliding zoom animation like in quick add" survived 1.4 for
-    the same reason (Alicja, phase 5 ticket 99, round 4). 1.6 under the
-    finger, on the sweep the fan's slide already answers, is what makes the
-    row read as the same control. */
+/** The plain rows' peak. The fan's 1.24 rides on a small face in a card that frames it; the
+    same scale on a bare row is hard to see. 1.6 under the finger, on the sweep
+    the fan's slide already answers, is what makes the row read as the same control. */
 const ROW_PEAK = 1.6;
 
 /** How far the lift reaches, in mood cells. Under 2 on purpose: at 1.7 an
@@ -46,14 +43,13 @@ export function magnify(x: number, centre: number, spread: number, peak: number 
     answer rather than a third copy of the cell math. */
 export function magnifyRow(x: number, row: DOMRect, count: number): number[] {
   const cell = row.width / count;
-  /* Cells, times a cell. MAGNIFIER_SPREAD is a count of cells and `magnify`'s
-     spread is in the coordinates' own units, and this handed the bare 1.7
-     across - so the reach was 1.7 pixels, about three per cent of a cell, and
-     the `cell` computed on the line above went into the centres and nowhere
-     else. Every face was at rest unless the pointer was within two pixels of
-     its exact middle. The fan's own copy of this loop always multiplied
-     (QuickAdd's magnifyMoods), which is why the fan was the row that looked
-     right and these two were the rows Alicja kept calling wrong. */
+  /* Cells, times a cell. MAGNIFIER_SPREAD is a count of cells and `magnify`'s spread is in
+     the coordinates' own units, and this handed the bare 1.7 across - so the reach was 1.7
+     pixels, about three per cent of a cell, and the `cell` computed on the line above went
+     into the centres and nowhere else. Every face was at rest unless the pointer was within
+     two pixels of its exact middle. The fan's own copy of this loop always multiplied
+     (QuickAdd's magnifyMoods), which is why the fan was the row that looked right and these
+     two were the rows kept calling wrong. */
   return Array.from({ length: count }, (_, i) =>
     magnify(x, row.left + cell * (i + 0.5), cell * MAGNIFIER_SPREAD, ROW_PEAK)
   );

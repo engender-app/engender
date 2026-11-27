@@ -212,10 +212,9 @@ describe('the blind, carried across a navigation', () => {
     ]);
   });
 
-  /* Ticket 285 reverses ux-carpet 241's lifting: the blind, the printed parts
-     and the rings are all nested in the field's group, so its overflow clip
-     cuts every one of them at the painted edge (a ring 21px past Settings'
-     field, type past the blue). The z-order 241 wanted - rings over titles
+  /* Lifting: the blind, the printed parts and the rings are all nested in the field's
+     group, so its overflow clip cuts every one of them at the painted edge (a ring 21px
+     past Settings' field, type past the blue). The z-order 241 wanted - rings over titles
      over blind - now holds inside that group (app.css z-index 5, 4, 3). */
   it('nests the blind, the printed parts and the rings under the field group', () => {
     const blind = el();
@@ -294,11 +293,9 @@ describe("the sun across setup's handover", () => {
   });
 
   it('leaves them unnamed where the sun is the same object at the same size', () => {
-    /* Redesign ticket 33: setup's sun has grown to exactly the scale Home
-       draws it at, so naming it would close and reopen the app's own mark
-       at the moment the app opens. Unnamed, it stays inside each screen's
-       snapshot, and two identical images crossfading is a sun standing
-       still. */
+    /* Setup's sun has grown to exactly the scale Home draws it at, so naming it would close
+       and reopen the app's own mark at the moment the app opens. Unnamed, it stays inside
+       each screen's snapshot, and two identical images crossfading is a sun standing still. */
     const rings = [el(), el()];
     const { as } = fakeDocument([field({ height: 100, rings })]);
     carryBlind(as, { holdSun: true });

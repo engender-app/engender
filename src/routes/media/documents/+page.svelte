@@ -101,12 +101,11 @@
 
   const targets = documentTargets();
 
-  /** The specific thing a document is filed under, resolved through the
-      same four live reads the picker and the document's own screen use -
-      not the generic per-kind wording the flat list used before ticket 58,
-      which existed only to avoid this exact cost. `false` while the reads
-      are still landing or there is nothing to say, matching `ListRow`'s
-      own "no line" convention (`subtitle`'s `RowLine`). */
+  /** The specific thing a document is filed under, resolved through the same four live
+      reads the picker and the document's own screen use - not the generic per-kind wording
+      the flat list used, which existed only to avoid this exact cost. `false` while the
+      reads are still landing or there is nothing to say, matching `ListRow`'s own "no line"
+      convention (`subtitle`'s `RowLine`). */
   const attachmentLine = (document: JournalDocument): string | false => {
     if (document.targetKind === null || document.targetId === null) return false;
     const resolved = targets.resolve({ kind: document.targetKind, id: document.targetId });
@@ -126,14 +125,11 @@
 
   let groups = $derived(groupDocumentsByTarget(documentsQuery.rows));
 
-  /* The list waits for everything a row draws, not only the documents.
-     Each row's second line names what it is filed under, through
-     `targets`' own four reads; when those landed after the documents, the
-     line arrived in a row
-     already on screen, and the first group grew 11px in one frame under
-     the gate's fade (ux-carpet ticket 212, 1 of 15 cold loads). Latched,
-     like a read's own loading: a line that changes later is that row's own
-     change, not an arrival. */
+  /* The list waits for everything a row draws, not only the documents. Each row's second
+     line names what it is filed under, through `targets`' own four reads; when those landed
+     after the documents, the line arrived in a row already on screen, and the first group
+     grew 11px in one frame under the gate's fade. Latched, like a read's own loading: a
+     line that changes later is that row's own change, not an arrival. */
   let rowsSettled = $state(false);
   $effect.pre(() => {
     if (rowsSettled || documentsQuery.loading) return;
@@ -166,10 +162,9 @@
 </script>
 
 <div class="screen">
-  <!-- No subtitle: the screen used to open on what it cannot do ("Search
-       finds titles only") before saying what it holds (release audit U17).
-       That line now sits under the summary row, where the pile it
-       qualifies is counted. -->
+  <!-- No subtitle: the screen used to open on what it cannot do ("Search finds titles
+       only") before saying what it holds (release). That line now sits under the summary
+       row, where the pile it qualifies is counted. -->
   <ScreenHeader title={m.documents_title()} back="/more">
     {#snippet actions()}
       <button
@@ -204,10 +199,9 @@
 
       {#each groups as group (group.kind)}
         <div class="screen-part" data-documents-group={group.kind}>
-          <!-- A heading names which pile this is, and with only one pile
-               there is nothing to tell apart - "Not linked to anything"
-               over the whole list read as a reprimand for filing paper
-               without attaching it (audit item 9). -->
+          <!-- A heading names which pile this is, and with only one pile there is nothing
+               to tell apart - "Not linked to anything" over the whole list read as a
+               reprimand for filing paper without attaching it. -->
           {#if groups.length > 1 || group.kind !== 'unattached'}
             <SectionHeading text={groupHeading(group.kind)} />
           {/if}
@@ -221,9 +215,8 @@
                   subtitle={[dayAndKind(document, kind.word), attachmentLine(document)]}
                   href={`/media/documents/${document.id}`}
                 >
-                  <!-- The page itself where there is one, and the kind mark
-                       the row used to draw where there is not (audit item 9;
-                       ADR-0065's own note carries the reversal). -->
+                  <!-- The page itself where there is one, and the kind mark the row used to
+                       draw where there is not (ADR-0065's own note carries the reversal). -->
                   {#snippet leading()}
                     <DocumentThumb fileName={document.fileName} title={document.title} />
                   {/snippet}

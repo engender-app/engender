@@ -125,14 +125,13 @@ export async function setupDeviceBoundJournal(): Promise<Uint8Array<ArrayBuffer>
   });
 }
 
-/** Moves an already-open journal to device-bound mode from Settings: the
-    same data key and the stored wrapping key, so nothing is re-encrypted.
+/** Moves an already-open journal to device-bound mode from Settings: the same data key and
+    the stored wrapping key, so nothing is re-encrypted.
 
-    Web only. Android's device-bound key lives in Keystore behind a bridge
-    that mints its own data key (`create()`) and cannot be asked to wrap
-    one - so on a phone this direction would mean re-encrypting the whole
-    journal, and the module does not offer it there. Ticket 53's notes carry
-    that as the follow-up it is. The caller owns credential mutation through
+    Web only. Android's device-bound key lives in Keystore behind a bridge that mints its
+    own data key (`create`) and cannot be asked to wrap one - so on a phone this direction
+    would mean re-encrypting the whole journal, and the module does not offer it there.
+    notes carry that as the follow-up it is. The caller owns credential mutation through
     old-mode cleanup. */
 export async function addDeviceBoundJournal(dataKey: Uint8Array<ArrayBuffer>, current: () => void = () => {}): Promise<void> {
   const slot = browserDeviceKeySlot();
@@ -189,8 +188,7 @@ export async function deleteDeviceKeyDatabase(): Promise<void> {
   await runRequest(indexedDB.deleteDatabase(DEVICE_BOUND_DB));
 }
 
-/* createDeviceBoundMetadata stays exported only for its own test (AU-09
-   test-only review). */
+/* createDeviceBoundMetadata stays exported only for its own test. */
 export async function createDeviceBoundMetadata(
   slot: DeviceKeySlot
 ): Promise<{ dataKey: Uint8Array<ArrayBuffer>; metadata: DeviceBoundMetadata }> {
@@ -200,8 +198,7 @@ export async function createDeviceBoundMetadata(
   return { dataKey, metadata };
 }
 
-/* unlockDeviceBoundMetadata stays exported only for its own test (AU-09
-   test-only review). */
+/* unlockDeviceBoundMetadata stays exported only for its own test. */
 export async function unlockDeviceBoundMetadata(
   metadata: DeviceBoundMetadata,
   slot: DeviceKeySlot
@@ -218,8 +215,7 @@ export async function unlockDeviceBoundMetadata(
   }
 }
 
-/* serializeDeviceBoundMetadata stays exported only for its own test (AU-09
-   test-only review). */
+/* serializeDeviceBoundMetadata stays exported only for its own test. */
 export function serializeDeviceBoundMetadata(metadata: DeviceBoundMetadata): string {
   return JSON.stringify({
     version: metadata.version,
@@ -229,8 +225,7 @@ export function serializeDeviceBoundMetadata(metadata: DeviceBoundMetadata): str
   });
 }
 
-/* parseDeviceBoundMetadata stays exported only for its own test (AU-09
-   test-only review). */
+/* parseDeviceBoundMetadata stays exported only for its own test. */
 export function parseDeviceBoundMetadata(serialized: string): DeviceBoundMetadata {
   let raw: Record<string, unknown>;
   try {

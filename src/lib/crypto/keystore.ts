@@ -1,20 +1,16 @@
-/* The web key model (ADR-0018): a random 32-byte data key
-   encrypts the Journal; the Journal passphrase only wraps that key. What
-   persists beside the ciphertext is this metadata - salt, the Argon2id
-   parameter set the wrap was made with, and the AES-GCM-wrapped key - none
-   of which is usable without the passphrase.
+/* The web key model (ADR-0018): a random 32-byte data key encrypts the Journal; the Journal
+   passphrase only wraps that key. What persists beside the ciphertext is this metadata -
+   salt, the Argon2id parameter set the wrap was made with, and the AES-GCM-wrapped key -
+   none of which is usable without the passphrase.
 
-   The parameters travel in the metadata rather than being read from
-   params.ts at unlock time (ADR-0013's evolvability): re-tuning the
-   constants changes keystores created after the change, and every older
-   keystore keeps unlocking with the set it was written under.
+   The parameters travel in the metadata rather than being read from params.ts at unlock
+   time (ADR-0013's evolvability): re-tuning the constants changes keystores created after
+   the change, and every older keystore keeps unlocking with the set it was written under.
 
-   Changing the passphrase is rewrapKeystore(): unwrap with the old, wrap
-   with the new, fresh salt, same data key - the Journal itself is never
-   re-encrypted (ticket 09's acceptance).
+   Changing the passphrase is rewrapKeystore(): unwrap with the old, wrap with the new,
+   fresh salt, same data key - the Journal itself is never re-encrypted.
 
-   Pure over bytes and strings; where the serialized form lives (an OPFS
-   file on web, ticket 13's Keystore on Android) is its caller's decision. */
+   Pure over bytes and strings; where the serialized form lives is its caller's decision. */
 
 import { encrypt, decrypt } from './aesGcm.ts';
 import { deriveKey, randomSalt } from './argon2id.ts';
@@ -22,9 +18,8 @@ import { resolveCredentialProfile } from './credential-consumers.ts';
 import type { Argon2Params } from './params.ts';
 import { parseWrap, toBase64, fromBase64 } from './wrapEncoding.ts';
 
-/* What this build writes. Version 1 is still read: it is what every
-   installation before ticket 53 has on disk, and it predates the source
-   field below (see parseKeystore). */
+/* What this build writes. Version 1 is still read: it is what every installation has on
+   disk, and it predates the source field below (see parseKeystore). */
 const KEYSTORE_VERSION = 2;
 const READABLE_VERSIONS: readonly number[] = [1, 2];
 const DATA_KEY_LENGTH = 32;
@@ -41,16 +36,15 @@ export type JournalSecretSource = 'passphrase' | 'pin' | 'biometric';
 
 const SECRET_SOURCES: readonly JournalSecretSource[] = ['passphrase', 'pin', 'biometric'];
 
-/** Which key the PIN was bound to when this keystore was wrapped (ADR-0041,
-    ticket sec-02-06). `browser` is a non-extractable HMAC key in the
-    WebView's own store, which is what every build before that ticket wrote
-    and what the web still writes; `keystore` is an Android Keystore alias,
-    which a copy of the app's directory does not contain.
+/** Which key the PIN was bound to when this keystore was wrapped (ADR-0041). `browser` is a
+    non-extractable HMAC key in the WebView's own store, which is what every build before
+    that ticket wrote and what the web still writes; `keystore` is an Android Keystore
+    alias, which a copy of the app's directory does not contain.
 
-    Recorded rather than inferred from the platform, because the wrap on disk
-    and the platform can disagree: an Android journal made by an older build
-    is bound to the browser key until something rewraps it, and guessing
-    would derive the secret from the wrong key and read as a wrong PIN. */
+    Recorded rather than inferred from the platform, because the wrap on disk and the
+    platform can disagree: an Android journal made by an older build is bound to the browser
+    key until something rewraps it, and guessing would derive the secret from the wrong key
+    and read as a wrong PIN. */
 export type PinBinding = 'browser' | 'keystore';
 
 const PIN_BINDINGS: readonly PinBinding[] = ['browser', 'keystore'];
@@ -84,10 +78,9 @@ const CONSUMERS = {
     unlock: 'journal-pin-unlock',
     change: 'journal-pin-change'
   },
-  /* Biometric mode has no change row and needs none: there is no secret to
-     replace, only a credential to mint again, which is a change of
-     authenticator rather than of secret and is out of ticket 55's scope. The
-     key stays `change` so the record shape matches the other two. */
+  /* Biometric mode has no change row and needs none: there is no secret to replace, only a
+     credential to mint again, which is a change of authenticator rather than of secret and
+     is out of the scope. The key stays `change` so the record shape matches the other two. */
   biometric: {
     setup: 'journal-biometric-setup',
     add: 'journal-biometric-add',
@@ -318,11 +311,10 @@ export function parseKeystore(serialized: string): KeystoreMetadata {
     }
   }
 
-  /* Absent means the browser key, which is the only binding that existed
-     before ticket sec-02-06 and still the only one the web has. A value
-     this build does not know fails by name rather than falling back to
-     that default: the fallback would derive the secret from a key that did
-     not wrap this file, which arrives at the gate as a wrong PIN. */
+  /* Absent means the browser key, which is the only binding that existed and still the only
+     one the web has. A value this build does not know fails by name rather than falling
+     back to that default: the fallback would derive the secret from a key that did not wrap
+     this file, which arrives at the gate as a wrong PIN. */
   let pinBinding: PinBinding | undefined;
   if (secretSource === 'pin') {
     const named = raw.pinBinding ?? 'browser';

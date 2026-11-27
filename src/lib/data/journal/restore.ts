@@ -71,14 +71,13 @@ export interface RestoreProgress {
 }
 
 export type OnRestoreProgress = (progress: RestoreProgress) => void;
-/** Chosen for what it does on Android since ticket 19: writes there used to
-    cross the Capacitor plugin-call queue, which serializes one call at a
-    time, so this bought nothing - eight in flight were eight queued. The
-    write channel that replaced that call runs each write on its own worker
-    thread, so this number now controls real concurrent disk I/O rather than
-    a queue depth nothing drained faster for. Kept at 8 rather than raised:
-    that is what the re-measured archive-restore-files baseline reflects,
-    and moving it would need a baseline of its own. */
+/** Chosen for what it does on Android since writes there used to cross the Capacitor
+    plugin-call queue, which serializes one call at a time, so this bought nothing - eight
+    in flight were eight queued. The write channel that replaced that call runs each write
+    on its own worker thread, so this number now controls real concurrent disk I/O rather
+    than a queue depth nothing drained faster for. Kept at 8 rather than raised: that is
+    what the re-measured archive-restore-files baseline reflects, and moving it would need a
+    baseline of its own. */
 const FILE_WRITE_CONCURRENCY = 8;
 
 function replacementFileName(name: string): string {
@@ -174,21 +173,20 @@ async function writeArchiveFiles(
   }
 }
 
-/** What an import from another app reports and records, settled inside the
-    transaction that writes its rows (audit A1, module header).
+/** What an import from another app reports and records, settled inside the transaction that
+    writes its rows (module header).
 
-    `counting` names each number the result carries and the SQL tables whose
-    growth across the apply is that number: `{ entries: ['entry'] }` comes
-    back as `{ entries: 12 }`. Measured rather than taken from the preview,
-    though a preview is defined as the exact work a commit performs: the
-    preview resolves against a snapshot read before the person confirmed, and
-    a row added in between turns one of its "new" rows into one the merge
-    skips. The audit's word for the number a commit hands back is "truthful",
-    and a measurement of the rows that landed is the only thing that stays
-    true across that window.
+    `counting` names each number the result carries and the SQL tables whose growth across
+    the apply is that number: `{ entries: ['entry'] }` comes back as `{ entries: 12 }`.
+    Measured rather than taken from the preview, though a preview is defined as the exact
+    work a commit performs: the preview resolves against a snapshot read before the person
+    confirmed, and a row added in between turns one of its "new" rows into one the merge
+    skips. The audit's word for the number a commit hands back is "truthful", and a
+    measurement of the rows that landed is the only thing that stays true across that
+    window.
 
-    The table names are this module's callers' own literals, never anything
-    an archive carried. */
+    The table names are this module's callers' own literals, never anything an archive
+    carried. */
 export interface ImportCommit {
   /** The history row's source, named by the source registry rather than
       spelled a second time here (archive/sources.ts). */
@@ -206,11 +204,10 @@ export async function restoreArchive(
   await restoreWithin(driver, files, mode, contents, onProgress);
 }
 
-/** A Merge that also measures what it added and writes the import history
-    for it, all inside the one transaction (audit A1). Returns the counts by
-    the names `commit.counting` gave them - the same object the history row
-    keeps, so the result a screen shows and the record settings shows cannot
-    describe two different imports. */
+/** A Merge that also measures what it added and writes the import history for it, all
+    inside the one transaction. Returns the counts by the names `commit.counting` gave them
+    - the same object the history row keeps, so the result a screen shows and the record
+    settings shows cannot describe two different imports. */
 export async function commitImport(
   driver: SqliteDriver,
   files: PhotoFileStore,
@@ -265,12 +262,10 @@ async function restoreWithin(
     try { return await work(scope); } catch (error) { rowsFailure = error; throw error; }
   };
   try {
-    /* Due before the first file lands, not in the finally below: a process
-       killed or a power cut between the file writes and the transaction
-       never reaches the finally, and the staged files would stay
-       unreferenced until the next Merge or the weekly stamp (carpet 09:
-       47 of them after every cut). The stamp is what boot housekeeping
-       reads on the next open. */
+    /* Due before the first file lands, not in the finally below: a process killed or a
+       power cut between the file writes and the transaction never reaches the finally, and
+       the staged files would stay unreferenced until the next Merge or the weekly stamp (47
+       of them after every cut). The stamp is what boot housekeeping reads on the next open. */
     markOrphanSweepDue();
     await writeArchiveFiles(files, stagedFiles(), contents.fileCount ?? 0, onProgress);
     // Once rows can own these files, a rejection cannot prove rollback.
@@ -323,14 +318,12 @@ async function restoreWithin(
     const sweep = () => sweepOrphanPhotos(driver, files).catch((error) => {
       console.warn('post-restore orphan sweep failed', error);
     });
-    /* Not awaited when the transaction's outcome is uncertain: a COMMIT or
-       ROLLBACK reply that was lost leaves the transaction open on the
-       worker, a sweep query queues behind it, and the lock that waits for
-       this restore to settle never closes the driver (carpet 09 finding 1:
-       pending 60 s after the lock). The sweep runs alongside when the
-       journal answers, and when it never does, the due stamp set above
-       leaves it to the next open. A failure the rows raised was answered
-       by a ROLLBACK, so its sweep is awaited as before. */
+    /* Not awaited when the transaction's outcome is uncertain: a COMMIT or ROLLBACK reply
+       that was lost leaves the transaction open on the worker, a sweep query queues behind
+       it, and the lock that waits for this restore to settle never closes the driver
+       (pending 60 s after the lock). The sweep runs alongside when the journal answers, and
+       when it never does, the due stamp set above leaves it to the next open. A failure the
+       rows raised was answered by a ROLLBACK, so its sweep is awaited as before. */
     // The live journal's write guard covers this call until it returns.
     if (journalIsBusy()) void waitForJournalIdle().then(sweep);
     else if (uncertain) void sweep();

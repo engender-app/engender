@@ -53,9 +53,7 @@ values, and deletion of a typed recovery note before saving.
 The browser tier's entry editor probe (`entry-editor-probe.ts`) also finishes a
 new entry from its first step: a face alone saves that mood and nothing else,
 and a face plus one moved scale saves exactly that scale, read back out of
-SQLite (tester report 02 ticket 03). Its older cases continue to the second
-step first, where the note, the template button and the star now are.
-Tester report 02 ticket 04 adds the second step: a save from it writes what
+SQLite. The probe also saves from the second step and checks that it writes what
 both steps set (a mode, a tag chosen with no chip opened, the note, the star),
 its parts stand in the order mode, tags, body, note, photos, video, voice, a
 step back keeps the face and the note, and the finish control is one element
@@ -293,13 +291,9 @@ attachment content are asserted. Normal Node runs skip these large fixtures.
 
 Every `.mjs` file directly under `tests/` is a guard, a gallery, or a helper
 the other two import, plus `walkthrough.test` (`walkthrough.test.mjs`), which has its own npm
-script and its own rules (ADR-0029). A probe written for one ticket's
-sign-off does not stay by default. Either this file gets a line for it
-before the ticket merges, or the probe is deleted before the merge.
-
-The rule for keeping one, from phase 12 final-audit ticket 33: it guards
-something a later ticket can break, or it proves a frame someone will look
-at again. A probe that `src/` or a node test names as the source of a number
+script and [test conventions](../CONTRIBUTING.md#test-conventions). Keep a
+probe if it guards behavior or supplies frame evidence people will use again.
+Describe retained probes here. A probe that `src/` or a node test names as the source of a number
 counts as the second kind, as long as it still runs. On 2026-09-23 that rule
 sorted 201 files into 38 guards, 24 galleries and tools, 13 helpers and the
 walkthrough, and 125 deletions. Deleted probes are still in history, and a
@@ -309,9 +303,9 @@ few kept files still name them as the source of a pattern:
 Most of these start their own Vite server or serve a build. Anything that
 says "demo build" serves `build/`, which has to be a `VITE_DEMO=1` build. A
 probe that takes `--root <built tree>` serves it through `previewBuild` in
-browser-harness.mjs, which changes into that tree first (ticket 226) and
+browser-harness.mjs, which changes into that tree first and
 serves `build/index.html` itself under the production isolation headers
-(`serve-build.mjs`, after-release ticket 31). Until then it was `vite
+(`serve-build.mjs`). Until then it was `vite
 preview`, whose document had no CSP and no held module hints. A probe that
 imports vite's `preview` directly, and the walkthrough, still get that
 document.
@@ -685,8 +679,8 @@ To run one on its own, use
 | --- | --- |
 | `bfcache-journal-check` | real BFCache Back and Forward restore journal reads and writes, including a held admitted save through navigation and reload, another navigation during a held private reopen and its late reply, without bypassing lock policy or retaining obsolete workers |
 | `date-picker-check` | the date picker's day targets are 48px and own their edges; arrows, PageUp/PageDown, Shift and Enter work; typed entry refuses a day the calendar lacks; the arrows and the month drum turn months; Escape closes the drum before the picker and the picker before its sheet, at 320-430px, 200% text and 200% pinch |
-| `date-picker-motion` (`--themes light --gate`) (pickers ticket 01) | the date picker opens, closes, turns a month by arrow, finger and trackpad, springs back, stretches at a bound, jumps to Today and through the month drum without a yank in any sampled frame, and a swipe past the threshold turns the month while a short one and one past a bound do not; `--out <dir>` keeps the frames for a flipbook |
-| `time-picker-check` (`--themes light --gate`) (pickers ticket 02) | the time picker opens on the stored time, steps by arrow, brings a tapped row to the band, rests a flick on a whole row, turns both drums to a typed time, refuses a time that is not one, commits on Use time, leaves the value on Escape and gives focus back, offers Clear only on an optional field, and a downward swipe on a drum at 00 does not move the sheet; no drum moves its whole five-row window in one frame and the surface never arrives or leaves in one; `--out <dir>` keeps the frames for a flipbook |
+| `date-picker-motion` (`--themes light --gate`) | the date picker opens, closes, turns a month by arrow, finger and trackpad, springs back, stretches at a bound, jumps to Today and through the month drum without a yank in any sampled frame, and a swipe past the threshold turns the month while a short one and one past a bound do not; `--out <dir>` keeps the frames for a flipbook |
+| `time-picker-check` (`--themes light --gate`) | the time picker opens on the stored time, steps by arrow, brings a tapped row to the band, rests a flick on a whole row, turns both drums to a typed time, refuses a time that is not one, commits on Use time, leaves the value on Escape and gives focus back, offers Clear only on an optional field, and a downward swipe on a drum at 00 does not move the sheet; no drum moves its whole five-row window in one frame and the surface never arrives or leaves in one; `--out <dir>` keeps the frames for a flipbook |
 | `sheet-focus-check` | a sheet takes focus and gives it back, on appointment, lab and dose screens |
 | `no-auto-keyboard` | no screen, the new-entry editor and search included, arrives with a text field focused, so a phone never opens with the keyboard up |
 | `dose-editor-copy-check` | dose editor labels and field order in English and Polish, without duplicate prompts |
@@ -694,7 +688,7 @@ To run one on its own, use
 | `sheet-navigation-leftover-check` | a sheet clears within 200ms of navigating away by tab bar or link, none left in the DOM, and Escape right after doesn't act on the departed one |
 | `settings-scroll-check` | Settings scroll survives detail returns and manager sheets; fresh visits start at the top and gates hide manager content |
 | `sheet-touch-drag-check` | a finger dragging a sheet down from its handle or body moves it with the finger and a long swipe dismisses it (real CDP touch, where `touch-action` applies) |
-| `yank-sweep` (`--scenes doses-sheet,surgery-sheet,regimen-add,settings-about,letters-compose,eras-add --gate`) (ticket 244) | an ordinary sheet's rise and scrim fade actually play rather than teleporting open/shut in one frame - `--gate` exits non-zero on any style yank; render findings don't gate (tickets 149/231/152's scrim-blur-fade-in false positive) |
+| `yank-sweep` (`--scenes doses-sheet,surgery-sheet,regimen-add,settings-about,letters-compose,eras-add --gate`) | an ordinary sheet's rise and scrim fade actually play rather than teleporting open/shut in one frame - `--gate` exits non-zero on any style yank; render findings don't gate (tickets 149/231/152's scrim-blur-fade-in false positive) |
 | `tryout-form-check` | what a screen reader is handed for the tryout form's fields |
 | `media-transport-check` | both players' transports work by keyboard, speak their position, go full screen and run offline |
 | `care-lane-labels` | three Care lanes' captions do not collide at 390px in Polish |

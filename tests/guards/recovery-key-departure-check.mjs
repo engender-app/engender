@@ -87,7 +87,7 @@ try {
   assert.equal(stored.includes(shown), false);
   console.log('PASS displayed recovery key is absent from web storage');
 
-  // A lock is the one departure that cannot ask (last-audit UI 09): leaving
+  // A lock is the one departure that cannot ask: leaving
   // the app under "immediately" unmounts the screen, and the key used to go
   // with it while the screen came back saying a key was active.
   await lockImmediately();

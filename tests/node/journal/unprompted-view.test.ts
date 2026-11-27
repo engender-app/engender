@@ -40,7 +40,7 @@ describe('what the merged screen is built from', () => {
     expect(editor).toContain('data-edit-tile={kind}');
   });
 
-  it('offers no agenda kind switches beside the tiles (functional-audit ticket 14)', () => {
+  it('offers no agenda kind switches beside the tiles', () => {
     /* The agenda draws every kind ADR-0067 admits; the five switches and
        the preference behind them are gone. */
     expect(editor).not.toContain('data-edit-kind');
@@ -55,7 +55,7 @@ describe('what the merged screen is built from', () => {
     }
     expect(screen).not.toContain("key: 'wear-duration-cue'");
     expect(wear).toContain('prefs.wearDurationCueEnabled = v');
-    // Functional audit ticket 34 moved the roadmap's milestone prompt onto
+    // Moved the roadmap's milestone prompt onto
     // the roadmap screen, next to the ticks it is about.
     expect(screen).not.toContain('roadmapMilestoneSyncEnabled');
     // A plain div for the same reason every other switch row here is one.
@@ -77,21 +77,18 @@ describe('what the merged screen is built from', () => {
   });
 
   it('keeps both cascades, unchanged, in the direction each screen it merged already had', () => {
-    /* Turning a kind off turns its notification off too; turning a notification on turns the kind itself on
-       (ticket 04's own other direction). Matched on the assignment rather
-       than on a whole statement, so reformatting the line is not a test
-       failure. */
+    /* Turning a kind off turns its notification off too; turning a notification on turns
+       the kind itself on. Matched on the assignment rather than on a whole statement, so
+       reformatting the line is not a test failure. */
     expect(screen).toMatch(/if \(!v && row\.notify\) prefs\[row\.notify\.prefKey\] = false/);
     expect(screen).toMatch(/if \(v && isSurfaceRow\(row\)\) prefs\.surfaceOverrides = withSurface\(prefs\.surfaceOverrides, row\.key, true\)/);
   });
 
   it('puts every switch on the trailing edge, Home switches and notify switches in cards of their own', () => {
-    /* No row carries both switches since FA 13 took the Wrapped and On
-       this day notifications, so a Show column and a Notify column left
-       the Home switches one 48px slot in from the edge while the
-       notification switches sat on it (Alicja at FA 08's sign-off: "the
-       sliders need to be aligned vertically"). Two headed cards say which
-       question a switch answers instead of a column position. */
+    /* No row carries both switches since took the Wrapped and On this day notifications, so
+       a Show column and a Notify column left the Home switches one 48px slot in from the
+       edge while the notification switches sat on it. Two headed cards say which question a
+       switch answers instead of a column position. */
     expect(screenMarkup).not.toContain('registry-heads');
     const home = screenMarkup.indexOf('{#each homeRows as row (row.key)}');
     const notify = screenMarkup.indexOf('{#each notifyRows as row (row.key)}');
@@ -140,7 +137,7 @@ describe('the notify column on web', () => {
     expect(screenMarkup).toContain('notify={!isWeb && row.notify');
   });
 
-  it('keeps phone-only controls on the platform that can fire (ticket 13)', () => {
+  it('keeps phone-only controls on the platform that can fire', () => {
     /* Quiet hours, hidden titles and the denied-permission notice follow
        the notify column out on web, under one gate after the prompts. */
     const tail = screenMarkup.slice(screenMarkup.indexOf('m.notif_prompts_heading()'));
@@ -158,7 +155,7 @@ describe('what only Android carries', () => {
     expect(read('src/routes/settings/reminders/+page.svelte')).not.toContain('hideNotificationTitles');
   });
 
-  it('says what Android notification history keeps when titles are shown (last-audit UI 39)', () => {
+  it('says what Android notification history keeps when titles are shown', () => {
     /* Testing 07 found a dismissed reminder's title in the Pixel's
        notification history with hiding off. History is an Android setting,
        off unless turned on, and AOSP prunes it after one day
@@ -183,10 +180,9 @@ describe('what only Android carries', () => {
 
 describe('the notifications permission notice', () => {
   it('re-reads permission status whenever the screen comes back to the front', () => {
-    /* Last-audit UI ticket 41 (U30): granting notifications in Android's
-       settings and swiping back left the denied notice up until the screen
-       was left and opened again. watchStatus owns the listener, its
-       teardown and the refused-read rule (watchStatus.test.ts). */
+    /* (U30): granting notifications in Android's settings and swiping back left the denied
+       notice up until the screen was left and opened again. watchStatus owns the listener,
+       its teardown and the refused-read rule (watchStatus.test.ts). */
     expect(screen).toContain("from '$lib/permissions/watchStatus'");
     expect(screen).toMatch(/watchStatus<AndroidReminderStatus \| 'unreadable'>\(\{[\s\S]*?read: \(\) => androidReminders\.getStatus\(\)/);
     expect(screen).toContain("unreadable: 'unreadable'");

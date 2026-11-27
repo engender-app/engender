@@ -34,13 +34,11 @@
     { region: 'int', title: m.resources_group_int }
   ];
 
-  /* One country at a time (bug session 18, item 77). The switch used to
-     jump down one long page, so each country's name was written twice - on
-     the switch and again as the heading it jumped to - and the list ran as
-     one column of identical cards. Within a country, the ways to talk to
-     someone come first and the things to read after, each in its own
-     shape: a helpline is a number to call and when it is answered, a site
-     is a link. */
+  /* One country at a time. The switch used to jump down one long page, so each country's
+     name was written twice - on the switch and again as the heading it jumped to - and the
+     list ran as one column of identical cards. Within a country, the ways to talk to
+     someone come first and the things to read after, each in its own shape: a helpline is a
+     number to call and when it is answered, a site is a link. */
   let region = $state<ResourceRegion>('pl');
   let talk = $derived(resourcesFor(region).filter((resource) => resource.kind !== 'info'));
   let read = $derived(resourcesFor(region).filter((resource) => resource.kind === 'info'));

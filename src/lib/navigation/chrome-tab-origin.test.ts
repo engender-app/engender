@@ -1,6 +1,6 @@
-/* Audit item 4: what settings chrome borrows to light a tab. Module state
-   like smart-back.ts's own depth counter, so each case sets up the history
-   it needs rather than relying on another test's leftover call. */
+/* what settings chrome borrows to light a tab. Module state like smart-back.ts's own depth
+   counter, so each case sets up the history it needs rather than relying on another test's
+   leftover call. */
 import { describe, expect, it } from 'vitest';
 
 import { chromeTabOrigin, noteBorrowingArrival, noteTabVisit } from './chrome-tab-origin.ts';
@@ -29,10 +29,9 @@ describe('chromeTabOrigin', () => {
   });
 });
 
-/* After-release 17 review: an editor opened from Today, left for Journal and
-   come back to through browser Back borrowed Journal, since the only thing
-   remembered was the last tab lit. Each borrowing page keeps the tab it was
-   opened from, and history hands it back. */
+/* review: an editor opened from Today, left for Journal and come back to through browser
+   Back borrowed Journal, since the only thing remembered was the last tab lit. Each
+   borrowing page keeps the tab it was opened from, and history hands it back. */
 describe('noteBorrowingArrival', () => {
   it('hands a returning page the tab it was first opened from', () => {
     noteTabVisit('home');

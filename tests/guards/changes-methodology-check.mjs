@@ -1,4 +1,4 @@
-/* Real-browser proof for ticket 20 (changes methodology disclosure & record action). */
+/* Real-browser proof (changes methodology disclosure & record action). */
 
 import { mkdirSync } from 'node:fs';
 import { preview } from 'vite';
@@ -76,10 +76,9 @@ try {
 
     // Return to changes
     await goto(page, '/care/changes');
-    /* Functional audit ticket 22: the bands sit behind "What the literature
-       says". Open the body-shape group, whose breast development row has an
-       estradiol band, and check that nothing of the literature shows until
-       the disclosure opens. */
+    /* The bands sit behind "What the literature says". Open the body-shape group, whose
+       breast development row has an estradiol band, and check that nothing of the
+       literature shows until the disclosure opens. */
     const group = page.locator('[data-effect-group="feminizing::body_shape"]');
     await group.waitFor({ state: 'visible', timeout: 15000 });
     await group.locator('[aria-expanded]').first().click();

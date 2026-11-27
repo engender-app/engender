@@ -1,15 +1,13 @@
 <script lang="ts">
-  /* A fold: a full-width row with its chevron at the far edge, and the
-     block it opens growing under it (`disclose`). The app's one disclosure
-     marker (after-release 28, audit V12/L07-18). Manage tags
-     and Body regions used native <details>, which drew the browser's
-     triangle beside every other fold's chevron and opened in one frame.
+  /* A fold: a full-width row with its chevron at the far edge, and the block it opens
+     growing under it (`disclose`). The app's one disclosure marker. Manage tags and Body
+     regions used native <details>, which drew the browser's triangle beside every other
+     fold's chevron and opened in one frame.
 
-     `.disclosure-toggle` and `.disclosure-chev` are components.css's, the
-     same rule SpanFacts and YearDaysList draw their folds with. `strong`
-     sets the label in the text colour at body weight for a fold that names
-     a group of rows (the managed lists) rather than offering "this, as a
-     list" under a chart. */
+     `.disclosure-toggle` and `.disclosure-chev` are components.css's, the same rule
+     SpanFacts and YearDaysList draw their folds with. `strong` sets the label in the text
+     colour at body weight for a fold that names a group of rows (the managed lists) rather
+     than offering "this, as a list" under a chart. */
   import type { Snippet } from 'svelte';
   import { disclose } from '$lib/motion/reveal';
   import Icon from '../Icon.svelte';

@@ -2,19 +2,16 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-/* The document language contract (pre-production audit U1).
+/* The document language contract (pre-production).
 
-   A screen reader picks up pronunciation from the lang attribute on
-   <html>. The static shell must ship a valid BCP-47 tag so that even a
-   browser that never runs JavaScript - or one where the layout effect
-   has not mounted yet - never encounters the placeholder that was here
-   before this ticket. The runtime half (the layout effect that stamps
-   the resolved locale) cannot be tested in Node; the browser tier and
-   a manual language switch cover it.
+   A screen reader picks up pronunciation from the lang attribute on <html>. The static
+   shell must ship a valid BCP-47 tag so that even a browser that never runs JavaScript - or
+   one where the layout effect has not mounted yet - never encounters the placeholder that
+   was here before this ticket. The runtime half (the layout effect that stamps the resolved
+   locale) cannot be tested in Node; the browser tier and a manual language switch cover it.
 
-   Locales come from project.inlang/settings.json rather than from the
-   generated paraglide runtime, because the Node tier does not import
-   paraglide (ADR-0016). */
+   Locales come from project.inlang/settings.json rather than from the generated paraglide
+   runtime, because the Node tier does not import paraglide. */
 
 const appHtml = readFileSync(
   fileURLToPath(new URL('../../../src/app.html', import.meta.url)),

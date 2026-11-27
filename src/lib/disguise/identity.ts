@@ -1,6 +1,5 @@
-/* The app and decoy names come from the caller's catalogue lookups.
-   This module only chooses between them, without importing Paraglide
-   into the Node tier (ADR-0016). */
+/* The app and decoy names come from the caller's catalogue lookups. This module only
+   chooses between them, without importing Paraglide into the Node tier. */
 
 /** What a surface writes where the app's name goes. `appName` is the
     catalogue's, supplied by the caller. */

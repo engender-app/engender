@@ -1,14 +1,12 @@
 <script lang="ts">
-  /* A procedure's own facts as fields: its name, its type, its date, what
-     it cost, and the two switches. Shared by the new-procedure sheet on the
-     index and the procedure's own screen (prh12 bug 20), so the type is
-     asked for the same way in both and the two cannot drift.
+  /* A procedure's own facts as fields: its name, its type, its date, what it cost, and the
+     two switches. Shared by the new-procedure sheet on the index and the procedure's own
+     screen, so the type is asked for the same way in both and the two cannot drift.
 
-     The type sits right under the name and is drawn as a choice to make
-     (prh12 bug 18): the whole row opens the list, it says "Choose a type"
-     until one is picked, and the screen holding these fields keeps Save
-     disabled until then. It used to be a static row reading "Custom" with
-     a small pencil, which looked like an answer already given. */
+     The type sits right under the name and is drawn as a choice to make: the whole row
+     opens the list, it says "Choose a type" until one is picked, and the screen holding
+     these fields keeps Save disabled until then. It used to be a static row reading
+     "Custom" with a small pencil, which looked like an answer already given. */
   import { journalTextAutocomplete } from '$lib/platform';
   import { m } from '$lib/paraglide/messages';
   import { procedureKindName } from '$lib/data/vocabulary/labels';

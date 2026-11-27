@@ -52,9 +52,8 @@ function stockOpenedLabel(openedEpochDay: number | null): string | null {
   return openedEpochDay === null ? null : m.stock_opened_line({ date: fmtWindowDay(openedEpochDay) });
 }
 
-/** The in-use window's own line, plain either side of it (ticket 13: no
-    adjective for a container past its window, unlike stockRunOutLabel's
-    `warn`). Null when nothing was typed to project from. */
+/** The in-use window's own line, plain either side of it. Null when nothing was typed to
+    project from. */
 function stockWindowLabel(window: InUseWindow, asOfEpochDay: number): string | null {
   const end = inUseWindowEndEpochDay(window);
   if (end === null) return null;
@@ -62,13 +61,11 @@ function stockWindowLabel(window: InUseWindow, asOfEpochDay: number): string | n
   return isPastInUseWindow(window, asOfEpochDay) ? m.stock_window_past({ date }) : m.stock_window_until({ date });
 }
 
-/** Choose Home's stock notice title and body together. Counts at zero
-    or below are already out, regardless of lead time. Otherwise use
-    the reorder-by date when lead time is set, or projected run-out
-    date when it is absent. Dates avoid a misleading countdown.
+/** Choose Home's stock notice title and body together. Counts at zero or below are already
+    out, regardless of lead time. Otherwise use the reorder-by date when lead time is set,
+    or projected run-out date when it is absent. Dates avoid a misleading countdown.
 
-    The caller formats the date so these branches stay testable in
-    Node without Paraglide (ADR-0016). */
+    The caller formats the date so these branches stay testable in Node without Paraglide. */
 export function stockNotice(
   row: { projection: { remaining: number }; entry: { drug: string; leadTimeDays: number | null } },
   date: string

@@ -22,11 +22,9 @@ import { PALETTES } from '../palettes.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);
-/* The gates alone, which is what a gate ticket's sign-off shows: the first
-   run has its own galleries since it became a step machine, and a review page
-   that also carries ten setup steps is a review page nobody can find the
-   change in (Alicja, on redesign ticket 07: "only showcase the things that
-   actually changed in this ticket"). */
+/* The gates alone, which is what a gate ticket's sign-off shows: the first run has its own
+   galleries since it became a step machine, and a review page that also carries ten setup
+   steps is a review page nobody can find the change in. */
 const gatesOnly = argv.includes('--gates-only');
 const themeAt = argv.indexOf('--themes');
 /* The first bare argument, skipping any that is a flag's own value: `node
@@ -52,13 +50,11 @@ const FLOOR_SIZES = [
   { width: 390, height: 360 }
 ];
 
-/* Every state the eleven scenes cover. Shot on the default flag in both
-   themes: what changes between palettes on a gate is one accent, one soft
-   tint and, on an unlock, Today's sun on the field (tester-report-02
-   ticket 07) - so the palette sweep below is one scene across all of them
-   rather than eleven scenes across all of them, which would be 176 pictures
-   nobody looks at. tests/guards/gate-flag-check.mjs holds the flag on every
-   palette. */
+/* Every state the eleven scenes cover. Shot on the default flag in both themes: what
+   changes between palettes on a gate is one accent, one soft tint and, on an unlock,
+   Today's sun on the field - so the palette sweep below is one scene across all of them
+   rather than eleven scenes across all of them, which would be 176 pictures nobody looks
+   at. tests/guards/gate-flag-check.mjs holds the flag on every palette. */
 const SCENES = [
   'access-choice',
   'access-change',
@@ -74,11 +70,10 @@ const SCENES = [
   'android-key-invalidated',
   'device-recovery',
   'schema-too-new',
-  /* The recovery key's screens (ADR-0054, ticket sec-02). Four of these five
-     are a screen that already existed, shown again with a recovery wrap on
-     disk: the PIN gate grows a way out, the two dead ends grow an action,
-     and the fixture writes the wrap so the difference is real rather than a
-     prop. The fifth pair - the entry itself and the module a recovery unlock
+  /* The recovery key's screens (ADR-0054). Four of these five are a screen that already
+     existed, shown again with a recovery wrap on disk: the PIN gate grows a way out, the
+     two dead ends grow an action, and the fixture writes the wrap so the difference is real
+     rather than a prop. The fifth pair - the entry itself and the module a recovery unlock
      is held on - have no other address. */
   'recovery-entry',
   'post-recovery',
@@ -320,8 +315,8 @@ const base = `http://localhost:${address.port}`;
       await shoot(page, `setup-${i}-${step}-${palette}-${theme}`);
       if (step === 'name') await page.locator('#ob-name').fill('Alicja');
       if (step === 'lock') {
-        /* The timing question after the module (lock-timing ticket 01),
-           shot again with another answer than the one offered. */
+        /* The timing question after the module, shot again with another answer than the one
+           offered. */
         await page.locator('[data-lock-after-choice="immediately"]').click();
         await page.waitForTimeout(400);
         await shoot(page, `setup-${i}-${step}-on-${palette}-${theme}`);

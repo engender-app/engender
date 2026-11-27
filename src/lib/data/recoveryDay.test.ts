@@ -22,9 +22,8 @@ test('procedurePhase returns recovery when 1..90 days post-op', () => {
   assert.equal(procedurePhase(20000, 20000 + SURGERY_RECOVERY_CUTOFF_DAYS), 'recovery');
 });
 
-/* Functional-audit ticket 24: archiving is the person's choice (the
-   schema's own comment on `procedure.archived`), so no surgery date ages a
-   procedure into the archive. */
+/* Archiving is the person's choice (the schema's own comment on `procedure.archived`), so
+   no surgery date ages a procedure into the archive. */
 test('a procedure 120 days post-op is not archived unless the person archived it', () => {
   assert.equal(procedurePhase(20000, 20000 + SURGERY_RECOVERY_CUTOFF_DAYS + 1), 'recovery');
   assert.equal(procedurePhase(20000, 20120), 'recovery');

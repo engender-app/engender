@@ -245,9 +245,8 @@ try {
   assert.equal(reduced.movingContent, 0);
   await page.evaluate(() => { delete document.documentElement.dataset.a11yMotion; });
 
-  /* Home's own departed sheet was the scales follow-up, which
-     functional-audit ticket 14 cut; Calendar's month picker is the sheet
-     this checks now. */
+  /* Home's own departed sheet was the scales follow-up, cut; Calendar's month picker is the
+     sheet this checks now. */
   await door('calendar');
   await page.locator(`${activeRetained} [data-cal-month-btn]`).click();
   await page.waitForSelector('[role="dialog"]');

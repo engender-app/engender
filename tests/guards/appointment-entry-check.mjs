@@ -58,7 +58,7 @@ async function fieldOrder() {
   const controls = [page.locator('#appointment-kind'), ...await page.locator('[data-kind]').all(),
     ...await page.locator('[data-who]').all(), page.locator('[data-who-new]'),
     ...['appointment-place', 'appointment-note', 'appointment-cost', 'appointment-cost-currency'].map((id) => page.locator(`#${id}`)),
-    // The cost (FA 30) follows the note: an amount beside its currency, then Refunded.
+    // The cost follows the note: an amount beside its currency, then Refunded.
     page.locator('[data-sheet] [role="switch"]'),
     ...['appointment-date', 'appointment-time'].map((id) => page.locator(`#${id}`))];
   const positions = [];
@@ -300,10 +300,8 @@ try {
   });
   const linkedRow = page.locator(`[data-appointment="${linked}"]`);
   await page.locator(`[data-visit-lead][data-appointment="${linked}"]`).waitFor();
-  /* The opening is a <button>, and a button takes the browser's own face
-     unless told otherwise (last-audit UI 53: Liberation Sans on Linux,
-     Roboto on Android). Its lines read in the body face; the gap alone keeps
-     the display face. */
+  /* The opening is a <button>, and a button takes the browser's own face unless told
+     otherwise. Its lines read in the body face; the gap alone keeps the display face. */
   const leadFaces = await page.locator('[data-visit-lead]').evaluate((lead) => {
     const face = (value) => {
       const probe = document.createElement('span');

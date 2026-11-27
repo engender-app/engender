@@ -117,8 +117,8 @@ export async function readGrantStates(): Promise<GrantStates> {
     from the start rather than a prompt that would not appear. */
 export async function requestGrant(key: Exclude<GrantKey, 'exactAlarms'>): Promise<GrantState> {
   if (key === 'notifications') {
-    /* A bridge that throws is not a refusal; PermissionList says it failed
-       and leaves the row askable (after-release 06). */
+    /* A bridge that throws is not a refusal; PermissionList says it failed and leaves the
+       row askable. */
     const status = await androidReminders.requestNotificationPermission();
     return status.notifications === 'denied' ? 'denied' : 'granted';
   }
@@ -127,7 +127,7 @@ export async function requestGrant(key: Exclude<GrantKey, 'exactAlarms'>): Promi
 
 /** Opens the system screen a refusal can be undone on. */
 export async function openSystemSettings(target: SettingsTarget): Promise<void> {
-  // A bridge that refuses rejects here; PermissionList says so (after-release 06).
+  // A bridge that refuses rejects here; PermissionList says so.
   if (target === 'exactAlarms') await androidReminders.requestExactAlarmPermission();
   else if (target === 'notifications') await androidReminders.openNotificationSettings();
   else await androidPermissions.openAppInfo();

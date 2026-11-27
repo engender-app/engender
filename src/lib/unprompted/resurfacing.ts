@@ -51,8 +51,7 @@ export const RESURFACING_SURFACES: readonly ResurfacingSurface[] = ROWS.map((row
     registry.ts's `unregisteredKinds` gives its own list - so
     resurfacing.test.ts can show the completeness rule actually failing on a
     named, shortened registry. */
-/* unregisteredSurfaces stays exported only for its own test (AU-09 test-only
-   review). */
+/* unregisteredSurfaces stays exported only for its own test. */
 export function unregisteredSurfaces(rows: readonly Pick<ResurfacingSurfaceRow, 'key'>[]): ResurfacingSurface[] {
   const present = new Set(rows.map((row) => row.key));
   return RESURFACING_SURFACES.filter((key) => !present.has(key));

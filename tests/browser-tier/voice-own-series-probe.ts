@@ -1,8 +1,7 @@
-/* Mount invented benchmarks across two capture chains, one benchmark,
-   and takes without held vowels. Check the chain break renders separate
-   plots with its reason and the picker redraws the figure.
-   charts/ownSeries.test.ts covers the data split. All five figures avoid
-   bands, target shading and graded colours (ADR-0060, ADR-0061). */
+/* Mount invented benchmarks across two capture chains, one benchmark, and takes without
+   held vowels. Check the chain break renders separate plots with its reason and the picker
+   redraws the figure. charts/ownSeries.test.ts covers the data split. All five figures
+   avoid bands, target shading and graded colours (ADR-0061). */
 
 import { flushSync, mount } from 'svelte';
 import '$lib/theme/fonts.css';
@@ -77,9 +76,8 @@ function read(root: HTMLElement) {
       reason: note.getAttribute('data-own-break'),
       text: (note.textContent ?? '').trim()
     })),
-    /* Every band-shaped thing the voice screens can draw, and the heat ramp
-       a worse-to-better colour would come from. All of it has to be absent
-       (ADR-0060). */
+    /* Every band-shaped thing the voice screens can draw, and the heat ramp a
+       worse-to-better colour would come from. All of it has to be absent. */
     bandLike: root.querySelectorAll(
       '[data-pitch-band], [data-pitch-middle], [data-pitch-comfort], [class*="band"], [class*="heat"]'
     ).length,
@@ -166,7 +164,7 @@ async function run() {
   await pick(unmeasured, 'room');
 
   return {
-    /* Phase 15 ticket 20: the area line sits on a casing in its role's edge. */
+    /* The area line sits on a casing in its role's edge. */
     casing: casingOf(series.querySelector('.kit-area-line:not(.is-overlay)'), roleAt(readFlagRoles(), 0)?.edge ?? null),
     offered,
     registered: OWN_SERIES_METRICS.map((metric) => metric.key),

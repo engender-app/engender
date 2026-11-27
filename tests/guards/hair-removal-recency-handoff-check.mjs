@@ -1,16 +1,13 @@
-/* The recency rows lead to their own area (pre-production UI/UX ticket 28).
-   Real-browser half of the ticket's verification: the node tier reads the
-   contract off the source (tests/node/journal/hair-removal-recency-handoff.test.ts,
-   ADR-0016); this one proves the three acceptance behaviours on the real
-   screen - two areas with different histories open their own prefilled
-   context, nothing saves until Save, and closing returns to the overview
-   where it was. The custom-area fixture is rejected at the data seam: the
-   closed vocabulary is the rule an imported key meets, so no custom row can
-   ever join the overview.
+/* The recency rows lead to their own area. Real-browser half of the ticket's verification:
+   the node tier reads the contract off the source
+   (tests/node/journal/hair-removal-recency-handoff.test.ts); this one proves the three
+   acceptance behaviours on the real screen - two areas with different histories open their
+   own prefilled context, nothing saves until Save, and closing returns to the overview
+   where it was. The custom-area fixture is rejected at the data seam: the closed vocabulary
+   is the rule an imported key meets, so no custom row can ever join the overview.
 
-   Run: node tests/guards/hair-removal-recency-handoff-check.mjs
-   (a throwaway dev server; screenshots land in
-   .claude/hair-removal-recency-shots, gitignored). */
+   Run: node tests/guards/hair-removal-recency-handoff-check.mjs (a throwaway dev server;
+   screenshots land in .claude/hair-removal-recency-shots, gitignored). */
 
 import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
@@ -39,7 +36,7 @@ page.setDefaultTimeout(15000);
 const errors = [];
 page.on('pageerror', (err) => errors.push(err.message));
 
-/* CONTEXT: epoch day is the device's local day, never a UTC one - so the
+/* epoch. day is the device's local day, never a UTC one - so the
    fixture computes it here once and hands it to the page, rather than
    letting three evaluate blocks each derive (a possibly UTC) day. */
 const today = Math.floor((Date.now() - new Date().getTimezoneOffset() * 60000) / 86400000);

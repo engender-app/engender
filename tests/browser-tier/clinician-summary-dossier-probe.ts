@@ -1,7 +1,6 @@
-/* Functional-audit ticket 39, rendered: the side-effects part files each
-   effect under the heading its resolved day says, and the changes noticed
-   print with their first-noticed dates. Mounted rather than read as source,
-   because what a clinician is handed is the heading a row sits under. */
+/* Rendered: the side-effects part files each effect under the heading its resolved day
+   says, and the changes noticed print with their first-noticed dates. Mounted rather than
+   read as source, because what a clinician is handed is the heading a row sits under. */
 import { flushSync, mount, unmount } from 'svelte';
 import ClinicianSummaryDossier from '../../src/lib/components/ClinicianSummaryDossier.svelte';
 import type { ClinicianSummary } from '../../src/lib/data/journal/clinicianSummary';

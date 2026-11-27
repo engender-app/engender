@@ -1,7 +1,7 @@
 <script lang="ts">
-  /* Render the bottom bar and rail from one destination table. The container
-     query in app.css chooses which is visible. Keep /more paired with the
-     settings key (ADR-0036). Measure label wrapping only for the bar. */
+  /* Render the bottom bar and rail from one destination table. The container query in
+     app.css chooses which is visible. Keep /more paired with the settings key. Measure
+     label wrapping only for the bar. */
   import { tick } from 'svelte';
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
@@ -26,20 +26,18 @@
   import Mark from './Mark.svelte';
 
   const NAV = [
-    /* Today, Journal, Look back, Transition - none of the four
-       reuses `nav_home`/`nav_calendar`/`nav_stats`/`nav_more`. Those keys
-       still say Calendar/Stats/More everywhere else that already reads them
-       (the calendar and stats screens' own headers, a couple of CTA
-       buttons), and this ticket's whole point is that the bar's word for a
-       door and a door's own word for itself are now free to differ.
-       `nav_home` is gone: the return moment's empty state was its last
-       caller and redesign ticket 35 drew that state as a line rather than
-       a notice with Home as its action. */
+    /* Today, Journal, Look back, Transition - none of the four reuses
+       `nav_home`/`nav_calendar`/`nav_stats`/`nav_more`. Those keys still say
+       Calendar/Stats/More everywhere else that already reads them (the calendar and stats
+       screens' own headers, a couple of CTA buttons), and whole point is that the bar's
+       word for a door and a door's own word for itself are now free to differ. `nav_home`
+       is gone: the return moment's empty state was its last drew that state as a line
+       rather than a notice with Home as its action. */
     { href: '/', key: 'home', icon: 'home', label: () => m.today() },
     { href: '/calendar', key: 'calendar', icon: 'calendar', label: () => m.nav_journal() },
     { href: '/stats', key: 'stats', icon: 'stats', label: () => m.nav_lookback() },
-    /* ADR-0036: the tab opens More while its internal key stays settings.
-       Disguise changes the launcher and tab, not this unlocked label. */
+    /* The tab opens More while its internal key stays settings. Disguise changes the
+       launcher and tab, not this unlocked label. */
     {
       href: '/more',
       key: 'settings',
@@ -55,9 +53,9 @@
   const LEADING = NAV.slice(0, 2);
   const TRAILING = NAV.slice(2);
 
-  /* Per shape (after-release 17): the rail has a Settings row of its own
-     and lights it on every /settings route, where the bar, which has no
-     such row, keeps borrowing the door the gear was pressed from. */
+  /* Per shape: the rail has a Settings row of its own and lights it on every /settings
+     route, where the bar, which has no such row, keeps borrowing the door the gear was
+     pressed from. */
   let activeKey = $derived(litTabKey(page.url.pathname, chromeTabOrigin()));
   let railKey = $derived(railTabKey(page.url.pathname, chromeTabOrigin()));
   let litKey = $derived<Record<string, string>>({ bar: activeKey, rail: railKey });
@@ -117,13 +115,11 @@
     { key: 'rail', axis: 'y' }
   ];
 
-  /* Where an arriving icon pivots: the bottom corner on the far side of the
-     travel, so a highlight coming from the right swings the icon on its
-     bottom left (Alicja, 2026-09-08). Keyed by the axis and by which edge
-     led, which is the pair of names indicator.ts already hands back - the
-     leading edge is on the side the motion is heading for, and that is the
-     side to pin. The rail tips about X, so its pivot is the far edge along Y
-     and centred across the row. */
+  /* Where an arriving icon pivots: the bottom corner on the far side of the travel, so a
+     highlight coming from the right swings the icon on its bottom left. Keyed by the axis
+     and by which edge led, which is the pair of names indicator.ts already hands back - the
+     leading edge is on the side the motion is heading for, and that is the side to pin. The
+     rail tips about X, so its pivot is the far edge along Y and centred across the row. */
   const ANCHOR = {
     x: { near: 'left bottom', far: 'right bottom' },
     y: { near: 'center top', far: 'center bottom' }
@@ -190,17 +186,14 @@
     if (!laidOut(el) || !nav) return { next: prev.shown ? { ...prev, shown: false } : prev, dir: 0 };
     const box = { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight };
     const host: Host = { w: nav.clientWidth, h: nav.clientHeight };
-    /* Both have to match, not just the tab's own box (Alicja, 2026-09-10:
-       "when i f5 on web, the nav bar gets no selection at all"). A hard
-       reload can measure the rail before its content has settled the nav's
-       own height - one bad clientHeight baked into `at` forever, because a
-       later ResizeObserver tick finds the *tab* sitting exactly where it
-       already was and short-circuits here without ever recomputing insets
-       against the container's now-correct size. The pill still opened
-       (`shown: true`), just pinned by a `bottom` inset left over from a
-       nav a few hundred pixels short of its real height - a sliver rather
-       than a missing pill, which is why it read as no selection at all
-       rather than as an error. */
+    /* Both have to match, not just the tab's own box. A hard reload can measure the rail
+       before its content has settled the nav's own height - one bad clientHeight baked into
+       `at` forever, because a later ResizeObserver tick finds the *tab* sitting exactly
+       where it already was and short-circuits here without ever recomputing insets against
+       the container's now-correct size. The pill still opened (`shown: true`), just pinned
+       by a `bottom` inset left over from a nav a few hundred pixels short of its real
+       height - a sliver rather than a missing pill, which is why it read as no selection at
+       all rather than as an error. */
     if (prev.shown && boxesMatch(prev.box, box) && prev.host.w === host.w && prev.host.h === host.h) {
       return { next: prev, dir: 0 };
     }
@@ -394,14 +387,12 @@
       ><span>{item.label()}</span>
     </a>
   {/each}
-  <!-- Preferences are chrome, not content (ticket 09; ADR-0076): a fifth
-       row, sunk to the rail's foot by its own margin and set apart from the
-       four doors by a rule, since the rail has room to say "Settings" where
-       the bar does not. Not one of `NAV`'s four, so it carries no
-       `data-rail-item`, but it takes the pill on every /settings route
-       (after-release 17, L04-07): it lit nothing there before, while the
-       rail lit Today, so the one row naming the page was the one row that
-       never said so. -->
+  <!-- Preferences are chrome, not content: a fifth row, sunk to the rail's foot by its own
+       margin and set apart from the four doors by a rule, since the rail has room to say
+       "Settings" where the bar does not. Not one of `NAV`'s four, so it carries no
+       `data-rail-item`, but it takes the pill on every /settings route: it lit nothing
+       there before, while the rail lit Today, so the one row naming the page was the one
+       row that never said so. -->
   <a
     bind:this={tabs.rail[RAIL_SETTINGS]}
     class="rail-item rail-settings press"

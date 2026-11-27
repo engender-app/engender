@@ -19,7 +19,7 @@ try {
     await page.locator('#dose-amount').waitFor();
     assert.equal(await page.locator('[data-save-dose]').isDisabled(), true);
     // The reason sits beside the disabled Save from the first frame; only
-    // the field's own invalid state waits for it to be left (after-release 26).
+    // the field's own invalid state waits for it to be left.
     assert.match(await page.locator('#dose-requirements').innerText(), locale === 'en' ? /Enter a dose amount/ : /Wpisz dawkę/);
     assert.equal(await page.locator('#dose-amount').getAttribute('aria-invalid'), 'false');
     await page.locator('#dose-amount').focus();

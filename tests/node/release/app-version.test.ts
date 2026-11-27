@@ -128,9 +128,9 @@ describe('readGitFacts', () => {
   });
 });
 
-/* GD-021, GD-026: a signature block is not a signature from anyone allowed to
-   release. These run against real tags in a temporary repository, because the
-   only honest test of "git verifies it" is git. */
+/* A signature block is not a signature from anyone allowed to release. These run against
+   real tags in a temporary repository, because the only honest test of "git verifies it" is
+   git. */
 describe('who may release', () => {
   let root = '';
   let signers = '';

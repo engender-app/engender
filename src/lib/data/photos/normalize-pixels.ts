@@ -1,8 +1,7 @@
-/* Normalize bytes to JPEG and thumbnail (ADR-0008, ADR-0015).
-   Cap the long edge at 2048 px without upscaling. Decode with
-   `imageOrientation: 'from-image'` before re-encoding through canvas
-   so orientation stays in the pixels while EXIF, GPS and identifiers
-   drop out. Test the pure helpers in Node and the decoder in Chromium. */
+/* Normalize bytes to JPEG and thumbnail (ADR-0008). Cap the long edge at 2048 px without
+   upscaling. Decode with `imageOrientation: 'from-image'` before re-encoding through canvas
+   so orientation stays in the pixels while EXIF, GPS and identifiers drop out. Test the
+   pure helpers in Node and the decoder in Chromium. */
 
 import type { NormalizedPhoto } from '../journal/photos';
 import { judgeImage } from '../media/budget';
@@ -10,8 +9,7 @@ import { judgeImage } from '../media/budget';
 /** The long edge of a stored photo, and of its thumbnail. 2048 is
     ADR-0008's; the thumbnail is sized for the Progress grid at 2x, so
     that screen never decodes a full photo to draw a 104px tile. */
-/* MAX_EDGE stays exported only for photos-probe.ts, which cross-checks against
-   it (AU-09 test-only review). */
+/* MAX_EDGE stays exported only for photos-probe.ts, which cross-checks against it. */
 export const MAX_EDGE = 2048;
 export const THUMB_EDGE = 320;
 

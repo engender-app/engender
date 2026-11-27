@@ -40,9 +40,8 @@
     trailing?: Snippet;
   } = $props();
 
-  /** The waveform's height. Sized against the play control beside it - a
-      28px wave under a 44px block read as a thin line next to a solid
-      square (Alicja, on the ticket's sign-off renders). */
+  /** The waveform's height. Sized against the play control beside it - a 28px wave under a
+      44px block read as a thin line next to a solid square. */
   const WAVE_HEIGHT = 36;
 
   let duration = $state(0);

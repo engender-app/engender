@@ -44,7 +44,7 @@
     recap: Recap;
     moodTrend: DayAverage[];
     /** The gender dimension that moved furthest, already named - the screens
-        say "scale" for it (CONTEXT: Gender dimension). Carries the signed
+        say "scale" for it. Carries the signed
         movement as well as the two endpoints (spec 06). */
     dimChange: RecapDimChange | null;
     topTags: { id: string; label: string; count: number }[];

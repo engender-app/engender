@@ -1,15 +1,13 @@
 <script lang="ts">
-  /* Changing the journal passphrase. This rewraps the random
-     data key under the new passphrase (crypto/keystore.ts) - the journal
-     itself is not re-encrypted, so the change is instant regardless of
-     journal size, and an interrupted one loses nothing: the keystore file
-     is either the old wrap or the new one.
+  /* Changing the journal passphrase. This rewraps the random data key under the new
+     passphrase (crypto/keystore.ts) - the journal itself is not re-encrypted, so the change
+     is instant regardless of journal size, and an interrupted one loses nothing: the
+     keystore file is either the old wrap or the new one.
 
-     Changing the passphrase only. *Adding* one to a journal that opens some
-     other way used to live here too, under an `adding` branch that hid the
-     current-passphrase field; ticket 53 moved that to /settings/access-mode,
-     where it is one of three modes rather than an upgrade from the one the
-     old "Skip" left people on. So this screen now has one job and needs no
+     Changing the passphrase only. *Adding* one to a journal that opens some other way used
+     to live here too, under an `adding` branch that hid the current-passphrase field; moved
+     that to /settings/access-mode, where it is one of three modes rather than an upgrade
+     from the one the old "Skip" left people on. So this screen now has one job and needs no
      branch to say which it is doing. */
   import { goto } from '$app/navigation';
   import { m } from '$lib/paraglide/messages';
@@ -24,17 +22,15 @@
   let next = $state('');
   let confirmation = $state('');
   let error = $state('');
-  /** Which field the error is about, so that field is marked invalid and
-      points at the sentence (after-release 21, audit A11Y-14). Null for a
-      failure that is nobody's typing. */
+  /** Which field the error is about, so that field is marked invalid and points at the
+      sentence. Null for a failure that is nobody's typing. */
   let errorAt = $state<'current' | 'next' | 'confirmation' | null>(null);
   let busy = $state(false);
-  /* Whether a recovery key already covers this journal (ADR-0054, ticket
-     sec-02). A changed passphrase rewraps the same data key, so an existing
-     recovery key keeps working untouched - there is nothing to regenerate
-     here and nothing to say about it. What is worth one line is the case
-     where there is none, offered once, at the moment somebody is already
-     thinking about the secret. */
+  /* Whether a recovery key already covers this journal (ADR-0054). A changed passphrase
+     rewraps the same data key, so an existing recovery key keeps working untouched - there
+     is nothing to regenerate here and nothing to say about it. What is worth one line is
+     the case where there is none, offered once, at the moment somebody is already thinking
+     about the secret. */
   refreshRecoveryKeyPresence();
   let offering = $state(false);
 
@@ -59,7 +55,7 @@
     try {
       await changeJournalPassphrase(current, next);
       toast(m.pp_changed_toast());
-      // The change discarded any key nobody confirmed (last-audit UI 42).
+      // The change discarded any key nobody confirmed.
       if (!recoveryKeyPresence.active) {
         offering = true;
         return;
@@ -130,8 +126,8 @@
           readonly={busy}
         />
       </div>
-      <!-- The fields above go read-only rather than disabled while the change
-           runs, so the one that had the focus keeps it (after-release 21). -->
+      <!-- The fields above go read-only rather than disabled while the change runs, so the
+           one that had the focus keeps it. -->
       <p class="pin-status small" role="alert" id="passphrase-status" data-passphrase-status>{error}</p>
       <button class="btn btn-primary" type="submit" data-change-passphrase disabled={busy}>
         <span>

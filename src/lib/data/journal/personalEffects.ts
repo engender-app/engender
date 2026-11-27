@@ -19,9 +19,8 @@ export interface PersonalEffectsArea {
       in place, so this reads as "what someone said they first noticed
       today", never as a log of sightings. */
   getMarkersFirstNoticedOn(epochDay: number): Promise<PersonalEffect[]>;
-  /** The most recent "first noticed" day across every marked effect, at or
-      before `todayEpochDay`, or null if nothing is marked yet (phase 8
-      features ticket 03, lastWrite.ts). */
+  /** The most recent "first noticed" day across every marked effect, at or before
+      `todayEpochDay`, or null if nothing is marked yet (lastWrite.ts). */
   lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
   /** One row per effect (schema.ts): a second call for an effect
       already marked replaces its date rather than adding a row. Returns
@@ -37,7 +36,7 @@ export interface PersonalEffectsArea {
   /** The minted uuid doubles as the key. `categoryKey`
       is optional - a custom effect may be left uncategorised. */
   addCustomEffectType(name: string, categoryKey?: string | null): Promise<PersonalEffectCatalogEntry>;
-  /** Built-in and custom alike hide, never delete (CONTEXT: "Hidden") -
+  /** Built-in and custom alike hide, never delete -
       a marker already recorded against a hidden effect survives and
       still shows on the timeline, it is only the picker that stops
       offering the effect. */
@@ -97,7 +96,7 @@ export function makePersonalEffectsArea(driver: SqliteDriver): PersonalEffectsAr
       // effect; this is that validation's replacement, reading the open
       // catalogue instead of a hardcoded union. A hidden effect still
       // validates - hiding removes it from the picker, not from what a
-      // marker may name (CONTEXT: "Hidden").
+      // marker may name.
       const known = await driver.query<{ key: string }>('SELECT key FROM personal_effect_type WHERE key = ?', [
         input.effect
       ]);

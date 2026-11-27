@@ -19,14 +19,12 @@
     children
   }: {
     label: string;
-    /** Help for the control, its own paragraph under the label and pointed
-        at by the control's `aria-describedby` - the second argument
-        `children` is handed. It used to be folded into the label's own
-        text, `{label} {hint}`, which made the sentence part of the field's
-        accessible name: "Ended" and "Leave blank if there is no end date."
-        were read as one name and ran together on screen at 200% text
-        (phase 11 pre-production ticket 43). A label names, help explains,
-        and a screen reader owes them separately. */
+    /** Help for the control, its own paragraph under the label and pointed at by the
+        control's `aria-describedby` - the second argument `children` is handed. It used to
+        be folded into the label's own text, `{label} {hint}`, which made the sentence part
+        of the field's accessible name: "Ended" and "Leave blank if there is no end date."
+        were read as one name and ran together on screen at 200% text. A label names, help
+        explains, and a screen reader owes them separately. */
     hint?: string;
     /** A screen names its own id only when something else has to agree
         with it (a walkthrough handle, a fixture). Everything else is
@@ -56,12 +54,10 @@
     children: Snippet<[string, string | undefined, boolean]>;
   } = $props();
 
-  /* Set the first time focus leaves the field. A control marks itself
-     `aria-invalid` only once this is true: an empty field nobody has
-     reached yet is not a mistake, and a screen reader that says "invalid"
-     on every field of a fresh form is crying wolf (after-release 21, audit
-     A11Y-14). Lives as long as the field does, so a sheet opened again
-     starts clean. */
+  /* Set the first time focus leaves the field. A control marks itself `aria-invalid` only
+     once this is true: an empty field nobody has reached yet is not a mistake, and a screen
+     reader that says "invalid" on every field of a fresh form is crying wolf. Lives as long
+     as the field does, so a sheet opened again starts clean. */
   let touched = $state(false);
 
   const mintedId = $props.id();

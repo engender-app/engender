@@ -1,5 +1,5 @@
-/* The Daylio CSV input budget (security scan ticket 06). Limits and the
-   measured export they come from: daylioInputBudget.ts. */
+/* The Daylio CSV input budget. Limits and the measured export they come from:
+   daylioInputBudget.ts. */
 
 import { expect, test } from 'vitest';
 import { emptyArchiveJournal } from '../journal/archiveSections';

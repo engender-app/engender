@@ -90,9 +90,8 @@ test('an edit to an earlier stage shifts every later stage, since nothing is sto
   assert.deepEqual(after.slice(3), [103]);
 });
 
-/* The schedule editor's fields are `type=number bind:value`, so an emptied
-   field reaches the page as null, not '' (after-release ticket 01, L07-03).
-   A cleared frequency used to pass as 0 and save a rest stage. */
+/* The schedule editor's fields are `type=number bind:value`, so an emptied field reaches
+   the page as null, not ''. A cleared frequency used to pass as 0 and save a rest stage. */
 test('a cleared, blank or non-numeric frequency is no frequency at all, and 0 is still a rest stage', () => {
   for (const missing of [null, undefined, '', '  ', 'abc', Number.NaN, Number.POSITIVE_INFINITY]) {
     assert.equal(stagesFromInput([{ everyNDays: missing, days: 5 }]), null, String(missing));
@@ -108,9 +107,8 @@ test('a stage needs at least one day, and a negative frequency is refused', () =
   assert.equal(stagesFromInput([]), null);
 });
 
-/* Functional audit ticket 25: post-vaginoplasty schedules are given as
-   "3 to 5 times a day", so a stage can expect several sessions on each of
-   its days as well as one every N days. */
+/* Post-vaginoplasty schedules are given as "3 to 5 times a day", so a stage can expect
+   several sessions on each of its days as well as one every N days. */
 test('a times-a-day stage expects that many sessions on every one of its days', () => {
   const t = taper(100, [
     { everyNDays: 1, timesPerDay: 3, days: 3 }, // 100..102, three a day
@@ -162,9 +160,9 @@ test('a times-a-day stage saves as a daily stage with its count, and needs a who
   assert.deepEqual(stagesFromInput([{ everyNDays: 2, days: 7 }]), [{ everyNDays: 2, days: 7 }]);
 });
 
-/* Alicja, 2026-11-04: dilation should not be visible unless a vaginoplasty
-   was logged. A custom procedure that opted in is the other way into the
-   same eligibility (`dilationEligible`), a vulvoplasty or nothing is not. */
+/* Dilation should not be visible unless a vaginoplasty was logged. A custom procedure that
+   opted in is the other way into the same eligibility (`dilationEligible`), a vulvoplasty
+   or nothing is not. */
 test('dilation is gated off until an eligible procedure exists', () => {
   const procedure = (kind: 'vaginoplasty' | 'vulvoplasty' | 'custom', dilationOptIn = false) => ({ kind, dilationOptIn });
   assert.equal(dilationGated({}, []).taperSessions?.hidden, true);

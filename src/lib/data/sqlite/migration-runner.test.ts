@@ -1,8 +1,7 @@
-/* Unit tests for the migration runner (ADR-0006). Part of the Node tier;
-run with `npm test`. No production SQLite driver exists yet;
-node:sqlite's DatabaseSync stands in as a real, synchronous
-   MigrationDb for these tests only. The fake file-ops object stands in for
-   ticket 04's OPFS/Capacitor file copy. */
+/* Unit tests for the migration runner (ADR-0006). Part of the Node tier; run with `npm
+   test`. No production SQLite driver exists yet; node:sqlite's DatabaseSync stands in as a
+   real, synchronous MigrationDb for these tests only. The fake file-ops object stands in
+   for OPFS/Capacitor file copy. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
@@ -188,11 +187,11 @@ test('applies out-of-order pending migrations in ascending version order', async
 });
 
 test('a copy left by a failed migration is not written over by the retry', async () => {
-  /* Ticket 04. The retry's copy would be taken from a database the failed
-     attempt has already been at, and if the file is damaged the copy cannot
-     be written at all - so overwriting spends the one recovery point to make
-     a worse one, or destroys it and makes none. ADR-0006 keeps the copy until
-     a boot comes up clean; a boot that finds migrations pending is not one. */
+  /* The retry's copy would be taken from a database the failed attempt has already been at,
+     and if the file is damaged the copy cannot be written at all - so overwriting spends
+     the one recovery point to make a worse one, or destroys it and makes none. ADR-0006
+     keeps the copy until a boot comes up clean; a boot that finds migrations pending is not
+     one. */
   const db = makeDb();
   const fileOps = makeFileOpsSpy({ copyExists: true });
   /* At v1 with v2 pending, which is what a retry after a failed later step
@@ -340,9 +339,8 @@ test('assertFts5Available does not misclassify a locked database as missing FTS5
 });
 
 test('a journal already on the current schema never loads the migration list', async () => {
-  /* Phase 5 audit ticket 02: the list is 27KB of SQL text and every boot
-     used to parse it to decide it had nothing to do. A journal at the latest
-     version answers that with one integer comparison. */
+  /* The list is 27KB of SQL text and every boot used to parse it to decide it had nothing
+     to do. A journal at the latest version answers that with one integer comparison. */
   const db = makeDb();
   db.setUserVersion(1);
   const fileOps = makeFileOpsSpy();
@@ -455,8 +453,8 @@ test('a clean boot opens a journal with an orphan and logs the foreign key viola
   assert.equal(fileOps.cleanupCalls, 0, 'an orphan does not prove a recovery copy safe to retire');
 });
 
-/* Re-check carpet 12, row 15: the guard against a journal that sits
-   between two steps of the chain, at each of its edges. */
+/* row 15: the guard against a journal that sits between two steps of the chain, at each of
+   its edges. */
 const steppedChain: Migration[] = [
   { version: 10, baseline: true, sql: 'CREATE TABLE widget (id INTEGER PRIMARY KEY);' },
   { version: 12, sql: 'CREATE TABLE gadget (id INTEGER PRIMARY KEY);' }

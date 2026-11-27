@@ -108,7 +108,7 @@ stores the typed key or adopts a newly verified key as another journal session.
 
 Replacement requires confirmation before the old recovery key stops opening
 the journal. Interrupted replacement follows the pending-wrap protocol above
-(ADR-0054, last-audit UI 42). PIN throttling, durable credential publication
+(ADR-0054). PIN throttling, durable credential publication
 and single-operation approval apply throughout. Synthetic-journal tests cover
 wrong credentials, biometric failure and cancellation, invalidation races,
 and the web device-bound exception. The authentication policy was approved

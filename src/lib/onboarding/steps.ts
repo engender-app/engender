@@ -30,13 +30,12 @@ export type OnboardingStep =
   | 'disguise'
   | 'done';
 
-/* Setup picks the greeting, flag, scales, optional screens and lock.
-   Permissions show what the OS lets the app access. The daily reminder
-   stays on the reminders screen.
+/* Setup picks the greeting, flag, scales, optional screens and lock. Permissions show what
+   the OS lets the app access. The daily reminder stays on the reminders screen.
 
-   Disguise changes what appears outside the app (ADR-0079). Keep it last
-   because enabling it on Android swaps the launcher alias and closes the
-   app. complete() must persist the setup answers before the flip. */
+   Disguise changes what appears outside the app. Keep it last because enabling it on
+   Android swaps the launcher alias and closes the app. complete() must persist the setup
+   answers before the flip. */
 const ALL_STEPS: readonly OnboardingStep[] = [
   'welcome',
   'name',
@@ -49,15 +48,13 @@ const ALL_STEPS: readonly OnboardingStep[] = [
   'done'
 ];
 
-/** The flow. One list for everybody: setup does not vary by disguise
-    (ADR-0079). This used to take a `disguised` flag and drop the flag step
-    under it, guarding a state no person can be in - `prefs.disguise` lives
-    inside the encrypted journal and is only settable from Settings, which
-    sits behind `prefs.onboarded`, so the only way to reach setup disguised
-    is the demo's own first-run control. Disguise is now the last question
-    setup asks rather than a state it has to survive. The
-    disguise choice affects outside identity after setup, not the unlocked
-    app. */
+/** The flow. One list for everybody: setup does not vary by disguise. This used to take a
+    `disguised` flag and drop the flag step under it, guarding a state no person can be in -
+    `prefs.disguise` lives inside the encrypted journal and is only settable from Settings,
+    which sits behind `prefs.onboarded`, so the only way to reach setup disguised is the
+    demo's own first-run control. Disguise is now the last question setup asks rather than a
+    state it has to survive. The disguise choice affects outside identity after setup, not
+    the unlocked app. */
 export function onboardingSteps(): readonly OnboardingStep[] {
   return ALL_STEPS;
 }
@@ -84,11 +81,11 @@ const STEP_ANSWERS: Record<OnboardingStep, readonly PreferenceKey[]> = {
      there is nothing here for an archive to have carried. That is the same
      reason it survives a restore - device state is not journal state. */
   permissions: [],
-  /* `disguise` is a preference, and a device-local one (ADR-0079): what a person is hiding on this phone is not a fact about
-     their journal, so it does not travel and this step runs after a restore
-     like any other. Listed rather than left empty, because the honest entry
-     is the key it writes - if `disguise` ever became portable this map is
-     where that would show up, and the step would stop being asked. */
+  /* `disguise` is a preference, and a device-local one: what a person is hiding on this
+     phone is not a fact about their journal, so it does not travel and this step runs after
+     a restore like any other. Listed rather than left empty, because the honest entry is
+     the key it writes - if `disguise` ever became portable this map is where that would
+     show up, and the step would stop being asked. */
   disguise: ['disguise'],
   done: []
 };
@@ -111,18 +108,16 @@ export function archiveAnswers(step: OnboardingStep): boolean {
   );
 }
 
-/** The flow for somebody who said on the welcome that they already have a
-    journal.
+/** The flow for somebody who said on the welcome that they already have a journal.
 
-    Everything the archive answers is dropped, because asking and then
-    overwriting the answer a moment later is the behaviour this ticket exists
-    to remove. What is left is the welcome, the restore itself, and the steps
-    that are about this device rather than about the journal: the access mode
-    above all, since an archive password is not an access mode (ADR-0041) and
-    the key has to be made here. The permissions step joined it when ticket
-    31 landed, on this same test and with no edit needed: it stores no
-    preference, so it can never qualify as carried. Disguise joined it the
-    same way when ticket 32 landed - device state is not journal state. */
+    Everything the archive answers is dropped, because asking and then overwriting the
+    answer a moment later is the behaviour exists to remove. What is left is the welcome,
+    the restore itself, and the steps that are about this device rather than about the
+    journal: the access mode above all, since an archive password is not an access mode
+    (ADR-0041) and the key has to be made here. The permissions step joined it when landed,
+    on this same test and with no edit needed: it stores no preference, so it can never
+    qualify as carried. Disguise joined it the same way when landed - device state is not
+    journal state. */
 export function restoreSteps(): readonly OnboardingStep[] {
   const rest = ALL_STEPS.filter((step) => step !== 'welcome' && !archiveAnswers(step));
   return ['welcome', 'restore', ...rest];
@@ -169,15 +164,14 @@ export function isSkippable(step: OnboardingStep): boolean {
 
 /** Where the flow hands over.
 
-    Home, not Settings: a new person has just been told what the app is for
-    and the next thing they should see is the thing itself (F16).
+    Home, not Settings: a new person has just been told what the app is for and the next
+    thing they should see is the thing itself (F16).
 
-    It used to have an exception. App lock was a choice made here and a pair
-    of four-digit entries made on a separate screen, so a toggle left on sent
-    the new user there instead of Home. Ticket 53 retired that gate - a PIN is
-    an access mode now, chosen in the security module - so there is nothing
-    left for this to route around, and ticket 54 puts the module itself into
-    the flow rather than after it. */
+    It used to have an exception. App lock was a choice made here and a pair of four-digit
+    entries made on a separate screen, so a toggle left on sent the new user there instead
+    of Home. retired that gate - a PIN is an access mode now, chosen in the security module
+    - so there is nothing left for this to route around, and puts the module itself into the
+    flow rather than after it. */
 export function onboardingDestination(): string {
   return '/';
 }

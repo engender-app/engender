@@ -17,8 +17,7 @@ function realPalettes(): Record<string, string[]> {
   for (const match of css.matchAll(/\[data-palette="([^"]+)"\]\s*\{\s*--motif-stripes:\s*([^;]+);/g)) {
     out[match[1]] = parseMotifStripes(match[2]);
   }
-  /* Not a flag: the disguised gate's neutral palette, which draws no sun
-     (security-scan ticket 08). */
+  /* Not a flag: the disguised gate's neutral palette, which draws no sun. */
   delete out[DISGUISED_PALETTE];
   return out;
 }
@@ -130,17 +129,16 @@ describe('sunRings', () => {
 });
 
 describe('the flag is the flag', () => {
-  /* The rule, stated twice and without qualification (Alicja, 2026-08-25):
-     every colour drawn as the flag is the flag's own hex. There used to be a
-     per-theme nudge in this file - a near-black band lifted on the dark theme,
-     white and the two yellows dulled on the light one - so that a band which
-     nearly matches the page would still read. It is gone, and this is what
-     keeps it gone: a substitution reintroduced anywhere in the ring path fails
-     here rather than being noticed on a screenshot months later.
+  /* The rule, stated twice and without qualification: every colour drawn as the flag is the
+     flag's own hex. There used to be a per-theme nudge in this file - a near-black band
+     lifted on the dark theme, white and the two yellows dulled on the light one - so that a
+     band which nearly matches the page would still read. It is gone, and this is what keeps
+     it gone: a substitution reintroduced anywhere in the ring path fails here rather than
+     being noticed on a screenshot months later.
 
-     Held against `--motif-stripes` itself rather than a list written out here,
-     so the assertion is "the sun draws what palettes.css says" and cannot
-     drift from the flags the app actually ships. */
+     Held against `--motif-stripes` itself rather than a list written out here, so the
+     assertion is "the sun draws what palettes.css says" and cannot drift from the flags the
+     app actually ships. */
   for (const theme of [true, false]) {
     it(`draws every stripe of all 16 palettes at its exact hex, ${theme ? 'dark' : 'light'}`, () => {
       for (const [name, stripes] of Object.entries(palettes)) {
@@ -163,14 +161,12 @@ describe('the flag is the flag', () => {
 });
 
 describe("Home's header reserves room for the sun at its breathing size", () => {
-  /* Phase 5 ticket 32.12: the reserve held only the resting radius, so the
-     breathing loop's outermost ring grew past its own room for half of
-     every 7s cycle and overflow: hidden shaved it flat along the header's
-     bottom edge. CSS cannot read SUN_OUTER, so .home-header keeps its own
-     175px literal - this is what holds that literal to SUN_OUTER/2 rather
-     than trusting a comment to notice it drifted. Read from +page.svelte's
-     own <style> block rather than screens.css, where .home-header lived
-     until phase 5 audit ticket 16 moved it. */
+  /* 12: the reserve held only the resting radius, so the breathing loop's outermost ring
+     grew past its own room for half of every 7s cycle and overflow: hidden shaved it flat
+     along the header's bottom edge. CSS cannot read SUN_OUTER, so .home-header keeps its own
+     175px literal - this is what holds that literal to SUN_OUTER/2 rather than trusting a
+     comment to notice it drifted. Read from +page.svelte's own <style> block rather than
+     screens.css, where .home-header lived. */
   const home = readFileSync(join(root, 'src/routes/+page.svelte'), 'utf8');
   const base = readFileSync(join(root, 'src/lib/theme/base.css'), 'utf8');
   const components = readFileSync(join(root, 'src/lib/styles/components.css'), 'utf8');
@@ -196,19 +192,16 @@ describe("Home's header reserves room for the sun at its breathing size", () => 
     );
   });
 
-  /* Carpet ticket 154, both halves. The --space-7 in the reserve above is
-     the room under the disc Alicja picked off the bench's five-value row:
-     38px of gap at rest, 32px at the breathing loop's midpoint.
+  /* Both halves. The --space-7 in the reserve above is the room under the disc picked off
+     the bench's five-value row: 38px of gap at rest, 32px at the breathing loop's midpoint.
 
-     And the field the sun sits in stops at the window inset rather than
-     crossing it. Every other field in the app still bleeds up through the
-     inset - that is rule 7, and a flat block of one colour behind the
-     status bar is fine. A flag is not: Android draws the bar's icons in
-     one tint over whatever the app painted, and the bar's right end
-     crossed two to four of the sun's rings, so on trans the signal bars
-     and the battery were gone against the white stripe. The two screens
-     that draw a sun are the two that stop bleeding, and the mark keeps
-     centre 0 by the corner moving rather than the disc. */
+     And the field the sun sits in stops at the window inset rather than crossing it. Every
+     other field in the app still bleeds up through the inset - that is rule 7, and a flat
+     block of one colour behind the status bar is fine. A flag is not: Android draws the
+     bar's icons in one tint over whatever the app painted, and the bar's right end crossed
+     two to four of the sun's rings, so on trans the signal bars and the battery were gone
+     against the white stripe. The two screens that draw a sun are the two that stop
+     bleeding, and the mark keeps centre 0 by the corner moving rather than the disc. */
   it('keeps the sun on its field\'s own corner', () => {
     const rule = /\.sun\s*\{([^}]*)\}/.exec(components);
     expect(rule, 'components.css should declare .sun').not.toBeNull();
@@ -224,11 +217,10 @@ describe("Home's header reserves room for the sun at its breathing size", () => 
       expect(css, `${name} should not pull itself up through the whole inset`).not.toMatch(
         /margin:\s*calc\(-1 \* var\(--inset-top\)\)/
       );
-      /* It may take `--field-bleed-top`, which is the slack the bar leaves
-         under its own icons and is floored so a short bar keeps its
-         clearance. The sun's corner rides up with the field, which is the
-         point: the gap Alicja measured on the device was between the icons
-         and the field, not inside the field. */
+      /* It may take `--field-bleed-top`, which is the slack the bar leaves under its own
+         icons and is floored so a short bar keeps its clearance. The sun's corner rides up
+         with the field, which is the point: the gap measured on the device was between the
+         icons and the field, not inside the field. */
       expect(css, `${name} should take the sanctioned bleed`).toMatch(
         /margin:\s*calc\(-1 \* var\(--field-bleed-top\)\)/
       );

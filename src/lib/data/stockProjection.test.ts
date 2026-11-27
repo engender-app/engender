@@ -77,9 +77,9 @@ test('a skipped dose consumes nothing', () => {
 });
 
 test('an auto-logged dose consumes exactly as a hand-logged one does, and a corrected one consumes nothing', () => {
-  /* Phase 11 ticket 11: the projection asks what happened, and a dose a
-     schedule wrote on the person's standing instruction happened. Marking
-     one skipped takes it back out, the same way any skipped dose is out. */
+  /* The projection asks what happened, and a dose a schedule wrote on the person's standing
+     instruction happened. Marking one skipped takes it back out, the same way any skipped
+     dose is out. */
   const stock = { drug: 'estradiol valerate', quantity: 10, unit: 'vials', recordedEpochDay: DAY_0 };
   const written = [dose(DAY_0 + 1, { source: 'schedule' }), dose(DAY_0 + 3, { source: 'schedule' })];
 
@@ -124,11 +124,10 @@ test('a dose logged under a different drug does not count, even in a matching ep
 });
 
 test('a drug-less dose left ambiguous by two concurrent episodes of different drugs consumes no stock, and is counted excluded (case 4)', () => {
-  /* The bug ticket 38 exists to close: before concurrency was representable,
-     a route/window match alone was enough to consume the wrong drug's stock.
-     Two concurrent episodes for different drugs, and a dose naming no drug
-     of its own, must not deplete either stock - and the exclusion must be
-     counted, not silently dropped. */
+  /* The bug exists to close: before concurrency was representable, a route/window match
+     alone was enough to consume the wrong drug's stock. Two concurrent episodes for
+     different drugs, and a dose naming no drug of its own, must not deplete either stock -
+     and the exclusion must be counted, not silently dropped. */
   const stock = { drug: 'estradiol valerate', quantity: 10, unit: 'vials', recordedEpochDay: DAY_0 };
   const episodes = [episode({ startEpochDay: DAY_0 }), episode({ id: 'ep-2', drug: 'spironolactone', startEpochDay: DAY_0 })];
   const doses = [dose(DAY_0 + 1)];
@@ -332,8 +331,7 @@ test('depletingStocks gates and sorts on reorderByEpochDay when a row carries on
   const items = [
     {
       // Run-out is 50 days out, ample by itself - but a 45-day lead time
-      // pulls the reorder day inside the window, which is the whole point
-      // of ticket 16.
+      // pulls the reorder day inside the warning window.
       entry: { id: 's-lead', drug: 'estradiol valerate', quantity: 100, unit: 'mg', recordedEpochDay: DAY_0, reminderEverCreated: false, reminderDismissed: false },
       projection: { remaining: 50, dailyRate: 1, runOutEpochDay: asOf + 50, excludedDoses: 0 },
       reorderByEpochDay: asOf + 5
@@ -385,8 +383,8 @@ test('snoozeStockNotice suppresses notice for 24 hours and expires afterwards', 
 });
 
 test('the snooze is the stock-notice tile in the acknowledgements, not a key of its own', () => {
-  /* Security-scan ticket 08: it used to be a plaintext localStorage key;
-     the first unlock moves an old one over (acknowledgements.test.ts). */
+  /* It used to be a plaintext localStorage key; the first unlock moves an old one over
+     (acknowledgements.test.ts). */
   const store = memoryAcknowledgements();
   snoozeStockNotice(store, 1700000000000);
   assert.deepEqual(store.read().snoozes, { 'stock-notice': 1700000000000 + 24 * 3600_000 });
@@ -490,9 +488,8 @@ test('reorderByEpochDay is null when there is no run-out day to project from, le
   assert.equal(reorderByEpochDay(null, null), null);
 });
 
-/* Doses per unit (after-release ticket 01, L03-04). Stock used to subtract
-   one unit per dose whatever the unit was, so two vials of injectable
-   estradiol ran out after two doses. */
+/* Doses per unit. Stock used to subtract one unit per dose whatever the unit was, so two
+   vials of injectable estradiol ran out after two doses. */
 
 test('two vials at five doses per vial last ten doses, and project the run-out from that', () => {
   const stock = { drug: 'estradiol valerate', quantity: 2, unit: 'vials', recordedEpochDay: DAY_0, dosesPerUnit: 5 };

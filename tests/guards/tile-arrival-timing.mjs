@@ -308,12 +308,10 @@ async function androidArrival(to) {
     });
   })()`);
 }
-/* What a read answering during the field's travel may do (Alicja's call
-   on 2026-10-06, after a squeezed rail fade "looks shit and yanks"): reveal
-   at full length and be done by the frame the field stops, or keep its
-   placeholder, with nothing fading, through that frame and reveal at full
-   length after it. A reveal shorter than --dur-fast is a squeeze, and one
-   still running in the field-end frame overran the stop. */
+/* What a read answering during the field's travel may do: reveal at full length and be done
+   by the frame the field stops, or keep its placeholder, with nothing fading, through that
+   frame and reveal at full length after it. A reveal shorter than --dur-fast is a squeeze,
+   and one still running in the field-end frame overran the stop. */
 const MIN_REVEAL_MS = 150;
 function judgeArrival(frames) {
   const lastMotion = frames.findLastIndex((f) => f.route && f.moving);

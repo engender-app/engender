@@ -1,11 +1,10 @@
-/* Fold both the indexed text and the query with foldText (ADR-0005), so
-   Polish letterforms match. Notes use FTS5 whole-token prefixes: "ther"
-   finds "therapy" while "erapy" does not.
+/* Fold both the indexed text and the query with foldText (ADR-0005), so Polish letterforms
+   match. Notes use FTS5 whole-token prefixes: "ther" finds "therapy" while "erapy" does
+   not.
 
-   Match tag labels in memory by substring. Built-ins store keys, so
-   localized labels come from above the journal seam (ADR-0016).
-   likePattern shapes queries for scanned areas; matchWindow gives
-   the display snippet after a hit. */
+   Match tag labels in memory by substring. Built-ins store keys, so localized labels come
+   from above the journal seam. likePattern shapes queries for scanned areas; matchWindow
+   gives the display snippet after a hit. */
 
 import type { Tag } from './types';
 import { foldText } from './fold';

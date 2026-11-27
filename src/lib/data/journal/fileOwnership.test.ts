@@ -85,7 +85,7 @@ test('every attachment survives archive restore and cleanup removes only orphans
   assert.deepEqual((await restored.journal.archive.snapshot()).journal, snapshot.journal);
 });
 
-// Trash travels since functional audit ticket 48, and its files with it.
+// Trash travels, and its files with it.
 test('trash attachments stay on disk and travel in archives', async () => {
   const { db, files, journal } = await device();
   const entry = await journal.entries.upsertEntry({

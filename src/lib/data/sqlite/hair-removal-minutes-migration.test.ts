@@ -1,5 +1,5 @@
-/* FA 28: version 107 adds hair_removal_session.minutes. Rows from before it
-   keep every column and read minutes as none. */
+/* version 107 adds hair_removal_session.minutes. Rows from before it keep every column and
+   read minutes as none. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

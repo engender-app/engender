@@ -64,10 +64,10 @@ final class FolderArchives {
 
     /**
      * Where the position goes once an archive ends. Null leaves it where it
-     * was: a cancelled Merge, and one this device ran out of space for
-     * (re-check carpet 13), take the same archive again on the next open.
-     * Any other outcome moves past it, so an archive that would not open is
-     * reported once rather than on every open.
+     * was: a cancelled Merge, and one this device ran out of space for, take
+     * the same archive again on the next open. Any other outcome moves past
+     * it, so an archive that would not open is reported once rather than on
+     * every open.
      */
     static Position after(Position before, long modifiedAt, String stagedUri, String outcome) {
         if ("cancelled".equals(outcome) || "no-space".equals(outcome)) return null;

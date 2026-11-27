@@ -1,17 +1,14 @@
-/* Select dated context for charts without changing their values.
-   A moment marks a day and a stretch spans an interval. An open
-   regimen episode ends at the supplied today. Keep this logic pure
-   and put labels and drawing in the chart kit (ADR-0016).
+/* Select dated context for charts without changing their values. A moment marks a day and a
+   stretch spans an interval. An open regimen episode ends at the supplied today. Keep this
+   logic pure and put labels and drawing in the chart kit.
 
-   Annotate dated values, per-analyte lab series, body-map trajectories
-   and voice trends. Keep Safe Space's 30-day chart free of unsolicited
-   surgery and recovery context. Interval mood uses positions within
-   a dosing interval, so date annotations do not apply.
+   Annotate dated values, per-analyte lab series, body-map trajectories and voice trends.
+   Keep Safe Space's 30-day chart free of unsolicited surgery and recovery context. Interval
+   mood uses positions within a dosing interval, so date annotations do not apply.
 
-   Entry days already appear in the plotted series. Appointments,
-   including consults, qualify as dated context. The annotations say
-   what happened and when. The separate correlation code owns any
-   analysis of readings. */
+   Entry days already appear in the plotted series. Appointments, including consults,
+   qualify as dated context. The annotations say what happened and when. The separate
+   correlation code owns any analysis of readings. */
 
 import type { EpisodeEndReason } from '../data/types';
 import { spanOverlapsRange } from '../data/span';
@@ -61,13 +58,11 @@ const SHAPE: Record<ChartAnnotationKind, 'point' | 'span'> = {
   suspendedArea: 'point'
 };
 
-/** What one tick says beyond its own name, carried from the record behind
-    it (phase 11 UI/UX ticket 49).
+/** What one tick says beyond its own name, carried from the record behind it.
 
-    Raw rather than written out, for the reason `finishedArea`'s `name` is a
-    key: this tier imports no paraglide (ADR-0016), and a severity and a site
-    are both words the catalogue owns. kit/chartAnnotation.ts turns each of
-    these into the line a reader sees.
+    Raw rather than written out, for the reason `finishedArea`'s `name` is a key: this tier
+    imports no paraglide, and a severity and a site are both words the catalogue owns.
+    kit/chartAnnotation.ts turns each of these into the line a reader sees.
 
     Only text written behind a record reaches this field. */
 export type ChartAnnotationDetail =
@@ -141,7 +136,7 @@ export const MIN_PLOT_POSITIONS = 2;
     tick, which is the worst of both: it reads as one event and is drawn as
     three. Gathered instead, so one mark stands for what is really there and
     the readout names all of it. */
-/* MIN_MARK_GAP stays exported only for its own test (AU-09 test-only review). */
+/* MIN_MARK_GAP stays exported only for its own test. */
 export const MIN_MARK_GAP = 5;
 
 /** Everything in `sources` that falls inside the range, clipped to it and

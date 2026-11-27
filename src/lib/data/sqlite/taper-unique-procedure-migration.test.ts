@@ -1,7 +1,6 @@
-/* FA 25: one taper per procedure. The app reads the taper as one row, but
-   nothing in the schema said so, and a merge or a stray write could leave a
-   procedure with two. Version 112 keeps the newest taper of each procedure
-   and puts a UNIQUE index on `taper.procedure_id`. */
+/* one taper per procedure. The app reads the taper as one row, but nothing in the schema
+   said so, and a merge or a stray write could leave a procedure with two. Version 112 keeps
+   the newest taper of each procedure and puts a UNIQUE index on `taper.procedure_id`. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

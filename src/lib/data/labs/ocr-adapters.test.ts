@@ -20,7 +20,7 @@ const fakeFile = (size: number): File =>
 describe('platformImageSource', () => {
   beforeEach(() => vi.resetAllMocks());
 
-  /* GD-008: the lab read whatever it was given whole, with no byte limit. */
+  /* The lab read whatever it was given whole, with no byte limit. */
   test('refuses a web file over the photo ceiling without reading it', async () => {
     vi.mocked(isAndroid).mockReturnValue(false);
     const big = fakeFile(PHOTO_SIZE_CEILING + 1);

@@ -54,19 +54,17 @@ const SHEETS = [
       'screen-header',
       /* direction-contracts.ts asserts .kit-tile-note-text clamp in kit.css */
       'kit-tile-note-text',
-      /* ReadReserve.svelte is the one consumer, but the rule that names them
-         is about the heading inside, not the reserve: a .kit-heading first in
-         a reserve body keeps its 40 unless the reserve is first on the screen
-         (ux-carpet 211). It sits beside kit.css's other first-heading rules,
-         at their unscoped specificity, so the cascade between them stays
-         readable in one place; a scoped copy in ReadReserve would win on
-         specificity alone and hide the interaction. */
+      /* ReadReserve.svelte is the one consumer, but the rule that names them is about the
+         heading inside, not the reserve: a .kit-heading first in a reserve body keeps its 40
+         unless the reserve is first on the screen. It sits beside kit.css's other
+         first-heading rules, at their unscoped specificity, so the cascade between them
+         stays readable in one place; a scoped copy in ReadReserve would win on specificity
+         alone and hide the interaction. */
       'read-reserve',
       'read-reserve-body',
-      /* DayCard's `tight` and EntryDays' per-entry wrapper (search ticket
-         16). One consumer each, but both rules are about the day card's
-         own body and rail - `.kit-entry-row` is what the rail's first and
-         last segment rules count through - so they sit beside those rules
+      /* DayCard's `tight` and EntryDays' per-entry wrapper. One consumer each, but both
+         rules are about the day card's own body and rail - `.kit-entry-row` is what the
+         rail's first and last segment rules count through - so they sit beside those rules
          in kit.css, where the cascade between them is read in one place. */
       'is-tight',
       'kit-entry-row'

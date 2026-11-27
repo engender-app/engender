@@ -3,15 +3,15 @@ package dev.engender.app.photos;
 import java.io.IOException;
 
 /**
- * What a multi-pick may hand over in one go, judged from the sizes the content
- * provider declares before a token for any file exists (security-scan ticket
- * 07, GD-019). Mirrors src/lib/data/media/budget.ts: 100 files, 1 GiB in all.
+ * What a multi-pick may hand over in one go, judged from the sizes the
+ * content provider declares before a token for any file exists. Mirrors
+ * src/lib/data/media/budget.ts: 100 files, 1 GiB in all.
  *
  * <p>The per-file ceiling already existed; the count and the total did not,
  * and a hostile or just enormous selection could keep the app reading for as
- * long as it liked. The system picker caps a gallery pick at
- * {@code MediaStore.getPickImagesMaxLimit()}, 100 on shipped devices, so the
- * count refuses nothing the picker itself offers.
+ * long as it liked. The system picker caps a gallery pick at {@code
+ * MediaStore.getPickImagesMaxLimit()}, 100 on shipped devices, so the count
+ * refuses nothing the picker itself offers.
  */
 final class PickBudget {
     static final int MAX_COUNT = 100;

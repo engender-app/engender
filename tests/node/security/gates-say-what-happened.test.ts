@@ -1,7 +1,5 @@
-/* The settings-side half of after-release ticket 09, held at the level the
-   source can be held to. The gate-side half renders in the browser tier
-   (tests/gates-say-what-happened.mjs); these screens need an open journal,
-   which the gates fixture does not have. */
+/* The gate-side half renders in the browser tier (tests/gates-say-what-happened.mjs); these
+   screens need an open journal, which the gates fixture does not have. */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

@@ -7,7 +7,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 
-/** GD-003/GD-019's native half: the count and total of a multi-pick. */
+/** native half: the count and total of a multi-pick. */
 public class PickBudgetTest {
 
     @Test

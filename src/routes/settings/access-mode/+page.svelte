@@ -57,16 +57,14 @@
   const reserve = readReserve('access-mode');
   const rememberHeight = (px: number) => rememberReserve('access-mode', px);
 
-  /* Whether this journal already has a recovery key (ADR-0054, ticket
-     sec-02). Two jobs: the line below, because the honest description of
-     what any mode protects against depends on it and this screen could not
-     see that fact before; and whether the offer after a change is worth
+  /* Whether this journal already has a recovery key (ADR-0054). Two jobs: the line below,
+     because the honest description of what any mode protects against depends on it and this
+     screen could not see that fact before; and whether the offer after a change is worth
      making at all.
 
-     Read once, on mount, and that is enough rather than a compromise: the
-     only way to make a key from here is the offer's own link, which leaves
-     this screen, and coming back to it mounts it again. Nothing else in the
-     app writes that file while this screen is open. */
+     Read once, on mount, and that is enough rather than a compromise: the only way to make
+     a key from here is the offer's own link, which leaves this screen, and coming back to
+     it mounts it again. Nothing else in the app writes that file while this screen is open. */
   refreshRecoveryKeyPresence();
 
   /** Set after a change that is worth offering a recovery key on, which
@@ -103,11 +101,9 @@
       if (operation.controller.signal.aborted) return;
       protection = null;
       toast(m.am_changed_toast());
-      /* Device-bound and unlocked modes create an unrecoverable state,
-         so they get the offer rather than the navigation - and only where
-         there is nothing already covering it. `active`, not `exists`:
-         the change has just discarded any key nobody confirmed (last-audit
-         UI 42). */
+      /* Device-bound and unlocked modes create an unrecoverable state, so they get the
+         offer rather than the navigation - and only where there is nothing already covering
+         it. `active`, not `exists`: the change has just discarded any key nobody confirmed. */
       if ((mode === 'device-bound' || mode === 'unlocked') && !recoveryKeyPresence.active) {
         offering = 'device-bound';
         return;
@@ -167,10 +163,9 @@
     try {
       await changeJournalPin(currentPin, entered);
       toast(m.pin_changed_toast());
-      /* A changed PIN rewraps the same data key, so an existing recovery key
-         still works and there is nothing to regenerate. What is worth one
-         line is the case where there is none. An unconfirmed key was
-         discarded by the change (last-audit UI 42). */
+      /* A changed PIN rewraps the same data key, so an existing recovery key still works
+         and there is nothing to regenerate. What is worth one line is the case where there
+         is none. An unconfirmed key was discarded by the change. */
       if (!recoveryKeyPresence.active) {
         changingPin = false;
         offering = 'secret-changed';
@@ -251,8 +246,8 @@
               onChange={(next) => (prefs.lockAfter = next)}
               aria-labelledby="lock-after-title"
             />
-            <!-- What a lock does on the web since after-release ticket 10, and
-                 what it cannot do. Android's lock path is its own. -->
+            <!-- What a lock does on the web, and what it cannot do. Android's lock path is
+                 its own. -->
             {#if !isAndroid()}
               <p class="ob-text" data-lock-after-web>{m.lock_after_web_note()}</p>
             {/if}

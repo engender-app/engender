@@ -10,10 +10,9 @@ import {
   unlockDeviceBoundMetadata
 } from './device-bound-journal.ts';
 
-/* A stand-in for the one IndexedDB call deleteDeviceKeyDatabase makes.
-   Node has no indexedDB global at all (ADR: ticket 03's node tier), so
-   there is nothing real to call through to - only the request shape to
-   fake. */
+/* A stand-in for the one IndexedDB call deleteDeviceKeyDatabase makes. Node has no
+   indexedDB global at all, so there is nothing real to call through to - only the request
+   shape to fake. */
 function fakeIndexedDb(behavior: 'success' | 'error') {
   const calls: string[] = [];
   const request = {} as IDBOpenDBRequest;

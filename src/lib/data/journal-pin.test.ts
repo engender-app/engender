@@ -75,7 +75,7 @@ function bothPlatforms() {
   };
 
   return {
-    /** The web, and every Android build before ticket sec-02-06. */
+    /** The web, and every Android build. */
     web: { binding: browserDeviceBinding(slot), bindingKind: 'browser', ...file } satisfies PinPorts,
     /** Android now: the phone's Keystore, with the WebView slot kept only so
         a journal the older build wrote can still be opened once. */
@@ -291,8 +291,8 @@ test('changing the PIN keeps the journal and stops the old PIN working', async (
   await expect(unlockJournalPin('1234', world)).rejects.toThrow(DecryptionFailedError);
 });
 
-/* Last-audit UI 42: a new recovery key nobody confirmed does not outlive
-   the protection it was made under, and a refused change keeps it. */
+/* A new recovery key nobody confirmed does not outlive the protection it was made under,
+   and a refused change keeps it. */
 test('changing the PIN discards an unconfirmed recovery key once the current PIN is proven, before the new one is written', async () => {
   const order: string[] = [];
   const base = ports();

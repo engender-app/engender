@@ -1,9 +1,8 @@
-/* Fixture builder (ticket 03's acceptance criteria): inserts an entry at a
-   given epoch day with a mood, dimension values and tags, against the real
-   migrated schema - so later tickets exercising entries, stats, search and
-   tag insights don't each invent their own seeding. Referenced dimensions
-   and tags are created on first use, keyed by name, so a call site doesn't
-   have to seed reference data by hand. */
+/* Fixture builder: inserts an entry at a given epoch day with a mood, dimension values and
+   tags, against the real migrated schema - so later tickets exercising entries, stats,
+   search and tag insights don't each invent their own seeding. Referenced dimensions and
+   tags are created on first use, keyed by name, so a call site doesn't have to seed
+   reference data by hand. */
 
 import type { DatabaseSync } from 'node:sqlite';
 

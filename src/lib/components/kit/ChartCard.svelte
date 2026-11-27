@@ -20,7 +20,7 @@
     /** 2 where the card follows the screen's h1, 3 where it sits under a
         section's h2. */
     level: 2 | 3;
-    /** For the walkthrough's handle (ADR-0029): which chart this is. */
+    /** For the walkthrough's handle: which chart this is. */
     kind?: string;
     role?: Role;
     /** One control, on the heading's line: which scale to plot, which

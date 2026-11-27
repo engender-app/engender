@@ -30,15 +30,14 @@ export function restoreRoomVisit(depth: number, returning: boolean, appointmentI
   return visit?.appointmentId === appointmentId ? visit.index : 0;
 }
 
-/** Holds this appointment's answers, replacing only its own earlier entry.
-    Still process-lifetime module state: nothing is written to the journal
-    here and nothing is mirrored to storage, so what somebody said in a
-    consulting room does not outlive the process that heard it.
+/** Holds this appointment's answers, replacing only its own earlier entry. Still
+    process-lifetime module state: nothing is written to the journal here and nothing is
+    mirrored to storage, so what somebody said in a consulting room does not outlive the
+    process that heard it.
 
-    `byItemId` is the same answers keyed by checklist item id rather than by
-    question text - what a remounted room screen restores from (ticket 05,
-    audit I2), since `answers` alone has already dropped the id a screen
-    needs to put a jotting back under the field it was typed into. */
+    `byItemId` is the same answers keyed by checklist item id rather than by question text -
+    what a remounted room screen restores from, since `answers` alone has already dropped
+    the id a screen needs to put a jotting back under the field it was typed into. */
 export function holdRoomAnswers(entry: HeldRoomAnswers): void {
   held.set(entry.appointmentId, entry);
 }

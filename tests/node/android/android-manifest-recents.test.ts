@@ -18,14 +18,13 @@ describe('android main activity recents policy', () => {
   });
 });
 
-/* Alicja, 2026-10-06: screenshots and the Recents preview are visible and
-   only optionally hidden, and the Block screenshots switch decides screenshots. A set
-   lock does not hide screenshots, but on 2026-11-12 she reversed the Recents
-   half: while a lock is set no preview is kept,
-   because the task snapshot is taken before a cover can be drawn. Android 13+
-   has no getter for the Recents choice, ScreenCapturePlugin records the last
-   value it passed (RecentsFollowsBothSwitchesTest reads it) and this pins
-   that the recorded value is the one handed to the system. */
+/* Screenshots and the Recents preview are visible and only optionally hidden, and the Block
+   screenshots switch decides screenshots. A set lock does not hide screenshots, but on
+   2026-11-12 she reversed the Recents half: while a lock is set no preview is kept, because
+   the task snapshot is taken before a cover can be drawn. Android 13+ has no getter for the
+   Recents choice, ScreenCapturePlugin records the last value it passed
+   (RecentsFollowsBothSwitchesTest reads it) and this pins that the recorded value is the
+   one handed to the system. */
 describe('android recents preview follows the capture choice, disguise and a set lock', () => {
   const plugin = read('android/app/src/main/java/dev/engender/app/screencapture/ScreenCapturePlugin.java');
   const activity = read('android/app/src/main/java/dev/engender/app/MainActivity.java');
@@ -43,11 +42,10 @@ describe('android recents preview follows the capture choice, disguise and a set
   });
 });
 
-/* Last-audit UI 04. Recents names a task after the component that started
-   it, and so does the window title TalkBack reads on arrival. A widget or a
-   notification that started MainActivity by class showed "engender" and the
-   default flag even with disguise on. Route intents now name an action that
-   only the launcher aliases answer, so Android resolves each tap to the one
+/* Recents names a task after the component that started it, and so does the window title
+   TalkBack reads on arrival. A widget or a notification that started MainActivity by class
+   showed "engender" and the default flag even with disguise on. Route intents now name an
+   action that only the launcher aliases answer, so Android resolves each tap to the one
    alias enabled at that moment - the same component the launcher starts. */
 describe('route launches resolve through the live launcher alias', () => {
   const appLaunch = read('android/app/src/main/java/dev/engender/app/launch/AppLaunch.java');

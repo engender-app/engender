@@ -53,10 +53,9 @@ export function timelineEraBands(
   return out;
 }
 
-/** How much band a name keeps between itself and a dot's ring (last-audit
-    UI 51). With none, the last letter of "Full time" ran into the today
-    dot's ring: the name had 51px between its band's top and the ring and
-    was 50px long, so a centred name ended a fraction of a pixel inside it. */
+/** How much band a name keeps between itself and a dot's ring. With none, the last letter
+    of "Full time" ran into the today dot's ring: the name had 51px between its band's top
+    and the ring and was 50px long, so a centred name ended a fraction of a pixel inside it. */
 const ERA_LABEL_CLEARANCE_PX = 4;
 
 export interface EraLabelPlacement {

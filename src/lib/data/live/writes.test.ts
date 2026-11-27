@@ -161,7 +161,7 @@ test('a rejected write announces nothing: nothing changed, so nothing is stale',
   assert.deepEqual(announced, []);
 });
 
-test('a run-out reconcile with nothing to change announces nothing (ux-carpet 199)', async () => {
+test('a run-out reconcile with nothing to change announces nothing', async () => {
   const { journal, announced } = await observed();
 
   /* Android reruns this pass on every 'stock' announcement, and it declares
@@ -354,16 +354,13 @@ test('every operation the journal actually has is classified', async () => {
   assert.deepEqual(Object.keys(wrapped).toSorted(), Object.keys(journal).toSorted());
 });
 
-/* Which members of the journal are operations rather than areas of them, and
-   the reason it matters twice over: this module wraps them itself instead of
-   looking them up in OPERATIONS, and journal.svelte.ts's lazy proxy has to
-   call them rather than build a facade of operations around them.
+/* Which members of the journal are operations rather than areas of them, and the reason it
+   matters twice over: this module wraps them itself instead of looking them up in
+   OPERATIONS, and journal.svelte.ts's lazy proxy has to call them rather than build a
+   facade of operations around them.
 
-   That proxy knew `reconcileBuiltIns` by name alone until phase 5 audit
-   ticket 13 added `discardEverything`, and the miss showed up only as
-   "discardEverything is not a function" in a walkthrough run - a rune module
-   the Node tier cannot import. This is the half of it that can be checked
-   here: the list and the journal agreeing on which members are functions. */
+   That proxy knew `reconcileBuiltIns` by name alone. This is the half of it that can be
+   checked here: the list and the journal agreeing on which members are functions. */
 test('the journal-wide operations are exactly the journal members that are functions', async () => {
   const { journal } = await journalWithBuiltIns();
 
@@ -399,12 +396,11 @@ test('tablesReadBy answers with the tables a read depends on, and refuses anythi
   expect(() => tablesReadBy('nosuchArea', 'getEntry')).toThrow(/not a classified read/);
 });
 
-/* One of the two live defects the audit found, as the invariant that
-   catches the class rather than the instance: a write's tables and the
-   tables of every read whose answer that write changes have to overlap, or
-   the screen holding that read shows its old number forever with nothing to
-   see. The other defect was a journaling pause against the streak read,
-   which phase 8 UX ticket 01 deleted along with the streak. */
+/* One of the two live defects the audit found, as the invariant that catches the class
+   rather than the instance: a write's tables and the tables of every read whose answer that
+   write changes have to overlap, or the screen holding that read shows its old number
+   forever with nothing to see. The other defect was a journaling pause against the streak
+   read, which deleted along with the streak. */
 test('editing a regimen episode re-runs the stock projection, the run-out date the stock screen shows', () => {
   // The screen declared ['stock', 'dose'], and the projection reads the
   // episode history too - so ending an episode left the old run-out date up.
@@ -545,7 +541,7 @@ test('a rejected public journal write cancels handover without changing its erro
   assert.equal(await retry(() => { reloaded = true; }), true);
 });
 
-test('a write is a command for the session gate, a read is not (security-scan ticket 08)', () => {
+test('a write is a command for the session gate, a read is not', () => {
   assert.equal(isJournalCommand('entries', 'upsertEntry'), true);
   assert.equal(isJournalCommand('wearSessions', 'getRunningSession'), false);
   assert.equal(isJournalCommand('noSuchArea', 'log'), false);

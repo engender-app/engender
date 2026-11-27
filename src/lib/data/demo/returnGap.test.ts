@@ -1,7 +1,6 @@
-/* Phase 11 all-four-doors ticket 23: the return-gap seed's own era must not
-   overlap the persona's, which `eras.ts`'s no-overlap invariant enforces on
-   write (`journal/eras.ts`'s `upsertEra`). `seedReturnGap` itself can't run
-   in the Node tier - `seedPersonaJournal`'s photos need a DOM - so this
+/* The return-gap seed's own era must not overlap the persona's, which `eras.ts`'s
+   no-overlap invariant enforces on write (`journal/eras.ts`'s `upsertEra`). `seedReturnGap`
+   itself can't run in the Node tier - `seedPersonaJournal`'s photos need a DOM - so this
    tests the pure day-picking logic it relies on instead. */
 
 import { test } from 'vitest';

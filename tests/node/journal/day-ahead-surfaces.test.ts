@@ -1,10 +1,8 @@
-/* `/day/[day]`'s own rules from phase 8 features ticket 62 (ADR-0067), at
-   the level a grep can hold - the same split calendar-contracts.ts uses
-   for the calendar's own ticket 61. What each behaviour actually renders
-   for a real journal is tests/walkthrough.test.mjs's question; this is the
-   wiring a typecheck cannot see: that a future day's write affordances sit
-   behind the right branch, and that nothing here draws a second string for
-   a concept the app already names. */
+/* `/day/[day]`'s own rules (ADR-0067), at the level a grep can hold - the same split
+   calendar-contracts.ts uses for the calendar's own. What each behaviour actually renders
+   for a real journal is tests/walkthrough.test.mjs's question; this is the wiring a
+   typecheck cannot see: that a future day's write affordances sit behind the right branch,
+   and that nothing here draws a second string for a concept the app already names. */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -19,9 +17,8 @@ const day = read(DAY_ROUTE);
 const dayAheadRows = read('src/lib/components/dayAheadRows.ts');
 
 describe('the add-entry button on a past day or today', () => {
-  /* Tester report 02, ticket 08: an empty day said "Add another entry for
-     this day" under "Nothing logged this day". The day's own read decides
-     the wording; a day that holds an entry keeps "another". */
+  /* An empty day said "Add another entry for this day" under "Nothing logged this day". The
+     day's own read decides the wording; a day that holds an entry keeps "another". */
   it('says "an entry" on a day with no entry and "another entry" on a day with one', () => {
     expect(day).toMatch(/noEntryYet = \$derived\(day != null && day\.entries\.length === 0\)/);
     expect(markupOf(day)).toContain('{noEntryYet ? m.add_entry_for_day() : m.add_another_entry()}');
@@ -44,11 +41,10 @@ describe('the day after today', () => {
     expect(day).toContain('j.dayAhead.getDayAhead(epochDay, epochDay, currentDay())');
   });
 
-  /* The future branch itself: everything between `{#if isFuture}` and the
-     `{:else}` that hands the screen to a past day. Audit item 12 turned the
-     old `{#if !isFuture}` guard around so a future day can draw the records
-     it does hold - an appointment, a milestone - so the rule is stated over
-     that branch's own contents rather than over the order of the file. */
+  /* The future branch itself: everything between `{#if isFuture}` and the `{:else}` that
+     hands the screen to a past day. turned the old `{#if !isFuture}` guard around so a
+     future day can draw the records it does hold - an appointment, a milestone - so the
+     rule is stated over that branch's own contents rather than over the order of the file. */
   const futureBranch = markupOf(day).split('{#if isFuture}')[1]?.split('{:else}')[0] ?? '';
 
   it('never lets the entries gate, the add-entry button or the era link past the future guard', () => {
@@ -80,10 +76,9 @@ describe('the day after today', () => {
   });
 
   it('says what a dose slot expects, which the mark itself may not carry', () => {
-    /* Audit item 12: the row said "Dose" and went to /doses, which is what
-       Today's agenda row already said. The amount comes off the schedule
-       through `expectedDosesOnDay`, never off the mark - ADR-0067's rule
-       that a mark is a day and a kind is what that split protects. */
+    /* the row said "Dose" and went to /doses, which is what Today's agenda row already
+       said. The amount comes off the schedule through `expectedDosesOnDay`, never off the
+       mark - ADR-0067's rule that a mark is a day and a kind is what that split protects. */
     expect(day).toContain('expectedDosesOnDay(episodes, schedules, pauses, asked)');
     expect(day).toContain('m.adherence_slot_amount(');
     // The mark's own row module still states the kind and nothing else: the

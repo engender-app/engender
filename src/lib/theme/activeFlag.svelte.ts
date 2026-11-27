@@ -1,12 +1,10 @@
-/* palettes.css owns the 16 flags. Read --motif-stripes and the ground tokens
-   from the active theme. Before SQLite preferences attach,
-   app.html paints from the localStorage mirror, which can hold the previous
-   palette (ADR-0009).
+/* palettes.css owns the 16 flags. Read --motif-stripes and the ground tokens from the
+   active theme. Before SQLite preferences attach, app.html paints from the localStorage
+   mirror, which can hold the previous palette.
 
-   +layout.svelte publishes refresh() after stamping data-palette and
-   data-theme. Consumers read the published flag, so a mount cannot race
-   preference loading or keep stale colours after a Settings change. Unlocked
-   screens use this flag regardless of launcher identity. */
+   +layout.svelte publishes refresh() after stamping data-palette and data-theme. Consumers
+   read the published flag, so a mount cannot race preference loading or keep stale colours
+   after a Settings change. Unlocked screens use this flag regardless of launcher identity. */
 
 import { parseMotifStripes } from '$lib/motion/flagSun';
 import { flagField, readFlagFill, readFlagRoles, type FlagField, type Role } from './roles';
@@ -22,11 +20,9 @@ export const activeFlag = $state<{
   roles: Role[];
   /** The whole flag as one CSS fill. */
   fill: string;
-  /** The door's field: the flag's second colour and its ink (phase 10,
-      rule 3). Also published on `<html>` as
-      `--field` and `--field-ink`, so a stylesheet can paint the field
-      without a component reading the stripes for itself; ticket 23 is
-      what paints it. */
+  /** The door's field: the flag's second colour and its ink. Also published on `<html>` as
+      `--field` and `--field-ink`, so a stylesheet can paint the field without a component
+      reading the stripes for itself; is what paints it. */
   field: FlagField | undefined;
 }>({ palette: undefined, stripes: [], dark: true, roles: [], fill: 'none', field: undefined });
 

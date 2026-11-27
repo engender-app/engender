@@ -1,8 +1,7 @@
-/* The coarse-name-to-SQL-table declaration checked against the schema it
-   claims to describe, the same way ticket 01's own test checks
-   a table the parser invents against `sqlite_master`: a table renamed or
-   dropped in a migration and forgotten here fails on sight rather than
-   leaving a stale name in the mapping. */
+/* The coarse-name-to-SQL-table declaration checked against the schema it claims to
+   describe, the same way the test checks a table the parser invents against
+   `sqlite_master`: a table renamed or dropped in a migration and forgotten here fails on
+   sight rather than leaving a stale name in the mapping. */
 
 import assert from 'node:assert/strict';
 import { test } from 'vitest';

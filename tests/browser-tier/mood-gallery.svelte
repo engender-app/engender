@@ -21,9 +21,8 @@
   let theme = $state('dark');
   let preset = $state('amber');
   let still = $state(true);
-  /* One face, big, for the round where the drawing itself is what is being
-     signed off rather than the set (Alicja, 2026-09-08: "give me a screen
-     with just one face for sign off"). */
+  /* One face, big, for the round where the drawing itself is what is being signed off
+     rather than the set. */
   let one = $state(4);
   let picked = $state<number | null>(4);
   let chipped = $state<number | null>(null);

@@ -39,19 +39,16 @@ interface SqliteBridge {
 
 const Sqlite = registerPlugin<SqliteBridge>('Sqlite');
 
-/** The reset path's wipe on Android (ADR-0014). The journal's
-    files live in app-private storage, so emptying the OPFS root - which is
-    all the web's reset has to do - does not touch them.
+/** The reset path's wipe on Android. The journal's files live in app-private storage, so
+    emptying the OPFS root - which is all the web's reset has to do - does not touch them.
 
-    Unnumbered, and safely so: the plugin holds one connection for the
-    whole app, and the caller has already awaited the close that let go of
-    it (data/reset.ts closes before it wipes). It still runs on the
-    plugin's one worker thread, behind anything already there.
+    Unnumbered, and safely so: the plugin holds one connection for the whole app, and the
+    caller has already awaited the close that let go of it (data/reset.ts closes before it
+    wipes). It still runs on the plugin's one worker thread, behind anything already there.
 
-    Named, because a reset from a locked gate runs in a process where no
-    open has happened to tell the plugin which file is the journal. Without
-    the name it deleted nothing there and the key went anyway, so the next
-    setup met the old ciphertext under a new key (ux-carpet 210). */
+    Named, because a reset from a locked gate runs in a process where no open has happened
+    to tell the plugin which file is the journal. Without the name it deleted nothing there
+    and the key went anyway, so the next setup met the old ciphertext under a new key. */
 export async function deleteAndroidDatabase(databaseName: string): Promise<void> {
   await Sqlite.deleteDatabase({ name: databaseName });
 }

@@ -2,19 +2,17 @@ import { globSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-/* CARPET-05. The app counts how deep it is in its own history, and every
-   back control - the arrow in a screen header, Android's gesture - decides
-   on that one number. A navigation that replaces the current entry instead
-   of pushing one must not raise it, and SvelteKit does not say which kind
-   it was: `afterNavigate` reports type `goto` either way. So the app says
-   it, by going through `replaceRoute`, and this is the grep that holds it
-   to that. Miss one and the screen it lands on believes there is a screen
-   behind it that the browser has no entry for, so back walks out of the
-   app instead of taking the screen's own fallback.
+/* The app counts how deep it is in its own history, and every back control - the arrow in a
+   screen header, Android's gesture - decides on that one number. A navigation that replaces
+   the current entry instead of pushing one must not raise it, and SvelteKit does not say
+   which kind it was: `afterNavigate` reports type `goto` either way. So the app says it, by
+   going through `replaceRoute`, and this is the grep that holds it to that. Miss one and
+   the screen it lands on believes there is a screen behind it that the browser has no entry
+   for, so back walks out of the app instead of taking the screen's own fallback.
 
-   `history.replaceState` and `$app/navigation`'s `replaceState` are a
-   different thing and not matched here: they rewrite the current entry
-   without navigating, so no count moves and nothing has to be told. */
+   `history.replaceState` and `$app/navigation`'s `replaceState` are a different thing and
+   not matched here: they rewrite the current entry without navigating, so no count moves
+   and nothing has to be told. */
 
 const root = fileURLToPath(new URL('../../..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');

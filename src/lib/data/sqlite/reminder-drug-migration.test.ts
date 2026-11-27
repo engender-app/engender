@@ -1,5 +1,5 @@
-/* Functional audit ticket 20: version 113 gives a reminder the drug it is
-   for. Every reminder already stored is for none. */
+/* Version 113 gives a reminder the drug it is for. Every reminder already stored is for
+   none. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

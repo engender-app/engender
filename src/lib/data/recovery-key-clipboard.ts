@@ -9,8 +9,7 @@ import { sensitiveClipboard } from './recovery-key-clipboard-bridge';
 /** How long to wait before clearing the copied key. Named in the copy
     beside the button as a minute, in both catalogues, so a change here is a
     change to two strings as well. */
-/* RECOVERY_KEY_CLIPBOARD_CLEAR_MS stays exported only for its own test (AU-09
-   test-only review). */
+/* RECOVERY_KEY_CLIPBOARD_CLEAR_MS stays exported only for its own test. */
 export const RECOVERY_KEY_CLIPBOARD_CLEAR_MS = 60_000;
 
 let cleanupTimer: ReturnType<typeof setTimeout> | undefined;

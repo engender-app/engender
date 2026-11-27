@@ -20,9 +20,9 @@ async function visit(path) {
     toasts.splice(0);
   });
 }
-/* What the screen found, read off the rows it drew rather than off a count
-   per section: ticket 16 left one count line, the total. So the rows are counted here and the
-   one line is checked to state their sum in `results_count`'s own wording. */
+/* What the screen found, read off the rows it drew rather than off a count per section:
+   left one count line, the total. So the rows are counted here and the one line is checked
+   to state their sum in `results_count`'s own wording. */
 async function counts(entries, other, photos = 0) {
   await page.waitForFunction(([entries, other, photos]) =>
     document.querySelectorAll('[data-entry-card]').length === entries &&
@@ -45,8 +45,8 @@ async function counts(entries, other, photos = 0) {
   const said = visible.match(/\b\d+ (results?|wynik\w*)/g) ?? [];
   assert.equal(said.length, 1, `counts on screen: ${JSON.stringify(said)}`);
 }
-/* Each sentence about what a filter covers is said once, in the Filters
-   sheet, and nowhere on the screen behind it (ticket 16, audit U7). */
+/* Each sentence about what a filter covers is said once, in the Filters sheet, and nowhere
+   on the screen behind it. */
 async function scopeSaidOnce(where) {
   const sentences = await page.evaluate(async () => {
     const { m } = await import('/src/lib/paraglide/messages.js');
@@ -74,8 +74,7 @@ try {
     const owner = await journal.entries.upsertEntry({ epochDay: 19000, mood: 4 });
     const photo = await journal.photos.attach({ entryId: owner }, { full: await jpeg(), thumb: await jpeg() });
     await journal.photos.setStarred(photo, true);
-    /* Two entries apart on every transition field (functional audit 10),
-       under a word nothing else carries. */
+    /* Two entries apart on every transition field, under a word nothing else carries. */
     const mode = await journal.presentations.addPresentation('Probe mode', 0);
     await journal.entries.upsertEntry({ epochDay: 20001, mood: 4, note: 'filterprobe walk', presentationId: mode.id, bodyRegions: { chest: 70 }, dims: { femininity: 80 } });
     await journal.entries.upsertEntry({ epochDay: 20002, mood: 3, note: 'filterprobe rest', bodyRegions: { hips_waist: 30 }, dims: { femininity: 20 } });
@@ -122,14 +121,12 @@ try {
     await counts(0, 1);
     assert.match(await toggle.innerText(), /1/);
     assert.equal(await page.locator('[data-search-hit="documents"]').count(), 1);
-    /* Saved questions and the random draw are cut (functional audit 10):
-       the header offers neither. */
+    /* Saved questions and the random draw are cut: the header offers neither. */
     assert.equal(await page.locator('[data-search-save], [data-search-random]').count(), 0, 'a save or random action is still offered');
     await page.locator('[data-filter-clear]').click();
     await counts(1, 1);
-    /* Mode, body region and a scale's range each narrow the entries, alone
-       and with the typed word, and stay on across a trip into an entry
-       and back (functional audit 10). */
+    /* Mode, body region and a scale's range each narrow the entries, alone and with the
+       typed word, and stay on across a trip into an entry and back. */
     const filterSheet = async (body) => {
       await toggle.click();
       await page.locator('[data-search-scope]').waitFor({ state: 'visible' });
@@ -170,10 +167,9 @@ try {
     await page.locator('[data-filter-clear]').click();
     await page.locator('#q').fill('scopeprobe');
     await counts(1, 1);
-    /* Starred answers with the starred photo too, and counts it in the one
-       total (the ticket 16 follow-up). Unstarring takes the photo off the
-       screen and out of the count; starred again after, for the next
-       locale's pass. */
+    /* Starred answers with the starred photo too, and counts it in the one total.
+       Unstarring takes the photo off the screen and out of the count; starred again after,
+       for the next locale's pass. */
     await visit('/search?q=scopeprobe&starred=1');
     await counts(0, 1, 1);
     await page.locator('[data-starred-photos] .starred-photo-unstar').click();

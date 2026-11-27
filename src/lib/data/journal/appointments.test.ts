@@ -431,8 +431,7 @@ test('waitingSince is the elapsed calendar time and nothing else', () => {
   assert.equal(waitingSince(19001, 19000), null);
 });
 
-/* Functional-audit ticket 27: a time of day, and the person's own notes on
-   who they see. */
+/* A time of day, and the person's own notes on who they see. */
 
 test('an appointment keeps its time of day, and clearing it stores nothing', async () => {
   const { journal } = await journalWithBuiltIns();

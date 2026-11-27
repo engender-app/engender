@@ -3,9 +3,9 @@ import { prefs, setPreferenceDurably } from '$lib/data/prefs/store.svelte';
 import { toast } from '$lib/stores/toasts.svelte';
 import { isAndroid } from '$lib/platform';
 import { m } from '$lib/paraglide/messages';
-/* Relative, not `$lib`: auto-export-scheduler.test.ts runs on the Node
-   tier, where the alias does not resolve (ADR-0016), and this rule is pure
-   enough that mocking it out would only hide what the notice actually says. */
+/* Relative, not `$lib`: auto-export-scheduler.test.ts runs on the Node tier, where the
+   alias does not resolve, and this rule is pure enough that mocking it out would only hide
+   what the notice actually says. */
 import { notificationText } from '../../unprompted/notificationText';
 import { quietHoursOf } from '../../unprompted/quietHours';
 import { androidAutoExport, type AutoExportStatus } from './android-auto-export-bridge';
@@ -61,11 +61,10 @@ async function reportFailure(failedNow: boolean, at: number, failureAt?: number)
   }
 }
 
-/* Folder sync (FA 49), on the same tick as the backup and ahead of it: on
-   open after unlock (the scheduler starts only on an unlocked, ready
-   journal) and again whenever the app comes back to the front. A merge
-   says so; so does an archive that would not open, once, since the plugin
-   moves past it either way. Nothing new in the folder says nothing. */
+/* Folder sync, on the same tick as the backup and ahead of it: on open after unlock (the
+   scheduler starts only on an unlocked, ready journal) and again whenever the app comes
+   back to the front. A merge says so; so does an archive that would not open, once, since
+   the plugin moves past it either way. Nothing new in the folder says nothing. */
 async function syncFromFolder(status: AutoExportStatus, signal: AbortSignal) {
   const { runFolderSync, folderSyncReady, localFileBytes } = await import('./folder-sync');
   if (!folderSyncReady(status)) return;

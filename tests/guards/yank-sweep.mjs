@@ -141,10 +141,8 @@ if (reducedMotion) await page.emulateMedia({ reducedMotion: 'reduce' });
 
 const settle = async (path, theme, predecessor = null) => {
   await page.evaluate(gestureNavigationExpression(path, predecessor));
-  /* The demo bar is hidden rather than removed since redesign ticket 33:
-     setup's own scenes reach the flow through the demo's first-run control,
-     and a removed bar takes the control with it. Nothing measures the bar
-     either way - it is out of the frame and out of the flow. */
+  /* Hide the demo bar without removing its first-run control. Setup
+     scenes use that control to enter the flow. */
   await page.evaluate(SETTLE_PAGE_EXPRESSION(theme));
   if (forceInset) {
     const strip = await page.evaluate(FORCE_INSET_EXPRESSION);

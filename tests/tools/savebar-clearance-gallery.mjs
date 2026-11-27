@@ -26,9 +26,8 @@ const outDir = resolve(outRoot, tag);
 
 /** The foot, under either name. */
 const BAR = '[data-app-savebar], .editor-savebar';
-/* Carpet 28's own list, plus `textarea`. `[tabindex]` is filtered to
-   non-negative in the page: -1 is programmatically focusable and not a
-   pointer target. */
+/* own list, plus `textarea`. `[tabindex]` is filtered to non-negative in the page: -1 is
+   programmatically focusable and not a pointer target. */
 const INTERACTIVE = 'button, a, input, select, textarea, [role="slider"], [tabindex]';
 
 /* Check phone widths at 320, 390 and 430px. Use 390x360px to
@@ -147,9 +146,9 @@ const read = (selector, interactive) =>
         return parts.slice(-2).join(' > ');
       };
 
-      /* How much of a box the foot actually kills, walked a pixel at a time
-         down its middle - the measure carpet 28 uses, and for its reason: a
-         box's rect can miss an overlap that hit testing sees. */
+      /* How much of a box the foot actually kills, walked a pixel at a time down its middle
+         - the measure uses, and for its reason: a box's rect can miss an overlap that hit
+         testing sees. */
       const dead = (box) => {
         let n = 0;
         const x = box.left + box.width / 2;
@@ -264,9 +263,8 @@ const toEnd = () =>
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
   });
 
-/** The bottom of the frame: the foot with enough of the column over it to
-    read the arrangement. One crop per scene, not a whole screen (Alicja,
-    ticket 07's sign-off). */
+/** The bottom of the frame: the foot with enough of the column over it to read the
+    arrangement. One crop per scene, not a whole screen. */
 const shoot = async (name, note, height = 300) => {
   await strip();
   const frame = await page.evaluate(() => {
@@ -283,10 +281,9 @@ const shoot = async (name, note, height = 300) => {
   shots.push({ name, note });
 };
 
-/* The scenes: every render state that draws a foot and can be reached from
-   a seeded demo journal. `.editor-savebar.vp-review-actions` needs a voice
-   take recorded through a fake microphone and is the one state left to
-   carpet 28's own coverage census. */
+/* The scenes: every render state that draws a foot and can be reached from a seeded demo
+   journal. `.editor-savebar.vp-review-actions` needs a voice take recorded through a fake
+   microphone and is the one state left to own coverage census. */
 const scenes = [
   {
     name: 'dimension',
@@ -345,10 +342,9 @@ const scenes = [
   },
   {
     name: 'voice-review',
-    /* The `row` arrangement, and the one foot carpet 28's coverage census
-       could not reach: two controls of equal weight, because declining to
-       keep a take is as ordinary an outcome as keeping it. It exists only
-       after a take, which is what the fake microphone is for. */
+    /* The `row` arrangement, and the one foot coverage census could not reach: two controls
+       of equal weight, because declining to keep a take is as ordinary an outcome as
+       keeping it. It exists only after a take, which is what the fake microphone is for. */
     note: '/practice/voice, a recorded take under review - two controls side by side',
     go: async () => {
       await settle('/practice/voice');
@@ -405,12 +401,11 @@ const scenes = [
   },
   {
     name: 'coming-back',
-    /* The chromeless screen, and the acceptance criterion that named it.
-       Its foot is its own (`.return-foot`, rule 12's foot with rule 15's
-       one control) and this ticket left it there deliberately: it is opaque,
-       it hugs the window's edge where there is no bar to sit on, and carpet
-       28 reads the screen clean. What is measured here is that it still
-       does, under a shell whose column is now split in two. */
+    /* The chromeless screen, and the acceptance criterion that named it. Its foot is its
+       own (`.return-foot`, rule 12's foot with rule 15's one control) and this ticket left
+       it there deliberately: it is opaque, it hugs the window's edge where there is no bar
+       to sit on, and reads the screen clean. What is measured here is that it still does,
+       under a shell whose column is now split in two. */
     note: '/coming-back - the chromeless screen keeps its own foot',
     bar: '.return-foot',
     go: async () => {
@@ -445,15 +440,13 @@ for (const viewport of VIEWPORTS) {
   }
 }
 
-/* Chromeless, which is the one case the ticket named and no screen with a
-   foot is: `--nav-clearance` narrows to the system inset plus a breath on
-   `.app.is-chromeless`, and the foot's padding is
-   written against that token rather than against the bar's height, so a
-   chromeless screen that grew a foot would hold the inset and the hairline
-   and not room for a bar there is none of. Read by putting the class on the
-   frame of a screen that has a foot, since the two never meet in the app.
-   `/coming-back` is the chromeless screen with a foot and it draws its own
-   (`.return-foot`), which carpet 28 reads clean. */
+/* Chromeless, which is the one case the ticket named and no screen with a foot is:
+   `--nav-clearance` narrows to the system inset plus a breath on `.app.is-chromeless`, and
+   the foot's padding is written against that token rather than against the bar's height, so
+   a chromeless screen that grew a foot would hold the inset and the hairline and not room
+   for a bar there is none of. Read by putting the class on the frame of a screen that has a
+   foot, since the two never meet in the app. `/coming-back` is the chromeless screen with a
+   foot and it draws its own (`.return-foot`), which reads clean. */
 let chromeless = null;
 await openContext(VIEWPORTS[1]);
 await seed();

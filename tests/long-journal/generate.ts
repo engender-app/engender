@@ -52,12 +52,11 @@ export interface LongJournalSummary {
   commonWordEntries: number;
   rareWord: string;
   rareWordEntries: number;
-  /** A word that is a tag's label rather than note text. The search screen
-      always hands `searchEntries` the ids of tags whose label matches what
-      was typed, and a non-empty list unions a second query over `entry_tag`
-      onto the FTS clause - a different plan from the one a note-only word
-      takes. A custom tag, because a built-in stores a key and its wording
-      comes from the message catalogue above this seam (ADR-0016). */
+  /** A word that is a tag's label rather than note text. The search screen always hands
+      `searchEntries` the ids of tags whose label matches what was typed, and a non-empty
+      list unions a second query over `entry_tag` onto the FTS clause - a different plan
+      from the one a note-only word takes. A custom tag, because a built-in stores a key and
+      its wording comes from the message catalogue above this seam. */
   tagWord: string;
   tagWordEntries: number;
   /** Entries carrying a body-region feeling whose euphoria clears
@@ -68,9 +67,8 @@ export interface LongJournalSummary {
   regionEuphoriaEntries: number;
   /** Doses logged against the fixture's one regimen episode. */
   doseEvents: number;
-  /** Doses logged against the two episodes phase 5 ticket 36 adds beside
-      the one above, so at least one stretch of the fixture has two
-      concurrent episodes overlapping (ticket 38's shape). */
+  /** Doses logged against the two episodes adds beside the one above, so at least one
+      stretch of the fixture has two concurrent episodes overlapping. */
   additionalDoseEvents: number;
   hairRemovalSessions: number;
   roadmapChecks: number;
@@ -92,10 +90,10 @@ export interface LongJournalSummary {
       density ADR-0066 describes: "somebody four years into endocrinology
       has roughly sixteen of these". */
   appointments: number;
-  /** One image document plus several PDFs (ADR-0065), the latter sized to put tens of megabytes of
-      un-normalisable bytes through the archive - a scale this fixture had
-      never carried, since an image document is normalised down to
-      essentially nothing and ticket 52 never added one here at all. */
+  /** One image document plus several PDFs (ADR-0065), the latter sized to put tens of
+      megabytes of un-normalisable bytes through the archive - a scale this fixture had
+      never carried, since an image document is normalised down to essentially nothing and
+      never added one here at all. */
   documents: number;
   /** The start day of the earliest open-ended tryout (`endEpochDay: null`) -
       the widest possible span `searchEntries` can be asked to read for one
@@ -219,11 +217,10 @@ const BODY_REGION_KEYS = ['chest', 'hairline', 'genitals', 'voice_throat', 'face
    the cadence a self-staging screen saw - nobody re-staged weekly. */
 const HAIR_STAGE_STEP_DAYS = 200;
 
-/* The dose schedule (schema v38, ADR-0027, phase 5 ticket 40): one episode
-   on a Monday/Wednesday/Friday recurrence with a two-amount cycle, starting
-   a month into the fixture so expectedSlots also has to clip to the
-   episode's own start day rather than the window's edge. Weekdays are
-   Monday-first (epochDay.ts's weekdayOfEpochDay), same as the calendar. */
+/* The dose schedule (ADR-0027): one episode on a Monday/Wednesday/Friday recurrence with a
+   two-amount cycle, starting a month into the fixture so expectedSlots also has to clip to
+   the episode's own start day rather than the window's edge. Weekdays are Monday-first
+   (epochDay.ts's weekdayOfEpochDay), same as the calendar. */
 const REGIMEN_WEEKDAYS = [0, 2, 4];
 const REGIMEN_DOSE_AMOUNTS = [
   { dose: 2, doseUnit: 'mg' },
@@ -259,11 +256,10 @@ const MILESTONE_NAMES = [
     of a straight line would flatter every chart the stats screen draws. */
 const TREND_PERIOD = 620;
 
-/* Phase 5 ticket 36: every More-hub area a review pass needs real content
-   in, none of it spanning the whole decade - "a year of readings, at an
-   irregular cadence" is the product's own instruction for the body-tracking
-   areas, and the rest follow the same proportionate spirit rather than
-   multiplying the write count by ten for no reader-visible benefit. */
+/* Every More-hub area a review pass needs real content in, none of it spanning the whole
+   decade - "a year of readings, at an irregular cadence" is the product's own instruction
+   for the body-tracking areas, and the rest follow the same proportionate spirit rather
+   than multiplying the write count by ten for no reader-visible benefit. */
 
 const HAIR_REMOVAL_METHODS = ['laser', 'electrolysis', 'other'] as const;
 const INJECTABLE_SITES: InjectionSiteKey[] = [
@@ -277,9 +273,8 @@ const INJECTABLE_SITES: InjectionSiteKey[] = [
 const TRYOUT_KINDS: TryoutKind[] = ['name', 'pronouns', 'style', 'makeup'];
 const CYCLE_EVENT_KINDS = ['period_occurred', 'spotting', 'nothing_this_month'] as const;
 const SIDE_EFFECT_NAMES = ['hot flashes', 'nausea', 'breast tenderness', 'headache', 'fatigue', 'mood swings'];
-/* Phase 8 features ticket 59. A blank entry (`''`) is one of these on
-   purpose: `appointments.ts` stores it as NULL, which is the neutral-copy
-   case the annotation seam has to draw too. */
+/* A blank entry (`''`) is one of these on purpose: `appointments.ts` stores it as NULL,
+   which is the neutral-copy case the annotation seam has to draw too. */
 const APPOINTMENT_KINDS = ['endokrynolog', 'psycholog', 'ginekolog', '', 'laryngolog', 'dermatolog', ''];
 /** Roughly one appointment a quarter, which is the density ADR-0066 gives as
     typical: "somebody four years into endocrinology has roughly sixteen of
@@ -364,7 +359,7 @@ export async function generateLongJournal(
       }
       if (tags.includes(tagWordId)) summary.tagWordEntries++;
 
-      /* An entry has to carry a mood (CONTEXT: Entry); dimensions, tags,
+      /* An entry has to carry a mood; dimensions, tags,
          note and photo are all still optional on top of it. */
       const mood = between(1, 5);
 
@@ -378,7 +373,7 @@ export async function generateLongJournal(
       const attachRecordings = random() < 0.005 ? [demoAudioBytes(random)] : undefined;
       if (attachRecordings) summary.voiceRecordings++;
 
-      // A video note on about one entry in a hundred (ADR-0034) - raw webm bytes,
+      // A video note on about one entry in a hundred - raw webm bytes
       // ensuring all photo library sources are exercised.
       const attachVideos =
         (summary.videoNotes === 0 && day === firstEpochDay + 20) || random() < 0.01
@@ -406,7 +401,7 @@ export async function generateLongJournal(
            Increasing within a day and across days, which is all the journal
            asks of it: a timestamp orders several entries on one epoch day
            and is never the source of which day an entry belongs to
-           (CONTEXT: Timestamp). Not a wall-clock moment, and not claimed as
+. Not a wall-clock moment, and not claimed as
            one - epoch day is local (ADR-0001) and this arithmetic is not. */
         timestamp: (day * 24 + 8 + i * 4.5) * 3_600_000 + 40 * 60_000,
         mood,
@@ -515,7 +510,7 @@ export async function generateLongJournal(
   // A second, overlapping episode: an antiandrogen
   // running for about 500 days in the middle of the fixture, well inside
   // the first episode's still-open span - two concurrently active episodes
-  // for different drugs, the shape ticket 38's walkthrough test already
+  // for different drugs, the shape the walkthrough test already
   // exercises. Every dose on it names its own drug, the disambiguation a
   // person makes once two episodes can both be active.
   const secondEpisodeStartEpochDay = firstEpochDay + historicalOffset(830);

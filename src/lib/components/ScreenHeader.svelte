@@ -1,11 +1,10 @@
 <script lang="ts">
-  /* ScreenHeader owns the field, its ink and bleed. Use display type there and
-     put smaller controls on page colours. A normal back click calls smartBack
-     and falls back to its href. Keep the anchor for modified clicks and use a
-     callback for local editor state.
-     titleHidden keeps the heading accessible. A field with only door content
-     has 16px padding. Visible titles use 40px above. Settings is chrome
-     (ADR-0076). The 1024px rail replaces its phone back control. */
+  /* ScreenHeader owns the field, its ink and bleed. Use display type there and put smaller
+     controls on page colours. A normal back click calls smartBack and falls back to its
+     href. Keep the anchor for modified clicks and use a callback for local editor state.
+     titleHidden keeps the heading accessible. A field with only door content has 16px
+     padding. Visible titles use 40px above. Settings is chrome. The 1024px rail replaces
+     its phone back control. */
   import type { Snippet } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { smartBack } from '$lib/navigation/smart-back';
@@ -35,7 +34,7 @@
     back?: string | (() => void);
     /** Overrides the back control's label where "Back" is not what it does. */
     backLabel?: string;
-    /** The screen's own identity, for the walkthrough's handle (ADR-0029). */
+    /** The screen's own identity, for the walkthrough's handle. */
     screen?: string;
     titleHidden?: boolean;
     /** Rule 7's third case: chrome, whose back control is the phone's only. */
@@ -88,14 +87,12 @@
        they were written as lead paragraphs. On its own row it also keeps
        the body's measure instead of being squeezed between an arrow and an
        action. -->
-  <!-- The back control is on its own line above the title rather than beside
-       it (Alicja, 2026-08-25: the header text "shouldn't be more to the right
-       than the smaller text below it"). Beside it, a 48px control pushed the
-       title 48px in while the date, the hints and every section heading under
-       it started at the screen's own edge, so the largest text on the screen
-       was the one thing out of the column. Above it, the title starts where
-       the content does and the arrow keeps its full target. Material's own
-       large-title pattern puts it there too. -->
+  <!-- The back control is on its own line above the title rather than beside it. Beside it,
+       a 48px control pushed the title 48px in while the date, the hints and every section
+       heading under it started at the screen's own edge, so the largest text on the screen
+       was the one thing out of the column. Above it, the title starts where the content
+       does and the arrow keeps its full target. Material's own large-title pattern puts it
+       there too. -->
   <!-- activeFlag sets --field and --field-ink behind back, title and
        actions, including after a disguised unlock. Keep the subtitle
        on the page below. The nonbinary field reaches 4.41:1, so its

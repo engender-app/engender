@@ -36,14 +36,12 @@ test('doseDaysFromEvents keys by epoch day and drops skipped doses - one never h
   assert.deepEqual([...days].sort((a, b) => a - b), [DAY_0, DAY_0 + 2]);
 });
 
-/* Phase 8 features ticket 42's regression guard, carrying the phase 8
-   features spec's point 7 (spec.md, cross-cutting A): doseDaysFromEvents
-   must never grow a per-drug read, keeping correlation cards descriptive
-   of dose days in general, not of one drug's mood effect.
-   Same timestamp and status, different drug, same day set is what a filter
-   creeping in would break; checked by temporarily adding
-   `.filter((d) => d.drug === 'Estradiol valerate')` to doseDaysFromEvents
-   and confirming this test fails before taking it back out. */
+/* Regression guard, carrying the features spec's point 7 (spec.md, cross-cutting A):
+   doseDaysFromEvents must never grow a per-drug read, keeping correlation cards descriptive
+   of dose days in general, not of one drug's mood effect. Same timestamp and status,
+   different drug, same day set is what a filter creeping in would break; checked by
+   temporarily adding `.filter((d) => d.drug === 'Estradiol valerate')` to
+   doseDaysFromEvents and confirming this test fails before taking it back out. */
 test('doseDaysFromEvents does not read drug - a hormone dose and a non-hormone dose count the same day the same way', () => {
   const hormoneOnly = doseDaysFromEvents([dose(DAY_0, { drug: 'Estradiol valerate' })]);
   const nonHormoneOnly = doseDaysFromEvents([dose(DAY_0, { drug: 'Sertraline' })]);
@@ -115,13 +113,12 @@ test('rankCorrelationCards caps at the requested limit', () => {
   assert.equal(cards.length, 2);
 });
 
-/* Redesign ticket 05: the stats screen used to draw this ranking's cards
-   twice - once here, and once again through a second, single-metric read
-   (wrappedDisplay.ts's tagInsightRows) that looked almost identical. The
-   fix was to delete the second read and let this one feed the merged card
-   alone, so what this ranking owes on its own is that a tag's occurrence
-   under one metric is never confused with its occurrence under another -
-   two real, distinct findings, not the same row counted twice. */
+/* The stats screen used to draw this ranking's cards twice - once here, and once again
+   through a second, single-metric read (wrappedDisplay.ts's tagInsightRows) that looked
+   almost identical. The fix was to delete the second read and let this one feed the merged
+   card alone, so what this ranking owes on its own is that a tag's occurrence under one
+   metric is never confused with its occurrence under another - two real, distinct findings,
+   not the same row counted twice. */
 test('rankCorrelationCards never folds the same tag from two metrics into one card', () => {
   const cards = rankCorrelationCards(
     [

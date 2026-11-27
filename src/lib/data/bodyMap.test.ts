@@ -96,11 +96,10 @@ test('an exact tie on both count and intensity lands on dysphoria, deterministic
   assert.equal(reading.mixed, true);
 });
 
-/* What the words beside the figure say (phase 11 pre-production UI/UX
-   ticket 30). The figure paints a region's reading and the sentence under it
-   reads the same reading out, so both come off one answer rather than two
-   near-identical guards - and "nothing here" has to survive a region the
-   range never mentions, which is most of them on a quiet month. */
+/* What the words beside the figure say. The figure paints a region's reading and the
+   sentence under it reads the same reading out, so both come off one answer rather than two
+   near-identical guards - and "nothing here" has to survive a region the range never
+   mentions, which is most of them on a quiet month. */
 
 test('a region the range never mentions has nothing to say', () => {
   assert.deepEqual(regionSummary(undefined), { kind: 'none' });

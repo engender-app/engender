@@ -20,7 +20,7 @@ const lettersPage = read('src/routes/transition/letters/+page.svelte');
 const enMessages = JSON.parse(read('messages/en.json'));
 const plMessages = JSON.parse(read('messages/pl.json'));
 
-describe('Letters ready-to-read eligibility and boundary days (ticket 41)', () => {
+describe('Letters ready-to-read eligibility and boundary days', () => {
   const today = 20000;
 
   it('accurately identifies ready vs waiting letters on boundary days', () => {
@@ -91,7 +91,7 @@ describe('Letters ready-to-read eligibility and boundary days (ticket 41)', () =
   });
 });
 
-describe('Letters page markup contract (ticket 41)', () => {
+describe('Letters page markup contract', () => {
   it('exposes a ready-jump shortcut when opened letters exist above the waiting list', () => {
     expect(lettersPage).toContain('data-letters-ready-jump');
     expect(lettersPage).toMatch(/href="#opened"[^>]*data-letters-ready-jump/);
@@ -108,7 +108,7 @@ describe('Letters page markup contract (ticket 41)', () => {
   });
 });
 
-describe('Localization keys for ready letters jump (ticket 41)', () => {
+describe('Localization keys for ready letters jump', () => {
   it('contains letters_ready_jump in both en.json and pl.json', () => {
     expect(enMessages).toHaveProperty('letters_ready_jump');
     expect(plMessages).toHaveProperty('letters_ready_jump');

@@ -239,8 +239,8 @@
     margin-bottom: 0;
   }
 
-  /* An inline-level last block keeps nothing under it: its margin cannot
-     collapse out through this one (app.css, ticket 195's exception). */
+  /* An inline-level last block keeps nothing under it: its margin cannot collapse out
+     through this one (app.css). */
   .read-reserve-body > :global(:is(.segmented-wrap, .btn):last-child) {
     margin-bottom: 0;
   }

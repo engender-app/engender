@@ -168,12 +168,11 @@ if (offered) {
   );
 }
 
-/* Ticket 222: a restore that was interrupted - the live file back at
-   schema 0 with a readable copy beside it - is finished without asking.
-   The runner throws InterruptedRestoreError from inside boot(), after which
-   the driver is closed, so the restore has to run on a worker of its own
-   (219). Stamped 0 here, and reloaded rather than retried: nothing is
-   pressed, the next boot has to find it and put the copy back. */
+/* A restore that was interrupted - the live file back at schema 0 with a readable copy
+   beside it - is finished without asking. The runner throws InterruptedRestoreError from
+   inside boot(), after which the driver is closed, so the restore has to run on a worker of
+   its own (219). Stamped 0 here, and reloaded rather than retried: nothing is pressed, the
+   next boot has to find it and put the copy back. */
 {
   const { context, page, bootOf, settled } = await failedMigration('interrupted', 0);
   await page.reload();
@@ -182,9 +181,9 @@ if (offered) {
   await context.close();
 }
 
-/* Ticket 222: "Try opening again" pressed in the frame it appears, while
-   the copy check's own worker may still hold the pool. It has to end where
-   a slow retry does - the live file is untouched, so ready - on every run. */
+/* "Try opening again" pressed in the frame it appears, while the copy check's own worker
+   may still hold the pool. It has to end where a slow retry does - the live file is
+   untouched, so ready - on every run. */
 const noticeOf = (page) => page.evaluate(() => document.querySelector('.notice-danger')?.innerText.replace(/\s+/g, ' ').slice(0, 140) ?? '');
 {
   const { context, page, bootOf, settled } = await failedMigration('slow retry', null);

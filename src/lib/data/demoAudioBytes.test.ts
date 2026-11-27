@@ -49,6 +49,6 @@ test('demoAudioBytes is deterministic for a given random stream', () => {
   assert.deepEqual(demoAudioBytes(seeded(7)), demoAudioBytes(seeded(7)));
 });
 
-test('demoVideoBytes is demoAudioBytes, unchanged in shape (phase 11 ticket 14)', () => {
+test('demoVideoBytes is demoAudioBytes, unchanged in shape', () => {
   assert.equal(demoVideoBytes, demoAudioBytes);
 });

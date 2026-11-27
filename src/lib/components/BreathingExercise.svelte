@@ -31,10 +31,10 @@
     [attribute: string]: unknown;
   } = $props();
 
-  /* The drawing, in viewBox units. The vessel holds the water; the track
-     the dot travels sits outside it with room for the dot's 7 radius and
-     its 3px knockout (127 + 7 + 1.5 = 135.5), so the whole drawing fits a 272 box and a 320px
-     phone's 270px column scales it rather than overrunning (carpet 28). */
+  /* The drawing, in viewBox units. The vessel holds the water; the track the dot travels
+     sits outside it with room for the dot's 7 radius and its 3px knockout (127 + 7 + 1.5 =
+     135.5), so the whole drawing fits a 272 box and a 320px phone's 270px column scales it
+     rather than overrunning. */
   const SIZE = 272;
   const C = SIZE / 2;
   const VESSEL = 112;
@@ -195,7 +195,7 @@
   const word = $derived(started ? phaseLabel(phase) : '4 · 4 · 4 · 4');
 </script>
 
-<!-- Carpet 30: no container. The vessel is the object. -->
+<!-- no container. The vessel is the object. -->
 <div
   class="breathing-exercise"
   data-kit-surface

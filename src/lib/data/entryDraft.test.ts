@@ -16,7 +16,7 @@ const photo = (n: number): NormalizedPhoto => ({ full: new Uint8Array([n]), thum
 
 test('a committed draft cannot repeat attachments or a contextual dose after navigation fails', async () => {
   const { journal } = await journalWithBuiltIns();
-  // A real appointment the day before: the save links only an offered one (GD-048).
+  // A real appointment the day before: the save links only an offered one.
   const appointment = await journal.appointments.upsertAppointment({ epochDay: 99, procedureId: null, kind: null, place: null, note: null });
   const draft = createEntryDraft(100, undefined, 4);
   draft.addPhoto(photo(1));
@@ -438,7 +438,7 @@ test('draft holds contextual sub-records and attaches them to toUpsert payload',
   assert.equal(clearedUpsert.cycleEvent, undefined);
 });
 
-test('a picked photo carrying an epochDayOverride (ticket 47) passes through toUpsert() untouched', () => {
+test('a picked photo carrying an epochDayOverride passes through toUpsert() untouched', () => {
   // The add-photo day prompt bakes the override onto the NormalizedPhoto
   // itself (EntryEditor.svelte); nothing in the draft needs to know about
   // it beyond carrying the object through unchanged, the same as it does
@@ -450,7 +450,7 @@ test('a picked photo carrying an epochDayOverride (ticket 47) passes through toU
   assert.deepEqual(draft.toUpsert().attachPhotos, [{ ...photo(9), epochDayOverride: 19000 }]);
 });
 
-test('effect markers toggle on and off, keep their order, and never double up (ticket 289)', () => {
+test('effect markers toggle on and off, keep their order, and never double up', () => {
   const draft = createEntryDraft(20_000);
   draft.toggleEffectMarker('skin_softening', 20_000);
   draft.toggleEffectMarker('hair_changes', 20_000);

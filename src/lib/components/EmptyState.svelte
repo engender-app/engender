@@ -10,8 +10,7 @@
     title: string;
     text: string;
     action?: Snippet;
-    /** The placing screen's to say: 2 where this stands straight under a
-        screen's h1 (after-release 21, audit A11Y-13). */
+    /** The placing screen's to say: 2 where this stands straight under a screen's h1. */
     level?: 2 | 3;
   } = $props();
 </script>

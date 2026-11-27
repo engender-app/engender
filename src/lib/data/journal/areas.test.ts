@@ -65,7 +65,7 @@ test('dimensions hide rather than delete, and their logged values survive hiding
   await assert.rejects(journal.dimensions.setDimensionHidden('nope', true), /unknown dimension/);
 });
 
-test('a custom dimension renames its name and both ends; a built-in or unknown key throws (FA 41)', async () => {
+test('a custom dimension renames its name and both ends; a built-in or unknown key throws', async () => {
   const { journal, db } = await journalWithBuiltIns();
   const voice = await journal.dimensions.addCustomDimension({ name: 'Vocie', low: 'strianed', high: 'easy', min: 0, max: 10 });
   db.raw.prepare('UPDATE gender_dimension SET updated_at = 1 WHERE key = ?').run(voice.key);
@@ -127,8 +127,8 @@ test('a milestone round-trips without a kind column and updates by id', async ()
     }
   ]);
 
-  /* Functional audit ticket 32: the choice not to celebrate is kept by an
-     edit that does not name it, the way a procedure resync keeps a link. */
+  /* The choice not to celebrate is kept by an edit that does not name it, the way a
+     procedure resync keeps a link. */
   await journal.milestones.upsertMilestone({ id, name: 'HRT day one', epochDay: 20001, celebrate: false });
   await journal.milestones.upsertMilestone({ id, name: 'HRT, day one', epochDay: 20001 });
   assert.equal((await journal.milestones.getMilestones())[0].celebrate, false);
@@ -177,7 +177,7 @@ test('deleting a milestone takes its photo rows and files; twice is success', as
   await journal.milestones.deleteMilestone(id); // idempotent
 });
 
-/* Ticket 56, ADR-0065: the link nulls, the document survives. */
+/* ADR-0065: the link nulls, the document survives. */
 test('deleting a milestone nulls a document\'s link to it, and the document survives', async () => {
   const db = await migratedDb();
   const files = fakeFileStore();
@@ -448,9 +448,9 @@ test('a changed dose did happen, so the context is measured from it', async () =
   assert.deepEqual(result.timing, { route: 'oral', hoursSinceDose: 2 });
 });
 
-/* Ticket 03, box 6. The reason the figure is stored rather than derived on
-   read: a dose corrected in November must not rewrite the context on a draw
-   from August that someone has already discussed at an appointment. */
+/* Box 6. The reason the figure is stored rather than derived on read: a dose corrected in
+   November must not rewrite the context on a draw from August that someone has already
+   discussed at an appointment. */
 test('editing a past dose event leaves an already-saved timing context alone', async () => {
   const { journal } = await journalWithBuiltIns();
   const doseId = await journal.doses.upsertDose({
@@ -506,9 +506,8 @@ test('correcting the draw day or time re-derives the context', async () => {
   assert.deepEqual((await journal.labs.getResults('estradiol'))[0].timing, { route: 'oral', hoursSinceDose: 3 });
 });
 
-/* Which dose a draw is timed from depends on the analyte (selectTimingDose),
-   so a result moved to another analyte has to be timed again, or it keeps
-   the old drug's context (after-release ticket 01, L01-13). */
+/* Which dose a draw is timed from depends on the analyte (selectTimingDose), so a result
+   moved to another analyte has to be timed again, or it keeps the old drug's context. */
 test('changing a result to another analyte re-derives the context from that drug', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.doses.upsertDose({ timestamp: drawn('06:00'), route: 'oral', dose: 2, doseUnit: 'mg', drug: 'estradiol' });
@@ -604,8 +603,8 @@ test('a severity outside the 1-5 scale is refused before it reaches the schema',
   );
 });
 
-/* Functional audit ticket 23: a side effect is ongoing until the person
-   says it resolved, and the resolution can be taken back. */
+/* A side effect is ongoing until the person says it resolved, and the resolution can be
+   taken back. */
 test('a side effect starts ongoing, can be marked resolved and back', async () => {
   const { journal } = await journalWithBuiltIns();
   const id = await journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2, epochDay: 100, resolvedEpochDay: null });
@@ -834,8 +833,8 @@ test('a pain rating outside the 1-5 scale is refused before it reaches the schem
   );
 });
 
-/* The cost is a typed amount since FA 30 (costs.test.ts); the provider is
-   still the person's own text. */
+/* The cost is a typed amount since (costs.test.ts); the provider is still the person's own
+   text. */
 test('provider is stored as typed, with no list and no normalization', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.hairRemoval.upsertSession({
@@ -954,8 +953,7 @@ test('every rule shape written by the journal passes the schema recurrence CHECK
   );
 });
 
-/* Functional audit ticket 08: the type only ever picked an icon, and
-   medication and injection already shared one. */
+/* The type only ever picked an icon, and medication and injection already shared one. */
 test('a reminder carries no type, in the row or in the table', async () => {
   const { db, journal } = await journalWithBuiltIns();
   const id = await journal.reminders.upsertReminder({
@@ -968,9 +966,8 @@ test('a reminder carries no type, in the row or in the table', async () => {
   assert.ok(!columns.includes('type'));
 });
 
-/* Functional audit ticket 20: a medication reminder names its drug, which
-   is what sends its notification to that drug's dose log and gives it
-   Taken and Skip. Every other reminder stores none. */
+/* A medication reminder names its drug, which is what sends its notification to that drug's
+   dose log and gives it Taken and Skip. Every other reminder stores none. */
 test('a medication reminder keeps its drug, and a save that names none clears it', async () => {
   const { journal } = await journalWithBuiltIns();
   const rule = { time: '08:00', enabled: true, recurrence: 'DAILY' as const, interval: null, anchorEpochDay: null, epochDay: null };

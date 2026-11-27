@@ -94,9 +94,8 @@ test('it writes all five kinds of content the measurements read', async () => {
   expect(first.fileName).toBeTruthy();
 });
 
-/* Phase 8 features ticket 53: this fixture had never carried a document of
-   either kind until now, so the archive's file manifest had never seen
-   tens of megabytes of one un-normalisable file. */
+/* This fixture had never carried a document of either kind until now, so the archive's file
+   manifest had never seen tens of megabytes of one un-normalisable file. */
 test('it writes documents, one image and several PDFs sized in whole megabytes', async () => {
   const { journal, summary } = await generate({ seed: 1 });
 
@@ -158,7 +157,7 @@ test('every dimension the stats screen charts carries values', async () => {
   }
 });
 
-test('it writes the phase 5 content the new measurements read (ticket 01)', async () => {
+test('writes content for the long-journal measurements', async () => {
   const { journal, summary } = await generate({ seed: 8, days: 400 });
 
   expect(summary.regionEuphoriaEntries).toBeGreaterThan(0);
@@ -169,7 +168,7 @@ test('it writes the phase 5 content the new measurements read (ticket 01)', asyn
 
   expect((await journal.progressPhotos.getPhotos()).filter((photo) => photo.pose === 'hair').length).toBeGreaterThan(0);
 
-  // Three episodes as of ticket 36: the original plus two more that overlap
+  // Three episodes as of the original plus two more that overlap
   // it (concurrent-episode coverage lives in the next test, below).
   const episodes = await journal.regimen.getEpisodes();
   expect(episodes).toHaveLength(3);
@@ -182,10 +181,10 @@ test('it writes the phase 5 content the new measurements read (ticket 01)', asyn
   expect(firstEpisodeDoses).toHaveLength(summary.doseEvents);
 });
 
-test('it writes the fixture every More-hub area reads (ticket 36)', async () => {
+test('it writes the fixture every More-hub area reads', async () => {
   const { journal, summary } = await generate({ seed: 9, days: 800 });
 
-  // Regimen: the ten-year episode above plus two ticket 36 adds - the
+  // Regimen: the ten-year episode above plus two adds - the
   // second overlaps it for a stretch, the third is the injectable one the
   // regimen and dose screens read.
   const episodes = await journal.regimen.getEpisodes();

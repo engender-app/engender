@@ -1,14 +1,12 @@
-/* What the entry editor's noticed-effects sheet lists (phase 12 ux-carpet
-   ticket 289). Pure, above the journal seam and free of paraglide (ADR-0016):
-   the words arrive as arguments.
+/* What the entry editor's noticed-effects sheet lists. Pure, above the journal seam and
+   free of paraglide: the words arrive as arguments.
 
-   The direction filter is read off the regimen and stored nowhere - types.ts
-   says the app has no gender or direction field and this does not become the
-   first one. A drug that resolves to estradiol leaves feminizing effects on
-   offer, testosterone leaves masculinizing ones, both leave both. Effects a
-   person wrote for themselves carry no direction and are never filtered. When
-   no active drug resolves (a blocker, progesterone, a free-typed name) there
-   is nothing to filter by, so nothing is hidden. */
+   The direction filter is read off the regimen and stored nowhere - types.ts says the app
+   has no gender or direction field and this does not become the first one. A drug that
+   resolves to estradiol leaves feminizing effects on offer, testosterone leaves
+   masculinizing ones, both leave both. Effects a person wrote for themselves carry no
+   direction and are never filtered. When no active drug resolves (a blocker, progesterone,
+   a free-typed name) there is nothing to filter by, so nothing is hidden. */
 
 import { foldText } from './fold';
 import { resolveHormoneDrug } from './hormoneDrug';

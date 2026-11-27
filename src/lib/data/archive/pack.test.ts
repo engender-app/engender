@@ -179,9 +179,8 @@ test('a lab result survives the encrypted archive and restores into another jour
   );
 });
 
-/* The floor added for phase 5 security ticket 02 sits on the two fields
-   that choose a password, never on the one that opens an archive: an
-   archive made before that floor existed has to keep opening. */
+/* The floor added sits on the two fields that choose a password, never on the one that
+   opens an archive: an archive made before that floor existed has to keep opening. */
 test('an archive made with a password under the floor still opens', async () => {
   const { contents } = await contentsOf();
 
@@ -514,11 +513,10 @@ test('packArchive accepts a custom KeyDerivation function', async () => {
   assert.equal(opened.payload.preferences.name, 'Alicja');
 });
 
-/* Phase 9 audit ticket 11: an export is the one operation in the app that
-   can hold somebody for minutes, and until this it reported nothing. The
-   unit is body bytes rather than photos: the count is settled before the
-   first chunk is encrypted (ADR-0007), and it covers a journal whose
-   photos are all thumbnails as honestly as one that is mostly JPEG. */
+/* An export is the one operation in the app that can hold somebody for minutes, and until
+   this it reported nothing. The unit is body bytes rather than photos: the count is settled
+   before the first chunk is encrypted (ADR-0007), and it covers a journal whose photos are
+   all thumbnails as honestly as one that is mostly JPEG. */
 test('packArchive reports how much of the body has been packed', async () => {
   const { contents } = await contentsOf();
   const reports: { done: number; total: number }[] = [];

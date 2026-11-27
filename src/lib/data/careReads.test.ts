@@ -79,7 +79,7 @@ test('Care waits for its slot rows and rejects the whole answer if they fail', a
   } }, TODAY), /doses unavailable/);
 });
 
-test('Care reads only the totals window of the log when every lane has a dose in it (ticket 221)', async () => {
+test('Care reads only the totals window of the log when every lane has a dose in it', async () => {
   const doseReadsFrom: number[] = [];
   const db = await migratedDb();
   const counting = countingDriver(db, {
@@ -108,7 +108,7 @@ test('Care reads only the totals window of the log when every lane has a dose in
   );
 });
 
-test('a lane with nothing ever logged has no last dose, through the fallback (ticket 221)', async () => {
+test('a lane with nothing ever logged has no last dose, through the fallback', async () => {
   const { journal } = await journalWithBuiltIns();
   const episodeId = await journal.regimen.upsertEpisode({
     drug: 'spironolactone', ester: null, dose: 100, doseUnit: 'mg', route: 'oral', interval: 'daily',

@@ -42,12 +42,11 @@ export function openApp(
   /* Before the old side is captured, and released when the transition is
      over: see $lib/motion/fieldBlind for why the name is handed over rather
      than written as a rule. */
-  /* An unlock without disguise draws Today's own sun, at Today's size in
-     Today's corner (tester-report-02 ticket 07). Held, its rings stay
-     unnamed on both sides and ride each side's blind capture, so the two
-     photographs of the sun are the same picture in the same place and the
-     field opens around one sun - rather than the gate's closing ring by ring
-     while Today's opens. Read before the gate goes. */
+  /* An unlock without disguise draws Today's own sun, at Today's size in Today's corner.
+     Held, its rings stay unnamed on both sides and ride each side's blind capture, so the
+     two photographs of the sun are the same picture in the same place and the field opens
+     around one sun - rather than the gate's closing ring by ring while Today's opens. Read
+     before the gate goes. */
   const holdSun = !!doc.querySelector('[data-gate-frame][data-gate-sun]');
   const blind = carryBlind(doc, { holdSun });
   const root = doc.documentElement;
@@ -91,16 +90,16 @@ export function openApp(
 }
 
 /**
- * Commits a boot failure over the screen that was drawn while it booted, or
- * a retry leaving one (ux-carpet 213).
+ * Commits a boot failure over the screen that was drawn while it booted, or a
+ * retry leaving one.
  *
  * A cold start renders the route while the journal opens, so Today is on
  * screen by the time an open can fail, and the failure replaces it with the
- * notice alone; a retry puts the route back. As bare state changes those
- * were one screen gone and the other there in the same frame. This runs
- * them as the tabs' fade-through instead: one screen settles out, the other
- * comes in, and the notice, which is outside the named screen, crossfades
- * in the root group.
+ * notice alone; a retry puts the route back. As bare state changes those were
+ * one screen gone and the other there in the same frame. This runs them as
+ * the tabs' fade-through instead: one screen settles out, the other comes in,
+ * and the notice, which is outside the named screen, crossfades in the root
+ * group.
  */
 export function crossBootFailure(
   commit: () => void,

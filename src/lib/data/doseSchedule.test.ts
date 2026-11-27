@@ -653,12 +653,11 @@ test('canAutoLog reads a route written in the app\'s own words, whichever langua
   assert.equal(canAutoLog(schedule(1, 1, amounts), 'domięśniowo', polish), true);
 });
 
-/* A dose taken on a different day from its slot (after-release ticket 01,
-   L03-02). Pairing used to be same-day only, so a weekly injection logged a
-   day late left its slot open and the auto-log pass filled it with a second,
-   invented dose. A dose now fills an open slot within the schedule's
-   tolerance, which is under half the gap between slots, so it can never sit
-   within reach of two different slot days. */
+/* A dose taken on a different day from its slot. Pairing used to be same-day only, so a
+   weekly injection logged a day late left its slot open and the auto-log pass filled it
+   with a second, invented dose. A dose now fills an open slot within the schedule's
+   tolerance, which is under half the gap between slots, so it can never sit within reach of
+   two different slot days. */
 
 test('slotToleranceDays stays under half the gap between slots', () => {
   assert.equal(slotToleranceDays(schedule(1, 1)), 0);

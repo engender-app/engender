@@ -22,8 +22,8 @@ async function verifyEmptyTimeline(page, { gallery, out }) {
   for (const key of ['labs', 'stock', 'clinician-summary']) {
     assert.equal(await page.locator(`[data-list-row="${key}"]`).isVisible(), true, `${key} remains reachable`);
   }
-  /* Meds hosts no rows since pre-release-human 12: Changes moved to the hub's
-     Body group, and the Cycle link shows only with cycle tracking on. */
+  /* Meds hosts no rows Changes moved to the hub's Body group, and the Cycle link shows only
+     with cycle tracking on. */
   assert.equal(await page.locator('[data-hub-host="care"]').count(), 0);
   if (gallery) await page.screenshot({ path: `${out}/empty-en-no-regimen.png`, fullPage: true });
 

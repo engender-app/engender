@@ -1,8 +1,6 @@
-/* Mount real browser-tier components with their message runtime
-   (ADR-0016 keeps only Node away from Paraglide). publishFixture
-   publishes under the name probe-handshake.mjs expects. A gallery
-   returns undefined for readiness only. A probe returns its measured
-   result after interacting. */
+/* Mount real browser-tier components with their message runtime. publishFixture publishes
+   under the name probe-handshake.mjs expects. A gallery returns undefined for readiness
+   only. A probe returns its measured result after interacting. */
 import { mount, unmount, type Component } from 'svelte';
 import { publish } from '../probe-handshake.mjs';
 

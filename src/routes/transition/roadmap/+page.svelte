@@ -80,9 +80,8 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
-  /* One bundled pack, so no picker: the phase 4 scope decision ships
-     Polish only. A second pack would turn this into a choice, and nothing
-     below assumes there is one. */
+  /* One bundled pack, so no picker: the scope decision ships Polish only. A second pack
+     would turn this into a choice, and nothing below assumes there is one. */
   const pack = POLISH_PACK;
 
   /* Closed by default: the pack's own provenance used
@@ -127,17 +126,15 @@
   let hiddenGoalsOpen = $state(false);
   let list = $derived(roadmapList(pack, polishShown, customGoals, hiddenGoals, categories));
 
-  /* The switch mounts the legal group in parts (carpet 15 row 47). Whole,
-     it is about 3000px of rows, and building all of it in the frame the
-     switch turns held the phone's frame loop for 50 to 107ms, so the list
-     under it sat still and then caught up in lumps. The first part is
-     about the rows the screen below the switch can show, which is all the
-     opening travels (`onScreen`); the rest follows a few rows a frame once
-     that travel has ended, inserted above the goals the person added and
-     the sources, which mount with the group, and the offices come last.
-     Only when the switch turns it on: a group already on when the screen
-     opens arrives with the screen, and plays no opening to wait for. A
-     Polish step with its note is 94 to 267px at 390px wide. */
+  /* The switch mounts the legal group in parts. Whole, it is about 3000px of rows, and
+     building all of it in the frame the switch turns held the phone's frame loop for 50 to
+     107ms, so the list under it sat still and then caught up in lumps. The first part is
+     about the rows the screen below the switch can show, which is all the opening travels
+     (`onScreen`); the rest follows a few rows a frame once that travel has ended, inserted
+     above the goals the person added and the sources, which mount with the group, and the
+     offices come last. Only when the switch turns it on: a group already on when the screen
+     opens arrives with the screen, and plays no opening to wait for. A Polish step with its
+     note is 94 to 267px at 390px wide. */
   const LEGAL_ROW_GUESS = 96;
   const LEGAL_ROWS_PER_FRAME = 4;
   let legalLimit = $state(Infinity);
@@ -148,16 +145,14 @@
   let legalFilling = $state(false);
   let shownGoals = $derived(legalLimit >= list.goals.length ? list.goals : list.goals.slice(0, legalLimit));
 
-  /* The opening itself (carpet 15 row 47). `disclose` would animate the
-     pack's and the section's heights, a main-thread layout travel that
-     Svelte starts a frame after the switch's commit: on the phone the
-     switch's thumb (a transform) set off while the list under the group
-     waited, then caught up in a lump. So both boxes arrive without a
-     disclose (`skipOpening`) and `openBlocks` runs the same opening, on the
-     same duration and curve, as transforms the compositor carries: what
-     follows the group slides down, the group's boxes are clipped to its
-     edge. The rest of the rows start when that ends. A switch turned off
-     while it runs plays it back (`openOrDisclose`'s out). */
+  /* The opening itself. `disclose` would animate the pack's and the section's heights, a
+     main-thread layout travel that Svelte starts a frame after the switch's commit: on the
+     phone the switch's thumb (a transform) set off while the list under the group waited,
+     then caught up in a lump. So both boxes arrive without a disclose (`skipOpening`) and
+     `openBlocks` runs the same opening, on the same duration and curve, as transforms the
+     compositor carries: what follows the group slides down, the group's boxes are clipped
+     to its edge. The rest of the rows start when that ends. A switch turned off while it
+     runs plays it back (`openOrDisclose`'s out). */
   let screenEl = $state<HTMLElement | null>(null);
   let skipOpening = false;
   let opening: Opening | null = null;
@@ -310,9 +305,8 @@
     if (current === 'unchecked' && next === 'checked') offerMilestone(goal.id, goal.text);
   };
 
-  /* Closed once the write lands: the sheet holds its button while it runs
-     and turns a rejection into a toast, keeping what was typed
-     (after-release 06). */
+  /* Closed once the write lands: the sheet holds its button while it runs and turns a
+     rejection into a toast, keeping what was typed. */
   async function answerMilestoneOffer(given: OfferAnswer, data: RoadmapGoalMilestone | null) {
     if (promptGoal === null) return;
     const added = await answerOffer(MILESTONE_OFFER, data, given, journal);
@@ -335,9 +329,7 @@
     newGoalText = '';
   };
 
-  /* The goal sheet (ADR-0068): identity only, never a status
-     snapshot, so the sheet keeps reading the live tick after it opens
-     rather than showing what the status was the moment it was tapped. */
+  /* A roadmap goal is a step (ADR-0068). The sheet records which goal is open. */
   let selectedGoal = $state<{ key: string; title: string; builtin: boolean } | null>(null);
   let selectedStatus = $derived<RoadmapGoalStatus>(
     !selectedGoal
@@ -396,9 +388,9 @@
     selectedGoal !== null && !selectedGoal.builtin && goalRewording !== '' && goalRewording !== selectedTitle
   );
 
-  /* On the confirm button as a handle rather than left for a test to read
-     out of the sentence: the walkthrough has to be able to check the count
-     without gripping the plural copy that carries it (ADR-0029). */
+  /* On the confirm button as a handle rather than left for a test to read out of the
+     sentence: the walkthrough has to be able to check the count without gripping the plural
+     copy that carries it. */
   let unfiledByDelete = $derived(goalDocuments.rows.length);
 
   const visibilityWrite = writer();
@@ -422,9 +414,8 @@
     }
   };
 
-  /* Both sheets wait for the delete and then close together (after-release
-     06): a failed one keeps the question up with the goal still there,
-     rather than closing over a goal that never went. */
+  /* Both sheets wait for the delete and then close together: a failed one keeps the
+     question up with the goal still there, rather than closing over a goal that never went. */
   const removing = deleter();
   const deleteGoal = async () => {
     if (!selectedGoal) return;
@@ -524,11 +515,10 @@
   const roadmapRemember = (px: number) => rememberReserve('roadmap', px);
 </script>
 
-<!-- A goal's title with its strike: a copy of the words laid over them,
-     transparent, whose inline background draws one 2px line per wrapped
-     line (box-decoration-break: clone). The copy is clipped from the left
-     and the clip opens when the goal is done, so the strike travels by
-     clip-path alone (after-release 28, audit V08). -->
+<!-- A goal's title with its strike: a copy of the words laid over them, transparent, whose
+     inline background draws one 2px line per wrapped line (box-decoration-break: clone).
+     The copy is clipped from the left and the clip opens when the goal is done, so the
+     strike travels by clip-path alone. -->
 {#snippet struck(text: string)}
   <span class="roadmap-strike-text">{text}<span class="roadmap-strike-lines" aria-hidden="true"><span>{text}</span></span></span>
 {/snippet}
@@ -537,11 +527,10 @@
      opens the step's own sheet. The row's own div, and the transition on it,
      stay in each group's each block. -->
 {#snippet builtInRow(key: RoadmapGoalKey, status: RoadmapGoalStatus)}
-  <!-- No press scale on the row's main half (pre-release 18, item 72):
-       it is most of the row's width, and the compact depth walked the
-       title and the box inward under the finger while the card held still.
-       The wash answers the tap, as it does on ListRow, and the tick's own
-       crossing is what says it worked. -->
+  <!-- No press scale on the row's main half: it is most of the row's width, and the compact
+       depth walked the title and the box inward under the finger while the card held still.
+       The wash answers the tap, as it does on ListRow, and the tick's own crossing is what
+       says it worked. -->
   <button
     type="button"
     class="kit-row-main"
@@ -549,12 +538,9 @@
     aria-label={`${roadmapGoalTitle(key)} — ${stateLabel(status)}`}
     onclick={() => toggleBuiltIn(key)}
   >
-    <!-- Both glyphs stay in the markup and cross on opacity and a
-         scale rather than being added and removed (ux-carpet
-         ticket 236, the same fix appointment-prep's .ap-tick
-         already carries): a glyph that appears in one frame is a
-         yank in both directions, and which one shows is on the
-         box's own classes. -->
+    <!-- Both glyphs stay in the markup and cross on opacity and a scale rather than being
+         added and removed: a glyph that appears in one frame is a yank in both directions,
+         and which one shows is on the box's own classes. -->
     <span class="roadmap-box" class:roadmap-ticked={status === 'checked'} class:roadmap-skip={status === 'not-my-path'}>
       <span class="roadmap-tick" class:roadmap-tick-shown={status === 'checked'} aria-hidden="true"><Icon name="check" size={20} /></span>
       <span class="roadmap-tick" class:roadmap-tick-shown={status === 'not-my-path'} aria-hidden="true"><Icon name="x" size={16} /></span>
@@ -733,9 +719,8 @@
       </button>
     {/if}
 
-    <!-- The social and presentation steps (pre-release human ticket 17),
-         above the legal group: nothing in them is tied to a country, so
-         they are the part of the roadmap every reader has. With the switch
+    <!-- The social and presentation steps, above the legal group: nothing in them is tied
+         to a country, so they are the part of the roadmap every reader has. With the switch
          off, or every step hidden, there is nothing to draw. -->
     {#if socialGoals.length > 0}
       <section class="roadmap-group" data-roadmap-social transition:disclose>
@@ -982,11 +967,7 @@
   onDismiss={() => void answerMilestoneOffer('decline', null)}
 />
 
-<!-- The goal sheet (ADR-0068): a step, not a record. It holds
-     the tick, the documents filed against it, and a link out to the
-     milestone it minted - and nothing a person wrote, because a built-in
-     goal has nowhere to write it and a custom one's own text editing is
-     ticket 69's. -->
+<!-- The goal sheet holds the tick, documents and any linked milestone (ADR-0068). -->
 <Sheet busy={goalWrite.busy || visibilityWrite.busy} open={selectedGoal !== null} title={selectedTitle} onClose={closeGoalSheet}>
   {#if selectedGoal}
     <!-- The sheet stays open over a rewording, so its heading crossfades to
@@ -1160,12 +1141,10 @@
     margin-top: var(--space-6);
   }
 
-  /* An empty square until it is ticked, so a row reads as a checkbox
-     rather than as a link into somewhere. The border and the colour cross
-     on --dur-fast (ux-carpet ticket 236, matching appointment-prep's
-     .ap-box): the square is not the control - the row is - so what answers
-     the tap is the tick landing rather than a press depth, and a colour
-     change is the feedback reduced motion keeps. */
+  /* An empty square until it is ticked, so a row reads as a checkbox rather than as a link
+     into somewhere. The border and the colour cross on --dur-fast: the square is not the
+     control - the row is - so what answers the tap is the tick landing rather than a press
+     depth, and a colour change is the feedback reduced motion keeps. */
   .roadmap-box {
     position: relative;
     border: 2px solid var(--outline);

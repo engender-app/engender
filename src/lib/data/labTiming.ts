@@ -72,17 +72,16 @@ export function labTimingFor(draw: LabDraw, dose: TimingDose | null): LabTiming 
      to know this rule to select one; this is where it is refused. */
   if (draw.drawTime === null && epochDayFromTimestamp(dose.timestamp) === draw.epochDay) return null;
 
-  /* Day-of-interval is a count of calendar days and needs no draw time,
-     which is why an untimed draw on a later day still gets a figure here.
+  /* Day-of-interval is a count of calendar days and needs no draw time, which is why an
+     untimed draw on a later day still gets a figure here.
 
-     The count comes from the dose log alone - the gap from the last
-     injection to the draw, with the injection day as day 1. Not from the
-     episode's `interval`, which is free text and cannot be computed from,
-     and not from ticket 02's dose_schedule either: a schedule is optional
-     and one per episode, so a figure that depended on one would silently go
-     missing for anyone who logs injections without setting a schedule. The
-     gap between consecutive dose events cannot be the source at all, since
-     the interval a fresh draw falls in has no next injection yet. */
+     The count comes from the dose log alone - the gap from the last injection to the draw,
+     with the injection day as day 1. Not from the episode's `interval`, which is free text
+     and cannot be computed from, and not from dose_schedule either: a schedule is optional
+     and one per episode, so a figure that depended on one would silently go missing for
+     anyone who logs injections without setting a schedule. The gap between consecutive dose
+     events cannot be the source at all, since the interval a fresh draw falls in has no
+     next injection yet. */
   if (dose.route === 'im' || dose.route === 'sc' || dose.route === 'implant') {
     return { route: dose.route, dayOfInterval: draw.epochDay - epochDayFromTimestamp(dose.timestamp) + 1 };
   }
@@ -151,7 +150,7 @@ const positionKey = (timing: LabTiming): string =>
     timing and no provider, and a flag that fired on their absence would be
     permanently on. Providers are compared as typed, trimmed of surrounding
     whitespace and otherwise left alone - the same rule an analyte's unit
-    follows (CONTEXT: "Analyte"), so two spellings of one lab are two
+    follows, so two spellings of one lab are two
     providers and nothing matches them up. */
 export function seriesComparability(results: readonly LabResult[]): ComparabilityAxis[] {
   const values: Record<ComparabilityAxis, Set<string>> = {

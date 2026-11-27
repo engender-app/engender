@@ -1,8 +1,8 @@
-/* The Android driver's half of pipelining (ux-carpet 200, ADR-0089): every
-   call crosses the bridge the moment it is made, numbered in call order, and
-   the plugin's CallSequencer (CallSequencerTest.java) runs them in that
-   order. The bridge here is a fake that answers nothing until told to, so a
-   call that waited for the one before it would never be sent at all. */
+/* The Android driver's half of pipelining (ADR-0089): every call crosses the bridge the
+   moment it is made, numbered in call order, and the plugin's CallSequencer
+   (CallSequencerTest.java) runs them in that order. The bridge here is a fake that answers
+   nothing until told to, so a call that waited for the one before it would never be sent at
+   all. */
 
 import { beforeEach, expect, test, vi } from 'vitest';
 
@@ -124,9 +124,8 @@ test('the two calls made with no driver open carry no number', async () => {
   ]);
 });
 
-/* ux-carpet 210: the start-over wipe runs from a locked gate, in a process
-   where nothing has opened the journal, so the plugin has no open of its own
-   to learn the file from. It has to be told. */
+/* The start-over wipe runs from a locked gate, in a process where nothing has opened the
+   journal, so the plugin has no open of its own to learn the file from. It has to be told. */
 test('the start-over wipe names the database it deletes', async () => {
   const { deleteAndroidDatabase } = await import('./android-driver.ts');
   void deleteAndroidDatabase('engender.sqlite3');

@@ -57,7 +57,7 @@ function tier2(
  * Use as `in:fadeThrough` and `out:fadeThrough`; a bare `transition:`
  * cannot tell the two apart and gets the incoming shape both ways.
  */
-/* fadeThrough stays exported only for its own test (AU-09 test-only review). */
+/* fadeThrough stays exported only for its own test. */
 export function fadeThrough(
   _node: Element,
   _params: Record<string, never> = {},
@@ -108,15 +108,13 @@ export function fieldPart(
   /* Leaving goes with the edge and arriving comes from the far side of it,
      which is what stops the two reading as one element sliding through. */
   const sign = options.direction === 'out' ? 1 : -1;
-  /* Where the element is when this starts. A second change landing while a
-     question is still arriving turns its arrival into a departure, and one
-     landing while it is leaving brings it back: the transitions are separate
-     and each began from its own idea of where it started, so a question 30%
-     in and 3px off its place was 100% in and on its place in one frame and
-     popped back off it as it left, and one 67% out started again from
-     nothing (ticket 285, -9px and a full-opacity flash on the flipbook).
-     Each starts from what is drawn. A fresh element is not being animated,
-     and gets the curves this always had. */
+  /* Where the element is when this starts. A second change landing while a question is
+     still arriving turns its arrival into a departure, and one landing while it is leaving
+     brings it back: the transitions are separate and each began from its own idea of where
+     it started, so a question 30% in and 3px off its place was 100% in and on its place in
+     one frame and popped back off it as it left, and one 67% out started again from nothing
+     (-9px and a full-opacity flash on the flipbook). Each starts from what is drawn. A
+     fresh element is not being animated, and gets the curves this always had. */
   const leaving = options.direction === 'out';
   let shown = leaving ? 1 : 0;
   let offset = 0;
@@ -180,10 +178,9 @@ export function fieldPart(
 function sheetTravel(node: Element): number {
   const rect = node.getBoundingClientRect();
   const frame = node.closest('[data-sheet-scrim]')?.getBoundingClientRect();
-  /* The viewport's own bottom as well: on a screen whose scrim ends above
-     it, travelling to the scrim's edge left the top 12px of the sheet on
-     screen at the end of the exit, where it vanished in one frame (phase 15
-     ticket 04, the document screen). */
+  /* The viewport's own bottom as well: on a screen whose scrim ends above it, travelling to
+     the scrim's edge left the top 12px of the sheet on screen at the end of the exit, where
+     it vanished in one frame. */
   const viewportBottom = typeof window === 'undefined' ? 0 : window.innerHeight;
   return Math.max(rect.height, (frame?.bottom ?? rect.bottom) - rect.top, viewportBottom - rect.top);
 }
@@ -262,13 +259,12 @@ const [send, receive] = crossfade({
  * Under reduced motion both halves stop deferring to each other and just
  * crossfade, because a FLIP between two boxes is nothing but movement.
  */
-/* containerSend stays exported only for its own test (AU-09 test-only review). */
+/* containerSend stays exported only for its own test. */
 export function containerSend(node: Element, params: { key: unknown }) {
   return isReducedMotion() ? crossfadeOnly() : send(node, params);
 }
 
-/* containerReceive stays exported only for its own test (AU-09 test-only
-   review). */
+/* containerReceive stays exported only for its own test. */
 export function containerReceive(node: Element, params: { key: unknown }) {
   return isReducedMotion() ? crossfadeOnly() : receive(node, params);
 }

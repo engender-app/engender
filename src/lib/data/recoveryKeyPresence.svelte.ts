@@ -12,8 +12,8 @@ export const recoveryKeyPresence = $state({
   exists: false,
   /** Whether a confirmed key does: what Settings states as set up. */
   active: false,
-  /** Whether a new key is waiting to be confirmed after an interrupted
-      replacement or first mint (last-audit UI 42). */
+  /** Whether a new key is waiting to be confirmed after an interrupted replacement or first
+      mint. */
   pending: false
 });
 

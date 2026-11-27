@@ -1,12 +1,10 @@
-/* Expected dose slots, and pairing them against what was actually logged.
-   Pure, and kept above the journal seam next to
-   regimenEpisode.ts for the same reason: a slot is a question about a
-   schedule and a range of days, not a row anyone stores. Nothing here
+/* Expected dose slots, and pairing them against what was actually logged. Pure, and kept
+   above the journal seam next to regimenEpisode.ts for the same reason: a slot is a
+   question about a schedule and a range of days, not a row anyone stores. Nothing here
    reads a clock or a database.
 
-   Deliberately no verdict. This file answers "what was expected, and what
-   is logged against it", and stops: no target rate, no streak, no
-   good/bad. The comparison is the feature (ticket 02, out of scope). */
+   Deliberately no verdict. This file answers "what was expected, and what is logged against
+   it", and stops: no target rate, no streak, no good/bad. The comparison is the feature. */
 
 import { epochDayFromTimestamp, timestampAtLocalTime, weekdayOfEpochDay } from './epochDay';
 import { spanCoversDay } from './span';
@@ -34,18 +32,16 @@ export const isTopicalDose = <T extends { route: DoseRoute }>(dose: T): dose is 
 
 /* Reading a route out of the words someone typed.
 
-   A RegimenEpisode's `route` is free text and a dose's is one of six keys,
-   so the sheet that logs a dose against a regimen had been asking for the
-   route again - and defaulting to oral, which is the wrong answer for
-   every injected regimen there is.
+   A RegimenEpisode's `route` is free text and a dose's is one of six keys, so the sheet
+   that logs a dose against a regimen had been asking for the route again - and defaulting
+   to oral, which is the wrong answer for every injected regimen there is.
 
-   The abbreviations below are ASCII and matched as whole words, which is
-   the whole of the care this needs: "discontinued" carries `sc` as a
-   substring, and Polish "po" is a preposition, so a substring match or a
-   two-letter alias list reaching further than this would resolve a route
-   out of ordinary prose. The words the app itself uses for the six routes
-   are handed in rather than imported, because they speak paraglide and
-   this file may not (ADR-0016, and doseLabels.ts is where they live). */
+   The abbreviations below are ASCII and matched as whole words, which is the whole of the
+   care this needs: "discontinued" carries `sc` as a substring, and Polish "po" is a
+   preposition, so a substring match or a two-letter alias list reaching further than this
+   would resolve a route out of ordinary prose. The words the app itself uses for the six
+   routes are handed in rather than imported, because they speak paraglide and this file may
+   not (and doseLabels.ts is where they live). */
 const ROUTE_ALIASES: Record<DoseRoute, readonly string[]> = {
   oral: ['oral'],
   sublingual: ['sublingual', 'sl'],
@@ -80,10 +76,10 @@ export interface RouteOption {
  * confidence. The sheet asks instead.
  *
  * `routeWords` is `ROUTE_OPTIONS` from doseLabels.ts at the call site: the
- * app's own word for each route, in whichever language is running. Passing
- * an empty list matches on the keys and the ASCII abbreviations alone, which
- * is all the Node tier can ask for - those words speak paraglide and this
- * file may not (ADR-0016).
+ * app's own word for each route, in whichever language is running. Passing an
+ * empty list matches on the keys and the ASCII abbreviations alone, which is
+ * all the Node tier can ask for - those words speak paraglide and this file
+ * may not.
  */
 export function matchDoseRoute(text: string, routeWords: readonly RouteOption[]): DoseRoute | null {
   const compact = compactWord(text);
@@ -339,16 +335,15 @@ export interface Adherence {
   unmatched: DoseEvent[];
 }
 
-/** How many days off its slot's own day a dose may sit and still fill that
-    slot (after-release ticket 01, amending ADR-0086). Kept under half the gap
-    between two slots, so a dose can never be in reach of two different slot
-    days: a weekly injection taken up to three days late or early is still
-    that week's, and a daily schedule (or an every-other-day one, where a
-    one-day-late dose is exactly as near the next slot) stays same-day only.
+/** How many days off its slot's own day a dose may sit and still fill that slot. Kept under
+    half the gap between two slots, so a dose can never be in reach of two different slot
+    days: a weekly injection taken up to three days late or early is still that week's, and
+    a daily schedule (or an every-other-day one, where a one-day-late dose is exactly as
+    near the next slot) stays same-day only.
 
-    A weekday recurrence's gaps differ round the week, Monday and Thursday
-    being three days and then four, and the narrower gap decides. A schedule
-    that expects nothing has no gap to halve and answers zero. */
+    A weekday recurrence's gaps differ round the week, Monday and Thursday being three days
+    and then four, and the narrower gap decides. A schedule that expects nothing has no gap
+    to halve and answers zero. */
 export function slotToleranceDays(schedule: Pick<DoseSchedule, 'recurrence'>): number {
   let gap: number;
   if (schedule.recurrence.kind === 'everyNDays') {
@@ -539,18 +534,16 @@ function expectsAnyDose(schedule: Pick<DoseSchedule, 'recurrence' | 'dosesPerDay
     : schedule.recurrence.weekdays.length > 0;
 }
 
-/** Whether this schedule is definite enough to log its own doses (ADR-0086): it expects a dose on some day, it says how much, and the route
-    the doses would be written with is one of the six the dose log records.
-    The switch is offered on exactly this, so a schedule can never be switched
-    on with nothing definite to write.
+/** Whether this schedule is definite enough to log its own doses: it expects a dose on some
+    day, it says how much, and the route the doses would be written with is one of the six
+    the dose log records. The switch is offered on exactly this, so a schedule can never be
+    switched on with nothing definite to write.
 
-    A regimen episode's `route` is free text (types.ts), so it takes reading -
-    `routeWords` is `ROUTE_OPTIONS` from doseLabels.ts, the app's own word for
-    each route in whichever language is running, handed in rather than
-    imported for the reason matchDoseRoute gives (ADR-0016). Both callers pass
-    the same list, the schedule editor and the auto-log pass alike, so the
-    switch is never offered on an episode the pass would then read nothing
-    from. */
+    A regimen episode's `route` is free text (types.ts), so it takes reading - `routeWords`
+    is `ROUTE_OPTIONS` from doseLabels.ts, the app's own word for each route in whichever
+    language is running, handed in rather than imported for the reason matchDoseRoute gives.
+    Both callers pass the same list, the schedule editor and the auto-log pass alike, so the
+    switch is never offered on an episode the pass would then read nothing from. */
 export function canAutoLog(
   /* The parts of a schedule this reads, not a whole one: the schedule
      editor asks the question of the draft in front of the person, which has
@@ -588,13 +581,13 @@ function autoLogTimestamp(slot: DoseSlot, dosesPerDay: number): number {
 }
 
 /**
- * Return unfilled auto-log slots oldest first (ADR-0086). Start at
- * the later of schedule opt-in and episode start, and stop at
- * yesterday so today remains available for manual logging.
+ * Return unfilled auto-log slots oldest first. Start at the later of schedule
+ * opt-in and episode start, and stop at yesterday so today remains available
+ * for manual logging.
  *
- * Use adherence to account for pauses, manual matches within
- * tolerance and automatic rows already written. No stored cursor
- * is needed. The caller supplies today and owns the writes.
+ * Use adherence to account for pauses, manual matches within tolerance and
+ * automatic rows already written. No stored cursor is needed. The caller
+ * supplies today and owns the writes.
  */
 export function autoLogSlots(
   schedule: DoseSchedule,

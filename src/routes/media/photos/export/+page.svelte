@@ -66,11 +66,10 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
-  /* Ticket 27. Two steps, deliberately not one: this screen makes a file and
-     holds it, and it takes a second press to hand that file to the share
-     sheet. Nothing here writes to storage - the collage exists in a Blob
-     until somebody shares it or leaves the screen, which is what keeps the
-     export off the device unless a person asked for it. */
+  /* Two steps, deliberately not one: this screen makes a file and holds it, and it takes a
+     second press to hand that file to the share sheet. Nothing here writes to storage - the
+     collage exists in a Blob until somebody shares it or leaves the screen, which is what
+     keeps the export off the device unless a person asked for it. */
 
   /* The whole library, minus its video notes: a
      collage and a timelapse are made by decoding each frame as a
@@ -273,9 +272,9 @@
         {/if}
 
         <SectionHeading text={m.pj_range_title()} />
-        <!-- The date rows compare and the wrapped custom range draw (release
-             audit U13): the day in words, with the picker spread over the
-             row, where two read-only text boxes used to show "2024-09-18". -->
+        <!-- The date rows compare and the wrapped custom range draw (release): the day in
+             words, with the picker spread over the row, where two read-only text boxes used
+             to show "2024-09-18". -->
         <div>
           {#each [
             { id: 'pj-start', label: m.start_date_label(), value: startInput, min: undefined, max: dayRangeStartMax(endInput), set: (next: string) => (startInput = next) },
@@ -304,8 +303,8 @@
         </div>
         <PhotoChipRow {chips} {chip} onPick={pickChip} />
 
-        <!-- The count is said once, in the bar with the button it counts
-             for (release audit U13: it was here as well). -->
+        <!-- The count is said once, in the bar with the button it counts for (release: it
+             was here as well). -->
         <p class="muted small">
           {#if photos.length === 0}
             {m.pj_none_in_range()}

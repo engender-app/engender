@@ -36,7 +36,7 @@ describe('the citation guard', () => {
   });
 });
 
-describe('the record shape (functional audit ticket 55)', () => {
+describe('the record shape', () => {
   const header = 'Status: Accepted\nDecided: 2026-08-11\nLast reviewed: 2026-11-02\nSupersedes: none\n';
   const shapeDir = mkdtempSync(join(tmpdir(), 'adr-shape-'));
   afterAll(() => rmSync(shapeDir, { recursive: true, force: true }));

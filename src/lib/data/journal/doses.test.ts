@@ -1,6 +1,5 @@
-/* The dose log area (phase 4 ticket 02, CONTEXT: "Dose event"): what a dose
-   carries per route, that it is not an Entry, and that its regimen episode
-   is resolved from its timestamp every time rather than stored. */
+/* The dose log area: what a dose carries per route, that it is not an Entry, and that its
+   regimen episode is resolved from its timestamp every time rather than stored. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
@@ -397,9 +396,8 @@ test('a dose can be deleted, and deleting it again changes nothing', async () =>
   await journal.doses.deleteDose(id); // idempotent
 });
 
-/* The schedule comparison (phase 5 audit-deepening ticket 17). The six-step
-   assembly the dose log screen used to do in markup, and which the
-   long-journal benchmark used to do a second, drifted way: which episode is
+/* The schedule comparison. The six-step assembly the dose log screen used to do in markup,
+   and which the long-journal benchmark used to do a second, drifted way: which episode is
    in effect, its schedule, its pauses, the doses attributed to it, and the
    slots-against-doses comparison over them. */
 
@@ -519,7 +517,7 @@ test('two episodes in effect on the last day of the range leave nothing to compa
   assert.equal(result.reason, 'multipleEpisodes');
 });
 
-test('a drug names which of several active episodes the comparison picks (ticket 15)', async () => {
+test('a drug names which of several active episodes the comparison picks', async () => {
   const { journal } = await journalWithBuiltIns();
   const estradiolId = await injectableEpisode(journal, 19000, 'estradiol');
   const spiroId = await injectableEpisode(journal, 19000, 'spironolactone');
@@ -543,7 +541,7 @@ test('a drug names which of several active episodes the comparison picks (ticket
   assert.equal(spiroResult.activeEpisode.id, spiroId);
 });
 
-test('a drug matching no active episode falls back to the ordinary rule (ticket 15)', async () => {
+test('a drug matching no active episode falls back to the ordinary rule', async () => {
   const { journal } = await journalWithBuiltIns();
   const episodeId = await injectableEpisode(journal, 19000, 'estradiol');
   await journal.doses.upsertSchedule({
@@ -680,10 +678,9 @@ test('countConsumingDosesByDrug refuses overlapping ranges and backwards ones', 
   );
 });
 
-/* Auto-logging (ADR-0086). The slot walk itself is
-   doseSchedule.test.ts's; what these cover is the area around it - which
-   schedules it visits, what the rows it writes say, and that running it
-   again writes nothing. */
+/* Auto-logging. The slot walk itself is doseSchedule.test.ts's; what these cover is the
+   area around it - which schedules it visits, what the rows it writes say, and that running
+   it again writes nothing. */
 
 async function autoLogging(
   journal: Journal,
@@ -935,7 +932,7 @@ test('an auto-logged dose names its episode\'s drug, so two regimens at once sta
   assert.equal(attributeDose(await journal.regimen.getEpisodes(), written).episode?.drug, 'estradiol');
 });
 
-test('getDoseById returns a dose by its UUID, or null when unknown or deleted (ticket 18)', async () => {
+test('getDoseById returns a dose by its UUID, or null when unknown or deleted', async () => {
   const { journal } = await journalWithBuiltIns();
   const id = await journal.doses.upsertDose({
     timestamp: at(19000, 8),
@@ -955,7 +952,7 @@ test('getDoseById returns a dose by its UUID, or null when unknown or deleted (t
   assert.equal(await journal.doses.getDoseById(id), null);
 });
 
-test('hasDosesBefore checks whether doses predate a given epoch day (ticket 18)', async () => {
+test('hasDosesBefore checks whether doses predate a given epoch day', async () => {
   const { journal } = await journalWithBuiltIns();
   assert.equal(await journal.doses.hasDosesBefore(19000), false);
 
@@ -971,7 +968,7 @@ test('hasDosesBefore checks whether doses predate a given epoch day (ticket 18)'
   assert.equal(await journal.doses.hasDosesBefore(19100), true);
 });
 
-test('older dose reachability across the 90-day window boundary without duplicates (ticket 18)', async () => {
+test('older dose reachability across the 90-day window boundary without duplicates', async () => {
   const { journal } = await journalWithBuiltIns();
   const today = 19180;
   // Recent dose within 90-day window [19090, 19180]
@@ -1051,9 +1048,8 @@ test('schedule hydration stays three reads as schedules and their children grow'
   assert.equal(counted.roundTrips().query, 3, 'schedule children are batched, never read per schedule');
 });
 
-/* A dose taken a day late (after-release ticket 01, L03-02). The probe's own
-   case: a weekly IM injection anchored on Monday 28 September 2026, the dose
-   logged on Tuesday 29. */
+/* A dose taken a day late. The probe's own case: a weekly IM injection anchored on Monday
+   28 September 2026, the dose logged on Tuesday 29. */
 
 const MONDAY = epochDayFromLocalDate(new Date(2026, 8, 28));
 

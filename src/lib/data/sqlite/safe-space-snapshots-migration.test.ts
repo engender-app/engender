@@ -1,6 +1,6 @@
-/* FA 09: counterevidence snapshots are cut. Version 96 drops both of their
-   tables, rows and indexes included, from a journal that holds some. A cut
-   removes rather than converts, so nothing is carried anywhere. */
+/* counterevidence snapshots are cut. Version 96 drops both of their tables, rows and
+   indexes included, from a journal that holds some. A cut removes rather than converts, so
+   nothing is carried anywhere. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

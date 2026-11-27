@@ -1,7 +1,6 @@
-/* Evaluate live tile triggers and compose Home's ordered grid (ADR-0039,
-   ADR-0036). liveTiles.svelte.ts supplies reads, preferences and snoozes.
-   Keep this module rune-free with relative imports and format callbacks so
-   Node tests can exercise it without Paraglide (ADR-0016). */
+/* Evaluate live tile triggers and compose Home's ordered grid. liveTiles.svelte.ts supplies
+   reads, preferences and snoozes. Keep this module rune-free with relative imports and
+   format callbacks so Node tests can exercise it without Paraglide. */
 
 import { m } from '../paraglide/messages';
 import type {
@@ -98,8 +97,8 @@ const HOME_TILE_TIERS = ['today', 'moment', 'dormant'] as const satisfies readon
     not give - a kind absent from all of them would just never be drawn.
     Demonstrated by deleting a line: the object stops satisfying the
     `Record` and this file refuses to compile, naming the kind. */
-/* LIVE_TILE_TIER stays exported only for liveTiles.grid.test.ts, which
-   cross-checks against it (AU-09 test-only review). */
+/* LIVE_TILE_TIER stays exported only for liveTiles.grid.test.ts, which cross-checks against
+   it. */
 export const LIVE_TILE_TIER: Record<LiveTileKind, HomeTileTier> = {
   'wear-timer': 'today',
   'dose-panel': 'moment',
@@ -108,11 +107,10 @@ export const LIVE_TILE_TIER: Record<LiveTileKind, HomeTileTier> = {
   'ready-letter': 'moment'
 };
 
-/** How many tiles Home draws at their own weight. The rest fold into one
-    collapsed row in place - never a route, and never a true tile dropped
-    (ADR-0039's amendment). */
-/* HOME_TILE_CAP stays exported only for liveTiles.grid.test.ts, which
-   cross-checks against it (AU-09 test-only review). */
+/** How many tiles Home draws at their own weight. The rest fold into one collapsed row in
+    place - never a route, and never a true tile dropped. */
+/* HOME_TILE_CAP stays exported only for liveTiles.grid.test.ts, which cross-checks against
+   it. */
 export const HOME_TILE_CAP = 3;
 
 /** The order Home actually draws them in: the bands outside, `LIVE_TILE_ORDER`
@@ -155,12 +153,11 @@ type EveryLiveTileHasASurface = AssertKindsHaveASurface<LiveTileKind>;
     is the component's rather than a choice made here. */
 type TileHandles = Record<string, true>;
 
-/** An in-place control on a tile (ADR-0039). Structurally what
-    `Tile.svelte` takes; declared here rather than imported from it because
-    a `.svelte` file is unreachable from the Node tier. The two staying in
-    step is not a convention - Home passes `action={tile.action}` straight
-    into the component, so a field that drifts is a `svelte-check` error at
-    that line. */
+/** An in-place control on a tile. Structurally what `Tile.svelte` takes; declared here
+    rather than imported from it because a `.svelte` file is unreachable from the Node tier.
+    The two staying in step is not a convention - Home passes `action={tile.action}`
+    straight into the component, so a field that drifts is a `svelte-check` error at that
+    line. */
 interface HomeTileAction {
   icon?: string;
   text?: string;
@@ -178,8 +175,7 @@ interface HomeTileDismiss {
 
 /** One tile, ready to draw. */
 export interface HomeTile {
-  /** The registry's own key, which is also the walkthrough's handle
-      (ADR-0029) and the `{#each}` key. */
+  /** The registry's own key, which is also the walkthrough's handle and the `{#each}` key. */
   key: LiveTileKind;
   /** `LIVE_TILE_TIER[key]`, carried on the tile so the screen draws the
       weight off what it is rendering rather than looking the kind up a
@@ -201,8 +197,8 @@ export interface HomeTile {
 }
 
 /** What the reads answered. One field per query `liveTiles.svelte.ts` runs. */
-/* HomeTileReads stays exported only for liveTiles.grid.test.ts, which
-   cross-checks against it (AU-09 test-only review). */
+/* HomeTileReads stays exported only for liveTiles.grid.test.ts, which cross-checks against
+   it. */
 export interface HomeTileReads {
   runningWear: WearSession | null;
   /** `prefs.wearDurationCueEnabled` - a preference rather than a read, the
@@ -232,8 +228,8 @@ export interface HomeTileReads {
 
 /** What a tile's controls do. Everything a tile can start except opening the
     letter tile's dismiss sheet, which is Home's own surface. */
-/* HomeTileActions stays exported only for liveTiles.grid.test.ts, which
-   cross-checks against it (AU-09 test-only review). */
+/* HomeTileActions stays exported only for liveTiles.grid.test.ts, which cross-checks
+   against it. */
 export interface HomeTileActions {
   stopWear: (session: WearSession) => void;
   dismissSafeSpace: (entryId: number) => void;
@@ -242,8 +238,8 @@ export interface HomeTileActions {
 
 /** The display formats, as callbacks: every one of them reaches
     paraglide through `$lib`, which the Node tier cannot resolve. */
-/* HomeTileFormat stays exported only for liveTiles.grid.test.ts, which
-   cross-checks against it (AU-09 test-only review). */
+/* HomeTileFormat stays exported only for liveTiles.grid.test.ts, which cross-checks against
+   it. */
 export interface HomeTileFormat {
   number?: (value: number) => string;
   /** A full date - the day a letter unlocked. */
@@ -261,8 +257,8 @@ export interface HomeTileFormat {
   doseRoute: (route: RegimenEpisode['route']) => string;
 }
 
-/* HomeTilesInput stays exported only for liveTiles.grid.test.ts, which
-   cross-checks against it (AU-09 test-only review). */
+/* HomeTilesInput stays exported only for liveTiles.grid.test.ts, which cross-checks against
+   it. */
 export interface HomeTilesInput {
   todayEpochDay: number;
   /** One clock for the whole grid: the wear timer's reading, every snooze
@@ -397,11 +393,10 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
          dose can cover today, while another episode's dose cannot. */
       const [lead, ...others] = panelDoses(input, active);
       const { episode, next } = lead;
-      /* What the app did on the person's behalf yesterday, which the panel
-         states ahead of the next day it expects (ADR-0086). Ahead, not beside: the line holds one sentence, and on
-         the morning after an auto-logged slot the fact worth reading is the
-         row that was written without them, not a date they can work out
-         from the schedule they wrote. */
+      /* What the app did on the person's behalf yesterday, which the panel states ahead of
+         the next day it expects. Ahead, not beside: the line holds one sentence, and on the
+         morning after an auto-logged slot the fact worth reading is the row that was
+         written without them, not a date they can work out from the schedule they wrote. */
       const autoLoggedYesterday = reads.yesterdayDoses.some(
         (dose) =>
           dose.source === 'schedule' && attributeDose(reads.episodes, dose).episode?.id === episode.id
@@ -522,15 +517,14 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
 
 /** The grid, in tier order, with every qualifying tile in it.
 
-    `LIVE_TILE_DRAW_ORDER` rather than a sort or a nested pair of loops: the
-    tier bands outside and `LIVE_TILE_ORDER` inside is one order, and since
-    ticket 04 the editor lists its switches in it too. Nothing is dropped
-    here - the cap is `splitHomeTiles` below, so the fold has the tiles it is
-    folding.
+    `LIVE_TILE_DRAW_ORDER` rather than a sort or a nested pair of loops: the tier bands
+    outside and `LIVE_TILE_ORDER` inside is one order, and the editor lists its switches in
+    it too. Nothing is dropped here - the cap is `splitHomeTiles` below, so the fold has the
+    tiles it is folding.
 
-    A tile whose area is hidden or finished never reaches its builder. Folded into `enabled` rather than added as a third
-    field on the gate, because the two say the same thing to a builder - do
-    not show - and the four builders with no predicate to pass a gate to would
+    A tile whose area is hidden or finished never reaches its builder. Folded into `enabled`
+    rather than added as a third field on the gate, because the two say the same thing to a
+    builder - do not show - and the four builders with no predicate to pass a gate to would
     otherwise each need a second check. */
 export function composeHomeTiles(input: HomeTilesInput): HomeTile[] {
   const builders = buildersFor(input);

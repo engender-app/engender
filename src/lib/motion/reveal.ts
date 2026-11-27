@@ -43,13 +43,11 @@ function canClip(): boolean {
 export function wipe(_node: Element, params?: { authored?: boolean }): TransitionConfig {
   if (isReducedMotion()) return { duration: 0 };
 
-  /* `authored` is the longer of the two durations, for a wipe that is the
-     one moment a surface arrives rather than one state replacing another.
-     The area chart's first draw asked for it: at --dur-slow the uncovering
-     read as a flicker rather than as a drawing (Alicja, 2026-08-25, "a
-     little slower and not linear"). The easing is --ease-out either way,
-     which is the "not linear" half - a wipe that arrives at a constant rate
-     reads as a wipe rather than as something being revealed. */
+  /* `authored` is the longer of the two durations, for a wipe that is the one moment a
+     surface arrives rather than one state replacing another. The area chart's first draw
+     asked for it: at --dur-slow the uncovering read as a flicker rather than as a drawing.
+     The easing is --ease-out either way, which is the "not linear" half - a wipe that
+     arrives at a constant rate reads as a wipe rather than as something being revealed. */
   const duration = params?.authored
     ? motionDuration('--dur-authored')
     : motionDuration('--dur-slow');
@@ -120,22 +118,18 @@ export function spread(_node: Element, params?: { authored?: boolean }): Transit
 export function disclose(
   node: Element,
   params?: { skip?: boolean; onScreen?: boolean; belowFold?: boolean },
-  /* `fadeEdges`: the panel primitive's closing. A
-     box's hairlines were cut to nothing on the first frame of a close,
-     because a border cannot shrink below a device pixel and stalled the
-     box at its own edge; Alicja read that first frame as the line simply
-     disappearing and asked for it to "fade out with scale like other
-     lines". So the edges stay for the travel and the whole box fades over
-     its last third, lines included - the box is nearly nothing by then, so
-     what fades is the line. Arrivals never take this: a block arriving
+  /* `fadeEdges`: the panel primitive's closing. A box's hairlines were cut to nothing on
+     the first frame of a close, because a border cannot shrink below a device pixel and
+     stalled the box at its own edge, making the line look like it vanished. Keep the edges for the
+     travel and the whole box fades over its last third, lines included - the box is nearly
+     nothing by then, so what fades is the line. Arrivals never take this: a block arriving
      from nothing must not fade in. */
   options?: { fadeEdges?: boolean }
 ): TransitionConfig {
   if (isReducedMotion() || params?.skip) return { duration: 0 };
-  /* `belowFold` (carpet 15 row 47): a box that arrives wholly under the
-     screen's bottom edge arrives at once, since nothing of its travel would
-     be painted, and one that lands where it can be seen still opens. The
-     roadmap fills its legal group this way a few rows a frame. */
+  /* `belowFold`: a box that arrives wholly under the screen's bottom edge arrives at once,
+     since nothing of its travel would be painted, and one that lands where it can be seen
+     still opens. The roadmap fills its legal group this way a few rows a frame. */
   if (
     params?.belowFold &&
     typeof innerHeight === 'number' &&
@@ -156,21 +150,16 @@ export function disclose(
      surface already measures zero. */
   const borderTop = parseFloat(style.borderTopWidth) || 0;
   const borderBottom = parseFloat(style.borderBottomWidth) || 0;
-  /* Margin is the same story as border above, and a bigger one: `.screen >
-     * { margin-bottom: var(--space-6) }` (app.css) gives most direct
-     * children of a screen 24px of it, disclose never touched it, and a
-     * transition's `css()` keeps running for its whole declared duration -
-     * the node is not actually removed until the promise it returns
-     * resolves, which lands some tens of milliseconds after the animated
-     * properties have already visually reached zero. So the box looked
-     * fully collapsed and settled, sat there still holding a full 24px of
-     * margin the whole time, and only lost it in the single frame the node
-     * was finally removed - a second, separate jump landing after the
-     * first one looked done (Alicja, 2026-08-28, after the border fix
-     * above: "it happens in many places where a box collapses... not just
-     * that singular one"). Every caller of `disclose` collapses through
-     * this one function, so this fixes all of them at once rather than
-     * chasing each margin-bearing surface that uses it. */
+  /* Margin is the same story as border above, and a bigger one: `.screen > { margin-bottom:
+     var(--space-6) }` (app.css) gives most direct children of a screen 24px of it, disclose
+     never touched it, and a transition's `css()` keeps running for its whole declared
+     duration - the node is not actually removed until the promise it returns resolves,
+     which lands some tens of milliseconds after the animated properties have already
+     visually reached zero. So the box looked fully collapsed and settled, sat there still
+     holding a full 24px of margin the whole time, and only lost it in the single frame the
+     node was finally removed - a second, separate jump landing after the first one looked
+     done. Every caller of `disclose` collapses through this one function, so this fixes all
+     of them at once rather than chasing each margin-bearing surface that uses it. */
   const marginTop = parseFloat(style.marginTop) || 0;
   const marginBottom = parseFloat(style.marginBottom) || 0;
   /* Pin a grid's measured tracks during the collapse so the clip
@@ -181,19 +170,15 @@ export function disclose(
      Ordinary blocks stay top-anchored. A missing display value is treated
      as a non-grid caller. */
   const rows = style.display?.includes('grid') ? style.gridTemplateRows : '';
-  /* Where the box's bottom margin ends, and it is not always zero (redesign
-     ticket 25, Alicja on the flipbooks: a notice dismissed on Home jumped
-     20px "at the very end - between frames 32 and 33"). While the box is
-     open, `overflow: hidden` makes it a formatting context, so the margins
-     on either side of it do not collapse through it: the block above's 20
-     and the heading below's 40 are both spent, 60 in all. The frame the
-     node is gone they collapse into one, 40. Animating this margin to zero
-     therefore lands 20px short of where the neighbours will meet, and the
-     page takes that 20 in the frame of removal. The end value is the
-     negative of the smaller neighbouring margin, which is exactly what
-     collapsing would have taken away: 20 + 0 + (40 - 20) = 40. Block flow
-     only - flex and grid items never collapse margins - and only with a
-     neighbour on each side to collapse between. */
+  /* Where the box's bottom margin ends, and it is not always zero. While the box is open,
+     `overflow: hidden` makes it a formatting context, so the margins on either side of it
+     do not collapse through it: the block above's 20 and the heading below's 40 are both
+     spent, 60 in all. The frame the node is gone they collapse into one, 40. Animating this
+     margin to zero therefore lands 20px short of where the neighbours will meet, and the
+     page takes that 20 in the frame of removal. The end value is the negative of the
+     smaller neighbouring margin, which is exactly what collapsing would have taken away: 20
+     + 0 + (40 - 20) = 40. Block flow only - flex and grid items never collapse margins -
+     and only with a neighbour on each side to collapse between. */
   const restMargin = restingMarginBelow(node);
   /* The other side of `overflow: hidden` making the box a formatting
      context: a first child's top margin that collapsed through the box's
@@ -204,12 +189,11 @@ export function disclose(
      pulled up by the same margin and made taller by it, so the content
      stays where it was and the edge below it does too. */
   const swallowed = collapsedTopMargin(node, style);
-  /* `onScreen`: a block far taller than the
-     screen travels only the part the viewport shows, the way `resize` does
-     since ticket 282, and takes the rest at the end, below the fold where
-     nothing is painted. The roadmap's 23 Polish steps are 2967px; travelled
-     whole under ease-out, the edge crossed the visible part of the screen
-     in one frame and the steps painted at once. */
+  /* `onScreen`: a block far taller than the screen travels only the part the viewport
+     shows, the way `resize` does, and takes the rest at the end, below the fold where
+     nothing is painted. The roadmap's 23 Polish steps are 2967px; travelled whole under
+     ease-out, the edge crossed the visible part of the screen in one frame and the steps
+     painted at once. */
   const full = height + swallowed;
   const top = params?.onScreen && typeof node.getBoundingClientRect === 'function' ? node.getBoundingClientRect().top : NaN;
   const travel =
@@ -218,12 +202,10 @@ export function disclose(
   return {
     duration: motionDuration('--dur-med'),
     easing: EASE_OUT,
-    /* `min-height: 0`, because a floor under the box would hold it open: a
-       card tile carries min-height 176px (kit.css, so a widening card holds
-       still) and its height travel went nowhere - the box stood at full
-       size from the first frame and the rows under it teleported (redesign
-       ticket 25, "the 'pinned' and content underneath simply teleports
-       lower"). The animated height is the box's whole size for the travel. */
+    /* `min-height: 0`, because a floor under the box would hold it open: a card tile
+       carries min-height 176px (kit.css, so a widening card holds still) and its height
+       travel went nowhere - the box stood at full size from the first frame and the rows
+       under it teleported. The animated height is the box's whole size for the travel. */
     css: (t) =>
       `overflow: hidden;` +
       `min-height: 0;` +
@@ -234,12 +216,10 @@ export function disclose(
       `border-top-width: ${fadeEdges || t >= 1 ? borderTop : 0}px;` +
       `border-bottom-width: ${fadeEdges || t >= 1 ? borderBottom : 0}px;` +
       `margin-top: ${t * (marginTop - swallowed)}px;` +
-      /* With its edges kept for the fade, the box cannot shrink below its
-         own two hairlines: a notice sat at 2px for the last 150ms of the
-         close and gave them back in the frame it was removed (pre-release
-         18, item 53). The margin under it takes those pixels back over the
-         travel instead, so the neighbours arrive where the removal leaves
-         them. */
+      /* With its edges kept for the fade, the box cannot shrink below its own two
+         hairlines: a notice sat at 2px for the last 150ms of the close and gave them back
+         in the frame it was removed. The margin under it takes those pixels back over the
+         travel instead, so the neighbours arrive where the removal leaves them. */
       `margin-bottom: ${restMargin + t * (marginBottom - restMargin) - (fadeEdges ? (1 - t) * (borderTop + borderBottom) : 0)}px;` +
       (fadeEdges ? `opacity: ${Number(Math.min(1, t / EDGES_GONE_OVER).toFixed(3))};` : '')
   };
@@ -332,15 +312,13 @@ function arrivesFromAbove(node: Element): TransitionConfig {
   };
 }
 
-/** A block arriving on a line of its own in a flex or grid parent opens a
-    row gap there, and no margin of its own can take that back: a line's
-    size is floored at zero, so the gap lands whole in the first frame (a
-    tile promoted onto a new line of Home's tile grid, 8px under Pinned in
-    one frame - pre-release 18, item 53). The parent's own bottom margin
-    takes the gap instead and gives it back on the arrival's curve, frame
-    by frame, and is handed back untouched at the end. Nothing to do where
-    the parent is not a flex or grid box, has no row gap, or has nothing
-    else in it to stand a gap away from. */
+/** A block arriving on a line of its own in a flex or grid parent opens a row gap there,
+    and no margin of its own can take that back: a line's size is floored at zero, so the
+    gap lands whole in the first frame (a tile promoted onto a new line of Home's tile grid,
+    8px under Pinned in one frame). The parent's own bottom margin takes the gap instead and
+    gives it back on the arrival's curve, frame by frame, and is handed back untouched at
+    the end. Nothing to do where the parent is not a flex or grid box, has no row gap, or
+    has nothing else in it to stand a gap away from. */
 function gapItOpens(node: Element): TransitionConfig['tick'] {
   const parent = node.parentElement;
   if (!parent || typeof getComputedStyle !== 'function') return undefined;
@@ -375,19 +353,17 @@ function surfaceItReplaces(node: Element): Element | null {
     where a block stops being a block a thumb can cover. */
 const FROM_ABOVE_MAX = 400;
 
-/** The margin `node`'s own margin meets on one side of it, as one number:
-    the largest of the margins it collapses with at rest, or null where it
-    meets none.
+/** The margin `node`'s own margin meets on one side of it, as one number: the largest of
+    the margins it collapses with at rest, or null where it meets none.
 
-    Its sibling's facing margin where it has a sibling. Where it is the
-    first or last child of a plain block wrapper - nothing on that edge to
-    hold a margin in: no padding, no border, not a formatting context - its
-    margin passes through the wrapper's edge, collapses with the wrapper's
-    own margin on that edge, and goes on to meet the wrapper's sibling,
-    however many such wrappers deep. Home's reserves (ReadReserve.svelte,
-    ticket 183) put its notices one wrapper down from the blocks they close
-    between; reading only siblings, the first notice found nothing above it
-    and its margin ended 20px short. And a screen part's last row meets the part's own 20 on the way down, whatever is under it. */
+    Its sibling's facing margin where it has a sibling. Where it is the first or last child
+    of a plain block wrapper - nothing on that edge to hold a margin in: no padding, no
+    border, not a formatting context - its margin passes through the wrapper's edge,
+    collapses with the wrapper's own margin on that edge, and goes on to meet the wrapper's
+    sibling, however many such wrappers deep. Home's reserves (ReadReserve.svelte) put its
+    notices one wrapper down from the blocks they close between; reading only siblings, the
+    first notice found nothing above it and its margin ended 20px short. And a screen part's
+    last row meets the part's own 20 on the way down, whatever is under it. */
 function meetingMargin(node: Element, side: 'prev' | 'next'): number | null {
   const facing = side === 'prev' ? 'marginBottom' : 'marginTop';
   const own = side === 'prev' ? 'marginTop' : 'marginBottom';
@@ -397,10 +373,9 @@ function meetingMargin(node: Element, side: 'prev' | 'next'): number | null {
     const sibling = side === 'prev' ? at.previousElementSibling : at.nextElementSibling;
     if (sibling) {
       const style = getComputedStyle(sibling);
-      /* Below, the sibling's own first child can bring a top margin through
-         the sibling's bare top edge, and that is the margin met (pre-release
-         18, item 71: the roadmap's Social heading's 16px under the pack
-         closing with the Polish steps - read as 0, the pack's margin ended
+      /* Below, the sibling's own first child can bring a top margin through the sibling's
+         bare top edge, and that is the margin met (the roadmap's Social heading's 16px
+         under the pack closing with the Polish steps - read as 0, the pack's margin ended
          16px short and the Social group rose 16px in the frame of removal). */
       const through = side === 'next' ? collapsedTopMargin(sibling, style) : 0;
       return Math.max(met ?? 0, parseFloat(style[facing]) || 0, through);
@@ -426,14 +401,12 @@ function marginPassesThrough(wrapper: Element, side: 'prev' | 'next'): boolean {
 
 /** Where a collapsing or arriving box's bottom margin ends in block flow.
 
-    An open box with `overflow: hidden` or content is a formatting context,
-    so the margins on either side of it are both spent; the frame it is
-    absent they collapse into the larger. The margin therefore has to end at
-    minus the smaller neighbour, which is exactly what collapsing takes away
-    - 20 + 0 + (40 - 20) = 40 - or the page takes that difference in one
-    frame (Alicja, a notice dismissed on Home, frames 32 to 33). Zero inside
-    a flex or grid parent, where margins never collapse, and zero without a
-    neighbour on each side to collapse between. */
+    An open box with `overflow: hidden` or content is a formatting context, so the margins
+    on either side of it are both spent; the frame it is absent they collapse into the
+    larger. The margin therefore has to end at minus the smaller neighbour, which is exactly
+    what collapsing takes away - 20 + 0 + (40 - 20) = 40 - or the page takes that difference
+    in one frame. Zero inside a flex or grid parent, where margins never collapse, and zero
+    without a neighbour on each side to collapse between. */
 function restingMarginBelow(node: Element): number {
   const parent = node.parentElement;
   const flow = parent ? !/flex|grid/.test(getComputedStyle(parent).display ?? '') : false;
@@ -552,20 +525,17 @@ function settleGrid(node: Element, duration: number): void {
   });
 }
 
-/** The panel taking a slot over: it travels out of wherever it was promoted
-    from and fades in as it goes.
+/** The panel taking a slot over: it travels out of wherever it was promoted from and fades
+    in as it goes.
 
-    Two cards changing places in one slot is what a crossfade cannot say -
-    "it looks fine as-is, but just the opacity animation can be confusing"
-    (Alicja). What the arriving panel actually did is come out of the fold
-    below the grid, and travelling from there says so: one card leaves, and
-    the thing that was folded under the grid rises into its place.
+    A crossfade alone hides where the arriving panel came from. What the arriving panel
+    actually did is come out of the fold below the grid, and travelling from there says so:
+    one card leaves, and the thing that was folded under the grid rises into its place.
 
-    The travel is a transform, so nothing around it moves and the panel is
-    laid out at its own size from the first frame - the same reason the tiles
-    a rewrap moves do not animate their width. Without an origin, which is a
-    screen that cannot say where the replacement came from, it is the fade
-    alone. */
+    The travel is a transform, so nothing around it moves and the panel is laid out at its
+    own size from the first frame - the same reason the tiles a rewrap moves do not animate
+    their width. Without an origin, which is a screen that cannot say where the replacement
+    came from, it is the fade alone. */
 function risesIntoSlot(node: Element, from?: Slot): TransitionConfig {
   const duration = motionDuration('--dur-slow');
   const here = node.getBoundingClientRect();
@@ -589,20 +559,18 @@ function standsInSlot(node: Element, slot?: Slot): boolean {
   return overlap > Math.min(here.height, slot.height) / 2;
 }
 
-/** A panel that is not giving its space back: it leaves the flow in the frame
-    it is dismissed and dissolves where it stood.
+/** A panel that is not giving its space back: it leaves the flow in the frame it is
+    dismissed and dissolves where it stood.
 
-    Pinned to the box rather than left in place, and the pinning is the whole
-    point - out of flow, the grid reaches its final layout in the frame of the
-    tap, so nothing grows into space that is about to be reclaimed and nothing
-    snaps back when the node is finally removed. `position: fixed` rather than
-    absolute because the box is in viewport coordinates and no containing
-    block has to be arranged for it.
+    Pinned to the box rather than left in place, and the pinning is the whole point - out of
+    flow, the grid reaches its final layout in the frame of the tap, so nothing grows into
+    space that is about to be reclaimed and nothing snaps back when the node is finally
+    removed. `position: fixed` rather than absolute because the box is in viewport
+    coordinates and no containing block has to be arranged for it.
 
-    --dur-slow, and it starts the same frame as the arriving panel's own fade,
-    so a swap reads as one card dissolving into another rather than as a hole
-    that fills in afterwards ("the animation is too fast, it looks like a
-    yank" - Alicja, on the 240ms cut this replaces). */
+    --dur-slow, and it starts the same frame as the arriving panel's own fade, so a swap
+    reads as one card dissolving into another rather than as a hole that fills in
+    afterwards. */
 function dissolveAt(slot: Slot): TransitionConfig {
   return {
     duration: motionDuration('--dur-slow'),
@@ -681,20 +649,18 @@ export function collapse(
     }
     element.removeAttribute('data-intentional-tile-exit');
   }
-  /* A panel arriving on a settled screen does not wait its turn in the
-     grid's stagger (kit.css, --tile-index): the stagger is for a grid
-     arriving together, and the third tile out of the fold sat as a blank
-     block for its two steps before it clipped open (redesign ticket 25,
-     tiles-unfold frames 1 to 9). Inline, so the grid's own nth-child rule
-     is overridden for this one element and nothing else. */
+  /* A panel arriving on a settled screen does not wait its turn in the grid's stagger
+     (kit.css, --tile-index): the stagger is for a grid arriving together, and the third
+     tile out of the fold sat as a blank block for its two steps before it clipped open.
+     Inline, so the grid's own nth-child rule is overridden for this one element and nothing
+     else. */
   if (options?.direction === 'in') (node as HTMLElement).style?.setProperty?.('--tile-index', '0');
   /* Only `data-live-tile` elements participate in keyed slot replacement. Home's `$effect.pre` uses the same marker to find the leaving tile's box. Its surrounding tier wrapper still needs to collapse in flow. Dissolving the wrapper during an unrelated swap pins it in place and makes the agenda jump under a tile still fading for 380ms. */
   if (replacingSlot() && (node as HTMLElement).hasAttribute('data-live-tile')) {
-    /* Only an arrival that actually stands in the slot it replaces rises
-       into it. Stopping the wear session in the today tier promotes the
-       folded tile into the moment grid further down, on a line of its own:
-       it is a tile arriving, not a swap, and faded in at full height it
-       pushed Pinned down 128px in one frame (pre-release 18, item 53). */
+    /* Only an arrival that actually stands in the slot it replaces rises into it. Stopping
+       the wear session in the today tier promotes the folded tile into the moment grid
+       further down, on a line of its own: it is a tile arriving, not a swap, and faded in
+       at full height it pushed Pinned down 128px in one frame. */
     if (options?.direction === 'in' && standsInSlot(node, replacedSwap?.slot)) {
       return risesIntoSlot(node, replacedSwap?.from);
     }
@@ -708,18 +674,16 @@ export function collapse(
        is nothing to pin the panel to and the cut is the honest fallback. */
     return replacedSwap ? dissolveAt(replacedSwap.slot) : { duration: 0 };
   }
-  /* The column case is `disclose`, on this primitive's own duration rather
-     than `disclose`'s. A panel giving its space back is the largest layout
-     change tier 3 makes and it reads as a yank at --dur-med (Alicja, on the
-     recording: "the animation is too fast, it looks like a yank"); a group
-     opening inside a screen, which is what `disclose`'s other callers are,
-     has less to move and keeps the faster one. Both axes of a panel take the
-     same duration, or closing the last of a pair would be slower than
+  /* The column case is `disclose`, on this primitive's own duration rather than
+     `disclose`'s. A panel giving its space back is the largest layout change tier 3 makes
+     and it reads as a yank at --dur-med; a group opening inside a screen, which is what
+     `disclose`'s other callers are, has less to move and keeps the faster one. Both axes of
+     a panel take the same duration, or closing the last of a pair would be slower than
      closing one of two. */
   if (!sharesItsLine(node)) {
-    /* Arriving, the panel comes down from above (`arrivesFromAbove`);
-       leaving, it gives its height back from the bottom up, which is
-       `disclose` run backwards and the closing Alicja signed off. */
+    /* Arriving, the panel comes down from above (`arrivesFromAbove`); leaving, it gives its
+       height back from the bottom up, which is `disclose` run backwards and the closing
+       signed off. */
     if (options?.direction === 'in' && node.getBoundingClientRect().height <= FROM_ABOVE_MAX) {
       return { ...arrivesFromAbove(node), delay: params?.after ?? 0 };
     }
@@ -827,10 +791,9 @@ export function crossfade(
     if (data) data.leaving = '';
   }
 
-  /* `{ instant: true }` for a placeholder that was never painted: a warm
-     revisit replaces it in the flush that mounted it (ReadGroup, ux-carpet
-     201), and fading out something nobody saw would draw it for the first
-     time, over the content, on its way out. */
+  /* `{ instant: true }` for a placeholder that was never painted: a warm revisit replaces
+     it in the flush that mounted it, and fading out something nobody saw would draw it for
+     the first time, over the content, on its way out. */
   const instant = (params as { instant?: boolean } | undefined)?.instant === true;
   return {
     duration: instant ? 0 : motionDuration('--dur-fast'),
@@ -911,12 +874,10 @@ export const resize: Action<HTMLElement, unknown> = (node) => {
   let animating = false;
   let destroyed = false;
   let current: Animation | undefined;
-  /* A height the box reached before it was ever painted is where it starts,
-     not a change: nobody saw the height it was mounted at. A warm revisit
-     (ux-carpet 201) swaps a group's placeholder for its content in the
-     flush that mounts it, and travelling from the placeholder's height
-     moved every tile under the reading grid 850px across the tab's first
-     170ms. */
+  /* A height the box reached before it was ever painted is where it starts, not a change:
+     nobody saw the height it was mounted at. A warm revisit swaps a group's placeholder for
+     its content in the flush that mounts it, and travelling from the placeholder's height
+     moved every tile under the reading grid 850px across the tab's first 170ms. */
   let painted = typeof requestAnimationFrame !== 'function';
   if (painted) lastHeight = node.getBoundingClientRect().height;
   else requestAnimationFrame(() => {
@@ -980,12 +941,11 @@ export const resize: Action<HTMLElement, unknown> = (node) => {
     // Its underlying box keeps the previous height until the handover.
     hold(from);
     const duration = readRevealDuration('--dur-med');
-    /* A travel chained on from a finished one (heldAt, below) sets off
-       from an edge that has come to rest, and --ease-out would spend 44% of
-       it in the first frame: on a first door into the Journal the clamped
-       edge stopped 85px short, then lunged 37px in one frame and uncovered
-       the day's tag pills whole (carpet 15 row 51). --ease-out-soft is the
-       curve for a travel setting off. */
+    /* A travel chained on from a finished one (heldAt, below) sets off from an edge that
+       has come to rest, and --ease-out would spend 44% of it in the first frame: on a first
+       door into the Journal the clamped edge stopped 85px short, then lunged 37px in one
+       frame and uncovered the day's tag pills whole. --ease-out-soft is the curve for a
+       travel setting off. */
     const easing = heldAt === undefined ? EASE_OUT_CSS : EASE_OUT_SOFT_CSS;
     current = node.animate(
       [{ height: `${from}px` }, { height: `${to}px` }],
@@ -1013,16 +973,14 @@ export const resize: Action<HTMLElement, unknown> = (node) => {
         // quietly is what stops the two fighting over it.
       })
       .finally(() => {
-        /* Releasing the hold to measure the content lays the box out at
-           its real height, and a scroller whose end that box sits at
-           clamps its scroll position to the shorter extent in that same
-           layout. When the content shrank mid-travel, the second travel
-           below then held the extent open again, but the scroll position
-           had already gone: on Milestones, deleting a milestone with the
-           page at its end moved the whole screen 210px in one frame at
-           340ms (FA 46). So every scroll position above the box is read
-           before the release and put back once the hold is on again, and
-           the scroll then travels with the height frame by frame. */
+        /* Releasing the hold to measure the content lays the box out at its real height,
+           and a scroller whose end that box sits at clamps its scroll position to the
+           shorter extent in that same layout. When the content shrank mid-travel, the
+           second travel below then held the extent open again, but the scroll position had
+           already gone: on Milestones, deleting a milestone with the page at its end moved
+           the whole screen 210px in one frame at 340ms. So every scroll position above the
+           box is read before the release and put back once the hold is on again, and the
+           scroll then travels with the height frame by frame. */
         const scrolled = scrollPositionsAbove(node);
         release();
         current?.cancel();
@@ -1049,12 +1007,11 @@ export const resize: Action<HTMLElement, unknown> = (node) => {
           restoreScrollPositions(scrolled);
           animateTo(newHeight, settled, to);
         } else if (onScreen(settled) - to >= 1) {
-          /* The box rose while it travelled - a door's field settling
-             above it - so the clamp taken at the start now stops short of
-             the viewport's edge, and releasing would land the rest in one
-             frame: the Journal's tag pills sat clipped 84px above the
-             bottom for 100ms and then appeared whole (carpet 15 row 51).
-             Travel on from the clamped edge to the one now on screen. */
+          /* The box rose while it travelled - a door's field settling above it - so the
+             clamp taken at the start now stops short of the viewport's edge, and releasing
+             would land the rest in one frame: the Journal's tag pills sat clipped 84px
+             above the bottom for 100ms and then appeared whole. Travel on from the clamped
+             edge to the one now on screen. */
           hold(to);
           restoreScrollPositions(scrolled);
           animateTo(newHeight, settled, to);

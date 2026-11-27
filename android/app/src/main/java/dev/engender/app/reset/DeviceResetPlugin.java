@@ -6,10 +6,10 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 /**
- * The reset's third call from the WebView (phase 5 security ticket 01).
- * The other two are the journal itself and belong to the plugins that made
- * it - Sqlite deletes the database, Keystore erases the wrapped data key.
- * This one is {@link DeviceStores}, which is everything else.
+ * The reset's third call from the WebView. The other two are the journal
+ * itself and belong to the plugins that made it - Sqlite deletes the
+ * database, Keystore erases the wrapped data key. This one is {@link
+ * DeviceStores}, which is everything else.
  */
 @CapacitorPlugin(name = "DeviceReset")
 public class DeviceResetPlugin extends Plugin {

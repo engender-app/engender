@@ -1,26 +1,23 @@
-/* The built-in vocabulary every install gets: six gender dimensions, eight
-  presets, five tag groups and eight milestone templates.
+/* The built-in vocabulary every install gets: six gender dimensions, eight presets, five
+  tag groups and eight milestone templates.
 
-   Keys only, no display text. A built-in is the same concept on any
-   device, so it is identified by a stable key and its name is looked up at
-   display time (ADR-0002, and CONTEXT: Built-in). Storing "Femininity"
-   would make a Polish install's archive disagree with an English one about
-   what is the same dimension, and would freeze the wording at seed time.
-   labels.ts holds the lookups; this file takes nothing but types, so the
-   Node tier can read it without dragging in paraglide (ADR-0016).
+  Keys only, no display text. A built-in is the same concept on any device, so it is
+  identified by a stable key and its name is looked up at display time (ADR-0002). Storing the label would make English and Polish archives disagree
+  about the same dimension, and would freeze the wording at seed
+  time. labels.ts holds the lookups; this file takes nothing but types, so the Node tier can
+  read it without dragging in paraglide.
 
-   `as const` throughout, so each key list also produces the union type
-   labels.ts has to cover exhaustively - a built-in added here without a
-   message fails the typecheck rather than showing a raw key to someone. */
+  `as const` throughout, so each key list also produces the union type labels.ts has to
+  cover exhaustively - a built-in added here without a message fails the typecheck rather
+  than showing a raw key to someone. */
 
 import type { GenderDimension, GenderPreset, Tag, TagGroup } from '../types.ts';
 import { BUILT_IN_DIMENSIONS } from './builtinTemplates.ts';
 
-/* Frozen. These eight stopped being a picker in ticket 35 and survive only
-   to resolve a preset key out of an archive written before that, so each
-   list has to keep saying what that key meant when it was written. A scale
-   added to BUILT_IN_DIMENSIONS above never joins one of these: `p-nb` was
-   all five scales that existed then, and restoring a 2026 archive must tick
+/* Frozen. These eight stopped being a picker and survive only to resolve a preset key out
+   of an archive written before that, so each list has to keep saying what that key meant
+   when it was written. A scale added to BUILT_IN_DIMENSIONS above never joins one of these:
+   `p-nb` was all five scales that existed then, and restoring a 2026 archive must tick
    those five rather than whatever "all of them" means today. */
 export const BUILT_IN_PRESETS = [
   { key: 'p-fem-masc', dims: ['euphoria_dysphoria', 'femininity', 'masculinity'] },
@@ -78,7 +75,7 @@ export const BUILT_IN_TAG_GROUPS = [
     tags: []
   },
   {
-    // Named types of a hard day (CONTEXT: Dysphoria type), distinct from the
+    // Named types of a hard day, distinct from the
     // `euphoria_dysphoria` gender dimension above - a scale, not a tag group,
     // and never the same control. Bare category names, no "dysphoria" suffix,
     // matching how the emotions/activities groups above leave their own
@@ -122,12 +119,10 @@ export const SEEDED_HIDDEN_BODY_REGIONS: ReadonlySet<string> = new Set(['whole_b
 export type BuiltInTagKey = (typeof BUILT_IN_TAG_GROUPS)[number]['tags'][number];
 
 
-/* The body regions every install starts with (phase 5 ticket 30, CONTEXT:
-   "Reference data" - amended): the original eight (bodyMap.ts's header
-   carries their own history) plus shoulders and whole body, seeded as
-   ordinary reference-data rows rather than the closed BODY_REGION_KEYS
-   list this replaces. Keys only, wording in labels.ts, the same split
-   every other built-in list here draws. */
+/* The body regions every install starts with: the original eight (bodyMap.ts's header
+   carries their own history) plus shoulders and whole body, seeded as ordinary
+   reference-data rows rather than the closed BODY_REGION_KEYS list this replaces. Keys
+   only, wording in labels.ts, the same split every other built-in list here draws. */
 export const BUILT_IN_BODY_REGIONS = [
   'face_jaw',
   'voice_throat',
@@ -196,7 +191,7 @@ export const BUILT_IN_PERSONAL_EFFECT_TYPES = [
   { key: 'decreased_libido', category: 'sexual', direction: 'feminizing' },
   { key: 'decreased_spontaneous_erections', category: 'sexual', direction: 'feminizing' },
   { key: 'decreased_testicular_volume', category: 'genital', direction: 'feminizing' },
-  // Tier 2 since ticket 22 (see the header above).
+  // Tier 2 (see the header above).
   { key: 'male_pattern_baldness_ceasing', category: 'skin_hair', direction: 'feminizing' },
 
   // Feminizing, tier 2: named by genderdysphoria.fyi, no usable literature
@@ -233,7 +228,7 @@ export const BUILT_IN_PERSONAL_EFFECT_TYPES = [
   { key: 'attraction_change_feminizing', category: 'sexual', direction: 'feminizing' },
 
   // Masculinizing, tier 1: the original four plus
-  // ticket 41's four-effect widening.
+  // four-effect widening.
   { key: 'voice_drop', category: 'body_shape', direction: 'masculinizing' },
   { key: 'facial_body_hair', category: 'skin_hair', direction: 'masculinizing' },
   { key: 'masculinizing_fat_redistribution', category: 'body_shape', direction: 'masculinizing' },
@@ -245,7 +240,7 @@ export const BUILT_IN_PERSONAL_EFFECT_TYPES = [
 
   // Masculinizing, tier 2: named by genderdysphoria.fyi, no usable
   // literature figure. Scalp hair loss is the exception, tier 1 since
-  // ticket 22 (see the header above).
+
   { key: 'scalp_hair_loss_masculinizing', category: 'skin_hair', direction: 'masculinizing' },
   { key: 'larger_hands_feet_masculinizing', category: 'body_shape', direction: 'masculinizing' },
   { key: 'thicker_stronger_nails_masculinizing', category: 'skin_hair', direction: 'masculinizing' },
@@ -293,28 +288,25 @@ export {
   type GuidedPromptKey
 } from './builtinTemplates.ts';
 
-/* Presets and milestone templates are not stored rows in Phase 1 - the
-   journal holds only what the user added - so these hand back the built-in
-   ones in the shape the rest of the code already expects, names left for
-   vocabulary.ts to fill in. */
+/* Presets and milestone templates are not stored rows - the journal holds only what the
+   user added - so these hand back the built-in ones in the shape the rest of the code
+   already expects, names left for vocabulary.ts to fill in. */
 
 function builtInPresetRows(): GenderPreset[] {
   return BUILT_IN_PRESETS.map((p) => ({ id: p.key, name: '', builtIn: true, dims: [...p.dims] }));
 }
 
-/* Reconciling, not seeding-if-empty. Both functions add what is missing by
-   key and touch nothing else, so they are safe to run on every boot and
-   again before an import applies - which is the point, because a Replace
-   import must not be able to leave the journal short of a built-in.
-   Ticket 07 moves the same shape onto SQLite rows, and adds presets and
-   milestone templates, which are not stored rows yet. */
+/* Reconciling, not seeding-if-empty. Both functions add what is missing by key and touch
+   nothing else, so they are safe to run on every boot and again before an import applies -
+   which is the point, because a Replace import must not be able to leave the journal short
+   of a built-in. moves the same shape onto SQLite rows, and adds presets and milestone
+   templates, which are not stored rows yet. */
 
 function builtInDimension(key: string, min: number, max: number): GenderDimension {
   return { key, name: '', low: '', high: '', min, max, builtIn: true, hidden: false };
 }
 
-/* withBuiltInDimensions stays exported only for its own test (AU-09 test-only
-   review). */
+/* withBuiltInDimensions stays exported only for its own test. */
 export function withBuiltInDimensions(existing: GenderDimension[]): GenderDimension[] {
   const present = new Set(existing.map((d) => d.key));
   const missing = BUILT_IN_DIMENSIONS.filter((d) => !present.has(d.key)).map((d) =>
@@ -327,8 +319,7 @@ function builtInTag(id: string): Tag {
   return { id, label: '', builtIn: true, hidden: false };
 }
 
-/* withBuiltInTagGroups stays exported only for its own test (AU-09 test-only
-   review). */
+/* withBuiltInTagGroups stays exported only for its own test. */
 export function withBuiltInTagGroups(existing: TagGroup[]): TagGroup[] {
   const byKey = new Map(existing.map((g) => [g.key, g]));
 

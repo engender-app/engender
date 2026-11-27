@@ -1,16 +1,14 @@
-/* Check catalogue order, translated keys, unlocalized copy, Polish
-   reader forms and caller coverage. Paraglide falls back to the base
-   language for a missing Polish translation. A missing generated
-   accessor is already a type error.
+/* Check catalogue order, translated keys, unlocalized copy, Polish reader forms and caller
+   coverage. Paraglide falls back to the base language for a missing Polish translation. A
+   missing generated accessor is already a type error.
 
-   Message calls use named accessors in shipped source, including
-   vocabulary labels (ADR-0024). DEAD_ALLOW lists callers the source
-   scan cannot see. The Polish check catches second-person gendered
-   verb endings and a short list of known predicate adjectives.
+   Message calls use named accessors in shipped source, including vocabulary labels.
+   DEAD_ALLOW lists callers the source scan cannot see. The Polish check catches
+   second-person gendered verb endings and a short list of known predicate adjectives.
 
-   The literal count is kept per file in messages/untranslated-literals.txt.
-   Run npm run check:copy -- --update after localizing a literal, and
-   npm run check:copy -- --fix to restore catalogue order. */
+   The literal count is kept per file in messages/untranslated-literals.txt. Run npm run
+   check:copy -- --update after localizing a literal, and npm run check:copy -- --fix to
+   restore catalogue order. */
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
@@ -63,12 +61,12 @@ const DEAD_ALLOW = new Map();
  * The ratchet is a rule about screens, and a screen's literal is text a
  * reader can end up looking at. DemoBar is not one: it is the review-only
  * control strip, `__DEMO__` compiles it out of a production build, and
- * verify-build.mjs greps the emitted JavaScript and CSS to prove its copy
- * is not in there. Recorded rather than exempt until phase 9 audit ticket
- * 12, which is when the cost showed: the count had climbed 15 -> 16 on a
- * demo control added by another ticket, and a ratchet that turns "add a
- * jump button" into "re-record a copy baseline" is asking sessions to
- * update a number nobody reads instead of catching copy a reader could see.
+ * verify-build.mjs greps the emitted JavaScript and CSS to prove its copy is
+ * not in there. Recorded rather than exempt, which is when the cost showed:
+ * the count had climbed 15 -> 16 on a demo control added by another ticket,
+ * and a ratchet that turns "add a jump button" into "re-record a copy
+ * baseline" is asking sessions to update a number nobody reads instead of
+ * catching copy a reader could see.
  */
 const UNSCANNED = new Map([
   [

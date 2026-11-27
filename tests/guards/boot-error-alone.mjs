@@ -117,12 +117,11 @@ check(
 const healthy = await open(null);
 check(healthy.boot === 'ready' && healthy.present.includes('[data-home-hello]'), `a normal boot still reaches Today (boot=${healthy.boot})`);
 
-/* Ticket 215: a database that never loads is a failed boot too. A blocked
-   wasm request (an extension, a stale cache) left the boot at 'booting' for
-   good, because the failed boot's second close went to a worker the first
-   had terminated and waited for an answer that never came. Both load
-   failures must reach the notice, and a healthy boot at 6x CPU must not be
-   mistaken for one. */
+/* A database that never loads is a failed boot too. A blocked wasm request (an extension, a
+   stale cache) left the boot at 'booting' for good, because the failed boot's second close
+   went to a worker the first had terminated and waited for an answer that never came. Both
+   load failures must reach the notice, and a healthy boot at 6x CPU must not be mistaken
+   for one. */
 async function verdict(prepare, cpu = 1) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
   await prepare(context);

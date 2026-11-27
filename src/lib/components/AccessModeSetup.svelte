@@ -86,14 +86,13 @@
     onChoose,
     chosen = $bindable(null)
   }: {
-    /** `recovered` is a change with two differences that both showed up in
-        a render (ADR-0054, ticket sec-02). The screen holding it already
-        carries its own paragraph saying what happened, so a second one
-        about rewrapping is a wall of explanation nobody reads; and the mode
-        it names as current is the one that just failed, which above a list
-        of alternatives reads as a reassurance that it still works. So this
-        purpose draws neither. It is otherwise a change in every way that
-        matters, including which modes are offered. */
+    /** `recovered` is a change with two differences that both showed up in a render
+        (ADR-0054). The screen holding it already carries its own paragraph saying what
+        happened, so a second one about rewrapping is a wall of explanation nobody reads;
+        and the mode it names as current is the one that just failed, which above a list of
+        alternatives reads as a reassurance that it still works. So this purpose draws
+        neither. It is otherwise a change in every way that matters, including which modes
+        are offered. */
     purpose?: 'setup' | 'change' | 'recovered';
     current?: Mode | null;
     busy?: boolean;
@@ -298,15 +297,13 @@
   );
 </script>
 
-<!-- One step in three states, and a state change moves. The
-     module's screens used to swap in a single frame: the four modes were
-     there and then the chosen one's consequence was, with nothing in
-     between - "a mode picked inside the gate, yank between frame 1 and 2"
-     (Alicja, round one on redesign ticket 34). They cross now, on the same
-     crossfade setup's own steps take, over a grid cell that holds both so
-     the two overlap rather than stacking and doubling the page's height
-     while they do. The field's edge is already travelling underneath, since
-     the gate's title changes with the screen. -->
+<!-- One step in three states, and a state change moves. The module's screens used to swap
+     in a single frame: the four modes were there and then the chosen one's consequence was,
+     with nothing in between.
+     They cross now, on the same crossfade setup's own steps take, over a grid cell that
+     holds both so the two overlap rather than stacking and doubling the page's height while
+     they do. The field's edge is already travelling underneath, since the gate's title
+     changes with the screen. -->
 <div class="am-stage">
   {#key screen.screen}
     <div class="am-stage-screen" in:fieldPart out:fieldPart onintroend={(event) => {

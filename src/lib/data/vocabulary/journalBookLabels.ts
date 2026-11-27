@@ -1,15 +1,14 @@
-/* What each part of the journal book is called, here
-   rather than in journalBook.ts for the reason its neighbour gives: the
-   wording speaks paraglide, and nothing the Node tier touches may import
-   that (ADR-0016).
+/* What each part of the journal book is called, here rather than in journalBook.ts for the
+   reason its neighbour gives: the wording speaks paraglide, and nothing the Node tier
+   touches may import that.
 
-   One name per part, used both by the inclusion picker and by the heading
-   that part prints under, so a person ticking "Milestones" gets a page that
-   says the same word back. Most of them are the word its own screen already
-   uses; only the two a book invents need a key of their own.
+   One name per part, used both by the inclusion picker and by the heading that part prints
+   under, so a person ticking "Milestones" gets a page that says the same word back. Most of
+   them are the word its own screen already uses; only the two a book invents need a key of
+   their own.
 
-   A full Record over the inclusion keys: a part with no name here is a
-   typecheck failure rather than a raw key printed on paper. */
+   A full Record over the inclusion keys: a part with no name here is a typecheck failure
+   rather than a raw key printed on paper. */
 
 import { m } from '$lib/paraglide/messages';
 import type { JournalBookInclusionKey } from '$lib/data/journal/journalBook';

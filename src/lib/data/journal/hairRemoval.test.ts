@@ -29,8 +29,8 @@ test('deleting a hair-removal session removes its photos and files immediately, 
   assert.deepEqual(await db.query('PRAGMA foreign_key_check'), []);
 });
 
-/* FA 28: pain is optional (an unrated session stores no rating, not 3),
-   a session can carry its length in minutes, and four areas are new. */
+/* pain is optional (an unrated session stores no rating, not 3), a session can carry its
+   length in minutes, and four areas are new. */
 async function open() {
   const db = await migratedDb();
   return { db, journal: openJournal(db, fakeFileStore()) };

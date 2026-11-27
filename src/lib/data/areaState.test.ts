@@ -100,17 +100,16 @@ test('every area that is not finishable says why, and no area answers twice', ()
   }
 });
 
-/* ADR-0043's rule is one-directional on purpose: a testosterone regimen or
-   the explicit preference adds the cycle row back, and no preference is what
-   hides it, because read cold an unconditional cycle row is a dysphoria
-   trigger. A uniform bidirectional flag defaulting to shown would delete both
-   the asymmetry and the data-driven unhide, so cycle keeps its own gate and
-   this record does not reach it. The compile error is the load-bearing half;
+/* The rule is one-directional on purpose: a testosterone regimen or the explicit preference
+   adds the cycle row back, and no preference is what hides it, because read cold an
+   unconditional cycle row is a dysphoria trigger. A uniform bidirectional flag defaulting
+   to shown would delete both the asymmetry and the data-driven unhide, so cycle keeps its
+   own gate and this record does not reach it. The compile error is the load-bearing half;
    the four answers below are what a future refactor would have to break. */
 test('cycle tracking keeps its own gate: no row here changes what it answers', () => {
   assert.match(NOT_FINISHABLE.cycleEvents, /ADR-0043/);
 
-  // @ts-expect-error cycleEvents is not a key of this record at all (ADR-0043),
+  // @ts-expect-error cycleEvents is not a key of this record at all
   // so neither gate below can be asked about it and no state can be built that
   // would answer. That is what stops the record reversing a one-directional
   // rule; areaStates.test.ts covers the row a foreign archive could carry.

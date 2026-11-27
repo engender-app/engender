@@ -1,16 +1,13 @@
-/* How the documents index groups its rows:
-   by what a document is filed under, four kinds in the order the target
-   picker's own sections use (documentTargets.svelte.ts), with everything
-   unfiled gathered last under its own bucket rather than first or
-   scattered among the named ones - the named groups are what somebody
-   recognises a paper by, and the leftover is what is left once those are
-   named.
+/* How the documents index groups its rows: by what a document is filed under, four kinds in
+   the order the target picker's own sections use (documentTargets.svelte.ts), with
+   everything unfiled gathered last under its own bucket rather than first or scattered
+   among the named ones - the named groups are what somebody recognises a paper by, and the
+   leftover is what is left once those are named.
 
-   Pure and Node-testable (ADR-0016): grouping only needs a document's own
-   `targetKind`, never the target's name, so it does not touch the four
-   live reads `documentTargets.svelte.ts` wires for that. Newest-first
-   within a group falls out for free - `documents.ts`'s own `getDocuments`
-   already hands rows in that order, and this is a stable partition that
+   Pure and Node-testable: grouping only needs a document's own `targetKind`, never the
+   target's name, so it does not touch the four live reads `documentTargets.svelte.ts` wires
+   for that. Newest-first within a group falls out for free - `documents.ts`'s own
+   `getDocuments` already hands rows in that order, and this is a stable partition that
    never reorders what lands in a bucket. */
 
 import type { DocumentTargetKind, JournalDocument } from '../types';

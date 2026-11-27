@@ -41,8 +41,8 @@ test('a region anywhere on the scale, including its midpoint, is accepted', () =
   assert.equal(isPersistedEntryDraft(draft({})), true);
 });
 
-test('a draft saved before ticket 39 collapsed a region to one number is rejected, not half-read', () => {
-  // The pre-ticket-39 shape stored a {dysphoria, euphoria} pair per region.
+test('rejects older drafts with two readings per region', () => {
+  // The older format stored a {dysphoria, euphoria} pair per region.
   // Accepting it would send an object down to the INSERT where a number
   // belongs.
   assert.equal(isPersistedEntryDraft(draft({ chest: { dysphoria: 40, euphoria: null } })), false);
@@ -50,9 +50,8 @@ test('a draft saved before ticket 39 collapsed a region to one number is rejecte
   assert.equal(isPersistedEntryDraft(draft({ chest: 'a lot' })), false);
 });
 
-/* Node has no localStorage (ADR: ticket 03's node tier), so the mirror gets
-   a Map standing in for one. WebCrypto is real here - Node's own - which is
-   what makes the encryption itself testable outside a browser. */
+/* Node has no localStorage, so the mirror gets a Map standing in for one. WebCrypto is real
+   here - Node's own - which is what makes the encryption itself testable outside a browser. */
 function fakeLocalStorage() {
   const values = new Map<string, string>();
   vi.stubGlobal('localStorage', {

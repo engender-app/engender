@@ -11,20 +11,15 @@
 import { ACTIVE_DOOR_CONTENT } from '../navigation/doorActivity';
 import { blindSettle, EASE_OUT_SOFT_VAR } from './blindSettle';
 
-/* Every box that measures a field, so the blind is one object across every
-   navigation the app makes. Setup's own field was missing from this list
-   until redesign ticket 33, which meant the outgoing side of setup's
-   handover contributed nothing: the blind opened from no height at all
-   while setup's field crossfaded away inside the screen's snapshot, so what
-   a person saw at the end of setup was one field fading out and another
-   appearing. Alicja, on the ticket's own renders: "the field must always
-   stay a single object that transitions to other states only by moving up
-   or down".
+/* Every box that measures a field, so the blind is one object across every navigation the
+   app makes. Setup's own field was missing from this list, which meant the outgoing side of
+   setup's handover contributed nothing: the blind opened from no height at all while
+   setup's field crossfaded away inside the screen's snapshot, so what a person saw at the
+   end of setup was one field fading out and another appearing.
 
-   The gates joined it the same way one ticket later, and the change they
-   need is not only this line: a gate is not a route, so there is no
-   navigation for the layout to catch. $lib/motion/appOpening is what runs
-   this carry when the secret is accepted. */
+   The gates joined it the same way one ticket later, and the change they need is not only
+   this line: a gate is not a route, so there is no navigation for the layout to catch.
+   $lib/motion/appOpening is what runs this carry when the secret is accepted. */
 const FIELD = `:is([data-screen-field], [data-home-field], [data-setup-field], [data-gate-field])${ACTIVE_DOOR_CONTENT}`;
 const REGION = '[data-app-scroll-region]';
 const BLIND = '[data-field-blind]';
@@ -34,41 +29,33 @@ const RING = '[data-flag-sun] > i';
 /** The blind itself, which is one object on both sides of a navigation. */
 const BLIND_NAME = 'blind';
 
-/** The field, named only to contain what is painted on it (ticket 99 round
-    2's real fix, not the cap below it): `view-transition-group: contain`
-    plus `overflow: clip` on `::view-transition-group-children(field)`
-    (components.css) is Chrome's own answer to a promoted child ignoring
-    its ancestor's overflow: hidden - confirmed against the W3C spec and
-    Chrome's own docs, which name this exact symptom ("becomes unbounded
-    and can freely move across the entire viewport"), shipped stable since
-    Chrome 140. The field's own capture is hidden rather than left to
-    crossfade (components.css again): naming it for containment must not
-    reintroduce the whole-field photograph ticket 25 split this file apart
-    to stop ("the smear"). */
+/** The field, named only to contain what is painted on it: `view-transition-group: contain`
+    plus `overflow: clip` on `::view-transition-group-children(field)` (components.css) is
+    Chrome's own answer to a promoted child ignoring its ancestor's overflow: hidden -
+    confirmed against the W3C spec and Chrome's own docs, which name this exact symptom
+    ("becomes unbounded and can freely move across the entire viewport"), shipped stable
+    since Chrome 140. The field's own capture is hidden rather than left to crossfade
+    (components.css again): naming it for containment must not reintroduce the whole-field
+    photograph split this file apart to stop ("the smear"). */
 const FIELD_NAME = 'field';
 
-/** A capture bound generous enough for every real field's height, not a
-    measurement of any one of them - see the comment where it is used.
-    Home's is the tallest measured (239px, ticket 99's own traces); 260
-    leaves a 21px margin rather than the 161px the first attempt at this
-    left, which at this phone's 2.625 device pixel ratio was itself most
-    of the glitch's visible height (Alicja, round four: "now about 50%",
-    a match for 400px's own footprint, not a smaller residual bug). */
+/** A capture bound generous enough for every real field's height, not a measurement of any
+    one of them - see the comment where it is used. Home's is the tallest measured; 260
+    leaves a 21px margin rather than the 161px the first attempt at this left, which at this
+    phone's 2.625 device pixel ratio was itself most of the glitch's visible height. */
 const BLIND_CAPTURE_MAX = 260;
 /** What the capture keeps below a field taller than that: the settle's 8px of
     overshoot and a little more. */
 const BLIND_CAPTURE_ROOM = 40;
 
-/** How far a thing painted on the field travels as it leaves or arrives, on
-    top of the ride it takes with the blind. Under the field's own 16px of
-    bottom padding, so an element travelling towards the edge cannot reach
-    it: nothing painted on the blind ever sticks out of it (Alicja, round
-    one, 2026-09-09).
+/** How far a thing painted on the field travels as it leaves or arrives, on top of the ride
+    it takes with the blind. Under the field's own 16px of bottom padding, so an element
+    travelling towards the edge cannot reach it: nothing painted on the blind ever sticks
+    out of it.
 
-    Exported because `fieldPart` in navigation.ts writes the same distance as
-    a var() fallback, for the frame before this module has published one -
-    and a second literal there would be a second source of truth for one
-    number. */
+    Exported because `fieldPart` in navigation.ts writes the same distance as a var()
+    fallback, for the frame before this module has published one - and a second literal
+    there would be a second source of truth for one number. */
 export const PART_TRAVEL = 12;
 
 /* Which carry owns the variables on the root. A navigation superseded by
@@ -79,15 +66,13 @@ export const PART_TRAVEL = 12;
    published them may remove them. */
 let current: BlindCarry | null = null;
 
-/* The newest carry made, which owns every name and variable while it lives.
-   A navigation that lands on another one skips it, and the skipped
-   transition's `finished` settles the moment the new one starts - before the
-   new one has captured its outgoing side. Its late release took the names off
-   the very elements the new carry had just named, so the new transition had
-   no outgoing blind, field or type: the edge stood at its destination from
-   its first frame while the incoming type rode in from the old one, up to
-   12px below it (ticket 285, interrupted and reversed door changes). Only the
-   newest carry may name, or give names back. */
+/* The newest carry made, which owns every name and variable while it lives. A navigation
+   that lands on another one skips it, and the skipped transition's `finished` settles the
+   moment the new one starts - before the new one has captured its outgoing side. Its late
+   release took the names off the very elements the new carry had just named, so the new
+   transition had no outgoing blind, field or type: the edge stood at its destination from
+   its first frame while the incoming type rode in from the old one, up to 12px below it.
+   Only the newest carry may name, or give names back. */
 let latest: BlindCarry | null = null;
 
 export interface CarryOptions {
@@ -155,21 +140,15 @@ export function carryBlind(doc: Document = document, options: CarryOptions = {})
      frame the earlier transition is skipped - a 43px yank of the blue with
      the type on it. The new transition starts from what was on screen. */
   const fromEdge = flight?.edge ?? before.height;
-  /* Published here, not only in swap() (Alicja, 2026-09-10, on a phone
-     recording, two rounds: "the field completely glitches out ... for 1-2
-     frames", then "the field teleporting up at the end of the
-     transition"). The browser captures the outgoing side, and the
-     blind-slide animation attaches to it, the instant startViewTransition
-     is called - which is before swap() ever runs, since that only fires
-     once the incoming screen has mounted. Until now that left
-     --blind-from unset for that whole window, so blind-slide's own
-     fallback (var(--blind-from, 0px)) played the outgoing side's "from"
-     keyframe as fully clipped away rather than as its real height - the
-     glitch - until swap() corrected it a moment later, which is the
-     teleport: the animation's start suddenly moving out from under it.
-     --blind-to is set to the same value rather than left unset for the
-     same reason; swap() overwrites both the instant it knows the real
-     pair. */
+  /* Published here, not only in swap(). The browser captures the outgoing side, and the
+     blind-slide animation attaches to it, the instant startViewTransition is called - which
+     is before swap() ever runs, since that only fires once the incoming screen has mounted.
+     Until now that left --blind-from unset for that whole window, so blind-slide's own
+     fallback (var(--blind-from, 0px)) played the outgoing side's "from" keyframe as fully
+     clipped away rather than as its real height - the glitch - until swap() corrected it a
+     moment later, which is the teleport: the animation's start suddenly moving out from
+     under it. --blind-to is set to the same value rather than left unset for the same
+     reason; swap() overwrites both the instant it knows the real pair. */
   root.style.setProperty('--blind-from', `${fromEdge}px`);
   root.style.setProperty('--blind-to', `${fromEdge}px`);
   /* The outgoing type was photographed at the DOM's resting positions, which
@@ -305,10 +284,9 @@ export function blindVariables({
        and travels up to its own place. */
     '--blind-delta': `${from - to}px`,
     '--blind-ease': settle.easing,
-    /* Which way the things painted on the field leave and arrive: with the
-       blind, so on a blind being pulled down the old text drops and the new
-       comes from above, and on one being pulled up they both go the other
-       way (Alicja, round one). */
+    /* Which way the things painted on the field leave and arrive: with the blind, so on a
+       blind being pulled down the old text drops and the new comes from above, and on one
+       being pulled up they both go the other way. */
     '--part-travel': `${to > from ? PART_TRAVEL : -PART_TRAVEL}px`
   };
 }

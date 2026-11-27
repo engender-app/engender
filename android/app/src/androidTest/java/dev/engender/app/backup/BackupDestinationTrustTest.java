@@ -33,7 +33,7 @@ import org.json.JSONObject;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-/** GD-049: the backup folder and the file a retry writes to are checked on every use. */
+/** The backup folder and the file a retry writes to are checked on every use. */
 @RunWith(AndroidJUnit4.class)
 public class BackupDestinationTrustTest {
     private final Context app = InstrumentationRegistry.getInstrumentation().getTargetContext();

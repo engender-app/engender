@@ -5,11 +5,10 @@
     <!-- viewport-fit=cover makes the browser report the safe-area insets and
          lets the page extend behind the system bars. app.css uses the
          insets to pad the scroll region on all four sides. -->
-    <!-- No maximum-scale, no user-scalable: the browser's zoom belongs to
-         the person using the app (WCAG 1.4.4, audit U2). The Android shell
-         is the exception - it turns pinch off in the WebView itself, via
-         capacitor.config.ts's zoomEnabled - so this markup serves the web
-         release only where zoom is wanted. tests/node/ui/zoom-policy.test.ts holds
+    <!-- No maximum-scale, no user-scalable: the browser's zoom belongs to the person using
+         the app (WCAG 1.4.4). The Android shell is the exception - it turns pinch off in
+         the WebView itself, via capacitor.config.ts's zoomEnabled - so this markup serves
+         the web release only where zoom is wanted. tests/node/ui/zoom-policy.test.ts holds
          both halves of that policy to their sources. -->
     <meta
       name="viewport"
@@ -29,17 +28,14 @@
     <link rel="apple-touch-icon" href="%sveltekit.assets%/apple-touch-icon.png" />
     <link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />
     <script>
-      /* Stamps the user's theme, palette and tab icon before first paint
-         (ADR-0009).
-         The attributes on <html> above are only what a first-ever visit,
-         or a visit where this throws, falls back to; SQLite is still
-         hundreds of milliseconds from opening at this point, which is why
-         these preferences are mirrored outside it at all.
+      /* Stamps the user's theme, palette and tab icon before first paint. The attributes on
+         <html> above are only what a first-ever visit, or a visit where this throws, falls
+         back to; SQLite is still hundreds of milliseconds from opening at this point, which
+         is why these preferences are mirrored outside it at all.
 
-         Inline and dependency-free because it has to run before any module
-         is parsed, so it cannot import the key or the shape - both are
-         owned by src/lib/data/prefs/boot-cache.ts and have to be changed
-         in the two places together. */
+         Inline and dependency-free because it has to run before any module is parsed, so it
+         cannot import the key or the shape - both are owned by
+         src/lib/data/prefs/boot-cache.ts and have to be changed in the two places together. */
       try {
         let boot = {};
         try {
@@ -56,10 +52,9 @@
           if (window.androidDisguiseState) boot.disguise = window.androidDisguiseState.isDisguised() === true;
         } catch {}
         const root = document.documentElement;
-        /* Disguised, the first frame and every gate wear the neutral notes
-           palette, whatever an older mirror still names (security-scan
-           ticket 08). Same rule as documentChrome.ts before the journal
-           shows. */
+        /* Disguised, the first frame and every gate wear the neutral notes palette,
+           whatever an older mirror still names. Same rule as documentChrome.ts before the
+           journal shows. */
         if (boot.disguise) root.dataset.palette = 'notes';
         else if (boot.palette) root.dataset.palette = boot.palette;
         if (boot.moodPreset) root.dataset.moodPreset = boot.moodPreset;
@@ -69,8 +64,8 @@
               ? 'dark'
               : 'light'
             : boot.theme;
-        /* Under disguise the first frame carries no mark, the same rule every
-           surface that draws it follows (ADR-0014): the ground alone. */
+        /* Under disguise the first frame carries no mark, the same rule every surface that
+           draws it follows: the ground alone. */
         if (boot.disguise) root.dataset.disguised = '';
         root.dataset.a11yTextSize = boot.a11yTextSizeBoost ? 'boost' : 'normal';
         root.dataset.a11yLegibility = boot.a11yLegibilityBoost ? 'boost' : 'normal';
@@ -111,18 +106,16 @@
         /* no mirror yet, or storage is unavailable */
       }
       /* The build leaves the document's module hints inert (rel="x-modulepreload",
-         src/hooks.server.ts) so the stylesheets a first paint waits for are
-         not sharing the connection with ninety-eight modules nothing waits
-         for. They are given back once the document has parsed and the first
-         frame has had its turn. Outside the try above, so a browser with no
-         storage still loads its modules.
+         src/hooks.server.ts) so the stylesheets a first paint waits for are not sharing the
+         connection with ninety-eight modules nothing waits for. They are given back once
+         the document has parsed and the first frame has had its turn. Outside the try
+         above, so a browser with no storage still loads its modules.
 
-         Over HTTP/1.1 there is no one connection to share: the browser opens
-         six, and holding the hints only queued the modules behind the first
-         frame, which put the first screen 0.3 s later (after-release ticket
-         31, audit PERF-03). There each hint is given back as the parser adds
-         it. Only HTTP/1.x is named, so a page with no protocol to read (the
-         offline shell, the Android WebView) keeps the hold it always had. */
+         Over HTTP/1.1 there is no one connection to share: the browser opens six, and
+         holding the hints only queued the modules behind the first frame, which put the
+         first screen 0.3 s later. There each hint is given back as the parser adds it. Only
+         HTTP/1.x is named, so a page with no protocol to read (the offline shell, the
+         Android WebView) keeps the hold it always had. */
       {
         const give = () => {
           for (const link of document.querySelectorAll('link[rel="x-modulepreload"]')) link.rel = 'modulepreload';
@@ -141,21 +134,18 @@
       }
     </script>
     <style>
-      /* The first frame (phase 14 pre-release ticket 13): the ground and the
-         mark, painted from this document alone. Everything the app draws
-         waits for its scripts, which on a slow phone is seconds, so until
-         then the page was white. The theme and palette are the ones the
-         script above has just stamped on <html>; the colours per palette
-         are generated into the block below from palettes.css
-         (npm run render:splash), and src/lib/theme/splash.ts says how.
+      /* The first frame: the ground and the mark, painted from this document alone.
+         Everything the app draws waits for its scripts, which on a slow phone is seconds,
+         so until then the page was white. The theme and palette are the ones the script
+         above has just stamped on <html>; the colours per palette are generated into the
+         block below from palettes.css (npm run render:splash), and src/lib/theme/splash.ts
+         says how.
 
-         The mark never moves. The handover is opacity only, on the blind's
-         soft ease-out (Alicja picked it over a rising edge in after-release
-         ticket 31): lib/splash.ts adds .is-leaving and .is-answered once boot
-         has answered and its screen is showing, and takes the element out
-         when the fade is done. It is fixed and inert, so nothing under it
-         can be missed or blocked, and the ground is the app's own --bg so no
-         frame of the fade shows a different one. */
+         The mark never moves. The handover is opacity only, on the blind's soft ease-out:
+         lib/splash.ts adds .is-leaving and .is-answered once boot has answered and its screen
+         is showing, and takes the element out when the fade is done. It is fixed and inert,
+         so nothing under it can be missed or blocked, and the ground is the app's own --bg
+         so no frame of the fade shows a different one. */
       #splash {
         position: fixed;
         inset: 0;
@@ -165,9 +155,8 @@
         pointer-events: none;
         background: var(--splash-ground, #f4f8fb);
         opacity: 0.996;
-        /* The ground travels too: a disguised journal that opens without a
-           gate trades the neutral notes palette for its own as boot answers,
-           under this very element (security-scan ticket 08). */
+        /* The ground travels too: a disguised journal that opens without a gate trades the
+           neutral notes palette for its own as boot answers, under this very element. */
         transition: opacity 280ms var(--ease-out-soft, cubic-bezier(0.38, 0.32, 0.2, 1)),
           background-color 280ms var(--ease-out-soft, cubic-bezier(0.38, 0.32, 0.2, 1));
       }

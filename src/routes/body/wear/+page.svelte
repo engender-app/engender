@@ -1,11 +1,9 @@
 <script lang="ts">
-  /* The binder/tucking wear log (phase 5 ticket 04, CONTEXT: "Wear
-     session"). Two ways into the same row: tapping "Now" writes a running
-     session (a null duration) immediately, and stopping it later fills the
-     duration in; backfilling writes a complete row in one save. Editing an
-     existing day only ever shifts the stored start by whole days
-     (shiftStartToDay) - its time-of-day is never re-typed, so a session
-     that was started live keeps its real hour even if its day is corrected
+  /* The binder/tucking wear log. Two ways into the same row: tapping "Now" writes a running
+     session (a null duration) immediately, and stopping it later fills the duration in;
+     backfilling writes a complete row in one save. Editing an existing day only ever shifts
+     the stored start by whole days (shiftStartToDay) - its time-of-day is never re-typed,
+     so a session that was started live keeps its real hour even if its day is corrected
      later, and a backfilled one stays anchored at local midnight. */
   import { undoable } from '$lib/stores/deleteUndo';
   import { dayRangeOptions } from '$lib/components/dayRangeOptions';
@@ -63,8 +61,8 @@
   import { roleAt } from '$lib/theme/roles';
   import { isAndroid, journalTextAutocomplete } from '$lib/platform';
 
-  /* ADR-0063 / ticket 32: the elapsed reminder can only ever fire through
-     the Android bridge, so web offers no toggle and no hours field. */
+  /* ADR-0063 / the elapsed reminder can only ever fire through the Android bridge, so web
+     offers no toggle and no hours field. */
   let isWeb = $derived(!isAndroid());
 
   /* Colour that carries a value takes role 0: index 0 is the
@@ -249,9 +247,8 @@
         never changes which of the two modes wrote it. */
     mode: Mode;
     day: string;
-    /* Both hour fields hold the number their input parsed, or null while
-       it holds nothing parseable. Bound as strings, they were rewritten
-       under the caret on every key (last-audit UI 01). */
+    /* Both hour fields hold the number their input parsed, or null while it holds nothing
+       parseable. Bound as strings, they were rewritten under the caret on every key. */
     durationHours: number | null;
     note: string;
     reminderEnabled: boolean;
@@ -287,9 +284,8 @@
       };
     },
     async upsert(draft) {
-      /* A running session's only save is Stop, which fills the duration in.
-         It goes through here, so the sheet's own busy state and leave guard
-         cover it like any other save (after-release 06). */
+      /* A running session's only save is Stop, which fills the duration in. It goes through
+         here, so the sheet's own busy state and leave guard cover it like any other save. */
       if (draft.isRunning) {
         await journal.wearSessions.upsertSession({
           id: draft.id,
@@ -334,10 +330,9 @@
     findById: (id) => sessions.find((s) => s.id === id) ?? (running?.id === id ? running : undefined)
   });
 
-  /* Stop on the running row itself, worded as Home's wear tile words it
-     (after-release 28, audit UI-08: a bare square here, a labelled Stop
-     there). The same write the tile makes, then the same confirmation the
-     sheet's Stop gives. */
+  /* Stop on the running row itself, worded as Home's wear tile words it (a bare square
+     here, a labelled Stop there). The same write the tile makes, then the same confirmation
+     the sheet's Stop gives. */
   const cardIn = (_node: Element) => fadeOnly(crossfadeDuration());
   const stopper = writer();
   async function stopRunning() {
@@ -660,9 +655,9 @@
         {/snippet}
       </Field>
 
-      <!-- The facts (ticket 50 section 4). Always here, for every kind, and
-           never gated by the duration cue's toggle: these are about method
-           rather than duration, and each block names its source. -->
+      <!-- The facts. Always here, for every kind, and never gated by the duration cue's
+           toggle: these are about method rather than duration, and each block names its
+           source. -->
       <!-- One slot that travels between the three sets rather than snapping
            to a new height, the same pairing the range control above uses:
            `resize` on the box, `crossfade` on the block leaving it. -->

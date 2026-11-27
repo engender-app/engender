@@ -1,10 +1,8 @@
-/* entryDraftPersistence's transition rules: what survives a
-   killed process is a plain, storage-shaped snapshot of the draft's
-   editable fields, matched back to the entry/day it belongs to and
-   reapplied on top of a freshly created draft - never the picked photos'
-   or recorded voice notes' raw bytes (out of size budget for a localStorage
-   mirror, ticket 24), only which stored photo or recording ids the user
-   had already removed. */
+/* EntryDraftPersistence's transition rules: what survives a killed process is a plain,
+   storage-shaped snapshot of the draft's editable fields, matched back to the entry/day it
+   belongs to and reapplied on top of a freshly created draft - never the picked photos' or
+   recorded voice notes' raw bytes, only which stored photo or recording ids the user had
+   already removed. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
@@ -233,7 +231,7 @@ test('applying a persisted draft drops stored video notes the user had already r
   );
 });
 
-test('the open chip travels with the draft, so a resumed entry lands where the person left it (ticket 19)', () => {
+test('the open chip travels with the draft, so a resumed entry lands where the person left it', () => {
   const draft = createEntryDraft(20_001);
   assert.equal(draft.openSection, null);
   draft.setOpenSection('tags');
@@ -257,7 +255,7 @@ test('the open chip travels with the draft, so a resumed entry lands where the p
   assert.equal(older.openSection, null);
 });
 
-test('a mirror written before ticket 289 holds one effectMarker and loads as a one-item list', () => {
+test('a legacy mirror loads its one effectMarker as a one-item list', () => {
   const draft = createEntryDraft(20_001);
   const legacy = { ...serializeDraft(createEntryDraft(20_001)), effectMarker: { effect: 'skin_softening', firstNoticedEpochDay: 20_001 } };
   delete (legacy as { effectMarkers?: unknown }).effectMarkers;

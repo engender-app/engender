@@ -1,18 +1,17 @@
-/* Preferences, held in SQLite's `pref` key-value table (ADR-0009).
+/* Preferences, held in SQLite's `pref` key-value table.
 
-   The factory takes its driver and returns the module (ADR-0017); there is
-   no module-level current driver and nothing here imports an ambient
-   handle, so a test constructs its own instance the same way boot does.
+   The factory takes its driver and returns the module (ADR-0017); there is no module-level
+   current driver and nothing here imports an ambient handle, so a test constructs its own
+   instance the same way boot does.
 
-   Reads are synchronous because screens read preferences during render:
-   opening loads every row once, and the in-memory copy is kept in step by
-   the writes that go through here. SQLite stays authoritative - reopening
-   throws the in-memory copy away and reads the table again.
+   Reads are synchronous because screens read preferences during render: opening loads every
+   row once, and the in-memory copy is kept in step by the writes that go through here.
+   SQLite stays authoritative - reopening throws the in-memory copy away and reads the table
+   again.
 
-   The optional cache is the small mirror outside SQLite (localStorage on
-   web, Capacitor Preferences on Android) holding the boot set. It is
-   refreshed on every write, never read except by boot, and never treated
-   as authoritative. */
+   The optional cache is the small mirror outside SQLite (localStorage on web, Capacitor
+   Preferences on Android) holding the boot set. It is refreshed on every write, never read
+   except by boot, and never treated as authoritative. */
 
 import type { SqliteDriver } from '../sqlite/driver.ts';
 import type { PortablePreferences } from '../archive/payload';
@@ -77,11 +76,10 @@ function bootSubset(values: PreferenceValues): BootPreferences {
     // across a loop over a union of key types.
     boot[key] = values[key] as never;
   }
-  /* The mirror is plaintext and the first paint and the lock screen read
-     it, so while the journal is disguised it names no flag at all, not
-     even the default one, which is a flag too (functional audit ticket 45,
-     then security-scan ticket 08). The real choice stays in the table, and
-     the mirror is rewritten with it the moment disguise goes off. */
+  /* The mirror is plaintext and the first paint and the lock screen read it, so while the
+     journal is disguised it names no flag at all, not even the default one, which is a flag
+     too. The real choice stays in the table, and the mirror is rewritten with it the moment
+     disguise goes off. */
   if (boot.disguise) boot.palette = DISGUISED_PALETTE;
   return boot;
 }

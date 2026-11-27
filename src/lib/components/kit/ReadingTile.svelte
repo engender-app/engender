@@ -28,7 +28,7 @@
     name: string;
     /** The reading's screen, carrying the span (lookBackReadings.ts). */
     href: string;
-    /** The walkthrough's handle (ADR-0029): which reading this is. */
+    /** The walkthrough's handle: which reading this is. */
     key: string;
     /** The one figure for the span, already formatted. Absent on a tile
         whose drawing is the reading. */
@@ -136,11 +136,10 @@
     --guide: var(--text-2);
   }
 
-  /* The plane fills what its row gives it rather than setting the row: a
-     square drawn at the column's width was the tallest thing on the door
-     and made every row as tall (after-release 27, audit UI-13). Taken out
-     of flow, it scales to the room the tile beside it leaves, with a floor
-     that keeps it a readable square on its own row. */
+  /* The plane fills what its row gives it rather than setting the row: a square drawn at
+     the column's width was the tallest thing on the door and made every row as tall. Taken
+     out of flow, it scales to the room the tile beside it leaves, with a floor that keeps
+     it a readable square on its own row. */
   .kit-reading-draw.is-whole {
     position: relative;
     flex: 1 1 0;
@@ -167,8 +166,7 @@
     line-height: 1.1;
     font-variant-numeric: tabular-nums;
     overflow-wrap: anywhere;
-    /* A headline may name what it measures on a line of its own above the
-       figure (the compare tile, bug session 18 item 87). */
+    /* A headline may name what it measures on a line of its own above the figure. */
     white-space: pre-line;
   }
 

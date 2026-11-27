@@ -1,6 +1,5 @@
-/* Functional audit ticket 44: version 118 rewrites stored preferences so the
-   catalogue can drop keys without a permanent read-across. Every choice a
-   person made has to come out the other side. */
+/* Version 118 rewrites stored preferences so the catalogue can drop keys without a
+   permanent read-across. Every choice a person made has to come out the other side. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

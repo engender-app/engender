@@ -52,11 +52,9 @@ export async function unlockJournalPassphrase(passphrase: string): Promise<Uint8
   return unlockKeystore(metadata, passphrase);
 }
 
-/** Rewraps the same data key under a new passphrase (ticket 09: a change
-    of passphrase never re-encrypts the Journal). Throws
-    DecryptionFailedError when the current passphrase is wrong, before
-    anything is written. A new recovery key nobody confirmed is discarded
-    with the change (last-audit UI 42). */
+/** Rewraps the same data key under a new passphrase. Throws DecryptionFailedError when the
+    current passphrase is wrong, before anything is written. A new recovery key nobody
+    confirmed is discarded with the change. */
 export async function changeJournalPassphrase(current: string, next: string): Promise<void> {
   return changeCredentials(async () => {
     const metadata = await readKeystoreFile();

@@ -1,35 +1,30 @@
-/* Expected dilation sessions, from a taper's stages (phase 8 features
-   ticket 12, CONTEXT: "Taper"). Pure, kept above the journal seam next to
-   doseSchedule.ts for the same reason: a session is a question about a
-   schedule and a day, not a row anyone stores (ADR-0010). Nothing here
-   reads a clock or a database.
+/* Expected dilation sessions, from a taper's stages. Pure, kept above the journal seam next
+   to doseSchedule.ts for the same reason: a session is a question about a schedule and a
+   day, not a row anyone stores (ADR-0010). Nothing here reads a clock or a database.
 
-   Deliberately no verdict, the same refusal doseSchedule.ts makes: this
-   answers "what day was a session expected", and stops. Whether one was
-   logged against it, and what that means, is the screen's own question. */
+   Deliberately no verdict, the same refusal doseSchedule.ts makes: this answers "what day
+   was a session expected", and stops. Whether one was logged against it, and what that
+   means, is the screen's own question. */
 
 import type { AreaStates } from './areaState';
 import type { Procedure, Taper, TaperStage } from './types';
 
-/** Whether a procedure is one dilation can follow (audit item 7): the
-    surgery screen's own gate for offering the Dilation row at all
-    (surgery/+page.svelte), and the schedule editor's own gate for which
-    procedures it offers a taper to name (dilation/+page.svelte). Only a
-    `custom` kind carries its own opt-in - none of the compiled-in kinds
-    can be guessed to include dilation except vaginoplasty (types.ts's own
-    note on `Procedure`). Named once so the two screens and schema v83's
-    migration cannot drift on what "eligible" means. */
+/** Whether a procedure is one dilation can follow: the surgery screen's own gate for
+    offering the Dilation row at all (surgery/+page.svelte), and the schedule editor's own
+    gate for which procedures it offers a taper to name (dilation/+page.svelte). Only a
+    `custom` kind carries its own opt-in - none of the compiled-in kinds can be guessed to
+    include dilation except vaginoplasty (types.ts's own note on `Procedure`). Named once so
+    the two screens and schema v83's migration cannot drift on what "eligible" means. */
 export function dilationEligible(procedure: Pick<Procedure, 'kind' | 'dilationOptIn'>): boolean {
   return procedure.kind === 'vaginoplasty' || (procedure.kind === 'custom' && procedure.dilationOptIn);
 }
 
-/** The area record as the screens that draw dilation rows should read it:
-    `taperSessions` hidden until some procedure is `dilationEligible`, so the
-    More search, the pin chooser and the pinned rows stop offering a Dilation
-    row to a journal with no vaginoplasty in it (Alicja, 2026-11-04). Derived,
-    never written: the stored hide choice and any finished day are kept, and
-    the row comes back the moment an eligible procedure is logged, planned or
-    done. The surgery screen already gates its own hosted row the same way. */
+/** The area record as the screens that draw dilation rows should read it: `taperSessions`
+    hidden until some procedure is `dilationEligible`, so the More search, the pin chooser
+    and the pinned rows stop offering a Dilation row to a journal with no vaginoplasty in
+    it. Derived, never written: the stored hide choice and any finished day are kept, and
+    the row comes back the moment an eligible procedure is logged, planned or done. The
+    surgery screen already gates its own hosted row the same way. */
 export function dilationGated(
   states: AreaStates,
   procedures: readonly Pick<Procedure, 'kind' | 'dilationOptIn'>[]

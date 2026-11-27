@@ -1,15 +1,13 @@
 import { globSync, readFileSync } from 'node:fs';
 import { expect, test } from 'vitest';
 
-/* Last-audit UI 01. Svelte's bind:value on a number input sets the parsed
-   number, then reads the binding back after a tick and rewrites the field
-   whenever the two differ. A getter that hands back anything else (the
-   measurement, lab and wear fields stored `String(value)`) therefore
-   rewrote the field on every keystroke, and Chromium put the caret at the
-   start: 72.5 saved as 572 and -3 as 3. Number inputs bind plainly to a
-   `number | null`, or take `value=` with their own `oninput`. The wear
-   reminder hours field renders only on Android, so this rule is the one
-   test that reaches it on the web tiers. */
+/* Svelte's bind:value on a number input sets the parsed number, then reads the binding back
+   after a tick and rewrites the field whenever the two differ. A getter that hands back
+   anything else (the measurement, lab and wear fields stored `String(value)`) therefore
+   rewrote the field on every keystroke, and Chromium put the caret at the start: 72.5 saved
+   as 572 and -3 as 3. Number inputs bind plainly to a `number | null`, or take `value=`
+   with their own `oninput`. The wear reminder hours field renders only on Android, so this
+   rule is the one test that reaches it on the web tiers. */
 
 /** Each `<input ...>` tag in a component, with the line it starts on.
     Attribute expressions can hold `>` (an arrow function), so the tag

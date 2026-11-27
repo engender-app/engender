@@ -1,7 +1,6 @@
-/* ADR-0043's one question, at the level a pure module can be held to: is
-   cycle tracking surfaced for this journal right now. The two ways in -
-   a testosterone regimen, or the explicit preference - and the default
-   answer out, which is no. */
+/* Cycle visibility, at the level a pure module can be held to: is cycle tracking surfaced
+   for this journal right now. The two ways in - a testosterone regimen, or the explicit
+   preference - and the default answer out, which is no. */
 
 import { describe, expect, it } from 'vitest';
 import { timestampAtLocalTime } from './epochDay';
@@ -35,7 +34,7 @@ describe('testosteroneActive', () => {
     expect(testosteroneActive([episode({ drug: 'TESTOSTERONE UNDECANOATE' })], NOON)).toBe(true);
   });
 
-  it('reads the Polish name and a bare T, and not methyltestosterone (after-release 01, L03-06)', () => {
+  it('reads the Polish name and a bare T, and not methyltestosterone', () => {
     expect(testosteroneActive([episode({ drug: 'Testosteron' })], NOON)).toBe(true);
     expect(testosteroneActive([episode({ drug: 'cypionian testosteronu' })], NOON)).toBe(true);
     expect(testosteroneActive([episode({ drug: 'T' })], NOON)).toBe(true);

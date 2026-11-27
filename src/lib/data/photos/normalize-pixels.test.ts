@@ -2,9 +2,8 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { normalizePhotoPixels, UnsupportedImageError } from './normalize-pixels';
 import { pngHeader, jpegHeader } from '../media/image-fixtures';
 
-/* The decoder is the expensive part, so these tests stand in for it and
-   assert whether it was reached at all: a refused image must never get as
-   far as createImageBitmap (security-scan ticket 07, GD-028). */
+/* The decoder is the expensive part, so these tests stand in for it and assert whether it
+   was reached at all: a refused image must never get as far as createImageBitmap. */
 
 const decoded = { width: 0, height: 0 };
 const createImageBitmap = vi.fn();

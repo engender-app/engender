@@ -17,14 +17,14 @@ import org.junit.runner.RunWith;
 import java.io.File;
 
 /**
- * "Delete everything and start over" from a locked gate (ux-carpet 210).
+ * "Delete everything and start over" from a locked gate.
  *
  * <p>The gate runs before any key exists, so in a cold process nothing has
  * opened the journal yet. The wipe used to find its files through the path
  * the last open had recorded, and with no open behind it that path was null:
  * it deleted nothing, the Keystore key went, and the next setup minted a new
- * key over the old ciphertext. Every launch after that failed with
- * {@code hmac check failed} until the app was uninstalled.
+ * key over the old ciphertext. Every launch after that failed with {@code
+ * hmac check failed} until the app was uninstalled.
  *
  * <p>Each connection here is a fresh object, standing in for a fresh process.
  */

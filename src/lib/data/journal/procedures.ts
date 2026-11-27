@@ -50,9 +50,8 @@ interface ProcedureInput {
   /** Only read for a `custom` kind (see `Procedure`). Defaults to false. */
   dilationOptIn?: boolean;
   archived?: boolean;
-  /** What it cost (FA 30). Absent leaves the stored cost as it is, like
-      `archived`, so an edit that is not about the cost cannot blank it; null
-      clears it. Throws if invalid. */
+  /** What it cost. Absent leaves the stored cost as it is, like `archived`, so an edit that
+      is not about the cost cannot blank it; null clears it. Throws if invalid. */
   cost?: CostInput;
 }
 
@@ -120,14 +119,13 @@ export interface ProceduresArea {
       view as the milestone it already mints (ADR-0045) rather than as a
       second row here. */
   getDayRecords(epochDay: number): Promise<ProcedureDayRecord[]>;
-  /** The day of the most recent consult or recovery photo, across every
-      procedure, at or before `todayEpochDay`, or null if there is none
-      (phase 8 features ticket 03, lastWrite.ts). Still reads the consults,
-      unlike `getDayRecords` above: this is what the surgery hub row
-      reports, and a journey whose only activity was booking the next visit
-      has not gone quiet. Mirrors `getDayRecords`' other exclusion, though -
-      a procedure's `surgeryEpochDay` reaches the day view as the milestone
-      ADR-0045 mints, so it is not part of this area's own last write. */
+  /** The day of the most recent consult or recovery photo, across every procedure, at or
+      before `todayEpochDay`, or null if there is none (lastWrite.ts). Still reads the
+      consults, unlike `getDayRecords` above: this is what the surgery hub row reports, and
+      a journey whose only activity was booking the next visit has not gone quiet. Mirrors
+      `getDayRecords`' other exclusion, though - a procedure's `surgeryEpochDay` reaches the
+      day view as the milestone ADR-0045 mints, so it is not part of this area's own last
+      write. */
   lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
   /** Normalizes nothing itself - `photo` must already be through
       normalizePhoto (photoPicking.ts), same as photos.ts's attach. Returns
@@ -138,9 +136,9 @@ export interface ProceduresArea {
   /** The procedure's recovery checklist, or undefined until its first item
       creates one. Reads through checklists.ts's own path unchanged. */
   getChecklist(procedureId: string): Promise<Checklist | undefined>;
-  /** Adds a user-authored item, creating the checklist on first use so no
-      caller has to check whether it exists yet - the same shape ticket 11's
-      addToStandaloneChecklist takes. Throws if the procedure is unknown. */
+  /** Adds a user-authored item, creating the checklist on first use so no caller has to
+      check whether it exists yet - the same shape addToStandaloneChecklist takes. Throws if
+      the procedure is unknown. */
   addChecklistItem(procedureId: string, content: string): Promise<ChecklistItem>;
   /** Finds the transition milestone linked to this procedure, if one exists. */
   getMilestone(procedureId: string): Promise<Milestone | null>;

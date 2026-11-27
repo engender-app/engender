@@ -1,17 +1,14 @@
-/* The medication stock area (phase 4 ticket 04, CONTEXT: "Medication stock",
-   "Run-out projection"). One row per drug (schema.ts,
-   stockProjection.ts): remaining stock and its run-out projection are both
-   derived on read, never stored (ADR-0046, generalizing ADR-0010's rule).
+/* The medication stock area. One row per drug (schema.ts, stockProjection.ts): remaining
+   stock and its run-out projection are both derived on read, never stored (ADR-0046,
+   generalizing ADR-0010's rule).
 
-   Reads doses through DosesArea and episodes through RegimenArea, and
-   writes the run-out reminder through RemindersArea, rather than
-   querying those tables itself the way archive.ts does: this area is a
-   view stitched together from rows two other areas own, not a second
-   owner for either one. Routing every reminder write through
-   RemindersArea.upsertReminder keeps assertValidRule and the schema's own
-   CHECK the one place a reminder rule is validated, the same guarantee
-   ticket 02's dose log gets from attributeDose rather than re-deriving
-   attribution itself. */
+   Reads doses through DosesArea and episodes through RegimenArea, and writes the run-out
+   reminder through RemindersArea, rather than querying those tables itself the way
+   archive.ts does: this area is a view stitched together from rows two other areas own, not
+   a second owner for either one. Routing every reminder write through
+   RemindersArea.upsertReminder keeps assertValidRule and the schema's own CHECK the one
+   place a reminder rule is validated, the same guarantee dose log gets from attributeDose
+   rather than re-deriving attribution itself. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { MedicationStock, Reminder } from '../types';
@@ -36,17 +33,15 @@ interface StockEntryInput {
   quantity: number;
   unit: string;
   recordedEpochDay: number;
-  /** Ticket 13's "what is open, and until when" - all optional and
-      defaulted to null, so every caller before this ticket keeps working
-      unchanged. `inUseWindowDays` and `inUseEndEpochDay` are stored exactly
-      as passed, never cross-derived (inUseWindow.ts combines them for
+  /** "what is open, and until when" - all optional and defaulted to null, so every caller
+      in older versions keeps working unchanged. `inUseWindowDays` and `inUseEndEpochDay`
+      are stored exactly as passed, never cross-derived (inUseWindow.ts combines them for
       display only). */
   openedEpochDay?: number | null;
   inUseWindowDays?: number | null;
   inUseEndEpochDay?: number | null;
-  /** How many days a restock takes for this drug (redesign phase 10 ticket
-      01). Optional and defaulted to null, so every caller before this ticket
-      keeps working unchanged. */
+  /** How many days a restock takes for this drug. Optional and defaulted to null, so every
+      caller before this ticket keeps working unchanged. */
   leadTimeDays?: number | null;
   /** Doses one unit holds. Optional and defaulted
       to null, one dose per unit. */
@@ -56,9 +51,8 @@ interface StockEntryInput {
       clears them. Blank text is stored as null. */
   expiryEpochDay?: number | null;
   pharmacyNote?: string | null;
-  /** What the supply held now cost (FA 30). Optional and defaulted to none;
-      like the expiry, a count that leaves it out clears it. Throws if
-      invalid. */
+  /** What the supply held now cost. Optional and defaulted to none; like the expiry, a
+      count that leaves it out clears it. Throws if invalid. */
   cost?: CostInput;
 }
 
@@ -94,15 +88,14 @@ export interface StockArea {
   /** Every drug's projection as of `asOfEpochDay` - a read-only aggregate
       over the dose log (ADR-0046): nothing here is stored. */
   getProjections(asOfEpochDay: number): Promise<StockProjectionRow[]>;
-  /** Recomputes every drug's projection and reconciles its auto-managed
-      run-out Reminder against it (box 4, stockReminder.ts) - created,
-      moved, cleared, or left alone for a drug whose reminder a person has
-      already taken over. In effect Android-only, since Reminder never
-      fires on web, but that gate belongs to the caller: this module has
-      no reason to know what platform it is running on.
+  /** Recomputes every drug's projection and reconciles its auto-managed run-out Reminder
+      against it (box 4, stockReminder.ts) - created, moved, cleared, or left alone for a
+      drug whose reminder a person has already taken over. In effect Android-only, since
+      Reminder never fires on web, but that gate belongs to the caller: this module has no
+      reason to know what platform it is running on.
 
-      Returns NOTHING_WRITTEN when every drug came out 'none', so a pass
-      with nothing to do announces nothing (ux-carpet 199). */
+      Returns NOTHING_WRITTEN when every drug came out 'none', so a pass with nothing to do
+      announces nothing. */
   reconcileRunOutReminders(asOfEpochDay: number): Promise<void | NothingWritten>;
 }
 
@@ -325,8 +318,7 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
               await scopedReminders.upsertReminder({
                 // Just the drug's own name: a Reminder's title is ordinarily
                 // whatever a person types, and echoing the drug name back
-                // needs no copy of its own to translate (ADR-0016 keeps
-                // paraglide out of this tier anyway).
+                // needs no translation. Node tests import this module without Paraglide.
                 title: entry.drug,
                 time: '09:00',
                 recurrence: null,

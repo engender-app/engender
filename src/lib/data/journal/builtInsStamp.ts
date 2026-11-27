@@ -7,10 +7,8 @@
    travels with the database file, including a restored migration copy.
    Archives exclude it, and demo setup can still detect empty preferences.
 
-   builtInsStamp.test.ts recomputes BUILT_INS_FINGERPRINT from the catalogue
-   and reconcile.ts. Update the constant when either changes so journals
-   reconcile once on the next boot, without loading the catalogue just
-   to check it. */
+   builtInsStamp.test.ts hashes catalogue data and comment-free reconcile.ts.
+   Update the stamp when either changes to reconcile once on the next boot. */
 import { LATEST_SCHEMA_VERSION } from '../sqlite/schema-version';
 
 export const BUILT_INS_FINGERPRINT = '14211b067f622817';

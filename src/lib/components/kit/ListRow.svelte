@@ -22,9 +22,9 @@
     text?: string;
     label: string;
     onclick: () => void;
-    /** The control's own walkthrough handle, where the row's `key` is not
-        it: a delete button on a photo row is `data-delete-hair-photo`, and
-        the name is the screen's, not the kit's (ADR-0029). */
+    /** The control's own walkthrough handle, where the row's `key` is not it: a delete
+        button on a photo row is `data-delete-hair-photo`, and the name is the screen's, not
+        the kit's. */
     attrs?: Record<string, string>;
   };
 
@@ -63,8 +63,8 @@
     maskImage?: string;
     href?: string;
     onclick?: () => void;
-    /** The row's own identity for the walkthrough's handle (ADR-0029) -
-        a stable key, never the title, which is copy. */
+    /** The row's own identity for the walkthrough's handle - a stable key, never the title,
+        which is copy. */
     key?: string;
     /** Set, and the row is a checkbox: it announces itself as one, carries
         its state, and draws its own box at the trailing edge. The row is the control rather than holding one, so the
@@ -98,11 +98,10 @@
         same reason Notice's dismiss does - an icon button with no
         accessible name cannot be reached by voice or announced at all. */
     action?: RowAction;
-    /** The caller's own attributes, landing on the row itself - the same
-        contract Tile and Notice already have. `data-list-row` names the
-        slot and the handle beside it names the thing in it, which is what
-        lets a screen keep the walkthrough handle it has had since phase 4
-        while the container underneath it changes (ADR-0029). */
+    /** The caller's own attributes, landing on the row itself - the same contract Tile and
+        Notice already have. `data-list-row` names the slot and the handle beside it names
+        the thing in it, which is what lets a screen keep the walkthrough handle it has had
+        in older versions while the container underneath it changes. */
     [attribute: string]: unknown;
   } = $props();
 
@@ -128,10 +127,9 @@
     return transition;
   };
 
-  /* The arriving words fade in over the leaving ones. `crossfade` alone is
-     the leaving half, so with only that the new line was painted at full
-     opacity in the frame the words changed (carpet 15 row 51, Look back's
-     "Femininity, 3 to 7" line on a span change). */
+  /* The arriving words fade in over the leaving ones. `crossfade` alone is the leaving
+     half, so with only that the new line was painted at full opacity in the frame the words
+     changed (Look back's "Femininity, 3 to 7" line on a span change). */
   const lineIn = (node: Element) =>
     fadeSwap ? crossfade(node, undefined, { direction: 'in' }) : { duration: 0 };
 
@@ -208,11 +206,10 @@
     {#if action}{@render rowAction(action)}{/if}
   </div>
 {:else if action}
-  <!-- The split shape names both halves: `data-row-action` has always been
-       on the control, and `data-row-main` is here for the same reason
-       (ADR-0029, and the test that holds it). A row that acts in place from
-       its main half - the return surface's two offers - is otherwise only
-       reachable by its class, which is structure and exactly what the
+  <!-- The split shape names both halves: `data-row-action` has always been on the control,
+       and `data-row-main` is here for the same reason (and the test that holds it). A row
+       that acts in place from its main half - the return surface's two offers - is
+       otherwise only reachable by its class, which is structure and exactly what the
        walkthrough may not grip. -->
   <div class="kit-row is-split" data-list-row={key} {...rest}>
     {#if href}

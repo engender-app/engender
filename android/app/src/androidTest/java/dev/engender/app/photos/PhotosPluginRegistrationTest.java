@@ -15,8 +15,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Ticket 37 smoke check: the Photos Capacitor bridge must be present in the
- * app runtime plugin map, or every photo call fails before reaching Java.
+ * Smoke test. the Photos Capacitor bridge must be present in the app runtime
+ * plugin map, or every photo call fails before reaching Java.
  */
 @RunWith(AndroidJUnit4.class)
 public class PhotosPluginRegistrationTest {

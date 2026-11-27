@@ -1,6 +1,6 @@
-/* FA 04: with the closed lists out of SQL, the write path is what keeps an
-   unknown word out of a journal, and the label functions are what keep an
-   unknown stored word readable. Both read the sets in rowValues.ts. */
+/* with the closed lists out of SQL, the write path is what keeps an unknown word out of a
+   journal, and the label functions are what keep an unknown stored word readable. Both read
+   the sets in rowValues.ts. */
 
 import assert from 'node:assert/strict';
 import { test, vi } from 'vitest';

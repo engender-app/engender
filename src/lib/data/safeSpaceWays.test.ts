@@ -19,9 +19,9 @@ describe('the ways down from Safe space', () => {
   });
 
   it('never leaves Safe space for another door', () => {
-    /* FA 09: the letters row lit the Transition tab and the readings row
-       lit Look back. Every way down stays under /doubt or on the resource
-       directory, which Safe space already shares with the More hub. */
+    /* the letters row lit the Transition tab and the readings row lit Look back. Every way
+       down stays under /doubt or on the resource directory, which Safe space already shares
+       with the More hub. */
     for (const way of SAFE_SPACE_WAYS) {
       expect(way.href === '/support/resources' || way.href.startsWith('/doubt/'), `${way.key} -> ${way.href}`).toBe(true);
     }
@@ -51,10 +51,9 @@ describe('the ways down from Safe space', () => {
   });
 
   it('lands each way on the screen itself rather than on a redirect to it', () => {
-    /* A `+page.ts` beside no `+page.svelte` is this repo's redirect stub
-       (ADR-0036). The row on the screen a person opens on their worst day
-       is the one place in the app that should not spend a navigation on
-       one, so the ways are held to the destination rather than to the
+    /* A `+page.ts` beside no `+page.svelte` is this repo's redirect stub. The row on the
+       screen a person opens on their worst day is the one place in the app that should not
+       spend a navigation on one, so the ways are held to the destination rather than to the
        address that used to reach it. */
     for (const way of SAFE_SPACE_WAYS) {
       const route = routeOf(way.href);

@@ -51,11 +51,10 @@ describe('startHold', () => {
   });
 });
 
-/* A hold has no visible or assistive way in on its own (pre-release-human
-   12 audit), so each grid that takes one also offers a Select button that
-   enters the same picking with nothing picked yet. The runes in
-   holdSelect.svelte.ts do not run under this Node config, so what is held
-   here is the wiring. */
+/* A hold has no visible or assistive way in on its own, so each grid that takes one also
+   offers a Select button that enters the same picking with nothing picked yet. The runes in
+   holdSelect.svelte.ts do not run under this Node config, so what is held here is the
+   wiring. */
 describe('Select enters picking without a hold', () => {
   const read = (path: string) => readFileSync(path, 'utf8');
 

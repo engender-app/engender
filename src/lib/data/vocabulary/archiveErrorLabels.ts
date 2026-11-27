@@ -1,6 +1,6 @@
-/* Localize archive failures by kind (ADR-0016). Keep diagnostics out of
-   user copy. Import and verify have separate exhaustive maps because verify
-   only reads the file and has no journal change to report. */
+/* Localize archive failures by kind. Keep diagnostics out of user copy. Import and verify
+   have separate exhaustive maps because verify only reads the file and has no journal
+   change to report. */
 
 import { m } from '$lib/paraglide/messages';
 import type { RestoreFailureKind, RestoreGuardKind } from '$lib/data/journal/restoreFlow';
@@ -41,11 +41,10 @@ export const importFailureMessage = (kind: RestoreFailureKind): string => IMPORT
 
 export const verifyFailureMessage = (kind: RestoreFailureKind): string => VERIFY_MESSAGE[kind]();
 
-/* An export that failed because storage ran out says which storage, since the
-   fix differs: space on this device for the staging copy, or space at the
-   place picked in the save dialog (last-audit ui 37). Anything else keeps
-   the general sentence, so a refusal that is not a full disk is never
-   called one. */
+/* An export that failed because storage ran out says which storage, since the fix differs:
+   space on this device for the staging copy, or space at the place picked in the save
+   dialog. Anything else keeps the general sentence, so a refusal that is not a full disk is
+   never called one. */
 const EXPORT_MESSAGE: Record<SpaceShortage | 'other', () => string> = {
   device: m.exp_storage_full,
   destination: m.exp_destination_full,

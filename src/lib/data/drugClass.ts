@@ -1,11 +1,9 @@
-/* Guess a new or legacy episode's drug class using the same pure rule
-   in setup, migrations and Archive restore (ADR-0016). Store the class
-   on the episode so the person can change it.
+/* Guess a new or legacy episode's drug class using the same pure rule in setup, migrations
+   and Archive restore. Store the class on the episode so the person can change it.
 
-   Case-fold the name, remove diacritics and look for a substring from the
-   hormone, antiandrogen, GnRH and common Polish/UK brand lists. Leave
-   finasteride and dutasteride as other by default. Otherwise treatment
-   for scalp hair could change the HRT timeline. */
+   Case-fold the name, remove diacritics and look for a substring from the hormone,
+   antiandrogen, GnRH and common Polish/UK brand lists. Leave finasteride and dutasteride as
+   other by default. Otherwise treatment for scalp hair could change the HRT timeline. */
 
 import type { DrugClass } from './types';
 

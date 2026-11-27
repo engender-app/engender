@@ -17,7 +17,7 @@ export interface SearchSnapshot {
   hasNote: boolean;
   hasPhoto: boolean;
   starredOnly: boolean;
-  /** Mode, body-region and scale-range filters (functional audit 10). */
+  /** Mode, body-region and scale-range filters. */
   selectedPresentationIds: string[];
   selectedRegions: string[];
   scale: { key: string; min: number; max: number } | null;
@@ -49,11 +49,10 @@ export function takeHeldSearch(): SearchSnapshot | null {
   return snapshot;
 }
 
-/* A query typed into More's search, on its way to the Search screen
-   (after-release ticket 10, audit L09-02). It used to travel in the
-   address as `/search?q=`, which put whatever was typed into the
-   browser's history for good. Held in memory instead, for the one
-   navigation it is for, and taken by a lock like the snapshot above. */
+/* A query typed into More's search, on its way to the Search screen. It used to travel in
+   the address as `/search?q=`, which put whatever was typed into the browser's history for
+   good. Held in memory instead, for the one navigation it is for, and taken by a lock like
+   the snapshot above. */
 let handedQuery: string | null = null;
 
 export function handOverQuery(query: string): void {

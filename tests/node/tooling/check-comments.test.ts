@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { commentRanges, countReferences, referenceGrowth } from '../../../scripts/check-comments.mjs';
+import { commentRanges, countReferences } from '../../../scripts/check-comments.mjs';
 
 describe('source comment guard', () => {
   it('counts source comments without reading strings or regular expressions', () => {
@@ -26,12 +26,6 @@ const value = (/* functional audit */ 1); // .scratch/example
     expect(countReferences('Example.java', 'String value = """\n// ticket 6\n"""; // phase 2')).toBe(1);
     expect(countReferences('example.html', '<p title="<!-- ticket 6 -->">Hi</p><!-- last audit -->')).toBe(1);
     expect(countReferences('example.css', 'a { background: url(https://example.invalid) /* ticket 6 */ }')).toBe(1);
-  });
-
-  it('allows counts to fall and catches new references per file', () => {
-    const problems = referenceGrowth({ 'old.ts': 1, 'new.ts': 1 }, { 'old.ts': 2 });
-    expect(problems).toHaveLength(1);
-    expect(problems[0]).toContain('new.ts');
   });
 
   it('finds wrapped ticket citations and permits public ADR paths', () => {

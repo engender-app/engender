@@ -36,11 +36,10 @@ interface PhotoPicker {
 export type PickedBytes = () => Promise<Uint8Array>;
 
 interface PhotoSelectionPicker {
-  /** What the user chose, as one reader per file, or an empty array if they
-      backed out. Nothing is read until a reader is called, so a caller that
-      normalizes each photo before asking for the next holds one file's raw
-      bytes at a time, however many were picked (GD-019). `multiple: false`
-      asks the picker itself for one photo. */
+  /** What the user chose, as one reader per file, or an empty array if they backed out.
+      Nothing is read until a reader is called, so a caller that normalizes each photo
+      before asking for the next holds one file's raw bytes at a time, however many were
+      picked. `multiple: false` asks the picker itself for one photo. */
   pick(options?: { multiple?: boolean }): Promise<PickedBytes[]>;
   /** As PhotoPicker.recheck, for the files read so far. */
   recheck?(): Promise<void>;

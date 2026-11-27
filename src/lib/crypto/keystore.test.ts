@@ -191,7 +191,7 @@ test('rewrapping without naming a source keeps the one it already had', async ()
   expect(rewrapped.secretSource).toBe('pin');
 });
 
-/* --- which key the PIN was bound to (ticket sec-02-06) ------------------- */
+/* --- which key the PIN was bound to ------------------- */
 
 test('a PIN keystore carries its binding through serialization, so a later unlock uses the key that wrapped it', async () => {
   const { metadata } = await createKeystore('1234', CHEAP, 'pin');

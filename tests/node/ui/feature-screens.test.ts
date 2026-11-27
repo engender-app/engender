@@ -15,37 +15,32 @@ const read = (path: string) => readFileSync(root + path, 'utf8');
 /** Hub-row exemptions use HubRowKey so a removed row cannot leave a stale
     exemption. Read the route list from the hub itself. */
 const NOT_A_FEATURE_SCREEN: Partial<Record<HubRowKey, string>> = {
-  /* A header over one component (bug session 18, item 70): its markup is
-     VoiceRecordings.svelte, which was the voice screen's fourth tab and is
-     held to the kit there, through voice/+page.svelte's own assertions. */
+  /* A header over one component: its markup is VoiceRecordings.svelte, which was the voice
+     screen's fourth tab and is held to the kit there, through voice/+page.svelte's own
+     assertions. */
   recordings: 'the memo list is VoiceRecordings.svelte, mounted whole'
 };
 
 /** Every screen reached only from inside another one, or from the shell -
     the part of this list the hub cannot supply. */
 const REACHED_FROM_INSIDE = [
-  /* Three screens stopped being hub rows in phase 5 deepening ticket 07 -
-     labs, regimen and doses sit behind the `/care` row now,
-     and ticket 09 (ADR-0084) moved their own addresses under `/care/*` too -
-     and they are still feature screens, still built on the kit, so they stay
-     on this list. */
+  /* Three screens stopped being hub rows - labs, regimen and doses sit behind the `/care`
+     row now, and (ADR-0084) moved their own addresses under `/care/*` too - and they are
+     still feature screens, still built on the kit, so they stay on this list. */
   'care/labs',
   'care/regimen',
   'care/doses',
   'transition/tryouts/[id]',
-  /* One procedure (prh12 bug 20), reached from a card on /health/surgery
-     and from anything filed against it; the hub row is the list. */
+  /* One procedure, reached from a card on /health/surgery and from anything filed against
+     it; the hub row is the list. */
   'health/surgery/[id]',
   /* One appointment (prh12), reached from a row on /health/appointments,
      from a day's context list, from Today and from a search hit. */
   'health/appointments/[id]',
-  /* The metric reference held this place
-     until phase 11 ticket 17 folded it into a sheet over the voice screen
-     itself - its markup is `VoiceMetricSection.svelte` and
-     `voice/+page.svelte` now (all-four-doors ticket 21 moved it off the
-     retired Practice prefix), both already reached the ordinary way, and
-     `practice/voice/metrics` is a redirect stub with nothing on it to
-     hold to the kit. */
+  /* The metric reference held this place folded it into a sheet over the voice screen
+     itself - its markup is `VoiceMetricSection.svelte` and `voice/+page.svelte` now, both
+     already reached the ordinary way, and `practice/voice/metrics` is a redirect stub with
+     nothing on it to hold to the kit. */
   /* Two views over the unprompted registry. The
      notifications view joins the list because its own milestone spec says so
      ("feature-screens.test.ts covers /transition/eras and the notifications
@@ -64,12 +59,10 @@ const REACHED_FROM_INSIDE = [
      /media/documents, from a day's context list and from a search hit,
      never from the hub - the hub row is the list. */
   'media/documents/[id]',
-  /* The prep list read one question at a time.
-     Chromeless, reached from the visit screen's own verb row and nowhere
-     else since phase 11 all-four-doors ticket 12, never from the hub. On
-     this list for the reason the note above it gives: chromeless is about
-     the shell around a screen, and says nothing about whether the screen
-     itself is built on the kit. */
+  /* The prep list read one question at a time. Chromeless, reached from the visit screen's
+     own verb row and nowhere else, never from the hub. On this list for the reason the note
+     above it gives: chromeless is about the shell around a screen, and says nothing about
+     whether the screen itself is built on the kit. */
   'health/appointments/in-the-room',
   /* Everything the app can ask this device for, listed in one place. Reached from a row beside security in Settings,
      and from setup's permissions step, which draws the same component. On
@@ -77,36 +70,30 @@ const REACHED_FROM_INSIDE = [
      in every way this file asks about, and a screen that is not here escapes
      every assertion in it. */
   'settings/permissions',
-  /* The ways down from Safe space that are still screens of their own
-     (phase 10 redesign ticket 47, narrowed by phase 11 ticket 15).
-     `/doubt` opens on the breathing exercise and nothing else; everything
-     that screen used to hold below it lives one tap from a row and nowhere
-     in the hub. On this list for the reason the note above it gives - the
-     sections moved wholesale, so a screen left off would take a third of
-     Safe space out from under every assertion here at once.
+  /* The ways down from Safe space that are still screens of their own. `/doubt` opens on
+     the breathing exercise and nothing else; everything that screen used to hold below it
+     lives one tap from a row and nowhere in the hub. On this list for the reason the note
+     above it gives - the sections moved wholesale, so a screen left off would take a third
+     of Safe space out from under every assertion here at once.
 
-     `doubt/moments` and `doubt/readings` were on this list until ticket 15
-     folded them into `/transition/letters` and the Look back door. Both
-     addresses are redirect stubs now, and the screens that absorbed them
-     are already held here (the letters screen through the hub's own
-     `letters` row) - so this is two screens fewer, not two screens
-     unwatched. */
+     `doubt/moments` and `doubt/readings` were on this list folded them into
+     `/transition/letters` and the Look back door. Both addresses are redirect stubs now,
+     and the screens that absorbed them are already held here (the letters screen through
+     the hub's own `letters` row) - so this is two screens fewer, not two screens unwatched. */
   'doubt/comfort',
   'doubt/evidence',
-  /* Ticket 59: the summary is an export rather than an area, so it left
-     `hubRows.ts` entirely rather than moving to a hosted row - reached from
-     a plain row on Care and from appointment prep, never from the hub.
-     Still built on the kit, so it stays on this list for the reason the
-     note above it gives. */
+  /* The summary is an export rather than an area, so it left `hubRows.ts` entirely rather
+     than moving to a hosted row - reached from a plain row on Care and from appointment
+     prep, never from the hub. Still built on the kit, so it stays on this list for the
+     reason the note above it gives. */
   'health/clinician-summary',
   /* One reading of the Look back door on a screen of its own: four readings share the route, each reached from its
      tile on /stats and from nowhere in the hub. Built on the kit and holds
      a loading state on the recap it reads for the floor, so it stays on
      this list for the reason the note above it gives. */
   'stats/[reading]',
-  /* The licence notices (phase 15 release-blockers ticket 10), reached
-     from a link in the About sheet and nowhere in the hub. Built on the kit,
-     so it is held here for the reason the note above the list gives. */
+  /* The licence notices, reached from a link in the About sheet and nowhere in the hub.
+     Built on the kit, so it is held here for the reason the note above the list gives. */
   'settings/licences'
 ];
 
@@ -223,13 +210,11 @@ describe('what a first-run journal sees', () => {
            thousandth: it describes what the app can reach, not what anybody
            has written. There is no state in which it is empty. */
         'settings/permissions',
-        /* Safe space itself, since redesign ticket 47. What it draws is a
-           breathing exercise and five ways down, and neither depends on
-           anything having been written: on a journal with nothing in it the
-           screen is identical, which is the point of it - the screen a
-           person reaches on their worst day is the same screen every time.
-           Its four ways down each carry their own empty state, and all four
-           are on this list. */
+        /* Safe space itself. What it draws is a breathing exercise and five ways down, and
+           neither depends on anything having been written: on a journal with nothing in it
+           the screen is identical, which is the point of it - the screen a person reaches
+           on their worst day is the same screen every time. Its four ways down each carry
+           their own empty state, and all four are on this list. */
         'doubt',
         /* The licence notices are written by the build from what it
            bundled, so there is no journal and no state in which the list is
@@ -252,7 +237,7 @@ describe('what a first-run journal sees', () => {
     }
   });
 
-  it('gives every notice a handle to grip (ADR-0029)', () => {
+  it('gives every notice a handle to grip', () => {
     for (const route of WITH_EMPTY_STATE) {
       const notices = markupOf.get(route)!.match(/<Notice\b[\s\S]*?\/>/g) ?? [];
       expect(notices.length, `${route} renders no Notice`).toBeGreaterThan(0);
@@ -262,13 +247,12 @@ describe('what a first-run journal sees', () => {
 });
 
 describe('what the worker is still fetching', () => {
-  /** Reference data is held in memory and read synchronously,
-      so a screen reading only that owes no loading state. Three here:
-      milestones reads the milestone catalogue, resources reads a directory
-      compiled into the bundle, and the notifications view reads nothing but
-      the preference store. Presentations read the same
-      mirrored vocabulary (reference.svelte.ts) rather than a live query, but
-      left this list with audit item 6 along with their route. */
+  /** Reference data is held in memory and read synchronously, so a screen reading only that
+      owes no loading state. Three here: milestones reads the milestone catalogue, resources
+      reads a directory compiled into the bundle, and the notifications view reads nothing
+      but the preference store. Presentations read the same mirrored vocabulary
+      (reference.svelte.ts) rather than a live query, but left this list with along with
+      their route. */
   const ENTRY_DATA = ROUTES.filter(
     (route) =>
       ![
@@ -292,13 +276,12 @@ describe('what the worker is still fetching', () => {
   );
 
   it('keeps a loading state on every screen that reads the journal', () => {
-    /* Two ways to hold one, since phase 5 audit ticket 04: a screen either
-       hands its read to ReadGate, which owns the placeholder and the branch
-       around it, or it draws a Skeleton against a `.loading` of its own where
-       what it is waiting on is not a list. What must not happen is neither.
-       A ReadGroup is a gate over several reads at
-       once and owns its placeholder the same way, and so does a ReadReserve,
-       which holds the body's room at its last height. */
+    /* Two ways to hold one, since a screen either hands its read to ReadGate, which owns
+       the placeholder and the branch around it, or it draws a Skeleton against a `.loading`
+       of its own where what it is waiting on is not a list. What must not happen is
+       neither. A ReadGroup is a gate over several reads at once and owns its placeholder
+       the same way, and so does a ReadReserve, which holds the body's room at its last
+       height. */
     for (const route of ENTRY_DATA) {
       const source = sourceOf.get(route)!;
       const gated =
@@ -333,7 +316,7 @@ describe('what the worker is still fetching', () => {
         expect(source, route).toMatch(/import \{[^}]*\bcrossfade\b[^}]*\} from '\$lib\/motion\/reveal'/);
         expect(markupOf.get(route), route).toMatch(/out:crossfade/);
       }
-      // Ticket 246 gives document detail an entrance after its cold-load skeleton.
+      // Gives document detail an entrance after its cold-load skeleton.
       if (route === 'media/documents/[id]') {
         expect(markupOf.get(route), route).toMatch(/in:crossfade/);
       } else {
@@ -387,19 +370,18 @@ describe('the two print surfaces', () => {
     expect(book).toMatch(/@media print/);
   });
 
-  it('prevents hydration layout snap on cold mount of journal book (ticket 110)', () => {
+  it('prevents hydration layout snap on cold mount of journal book', () => {
     const book = read('src/routes/settings/journal-book/+page.svelte');
     expect(book).toMatch(/<div out:crossfade><Skeleton/);
     expect(book).toMatch(/visibleEntries/);
     expect(book).toMatch(/beforeprint/);
   });
 
-  it('keeps the journal book print action in a scoped foot, not the header (ticket 34)', () => {
+  it('keeps the journal book print action in a scoped foot, not the header', () => {
     const book = read('src/routes/settings/journal-book/+page.svelte');
-    /* The preview runs for many entries; an action only the header held is
-       off-screen for all of them. The foot the frame hosts is the one print
-       action now, and the scope it prints is stated beside it (the clinician
-       summary's own ticket 34 shape), so the header carries no second one. */
+    /* The preview runs for many entries; an action only the header held is off-screen for
+       all of them. The foot the frame hosts is the one print action now, and the scope it
+       prints is stated beside it, so the header carries no second one. */
     expect(book).not.toMatch(/aria-label=\{m\.print\(\)\}/);
     const footStart = book.indexOf('<SaveBar');
     const print = book.indexOf('data-book-print');
@@ -432,16 +414,15 @@ describe('no medical framing and no interpreted values', () => {
   });
 });
 
-describe('transient frame render flashes and bloat prevention (ticket 114)', () => {
+describe('transient frame render flashes and bloat prevention', () => {
   it('guarantees intrinsic minimum geometry on screen headers', () => {
     const componentsCss = read('src/lib/styles/components.css');
     expect(componentsCss).toMatch(/\.screen-header\s*\{[^}]*min-height:\s*calc\(var\(--space-8\)\s*\+\s*var\(--touch-target\)\s*\+\s*var\(--space-4\)\)/);
-    /* The inset used to be a term here, because the field bled up through
-       it and its intrinsic height had to cover the part above the window's
-       safe area too. Carpet ticket 154 retired that bleed on every field,
-       so the reserve is the same one the header above it keeps. What this
-       test is about is unchanged: a field with an intrinsic minimum cannot
-       render at no height for a frame while its contents resolve. */
+    /* The inset used to be a term here, because the field bled up through it and its
+       intrinsic height had to cover the part above the window's safe area too. retired that
+       bleed on every field, so the reserve is the same one the header above it keeps. What
+       this test is about is unchanged: a field with an intrinsic minimum cannot render at
+       no height for a frame while its contents resolve. */
     expect(componentsCss).toMatch(/\.screen > \.screen-header > \.screen-field\s*\{[^}]*min-height:\s*calc\(var\(--space-8\)\s*\+\s*var\(--touch-target\)\s*\+\s*var\(--space-4\)\)/);
     expect(componentsCss).toMatch(/\.screen-header\.is-collapsed,\s*\.screen > \.screen-header\.is-collapsed\s*\{[^}]*min-height:\s*0/);
   });

@@ -1,15 +1,13 @@
-/* Display names for the built-in vocabulary, looked up by key at display
-   time (F25, and CONTEXT: Built-in). builtins.ts stores no text at all, so
-   this is where a built-in gets its wording - and where it changes when the
-   language does.
+/* Display names for the built-in vocabulary, looked up by key at display time. builtins.ts stores no text. This is where a built-in gets
+   its wording - and where it changes when the language does.
 
-   Each map is typed against the key union builtins.ts derives from its own
-   `as const` list, so adding a built-in without adding its message is a
-   typecheck failure rather than a raw key on screen.
+   Each map is typed against the key union builtins.ts derives from its own `as const` list,
+   so adding a built-in without adding its message is a typecheck failure rather than a raw
+   key on screen.
 
-   This file imports paraglide, so nothing the Node tier touches may import
-   it (ADR-0016). The seam is exact: builtins.ts is the data, this is the
-   wording, and vocabulary.ts joins them for the screens. */
+   This file imports paraglide, so nothing the Node tier touches may import it. The seam is
+   exact: builtins.ts is the data, this is the wording, and vocabulary.ts joins them for the
+   screens. */
 
 import { m } from '$lib/paraglide/messages';
 import type { BodyRegionAxis } from '$lib/data/types';
@@ -83,13 +81,10 @@ const MOOD_NAME: Message[] = [m.mood_1, m.mood_2, m.mood_3, m.mood_4, m.mood_5];
 /** The name of a mood, 1 to 5. */
 export const moodName = (value: number): string => MOOD_NAME[value - 1]?.() ?? String(value);
 
-/* The personal-effects catalogue (phase 4 ticket 07, widened well past its
-   original eight by phase 5 ticket 41) is a built-in reference-data area
-   now: a custom effect's name
-   is never looked up here, it is the stored row's own name
-   (vocabulary.ts). Never called for a custom effect - falls back to the
-   raw key via `lookup` only for a built-in key a newer build seeded that
-   this one does not know the wording of. */
+/* The personal-effects catalogue is a built-in reference-data area now: a custom effect's
+   name is never looked up here, it is the stored row's own name (vocabulary.ts). Never
+   called for a custom effect - falls back to the raw key via `lookup` only for a built-in
+   key a newer build seeded that this one does not know the wording of. */
 const PERSONAL_EFFECT_NAME: Record<BuiltInPersonalEffectKey, Message> = {
   // Feminizing, tier 1.
   breast_development: m.effect_breast_development,
@@ -166,9 +161,8 @@ const PERSONAL_EFFECT_NAME: Record<BuiltInPersonalEffectKey, Message> = {
   vein_prominence_masculinizing: m.effect_vein_prominence_masculinizing
 };
 
-/** The six effect categories (phase 5 ticket 41, CONTEXT: "Effect
-    category") are a fixed set, not a built-in row, the same reasoning
-    fixed vocabulary requires. */
+/** The six effect categories are a fixed set, not a built-in row, the same reasoning fixed
+    vocabulary requires. */
 const EFFECT_CATEGORY_NAME: Record<BuiltInEffectCategoryKey, Message> = {
   body_shape: m.effect_category_body_shape,
   skin_hair: m.effect_category_skin_hair,
@@ -185,9 +179,8 @@ const EFFECT_CATEGORY_NAME: Record<BuiltInEffectCategoryKey, Message> = {
 export const bodyRegionAxisName = (axis: BodyRegionAxis): string =>
   axis === 'dysphoria' ? m.body_region_axis_dysphoria() : m.body_region_axis_euphoria();
 
-/* A side effect's severity (phase 4 ticket 06, CONTEXT: "Side effect") is a
-   1-5 ordered scale like mood, and its five names are vocabulary the same
-   way: purely descriptive wording, never a recommendation or a warning. */
+/* A side effect's severity is a 1-5 ordered scale like mood, and its five names are
+   vocabulary the same way: purely descriptive wording, never a recommendation or a warning. */
 const SEVERITY_NAME: Message[] = [m.severity_1, m.severity_2, m.severity_3, m.severity_4, m.severity_5];
 
 /** The name of a severity, 1 to 5, or null when none was given - the
@@ -215,8 +208,8 @@ const HAIR_REMOVAL_AREA_NAME: Record<HairRemovalAreaKey, Message> = {
   genital_surgical_site: m.hair_removal_area_genital_surgical_site
 };
 
-/** The name of a hair-removal treatment area, or "other" for a stored key
-    this build's vocabulary does not list (FA 04). */
+/** The name of a hair-removal treatment area, or "other" for a stored key this build's
+    vocabulary does not list. */
 export const hairRemovalAreaName = (area: string): string =>
   (HAIR_REMOVAL_AREA_NAME as Record<string, Message | undefined>)[area]?.() ?? m.hair_removal_area_other();
 
@@ -231,9 +224,8 @@ const HAIR_REMOVAL_METHOD_NAME: Record<HairRemovalMethod, Message> = {
 export const hairRemovalMethodName = (method: string): string =>
   (HAIR_REMOVAL_METHOD_NAME as Record<string, Message | undefined>)[method]?.() ?? m.hair_removal_method_other();
 
-/* A tryout's kind (phase 4 ticket 16, widened by phase 5 ticket 13) is a
-   fixed set, not a built-in row, the same reasoning HAIR_REMOVAL_METHOD_NAME
-   gives. */
+/* A tryout's kind is a fixed set, not a built-in row, the same reasoning
+   HAIR_REMOVAL_METHOD_NAME gives. */
 const TRYOUT_KIND_NAME: Record<TryoutKind, Message> = {
   name: m.tryout_kind_name,
   pronouns: m.tryout_kind_pronouns,
@@ -245,9 +237,8 @@ const TRYOUT_KIND_NAME: Record<TryoutKind, Message> = {
 export const tryoutKindName = (kind: string): string =>
   (TRYOUT_KIND_NAME as Record<string, Message | undefined>)[kind]?.() ?? m.tryout_kind_other();
 
-/* A cycle event's three kinds (phase 5 ticket 03, CONTEXT: "Cycle event")
-   are a fixed set, not a built-in row, the same reasoning
-   fixed vocabulary requires. */
+/* A cycle event's three kinds are a fixed set, not a built-in row, the same reasoning fixed
+   vocabulary requires. */
 const CYCLE_EVENT_KIND_NAME: Record<CycleEventKind, Message> = {
   period_occurred: m.cycle_event_kind_period_occurred,
   spotting: m.cycle_event_kind_spotting,
@@ -367,7 +358,7 @@ const TAG_LABEL: Record<BuiltInTagKey, Message> = {
 };
 
 /* Dysphoria types only: the seven category names are not self-explanatory
-   on their own (CONTEXT: Dysphoria type - "societal" vs "social"), so each
+   on their own ("societal" vs "social"), so each
    carries a longer description an info affordance surfaces on demand.
    Nothing else has one, so this is a partial map rather than a Record over
    the full tag key union, and tagDescription() returns null rather than

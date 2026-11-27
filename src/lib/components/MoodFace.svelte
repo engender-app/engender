@@ -22,10 +22,9 @@
   }: {
     /** 1 to 5 on the mood ramp. */
     step: number;
-    /** A number is pixels. A CSS length lets a fluid cell hand it "100%":
-        the calendar's cells are a seventh of whatever width the screen has,
-        so the one surface that cannot name a pixel size is the one that
-        most wants a face (phase 6 unprompted ticket 11). */
+    /** A number is pixels. A CSS length lets a fluid cell hand it "100%": the calendar's
+        cells are a seventh of whatever width the screen has, so the one surface that cannot
+        name a pixel size is the one that most wants a face. */
     size?: number | string;
     /** Whether this face looks around and blinks when nothing is happening.
         On for the three surfaces where a mood is being chosen; off, and so
@@ -71,10 +70,8 @@
   style={vars}
   aria-hidden="true"
 >
-  <!-- A rounded block rather than a disc: the circle was the one
-       shape phase 10's language does not use, and a block holds a bigger
-       drawing at the same size. `disc` keeps its name - what it means is
-       "draw your own background", and a split calendar cell still says no. -->
+  <!-- The rounded block fits a larger drawing. The `disc` prop draws that background. Split
+       calendar cells supply their own. -->
   {#if disc}
     <rect
       x={MOOD_BLOCK.x}

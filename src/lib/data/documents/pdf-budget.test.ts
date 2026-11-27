@@ -1,10 +1,10 @@
-/* GD-029: pdf.js was called with no limit on the images it draws, so a PDF
-   well under 25 MiB could declare a page-one image of billions of pixels
-   and have the worker allocate for it while rendering.
+/* pdf.js was called with no limit on the images it draws, so a PDF well under 25 MiB could
+   declare a page-one image of billions of pixels and have the worker allocate for it while
+   rendering.
 
-   The two halves: pdf.js itself skips an image over `maxImageSize` (shown
-   here against the real library, on a PDF built by hand), and openPdf()
-   passes the budget to getDocument (shown against a stand-in). */
+   The two halves: pdf.js itself skips an image over `maxImageSize` (shown here against the
+   real library, on a PDF built by hand), and openPdf() passes the budget to getDocument
+   (shown against a stand-in). */
 
 import { describe, expect, test, vi } from 'vitest';
 import { PDF_DOCUMENT_BUDGET, MAX_IMAGE_PIXELS } from '../media/budget';

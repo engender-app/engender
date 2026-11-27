@@ -1,17 +1,12 @@
-/* The regimen episode area (phase 4 ticket 01, widened to concurrent,
-   explicitly-ended episodes by phase 5 ticket 38; CONTEXT: "Regimen
-   episode"). Greenfield: uuid-only identity (ADR-0002) - a regimen episode
-   has no built-in counterpart to key by, unlike tags or gender dimensions.
-   Episodes are never deleted: every entry, photo, measurement and lab
-   result attributed to one by timestamp (regimenEpisode.ts) must keep
-   resolving to it.
+/* The regimen episode area. Greenfield: uuid-only identity (ADR-0002) - a regimen episode
+   has no built-in counterpart to key by, unlike tags or gender dimensions. Episodes are
+   never deleted: every entry, photo, measurement and lab result attributed to one by
+   timestamp (regimenEpisode.ts) must keep resolving to it.
 
-   A mistaken or duplicate episode is put away instead (after-release 07,
-   the write phase 4 ticket 01 promised): `setEpisodeHidden` is the only
-   such write, and `getEpisodes` is the one read every surface draws the
-   history from, so leaving a hidden row out there takes it out of Care,
-   the curve, dose attribution and the clinician summary at once. The
-   regimen screen asks `getHiddenEpisodes` for the way back. */
+   A mistaken or duplicate episode is put away instead: `setEpisodeHidden` is the only such
+   write, and `getEpisodes` is the one read every surface draws the history from, so leaving
+   a hidden row out there takes it out of Care, the curve, dose attribution and the
+   clinician summary at once. The regimen screen asks `getHiddenEpisodes` for the way back. */
 
 import { inferDrugClass, toDrugClass } from '../drugClass';
 import { assertSpanOrdered } from '../span';

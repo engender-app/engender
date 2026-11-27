@@ -13,14 +13,13 @@ import type { BootPreferences, Preferences } from './preferences';
 
 const values = $state<PreferenceValues>({ ...PREFERENCE_DEFAULTS });
 
-/** Whether phase 2 has happened: the stored values are in `values`, not the
-    defaults. A cold navigation straight to a screen paints before SQLite
-    opens, and a preference that is not in the boot set reads its default
-    until then - `lastBackupAt` read null, so the export screen told a
-    persona with a 34-day-old backup that it had never been backed up, for
-    about 170ms. The same distinction `vocabulary.ready` draws
-    for the reference mirror. Stays true across a re-attach:
-    the values being replaced are already this journal's, not defaults. */
+/** Whether has happened: the stored values are in `values`, not the defaults. A cold
+    navigation straight to a screen paints before SQLite opens, and a preference that is not
+    in the boot set reads its default until then - `lastBackupAt` read null, so the export
+    screen told a persona with a 34-day-old backup that it had never been backed up, for
+    about 170ms. The same distinction `vocabulary.ready` draws for the reference mirror.
+    Stays true across a re-attach: the values being replaced are already this journal's, not
+    defaults. */
 let attached = $state(false);
 export function preferencesAttached(): boolean {
   return attached;

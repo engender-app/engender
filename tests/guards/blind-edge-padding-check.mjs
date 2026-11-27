@@ -1,8 +1,7 @@
-/* Browser-tier proof for ticket 156: a padding-only change to a field must
-   still move `--blind-edge` to the new border-box height. Node-tier tests
-   can only assert the `observe()` call's arguments (stepBlind.test.ts);
-   whether the browser's own ResizeObserver actually fires on that box is a
-   real-browser question, answered here.
+/* A padding-only change to a field must still move `--blind-edge` to the new border-box
+   height. Node-tier tests can only assert the `observe()` call's arguments
+   (stepBlind.test.ts); whether the browser's own ResizeObserver actually fires on that box
+   is a real-browser question, answered here.
 
    Run: node tests/guards/blind-edge-padding-check.mjs */
 import assert from 'node:assert/strict';

@@ -103,9 +103,9 @@ describe('the app opening', () => {
   it('publishes --blind-from before capture and the settle delta once the app has mounted', async () => {
     const doc = fakeDocument();
     openApp(() => {}, doc.as);
-    /* Published before the outgoing capture so the blind-slide keyframe
-       does not fallback to 0px (Alicja, 2026-09-10). The delta between the
-       two heights is published in swap() once the incoming screen has mounted. */
+    /* Published before the outgoing capture so the blind-slide keyframe does not fallback
+       to 0px. The delta between the two heights is published in swap() once the incoming
+       screen has mounted. */
     expect(doc.root.style.props.get('--blind-from')).toBe('78px');
     expect(doc.root.style.props.get('--blind-delta')).toBeUndefined();
     await doc.update();
@@ -124,9 +124,9 @@ describe('the app opening', () => {
     expect(doc.blind.style.viewTransitionName).toBe('');
   });
 
-  /* Tester-report-02 ticket 07: an unlock without disguise draws Today's own
-     sun, and the opening holds it - its rings stay unnamed on both sides, so
-     each rides its side's blind capture as one picture in one place. */
+  /* An unlock without disguise draws Today's own sun, and the opening holds it - its rings
+     stay unnamed on both sides, so each rides its side's blind capture as one picture in
+     one place. */
   it("holds the sun when the gate drew Today's sun", () => {
     const doc = fakeDocument({ gateSun: true });
     openApp(() => {}, doc.as);
@@ -182,7 +182,7 @@ describe('the app opening', () => {
   });
 });
 
-describe('a boot failing over the drawn route (ux-carpet 213)', () => {
+describe('a boot failing over the drawn route', () => {
   it('commits inside a fade-through and takes the pattern off after', async () => {
     const doc = fakeDocument();
     let committed = false;

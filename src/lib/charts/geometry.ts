@@ -180,13 +180,12 @@ export function readoutCorner(
   return { left: x > plotWidth / 2, below: topY < plotHeight / 2 };
 }
 
-/* The value gutter's three labels (audit item 1). A domain of 0 to 1 -
-   any count chart's own minimum - puts the midpoint at 0.5, which
-   `formatValue` rounds to the same digits as one of the ends; printing it
-   then reads as "1, 1, 0" rather than as a scale. Dropping the mid label
-   when it lands on either end's own text is a property of the formatted
-   text, not of the raw numbers, so a caller whose `formatValue` never
-   rounds (a percentage with a decimal, say) keeps its midpoint. */
+/* The value gutter's three labels. A domain of 0 to 1 - any count chart's own minimum -
+   puts the midpoint at 0.5, which `formatValue` rounds to the same digits as one of the
+   ends; printing it then reads as "1, 1, 0" rather than as a scale. Dropping the mid label
+   when it lands on either end's own text is a property of the formatted text, not of the
+   raw numbers, so a caller whose `formatValue` never rounds (a percentage with a decimal,
+   say) keeps its midpoint. */
 export function gutterLabels(
   min: number,
   max: number,

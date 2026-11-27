@@ -84,7 +84,7 @@
   const today = $derived(currentDay());
 
   /* The catalogue a hidden effect or a disabled category has already
-     removed (CONTEXT: "Hidden", "Effect category") - what the timeline and
+     removed - what the timeline and
      the "mark a change" list offer. A retired built-in is left
      out too unless it is already marked, which keeps its row and its mark.
      The fuller list lives only in the manage sheet below. */
@@ -103,8 +103,7 @@
 
   const directionOf = (e: PersonalEffectCatalogEntry): EffectDirectionGroup => e.direction ?? 'other';
 
-  /* Category, then direction, is the coarse control (CONTEXT: "Effect
-     category"); collapsed by default so a new journal's screen stays no
+  /* Category, then direction, is the coarse control; collapsed by default so a new journal's screen stays no
      longer than the eight-row screen this replaces - the acceptance
      criterion this file exists to keep. Keyed by direction and category
      together, since the same category groups separately under each
@@ -135,15 +134,13 @@
     }));
   }
 
-  /* One whole-sentence message per window shape (no completion window,
-     open-ended, or bounded) rather than concatenating parts - each is a
-     full sentence in its own right, so nothing here has to guess how any
-     other language would order the pieces.
+  /* One whole-sentence message per window shape (no completion window, open-ended, or
+     bounded) rather than concatenating parts - each is a full sentence in its own right, so
+     nothing here has to guess how any other language would order the pieces.
 
-     Null where the band is withheld, and nothing is said in its place: the
-     sentence would be a timing claim about a hormone this person is not on,
-     or about an effect the literature has no window for at
-     all (tiers 2 and 3, ticket 41). */
+     Null where the band is withheld, and nothing is said in its place: the sentence would
+     be a timing claim about a hormone this person is not on, or about an effect the
+     literature has no window for at all. */
   function windowCaption(key: string): string | null {
     if (bands?.get(key) == null) return null;
     const window = literatureWindow(key)!;
@@ -275,10 +272,9 @@
     return m.range_from_to({ from, to: longDay(effect.resolvedEpochDay) });
   }
 
-  /* Ticket 11's second entry point into the appointment prep list: a
-     one-tap add, seeded from what is already on screen, rather than a
-     detour through that list's own editor. One add per tap, and a failed
-     one says so (UI 17); a later tap is a second add on purpose. */
+  /* Second entry point into the appointment prep list: a one-tap add, seeded from what is
+     already on screen, rather than a detour through that list's own editor. One add per
+     tap, and a failed one says so (UI 17); a later tap is a second add on purpose. */
   const prepWrite = writer();
   async function addToAppointmentPrep(name: string) {
     if (!(await prepWrite.run(() => journal.checklists.addToStandaloneChecklist(m.appointment_prep_from_effect_item({ name })), m.write_failed()))) return;
@@ -457,11 +453,11 @@
       />
     {/if}
 
-    <!-- What the literature says, closed until asked for: no band is drawn and no timing sentence is shown before
-         this opens, so what the person marked comes first. It replaces
-         ticket 20's always-visible limitation line and its "About shaded
-         bands" disclosure; the limitation now arrives with the bands it
-         qualifies. Offered only while a band could be drawn at all. -->
+    <!-- What the literature says, closed until asked for: no band is drawn and no timing
+         sentence is shown before this opens, so what the person marked comes first. It
+         replaces always-visible limitation line and its "About shaded bands" disclosure;
+         the limitation now arrives with the bands it qualifies. Offered only while a band
+         could be drawn at all. -->
     {#if hasBands}
       <div class="literature" data-bands-context transition:disclose>
         <button
@@ -572,9 +568,8 @@
                 />
               </div>
             {/each}
-            <!-- The way to add one, at the end of the list it adds to (bug
-                 session 18, item 64): it was a button over the timeline,
-                 named for a side effect. -->
+            <!-- The way to add one, at the end of the list it adds to: it was a button over
+                 the timeline, named for a side effect. -->
             <div class="rows-divide">
               <ListRow
                 key="add-own-change"
@@ -765,17 +760,15 @@
 
     <h3>{m.effect_manage_types()}</h3>
     <p class="muted small" style="margin-bottom:var(--space-3)">{m.effect_manage_types_intro()}</p>
-    <!-- Grouped the same way the timeline above groups them (by category),
-         rather than one flat list of every effect the catalogue has - the
-         two disagreeing about how these effects are organised was its own
-         kind of confusing (Alicja, 2026-08-27). A category's own Switch,
-         above, already keeps every effect under it out of the timeline and
-         the "mark a change" picker (visiblePersonalEffectTypes); shown here
-         as effectively hidden too, rather than only in the two screens this
-         one does not do the toggling for, so what a row says matches what
-         the category switch already decided for it. Its own eye toggle
-         stays live regardless - hiding it individually is a choice that
-         should still stick once the category comes back on. -->
+    <!-- Grouped the same way the timeline above groups them (by category), rather than one
+         flat list of every effect the catalogue has - the two disagreeing about how these
+         effects are organised was its own kind of confusing. A category's own Switch,
+         above, already keeps every effect under it out of the timeline and the "mark a
+         change" picker (visiblePersonalEffectTypes); shown here as effectively hidden too,
+         rather than only in the two screens this one does not do the toggling for, so what
+         a row says matches what the category switch already decided for it. Its own eye
+         toggle stays live regardless - hiding it individually is a choice that should still
+         stick once the category comes back on. -->
     {#each vocabulary.effectCategories as cat (cat.key)}
       {@const catEffects = managedEffects.filter((e) => e.categoryKey === cat.key)}
       {#if catEffects.length}

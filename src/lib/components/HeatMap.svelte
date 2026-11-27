@@ -35,12 +35,11 @@
     /** The flag stripe the shading is drawn in. Before the flag has landed,
         the accent ramp's own tokens stand in. */
     role?: Role;
-    /** Which era each day belongs to, each already
-        carrying the role it draws in. Resolved by the caller, the same
-        division of labour `role` above keeps: an era stores no colour of
-        its own (ADR-0049). The caller resolves the role rather than this
-        component reaching for `activeFlag` itself. Named in the key under the grid,
-        never on a cell (ticket 280: a cell has no outline to carry it). */
+    /** Which era each day belongs to, each already carrying the role it draws in. Resolved
+        by the caller, the same division of labour `role` above keeps: an era stores no
+        colour of its own (ADR-0049). The caller resolves the role rather than this
+        component reaching for `activeFlag` itself. Named in the key under the grid, never
+        on a cell. */
     eras?: { era: Era; role: Role }[];
     /** The chosen presentation (ADR-0048) and
         its resolved role - which days it covers is this component's own
@@ -163,9 +162,8 @@
     /** Something is coming up on this day (ADR-0067) - always false for today or earlier, since heat already
         owns those and the two may never collide. */
     hasMark: boolean;
-    /** Whether an empty cell opens a new entry for the day (ticket 99 item
-        13): true for today and every day behind it, never for a day still
-        ahead, since there is nothing yet to log there. */
+    /** Whether an empty cell opens a new entry for the day: true for today and every day
+        behind it, never for a day still ahead, since there is nothing yet to log there. */
     isPastOrToday: boolean;
   };
 
@@ -409,19 +407,17 @@
 <div class="cal-dows" class:is-compact={compact} aria-hidden="true" data-cal-sits-out>
   {#each DOWS as d, i (i)}<span class="cal-dow">{d}</span>{/each}
 </div>
-<!-- One block per month, keyed, so a month change is one block leaving and
-     another arriving over the same slots (waveIn/waveOut). A keyed #each
-     rather than #key because an each item keeps its last value once it is
-     gone: the leaving block goes on drawing its own month for as long as it
-     is fading, where a #key block would redraw itself as the new one.
+<!-- One block per month, keyed, so a month change is one block leaving and another arriving
+     over the same slots (waveIn/waveOut). A keyed #each rather than #key because an each
+     item keeps its last value once it is gone: the leaving block goes on drawing its own
+     month for as long as it is fading, where a #key block would redraw itself as the new
+     one.
 
-     The month is a list of its days, named by the month, and not a grid
-     (phase 14 ticket 28, audit finding A03). It used to say role="grid"
-     over plain links, with no rows or cells under it, which promises arrow
-     keys and a single tab stop it never had. Every day here is a link to a
-     page or has nowhere to go, nothing is selected, and each link's name is
-     the whole date - so a list of links is the true description, and Tab
-     walks the days in order. -->
+     The month is a list of its days, named by the month, and not a grid. It used to say
+     role="grid" over plain links, with no rows or cells under it, which promises arrow keys
+     and a single tab stop it never had. Every day here is a link to a page or has nowhere
+     to go, nothing is selected, and each link's name is the whole date - so a list of links
+     is the true description, and Tab walks the days in order. -->
 <div class="cal-months" bind:this={months}>
   {#each [view] as v (v.key)}
     <ol
@@ -458,10 +454,9 @@
               {@render cell(c, v.isMood)}
             </a>
           {:else if c.isPastOrToday}
-            <!-- A past or today cell with nothing on it opens a new entry for
-                 that day (ticket 99 item 13) - the same route the "+" affordances
-                 elsewhere in the app seed a day for, rather than leaving an empty
-                 cell with nothing to tap. -->
+            <!-- A past or today cell with nothing on it opens a new entry for that day -
+                 the same route the "+" affordances elsewhere in the app seed a day for,
+                 rather than leaving an empty cell with nothing to tap. -->
             <a class="cal-day press" class:is-today={c.isToday} tabindex={compact ? -1 : undefined}
               data-cal-wave={c.diagonal} data-cal-day={c.day - 1}
               data-hm-cell-empty href="/entry/new/{c.epochDay}" aria-label={c.label}>
@@ -537,14 +532,12 @@
     <span class="cal-half is-earlier" data-hm-cell-split={split ? '' : undefined}
       style={split ? `background:${fillAt(split.first, isMood)}` : undefined}></span>
     <span class="cal-half is-later" style={split ? `background:${fillAt(split.last, isMood)}` : undefined}></span>
-    <!-- Over the fills, with no disc of their own, so the colour underneath is
-         what a face sits on. Mounted on every metric and every day, and
-         faded rather than inserted: the face a late read resolves, a metric
-         switch to mood, and the face a split hands over to a whole one all
-         need an element that was already there to fade in from (ticket 99
-         item 7, "the faces... should fade in, not appear in 1 frame").
-         Mood only, which is a rule (ADR-0012, F15): `is-on` is where it is
-         kept, and it is never on for a gender dimension. -->
+    <!-- Over the fills, with no disc of their own, so the colour underneath is what a face
+         sits on. Mounted on every metric and every day, and faded rather than inserted: the
+         face a late read resolves, a metric switch to mood, and the face a split hands over
+         to a whole one all need an element that was already there to fade in from. Mood
+         only, which is a rule (ADR-0012, F15): `is-on` is where it is kept, and it is never
+         on for a gender dimension. -->
     <span class="cal-face" class:is-on={isMood && !split && c.step > 0} data-hm-cell-face data-cal-sits-out
       ><MoodFace step={c.step || 1} size="100%" disc={false} /></span
     >
@@ -577,9 +570,8 @@
 {/snippet}
 
 <style>
-  /* Opening, the letters wait a beat like the dates under them, so they
-     arrive as the days spread into their columns rather than ahead of them
-     (prh12 bug 11). */
+  /* Opening, the letters wait a beat like the dates under them, so they arrive as the days
+     spread into their columns rather than ahead of them. */
   .cal-dows {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
@@ -598,9 +590,8 @@
      offset auto keeps its static position. */
   .cal-dows.is-compact {
     position: absolute;
-    /* Its own width kept: with every offset auto an absolute box shrinks
-       to its content, and the seven letters squeezed to the left edge in
-       the frame of the fold (prh12 bug 11). */
+    /* Its own width kept: with every offset auto an absolute box shrinks to its content,
+       and the seven letters squeezed to the left edge in the frame of the fold. */
     inset-inline: 0;
     opacity: 0;
     pointer-events: none;
@@ -613,15 +604,13 @@
      slots (waveOut). */
   .cal-months { position: relative; }
 
-  /* Room for seven 48px targets (phase 14 ticket 28, audit finding A10).
-     A day's link takes its column and half the gap either side, so the
-     links are as wide as the column pitch, (width + gap) / 7, and that is
-     48px once the row is 7 x 48 - 8 = 328px. A 390px phone gives the month
-     350 and needs nothing. A 360px one gives 320, so there the month - the
-     day letters with it, or they would stop lining up - reaches 4px into
-     each side of the screen's 20px gutter, which leaves 16. That is as far
-     as it goes: on a 320px screen the pitch is about 42px, and no cell
-     drawing changes that. */
+  /* Room for seven 48px targets. A day's link takes its column and half the gap either
+     side, so the links are as wide as the column pitch, (width + gap) / 7, and that is 48px
+     once the row is 7 x 48 - 8 = 328px. A 390px phone gives the month 350 and needs
+     nothing. A 360px one gives 320, so there the month - the day letters with it, or they
+     would stop lining up - reaches 4px into each side of the screen's 20px gutter, which
+     leaves 16. That is as far as it goes: on a 320px screen the pitch is about 42px, and no
+     cell drawing changes that. */
   .cal-dows,
   .cal-months {
     /* The gap between two days' columns, which the day letters, the grid,
@@ -647,12 +636,11 @@
     gap: 10px var(--cal-col-gap);
     --r: var(--r-block);
   }
-  /* Mood is the same rounded square every other mood face in the app draws
-     (ticket 99 item 7), not a circle - 26.7% is moodFace.ts's MOOD_BLOCK,
-     the same fraction `.mood-btn .mood-face` and `.kit-mood .mood-face`
-     use. Every layer of a cell is the whole cell, so the one fraction is
-     right on all of them, halves included. A gender dimension takes no
-     share of a face's shape and stays var(--r-block). */
+  /* Mood is the same rounded square every other mood face in the app draws, not a circle -
+     26.7% is moodFace.ts's MOOD_BLOCK, the same fraction `.mood-btn.mood-face` and
+     `.kit-mood.mood-face` use. Every layer of a cell is the whole cell, so the one fraction
+     is right on all of them, halves included. A gender dimension takes no share of a face's
+     shape and stays var(--r-block). */
   .cal-grid.is-round { --r: 26.7%; }
   /* No lead-in element: the first of the month starts in its own column. */
   .cal-grid > :first-child { grid-column-start: var(--lead); }
@@ -728,10 +716,9 @@
       border-radius var(--dur-med) var(--ease-out),
       outline-color var(--dur-med) var(--ease-out);
   }
-  /* On the desktop column a column is about 85px, and a face filling it
-     read as too big for a month (bug session 18, item 50). Capped there and
-     centred in its column, so the day letters and the dates still sit on
-     the faces; the phone's columns are under the cap and draw as before. */
+  /* On the desktop column a column is about 85px, and a face filling it read as too big for
+     a month. Capped there and centred in its column, so the day letters and the dates still
+     sit on the faces; the phone's columns are under the cap and draw as before. */
   @container app (min-width: 1024px) {
     .cal-grid:not(.is-compact) .cal-cell { max-width: 64px; }
   }
@@ -783,15 +770,13 @@
     opacity: 1;
     transform: none;
   }
-  /* A disc cannot be stretched, and the travel between strip and grid
-     scales a cell 0.17 across and 0.6 down, which on the recording turned
-     every face into an egg and every dot into an ellipse. So opening the
-     month, they sit the travel out: gone in the frame of the tap, and back
-     over a beat once the cells have landed (ticket 99 item 7 round 2 - a
-     shorter delay rode the tail of the travel and read as a pop). Closing,
-     the screen fades them where they stand before the days fold
-     (`data-cal-sits-out`, the calendar's toggleMonth), so by the time the
-     strip's layout squashes them there is nothing left to see. */
+  /* A disc cannot be stretched, and the travel between strip and grid scales a cell 0.17
+     across and 0.6 down, which on the recording turned every face into an egg and every dot
+     into an ellipse. So opening the month, they sit the travel out: gone in the frame of
+     the tap, and back over a beat once the cells have landed. Closing, the screen fades
+     them where they stand before the days fold (`data-cal-sits-out`, the calendar's
+     toggleMonth), so by the time the strip's layout squashes them there is nothing left to
+     see. */
   .cal-grid.is-opening .cal-face,
   .cal-grid.is-opening .cal-mark,
   .cal-grid.is-opening .cal-highlight {
@@ -804,10 +789,9 @@
   .cal-grid.is-compact .cal-highlight {
     transition: opacity 0s;
   }
-  /* The dates ride the travel unscaled, and at its start all of them stand
-     at 9px bars: faded in from the tap, the first frames drew thirty
-     numbers piled on one line (prh12 bug 11). They wait until the days have
-     spread. */
+  /* The dates ride the travel unscaled, and at its start all of them stand at 9px bars:
+     faded in from the tap, the first frames drew thirty numbers piled on one line. They
+     wait until the days have spread. */
   .cal-grid.is-opening .cal-date {
     transition: opacity var(--dur-med) var(--ease-out) var(--dur-fast);
   }

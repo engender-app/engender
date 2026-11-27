@@ -10,13 +10,12 @@
   line-height: 1.5;
 }
 
-/* The space between parts is each part's own bottom margin rather than the
-   column's gap. A part switched off closes to nothing (disclose, functional
-   audit ticket 39), and a gap kept its 16px slot until the frame the part
-   was removed, where the parts below then jumped. A margin closes with the
-   part. Bottom rather than top, so no part gains or loses a margin in one
-   frame when the part above it goes. The disclaimer is always last. Screen
-   only: print lays the column out as blocks with its own section margins. */
+/* The space between parts is each part's own bottom margin rather than the column's gap. A
+   part switched off closes to nothing, and a gap kept its 16px slot until the frame the
+   part was removed, where the parts below then jumped. A margin closes with the part.
+   Bottom rather than top, so no part gains or loses a margin in one frame when the part
+   above it goes. The disclaimer is always last. Screen only: print lays the column out as
+   blocks with its own section margins. */
 @media screen {
   .clinician-dossier > :not(:last-child) {
     margin-bottom: var(--space-4);
@@ -145,19 +144,17 @@
   inset: 0 min(0px, calc((100% - var(--touch-target)) / 2));
 }
 
-/* Phone width (after-release 22, the audit's UI-11). Six tables 336 to
-   625px wide sat in a 306px region, so even with a scroll cue every header
-   past the edge read cut mid-word ("Rout", "Dose 48 m"), and dates broke a
-   word a line. Below 30rem of frame, a table with three or more columns
-   reads as stacked rows instead: each row a block, each cell its header
-   over its value. Every column is on
-   screen without scrolling, so there is nothing for the keyboard to reach
-   past. Two-column tables fit as tables once a long header may wrap.
+/* Phone width (the audit's UI-11). Six tables 336 to 625px wide sat in a 306px region, so
+   even with a scroll cue every header past the edge read cut mid-word ("Rout", "Dose 48
+   m"), and dates broke a word a line. Below 30rem of frame, a table with three or more
+   columns reads as stacked rows instead: each row a block, each cell its header over its
+   value. Every column is on screen without scrolling, so there is nothing for the keyboard
+   to reach past. Two-column tables fit as tables once a long header may wrap.
 
-   The headers stay in the table for screen readers, only clipped from
-   sight, and each cell's printed label is decoration (the empty
-   alternative text after the slash), so a cell is announced once with its
-   column header rather than twice. Screen only: paper keeps the tables. */
+   The headers stay in the table for screen readers, only clipped from sight, and each
+   cell's printed label is decoration (the empty alternative text after the slash), so a
+   cell is announced once with its column header rather than twice. Screen only: paper keeps
+   the tables. */
 @media screen {
   .dossier-date {
     white-space: nowrap;
@@ -273,13 +270,12 @@
   margin: var(--space-2) 0;
 }
 
-/* Ticket 08: a table's rows past the preview floor are paper only - present
-   for print (the whole point of hiding them on screen is a page that reads
-   short there, not a page that reads short everywhere) and hidden until
-   then, the same "display: none until @media print" shape `.print-heading`
-   above already carries for the same reason. `.dossier-truncate-note`
-   below is the opposite of this: a screen-only line, so it takes app.css's
-   own `.no-print` instead of a second rule saying the same thing backwards. */
+/* A table's rows past the preview floor are paper only - present for print (the whole point
+   of hiding them on screen is a page that reads short there, not a page that reads short
+   everywhere) and hidden until then, the same "display: none until @media print" shape
+   `.print-heading` above already carries for the same reason. `.dossier-truncate-note`
+   below is the opposite of this: a screen-only line, so it takes app.css's own `.no-print`
+   instead of a second rule saying the same thing backwards. */
 .dossier-row-overflow {
   display: none;
 }

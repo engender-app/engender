@@ -45,7 +45,7 @@ export async function seedFullFixture(
   const between = (low: number, high: number) => low + Math.floor(r() * (high - low + 1));
 
   // Regimen: two concurrently active episodes, an injectable estradiol run
-  // and an oral progesterone one overlapping it - the shape ticket 38's
+  // and an oral progesterone one overlapping it - the shape the
   // concurrent-episode handling exists for, with real doses on both so the
   // adherence view has something to read.
   const estradiolStart = today - 500;
@@ -301,7 +301,7 @@ export async function seedFullFixture(
       note: r() < 0.2 ? say('a bit tight by the end', 'pod koniec trochę uciska') : null
     });
   }
-  // Its elapsed reminder is what ticket 31's web reminders list has to show
+  // Its elapsed reminder is what web reminders list has to show
   // and delete - the one write that screen offers on web (ADR-0063).
   /* Nine hours in, not two: past the eight-hour figure, so the binder
      duration cue is reachable in the demo on both surfaces that carry it.
@@ -321,7 +321,7 @@ export async function seedFullFixture(
 
   // Side effects: a handful spread over the last two years. The older ones
   // resolved a few weeks in, the two newest still going on (functional
-  // audit ticket 23), so both states show. No extra rolls: the seeded
+  // so both states show. No extra rolls: the seeded
   // sequence after this stays where it was.
   const sideEffectNames = locale === 'pl'
     ? ['uderzenia gorąca', 'mdłości', 'tkliwość piersi', 'ból głowy', 'zmęczenie', 'wahania nastroju']
@@ -361,7 +361,7 @@ export async function seedFullFixture(
   await journal.procedures.addPhoto(procedureId, today - 390, await demoPhoto(7000));
 
   // Dilation: names the same procedure above rather than carrying its own
-  // surgery day (audit item 7, schema v83) - a daily stage easing to every
+  // surgery day (schema v83) - a daily stage easing to every
   // third day, and most - not all - of the expected sessions actually
   // logged, so the gap rendering has something real to show.
   const taperStart = today - 400 + 5;

@@ -30,9 +30,9 @@
   }: {
     open: boolean;
     region: string;
-    /** Ticket 18's body-map filter (ADR-0048), carried over from whichever
-        mode /body-map is currently reading - so the trajectory this sheet
-        shows agrees with the trend chart that opened it. */
+    /** Body-map filter (ADR-0048), carried over from whichever mode /body-map is currently
+        reading - so the trajectory this sheet shows agrees with the trend chart that opened
+        it. */
     presentationId?: string;
     onClose?: () => void;
   } = $props();
@@ -187,9 +187,8 @@
     margin: 0;
     font-size: var(--text-lg);
   }
-  /* Sentence case from lowercase vocabulary: the first letter only.
-     `capitalize` title-cased every word ("Face And Jaw"), Polish too
-     (audit L04-17). */
+  /* Sentence case from lowercase vocabulary: the first letter only. `capitalize`
+     title-cased every word ("Face And Jaw"), Polish too (17). */
   .inspector-title::first-letter {
     text-transform: uppercase;
   }
@@ -229,10 +228,9 @@
     gap: var(--space-2);
   }
 
-  /* The first track's heading has no rule: it sits right under the sheet's
-     title and the averages, and the 3px line read as the sheet's top edge
-     drawn a second time (bug session 18, item 46). The tracks after it keep
-     theirs, which is what divides them. */
+  /* The first track's heading has no rule: it sits right under the sheet's title and the
+     averages, and the 3px line read as the sheet's top edge drawn a second time. The tracks
+     after it keep theirs, which is what divides them. */
   [data-track='trajectory'] > :global(.kit-heading) {
     border-top: 0;
     padding-top: 0;

@@ -16,13 +16,11 @@ import { EASE_OUT_SOFT_POINTS } from './tokens';
     them. */
 export const EASE_OUT_VAR = 'var(--ease-out)';
 
-/** What a closing blind takes instead. --ease-out leaves at four times its
-    average speed, which reads as a jump on an edge travelling the height of
-    a field ("sliding up must happen with a little bit of ease - it jumps too
-    fast", Alicja, round one, 2026-09-09); --ease-out-soft is the same
-    deceleration with the instant off the front, written for exactly this on
-    ticket 26. Safe on the way up in a way it would not be on the way down:
-    a closing blind that lags the content covers more of it, never less. */
+/** What a closing blind takes instead. --ease-out leaves at four times its average speed,
+    which reads as a jump on an edge travelling the height of a field; --ease-out-soft is
+    the same deceleration with the instant off the front, written for exactly this. Safe on
+    the way up in a way it would not be on the way down: a closing blind that lags the
+    content covers more of it, never less. */
 export const EASE_OUT_SOFT_VAR = 'var(--ease-out-soft)';
 
 /** The share of the travel the edge runs past its mark by. */
@@ -95,9 +93,8 @@ function settleEasing(peak: number, base: Bezier): string {
  *
  * A Svelte transition takes an easing function and has nowhere to put a
  * string, so a sheet reads the settle through this while the blind reads it
- * through the stylesheet (redesign ticket 38, where a sheet took the field's
- * motion). One curve, two ways of handing it over, the way EASE_OUT and
- * EASE_OUT_CSS already are one easing.
+ * through the stylesheet. One curve, two ways of handing it over, the way
+ * EASE_OUT and EASE_OUT_CSS already are one easing.
  */
 function settleCurve(peak: number, base: Bezier): (t: number) => number {
   const curve = bezier(base);

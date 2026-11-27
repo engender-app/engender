@@ -16,7 +16,7 @@
     absent one: a browser that reports nothing about a constraint has not
     said it was honoured, which is not the same as saying it was off. */
 /* CaptureSettings stays exported for its own test, and cross-checked in
-   benchmarkDelta.test.ts (AU-09 test-only review). */
+   benchmarkDelta.test.ts. */
 export type CaptureSettings = Pick<
   MediaTrackSettings,
   'echoCancellation' | 'noiseSuppression' | 'autoGainControl'
@@ -86,8 +86,7 @@ export function captureChainOf(device: string, label: string, settings: CaptureS
     what recorded it, and two unknowns are not evidence of one phone. Every benchmark this build
     writes carries a chain, and the app has no users, so the case this
     refuses is a fixture rather than a person's history. */
-/* sameCaptureChain stays exported only for its own test (AU-09 test-only
-   review). */
+/* sameCaptureChain stays exported only for its own test. */
 export function sameCaptureChain(a: string | null, b: string | null): boolean {
   return a !== null && b !== null && a === b;
 }

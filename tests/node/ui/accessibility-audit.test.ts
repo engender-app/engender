@@ -16,17 +16,16 @@ function read(path: string) {
   return readFileSync(path, 'utf8');
 }
 
-describe('phase 2 accessibility seams', () => {
+describe('accessibility seams', () => {
   it('keeps chart values available as text in stats', () => {
-    /* The chart carries a value gutter and a mark per reading, and neither is a number a screen reader can report. The
-       series has to be readable as text somewhere on this screen, which is
-       what this check is about - not which control opens it.
+    /* The chart carries a value gutter and a mark per reading, and neither is a number a
+       screen reader can report. The series has to be readable as text somewhere on this
+       screen, which is what this check is about - not which control opens it.
 
-       It was an "All values" link opening a sheet of bar rows until ticket
-       99 item 26 took the link away. The text stayed: a visually hidden
-       list of the same rows, which costs nothing on screen and keeps the
-       numbers reachable. If that list ever goes too, this check should fail
-       rather than be updated again. */
+       It was an "All values" link opening a sheet of bar rows item 26 took the link away.
+       The text stayed: a visually hidden list of the same rows, which costs nothing on
+       screen and keeps the numbers reachable. If that list ever goes too, this check should
+       fail rather than be updated again. */
     /* The chart and its list moved off the door onto the day-by-day
        reading's own screen; the rule moved with them. */
     const stats = read('src/lib/components/readings/DayByDayReading.svelte');
@@ -46,12 +45,11 @@ The plot is one image to a screen reader and a
     expect(stats).toContain('m.values_two_title');
   });
 
-  /* Ticket 17: --touch-target was 44px, which is the iOS number. The app
-     ships an Android wrapper too (android/), and Android's floor is 48dp,
-     so 44 left the segmented control, the sheet dismiss button and the
-     section links under the platform minimum on the platform most people
-     will run this on. Every control in the app sizes itself from this one
-     token, so the floor is worth asserting rather than trusting. */
+  /* --touch-target was 44px, which is the iOS number. The app ships an Android wrapper too
+     (android/), and Android's floor is 48dp, so 44 left the segmented control, the sheet
+     dismiss button and the section links under the platform minimum on the platform most
+     people will run this on. Every control in the app sizes itself from this one token, so
+     the floor is worth asserting rather than trusting. */
   it('sizes the touch target for the stricter of the two platforms it ships on', () => {
     const base = read('src/lib/theme/base.css');
     const value = /--touch-target:\s*(\d+)px/.exec(base)?.[1];

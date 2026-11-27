@@ -113,7 +113,7 @@ try {
   assert.equal(await page.locator('#lab-value').getAttribute('aria-invalid'), 'true');
   assert.match(await page.locator('#lab-value-hint').innerText(), /number/i);
   console.log('PASS manual result fields precede context and time; missing value explains disabled Save');
-  // Last-audit UI 01: typed one key at a time, as a person types, a decimal
+  // Typed one key at a time, as a person types, a decimal
   // or a minus sign must not be rewritten under the caret (72.5 used to
   // save as 572, -3 read 3). `fill` sets the whole value at once and never
   // showed it.

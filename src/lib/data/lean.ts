@@ -1,6 +1,6 @@
-/* Rank suggestions by the ticked scales. Exactly one of femininity or
-   masculinity supplies a lean. With both or neither, keep the given
-   order. The data-layer helper works in the Node tier (ADR-0016). */
+/* Rank suggestions by the ticked scales. Exactly one of femininity or masculinity supplies
+   a lean. With both or neither, keep the given order. The data-layer helper works in the
+   Node tier. */
 
 import type { Lean } from './types';
 

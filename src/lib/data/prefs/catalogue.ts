@@ -1,11 +1,9 @@
 /* The import-free preference catalogue serves both tiers and early boot.
 
-   `PORTABLE_KEYS` is the Archive allowlist. New preferences stay
-   device-local by default (ADR-0003). The independent boot set mirrors
-   first-paint settings and gate flags in plaintext localStorage
-   (ADR-0009). Keep secrets such as the PIN hash behind encryption
-   (ADR-0018). catalogue.test.ts checks that each preference is classified
-   as portable or device-local. */
+   `PORTABLE_KEYS` is the Archive allowlist. New preferences stay device-local by default
+   (ADR-0003). The independent boot set mirrors first-paint settings and gate flags in
+   plaintext localStorage. Keep secrets such as the PIN hash behind encryption (ADR-0018).
+   catalogue.test.ts checks that each preference is classified as portable or device-local. */
 
 import type { Acknowledgements } from '../acknowledgements';
 
@@ -27,7 +25,7 @@ export interface PreferenceValues {
       editor draws its sliders in catalogue order (`reference.activeDimensions`),
       so which box was ticked first cannot move a slider. */
   activeScales: string[];
-  /** Which quantity colours the Home strip and the calendar (CONTEXT: Metric). */
+  /** Which quantity colours the Home strip and the calendar. */
   metricKind: 'mood' | 'dimension';
   /** The gender dimension's key when metricKind is 'dimension', otherwise null. */
   metricDimension: string | null;
@@ -42,10 +40,9 @@ export interface PreferenceValues {
   a11yTextSizeBoost: boolean;
   a11yLegibilityBoost: boolean;
   a11yMotionReduce: boolean;
-  /** How long the app may be out of sight before the access mode's secret
-      is asked for again (lock-timing ticket 01). Replaced `lockOnLeave`,
-      whose on and off are `immediately` and `restart`; migration 117 moved
-      an old row across. Meaningless under a mode with no secret, which
+  /** How long the app may be out of sight before the access mode's secret is asked for
+      again. Replaced `lockOnLeave`, whose on and off are `immediately` and `restart`;
+      migration 117 moved an old row across. Meaningless under a mode with no secret, which
       is why no screen asks it there. */
   lockAfter: LockAfter;
   disguise: boolean;
@@ -64,10 +61,8 @@ export interface PreferenceValues {
   checkInEnabled: boolean;
   /** Wall-clock "HH:MM" in the device's timezone. */
   checkInTime: string;
-  /** The last day the check-in stays silent, or null when it is not paused
-      (functional audit ticket 08, which replaced the journaling pause with
-      this one date). It fires again the day after (checkIn.ts). Portable
-      with the check-in's own two keys. */
+  /** The last day the check-in stays silent, or null when it is not paused. It fires again
+      the day after (checkIn.ts). Portable with the check-in's own two keys. */
   checkInPausedThrough: number | null;
   /** Whether the rotating reflection prompt shows on the entry-creation
       screen. Device-local because this controls
@@ -91,11 +86,9 @@ export interface PreferenceValues {
       was dismissed or opened. A subsequent qualifying entry with a
       newer ID produces its own fresh nudge. */
   safeSpaceNudgeDismissedEntryId: number | null;
-  /** A passage of somebody's own to read for a voice benchmark, empty for the
-      one the app ships (phase 5 deepening ticket 15, CONTEXT: "Benchmark
-      passage"). Kept because the next benchmark has to be read from the same
-      words as the last one, which is the only thing that makes two of them
-      comparable. */
+  /** A passage of somebody's own to read for a voice benchmark, empty for the one the app
+      ships. Kept because the next benchmark has to be read from the same words as the last
+      one, which is the only thing that makes two of them comparable. */
   voiceBenchmarkPassage: string;
   /** The two ends of the person's own comfort band on the pitch figure, in
       Hz, or null when they have not set one (ADR-0059). Null is the shipped state; no default or suggested range.
@@ -104,20 +97,17 @@ export interface PreferenceValues {
       than about this installation (ADR-0003). */
   voiceComfortLowHz: number | null;
   voiceComfortHighHz: number | null;
-  /** The person's own answer to "show me this kind of thing", for every kind
-      in the unprompted registry that draws something in the app: the live
-      tiles, the stock notice, wrapped and on-this-day (functional audit
-      ticket 44, which replaced eight per-kind booleans). Keyed by the
-      registry's kind (`UnpromptedKind`) and holding only an answer that
-      differs from the registry's default, so the defaults live in one place
-      and a kind added later needs no key here. A key this build has no kind
-      for is left alone.
+  /** The person's own answer to "show me this kind of thing", for every kind in the
+      unprompted registry that draws something in the app: the live tiles, the stock notice,
+      wrapped and on-this-day. Keyed by the registry's kind (`UnpromptedKind`) and holding
+      only an answer that differs from the registry's default, so the defaults live in one
+      place and a kind added later needs no key here. A key this build has no kind for is
+      left alone.
 
-      A switch is a kind-level yes or no, never a way to hide one running
-      session (ADR-0039's amendment). Portable, like `pinnedRows` beside it:
-      which tiles somebody turned off is a statement about the front page
-      they arranged, and a restore that switched them all back on would be
-      the app forgetting an answer. Notifications keep their own switches. */
+      A switch is a kind-level yes or no, never a way to hide one running session. Portable,
+      like `pinnedRows` beside it: which tiles somebody turned off is a statement about the
+      front page they arranged, and a restore that switched them all back on would be the
+      app forgetting an answer. Notifications keep their own switches. */
   surfaceOverrides: Partial<Record<string, boolean>>;
   /** Whether reminder alarms are scheduled at all. The
       kind-level switch the notifications view draws, one level above each
@@ -134,9 +124,9 @@ export interface PreferenceValues {
       medication reminders is not wanting to be told a binder has been on for
       eight hours. Device-local for the same reason `remindersEnabled` is. */
   wearElapsedEnabled: boolean;
-  /** Whether a scheduled backup that failed says so on the phone. The notice has fired since phase 4 with no settings home at
-      all; this is that home. On by default because a backup that saved
-      nothing meets the notification rule for a failed action. */
+  /** Whether a scheduled backup that failed says so on the phone. The notice has fired in
+      older versions with no settings home at all; this is that home. On by default because
+      a backup that saved nothing meets the notification rule for a failed action. */
   exportFailureNoticeEnabled: boolean;
   /** An export failure notice that came due inside quiet hours and is
       waiting for them to end. Held, not dropped - the
@@ -174,11 +164,9 @@ export interface PreferenceValues {
       installation, which does not travel with the journal - a restore on a
       new device is a screen somebody has not used before. */
   spanRailHintDismissed: boolean;
-  /** The day HRT began, as the person set it, or null to count from the
-      earliest HRT episode (functional audit ticket 18, CONTEXT: "HRT
-      start"; personalEffectWindow.ts's hrtAnchor). The effects timeline
-      and its onset bands count from it. Portable, because it is a fact
-      about the journal. */
+  /** The day HRT began, as the person set it, or null to count from the earliest HRT
+      episode (personalEffectWindow.ts's hrtAnchor). The effects timeline and its onset
+      bands count from it. Portable, because it is a fact about the journal. */
   hrtStartEpochDay: number | null;
   /** The milestone id that durations, stats ranges and wrapped figures are
       measured from, or null when none is chosen - a
@@ -188,17 +176,16 @@ export interface PreferenceValues {
       journey. A milestone this install no longer has resolves to unset
       rather than falling back to another one. */
   journeyAnchorMilestoneId: string | null;
-  /** Null preserves the pre-choice rule for existing journals (a person who
-      had the old opt-in on was migrated to true, functional audit ticket 44).
-      A new journal records false when setup finishes. */
+  /** Null preserves the pre-choice rule for existing journals. A new journal records false
+      when setup finishes. */
   cycleTrackingChoice: boolean | null;
   autoExportEnabled: boolean;
   autoExportSchedule: 'weekly' | 'monthly';
   /** Epoch milliseconds, not an epoch day. */
   lastBackupAt: number | null;
   backupNoticeDismissed: boolean;
-  /** Home's "this browser may clear your journal" notice, put away
-      (after-release 17). Device-local: it is about this browser. */
+  /** Home's "this browser may clear your journal" notice, put away. Device-local: it is
+      about this browser. */
   storageNoticeDismissed: boolean;
   /** When a dry-run restore drill last decrypted, parsed and validated a
       chosen archive without error. Epoch
@@ -213,10 +200,9 @@ export interface PreferenceValues {
       argument: whether a Polish court procedure is somebody's path is
       something they said about their own journal. */
   roadmapPolishStepsChoice: boolean | null;
-  /** Whether the roadmap's built-in "Social and presentation" group shows
-      (pre-release human ticket 17). On until switched off: unlike the
-      Polish steps it is not tied to a country, so there is no locale to
-      follow. Portable, on `roadmapPolishStepsChoice`'s argument. */
+  /** Whether the roadmap's built-in "Social and presentation" group shows. On until
+      switched off: unlike the Polish steps it is not tied to a country, so there is no
+      locale to follow. Portable, on `roadmapPolishStepsChoice`'s argument. */
   roadmapSocialStepsShown: boolean;
   /** Portable list of declined finish offers (ADR-0045). Ask once per
       journal and area. Store stable `ArchiveSectionName` keys instead of
@@ -230,10 +216,10 @@ export interface PreferenceValues {
       Keep it device-local so a restore can show the return on a new
       installation. */
   comingBackSeenSince: number | null;
-  /** Which drugs a person has turned off the clinician summary's regimen,
-      dose-history and exposure sections, keyed by drug name (ADR-0031). On (absent or false) by default. Device-
-      local: which drug a printout leaves out is a choice about a specific
-      visit on this installation, not portable journal data (ADR-0003). */
+  /** Which drugs a person has turned off the clinician summary's regimen, dose-history and
+      exposure sections, keyed by drug name. On (absent or false) by default. Device- local:
+      which drug a printout leaves out is a choice about a specific visit on this
+      installation, not portable journal data (ADR-0003). */
   clinicianSummaryDrugExcluded: Partial<Record<string, boolean>>;
   /** Which drug's schedule /doses' "against the schedule" view compares
       against, while more than one regimen episode is active at once.
@@ -253,15 +239,13 @@ export interface PreferenceValues {
   pinnedRows: string[] | null;
   /** Saved area choices from older onboarding flows. `hubRows.ts` row keys.
 
-      Held apart from `pinnedRows` rather than written straight into it,
-      because the initial pins have to stay computable after the front page
-      has been rearranged: ticket 14's reset returns to this choice or the
-      default set.
+      Held apart from `pinnedRows` rather than written straight into it, because the initial
+      pins have to stay computable after the front page has been rearranged: reset returns
+      to this choice or the default set.
 
-      Null means no saved answer and resolves to `DEFAULT_ONBOARDING_AREAS`.
-      An empty list is
-      somebody who unticked everything, and it means a front page with no
-      pinned rows, the same way an empty `pinnedRows` does. */
+      Null means no saved answer and resolves to `DEFAULT_ONBOARDING_AREAS`. An empty list
+      is somebody who unticked everything, and it means a front page with no pinned rows,
+      the same way an empty `pinnedRows` does. */
   onboardingAreas: string[] | null;
   /** What the person has already been told: tile snoozes, letters read and
       met, and the last answer to "are there entries". Four facts that used to sit in plaintext localStorage,
@@ -269,12 +253,10 @@ export interface PreferenceValues {
       read state finally travels with a backup. The shape and its rules are
       data/acknowledgements.ts's. */
   acknowledgements: Acknowledgements;
-  /** The height each screen's late block last rested at, by slot
-      (data/homeReserve.ts), so its next visit holds that room. Home's own
-      three stay in localStorage for its first frame; these name screens
-      (dilation, doses, wear), so they live behind the journal's key
-      (security-scan ticket 08). Device-local: a height belongs to this
-      screen size. */
+  /** The height each screen's late block last rested at, by slot (data/homeReserve.ts), so
+      its next visit holds that room. Home's own three stay in localStorage for its first
+      frame; these name screens (dilation, doses, wear), so they live behind the journal's
+      key. Device-local: a height belongs to this screen size. */
   layoutReserves: Record<string, number>;
 }
 
@@ -294,10 +276,9 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   a11yTextSizeBoost: false,
   a11yLegibilityBoost: false,
   a11yMotionReduce: false,
-  /* A restart, because that is what the old switch's off meant and every
-     journal from before ticket 01 that never touched it was off. A new
-     install is offered a minute in setup instead, and only writes it by
-     answering. */
+  /* A restart, because that is what the old switch's off meant and every journal from that
+     never touched it was off. A new install is offered a minute in setup instead, and only
+     writes it by answering. */
   lockAfter: 'restart',
   disguise: false,
   allowScreenCapture: true,
@@ -344,9 +325,8 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   layoutReserves: {}
 };
 
-/** What a disguised journal wears before it unlocks, in the boot mirror and
-    on every gate: palettes.css's neutral `notes`, not a flag (security-scan
-    ticket 08, GD-043). Never a value of `palette` itself. */
+/** What a disguised journal wears before it unlocks, in the boot mirror and on every gate:
+    palettes.css's neutral `notes`, not a flag. Never a value of `palette` itself. */
 export const DISGUISED_PALETTE = 'notes';
 
 /** Describes the journal, so it travels in an archive (ADR-0003). */
@@ -373,22 +353,20 @@ export const PORTABLE_KEYS = [
   'areaFinishOfferDeclined',
   'roadmapPolishStepsChoice',
   'roadmapSocialStepsShown',
-  /* Both of phase 10's remaining front-page preferences travel, on
-     `areaFinishOfferDeclined`'s own argument next door: each is something
-     the person said about their own journal rather than something this
-     installation happens to be showing, and a restore that handed somebody
-     a front page they never arranged would be the app forgetting an answer
-     they gave. `adherenceRegimenPick` is the other side of that line - a
-     choice about what one screen shows right now - and stays device-local
-     for it. */
+  /* Both 's remaining front-page preferences travel, on `areaFinishOfferDeclined`'s own
+     argument next door: each is something the person said about their own journal rather
+     than something this installation happens to be showing, and a restore that handed
+     somebody a front page they never arranged would be the app forgetting an answer they
+     gave. `adherenceRegimenPick` is the other side of that line - a choice about what one
+     screen shows right now - and stays device-local for it. */
   'pinnedRows',
   'onboardingAreas',
   'acknowledgements'
 ] as const satisfies readonly PreferenceKey[];
 
 /** Describes this installation, so it never leaves it (ADR-0003). */
-/* DEVICE_LOCAL_KEYS stays exported for its own test, and cross-checked in
-   pack.test.ts, roadmap-milestone-sync.test.ts (AU-09 test-only review). */
+/* DEVICE_LOCAL_KEYS stays exported for its own test, and cross-checked in pack.test.ts,
+   roadmap-milestone-sync.test.ts. */
 export const DEVICE_LOCAL_KEYS = [
   'onboarded',
   'a11yTextSizeBoost',
@@ -424,14 +402,13 @@ export const DEVICE_LOCAL_KEYS = [
   'layoutReserves'
 ] as const satisfies readonly PreferenceKey[];
 
-/** Mirrored outside SQLite because it is needed before the database opens
-    (ADR-0009). `language` has no pre-paint reader of its own: paraglide
-    resolves the locale from its own localStorage strategy (vite.config.ts)
-    before any of this runs, and setLocale() reloads the page. This is the
-    app's own record of the choice, which is what makes it portable in an
-    archive - paraglide's copy is not. After durable preference attachment,
-    boot reconciles that strategy with SQLite so an interrupted Replace
-    cannot leave a restored choice beside the previous locale. */
+/** Mirrored outside SQLite because it is needed before the database opens. `language` has
+    no pre-paint reader of its own: paraglide resolves the locale from its own localStorage
+    strategy (vite.config.ts) before any of this runs, and setLocale() reloads the page.
+    This is the app's own record of the choice, which is what makes it portable in an
+    archive - paraglide's copy is not. After durable preference attachment, boot reconciles
+    that strategy with SQLite so an interrupted Replace cannot leave a restored choice
+    beside the previous locale. */
 export const BOOT_KEYS = [
   'theme',
   'palette',
@@ -455,10 +432,10 @@ export function isPreferenceKey(key: string): key is PreferenceKey {
   return Object.prototype.hasOwnProperty.call(PREFERENCE_DEFAULTS, key);
 }
 
-/** The metric in the form the entry repositories still take it: 'mood', or
-    a gender dimension's key. The preference is a kind plus a key so that
-    "mood" is a case rather than a reserved dimension name, and this is the
-    one place the two forms meet - ticket 07 owns those signatures. */
+/** The metric in the form the entry repositories still take it: 'mood', or a gender
+    dimension's key. The preference is a kind plus a key so that "mood" is a case rather
+    than a reserved dimension name, and this is the one place the two forms meet - owns
+    those signatures. */
 export function metricKey(values: Pick<PreferenceValues, 'metricKind' | 'metricDimension'>): string {
   return values.metricKind === 'dimension' && values.metricDimension ? values.metricDimension : 'mood';
 }

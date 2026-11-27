@@ -12,11 +12,10 @@ async function journalWithFiles() {
   return { journal };
 }
 
-/* journal.voice.inJournal (ticket 11's memo browser): the one query that
-   lists recordings across entries, mirroring photos.inJournal's shape but
-   entry-only, so there is no owner name to carry alongside the date - and
-   carrying entryId, which photos.inJournal does not, because a memo's way
-   back to what it belongs to is this screen's whole point. */
+/* Journal.voice.inJournal: the one query that lists recordings across entries, mirroring
+   photos.inJournal's shape but entry-only, so there is no owner name to carry alongside the
+   date - and carrying entryId, which photos.inJournal does not, because a memo's way back
+   to what it belongs to is this screen's whole point. */
 
 test('every recording in the journal comes back dated, newest first', async () => {
   const { journal } = await journalWithFiles();
@@ -46,7 +45,7 @@ test('a journal with no recordings yields an empty list, not a broken join', asy
   assert.deepEqual(await journal.voice.inJournal(), []);
 });
 
-test("a trashed entry's recording drops out of inJournal (phase 5 ticket 19)", async () => {
+test("a trashed entry's recording drops out of inJournal", async () => {
   const { journal } = await journalWithFiles();
   const kept = await journal.entries.upsertEntry({
     epochDay: 20000,

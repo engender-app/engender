@@ -226,8 +226,7 @@
           {m.insight_sheet_capped({ shown: String(INSIGHT_ENTRIES) })}
         </p>
       {/if}
-      <!-- Days of entries, the drawing every list of entries uses (release
-           audit U9). -->
+      <!-- Days of entries, the drawing every list of entries uses (release). -->
       <EntryDays groups={entryDayGroups(insightEntries)} />
       <button class="btn btn-ghost" onclick={() => (insightSheet = null)}>
         <span>{m.done()}</span>

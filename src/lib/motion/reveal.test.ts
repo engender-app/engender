@@ -63,9 +63,9 @@ describe('tier 3, the wipe', () => {
     expect(frame(css!, 1)).toBe('clip-path: inset(0 0 0 0)');
   });
 
-  /* Phase 5 UX ticket 23: a wipe that is a surface arriving, rather than one
-     state replacing another, takes the authored duration. At --dur-slow the
-     area chart's first draw read as a flicker rather than as a drawing. */
+  /* A wipe that is a surface arriving, rather than one state replacing another, takes the
+     authored duration. At --dur-slow the area chart's first draw read as a flicker rather
+     than as a drawing. */
   it('takes the authored duration where the wipe is an arrival', () => {
     expect(wipe(node, { authored: true }).duration).toBe(700);
     expect(wipe(node).duration).toBe(380);
@@ -145,12 +145,11 @@ describe('tier 3, a group opening its own height', () => {
     expect(frame(css!, 0.5)).toContain('overflow: hidden');
   });
 
-  /* Functional audit ticket 34: the roadmap's 23 Polish steps open as one
-     2967px block under a switch. Travelled whole, the edge crossed the
-     visible part of the screen in one frame (893px in the first 16ms), so
-     the steps painted in one frame. With `onScreen` the travel is only the
-     part the viewport shows, and the rest arrives at the end, below the
-     fold, where nothing is painted. */
+  /* The roadmap's 23 Polish steps open as one 2967px block under a switch. Travelled whole,
+     the edge crossed the visible part of the screen in one frame (893px in the first 16ms),
+     so the steps painted in one frame. With `onScreen` the travel is only the part the
+     viewport shows, and the rest arrives at the end, below the fold, where nothing is
+     painted. */
   it('travels only the part the viewport shows when asked, and rests at full height', () => {
     stubDocument(false, true, { height: '2967px', paddingTop: '0px', paddingBottom: '0px' });
     (globalThis as Record<string, unknown>).innerHeight = 844;
@@ -165,10 +164,9 @@ describe('tier 3, a group opening its own height', () => {
     }
   });
 
-  /* Carpet 15 row 47: the roadmap's legal group fills in a few rows a
-     frame after its opening. A row landing under the screen's bottom edge
-     has nothing of its travel painted and arrives at once; one landing on
-     screen still opens. */
+  /* the roadmap's legal group fills in a few rows a frame after its opening. A row landing
+     under the screen's bottom edge has nothing of its travel painted and arrives at once;
+     one landing on screen still opens. */
   it('arrives at once below the fold when asked, and still opens on screen', () => {
     stubDocument(false, true, { height: '120px', paddingTop: '0px', paddingBottom: '0px' });
     (globalThis as Record<string, unknown>).innerHeight = 844;
@@ -191,19 +189,18 @@ describe('tier 3, a group opening its own height', () => {
     expect(disclose(node).duration).toBe(0);
   });
 
-  /* Redesign ticket 25: a card tile carries min-height 176px, and a height
-     travel under a floor goes nowhere - the box stood at full size from the
-     first frame. The travel owns the whole box for its length. */
+  /* A card tile carries min-height 176px, and a height travel under a floor goes nowhere -
+     the box stood at full size from the first frame. The travel owns the whole box for its
+     length. */
   it('lifts any min-height for the travel, so a floored box can actually close', () => {
     stubDocument(false, true, { height: '176px', paddingTop: '0px', paddingBottom: '0px' });
     expect(frame(disclose(node).css!, 0.5)).toContain('min-height: 0');
   });
 
-  /* The 20px at the very end (Alicja, notice dismissed on Home, frames 32 to
-     33). An open box is a formatting context, so the margins either side of
-     it are both spent; the frame it is gone they collapse into the larger.
-     The bottom margin therefore ends at minus the smaller neighbour, which
-     is what collapsing takes away, and the page never has to. */
+  /* The 20px at the very end. An open box is a formatting context, so the margins either
+     side of it are both spent; the frame it is gone they collapse into the larger. The
+     bottom margin therefore ends at minus the smaller neighbour, which is what collapsing
+     takes away, and the page never has to. */
   it('ends its bottom margin where the neighbours will collapse to, in block flow', () => {
     stubDocument(false, true, { height: '100px', paddingTop: '0px', paddingBottom: '0px', marginTop: '0px', marginBottom: '20px', display: 'block' });
     const between = {
@@ -226,10 +223,9 @@ describe('tier 3, a group opening its own height', () => {
     expect(frame(css!, 0)).toContain('margin-bottom: -20px');
   });
 
-  /* Pre-release 18, item 71: the block below can hold no top margin of its
-     own and still bring one, its first child's, through its bare top edge.
-     The roadmap's Social group does exactly that under the pack, and read
-     as 0 the pack's margin ended 16px short of where the two would meet. */
+  /* The block below can hold no top margin of its own and still bring one, its first
+     child's, through its bare top edge. The roadmap's Social group does exactly that under
+     the pack, and read as 0 the pack's margin ended 16px short of where the two would meet. */
   it('counts the margin a next block\'s first child brings through its top edge', () => {
     stubDocument(false, true, { height: '54px', paddingTop: '0px', paddingBottom: '0px', marginTop: '0px', marginBottom: '20px', borderTopWidth: '0px', overflow: 'visible', display: 'block' });
     const heading = {};
@@ -242,10 +238,10 @@ describe('tier 3, a group opening its own height', () => {
     expect(frame(disclose(pack).css!, 0)).toContain('margin-bottom: -16px');
   });
 
-  /* Ticket 183: Home's reserves put the notices one plain wrapper down from
-     the blocks they close between, and a first child has no sibling above
-     it. Its top margin still collapses through the wrapper's bare top edge
-     into the block above the wrapper, so that block is the neighbour. */
+  /* Home's reserves put the notices one plain wrapper down from the blocks they close
+     between, and a first child has no sibling above it. Its top margin still collapses
+     through the wrapper's bare top edge into the block above the wrapper, so that block is
+     the neighbour. */
   it('finds the neighbour above through a wrapper whose top edge margins pass through', () => {
     stubDocument(false, true, { height: '100px', paddingTop: '0px', paddingBottom: '0px', marginTop: '0px', marginBottom: '20px', borderTopWidth: '0px', borderBottomWidth: '0px', overflow: 'visible', display: 'block' });
     const above = {};
@@ -258,11 +254,10 @@ describe('tier 3, a group opening its own height', () => {
     expect(frame(disclose(first).css!, 0)).toContain('margin-bottom: -20px');
   });
 
-  /* Ticket 195: a screen part's last row keeps its 20 now, collapsing with
-     the wrapper's own 20 below it. What the row's bottom margin meets on the
-     way out is that whole collapsed set - the wrapper's margin as well as
-     the block after the wrapper - so a last row leaving (or arriving, which
-     runs the same numbers forwards) ends at minus the 20 it shares, and the
+  /* A screen part's last row keeps its 20 now, collapsing with the wrapper's own 20 below
+     it. What the row's bottom margin meets on the way out is that whole collapsed set - the
+     wrapper's margin as well as the block after the wrapper - so a last row leaving (or
+     arriving, which runs the same numbers forwards) ends at minus the 20 it shares, and the
      row before it never takes a step. */
   it('counts a wrapper\'s own margin among the ones a last row\'s margin meets', () => {
     stubDocument(false, true, { height: '100px', paddingTop: '0px', paddingBottom: '0px', marginTop: '0px', marginBottom: '20px', borderTopWidth: '0px', borderBottomWidth: '0px', overflow: 'visible', display: 'block' });
@@ -481,15 +476,13 @@ describe('tier 3, a panel giving its space back', () => {
     expect(asked({ direction: 'in' }).duration).toBe(0);
   });
 
-  /* Redesign ticket 19, found on the agenda's arrival flipbook and present
-     on main: Home's live tiles answer their reads one by one, and a heavier
-     tile answering after a lighter one displaces it into the fold. That is
-     the list settling, not a dismissal - nobody can tap inside the first
-     240ms of a screen - and carpet ticket 04's rule that leaving is never
-     suppressed had the wrong premise for a capped grid: the displaced tile
-     dissolved in front of the reader while the screen was still arriving,
-     a "Ready letter" ghost under the log strip for 200ms. A leave inside
-     the arrival window cuts, as an arrival does. */
+  /* Found on the agenda's arrival flipbook and present on main: Home's live tiles answer
+     their reads one by one, and a heavier tile answering after a lighter one displaces it
+     into the fold. That is the list settling, not a dismissal - nobody can tap inside the
+     first 240ms of a screen - the rule that leaving is never suppressed had the wrong
+     premise for a capped grid: the displaced tile dissolved in front of the reader while
+     the screen was still arriving, a "Ready letter" ghost under the log strip for 200ms. A
+     leave inside the arrival window cuts, as an arrival does. */
   it('cuts a leave inside the arrival window too, since the list is settling and nobody dismissed anything', () => {
     stubDocument();
     markScreenArrival();
@@ -601,11 +594,10 @@ describe('tier 3, a panel giving its space back', () => {
     expect(frame(css!, 0)).toBe('opacity: 0');
   });
 
-  /* Pre-release 18, item 53: stopping the wear session in the today tier
-     promoted the folded tile into the moment grid, a screen further down
-     and on a line of its own. Read as a swap, it faded in at full height
-     and pushed Pinned down 128px in one frame. A tile that does not stand
-     in the slot it replaces is an arrival, and opens its own height. */
+  /* stopping the wear session in the today tier promoted the folded tile into the moment
+     grid, a screen further down and on a line of its own. Read as a swap, it faded in at
+     full height and pushed Pinned down 128px in one frame. A tile that does not stand in
+     the slot it replaces is an arrival, and opens its own height. */
   it('opens its own height when the promoted tile lands away from the slot', () => {
     stubDocument();
     markScreenArrival(performance.now() - 1000);
@@ -650,11 +642,10 @@ describe('tier 3, a panel giving its space back', () => {
     expect(frame(css!, 1)).not.toContain('flex:');
   });
 
-  /* And the line the rewrap empties closes over the same window, or the rows
-     under the grid are pulled up by the whole of it in one frame - which is
-     the yank this case had left ("the row closes up - still happens with a
-     yank", Alicja). The end height cannot be worked out from the boxes, so
-     it is measured with the panel taken out of the flow. */
+  /* And the line the rewrap empties closes over the same window, or the rows under the grid
+     are pulled up by the whole of it in one frame - which is the yank this case had left.
+     The end height cannot be worked out from the boxes, so it is measured with the panel
+     taken out of the flow. */
   /* A tile the rewrap moves is already laid out where it is going, so it
      travels by being translated back to where it was and released - visible
      the whole way rather than hidden behind the card dissolving over its new
@@ -740,11 +731,9 @@ describe('tier 3, a panel giving its space back', () => {
     expect(collapse(node, undefined, { direction: 'in' }).duration).toBe(380);
   });
 
-  /* Redesign ticket 25, Alicja on the fold: the new tile should arrive the
-     way a tile closes, "with the only difference being the new one comes
-     from above". Down a column the block keeps its size, is pulled up by the
-     travel still to come and clipped by the same amount, so its laid-out
-     height grows from nothing and its top edge is the last thing to show. */
+  /* The new tile reverses the close motion and enters from above. Down a column the block keeps its size, is pulled up by the
+     travel still to come and clipped by the same amount, so its laid-out height grows from
+     nothing and its top edge is the last thing to show. */
   it('comes down from above when it arrives alone in a column', () => {
     const node = panel({ beside: [[120, 220]] }, { paddingTop: '0px', paddingBottom: '0px', marginTop: '0px' });
     markScreenArrival(performance.now() - 1000);
@@ -757,10 +746,9 @@ describe('tier 3, a panel giving its space back', () => {
     expect(frame(css!, 0.5)).not.toContain('height:');
   });
 
-  /* FA 46, Trash's last row: the empty state arrived from above while the
-     list it replaced was still closing, its lower edge following the
-     list's down the screen. `after` holds the arrival back until the
-     close is over, at its first frame (clipped to nothing, no room). */
+  /* Trash's last row: the empty state arrived from above while the list it replaced was
+     still closing, its lower edge following the list's down the screen. `after` holds the
+     arrival back until the close is over, at its first frame (clipped to nothing, no room). */
   it('waits out a closing block when told to, and only on the way in', () => {
     markScreenArrival(performance.now() - 1000);
     const arriving = panel({ beside: [[120, 220]] }, { paddingTop: '0px', paddingBottom: '0px', marginTop: '0px' });
@@ -772,14 +760,12 @@ describe('tier 3, a panel giving its space back', () => {
     expect(collapse(leaving, { after: 380 }, { direction: 'out' }).delay ?? 0).toBe(0);
   });
 
-  /* Last-audit UI ticket 41: one notice replacing another in the same spot
-     (Reminders' "Could not check" and "Notifications are off"). The arriving
-     notice stands behind the leaving one, so the kit's surface-after-surface
-     rule gives it a 20px top margin that is gone the frame the leaving node
-     is removed: measured on an API 35 emulator, the arriving notice ended at
-     top 260 and was drawn at 238 in the next frame. It takes the leaving
-     one's top margin instead, which is what its own will be once it stands
-     in that place. */
+  /* One notice replacing another in the same spot (Reminders' "Could not check" and
+     "Notifications are off"). The arriving notice stands behind the leaving one, so the
+     kit's surface-after-surface rule gives it a 20px top margin that is gone the frame the
+     leaving node is removed: measured on an API 35 emulator, the arriving notice ended at
+     top 260 and was drawn at 238 in the next frame. It takes the leaving one's top margin
+     instead, which is what its own will be once it stands in that place. */
   it('arriving behind a leaving surface, ends at the margin it will have in its place', () => {
     const node = panel({ beside: [[120, 220]] }, { paddingTop: '0px', paddingBottom: '0px', marginTop: '20px' });
     const leaving = { inert: true, hasAttribute: (name: string) => name === 'data-kit-surface' };
@@ -833,9 +819,9 @@ describe('tier 3, a panel giving its space back', () => {
     expect(frame(css!, 1)).toContain('height: 100px');
   });
 
-  /* Alicja, round three: a notice's top hairline "simply disappears" on the
-     first frame of its close. The edges stay for the travel and the box
-     fades over its last third instead, so the line goes with the box. */
+  /* A notice's top hairline "simply disappears" on the first frame of its close. The edges
+     stay for the travel and the box fades over its last third instead, so the line goes
+     with the box. */
   it('keeps a closing panel\'s hairlines and fades the box over its last third', () => {
     const node = panel(
       { beside: [[120, 220]] },
@@ -849,10 +835,9 @@ describe('tier 3, a panel giving its space back', () => {
     expect(frame(css!, 1)).toContain('opacity: 1');
   });
 
-  /* Pre-release 18, item 53: kept for the fade, the two hairlines are a
-     floor the box cannot shrink through, so a notice sat at 2px for the end
-     of its close and the content below took those 2px in the frame it was
-     removed. The margin under it gives them back over the travel. */
+  /* kept for the fade, the two hairlines are a floor the box cannot shrink through, so a
+     notice sat at 2px for the end of its close and the content below took those 2px in the
+     frame it was removed. The margin under it gives them back over the travel. */
   it('gives its hairlines\' height back through the margin below as it closes', () => {
     const node = panel(
       { beside: [[120, 220]] },
@@ -870,10 +855,9 @@ describe('tier 3, a panel giving its space back', () => {
     expect(frame(collapse(node, undefined, { direction: 'in' }).css!, 0.1)).not.toContain('opacity');
   });
 
-  /* Redesign ticket 25: the grid's stagger (kit.css, --tile-index by
-     nth-child) is for a grid arriving together. A tile arriving alone on a
-     settled screen - the third out of the fold - sat as a blank block for
-     its two stagger steps before its clip began, so its turn is zeroed
+  /* The grid's stagger (kit.css, --tile-index by nth-child) is for a grid arriving
+     together. A tile arriving alone on a settled screen - the third out of the fold - sat
+     as a blank block for its two stagger steps before its clip began, so its turn is zeroed
      inline on the way in, and left alone on the way out. */
   it('skips the stagger for a panel arriving alone on a settled screen', () => {
     const node = panel({ beside: [[0, 100]] });
@@ -896,16 +880,14 @@ describe('tier 3, a panel giving its space back', () => {
 });
 
 describe('tier 3, a skeleton uncovering the content under it', () => {
-  /* It is an out-only transition, and the asymmetry is the point. Pairing it
-     with an `in:` on the content made the content arrive twice - once with
-     the screen, under tier 2's own view transition, and again a moment later
-     when the worker answered (Alicja, 2026-08-26: "the panels seem to fade in
-     two times, second time very close to each other and glitchy"). */
+  /* It is an out-only transition, and the asymmetry is the point. Pairing it with an `in:`
+     on the content made the content arrive twice - once with the screen, under tier 2's own
+     view transition, and again a moment later when the worker answered. */
   it('fades the placeholder out rather than fading the content in', () => {
     stubDocument(false, true, {});
     const { css, duration } = crossfade(measured(240));
-    /* --dur-fast is authored at 150ms; this asserted 160 until ticket 15
-       traced the drift to reveal.ts's own restated fallback. */
+    /* --dur-fast is authored at 150ms; this asserted 160 traced the drift to reveal.ts's
+       own restated fallback. */
     expect(duration).toBe(150);
     expect(frame(css!, 1)).toContain('opacity: 1');
     expect(frame(css!, 0)).toContain('opacity: 0');
@@ -942,11 +924,10 @@ describe('tier 3, a skeleton uncovering the content under it', () => {
     expect((node as unknown as { style: CSSStyleDeclaration }).style.width).toBe('240px');
   });
 
-  /* Phase 5 ticket 32.16: a positioned element with no z-index still paints
-     after normal-flow content in stacking order regardless of DOM order
-     (CSS2.1 Appendix E), so the out-of-flow placeholder painted over the
-     content it was fading off of for the whole 160ms - a second "appears
-     twice" this primitive's own history had already named once, from taking
+  /* 16: a positioned element with no z-index still paints after normal-flow content in
+     stacking order regardless of DOM order (CSS2.1 Appendix E), so the out-of-flow
+     placeholder painted over the content it was fading off of for the whole 160ms - a
+     second "appears twice" this primitive's own history had already named once, from taking
      the skeleton out of flow without also taking it out of the paint order. */
   it('paints behind the content it is fading off of', () => {
     stubDocument(false, true, {});
@@ -988,14 +969,10 @@ describe('tier 3, a skeleton uncovering the content under it', () => {
     expect(crossfade(measured(240)).duration).toBe(0);
   });
 
-  /* `NoticedAxis.svelte` uses this on `transition:crossfade|global`, both
-     ways, on a clickable mark - so an intro through this primitive must
-     never take the positioning `out:crossfade`'s callers rely on, or a
-     mark that arrived through it would be left permanently
-     `position: absolute; z-index: -1; pointer-events: none` and unclickable
-     (ticket 153's own fix would otherwise have introduced this: writing the
-     positioning to `node.style` directly, rather than through `css()`,
-     took it out of the styles Svelte reverts when a transition ends). */
+  /* `NoticedAxis.svelte` uses this on `transition:crossfade|global`, both ways, on a
+     clickable mark - so an intro through this primitive must never take the positioning
+     `out:crossfade`'s callers rely on, or a mark that arrived through it would be left
+     permanently `position: absolute; z-index: -1; pointer-events: none` and unclickable. */
   it('never positions the node on the way in', () => {
     stubDocument(false, true, {});
     const node = measured(240);
@@ -1168,7 +1145,7 @@ describe('tier 3, a box resizing under its own content', () => {
     }
   });
 
-  it('does not travel from a height the box had before it was ever painted (ux-carpet 201)', async () => {
+  it('does not travel from a height the box had before it was ever painted', async () => {
     stubDocument(false);
     const g = globalThis as Record<string, unknown>;
     let frame: (() => void) | undefined;
@@ -1221,11 +1198,10 @@ describe('tier 3, a box resizing under its own content', () => {
     }
   });
 
-  /* FA 46, Milestones: a milestone deleted with the page at its end. The
-     box was held at 1189px while its content closed to 959px; releasing
-     the hold to measure that let the scroller clamp to the shorter page,
-     and the second travel then held the page open again with the scroll
-     already gone - the screen moved 210px in one frame. */
+  /* Milestones: a milestone deleted with the page at its end. The box was held at 1189px
+     while its content closed to 959px; releasing the hold to measure that let the scroller
+     clamp to the shorter page, and the second travel then held the page open again with the
+     scroll already gone - the screen moved 210px in one frame. */
   it('keeps the scroll position across the release when it chases a shrink', async () => {
     stubDocument(false);
     const { node, calls, setHeight, trigger, finish, restore } = resizingNode(1169);
@@ -1417,12 +1393,11 @@ describe('tier 3, a box resizing under its own content', () => {
     }
   });
 
-  /* Ux-carpet ticket 282: "Earlier entries" grows the Journal's gate by
-     972px with its button 160px above the viewport's bottom. Travelling
-     all of it put 280px into the first frame of the ease-out, so the button
-     left the screen and the next day was painted whole in one frame. Only
-     the part of the travel the viewport can show is animated; the rest
-     lands below the fold, where nobody sees it land. */
+  /* "Earlier entries" grows the Journal's gate by 972px with its button 160px above the
+     viewport's bottom. Travelling all of it put 280px into the first frame of the ease-out,
+     so the button left the screen and the next day was painted whole in one frame. Only the
+     part of the travel the viewport can show is animated; the rest lands below the fold,
+     where nobody sees it land. */
   it('travels only as far as the viewport shows, and lands the rest below the fold without a chase', async () => {
     stubDocument(false);
     const g = globalThis as Record<string, unknown>;
@@ -1442,12 +1417,11 @@ describe('tier 3, a box resizing under its own content', () => {
     }
   });
 
-  /* Carpet 15 row 51: a door into the Journal pulls the field up 84px
-     while the gate's answer arrives, so the clamp taken at the travel's
-     start stopped 84px above the viewport's bottom once the box had risen.
-     The day's tag pills sat clipped at that line for 100ms and then landed
-     whole in the frame the hold came off. The travel goes on from the
-     clamped edge to the one the viewport now shows. */
+  /* a door into the Journal pulls the field up 84px while the gate's answer arrives, so the
+     clamp taken at the travel's start stopped 84px above the viewport's bottom once the box
+     had risen. The day's tag pills sat clipped at that line for 100ms and then landed whole
+     in the frame the hold came off. The travel goes on from the clamped edge to the one the
+     viewport now shows. */
   it('travels on to the viewport edge when the box rose during the travel', async () => {
     stubDocument(false);
     const g = globalThis as Record<string, unknown>;

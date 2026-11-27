@@ -52,7 +52,7 @@ const pause = (ms) => new Promise((done) => setTimeout(done, ms));
 try {
   if (Number(device('shell', 'getprop', 'ro.build.version.sdk').trim()) >= 33) device('shell', 'pm', 'grant', packageId, 'android.permission.POST_NOTIFICATIONS');
   device('shell', 'appops', 'set', packageId, 'SCHEDULE_EXACT_ALARM', 'allow');
-  /* The previous APK predates FA 43's neutral alias names. */
+  /* The previous APK predates neutral alias names. */
   device('shell', 'am', 'start', '-W', '-n', `${packageId}/dev.engender.app.disguise.LauncherDefault`);
   const deadline = Date.now() + 60000;
   while (Date.now() < deadline) {
@@ -114,7 +114,7 @@ try {
   await page.locator('[data-pick-file]').click();
   await page.locator('#imp-pass').fill('upgrade40'); await page.locator('[data-import-mode="merge"]').click();
   await page.locator('[data-import]').click();
-  // rc.1 says "Archive imported"; later builds said "Archive merged." (carpet 08, finding 3) and say "Backup merged." since tester report 02, ticket 08.
+  // Rc.1 says "Archive imported"; later builds said "Archive merged." (, finding 3) and say "Backup merged.",.
   await page.waitForFunction(() => /Backup merged|Archive merged|Archive imported|Nothing new|failed|error/i.test(document.body.innerText), null, { timeout: 180000 });
   if (!/Backup merged|Archive merged|Archive imported/i.test(await page.locator('body').innerText())) throw new Error('Synthetic Archive import did not complete');
   await navigate('/settings/reminders');

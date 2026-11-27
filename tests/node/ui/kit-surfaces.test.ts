@@ -86,16 +86,14 @@ describe('the surfaces', () => {
          chip - but its mark draws itself in and that motion wants one file
          to live in rather than being inlined in a row's markup. */
       'Check.svelte',
-      /* Not a surface: one choice of a set drawn as wrapping chips, for
-         choices whose labels a Segmented's equal shares clipped (phase 15
-         release-blockers ticket 05). Three call sites, the tryout kind and
+      /* Not a surface: one choice of a set drawn as wrapping chips, for choices whose
+         labels a Segmented's equal shares clipped. Three call sites, the tryout kind and
          the measurement type on the screen and in its editor. */
       'ChoiceChips.svelte',
-      /* The delete-confirm every record-logging screen drew for itself
-         (phase 5 UX ticket 39a). Not a surface either - it is a Sheet with
-         a fixed arrangement inside it - but sixteen screens held
-         byte-for-byte the same markup, and the question, the hint and both
-         button labels are props, so it owns no copy. */
+      /* The delete-confirm every record-logging screen drew for itself. Not a surface
+         either - it is a Sheet with a fixed arrangement inside it - but sixteen screens
+         held byte-for-byte the same markup, and the question, the hint and both button
+         labels are props, so it owns no copy. */
       'ConfirmDeleteSheet.svelte',
       'DayCard.svelte',
       'DayEntry.svelte',
@@ -105,16 +103,14 @@ describe('the surfaces', () => {
          owns its copy the way PhotoDayPromptSheet does. A screen may say
          more about what is lost in its body line, and nothing else. */
       'DiscardSheet.svelte',
-      /* The app's one fold (after-release 28): a full-width row with its
-         chevron at the far edge and the block it opens growing under it.
-         Not a surface. It replaced native <details> on the managed lists,
-         whose triangle and one-frame opening matched no other fold. */
+      /* The app's one fold: a full-width row with its chevron at the far edge and the block
+         it opens growing under it. Not a surface. It replaced native <details> on the
+         managed lists, whose triangle and one-frame opening matched no other fold. */
       'Disclosure.svelte',
       'Distribution.svelte',
-      /* A bar out of a zero line, left for lower and right for higher, in the
-         section's one colour (ticket 20, the tag card). Sized by its caller
-         against the rows of its own scale only, which is the thing the
-         paired dots could not do for a list that mixed scales. */
+      /* A bar out of a zero line, left for lower and right for higher, in the section's one
+         colour. Sized by its caller against the rows of its own scale only, which is the
+         thing the paired dots could not do for a list that mixed scales. */
       'DivergingBars.svelte',
       /* Parts of a whole where the parts have no order: share by tag, share by presentation, share by
          injection site. The one mark in the kit that cannot label itself -
@@ -135,11 +131,10 @@ describe('the surfaces', () => {
       'ListCard.svelte',
       'ListRow.svelte',
       'MoodChips.svelte',
-      /* MoodFace is deliberately not here. Ticket 31 folded the kit's face
-         and the picker's into one component at src/lib/components, because
-         the two were one drawing with two sets of markup and the eyes could
-         not be changed without changing both. A chip and a day card ask it
-         for a size; a chip and the picker ask it to be alive, which is the
+      /* MoodFace is deliberately not here. folded the kit's face and the picker's into one
+         component at src/lib/components, because the two were one drawing with two sets of
+         markup and the eyes could not be changed without changing both. A chip and a day
+         card ask it for a size; a chip and the picker ask it to be alive, which is the
          glance and the gaze together. */
       'Notice.svelte',
       /* Mood distribution preserves the scale's order in a strip. Its middle
@@ -199,16 +194,11 @@ describe('the surfaces', () => {
       'SectionHeading.svelte',
       'Tile.svelte',
       'TileGrid.svelte',
-      /* The year's days as words under YearRows' picture (phase 14
-         pre-release ticket 30, accessibility audit A06): a fold, a month
-         stepper and a list. In the kit beside the grid it reads, because
-         the pair is one chart - the picture for the eye, the list for
-         everybody the picture leaves out. */
+      /* The year's days as words under YearRows' picture: a fold, a month stepper and a
+         list. In the kit beside the grid it reads, because the pair is one chart - the
+         picture for the eye, the list for everybody the picture leaves out. */
       'YearDaysList.svelte',
-      /* Phase 5 UX ticket 23: a year of days, because twelve bars said
-         where a year's shape went and a retrospective wanted what the year
-         was. Phase 11 ticket 07 made the days shaded cells in twelve rows
-         rather than a face each. */
+      /* The overview draws a shaded cell for each day, grouped by month. */
       'YearRows.svelte'
     ]);
   });
@@ -240,7 +230,7 @@ describe('the surfaces', () => {
     expect(stripped).not.toMatch(/gradient\(/);
   });
 
-  it('gives every interactive element a data-* handle (ADR-0029)', () => {
+  it('gives every interactive element a data-* handle', () => {
     for (const file of components) {
       const html = markup(file);
       const interactive = /<(a|button)\b/.test(html);

@@ -55,19 +55,15 @@ describe('magnify', () => {
   });
 });
 
-/* magnifyRow had no test until phase 9 carpet ticket 01, and what it was
-   doing was almost nothing. MAGNIFIER_SPREAD is 1.7 CELLS - the fan's own
-   copy of this loop multiplies it by a cell width before handing it over -
-   and this passed the bare 1.7 to `magnify`, whose `spread` is in the same
-   units as the coordinates, so it meant 1.7 pixels. A face grew only while
-   the pointer was within 1.7px of its exact centre, which on a 65px cell is
-   about three per cent of it; the `cell` the function computed for the job
-   went unused.
+/* MagnifyRow had no test, and what it was doing was almost nothing. MAGNIFIER_SPREAD is 1.7
+   CELLS - the fan's own copy of this loop multiplies it by a cell width before handing it
+   over - and this passed the bare 1.7 to `magnify`, whose `spread` is in the same units as
+   the coordinates, so it meant 1.7 pixels. A face grew only while the pointer was within
+   1.7px of its exact centre, which on a 65px cell is about three per cent of it; the `cell`
+   the function computed for the job went unused.
 
-   That is very likely the bug behind "still no sliding zoom animation like
-   in quick add" (Alicja, phase 5 ticket 99, round 4). The answer at the time
-   was to raise the bare rows' peak from 1.24 to 1.6, which made an effect
-   that almost never ran bigger on the rare frames it did. */
+   Raising the bare rows' peak from 1.24 to 1.6 made an
+   effect that almost never ran bigger on the rare frames it did. */
 const ROW = { left: 100, width: 500 } as DOMRect;
 
 describe('magnifyRow', () => {

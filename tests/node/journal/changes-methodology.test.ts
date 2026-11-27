@@ -1,13 +1,12 @@
-/* Ticket 20 (pre-production UI/UX audit, UX17): Put recording and reading
-   changes before long methodology.
+/* Put recording and reading changes before long methodology.
 
-   Keeps an explicit Record a change action and count near the timeline. Retains
-   a short visible distinction between personal observations and literature bands;
-   moves longer method/source text into an accessible disclosure.
+   Keeps an explicit Record a change action and count near the timeline. Retains a short
+   visible distinction between personal observations and literature bands; moves longer
+   method/source text into an accessible disclosure.
 
-   Functional audit ticket 22 put the bands themselves behind that disclosure,
-   renamed "What the literature says": no band, no timing sentence and no
-   limitation line until it opens, and each band's source printed inside it. */
+   Put the bands themselves behind that disclosure, renamed "What the literature says": no
+   band, no timing sentence and no limitation line until it opens, and each band's source
+   printed inside it. */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -22,7 +21,7 @@ const noticedAxis = read('src/lib/components/NoticedAxis.svelte');
 const en = JSON.parse(read('messages/en.json'));
 const pl = JSON.parse(read('messages/pl.json'));
 
-describe('ticket 20: changes methodology disclosure and record action', () => {
+describe('changes methodology disclosure and record action', () => {
   describe('catalogue contracts for methodology and recording', () => {
     it('defines short bands limitation in both languages', () => {
       expect(en.effects_bands_limitation).toContain('Shaded bands describe the literature');
@@ -41,9 +40,8 @@ describe('ticket 20: changes methodology disclosure and record action', () => {
       }
     });
 
-    /* Bug session 18, item 64: a change of one's own is not called a side
-       effect, and it is added at the end of the list rather than from a
-       button over the timeline. */
+    /* A change of one's own is not called a side effect, and it is added at the end of the
+       list rather than from a button over the timeline. */
     it('names a change of your own without calling it a side effect', () => {
       expect(en.effect_record_change).toBeUndefined();
       expect(en.side_effect_add).toBe('Add a change of your own');

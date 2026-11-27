@@ -64,13 +64,13 @@ final class DeliveredBackup {
         }
     }
 
-    /** What "verified" means for a written backup: the bytes are the ones
-        meant to be written, and the file opens, every chunk of it, with the
-        saved backup password. Before FA 56 only the first half was checked,
-        so a backup sealed under a mistyped password was listed as verified. */
+    /** What "verified" means for a written backup: the bytes are the ones meant to be
+        written, and the file opens, every chunk of it, with the saved backup password.
+        Before only the first half was checked, so a backup sealed under a mistyped password
+        was listed as verified. */
     static void readBack(Source source, long length, String digest, String password) throws Exception {
         try (InputStream input = source.open()) { StagedBackup.verify(input, length, digest); }
-        // Matching bytes only say the copy is faithful; this says it opens (FA 56).
+        // Matching bytes only say the copy is faithful; this says it opens.
         try (InputStream input = source.open()) { ArchiveReadBack.open(input, password); }
     }
 

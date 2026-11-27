@@ -75,7 +75,7 @@ describe("Home's area colours", () => {
 
 describe('calmRole', () => {
   const role = (stripe: string) => ({ stripe }) as never;
-  it('skips a red stripe, so the breathing water is never blood red (bug session 18, item 75)', () => {
+  it('skips a red stripe, so the breathing water is never blood red', () => {
     const rainbow = ['#E40303', '#FF8C00', '#FFED00', '#008026', '#004DFF', '#750787'].map(role);
     expect(calmRole(rainbow)).toEqual(role('#FF8C00'));
     const lesbian = ['#D52D00', '#EF7627', '#FF9A56', '#FFFFFF', '#D162A4', '#B55690', '#A30262'].map(role);

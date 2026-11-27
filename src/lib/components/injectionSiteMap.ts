@@ -1,11 +1,9 @@
-/* Where the rotation map's twelve dots sit (phase 4 ticket 02, re-spaced in
-   phase 6 ticket 13, re-placed against the shared silhouette in phase 11
-   ticket 48).
+/* Where the rotation map's twelve dots sit.
 
-   Beside InjectionSiteMap.svelte rather than inside it because the spacing
-   is the only claim the map makes that can be got wrong silently: twelve
-   touch targets on one small figure either stay separate or quietly overlap,
-   and a component's <style> block is not somewhere a test can ask. */
+   Beside InjectionSiteMap.svelte rather than inside it because the spacing is the only
+   claim the map makes that can be got wrong silently: twelve touch targets on one small
+   figure either stay separate or quietly overlap, and a component's <style> block is not
+   somewhere a test can ask. */
 
 import type { InjectionSite, InjectionSiteRegion } from '../data/doseSchedule';
 import { FIGURE_BOX, type Pt } from './bodySilhouette';
@@ -23,22 +21,20 @@ export const MAP_VIEW = { width: FIGURE_BOX.width, height: 135 } as const;
     a 390px phone; on a 320px phone it has only 280px, so the map uses the
     sheet's side padding to keep this width and its touch-target spacing. */
 export const MAP_WIDTH = 320;
-/* MAP_SCALE and MAP_HEIGHT stay exported only for their own test (AU-09
-   test-only review); the component takes the box from MAP_WIDTH and
-   MAP_VIEW's ratio, so neither is a second copy of a size. */
+/* MAP_SCALE and MAP_HEIGHT stay exported only for their own test; the component takes the
+   box from MAP_WIDTH and MAP_VIEW's ratio, so neither is a second copy of a size. */
 export const MAP_SCALE = MAP_WIDTH / MAP_VIEW.width;
 export const MAP_HEIGHT = MAP_VIEW.height * MAP_SCALE;
 
 /** `--touch-target` in base.css, which this layout is spaced against and
     cannot read. The test next door holds the two in step. */
-/* MAP_TOUCH_TARGET stays exported only for its own test (AU-09 test-only
-   review). */
+/* MAP_TOUCH_TARGET stays exported only for its own test. */
 export const MAP_TOUCH_TARGET = 48;
 
 /** The clear space Android asks for between two touch targets, on top of
     the targets themselves. Twelve dots on one small figure is exactly the
     layout where that guidance earns its keep. */
-/* MAP_TOUCH_GAP stays exported only for its own test (AU-09 test-only review). */
+/* MAP_TOUCH_GAP stays exported only for its own test. */
 export const MAP_TOUCH_GAP = 8;
 
 /** The visible dot inside the touch target, which is what has to sit on the
@@ -77,7 +73,7 @@ export function sitePosition(site: InjectionSite): { top: number; left: number }
 
 /** The same point in CSS px at the size the map actually renders at, which
     is the only unit a touch target can be compared against. */
-/* siteCentre stays exported only for its own test (AU-09 test-only review). */
+/* siteCentre stays exported only for its own test. */
 export function siteCentre(site: InjectionSite): Pt {
   const { x, y } = sitePoint(site);
   return { x: x * MAP_SCALE, y: y * MAP_SCALE };

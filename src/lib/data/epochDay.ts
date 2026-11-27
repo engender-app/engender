@@ -1,14 +1,11 @@
-/* Pure epoch-day arithmetic — no imports, so the TZ round-trip check
-   (epochDay.test.ts) can run under plain Node with no build step. Every
-   module that needs epoch-day arithmetic imports straight from here;
-   dates.ts (the paraglide-bound layer above it) only formats what this
-   module computes (ADR-0016) — it does not re-export this file's
-   functions as a pass-through.
+/* Pure epoch-day arithmetic. no imports, so the TZ round-trip check (epochDay.test.ts) can
+   run under plain Node with no build step. Every module that needs epoch-day arithmetic
+   imports straight from here; dates.ts (the paraglide-bound layer above it) only formats
+   what this module computes. it does not re-export this file's functions as a pass-through.
 
-   An epoch day is the local calendar day (ADR-0001): days since 1970-01-01
-   counted from a Date's local year/month/day, never from its UTC clock
-   time. Date.UTC(y, m, d) is used only to count days between two calendar
-   dates — it never represents a real instant here. */
+   An epoch day is the local calendar day (ADR-0001): days since 1970-01-01 counted from a
+   Date's local year/month/day, never from its UTC clock time. Date.UTC(y, m, d) is used
+   only to count days between two calendar dates. it never represents a real instant here. */
 
 const DAY = 86400000;
 
@@ -93,15 +90,13 @@ export function epochDayFromDateInputValue(value: string): number | null {
 
 /** `<input type="date">` value → epoch day, falling back to today.
 
-    16 call sites each decided by hand what an unreadable value means - 15
-    answered "today", one (the surgery screen) answered null. This is the
-    app's one answer, for the 15: a blank date field means now, the same way
-    an unstarted record defaults to today everywhere else in the app. A
-    screen that means something else by "unreadable" (the surgery screen's
-    consult/photo dates, which are meaningless without a real date) keeps
-    calling `epochDayFromDateInputValue` directly and handles `null` itself,
-    which is the exception ticket 10 leaves written down rather than
-    silent. */
+    16 call sites each decided by hand what an unreadable value means - 15 answered "today",
+    one (the surgery screen) answered null. This is the app's one answer, for the 15: a
+    blank date field means now, the same way an unstarted record defaults to today
+    everywhere else in the app. A screen that means something else by "unreadable" (the
+    surgery screen's consult/photo dates, which are meaningless without a real date) keeps
+    calling `epochDayFromDateInputValue` directly and handles `null` itself, which is the
+    excepti leaves written down rather than silent. */
 export function epochDayFromDateInputValueOrToday(value: string): number {
   return epochDayFromDateInputValue(value) ?? todayEpochDay();
 }
@@ -148,20 +143,18 @@ export interface DurationPart {
   unit: DurationUnit;
 }
 
-/** The largest one or two units of a duration, as numbers beside their unit
-    names: 4 years 11 months, 2 years, 1 month, 12 days.
+/** The largest one or two units of a duration, as numbers beside their unit names: 4 years
+    11 months, 2 years, 1 month, 12 days.
 
-    The rule itself, with no words in it. `fmtDuration` renders these as a
-    sentence and a sealed letter's card draws the same parts as numbers on
-    blocks, so the two can never disagree about how long a gap
-    is. Always one part or two, days included at zero - "unlocks today" is a
-    different fact from "0 days" and the caller that has to tell them apart
-    compares the days themselves.
+    The rule itself, with no words in it. `fmtDuration` renders these as a sentence and a
+    sealed letter's card draws the same parts as numbers on blocks, so the two can never
+    disagree about how long a gap is. Always one part or two, days included at zero -
+    "unlocks today" is a different fact from "0 days" and the caller that has to tell them
+    apart compares the days themselves.
 
-    Months never carry a remainder in days, which is `fmtDuration`'s rule
-    from phase 5 kept rather than revisited: a card carries the exact date
-    beside the countdown, so the second unit would be precision the reader
-    already has. */
+    Months never carry a remainder in days, which is `fmtDuration`'s rule kept rather than
+    revisited: a card carries the exact date beside the countdown, so the second unit would
+    be precision the reader already has. */
 export function durationParts(d: CalendarDuration): DurationPart[] {
   if (d.years > 0) {
     const years: DurationPart = { n: d.years, unit: 'years' };
@@ -198,15 +191,13 @@ export function nextAnniversaryEpochDay(milestoneEpochDay: number, onOrAfterEpoc
   return thisYear >= onOrAfterEpochDay ? thisYear : anniversaryInYear(m, refYear + 1);
 }
 
-/** How many of a past milestone's anniversaries have arrived by
-    `onEpochDay`: the year difference, less one while this year's is still
-    ahead. Counted from the anniversary itself rather than from
-    `calendarDuration().years`, so the count follows `anniversaryInYear`'s
-    clamp by construction. The two agree since `calendarDuration` clamps
-    the same way (last-audit UI 32); before that the gap was a day short on
-    a 29 February milestone's 28 February anniversary, and a milestone
-    announced "0 years" while flagging itself as an anniversary. Only
-    meaningful for a milestone in the past. */
+/** How many of a past milestone's anniversaries have arrived by `onEpochDay`: the year
+    difference, less one while this year's is still ahead. Counted from the anniversary
+    itself rather than from `calendarDuration().years`, so the count follows
+    `anniversaryInYear`'s clamp by construction. The two agree since `calendarDuration`
+    clamps the same way; before that the gap was a day short on a 29 February milestone's 28
+    February anniversary, and a milestone announced "0 years" while flagging itself as an
+    anniversary. Only meaningful for a milestone in the past. */
 export function anniversaryYears(milestoneEpochDay: number, onEpochDay: number): number {
   const m = localDateFromEpochDay(milestoneEpochDay);
   const refYear = localDateFromEpochDay(onEpochDay).getFullYear();
@@ -344,12 +335,11 @@ export function customInclusiveRange(
 
 /** Whether two epoch days fall in different calendar years, locally.
 
-    The question a chart's gutter asks before it decides whether to write
-    the year on its ends: "22 Jun" on the left and "17 Jun" on the right is
-    a chart that appears to run backwards when the two are a year apart.
-    Here rather than in dates.ts because it is arithmetic on a local date
-    and nothing about how a date is written, so it is testable under the
-    Node tier - dates.ts imports paraglide and is not (ADR-0016). */
+    The question a chart's gutter asks before it decides whether to write the year on its
+    ends: "22 Jun" on the left and "17 Jun" on the right is a chart that appears to run
+    backwards when the two are a year apart. Here rather than in dates.ts because it is
+    arithmetic on a local date and nothing about how a date is written, so it is testable
+    under the Node tier - dates.ts imports paraglide and is not. */
 export function crossesCalendarYear(fromEpochDay: number, toEpochDay: number): boolean {
   return localDateFromEpochDay(fromEpochDay).getFullYear() !== localDateFromEpochDay(toEpochDay).getFullYear();
 }
@@ -360,13 +350,11 @@ export type RelativeDay =
   | { kind: 'in'; days: number }
   | { kind: 'passed'; days: number };
 
-/** How far `epochDay` is from `onEpochDay`, named the way a reminder's
-    schedule reads it (audit item 2: "in 0 days" and "in 1 days" said
-    nothing a person says). Today and tomorrow are their own words rather
-    than the general case of "in n days", and a day already gone is named
-    as passed instead of clamped to zero - the arithmetic alone, with
-    `reminderLabel.ts`'s paraglide layer above it supplying the words
-    (ADR-0016). */
+/** How far `epochDay` is from `onEpochDay`, named the way a reminder's schedule reads it
+    ("in 0 days" and "in 1 days" said nothing a person says). Today and tomorrow are their
+    own words rather than the general case of "in n days", and a day already gone is named
+    as passed instead of clamped to zero - the arithmetic alone, with `reminderLabel.ts`'s
+    paraglide layer above it supplying the words. */
 export function relativeDayFromToday(epochDay: number, onEpochDay: number): RelativeDay {
   const days = epochDay - onEpochDay;
   if (days === 0) return { kind: 'today' };

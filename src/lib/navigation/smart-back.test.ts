@@ -178,9 +178,8 @@ describe('replaceRoute', () => {
   });
 });
 
-/* After-release 17 review: the tab a borrowing page lights is kept per
-   history entry, keyed by the depth that entry sits at, so the shell has to
-   know that depth before the navigation settles. */
+/* review: the tab a borrowing page lights is kept per history entry, keyed by the depth
+   that entry sits at, so the shell has to know that depth before the navigation settles. */
 describe('depthAfter', () => {
   it('answers what the settled navigation will record, without recording it', () => {
     recordNavigation('link');

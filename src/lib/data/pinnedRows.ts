@@ -37,19 +37,16 @@ export type PinPreferences = Pick<PreferenceValues, 'pinnedRows' | 'onboardingAr
     same rowLine reading that the hub shows, including when it goes quiet. */
 export type PinnedRow = DrawnRow;
 
-/** The default set: saved onboarding choices for older journals, or the
-    three-row default when no choice was stored.
+/** The default set: saved onboarding choices for older journals, or the three-row default
+    when no choice was stored.
 
-    In registry order rather than in the order somebody ticked a list of
-    checkboxes, which is an artefact of reading down a page rather than an
-    arrangement. The hub's order is one they have already met, and ticket 14
-    is where an order of their own is made.
+    In registry order rather than in the order somebody ticked a list of checkboxes, which
+    is an artefact of reading down a page rather than an arrangement. The hub's order is one
+    they have already met, and is where an order of their own is made.
 
-    Held apart from the arrangement rather than flattened into it so that
-    "back to what I said at the start" stays computable after the front page
-    has been rearranged. */
-/* defaultPins stays exported only for its own test (AU-09 test-only
-   review). */
+    Held apart from the arrangement rather than flattened into it so that "back to what I
+    said at the start" stays computable after the front page has been rearranged. */
+/* defaultPins stays exported only for its own test. */
 export function defaultPins(
   onboardingAreas: readonly string[] | null,
   rows: readonly HubRow[] = HUB_ROWS
@@ -85,15 +82,14 @@ export function fallbackReading(todayEpochDay: number): HubReading {
 }
 
 /**
- * Resolve stored pins in the person's order against the row registry
- * and area visibility. Skip unknown or hidden rows. The first occurrence
- * wins if an Archive repeats a key.
+ * Resolve stored pins in the person's order against the row registry and area
+ * visibility. Skip unknown or hidden rows. The first occurrence wins if an
+ * Archive repeats a key.
  *
- * Rows hosted outside the hub can still be pinned (ADR-0072). Apply
- * the cycle visibility gate when offering pins. A saved cycle pin
- * already records the person's choice (ADR-0043). Finished rows keep
- * their place and date. The injected registry lets tests exercise
- * a missing row.
+ * Rows hosted outside the hub can still be pinned. Apply the cycle visibility
+ * gate when offering pins. A saved cycle pin already records the person's
+ * choice. Finished rows keep their place and date. The injected registry lets
+ * tests exercise a missing row.
  */
 export function pinnedRows(
   prefs: PinPreferences,
@@ -217,19 +213,17 @@ export function movedPin(keys: readonly string[], key: string, targetKey: string
 
 /** What the add list may offer, each with its own line.
 
-    Three exclusions and one gate. A row already pinned is not offered
-    twice; a row whose areas are hidden cannot be added at all, which is
-    `pinnedRows`'s second resolution rule read forwards - an area out of the
-    navigation may not be walked back in through the front page; and the
-    cycle log is offered only where `cycleTrackingVisible` already says so
-    (ADR-0043), which is the note `pinnedRows` above says this list
-    inherits. The gate arrives as an answer rather than being computed here,
-    because it needs the regimen episodes and a clock and this module has
-    neither.
+    Three exclusions and one gate. A row already pinned is not offered twice; a row whose
+    areas are hidden cannot be added at all, which is `pinnedRows`'s second resolution rule
+    read forwards - an area out of the navigation may not be walked back in through the
+    front page; and the cycle log is offered only where `cycleTrackingVisible` already says
+    so, which is the note `pinnedRows` above says this list inherits. The gate arrives as an
+    answer rather than being computed here, because it needs the regimen episodes and a
+    clock and this module has neither.
 
-    A finished area is offered like any other and carries the day it ended
-    in its line, for the reason a finished pin keeps its row: finishing is
-    a statement about a practice, not a delete. */
+    A finished area is offered like any other and carries the day it ended in its line, for
+    the reason a finished pin keeps its row: finishing is a statement about a practice, not
+    a delete. */
 export function addablePins(
   prefs: PinPreferences,
   reading: HubReading,

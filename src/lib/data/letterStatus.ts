@@ -1,7 +1,6 @@
-/* A letter unlocks when the supplied local day reaches unlockEpochDay
-   (ADR-0001). Resolve that state on read (ADR-0010). Read and write tile
-   acknowledgements and 24h snoozes through the encrypted AcknowledgementStore
-   (ADR-0039). */
+/* A letter unlocks when the supplied local day reaches unlockEpochDay (ADR-0001). Resolve
+   that state on read (ADR-0010). Read and write tile acknowledgements and 24h snoozes
+   through the encrypted AcknowledgementStore. */
 
 import { isSealedUntil } from './sealedUntil';
 import { isTileSnoozed, snoozeTile, clearSnooze } from './liveTilesSnooze';
@@ -14,7 +13,7 @@ export function isLetterSealed(letter: Pick<Letter, 'unlockEpochDay'>, todayEpoc
 }
 
 /* getReadLetterIds stays exported for its own test, and cross-checked in
-   ready-letter-tile.test.ts (AU-09 test-only review). */
+   ready-letter-tile.test.ts. */
 export function getReadLetterIds(store: AcknowledgementStore): Set<string> {
   return new Set(store.read().readLetterIds);
 }

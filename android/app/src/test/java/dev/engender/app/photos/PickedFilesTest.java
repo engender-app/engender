@@ -20,16 +20,16 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * The token store between a pick and whichever transport reads its bytes
- *. Pure logic, so a JVM test rather than an
- * instrumented one - {@code PhotoPickChannelTest} is where the channel that
- * redeems these tokens meets a real WebView.
+ * The token store between a pick and whichever transport reads its bytes.
+ * Pure logic, so a JVM test rather than an instrumented one - {@code
+ * PhotoPickChannelTest} is where the channel that redeems these tokens meets
+ * a real WebView.
  *
- * <p>The chunked half is phase 9 audit ticket 14's: the base64 fallback
- * hands a picked file back a piece at a time, so unlike {@link
- * PickedFiles#take} its entry has to survive between bridge calls. What
- * these check is the lifetime that follows from that - when the stream is
- * opened, when it is closed, and that nothing can read a token twice.
+ * <p>The base64 fallback returns a picked file one
+ * piece at a time, so unlike {@link PickedFiles#take} its entry has to
+ * survive between bridge calls. What these check is the lifetime that follows
+ * from that - when the stream is opened, when it is closed, and that nothing
+ * can read a token twice.
  */
 public class PickedFilesTest {
 

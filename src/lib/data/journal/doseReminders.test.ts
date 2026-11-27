@@ -236,9 +236,8 @@ test('a reminder taken over in the editor is not swallowed when the schedule get
   assert.equal(kept?.time, '23:00');
 });
 
-/* Re-check carpet 12, row 14: what the sync answers (the boot pass skips
-   its write when it says nothing changed), and which differences make it
-   rewrite a row. */
+/* row 14: what the sync answers (the boot pass skips its write when it says nothing
+   changed), and which differences make it rewrite a row. */
 test('the sync answers whether it wrote: nothing to do, a missing row, a stale row, a row to remove', async () => {
   const { journal, db } = await journalWithBuiltIns();
   const id = await episode(journal);
@@ -280,9 +279,8 @@ test('a hand-made reminder for the drug stays when the schedule already has its 
   assert.equal(await handMade(), 1, 'the schedule asked for none');
 });
 
-/* Re-check carpet 15, row 14 after the Stryker rerun: rows are matched to
-   rules by their timing, not by position, and each schedule reads only its
-   own weekdays. */
+/* row 14 after the Stryker rerun: rows are matched to rules by their timing, not by
+   position, and each schedule reads only its own weekdays. */
 test('the same times in another order rewrite nothing, and each row keeps its time', async () => {
   const { journal, db } = await journalWithBuiltIns();
   const id = await episode(journal);

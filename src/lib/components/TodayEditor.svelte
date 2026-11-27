@@ -1,14 +1,14 @@
 <script lang="ts">
-  /* Arrange Today in place (ADR-0073, ADR-0067, ADR-0043). The editor grows
-     from the block it changes and offers current pins, available pins, tile
-     switches, reset and Done. pinnedRows.ts owns all arrangement rules.
+  /* Arrange Today in place (ADR-0073, ADR-0067). The editor grows from the block it changes
+     and offers current pins, available pins, tile switches, reset and Done. pinnedRows.ts
+     owns all arrangement rules.
 
-     Drag from the handle so the rest of the row still scrolls. Pointer moves
-     measure each row's box and shift intervening rows aside. The same handle
-     accepts arrow keys and moves one place through travelFrom.
+     Drag from the handle so the rest of the row still scrolls. Pointer moves measure each
+     row's box and shift intervening rows aside. The same handle accepts arrow keys and
+     moves one place through travelFrom.
 
-     Pins for hidden areas remain stored. Write reorders against row keys
-     because the visible positions omit those pins. */
+     Pins for hidden areas remain stored. Write reorders against row keys because the
+     visible positions omit those pins. */
   import { onMount, tick } from 'svelte';
   import { focusNamedTarget } from '$lib/navigation/arrivalFocus';
   import { m } from '$lib/paraglide/messages';
@@ -62,10 +62,9 @@
     onDone: () => void;
   } = $props();
 
-  /* ADR-0043's gate, read here rather than by Today: it is only ever
-     needed while somebody is looking at the add list, and this component
-     is the only thing that mounts then. Today would have had to carry the
-     query on every load to hand the answer down. */
+  /* The gate, read here rather than by Today: it is only ever needed while somebody is
+     looking at the add list, and this component is the only thing that mounts then. Today
+     would have had to carry the query on every load to hand the answer down. */
   let episodesQuery = liveQuery((j) => j.regimen.getEpisodes());
   let cycleVisible = $derived(
     cycleTrackingVisible(episodesQuery.value ?? [], Date.now(), prefs.cycleTrackingChoice)
@@ -212,8 +211,8 @@
     const handle = listEl?.querySelector<HTMLElement>(`[data-edit-grip="${key}"]`);
     handle?.focus();
     travelFrom(rowElements(), rowKey, before);
-    /* The row travels where it can be seen; this says where it went to
-       somebody who cannot see it (after-release 21, audit L05-08). */
+    /* The row travels where it can be seen; this says where it went to somebody who cannot
+       see it. */
     announce(m.home_edit_moved({ position: String(at + delta + 1), total: String(pinned.length) }));
   }
 
@@ -314,10 +313,9 @@
     </div>
   {/if}
 
-  <!-- Match Home's band and tile order through LIVE_TILE_DRAW_ORDER.
-       Keep the registry's explanatory line next to each switch. Include
-       hidden and finished areas because a switch disables a kind
-       independently of its area's current state (ADR-0039). -->
+  <!-- Match Home's band and tile order through LIVE_TILE_DRAW_ORDER. Keep the registry's
+       explanatory line next to each switch. Include hidden and finished areas because a
+       switch disables a kind independently of its area's current state. -->
   <SectionHeading text={m.home_edit_tiles_heading()} />
   <p class="today-editor-hint">{m.home_edit_tiles_hint()}</p>
   <div class="today-editor-tiles">

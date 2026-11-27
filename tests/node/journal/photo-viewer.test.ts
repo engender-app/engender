@@ -1,8 +1,7 @@
-/* CARPET-06: an attached photo opens a viewer instead of doing nothing.
-   Structural checks at the level a component's source can be held to -
-   the behaviour itself (a real blob loaded, the sheet opening on click) is
-   proved in a browser, not here (see entry-editor-unified-logging-hub.test.ts
-   for the same style of check on this file). */
+/* an attached photo opens a viewer instead of doing nothing. Structural checks at the level
+   a component's source can be held to - the behaviour itself (a real blob loaded, the sheet
+   opening on click) is proved in a browser, not here (see
+   entry-editor-unified-logging-hub.test.ts for the same style of check on this file). */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

@@ -108,11 +108,9 @@
     roles = readFlagRoles();
   }
 
-  /* ?measure=1 runs the chart's re-tween against a transform-and-opacity
-     baseline and prints the frame cadence on the page, so the number can be
-     read off a phone over `adb reverse` without a debugger attached. The
-     rule it is judged by is ticket 28's, written before any run: a material
-     holds if at most 5% of frames land past 1.5x the baseline's median
+  /* ?measure=1 runs the chart's re-tween against a transform-and-opacity baseline and
+     prints the frame cadence on the page, so the number can be read off a phone over `adb
+     reverse` without a debugger. The chart passes if at most 5% of frames land past 1.5x the baseline's median
      period and p95 is inside 1.25x it. */
   let report = $state('');
 
@@ -349,10 +347,9 @@
     />
   </ChartCard>
 
-  <!-- Carpet ticket 20: the leader floor. Same rows a thin, early journal
-       draws on a 0-to-100 dimension - one tag with almost every entry,
-       the rest with one or two - so the smallest three bars stay a
-       readable length instead of the sliver `leader` used to draw. -->
+  <!-- The leader floor. Same rows a thin, early journal draws on a 0-to-100 dimension - one
+       tag with almost every entry, the rest with one or two - so the smallest three bars
+       stay a readable length instead of the sliver `leader` used to draw. -->
   <ChartCard level={3} heading="Tag insights, thin journal" kind="bars" role={roleAt(roles, 1)}>
     <BarRows
       rows={[

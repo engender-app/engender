@@ -23,7 +23,7 @@ function held() {
   };
 }
 
-test('all three questions are asked before any of them answers (ux-carpet 207)', async () => {
+test('all three questions are asked before any of them answers', async () => {
   const { asked, answers, ports } = held();
   const survey = surveyAndroid(ports);
   await Promise.resolve();

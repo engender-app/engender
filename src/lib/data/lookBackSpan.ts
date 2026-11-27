@@ -272,11 +272,10 @@ export function historyKindsPresent(bands: readonly RailBand[]): RailHistoryKind
   return HISTORY_ORDER.filter((kind) => present.has(kind));
 }
 
-/** What the legend names, in the rail's own order: the eras first, since
-    they are the layer that stands up, then the lanes bottom-up, then the
-    marks. Absent kinds are absent - a journal with no tryouts does not read
-    "Tryouts". The marks take one key whatever they are, since they look the
-    same, and the key says what it covers (after-release 27, audit L05-12). */
+/** What the legend names, in the rail's own order: the eras first, since they are the layer
+    that stands up, then the lanes bottom-up, then the marks. Absent kinds are absent - a
+    journal with no tryouts does not read "Tryouts". The marks take one key whatever they
+    are, since they look the same, and the key says what it covers. */
 export function railLegendKinds(
   bands: readonly RailBand[],
   milestones: readonly unknown[],
@@ -309,19 +308,17 @@ export function eraOfferDue(span: Span, handled: readonly Span[]): boolean {
   return !handled.some((h) => spanOverlapsRange({ startEpochDay: h.start, endEpochDay: h.end }, span.start, span.end));
 }
 
-/* ## The same facts as a list (phase 11 UI/UX ticket 25)
+/* ## The same facts as a list
 
-   The rail's own bands are 8px and 6px high and its marks are 12px blocks,
-   which is a picture of a history rather than a set of targets: the first
-   audit's U4 measured them and asked for an accessible way to the same
-   facts that does not depend on aim. The list the door draws under the rail
-   reads from here, so the two never disagree about what the rail holds -
-   the same clamped days, the same identities, and the same span each fact
-   selects.
+   The rail's own bands are 8px and 6px high and its marks are 12px blocks, which is a
+   picture of a history rather than a set of targets: the first audit's U4 measured them and
+   asked for an accessible way to the same facts that does not depend on aim. The list the
+   door draws under the rail reads from here, so the two never disagree about what the rail
+   holds - the same clamped days, the same identities, and the same span each fact selects.
 
-   Nothing new is read for it. The eras arrive as `eraBands` already
-   clamped them, the stretches as `historyBands` did, and the marks as the
-   rail draws them; this orders them and says what each one selects. */
+   Nothing new is read for it. The eras arrive as `eraBands` already clamped them, the
+   stretches as `historyBands` did, and the marks as the rail draws them; this orders them
+   and says what each one selects. */
 
 /** What the rail draws that somebody can point at. `era` and `surgery` are
     not history kinds - an era is the rail's own top layer and a surgery day

@@ -27,8 +27,7 @@ import { cancelStepPreview, stepBack } from '../navigation/stepBack';
 import { connectStepPreview, type StepBackBridge } from './step-preview';
 import { resolveAndroidBackAction } from './back-navigation';
 
-/* PlatformSyncDeps stays exported only for its own test (AU-09 test-only
-   review). */
+/* PlatformSyncDeps stays exported only for its own test. */
 export interface PlatformSyncDeps {
   isAndroid: () => boolean;
   isReady: () => boolean;
@@ -124,7 +123,7 @@ export interface PlatformSyncDeps {
     schedule sync and the stock run-out reconciliation below - both need exactly
     this shape, and a second copy of the flag/queue dance had already crept in
     once before they shared it. */
-/* coalescing stays exported only for its own test (AU-09 test-only review). */
+/* coalescing stays exported only for its own test. */
 export function coalescing(run: () => Promise<void>, onError: (error: unknown) => void): () => void {
   let running = false;
   let queued = false;
@@ -151,8 +150,7 @@ export function coalescing(run: () => Promise<void>, onError: (error: unknown) =
     unprompted switches. Keep the stored rows. The wear-elapsed switch and a
     quiet wear area suppress reminders with a wear: marker. The registry maps
     reminders to areas. */
-/* schedulableReminders stays exported only for its own test (AU-09 test-only
-   review). */
+/* schedulableReminders stays exported only for its own test. */
 export function schedulableReminders(
   reminders: Reminder[],
   gates: {
@@ -178,8 +176,7 @@ export function schedulableReminders(
     are computed on the Java side from the rule (ReminderPlanner), before any
     WebView exists - so what crosses the bridge is the window itself and
     QuietHours.java does the holding. */
-/* assembleReminderSyncPayload stays exported only for its own test (AU-09
-   test-only review). */
+/* assembleReminderSyncPayload stays exported only for its own test. */
 export function assembleReminderSyncPayload(input: {
   reminders: Reminder[];
   recentEntries: Array<{ epochDay: number }>;
@@ -195,8 +192,8 @@ export function assembleReminderSyncPayload(input: {
   todayEpochDay: number;
   quietHours: QuietHours;
   texts: AndroidReminderTexts;
-  /** What each reminder's notification says. Without it a notification
-      shows the stored title over the time, as it did before ticket 21. */
+  /** What each reminder's notification says. Without it a notification shows the stored
+      title over the time, as it did. */
   notificationWords?: (reminder: Reminder) => { title: string; text: string };
 }): AndroidReminderSyncPayload {
   const words = input.notificationWords;
@@ -446,8 +443,7 @@ export function startAndroidPlatformSync(deps: PlatformSyncDeps): () => void {
     than the two permanent `onTablesWritten` subscriptions (see above - nothing
     can tear those down). A no-op when nothing is active, so it is safe to call
     from a stale reference or twice in a row. */
-/* stopAndroidPlatformSync stays exported only for its own test (AU-09
-   test-only review). */
+/* stopAndroidPlatformSync stays exported only for its own test. */
 export function stopAndroidPlatformSync(): void {
   stopCurrent?.();
 }

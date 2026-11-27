@@ -23,12 +23,11 @@
     /** Bytes to play instead of reading any: what the editor passes for a
         note just made, which has nothing stored yet. */
     bytes?: Uint8Array;
-    /** A URL the caller already holds and already revokes - the photo
-        journey's timelapse preview, which is a video this app just rendered
-        rather than a note anybody recorded. It is the third caller and the
-        reason this component is the app's one video player rather than the
-        video note's: a second player drawn for one preview screen is exactly
-        the thing ticket 46 exists to stop. */
+    /** A URL the caller already holds and already revokes - the photo journey's timelapse
+        preview, which is a video this app just rendered rather than a note anybody
+        recorded. It is the third caller and the reason this component is the app's one
+        video player rather than the video note's: a second player drawn for one preview
+        screen is exactly the thing exists to stop. */
     src?: string | null;
   } = $props();
 
@@ -37,9 +36,8 @@
   let playing = $state(false);
   let player = $state<HTMLDivElement>();
   let full = $state(false);
-  /* A file that cannot be read says so inside the frame, PhotoViewer's
-     `failed`; it used to leave the black frame up for good (after-release
-     06, L05-06). */
+  /* A file that cannot be read says so inside the frame, PhotoViewer's `failed`; it used to
+     leave the black frame up for good. */
   let failed = $state(false);
 
   $effect(() => {

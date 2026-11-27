@@ -1,11 +1,10 @@
-/* Read the clinician summary through the journal areas that own its rows
-   (ADR-0010). Each section filters to the requested range without
-   introducing a stored or interpreted result.
+/* Read the clinician summary through the journal areas that own its rows (ADR-0010). Each
+   section filters to the requested range without introducing a stored or interpreted
+   result.
 
-   The registry fixes print order, section keys and include switches
-   (ADR-0031). A section declares its area's read and tables. Their union
-   is CLINICIAN_SUMMARY_TABLES, the live dependency list. Localized names
-   live in vocabulary/clinicianSummaryLabels.ts (ADR-0016). */
+   The registry fixes print order, section keys and include switches. A section declares its
+   area's read and tables. Their union is CLINICIAN_SUMMARY_TABLES, the live dependency
+   list. Localized names live in vocabulary/clinicianSummaryLabels.ts. */
 
 import type { TableName } from '../live/writes';
 import { finishedGroups, type AreaGroupKey } from '../areaGroups';
@@ -90,8 +89,7 @@ interface ClinicianSummaryContents {
   regimen: ClinicianSummaryRegimen;
   exposure: ExposureCounters;
   labs: LabResult[];
-  /** Side effects active at any point in the range, ongoing or resolved
-      (functional audit ticket 23's `resolvedEpochDay`). */
+  /** Side effects active at any point in the range, ongoing or resolved. */
   sideEffects: SideEffect[];
   /** Every change marked so far that the timeline shows, oldest first -
       not range-filtered, see readChangesNoticed below. */
@@ -162,8 +160,7 @@ interface ClinicianSummaryReading extends ClinicianSummaryAreas {
 /** One part of the summary's declaration that it prints. Erased over what
     it reads, because the list holds every section at once and because a
     test registers sections `ClinicianSummary` has never heard of. */
-/* ClinicianSummarySection stays exported only for its own test (AU-09
-   test-only review). */
+/* ClinicianSummarySection stays exported only for its own test. */
 export interface ClinicianSummarySection {
   key: string;
   tables: readonly TableName[];
@@ -233,14 +230,12 @@ async function readRegimen(reading: ClinicianSummaryReading): Promise<ClinicianS
   };
 }
 
-/* Exposure counters, with the excluded drugs' rows dropped. Route days are a route total, not a drug total
-   (daysOnEachRoute merges across whatever episodes used that route), so
-   they are recounted by that same function over the printed drugs'
-   episodes only: before functional audit ticket 39 they kept every drug,
-   and with a drug that is not HRT off by default an SSRI's oral days still
-   reached the page as "oral" days. `excludedDoses` stays as-is - it counts
-   doses the drug log itself could not attribute, which a drug toggle does
-   not change. */
+/* Exposure counters, with the excluded drugs' rows dropped. Route days are a route total,
+   not a drug total (daysOnEachRoute merges across whatever episodes used that route), so
+   they are recounted by that same function over the printed drugs' episodes only: they kept
+   every drug, and with a drug that is not HRT off by default an SSRI's oral days still
+   reached the page as "oral" days. `excludedDoses` stays as-is - it counts doses the drug
+   log itself could not attribute, which a drug toggle does not change. */
 async function readExposure({ exposure, regimen, fromEpochDay, toEpochDay, excludedDrugs }: ClinicianSummaryReading) {
   const counters = await exposure.getCounters(fromEpochDay, toEpochDay);
   if (excludedDrugs.size === 0) return counters;
@@ -367,7 +362,7 @@ const SECTIONS = [
     // appointments pointing at it. The summary's own "since
     // your last appointment" range is not this section's - it lives in the
     // route itself (clinician-summary/+page.svelte), reading
-    // appointments.ts's mostRecentPastAppointment since ticket 58.
+    // appointments.ts's mostRecentPastAppointment.
     //
     // The recovery checklist as well as the procedure: an item ticked off on
     // it changes what this section prints, and that checklist is an ordinary
@@ -389,8 +384,7 @@ type Unregistered = Exclude<ClinicianSummarySectionKey, (typeof SECTIONS)[number
 type AssertNoneUnregistered<Missing extends never> = Missing;
 export type EverySectionRegistered = AssertNoneUnregistered<Unregistered>;
 
-/* CLINICIAN_SUMMARY_SECTIONS stays exported only for its own test (AU-09
-   test-only review). */
+/* CLINICIAN_SUMMARY_SECTIONS stays exported only for its own test. */
 export const CLINICIAN_SUMMARY_SECTIONS: readonly ClinicianSummarySection[] = SECTIONS;
 
 /** Every part's key, in the order the parts print: what the screen walks to
@@ -519,10 +513,9 @@ export function withClinicianDrugIncluded(
 const spacedWords = (text: string) =>
   ` ${text.toLocaleLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean).join(' ')} `;
 
-/** The ester a regimen row should name beside its drug, or null when there
-    is none or the drug's own name already says it ("Estradiol valerate"
-    with the ester "valerate" printed the ester twice, after-release 22).
-    Whole words only, so a name that merely starts with the ester still
+/** The ester a regimen row should name beside its drug, or null when there is none or the
+    drug's own name already says it ("Estradiol valerate" with the ester "valerate" printed
+    the ester twice). Whole words only, so a name that merely starts with the ester still
     gets it. */
 export function regimenEsterNote(drug: string, ester: string | null): string | null {
   const note = ester?.trim();

@@ -1,13 +1,12 @@
-/* Browser-tier check for ticket 09: the folding cases against the WASM
-   SQLite, not only against Node's.
+/* Browser-tier check for the folding cases against the WASM SQLite, not only against
+   Node's.
 
-   The Node and WASM SQLites are different builds (3.51.2 and 3.48.0 as of
-   this ticket), and ADR-0005's whole premise is a claim about what FTS5
-   does and does not fold. So the claim is checked on both, through the real
-   journal over the real driver rather than against a synthetic table: what
-   matters is that fold-on-write and fold-on-query stay symmetric here too,
-   and that migration v3's contentless_delete lets an edit and a delete
-   actually leave the index. */
+   The Node and WASM SQLites are different builds (3.51.2 and 3.48.0 as of this ticket), and
+   ADR-0005's whole premise is a claim about what FTS5 does and does not fold. So the claim
+   is checked on both, through the real journal over the real driver rather than against a
+   synthetic table: what matters is that fold-on-write and fold-on-query stay symmetric here
+   too, and that migration v3's contentless_delete lets an edit and a delete actually leave
+   the index. */
 import { createEncryptedWebSqlite } from '../../src/lib/data/sqlite/mc-driver.ts';
 import { boot } from '../../src/lib/data/sqlite/boot.ts';
 import { openJournal } from '../../src/lib/data/journal/journal.ts';

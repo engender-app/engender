@@ -47,8 +47,8 @@ describe('tesseractLabOcrEngine', () => {
     expect(typeof passedImage).not.toBe('string');
   });
 
-  /* GD-008: Tesseract decodes the image whole, so a tiny file declaring
-     65535 x 65535 pixels is refused before a worker exists. */
+  /* Tesseract decodes the image whole, so a tiny file declaring 65535 x 65535 pixels is
+     refused before a worker exists. */
   test('refuses an image declaring over-budget dimensions before Tesseract is loaded', async () => {
     await expect(tesseractLabOcrEngine().recognize(pngHeader(65535, 65535))).rejects.toMatchObject({
       name: 'MediaBudgetError',
@@ -68,12 +68,11 @@ describe('tesseractLabOcrEngine', () => {
     await expect(tesseractLabOcrEngine().recognize(new Uint8Array([1, 2, 3]))).rejects.toThrow('no engine');
   });
 
-  /* Phase 9 audit ticket 11. The bar over a lab-report scan is a real
-     fraction rather than a sweep only because the installed tesseract.js
-     reports one - so what this pins is that the reading pass is the only
-     status turned into one. Loading the core and each language's
-     traineddata each sweep 0 to 1 of their own, and forwarding those would
-     fill the bar three times before the page is read. */
+  /* The bar over a lab-report scan is a real fraction rather than a sweep only because the
+     installed tesseract.js reports one - so what this pins is that the reading pass is the
+     only status turned into one. Loading the core and each language's traineddata each
+     sweep 0 to 1 of their own, and forwarding those would fill the bar three times before
+     the page is read. */
   test('reports the reading pass and nothing before it', async () => {
     const seen: (number | null)[] = [];
     await tesseractLabOcrEngine().recognize(new Uint8Array([1, 2, 3]), {

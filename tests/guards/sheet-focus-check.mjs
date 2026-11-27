@@ -1,10 +1,9 @@
-/* Real-browser proof for ticket 04's sheet focus contract. Drives actual
-   appointment, lab and dose screens because a component fixture cannot prove
-   the date picker, mounted outside the screen, cooperates with the app shell
-   and live routes.
+/* Real-browser proof for sheet focus contract. Drives actual appointment, lab and dose
+   screens because a component fixture cannot prove the date picker, mounted outside the
+   screen, cooperates with the app shell and live routes.
 
-   Pass an output directory to keep sign-off screenshots:
-     node tests/guards/sheet-focus-check.mjs .claude/ticket-04-shots */
+   Pass an output directory to keep sign-off screenshots: node
+   tests/guards/sheet-focus-check.mjs.claude/-shots */
 import { preview } from 'vite';
 import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -66,7 +65,7 @@ async function shot(page, name) {
   await page.locator('[data-app-root]').screenshot({ path: `${outDir}/${name}.png` });
 }
 
-await block('ticket 04 sheet focus', 13, async () => {
+await block('sheet focus', 13, async () => {
   const { context, page } = await freshPage();
 
   await openSheet(page, '/health/appointments');
@@ -208,6 +207,6 @@ await block('ticket 04 sheet focus', 13, async () => {
   await interrupted.context.close();
 });
 
-process.exitCode = finish('ticket 04 sheet focus checks passed') ? 1 : 0;
+process.exitCode = finish('sheet focus checks passed') ? 1 : 0;
 await browser.close();
 await app.httpServer.close();

@@ -1,7 +1,5 @@
-/* The wear log (phase 5 ticket 04, CONTEXT: "Wear session"):
-   the live/backfill duality is a null-vs-set duration_ms, and the optional
-   reminder is reconciled by an auto_source marker rather than stored on the
-   session itself. */
+/* The wear log: the live/backfill duality is a null-vs-set duration_ms, and the optional
+   reminder is reconciled by an auto_source marker rather than stored on the session itself. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

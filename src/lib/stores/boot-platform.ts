@@ -105,9 +105,8 @@ export async function performPlatformEffect(effect: PlatformEffect, dispatch: Bo
         dispatch({ type: 'device-key-unavailable' });
         return;
       }
-      /* Nobody authenticated for this one - the browser handed the key over
-         because the device is the device. App lock still has its question to
-         ask (ADR-0014). */
+      /* Nobody authenticated for this one - the browser handed the key over because the
+         device is the device. App lock still has its question to ask. */
       dispatch({ type: 'key-obtained', dataKey, accessMode: 'device-bound', unlocked: false });
       return;
     }
@@ -148,13 +147,11 @@ async function performDemoEffect(
   const DEMO_PASSPHRASE = 'demo';
 
   switch (effect.type) {
-    /* `unlocked: true`, unlike the two real setup paths, because nobody
-       typed anything and nobody should have to. Until ticket 53 the casual-
-       access gate read `prefs.pinHash`, which a demo journal never has, so
-       `false` here reached no gate. It reads the access mode now - and a
-       demo journal is in passphrase mode - so `false` would land every demo
-       boot on a lock screen asking for a passphrase the reviewer was never
-       given. */
+    /* `unlocked: true`, unlike the two real setup paths, because nobody typed anything and
+       nobody should have to. the casual- access gate read `prefs.pinHash`, which a demo
+       journal never has, so `false` here reached no gate. It reads the access mode now -
+       and a demo journal is in passphrase mode - so `false` would land every demo boot on a
+       lock screen asking for a passphrase the reviewer was never given. */
     case 'demo-setup':
       dispatch({
         type: 'key-obtained',

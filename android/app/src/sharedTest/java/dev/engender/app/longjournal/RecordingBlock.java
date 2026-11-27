@@ -4,19 +4,19 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 /**
- * The block LongJournalBenchmarkTest logs for re-recording android-budgets.json
- * (ux-carpet 218).
+ * The block LongJournalBenchmarkTest logs for re-recording
+ * android-budgets.json.
  *
- * <p>It used to be assembled with {@code String.format("\"%s\"", ...)}, which
- * leaves a quote inside a string as it is. Three measurements describe a search
- * for a quoted word ({@code search "lustro", one page and the total}), so the
- * block the test tells you to paste was not JSON, and a paste broke the file.
- * Every string now goes through {@link JSONObject#quote}.
+ * <p>It used to be assembled with {@code String.format("\"%s\"",...)}, which
+ * leaves a quote inside a string as it is. Three measurements describe a
+ * search for a quoted word ({@code search "lustro", one page and the total}),
+ * so the block the test tells you to paste was not JSON, and a paste broke
+ * the file. Every string now goes through {@link JSONObject#quote}.
  *
- * <p>One entry per line rather than {@code JSONObject.toString(2)}, because the
- * block is read and diffed by eye against the file before it is pasted, and
- * because JSONObject does not keep key order. In sharedTest so the JVM tier can
- * test it; the instrumented test is the only caller.
+ * <p>One entry per line rather than {@code JSONObject.toString(2)}, because
+ * the block is read and diffed by eye against the file before it is pasted,
+ * and because JSONObject does not keep key order. In sharedTest so the JVM
+ * tier can test it; the instrumented test is the only caller.
  */
 final class RecordingBlock {
 

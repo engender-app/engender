@@ -102,9 +102,8 @@ describe('androidPickedBytes', () => {
     expect(vi.mocked(androidPhotos.readPickedChunk)).toHaveBeenCalledWith({ token: 'a-token' });
   });
 
-  /* The fallback's whole point after ticket 14: a 25 MB scan crosses as
-     several bounded strings rather than one 34 MB allocation, so what
-     arrives has to be the pieces in the order they came. */
+  /* The fallback's whole point after a 25 MB scan crosses as several bounded strings rather
+     than one 34 MB allocation, so what arrives has to be the pieces in the order they came. */
   test('joins the fallback chunks in the order the bridge answered them', async () => {
     bridgeAnswers([
       [1, 2],
@@ -142,9 +141,8 @@ describe('filePhotoPicker', () => {
     expect(vi.mocked(chooseFiles)).not.toHaveBeenCalled();
   });
 
-  /* The web picks several photos in one trip, and Android now does too
-     (after-release 27, audit L10-10): the system picker is asked for more
-     than one. */
+  /* The web picks several photos in one trip, and Android now does too: the system picker
+     is asked for more than one. */
   test('asks the Android picker for several photos, as the web does', async () => {
     vi.mocked(isAndroid).mockReturnValue(true);
     vi.mocked(androidPhotos.pickImages).mockResolvedValue({ tokens: [] });
@@ -231,8 +229,8 @@ describe('filePhotoPicker', () => {
   });
 });
 
-/* Security-scan ticket 07, GD-019: the ceiling per file left the count and
-   the total open, and every selected file's bytes were held at once. */
+/* The ceiling per file left the count and the total open, and every selected file's bytes
+   were held at once. */
 describe('filePhotoPicker selection budget', () => {
   beforeEach(() => {
     vi.resetAllMocks();

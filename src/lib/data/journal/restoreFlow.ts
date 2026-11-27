@@ -1,9 +1,9 @@
-/* Share the restore sequence between Settings and onboarding: pick,
-   guard, open and apply. Screens own the rendering. Error kinds map
-   to labels in `vocabulary/archiveErrorLabels.ts` (ADR-0016).
+/* Share the restore sequence between Settings and onboarding: pick, guard, open and apply.
+   Screens own the rendering. Error kinds map to labels in
+   `vocabulary/archiveErrorLabels.ts`.
 
-   Load the journal and preference store dynamically. The Node tests
-   can exercise the guard without loading Svelte rune modules. */
+   Load the journal and preference store dynamically. The Node tests can exercise the guard
+   without loading Svelte rune modules. */
 
 import { openArchive } from '../archive/pack';
 import { archiveFailureKind, type ArchiveFailureKind } from '../archive/failure';
@@ -45,11 +45,10 @@ export async function pickForRestore(): Promise<
   }
 }
 
-/** The form's own refusals, before anything is opened. Pure, and the one
-    part of this file a Node test can reach. An empty password is not one of
-    them: an export may be made without a password (bug session 18, item 80),
-    so the empty field is tried, and restoreFailureKind says what it means
-    when it does not open the file. */
+/** The form's own refusals, before anything is opened. Pure, and the one part of this file
+    a Node test can reach. An empty password is not one of them: an export may be made
+    without a password, so the empty field is tried, and restoreFailureKind says what it
+    means when it does not open the file. */
 export function restoreGuard(
   picked: PickedArchive | null,
   password: string

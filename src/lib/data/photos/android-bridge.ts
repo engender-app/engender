@@ -22,7 +22,7 @@ picker.ts owns the loop. */
   sizeFile(options: { name: string; directory?: string }): Promise<{ size: number | null }>;
   sizeFiles(options: { names: string[]; directory?: string }): Promise<{ sizes: (number | null)[] }>;
   removeFile(options: { name: string; directory?: string }): Promise<void>;
-  /* The reset's only caller (ux-carpet 214): the directory and all in it. */
+  /* The reset's only caller: the directory and all in it. */
   removeDirectory(options?: { directory?: string }): Promise<void>;
   listFiles(options?: { directory?: string }): Promise<{ names: string[] }>;
   directoryPath(options?: { directory?: string }): Promise<{ path: string }>;

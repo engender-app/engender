@@ -84,16 +84,14 @@
     book?.entries ? book.entries.slice(0, renderedCount) : []
   );
 
-  /* The pages themselves, folded away until somebody asks for them (phase 12
-     final-audit ticket 20, audit finding U11). The screen used to lay the
-     whole chosen range out inline - every entry's date, mood and words, and
-     a full-bleed picture per photo - which came to 26,931px on the default
-     one year, the tallest screen in the app by a factor of four, with the
-     seven switches and Print past all of it. What goes in is now three
-     numbers; the document is behind this.
+  /* The pages themselves, folded away until somebody asks for them. The screen used to lay
+     the whole chosen range out inline - every entry's date, mood and words, and a
+     full-bleed picture per photo - which came to 26,931px on the default one year, the
+     tallest screen in the app by a factor of four, with the seven switches and Print past
+     all of it. What goes in is now three numbers; the document is behind this.
 
-     Print is not: `openForPrint` below is what every print path goes
-     through, and it opens this first. */
+     Print is not: `openForPrint` below is what every print path goes through, and it opens
+     this first. */
   let previewOpen = $state(false);
   /* True only for the instant `openForPrint` spends inside `flushSync`, so
      the pages mounted for a print land at once rather than animating open
@@ -173,10 +171,9 @@
       : m.range_required()
   );
 
-  /* Ticket 16's card, given the two counts the recap seam already
-     produces for this range. Palette art comes with the page rather than
-     as a fourth switch: the opening page is one choice, and a card with the
-     art off and nothing else to turn on would be a blank sheet. */
+  /* Card, given the two counts the recap seam already produces for this range. Palette art
+     comes with the page rather than as a fourth switch: the opening page is one choice, and
+     a card with the art off and nothing else to turn on would be a blank sheet. */
   let opening = $derived<WrappedCardContent | null>(
     book?.opening
       ? {

@@ -39,14 +39,13 @@
   const group = provideReadGroup(() => answered);
   let members: HTMLDivElement;
 
-  /* A group whose members have all answered before it has painted once is
-     a warm revisit painting from the reads' last answers (ux-carpet 201):
-     the tab is coming back to what it showed a minute ago, not arriving. So
-     it shows in its first frame: the placeholder goes without its crossfade,
-     the members without their fade, and their own entrances are finished
-     rather than played. "Before it has painted" rather than "when it first
-     renders", because a member can answer a microtask after the group's
-     first render and still well before the browser draws anything. */
+  /* A group whose members have all answered before it has painted once is a warm revisit
+     painting from the reads' last answers: the tab is coming back to what it showed a
+     minute ago, not arriving. So it shows in its first frame: the placeholder goes without
+     its crossfade, the members without their fade, and their own entrances are finished
+     rather than played. "Before it has painted" rather than "when it first renders",
+     because a member can answer a microtask after the group's first render and still well
+     before the browser draws anything. */
   let painted = false;
   $effect(() => {
     requestAnimationFrame(() => setTimeout(() => (painted = true)));

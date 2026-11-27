@@ -18,15 +18,14 @@ import type { MilestonesArea } from './milestones';
 import type { ProceduresArea } from './procedures';
 import type { RegimenArea } from './regimen';
 
-/** The five kinds a mark comes in, and nothing else - the ADR's own list,
-    in its own order. A mark carries no other information: never which
-    appointment, never which letter, never an amount or a status.
+/** The five kinds a mark comes in, and nothing else - the ADR's own list, in its own order.
+    A mark carries no other information: never which appointment, never which letter, never
+    an amount or a status.
 
-    The array rather than the union is what is declared, so the two cannot
-    drift: the union below is read off it, the way `FINISHABLE_AREAS` and
-    `HUB_GROUP_KEYS` are read off theirs. Phase 10's agenda switches need
-    the kinds at runtime - a person turns one off rather than dismissing it
-    every time (`pinnedRows.ts`) - and a hand-written second list beside the
+    The array rather than the union is what is declared, so the two cannot drift: the union
+    below is read off it, the way `FINISHABLE_AREAS` and `HUB_GROUP_KEYS` are read off
+    theirs. agenda switches need the kinds at runtime - a person turns one off rather than
+    dismissing it every time (`pinnedRows.ts`) - and a hand-written second list beside the
     union is the drift `statsAreas.ts` already paid for once. */
 export const DAY_AHEAD_MARK_KINDS = ['appointment', 'surgery', 'milestone', 'letterUnlock', 'doseSlot'] as const;
 
@@ -64,8 +63,7 @@ interface DayAheadReading extends DayAheadAreas {
     over its own area dependency, the same reason `DaySection` and
     `LastWriteEntry` are: the list holds every kind at once, and a test
     registers a kind this file has never named. */
-/* DayAheadSection stays exported only for its own test (AU-09 test-only
-   review). */
+/* DayAheadSection stays exported only for its own test. */
 export interface DayAheadSection {
   key: string;
   covers: readonly string[];
@@ -107,11 +105,10 @@ function stillAhead({
 }
 
 const SECTIONS = [
-  /* An appointment still ahead (ADR-0066's general case, ticket 57).
-     `getAppointments()` reads the whole small table the same way the care
-     page reads a journal's whole episode list - nothing here adds a second,
-     bounded query for a table that never holds more than a handful of
-     rows across a lifetime. */
+  /* An appointment still ahead (ADR-0066's general case). `getAppointments()` reads the
+     whole small table the same way the care page reads a journal's whole episode list -
+     nothing here adds a second, bounded query for a table that never holds more than a
+     handful of rows across a lifetime. */
   section({
     key: 'appointment',
     covers: ['appointments'],
@@ -167,13 +164,10 @@ const SECTIONS = [
       return reading.letters.getUnlockDaysInRange(range.from, range.to);
     }
   }),
-  /* A dose slot, only where the schedule is not daily (ADR-0067): a
-     daily slot would mark every cell a calendar could draw, which is
-     wallpaper rather than information. Every episode the range meets is
-     asked (phase 11 ticket 10 made it every active one; after-release
-     ticket 01 every one in the range, bounded by its own end). A pause
-     suppresses a slot the same way it does everywhere else a schedule is
-     read against one (doseSchedule.ts's own `adherence`). */
+  /* A dose slot, only where the schedule is not daily (ADR-0067): a daily slot would mark
+     every cell a calendar could draw, which is wallpaper rather than information. Every
+     episode the range meets is asked. A pause suppresses a slot the same way it does
+     everywhere else a schedule is read against one (doseSchedule.ts's own `adherence`). */
   section({
     key: 'doseSlot',
     covers: ['doseSchedules'],
@@ -230,8 +224,7 @@ type Covered = (typeof SECTIONS)[number]['covers'][number];
     with no day at all has no day already passed to report. Where a reason
     is this registry's own rather than a restatement, a comment says so -
     the six the ADR spends a paragraph on each get one. */
-/* DAY_AHEAD_OPT_OUTS stays exported only for its own test (AU-09 test-only
-   review). */
+/* DAY_AHEAD_OPT_OUTS stays exported only for its own test. */
 export const DAY_AHEAD_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> = {
   dimensions: 'reference data, not a day still to come',
   presets: 'reference data, not a day still to come',
@@ -295,8 +288,7 @@ export const DAY_AHEAD_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, st
   marginNotes: 'drawn beside the entry it annotates, not a day still to come of its own'
 };
 
-/* DAY_AHEAD_SECTIONS stays exported only for its own test (AU-09 test-only
-   review). */
+/* DAY_AHEAD_SECTIONS stays exported only for its own test. */
 export const DAY_AHEAD_SECTIONS: readonly DayAheadSection[] = SECTIONS;
 
 /** Every table any section reads, de-duplicated - the same single-sourcing

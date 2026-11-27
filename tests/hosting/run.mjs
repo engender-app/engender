@@ -78,11 +78,9 @@ try {
   const interfacesBefore = readdirSync('/sys/class/net').sort();
   ensureBuild();
 
-  /* The self-hosting image (phase 13 self-hosting ticket 01) carries the same
-     two snippets production installs, so serving through it checks the
-     production rules and the image in one run. What neither covers is TLS,
-     which is certbot's on the box and the reverse proxy's in front of the
-     image. */
+  /* The self-hosting image carries the same two snippets production installs, so serving
+     through it checks the production rules and the image in one run. What neither covers is
+     TLS, which is certbot's on the box and the reverse proxy's in front of the image. */
   const current = join(tempRoot, 'current');
   cpSync('build', current, { recursive: true });
   run('docker', ['build', '--quiet', '-t', IMAGE, '-f', 'deploy/self-host/Dockerfile', 'deploy']);

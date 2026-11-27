@@ -1,9 +1,8 @@
-/* Choose how many already loaded rows to render (ADR-0069). Batches
-   bound DOM rows. Pages bound journal reads (ADR-0004).
+/* Choose how many already loaded rows to render. Batches bound DOM rows. Pages bound
+   journal reads (ADR-0004).
 
-   BatchedList.svelte owns state and observation. Keep the arithmetic
-   in plain TypeScript for Node tests. Restoring a saved batch count
-   uses the same calculation as a fresh mount. */
+   BatchedList.svelte owns state and observation. Keep the arithmetic in plain TypeScript
+   for Node tests. Restoring a saved batch count uses the same calculation as a fresh mount. */
 
 /** Rows per batch. The same number search calls a page, so the app carries
     one of these rather than two. */

@@ -1,17 +1,15 @@
-/* A failed migration on Android, end to end through the driver
-   (last-audit ui 33, testing 06).
+/* A failed migration on Android, end to end through the driver.
 
-   boot() closes the driver when a migration fails, and the plugin's
-   CallSequencer refuses every later call on a closed session. The failure
-   screen's two file operations - asking whether the pre-migration copy is
-   usable, and putting it back - come after that close, so on the closed
-   session they were refused, the check's refusal read as "no copy", and the
+   Boot() closes the driver when a migration fails, and the plugin's CallSequencer refuses
+   every later call on a closed session. The failure screen's two file operations - asking
+   whether the pre-migration copy is usable, and putting it back - come after that close, so
+   on the closed session they were refused, the check's refusal read as "no copy", and the
    restore was never offered although a usable copy sat on disk.
 
-   The plugin here is the Node stand-in that keeps CallSequencer's rules and
-   real files (test-support/fake-sqlite-plugin.ts). The failing migration is
-   testing 06's: a step that deletes a parent row, so the foreign-key check
-   after it throws once the migration has committed. */
+   The plugin here is the Node stand-in that keeps CallSequencer's rules and real files
+   (test-support/fake-sqlite-plugin.ts). The failing migration is testing 06's: a step that
+   deletes a parent row, so the foreign-key check after it throws once the migration has
+   committed. */
 
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';

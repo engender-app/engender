@@ -27,8 +27,7 @@ import java.nio.file.Files;
 import java.security.KeyStore;
 
 /**
- * Audit finding G-02: what a copy of the app's
- * directory reads out of the reminder store.
+ * What a copy of the app's directory reads out of the reminder store.
  *
  * <p>Read from the file rather than through the API, in the same spirit as
  * {@code AndroidEncryptionClaimTest} - an assertion that goes back through

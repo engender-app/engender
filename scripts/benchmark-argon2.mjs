@@ -1,13 +1,11 @@
-/* Reports real derivation time for both Argon2id parameter sets (ticket
-   12's acceptance), so ARCHIVE_ARGON2_PARAMS/PIN_ENCRYPTION_ARGON2_PARAMS in
-   src/lib/crypto/params.ts can be re-tuned against real hardware rather
-   than guessed - ADR-0013 explicitly defers the exact numbers to this.
-   Run with `npm run benchmark:argon2`.
+/* Reports real derivation time for both Argon2id parameter sets, so
+   ARCHIVE_ARGON2_PARAMS/PIN_ENCRYPTION_ARGON2_PARAMS in src/lib/crypto/params.ts can be
+   re-tuned against real hardware rather than guessed - ADR-0013 explicitly defers the exact
+   numbers to this. Run with `npm run benchmark:argon2`.
 
-   Timed on whatever machine runs this script, not the "mid-range 2020
-   Android device" the archive path targets - use this to sanity-check the
-   shape of the numbers, then re-run on real hardware before trusting them
-   for a release. */
+   Timed on whatever machine runs this script, not the "mid-range 2020 Android device" the
+   archive path targets - use this to sanity-check the shape of the numbers, then re-run on
+   real hardware before trusting them for a release. */
 import { deriveKey, randomSalt } from '../src/lib/crypto/argon2id.ts';
 import { ARCHIVE_ARGON2_PARAMS, JOURNAL_ARGON2_PARAMS, PIN_ENCRYPTION_ARGON2_PARAMS } from '../src/lib/crypto/params.ts';
 

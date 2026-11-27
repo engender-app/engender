@@ -35,9 +35,8 @@ test('tags, photos, voice and video read a count', () => {
 test('body map counts regions that say something, not regions merely on screen', () => {
   const draft = createEntryDraft(20_001);
   draft.toggleBodyRegion('chest');
-  /* A region picked and left at the midpoint is a slider waiting for input
-     (bodyMap.ts, ticket 31), and is dropped on save - so it is not content
-     the chip should claim. */
+  /* A region picked and left at the midpoint is a slider waiting for input (bodyMap.ts),
+     and is dropped on save - so it is not content the chip should claim. */
   assert.equal(draft.bodyRegions.chest, BODY_REGION_MIDPOINT);
   assert.equal(sectionState('body', draft), null);
   draft.setBodyRegionFeeling('chest', 20);

@@ -45,12 +45,11 @@
     'android-key-invalidated',
     'device-recovery',
     'schema-too-new',
-    /* The recovery-key screens (ADR-0054, ticket sec-02). Four of the five
-       need a recovery wrap to exist in this origin's OPFS, because the
-       components read the file rather than a prop - so the fixture writes a
-       real one for them and takes it away again for the others, which is
-       what `RECOVERY_SCENES` below is for. Nothing is faked: the wrap is
-       minted through data/recovery-key.ts over a throwaway data key. */
+    /* The recovery-key screens (ADR-0054). Four of the five need a recovery wrap to exist
+       in this origin's OPFS, because the components read the file rather than a prop - so
+       the fixture writes a real one for them and takes it away again for the others, which
+       is what `RECOVERY_SCENES` below is for. Nothing is faked: the wrap is minted through
+       data/recovery-key.ts over a throwaway data key. */
     'recovery-entry',
     'post-recovery',
     'unlock-pin-with-key',
@@ -101,15 +100,13 @@
      itself. */
   setPlatform('web');
 
-  /* The palette and the theme, and then the flag they resolve to. The
-     refresh is what the app's shell does one line after stamping the same
-     two attributes, and without it `--field` and `--field-ink` are simply
-     absent here: every gate drew its title on the page instead of on the
-     flag's second colour, which is the whole of what redesign ticket 34
-     gave them. Found by looking at a render - the shots came out white -
-     and it had taken the contrast walk with it, which was measuring a title
-     against a background it is not drawn on. Same fix day-mount.ts already
-     carries for the day fixture. */
+  /* The palette and the theme, and then the flag they resolve to. The refresh is what the
+     app's shell does one line after stamping the same two attributes, and without it
+     `--field` and `--field-ink` are simply absent here: every gate drew its title on the
+     page instead of on the flag's second colour, which is the whole of wh gave them. Found
+     by looking at a render - the shots came out white - and it had taken the contrast walk
+     with it, which was measuring a title against a background it is not drawn on. Same fix
+     day-mount.ts already carries for the day fixture. */
   $effect(() => {
     document.documentElement.dataset.palette = palette;
     document.documentElement.dataset.theme = theme;

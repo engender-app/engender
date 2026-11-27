@@ -42,11 +42,10 @@
      rather than leaving "How should your journal open?" over a screen where
      that has already been answered. */
   let chosenMode = $state<AccessSetupMode | null>(null);
-  /* Whether this journal has a recovery key, read once when the gate mounts
-     (ADR-0054, ticket sec-02). Asked before anything is typed, because the
-     entry must not be offered where there is none - a door onto nothing
-     would send somebody looking for paper they never had. False until the
-     read answers, so the way out appears rather than disappearing. */
+  /* Whether this journal has a recovery key, read once when the gate mounts (ADR-0054).
+     Asked before anything is typed, because the entry must not be offered where there is
+     none - a door onto nothing would send somebody looking for paper they never had. False
+     until the read answers, so the way out appears rather than disappearing. */
   refreshRecoveryKeyPresence();
   let usingRecoveryKey = $state(false);
 
@@ -86,12 +85,9 @@
       : appWordmark(prefs.disguise, m.app_name(), m.disguise_name())
   );
 
-  /** The setup module's answer, wired through boot.svelte.ts's own submit
-      path (ticket 54: onboarding's lock step hands a chosen mode to the same
-      function, so the mapping from a mode to a submit call and a failure
-      lives in one place rather than two). Device-bound mode is the one that
-      can be refused by the platform rather than by the person, so it is the
-      one with an outcome besides ok or a throw to render. */
+  /** The setup module's answer, wired through boot.svelte.ts's own submit path.
+      Device-bound mode is the one that can be refused by the platform rather than by the
+      person, so it is the one with an outcome besides ok or a throw to render. */
   async function choose(chosen: AccessSetupMode, secret: string) {
     if (busy) return;
     busy = true;

@@ -19,11 +19,11 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 /**
- * Last-audit UI 04. Recents and the window title take their label and icon
- * from the component a task was started through. A widget or notification
- * tap must therefore land on the same launcher alias the launcher itself
- * would start, and follow it when disguise flips, or a disguised app opened
- * from a reminder shows up as "engender" with the flag icon.
+ * Recents and the window title take their label and icon from the component a
+ * task was started through. A widget or notification tap must therefore land
+ * on the same launcher alias the launcher itself would start, and follow it
+ * when disguise flips, or a disguised app opened from a reminder shows up as
+ * "engender" with the flag icon.
  */
 @RunWith(AndroidJUnit4.class)
 public class AppLaunchIdentityTest {

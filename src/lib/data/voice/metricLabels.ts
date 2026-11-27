@@ -1,5 +1,5 @@
-/* Words for the seven fields of each benchmark metric (ADR-0060).
-   Every map covers the metric key union so a new figure needs copy. */
+/* Words for the seven fields of each benchmark metric. Every map covers the metric key
+   union so a new figure needs copy. */
 
 import { m } from '$lib/paraglide/messages';
 import type { VoiceMetricKey } from './metrics';
@@ -42,9 +42,8 @@ const HOW: Record<VoiceMetricKey, Message> = {
   scale: m.vm_scale_how
 };
 
-/** Field 3: what is physically known to change it. General mechanism only,
-    never an instruction (ADR-0060: this screen explains and never
-    instructs). */
+/** Field 3: what is physically known to change it. General mechanism only, never an
+    instruction (this screen explains and never instructs). */
 const CHANGES: Record<VoiceMetricKey, Message> = {
   pitch: m.vm_pitch_changes,
   span: m.vm_span_changes,

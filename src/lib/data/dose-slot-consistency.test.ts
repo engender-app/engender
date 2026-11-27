@@ -221,11 +221,10 @@ test('invalid partial or reused automatic provenance cannot alter stored doses',
   assert.deepEqual((await journal.doses.getDosesForSlots(TODAY, TODAY)).map((dose) => dose.autoLogSlot), [input.autoLogSlot]);
 });
 
-/* Functional-audit ticket 15. The patch-schedule tile is folded into the
-   dose panel, so Today states each regimen's dose once: in the panel, never
-   in a second tile beside it and never again as an agenda row. A regimen
-   on a daily schedule draws no agenda row at all (ADR-0067); one on a
-   rhythm draws rows, and the panel names it instead. */
+/* The patch-schedule tile is folded into the dose panel, so Today states each regimen's
+   dose once: in the panel, never in a second tile beside it and never again as an agenda
+   row. A regimen on a daily schedule draws no agenda row at all (ADR-0067); one on a rhythm
+   draws rows, and the panel names it instead. */
 const todayCases: [string, (journal: Journal) => Promise<string[]>][] = [
   ['a daily dose', async (journal) => {
     await regimen(journal, 'Spironolactone', 'oral', 1);

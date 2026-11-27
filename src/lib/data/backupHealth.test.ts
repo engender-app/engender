@@ -17,10 +17,9 @@ test('staleness turns over after thirty days, not on the thirtieth', () => {
   assert.equal(backupIsStale(startOfDayTimestamp(20676 - BACKUP_STALE_DAYS - 1), 20676), true);
 });
 
-/* Last-audit UI 54 (U53): not stale is not the same as backed up. Export &
-   import drew its success tick for every journal that was not stale, and
-   one never exported is not stale, so "none from this device"
-   sat beside a tick. */
+/* Not stale is not the same as backed up. Export & import drew its success tick for every
+   journal that was not stale, and one never exported is not stale, so "none from this
+   device" sat beside a tick. */
 test('a journal never exported stands apart from a recent backup and a stale one', () => {
   const today = 20676;
   assert.equal(backupStanding(null, today), 'never');
@@ -33,9 +32,9 @@ test('a backup made today is nought days old, not one', () => {
   assert.equal(backupAgeDays(startOfDayTimestamp(20676) + 13 * 3_600_000, 20676), 0);
 });
 
-/* After-release 17 (U2): the browser's refusal to keep storage used to be a
-   toast over the Welcome screen on every cold load. It is a Home notice
-   now, and only while it asks for something the person has not done. */
+/* (U2): the browser's refusal to keep storage used to be a toast over the Welcome screen on
+   every cold load. It is a Home notice now, and only while it asks for something the person
+   has not done. */
 test('other browsers show the storage notice only after persistence refusal and before a first backup', () => {
   const recent = startOfDayTimestamp(20676 - 3);
   assert.equal(storageNoticeShows({ persistDenied: true, dismissed: false, lastBackupAt: null }), true);

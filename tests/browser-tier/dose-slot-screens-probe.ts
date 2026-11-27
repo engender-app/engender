@@ -43,9 +43,7 @@ publishFixture('dose-slot-screens', async () => {
       }, `${route} next uncovered slot`);
       results.push({ route, text: row.textContent! });
       if (route === '/') {
-        /* The covered slot prompts no dose today: the panel names the next
-           uncovered one (functional-audit ticket 15 folded the patch tile
-           that used to prompt beside it into this line). */
+        /* The covered slot prompts no dose today: the panel names the next uncovered one. */
         await until(() => screen.target.querySelector('[data-dose-panel-tile]')?.textContent?.includes(m.tile_dose_next({ date })), 'dose panel next uncovered slot');
       }
       if (params.get('view') === route) {

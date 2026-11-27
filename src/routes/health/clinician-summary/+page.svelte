@@ -1,9 +1,8 @@
 <script lang="ts">
   import { journalTextAutocomplete } from '$lib/platform';
-  /* The clinician summary: a range, the registered
-     sections (clinicianSummary.ts, ADR-0031) and the drugs to print, set in
-     the sheet, over a preview that is the printed page. Each section has a
-     switch, so a part can be left off before printing or saving to PDF. */
+  /* The clinician summary: a range, the registered sections (clinicianSummary.ts) and the
+     drugs to print, set in the sheet, over a preview that is the printed page. Each section
+     has a switch, so a part can be left off before printing or saving to PDF. */
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
@@ -54,22 +53,19 @@
   let startInput = $state(dateInputValueFromEpochDay(defaultRange.start));
   let endInput = $state(dateInputValueFromEpochDay(defaultRange.end));
   let dobInput = $state('');
-  /* Transient like the date of birth: typed for this summary, never kept as
-     a preference (after-release 22, confirmed in pre-release-human 03). */
+  /* Transient like the date of birth: typed for this summary, never kept as a preference. */
   let pronounsInput = $state('');
   let inclusion = $state<ClinicianSummaryInclusion>({ ...EVERY_CLINICIAN_SUMMARY_SECTION });
 
-  /* Ticket 08: the range, the sections and the drugs are all still set on
-     this same screen - the sheet below just holds the controls now instead
-     of the screen's own scroll. Closed by default; the row above the
-     preview is the only thing that opens it. */
+  /* The range, the sections and the drugs are all still set on this same screen - the sheet
+     below just holds the controls now instead of the screen's own scroll. Closed by
+     default; the row above the preview is the only thing that opens it. */
   let controlsOpen = $state(false);
 
-  /* "Since last appointment": the most recent past appointment
-     (appointments.ts's own pure selector, ticket 58), the same one the
-     debrief offer is about. Absent rather than defaulted when none is on
-     record - the button below does not render, instead of falling back to
-     some other window (ticket 19's own line). */
+  /* "Since last appointment": the most recent past appointment (appointments.ts's own pure
+     selector), the same one the debrief offer is about. Absent rather than defaulted when
+     none is on record - the button below does not render, instead of falling back to some
+     other window. */
   let appointmentsQuery = liveList((j) => j.appointments.getAppointments());
   let lastAppointment = $derived(mostRecentPastAppointment(appointmentsQuery.rows, today));
   let appointmentDate = $derived(lastAppointment?.epochDay ?? null);
@@ -89,14 +85,12 @@
     prefs.clinicianSummaryDrugExcluded = withClinicianDrugIncluded(prefs.clinicianSummaryDrugExcluded, drug, included);
   }
 
-  /* A shortcut for the two fields below, nothing else: it fills the same
-     start/end inputs any other pair of dates fills, so it changes no read
-     downstream. Two of clinicianSummary.ts's sections (procedures,
-     appointmentPrep) are already unfiltered by design (ADR-0031) -
-     this range does not change that, and does not special-case it either,
-     which is the "written decision" ticket 19 asks for: applying it
-     uniformly would change what those two sections mean, exactly what
-     ADR-0031's own comment there already rules out. */
+  /* A shortcut for the two fields below, nothing else: it fills the same start/end inputs
+     any other pair of dates fills, so it changes no read downstream. Two of
+     clinicianSummary.ts's sections (procedures, appointmentPrep) are already unfiltered by
+     design - this range does not change that, and does not special-case it either, which is
+     the "written decision" asks for: applying it uniformly would change what those two
+     sections mean, which the section registry forbids. */
   function useSinceLastAppointment() {
     if (appointmentDate === null) return;
     startInput = dateInputValueFromEpochDay(appointmentDate);
@@ -193,14 +187,12 @@
     </ReadReserve>
   </div>
 
-  <!-- Generated dossier, shown as the page it will become rather than as
-       more screen (ticket 59, and ticket 08's own point: the preview is
-       the screen). The sheet under it stays flush (rule 4), with one
-       hairline at its foot marking where the dossier ends and the action
-       begins - that edge had nothing else beside it to be confused with,
-       and read clearly. Not `.card` (components.css): that is the box rule
-       4 is carpeting out screen by screen, and a document freshly
-       redesigned is not the place to add its fourteenth instance. -->
+  <!-- Generated dossier, shown as the page it will become rather than as more screen. The
+       sheet under it stays flush (rule 4), with one hairline at its foot marking where the
+       dossier ends and the action begins - that edge had nothing else beside it to be
+       confused with, and read clearly. Not `.card` (components.css): that is the box rule 4
+       is carpeting out screen by screen, and a document freshly redesigned is not the place
+       to add its fourteenth instance. -->
   {#if range}
     <div class="no-print"><SectionHeading text={m.clinician_summary_preview_title()} /></div>
     <!-- The document title stays visible while its sections load. -->
@@ -220,14 +212,12 @@
       {/if}
     </div>
     {#if summary}
-      <!-- Ticket 34: the act of sending the page lives in the frame's foot
-           (SaveBar), beside the scope it would send - the preview runs for
-           many sections, and an action at its end is one every scroll has
-           to finish before it can be reached. The foot is the column's flex
-           sibling rather than a bar floating over it (carpet 26), so the
-           one verb this screen has stays reachable at every
-           scroll position and covers nothing - and its scope line includes the
-           range alongside the same item choices the settings row reads. -->
+      <!-- The act of sending the page lives in the frame's foot (SaveBar), beside the scope
+           it would send - the preview runs for many sections, and an action at its end is
+           one every scroll has to finish before it can be reached. The foot is the column's
+           flex sibling rather than a bar floating over it, so the one verb this screen has
+           stays reachable at every scroll position and covers nothing - and its scope line
+           includes the range alongside the same item choices the settings row reads. -->
       <SaveBar arrange="stack">
         <p class="small muted summary-scope no-print" role="status">{scopeText}</p>
         <button class="btn btn-primary no-print" data-summary-print onclick={printSummary}>

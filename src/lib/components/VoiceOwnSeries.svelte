@@ -1,17 +1,14 @@
 <script lang="ts">
-  /* Six benchmark figures use the person's own takes for comparison
-     (ADR-0060, ADR-0061). The picker changes the figure in one card.
-     Passage and capture chain determine run boundaries. Keep plots
-     mounted across figure changes so their lines can move to the new
-     values.
+  /* Six benchmark figures use the person's own takes for comparison (ADR-0061). The picker
+     changes the figure in one card. Passage and capture chain determine run boundaries.
+     Keep plots mounted across figure changes so their lines can move to the new values.
 
-     A change of run leaves a gap with an explanation between plots.
-     Runs for a figure share one axis so equal measurements align.
-     The pitch span's ends share a scale. F1 and F2 each need their
-     own hertz axis to preserve their ranges and value gutters.
+     A change of run leaves a gap with an explanation between plots. Runs for a figure share
+     one axis so equal measurements align. The pitch span's ends share a scale. F1 and F2
+     each need their own hertz axis to preserve their ranges and value gutters.
 
-     Keep the measured units and omit target bands or ranked colours
-     (ADR-0012). Link the current metric to its reference section. */
+     Keep the measured units and omit target bands or ranked colours (ADR-0012). Link the
+     current metric to its reference section. */
   import { m } from '$lib/paraglide/messages';
   import { fmtDay, fmtRangeEnds } from '$lib/data/dates';
   import type { ComponentProps } from 'svelte';
@@ -245,11 +242,10 @@
       {/if}
     {/each}
 
-    <!-- The way in, once, at the foot of the card: the figure showing has
-         no band on it, and ADR-0060's own instruction is that a missing
-         band nobody explains reads as an omission. Straight into that
-         figure's own section rather than the top of the screen, which is
-         what the per-figure anchors are for. -->
+    <!-- The way in, once, at the foot of the card: the figure showing has no band on it,
+         and a missing band nobody explains reads as an omission. Straight into that
+         figure's own section rather than the top of the screen, which is what the
+         per-figure anchors are for. -->
     <p class="vos-more">
       <a href={metricHref(figure)}>
         <span>{m.vm_title()}</span>

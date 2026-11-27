@@ -1,5 +1,4 @@
-/* Functional audit ticket 30: a cost on each record that costs money, and
-   the one read that lists them for Look back. */
+/* A cost on each record that costs money, and the one read that lists them for Look back. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

@@ -15,12 +15,12 @@ import org.json.JSONObject;
 import org.junit.Test;
 
 /**
- * Reads reminder-rule.json - src/lib/android/fixtures/reminder-rule.json,
- * put on this module's test classpath by build.gradle's sourceSets.test
- * addition - the same file reminderRule.test.ts reads on the TypeScript
- * side (ADR-0028). A rule that fires at one moment in the editor's preview
- * and another in the alarm the scheduler sets fails here rather than as a
- * notification that arrives on the wrong day.
+ * Reads reminder-rule.json - src/lib/android/fixtures/reminder-rule.json, put
+ * on this module's test classpath by build.gradle's sourceSets.test addition
+ * - the same file reminderRule.test.ts reads on the TypeScript side. A rule
+ * that fires at one moment in the editor's preview and another in the alarm
+ * the scheduler sets fails here rather than as a notification that arrives on
+ * the wrong day.
  */
 public class ReminderRuleFixtureTest {
 

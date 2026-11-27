@@ -26,9 +26,8 @@ describe('a mounted step machine owns Back', () => {
   });
 });
 
-/* The predictive step back (ticket 04, box 5): the owner says when a gesture
-   may draw its step back, and that is the only thing that arms the native
-   callback. */
+/* The predictive step back: the owner says when a gesture may draw its step back, and that
+   is the only thing that arms the native callback. */
 describe('the step back drawn under the gesture', () => {
   const preview = () => ({ begin: vi.fn(() => true), progress: vi.fn(), cancel: vi.fn() });
 

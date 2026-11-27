@@ -1,12 +1,10 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { rovingRadio } from '$lib/components/rovingRadio';
-  /* Settings, on the surface kit, in five open areas
-     since ticket 277.
+  /* Settings, on the surface kit, in five open areas.
 
-     The rows that carry a Switch or a Segmented instead of a chevron stay
-     hand-written in the kit's own row classes (ticket 16: `.kit-row.is-static`
-     also drops the row's cursor and its :active wash). */
+     The rows that carry a Switch or a Segmented instead of a chevron stay hand-written in
+     the kit's own row classes. */
   import { m } from '$lib/paraglide/messages';
   import { getLocale } from '$lib/paraglide/runtime';
   import { backupAgeDays } from '$lib/data/backupHealth';
@@ -139,10 +137,10 @@
      and new share one grid cell and crossfade, so neither is cut. */
   const swapFade = (_node: Element) => fadeOnly(crossfadeDuration());
 
-  /* The gates' reset (ADR-0014), reached from here too: a journal in a mode with no gate - device-bound on the web,
-     Unlocked on Android - had no way to be erased inside the app at all.
-     resetApp reloads into setup, which states the result; it only returns
-     here if the wipe failed. */
+  /* The gates' reset, reached from here too: a journal in a mode with no gate -
+     device-bound on the web, Unlocked on Android - had no way to be erased inside the app
+     at all. resetApp reloads into setup, which states the result; it only returns here if
+     the wipe failed. */
   async function confirmErase() {
     erasing = true;
     eraseError = '';
@@ -197,17 +195,15 @@
 </script>
 
 <div class="screen">
-  <!-- Rule 7's third case, chrome (carpet 25). The title was hidden here
-       from ticket 24 until the field existed: a visible "Settings" sitting
-       on the page directly above "Appearance" was two headers stacked
-       (Alicja, 2026-08-25), which a title on a block of the flag's colour
-       is not - it is the shape every deep screen in the app already draws,
-       and this screen was the one arriving with no top at all.
+  <!-- Rule 7's third case, chrome. The title was hidden here until the field existed: a
+       visible "Settings" sitting on the page directly above "Appearance" was two headers
+       stacked, which a title on a block of the flag's colour is not - it is the shape every
+       deep screen in the app already draws, and this screen was the one arriving with no
+       top at all.
 
-       Back to Today, since the phone's gear is in Today's foot (ADR-0076),
-       and through smartBack for the rail and for every deep link that
-       reaches here. On the 1024px shell the control is dropped by
-       components.css: from a fifth row at the rail's foot there is nothing
+       Back to Today, since the phone's gear is in Today's foot, and through smartBack for
+       the rail and for every deep link that reaches here. On the 1024px shell the control
+       is dropped by components.css: from a fifth row at the rail's foot there is nothing
        for it to point at. -->
   <ScreenHeader title={m.nav_settings()} back="/" chrome class="settings-sun-header">
     {#snippet blindContent()}
@@ -289,8 +285,8 @@
     <ListRow key="mood-colours" icon="mood" title={m.mood_colours()} subtitle={moodName} chevron={false} onclick={() => (moodSheet = true)}>
       {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
     </ListRow>
-    <!-- On the row, like the theme above it, rather than a row that opens a
-         sheet holding the same three choices (bug session 18, item 78). -->
+    <!-- On the row, like the theme above it, rather than a row that opens a sheet holding
+         the same three choices. -->
     <div class="kit-row settings-unit-row" style="cursor:default">
       <span class="kit-row-ico"><Icon name="globe" size={22} /></span>
       <span class="kit-row-text">
@@ -359,10 +355,9 @@
         {#snippet trailing()}<Icon name="chevronRight" size={20} />{/snippet}
       </ListRow>
     {/if}
-    <!-- One screen over the unprompted registry (deepening ticket 09): what
-         may show on Today and what may buzz the phone are two questions
-         about the same list. `badge` rather than a second bell beside the
-         reminders row, and not `zap`, which is battery optimisation in
+    <!-- One screen over the unprompted registry: what may show on Today and what may buzz
+         the phone are two questions about the same list. `badge` rather than a second bell
+         beside the reminders row, and not `zap`, which is battery optimisation in
          Permissions. -->
     <ListRow key="notifications" icon="badge" title={notificationsTitle()} href="/settings/notifications" />
   </ListCard>
@@ -620,12 +615,10 @@
   <Sheet bind:open={aboutSheet} title={m.about()}>
     <div class="about-content">
       <header class="about-identity">
-        <!-- The logotype, in the flag this person picked: the
-             white tile and its black edge beside the name, in the
-             proportions app.css's .lockup sets, scaled to 32px. The tile's
-             edge is not optional anywhere the drawing has an outside
-             (Alicja, 2026-09-21: "its supposed to be black always").
-             The unlocked About sheet keeps both the mark and app name. -->
+        <!-- The logotype, in the flag this person picked: the white tile and its black edge
+             beside the name, in the proportions app.css's.lockup sets, scaled to 32px. The
+             tile's edge is not optional anywhere the drawing has an outside. The unlocked
+             About sheet keeps both the mark and app name. -->
         <h2 class="lockup about-lockup" translate="no">
           <Mark size={40} crop="tile" /><span class="lockup-word">{m.app_name()}</span>
         </h2>
@@ -639,13 +632,11 @@
 
       <p class="about-attribution">{m.about_attribution()}</p>
 
-      <!-- A list rather than the two buttons it was: five ways out of a
-           sheet read as rows, the shape About screens settle on (Spotify's
-           Third-party licences, Shop's Licenses), and a grid of five leaves
-           one button alone on its last line. The four that leave the app
-           say so at their trailing edge, where the one that stays in it
-           keeps the chevron every Settings row carries (phase 15
-           release-blockers ticket 10). -->
+      <!-- A list rather than the two buttons it was: five ways out of a sheet read as rows,
+           the shape About screens settle on (Spotify's Third-party licences, Shop's
+           Licenses), and a grid of five leaves one button alone on its last line. The four
+           that leave the app say so at their trailing edge, where the one that stays in it
+           keeps the chevron every Settings row carries. -->
       {#snippet external()}<Icon name="external" size={20} />{/snippet}
       <nav class="about-links" aria-label={m.about()}>
         <ListCard>

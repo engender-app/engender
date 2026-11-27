@@ -205,11 +205,10 @@ try {
     await context.close();
   }
 
-  /* The media sections, on the demo's first-run journal rather than the
-     filled persona: there the chip row is the last thing on the screen, so
-     scrolled to the end the region has no room left until a section grows,
-     which is the case audit UX-05 found (the persona's contextual cards
-     under the chips leave room and hide it). */
+  /* The media sections, on the demo's first-run journal rather than the filled persona:
+     there the chip row is the last thing on the screen, so scrolled to the end the region
+     has no room left until a section grows, which is the case found (the persona's
+     contextual cards under the chips leave room and hide it). */
   {
     const context = await newContext(390, 844);
     const page = await context.newPage();

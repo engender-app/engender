@@ -319,9 +319,8 @@ try {
       ['single', scene.single]
     ];
     const sheet = [];
-    /* Cropped to what this ticket added rather than to the whole screen: the
-       words under the figure, with the last row of the elsewhere cluster
-       above them for context (Alicja, ticket 07's sign-off). */
+    /* Cropped to what this ticket added rather than to the whole screen: the words under
+       the figure, with the last row of the elsewhere cluster above them for context. */
     const crop = async () => {
       await page.locator('[data-body-map-context]').scrollIntoViewIfNeeded();
       await page.waitForTimeout(250);

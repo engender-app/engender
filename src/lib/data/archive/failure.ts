@@ -1,16 +1,14 @@
 /* Which of the four ways an archive can refuse to open this was.
 
-   Pure `instanceof` branching over the errors the container, the codec
-   and the crypto throw, so it belongs below the wording rather than
-   inside the screen that prints it (ADR-0016, ADR-0031). It was fifteen
-   lines in settings/export/+page.svelte, written twice - once for import
-   and once for the verify drill - and the only thing exercising it was
-   the walkthrough driving a real file picker in Chromium.
+   Pure `instanceof` branching over the errors the container, the codec and the crypto
+   throw, so it belongs below the wording rather than inside the screen that prints it. It
+   was fifteen lines in settings/export/+page.svelte, written twice - once for import and
+   once for the verify drill - and the only thing exercising it was the walkthrough driving
+   a real file picker in Chromium.
 
-   The kinds are also a walkthrough handle: the screen stamps the kind on
-   its notice as `data-import-error`, so the suite can tell one failure
-   from another without matching on the wording. That is why they are
-   stable strings and not an enum of convenience. */
+   The kinds are also a walkthrough handle: the screen stamps the kind on its notice as
+   `data-import-error`, so the suite can tell one failure from another without matching on
+   the wording. That is why they are stable strings and not an enum of convenience. */
 
 import { DecryptionFailedError } from '../../crypto/aesGcm';
 import { UnsupportedArchiveError } from './container';

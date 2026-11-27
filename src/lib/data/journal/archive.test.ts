@@ -10,10 +10,9 @@ import { columnsOf } from './archiveTable.ts';
 
 const bytes = (text: string) => new Uint8Array([...text].map((c) => c.charCodeAt(0)));
 
-/** A snapshot without the edit stamps every row carries since functional
-    audit ticket 48, and without an entry's empty Trash time: the cases here
-    are about what content travels, and archive-merge-edits.test.ts about
-    the stamps. */
+/** A snapshot without the edit stamps every row carries, and without an entry's empty Trash
+    time: the cases here are about what content travels, and archive-merge-edits.test.ts
+    about the stamps. */
 function unstamped<Snapshot extends { journal: unknown }>(snapshot: Snapshot): Snapshot {
   const strip = (value: unknown): unknown => {
     if (Array.isArray(value)) return value.map(strip);
@@ -381,10 +380,9 @@ test("a tryout travels whole with its photos, and a felt-sense entry travels by 
   ]);
 });
 
-/* Functional audit ticket 32: a milestone no longer holds felt-sense
-   readings. An archive written before that still carries them, and it
-   stays restorable: those rows are dropped, not converted, and a tryout's
-   readings come through as before. */
+/* A milestone no longer holds felt-sense readings. An archive written before that still
+   carries them, and it stays restorable: those rows are dropped, not converted, and a
+   tryout's readings come through as before. */
 test("an older archive's milestone felt-sense readings are dropped on restore; a tryout's are kept", async () => {
   const { journal, tryout, milestone, feltSense } = await populated();
   const snapshot = unstamped(await journal.archive.snapshot());
@@ -506,8 +504,7 @@ test('medication stock travels whole, including its reminder hand-off bookkeepin
   ]);
 });
 
-/* Functional audit ticket 47: typed by a person and not derivable, so they
-   travel, and a restore keeps them. */
+/* Typed by a person and not derivable, so they travel, and a restore keeps them. */
 test('a stock expiry day and pharmacy note travel, and a restore keeps them', async () => {
   const { journal, stock } = await populated();
   await journal.stock.upsertEntry({
@@ -549,10 +546,9 @@ test('an archive written before the stock expiry fields restores them as null', 
   assert.equal(restored.pharmacyNote, null);
 });
 
-/* Redesign phase 10 ticket 01: a lead time is a person's own typed figure,
-   not derivable, so it has to travel rather than defaulting silently to
-   null on the other end - the same reasoning ticket 43's end reason test
-   above gives. */
+/* Redesign a lead time is a person's own typed figure, not derivable, so it has to travel
+   rather than defaulting silently to null on the other end - the same reasoning end reason
+   test above gives. */
 test('a lead time and doses per unit travel, and a restore keeps them', async () => {
   const { journal, stock } = await populated();
   await journal.stock.upsertEntry({
@@ -621,12 +617,11 @@ test('the manifest names every photo file and its thumbnail, plus every recordin
   assert.deepEqual(await snapshot.readFile(`${videoNote}.webm`), bytes('a video note'));
 });
 
-/* Phase 8 features ticket 52. The manifest is hand-assembled rather than
-   read off the section registry (archive.ts), so a table missing from it
-   travels as rows naming bytes that are not in the archive - and restores
-   into an area full of broken references. Asserted directly rather than
-   left to the golden fixture, which compares committed bytes and so heals
-   itself the next time somebody regenerates it. */
+/* The manifest is hand-assembled rather than read off the section registry (archive.ts), so
+   a table missing from it travels as rows naming bytes that are not in the archive - and
+   restores into an area full of broken references. Asserted directly rather than left to
+   the golden fixture, which compares committed bytes and so heals itself the next time
+   somebody regenerates it. */
 test('the manifest carries a document’s page and its thumbnail, not just its row', async () => {
   const { journal, files } = await populated();
   const id = await journal.documents.addDocument(
@@ -653,9 +648,8 @@ test('the manifest carries a document’s page and its thumbnail, not just its r
   assert.ok(files.names().includes(document.fileName));
 });
 
-/* Phase 8 features tickets 53 and 55. A PDF document's two files are the
-   file itself and the first page drawn at import, whose name is spelled
-   off the `.pdf` - the same reasoning as above, over the kind `filesOf()`
+/* A PDF document's two files are the file itself and the first page drawn at import, whose
+   name is spelled off the `.pdf` - the same reasoning as above, over the kind `filesOf()`
    alone gets wrong. */
 test('the manifest carries a PDF document’s file and the page drawn at import', async () => {
   const { journal } = await populated();
@@ -698,9 +692,8 @@ test('the manifest leaves out a page a PDF never had', async () => {
   );
 });
 
-/* Phase 5 ticket 19 left Trash out of archives. Functional audit ticket 48
-   carries it, so moving an entry to Trash on one device, restoring it, or
-   deleting it for good reaches the other through a Merge. */
+/* Left Trash out of archives. carries it, so moving an entry to Trash on one device,
+   restoring it, or deleting it for good reaches the other through a Merge. */
 test('a trashed entry travels with its Trash time, and its photo, recording and video-note files with it', async () => {
   const { journal, db, entry, photo, recording, videoNote, milestonePhoto } = await populated();
   const uuid = (await db.query<{ uuid: string }>('SELECT uuid FROM entry WHERE id = ?', [entry]))[0].uuid;
@@ -728,11 +721,10 @@ test('a photo row whose file is gone keeps its row and leaves the manifest alone
   assert.equal(snapshot.journal.entries.flatMap((e) => e.photos).filter((p) => p.id === photo).length, 1);
 });
 
-/* ADR-0027 is what makes an area travel, and an area's finished state has to
-   travel for the same reason ADR-0043 made its own preference portable: a
-   stream that reads as unfinished again on the new phone makes having
-   finished it a lie. The date is the part worth pinning by hand - a flag
-   would survive a boolean round trip that silently dropped the day. */
+/* ADR-0027 is what makes an area travel, and an area's finished state has to travel like
+   the cycle preference: a stream that reads as unfinished again on the new phone makes
+   having finished it a lie. The date is the part worth pinning by hand - a flag would
+   survive a boolean round trip that silently dropped the day. */
 test('an area\'s hidden, finished and suspended state travels, and a restore keeps the days it names', async () => {
   const { journal } = await populated();
   await journal.areaStates.setAreasHidden(['wearSessions'], true);
@@ -762,9 +754,8 @@ test('an area\'s hidden, finished and suspended state travels, and a restore kee
   });
 });
 
-/* Ticket 43: a regimen episode's end reason is the same shape again - a
-   fact the person recorded, not derivable, so it travels rather than
-   defaulting silently to nothing on the other end. */
+/* A regimen episode's end reason is the same shape again - a fact the person recorded, not
+   derivable, so it travels rather than defaulting silently to nothing on the other end. */
 test('a regimen episode\'s end reason travels, and a restore keeps it', async () => {
   const { journal, episode } = await populated();
   await journal.regimen.endEpisode(episode, 19100, 'pausedForNow');
@@ -784,10 +775,9 @@ test('a regimen episode\'s end reason travels, and a restore keeps it', async ()
   assert.equal(restored?.endReason, 'pausedForNow');
 });
 
-/* After-release 07: an episode put away stays put away across a backup.
-   Hidden is the person's own statement that the row was a mistake, so a
-   restore that brought it back into Care and the curve would undo it. An
-   archive from before the field existed reads as shown. */
+/* an episode put away stays put away across a backup. Hidden is the person's own statement
+   that the row was a mistake, so a restore that brought it back into Care and the curve
+   would undo it. An archive from before the field existed reads as shown. */
 test('a hidden regimen episode travels hidden, and a restore keeps it hidden', async () => {
   const { journal, episode } = await populated();
   await journal.regimen.setEpisodeHidden(episode, true);
@@ -812,10 +802,9 @@ test('a hidden regimen episode travels hidden, and a restore keeps it hidden', a
   assert.equal((await fromOlder.regimen.getEpisodes()).some((e) => e.id === episode), true);
 });
 
-/* Functional audit ticket 32: a milestone set not to be celebrated travels
-   that way, and only that way - a celebrated one carries no field, so an
-   archive written before the field existed restores every milestone
-   celebrated, which is what it was. */
+/* A milestone set not to be celebrated travels that way, and only that way - a celebrated
+   one carries no field, so an archive written before the field existed restores every
+   milestone celebrated, which is what it was. */
 test("a milestone's celebration choice travels, and an older archive restores it celebrated", async () => {
   const { journal, milestone } = await populated();
   const quiet = await journal.milestones.upsertMilestone({ name: 'The hard one', epochDay: 19100, celebrate: false });
@@ -841,9 +830,9 @@ test("a milestone's celebration choice travels, and an older archive restores it
   assert.deepEqual(await celebrated(fromOlder), { [milestone]: true, [quiet]: true });
 });
 
-/* Functional audit ticket 18: the drug class is the person's to change, so
-   it travels as stored. An archive from before the field existed carries no
-   class, and a restore infers it from the drug by the migration's rule. */
+/* The drug class is the person's to change, so it travels as stored. An archive from before
+   the field existed carries no class, and a restore infers it from the drug by the
+   migration's rule. */
 test('a drug class travels as chosen, and an older archive gets the inferred class', async () => {
   const { journal, episode } = await populated();
   await journal.regimen.upsertEpisode({
@@ -874,11 +863,10 @@ test('a drug class travels as chosen, and an older archive gets the inferred cla
   assert.deepEqual(await classes(fromOlder), { [episode]: 'hrt', [ssri]: 'other' });
 });
 
-/* Ticket 56: a document's link travels as the pair it is stored as, and a
-   dangling one travels too. The link names a row in one of four tables
-   rather than pointing at a rowid this section could resolve, so a restore
-   writes back exactly what it was given - which is the requirement, not a
-   gap: a document outlives the thing it was filed under. */
+/* A document's link travels as the pair it is stored as, and a dangling one travels too.
+   The link names a row in one of four tables rather than pointing at a rowid this section
+   could resolve, so a restore writes back exactly what it was given - which is the
+   requirement, not a gap: a document outlives the thing it was filed under. */
 test("a document's link travels, dangling or not, and a restore keeps both", async () => {
   const { journal, milestone } = await populated();
   const filed = await journal.documents.addDocument(
@@ -929,7 +917,7 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   // Owns five children below (applyEntries/readEntries) - a descriptor
   // speaks for one table, and a photo/recording/video/dimension-link/
   // tag-link/region-link is six more.
-  // Trash travels since functional audit ticket 48.
+  // Trash travels.
   entry: ['uuid', 'epoch_day', 'timestamp', 'mood', 'note', 'starred', 'presentation_uuid', 'trashed_at'],
   // Child of entry, and its own rowid is resolved against dimensions.
   entry_dimension_value: ['entry_id', 'dimension_id', 'value'],
@@ -987,7 +975,7 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   progress_pose: ['uuid', 'key', 'name', 'hidden'],
   // Owns a child (hair_removal_photo) below.
   // The old free-text `cost` is left behind: version 115 emptied it into the
-  // cost columns or the note (FA 30), and FA 50 drops it.
+  // cost columns or the note, and drops it.
   hair_removal_session: ['uuid', 'epoch_day', 'area', 'method', 'pain_rating', 'minutes', 'provider', 'note',
     'cost_amount', 'cost_currency', 'cost_refunded'],
   // session_id travels as the session's own uuid, the way dose_pause's
@@ -1045,7 +1033,7 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   // checklist_id travels as the checklist's own uuid, the way dose_pause's
   // episode_id does (ADR-0002).
   checklist_item: ['uuid', 'checklist_id', 'content', 'checked', 'carried_forward', 'order_index'],
-  // Phase 7 ticket 03: `counts` is a JSON-encoded map, still one column -
+  // `counts` is a JSON-encoded map, still one column -
   // a shape a descriptor's own columns have no transform for. Never
   // `whole` (see archiveSections.ts's own note on why), but this table
   // still travels with a backup.
@@ -1062,16 +1050,13 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
 
 const CARRIED: Record<string, string[]> = { ...HAND_WRITTEN_CARRIED, ...FLAT_CARRIED };
 
-/* `id` is this device's rowid and means nothing anywhere else (ADR-0002).
-   `updated_at` is carried on every row that has it since functional audit
-   ticket 48 (CARRIED_EVERYWHERE below): it is what a Merge compares.
-   `regimen_episode.hidden` stays in the schema and never travels: the
-   only control that ever set it is gone (Alicja, 2026-08-27, "get rid of
-   the show/hide progesterone button" - it never did more than add a badge
-   to the row), and every other table's own `hidden` column stays carried
-   as before - this is scoped to `regimen_episode` alone by the per-table
-   CARRIED lists above, not by this flat list. */
-// The debrief offer's bookkeeping (phase 6 ticket 08, ticket 58) is
+/* `id` is this device's rowid and means nothing anywhere else (ADR-0002). `updated_at` is
+   carried on every row that has it (CARRIED_EVERYWHERE below): it is what a Merge compares.
+   `regimen_episode.hidden` stays in the schema and never travels: the only control that
+   ever set it is gone, and every other table's own `hidden` column stays carried as before
+   - this is scoped to `regimen_episode` alone by the per-table CARRIED lists above, not by
+   this flat list. */
+// The debrief offer's bookkeeping is
 // device-local: it names an entry row this device holds. It sat on `checklist`
 // until schema v119 moved it to `appointment_debrief`, whose columns are left
 // behind per table below, never part of what an archive carries.

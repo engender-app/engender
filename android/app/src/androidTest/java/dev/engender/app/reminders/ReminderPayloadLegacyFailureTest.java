@@ -20,9 +20,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 /**
- * GD-031. A payload an older build left in the clear is rewrapped on first
- * read. When the rewrap fails (no key, no cipher, no commit) the read used to
- * hand the plaintext back and keep scheduling from it, so medication names and
+ * A payload an older build left in the clear is rewrapped on first read. When
+ * the rewrap fails (no key, no cipher, no commit) the read used to hand the
+ * plaintext back and keep scheduling from it, so medication names and
  * schedules stayed readable on disk and in use. The failure now returns
  * nothing; a later successful read stores ciphertext and removes payload-v1.
  */

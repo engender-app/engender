@@ -55,17 +55,16 @@ describe('what Safe Space is built from', () => {
     for (const way of SAFE_SPACE_WAYS) expect(doubt).toContain(`${way.key}:`);
   });
 
-  /* Release audit U11: "Things that help" was both the button above the
-     breath and a row under it. Said once, by the button. */
+  /* Release: "Things that help" was both the button above the breath and a row under it.
+     Said once, by the button. */
   it('reaches the comfort list once, from the button above the breath', () => {
     expect(markup.match(/href="\/doubt\/comfort"/g)).toHaveLength(1);
     expect(SAFE_SPACE_WAYS.map((w) => w.href)).not.toContain('/doubt/comfort');
   });
 
   it('names the More hub as where back falls back to', () => {
-    /* CARPET-05: the href is the fallback rather than the destination now,
-       and ScreenHeader is what turns it into a return to whichever screen
-       the person actually came from. */
+    /* the href is the fallback rather than the destination now, and ScreenHeader is what
+       turns it into a return to whichever screen the person actually came from. */
     expect(doubt).toContain('back="/more"');
   });
 
@@ -73,13 +72,13 @@ describe('what Safe Space is built from', () => {
     expect(markup).toContain('<BreathingExercise');
   });
 
-  it('reads the counterevidence pool live and keeps no copy of it (FA 09)', () => {
+  it('reads the counterevidence pool live and keeps no copy of it', () => {
     expect(evidence).toContain('j.entries.counterevidencePool');
     expect(safeSpace).not.toMatch(/doubtJournal|saveSnapshot|getSnapshots/);
     expect(evidenceMarkup).not.toContain('data-confirm-delete-doubt-snapshot');
   });
 
-  it('offers no row that leaves for another door (FA 09)', () => {
+  it('offers no row that leaves for another door', () => {
     expect(doubt).not.toMatch(/safe_space_moments|safe_space_readings/);
     expect(SAFE_SPACE_WAYS.map((w) => w.key)).toEqual(['resources', 'evidence']);
   });
@@ -91,10 +90,9 @@ describe('what Safe Space is built from', () => {
     }
   });
 
-  /* Ticket 15's bound. Twenty entry cards ran this screen to 3990px. Six
-     is what fits in a viewport. */
+  /* Bound. Twenty entry cards ran this screen to 3990px. Six is what fits in a viewport. */
   it('opens on six of the pool and holds the rest behind one control', () => {
-    // Split by whole days since phase 14 ticket 18 (previewWholeDays has
+    // Split by whole days (previewWholeDays has
     // its own test in counterevidence.test.ts).
     expect(evidence).toContain('previewWholeDays(entryDayGroups(counterevidence))');
     expect(COUNTEREVIDENCE_PREVIEW).toBeLessThan(COUNTEREVIDENCE_LIMIT);
@@ -114,10 +112,8 @@ describe('what Safe Space is built from', () => {
     expect(read('src/lib/components/EntryDays.svelte')).toContain('animation: kit-block-in');
   });
 
-  /* Ticket 15 again: the subtitle is the qualification rule in the
-     person's own words, and entries.ts is what keeps it. The two moved
-     together and a screen promising more than the query delivers is the
-     defect the ticket was written for. */
+  /* Again: the subtitle is the qualification rule in the person's own words, and entries.ts
+     enforces it. The wording and the query must agree. */
   it('says what qualifies in terms the query actually holds to', () => {
     expect(evidence).toContain('m.safe_space_counterevidence_sub()');
     const entries = read('src/lib/data/journal/entries.ts');
@@ -126,15 +122,13 @@ describe('what Safe Space is built from', () => {
   });
 });
 
-describe('letters on the letters screen (ticket 14, widened by 21, moved by 15)', () => {
-  /* Ticket 14 showed one letter under Safe space; ticket 21 widened that to
-     every unlocked one, capped, with the rest a tap away. Ticket 15 noticed
-     that the tap went to `/transition/letters`, which was already showing
-     the same two letters in its Open section - so the capped list and its
-     overflow row are gone, and the screen they handed over to is the one
-     surface. What is pinned now is that the seal rule is still the only
-     thing deciding which letters are readable, and that the starred
-     photographs came across with their bound. */
+describe('letters on the letters screen', () => {
+  /* Showed one letter under Safe space; widened that to every unlocked one, capped, with
+     the rest a tap away. noticed that the tap went to `/transition/letters`, which was
+     already showing the same two letters in its Open section - so the capped list and its
+     overflow row are gone, and the screen they handed over to is the one surface. What is
+     pinned now is that the seal rule is still the only thing deciding which letters are
+     readable, and that the starred photographs came across with their bound. */
   it('decides which letters are open by the seal rule and nothing else', () => {
     expect(letters).toContain("from '$lib/data/letterStatus'");
     expect(letters).toContain('isLetterSealed(letter, today)');
@@ -157,13 +151,13 @@ describe('letters on the letters screen (ticket 14, widened by 21, moved by 15)'
     expect(card).toContain('href={`/transition/letters/${letter.id}`}');
     expect(card).toContain('letterOpening(letter.text, LETTER_OPENING_LIMIT)');
     expect(card).not.toMatch(/title=\{letter\.text\}|subtitle=\{letter\.text\}/);
-    /* Ticket 15 removed the row's `lead`: Safe Space's list was its only
-       caller, and a prop with one arrangement left is not a choice. */
+    /* Removed the row's `lead`: Safe Space's list was its only caller, and a prop with one
+       arrangement left is not a choice. */
     expect(card).not.toContain('data-lead');
     expect(read('src/lib/styles/kit.css')).not.toContain("[data-lead='text']");
   });
 
-  it('runs no query against voice_benchmark - ticket 15/16 have not shipped that table to read', () => {
+  it('runs no query against voice_benchmark', () => {
     // The comment explaining the deferral is allowed to name the table;
     // no call or query string may reach for it.
     expect(safeSpace).not.toMatch(/\bj\.voiceBenchmark\b/);
@@ -177,10 +171,9 @@ describe('the support directory panel', () => {
   it('renders as its own ListCard/ListRow panel, not a heading action link, pointing at the existing directory', () => {
     expect(doubt).toContain("from '$lib/components/kit/ListRow.svelte'");
     expect(markup).not.toContain('kit-heading-action');
-    /* Its own row in the run of ways down now, rather than a
-       panel of its own above the rest of a dashboard - and still the first
-       of them, which is where it already sat and which ticket 63 is the
-       ticket that gets to move. */
+    /* Its own row in the run of ways down now, rather than a panel of its own above the
+       rest of a dashboard - and still the first of them, which is where it already sat and
+       which is gets to move. */
     expect(SAFE_SPACE_WAYS[0]).toMatchObject({ key: 'resources', href: '/support/resources' });
     /* Title alone: "Helplines and organisations" only restated "Support
        and resources" (subtext audit, 2026-11-05). */
@@ -190,15 +183,15 @@ describe('the support directory panel', () => {
 
 describe('More hub row for Safe Space', () => {
   it('points to /doubt, and its title is the one the screen uses', () => {
-    /* The row list moved into `hubRows.ts` with phase 8 UX ticket 02, and the
-       titles with it into `vocabulary/hubLabels.ts`, so this asks the module
-       for the row and the label module for the key it draws the title from. */
+    /* The row list moved into `hubRows.ts`, and the titles with it into
+       `vocabulary/hubLabels.ts`, so this asks the module for the row and the label module
+       for the key it draws the title from. */
     expect(HUB_ROWS.find((row) => row.key === 'doubt')).toMatchObject({ href: '/doubt', icon: 'shelter' });
     expect(read('src/lib/data/vocabulary/hubLabels.ts')).toContain('doubt: m.safe_space_title');
   });
 });
 
-describe('Home live tile for Safe Space nudge (ticket 50)', () => {
+describe('Home live tile for Safe Space nudge', () => {
   /* The tile left the route with the rest of the grid. What it says, where it goes and what its dismiss does are
      `liveTiles.grid.test.ts`'s now, through `composeHomeTiles`; what is
      still a grep is which module holds the read, and that Home does not

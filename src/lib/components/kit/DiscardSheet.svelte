@@ -1,6 +1,5 @@
 <script lang="ts">
-  /* The question leaving changed work asks (leaveGuard.ts, CONTEXT:
-     "Draft"). Keep editing is the primary button: the safe answer is the
+  /* The question leaving changed work asks (leaveGuard.ts). Keep editing is the primary button: the safe answer is the
      one a stray tap lands on. Closing the sheet any other way - the scrim,
      a drag, Android back - is also Keep editing.
 

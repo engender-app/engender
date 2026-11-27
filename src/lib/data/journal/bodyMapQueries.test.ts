@@ -102,7 +102,7 @@ test('progress photos filter by region and exclude trashed entries', async () =>
   assert.equal(faceBreakdown.photos[0].epochDay, 100);
 });
 
-test('the trajectory and its photos filter by presentation (ADR-0048, ticket 18)', async () => {
+test('the trajectory and its photos filter by presentation (ADR-0048)', async () => {
   const { journal, db } = await journalWithBuiltIns();
 
   const girl = await journal.presentations.addPresentation('Girl mode', 0);

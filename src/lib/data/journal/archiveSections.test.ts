@@ -285,11 +285,10 @@ test('every section declares its discard as single-table deletes or a native FTS
   }
 });
 
-/* What travels (ADR-0049): the real registry against the spec's
-   own worked cases, not a restatement of whatever archiveSections.ts
-   happens to say - each assertion below is a fact settled in
-   .scratch/phase-7/portability/spec.md, so a wrong declaration here fails
-   against the spec rather than against itself. */
+/* What travels (ADR-0049): the real registry against the spec's own worked cases, not a
+   restatement of whatever archiveSections.ts happens to say - each assertion below is a
+   fact settled in so a wrong declaration here fails against the spec rather than against
+   itself. */
 test('the registry answers the spec\'s worked cases for what travels', () => {
   const travelsOf = (name: string) => ARCHIVE_SECTIONS.find((s) => s.name === name)!.travels;
 
@@ -299,9 +298,8 @@ test('the registry answers the spec\'s worked cases for what travels', () => {
   assert.deepEqual(travelsOf('milestones'), { fields: ['name'] }, 'a milestone set travels as names, not dates');
   assert.equal(travelsOf('checklists'), 'whole', 'an appointment question list travels whole');
   assert.equal(travelsOf('eras'), 'none', 'an era would travel as a name with no bounds, so eras do not travel');
-  /* Phase 8 features ticket 52, ADR-0065. A structure file is a thing
-     people hand to someone else, and a document is the most personal record
-     the journal holds - an opinion, a diagnosis, a ruling. The ticket asks
+  /* ADR-0065. A structure file is a thing people hand to someone else, and a document is
+     the most personal record the journal holds - an opinion, a diagnosis, a ruling. asks
      for this one asserted rather than left to the declaration. */
   assert.equal(travelsOf('documents'), 'none', 'nothing about a document belongs in a structure file');
 

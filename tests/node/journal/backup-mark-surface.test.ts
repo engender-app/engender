@@ -1,11 +1,10 @@
-/* Export & import's last-backup mark (last-audit UI 54), at the level a
-   grep can hold. Which standing a journal is in is backupHealth.test.ts's
-   question; this is the wiring a typecheck cannot see. The row used to take
-   its tick from a bare `{:else}` after the stale branch, so a journal never
-   exported, which is not stale either, showed "No export recorded on this
-   device" beside a success tick. What the row paints in each standing, and
-   how the marks fade, was measured per frame on a demo build for the ticket;
-   the browser checks do not drive this row. */
+/* Export & import's last-backup mark, at the level a grep can hold. Which standing a
+   journal is in is backupHealth.test.ts's question; this is the wiring a typecheck cannot
+   see. The row used to take its tick from a bare `{:else}` after the stale branch, so a
+   journal never exported, which is not stale either, showed "No export recorded on this
+   device" beside a success tick. What the row paints in each standing, and how the marks
+   fade, was measured per frame on a demo build for the ticket; the browser checks do not
+   drive this row. */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

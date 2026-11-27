@@ -53,12 +53,10 @@ public class SqlitePlugin extends Plugin {
     }
 
     /**
-     * Opens (or creates) the journal.
+     * Open or create the journal.
      *
-     * <p>{@code hexKey} is optional and absent for now: ticket 11 lands the
-     * shell and the driver, ticket 13 lands the Keystore that produces the
-     * key. When it is present it is 64 hex characters of raw key, passed to
-     * SQLCipher without a KDF pass.
+     * <p>Pass an optional 64-character hex key directly to SQLCipher, without
+     * a KDF pass.
      */
     @PluginMethod
     public void open(PluginCall call) {
@@ -336,8 +334,8 @@ public class SqlitePlugin extends Plugin {
 
     /* Capacitor turns a null message into a null error on the JS side, which
        is how a real SQLite failure becomes "undefined" in a boot error. */
-    /** Every failure keeps SQLite's own text; a full disk also carries the
-        code {@code storage-full} (last-audit ui 37). */
+    /** Every failure keeps SQLite's own text; a full disk also carries the code {@code
+        storage-full}. */
     private void fail(PluginCall call, Exception e) {
         call.reject(message(e), SqliteFailure.storageCode(message(e), databaseVolumeAvailableBytes()), e);
     }

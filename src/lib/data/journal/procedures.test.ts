@@ -24,7 +24,7 @@ test('a procedure round-trips with a free-text name and optional surgery date', 
   assert.equal(list[1].notes, 'dr smith');
 });
 
-test('a procedure defaults to a custom kind, and a compiled-in kind round-trips (phase 9 carpet ticket 17)', async () => {
+test('a procedure defaults to a custom kind, and a compiled-in kind round-trips', async () => {
   const db = await migratedDb();
   const files = fakeFileStore();
   const journal = openJournal(db, files);
@@ -176,7 +176,7 @@ test('recording surgery day as a transition milestone links milestone to procedu
   assert.equal(preserved.procedureId, null, 'milestone procedure link is cleared');
 });
 
-/* Ticket 56, ADR-0065: the link nulls, the document survives. */
+/* ADR-0065: the link nulls, the document survives. */
 test('deleting a procedure nulls a document\'s link to it, and the document survives', async () => {
   const db = await migratedDb();
   const files = fakeFileStore();
@@ -198,7 +198,7 @@ test('deleting a procedure nulls a document\'s link to it, and the document surv
   assert.equal(document!.targetId, null);
 });
 
-test('recovery photos read back grouped by procedure in one call (ticket 52)', async () => {
+test('recovery photos read back grouped by procedure in one call', async () => {
   const db = await migratedDb();
   const files = fakeFileStore();
   const journal = openJournal(db, files);

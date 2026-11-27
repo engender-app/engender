@@ -107,11 +107,10 @@
     }
   });
 
-  /* Ticket 18: the recovery window as one side of `/compare` - only once
-     there is a surgery date to measure from (planning and pre-op have no
-     days yet). Its end clamps to today for the first 90 days and holds at
-     that cutoff after, archived or not (ADR-0010's "clamp at read time").
-     It is open-ended only while it still ends today. */
+  /* The recovery window as one side of `/compare` - only once there is a surgery date to
+     measure from (planning and pre-op have no days yet). Its end clamps to today for the
+     first 90 days and holds at that cutoff after, archived or not (ADR-0010's "clamp at
+     read time"). It is open-ended only while it still ends today. */
   let recoveryWindow = $derived(
     stored && stored.surgeryEpochDay !== null && phase !== 'planning' && phase !== 'pre_op'
       ? { start: stored.surgeryEpochDay, end: Math.min(today, stored.surgeryEpochDay + SURGERY_RECOVERY_CUTOFF_DAYS) }
@@ -266,7 +265,7 @@
     await replaceRoute(LIST);
   }
 
-  // Ticket 18: only once there is a date to hand off.
+  // Only once there is a date to hand off.
   let calendarSheet = $state(false);
 
   let consultSheet = $state(false);
@@ -274,8 +273,8 @@
   let photoSheet = $state(false);
   let photoDate = $state('');
 
-  /* Every sheet below closes once its write lands and stays open with a
-     toast when it does not (after-release 06). */
+  /* Every sheet below closes once its write lands and stays open with a toast when it does
+     not. */
   const sheetWrite = writer();
 
   /** False when the write failed, which keeps a reviewed shot under review. */
@@ -296,8 +295,7 @@
     reference: () => lastPhotoReference(photos)
   });
 
-  /* A consult date asks before it goes and says that it went
-     (after-release 07). */
+  /* A consult date asks before it goes and says that it went. */
   const consultRecord = recordEditor<ProcedureConsult>({
     remove: (id) => undoable((j) => j.procedures.deleteConsult(id)),
     deleted: () => m.surgery_consult_deleted(),
@@ -322,7 +320,7 @@
     milestoneOffer = { procedureId: stored.id };
   }
 
-  /* Closed once the write lands (after-release 06). */
+  /* Closed once the write lands. */
   const offerWrite = writer();
   async function answerMilestoneOffer(given: OfferAnswer) {
     const subject = milestoneOffer;
@@ -532,8 +530,8 @@
   {#if withActions}{@render consultActions()}{/if}
 {/snippet}
 
-<!-- Ticket 18: the recovery window as one side of `/compare`, offered only
-     once there is one (surgery day onward). -->
+<!-- The recovery window as one side of `/compare`, offered only once there is one (surgery
+     day onward). -->
 {#snippet compareBlock()}
   {#if compareLink.state.status !== 'hidden'}
     {@const compareNotice = compareStretchNoticeProps(compareLink.state, recoveryOpenEnded, SURGERY_COMPARE_COPY)}

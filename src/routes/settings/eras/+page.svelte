@@ -53,7 +53,7 @@
   let boundsQuery = liveQuery((j) => j.eras.getJournalBounds());
   let bounds = $derived(boundsQuery.value ?? null);
 
-  // Phase 6 ticket 05: which eras are muted, so the sheet's switch reads
+  // Which eras are muted, so the sheet's switch reads
   // and writes the same layer on-this-day and Wrapped honour.
   let mutedQuery = liveQuery((j) => j.eraMutes.getMutedEraUuids());
   let mutedEraUuids = $derived(mutedQuery.value ?? new Set<string>());

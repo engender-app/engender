@@ -1,16 +1,16 @@
-/* Display wording for the dose log's closed vocabularies, alongside reminderLabel.ts for the same reason it is there: the
-   wording speaks paraglide, and nothing the Node tier touches may import
-   that (ADR-0016). doseSchedule.ts holds the vocabularies themselves and
-   stays free of it; this is where they get their words.
+/* Display wording for the dose log's closed vocabularies, alongside reminderLabel.ts for
+   the same reason it is there: the wording speaks paraglide, and nothing the Node tier
+   touches may import that. doseSchedule.ts holds the vocabularies themselves and stays free
+   of it; this is where they get their words.
 
-   Each record is typed against a union derived from those `as const` lists,
-   the rule labels.ts sets out: adding a site or a route without adding its
-   message is then a typecheck failure rather than a raw key on screen.
+   Each record is typed against a union derived from those `as const` lists, the rule
+   labels.ts sets out: adding a site or a route without adding its message is then a
+   typecheck failure rather than a raw key on screen.
 
-   Keyed one message per member rather than composed from parts. Polish
-   inflects a side with its region's gender ("udo lewe" but "pośladek lewy"),
-   so a "{region}, {side}" template would be wrong in half the injection
-   sites, and the same trap waits in any language with agreement. */
+   Keyed one message per member rather than composed from parts. Polish inflects a side with
+   its region's gender ("udo lewe" but "pośladek lewy"), so a "{region}, {side}" template
+   would be wrong in half the injection sites, and the same trap waits in any language with
+   agreement. */
 
 import { m } from '$lib/paraglide/messages';
 import { fmtDay } from '$lib/data/dates';
@@ -71,20 +71,18 @@ const PAUSE_REASON_LABELS: Record<PauseReason, () => string> = {
   accidental: m.pause_reason_accidental
 };
 
-/** None preferred over another (ticket 43, mirroring the rule just above). */
+/** None preferred over another. */
 const EPISODE_END_REASON_LABELS: Record<EpisodeEndReason, () => string> = {
   switchedDrugOrRoute: m.episode_end_reason_switched,
   pausedForNow: m.episode_end_reason_paused,
   decidedToStop: m.episode_end_reason_stopped
 };
 
-/* A regimen template's picker-row name, and the drug/ester text it pre-fills
-   (CONTEXT: "Regimen template", phase 5 ticket 42). Route is not repeated
-   here - it pre-fills from ROUTE_LABELS below, by the DoseRoute each
-   template names, so the word matches whatever the dose log already calls
-   that route rather than drifting into a second wording for the same
-   route. Ester is absent from a template with none, the same nullable
-   shape RegimenEpisode.ester itself has. */
+/* A regimen template's picker-row name, and the drug/ester text it pre-fills. Route is not
+   repeated here - it pre-fills from ROUTE_LABELS below, by the DoseRoute each template
+   names, so the word matches whatever the dose log already calls that route rather than
+   drifting into a second wording for the same route. Ester is absent from a template with
+   none, the same nullable shape RegimenEpisode.ester itself has. */
 const REGIMEN_TEMPLATE_NAME: Record<RegimenTemplateKey, () => string> = {
   estradiol_valerate_im: m.tpl_regimen_estradiol_valerate_im,
   estradiol_oral: m.tpl_regimen_estradiol_oral,
@@ -153,13 +151,11 @@ export const regimenTemplateEster = (key: string): string | null =>
 export const regimenTemplateRoute = (key: string): string =>
   routeLabel(REGIMEN_TEMPLATE_ROUTE[key as RegimenTemplateKey] ?? 'oral');
 
-/* A regimen episode's interval is free text (types.ts): a person types
-   their own ("every 2 weeks", "co 10 dni") and that is shown as written.
-   The demo journal stores the two English words below, though, and they
-   went out raw on a Polish screen (audit U50). Those two, and only as
-   stored, read through the catalogue; anything else is somebody's own
-   words. A Map rather than a record, so a typed "constructor" is not a
-   key it already has. */
+/* A regimen episode's interval is free text (types.ts): a person types their own ("every 2
+   weeks", "co 10 dni") and that is shown as written. The demo journal stores the two
+   English words below, though, and they went out raw on a Polish screen. Those two, and
+   only as stored, read through the catalogue; anything else is somebody's own words. A Map
+   rather than a record, so a typed "constructor" is not a key it already has. */
 const REGIMEN_INTERVAL_LABELS = new Map<string, () => string>([
   ['daily', m.regimen_interval_daily],
   ['weekly', m.regimen_interval_weekly]
@@ -177,10 +173,9 @@ export const regimenIntervalToStore = (draft: string, stored: string | null): st
   return stored !== null && text === regimenIntervalLabel(stored) ? stored : text;
 };
 
-/** An episode's months on the regimen row: "Jan 2025 to Feb 2026", or
-    "from Feb 2026" while it has no end. The ongoing case is its own
-    sentence, not the word for ongoing dropped into the end of a range,
-    which in Polish read "lut 2026 do trwa" (audit U50). */
+/** An episode's months on the regimen row: "Jan 2025 to Feb 2026", or "from Feb 2026" while
+    it has no end. The ongoing case is its own sentence, not the word for ongoing dropped
+    into the end of a range, which in Polish read "lut 2026 do trwa". */
 export const regimenPeriodLabel = (startEpochDay: number, endEpochDay: number | null): string => {
   const month = (epochDay: number) => fmtDay(epochDay, { month: 'short', year: 'numeric' });
   return endEpochDay === null
@@ -188,9 +183,8 @@ export const regimenPeriodLabel = (startEpochDay: number, endEpochDay: number | 
     : m.regimen_period_range({ from: month(startEpochDay), to: month(endEpochDay) });
 };
 
-/** Route options for a picker: the three taken by mouth or absorbed
-    through a mucosa, the two injections and the implant, then the two
-    topical ones (rectal and implant added by functional audit ticket 18). */
+/** Route options for a picker: the three taken by mouth or absorbed through a mucosa, the
+    two injections and the implant, then the two topical ones. */
 export const ROUTE_OPTIONS: RouteOption[] = (['oral', 'sublingual', 'rectal', 'im', 'sc', 'implant', 'patch', 'gel'] as const).map(
   (route) => ({ value: route, label: routeLabel(route) })
 );

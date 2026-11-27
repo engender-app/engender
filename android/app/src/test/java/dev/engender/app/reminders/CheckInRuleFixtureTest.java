@@ -16,11 +16,11 @@ import org.json.JSONObject;
 import org.junit.Test;
 
 /**
- * Reads check-in-rule.json - src/lib/android/fixtures/check-in-rule.json,
- * put on this module's test classpath by build.gradle's sourceSets.test
- * addition - the same file checkIn.test.ts reads on the TypeScript side
- * (ADR-0028). The reminders screen says when a paused check-in comes back;
- * this is what holds the alarm to the day it says.
+ * Reads check-in-rule.json - src/lib/android/fixtures/check-in-rule.json, put
+ * on this module's test classpath by build.gradle's sourceSets.test addition
+ * - the same file checkIn.test.ts reads on the TypeScript side. The reminders
+ * screen says when a paused check-in comes back; this is what holds the alarm
+ * to the day it says.
  */
 public class CheckInRuleFixtureTest {
 

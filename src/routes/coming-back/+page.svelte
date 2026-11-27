@@ -67,9 +67,8 @@
   <ScreenHeader title={m.coming_back_title()} subtitle={line} screen="coming-back" />
 
   <ReadGate read={waitingRows} variant="line" count={4}>
-    <!-- Nothing. The line under the field already says the true sentence,
-         and a second surface saying it again is the contradiction the
-         phase 8 review found. -->
+    <!-- Nothing. The line under the field already says the true sentence, and a second
+         surface saying it again is the contradiction the review found. -->
     {#snippet empty()}{/snippet}
 
     {#snippet rows()}

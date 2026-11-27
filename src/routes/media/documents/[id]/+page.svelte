@@ -133,10 +133,9 @@
     };
   });
 
-  /* A PDF's own bytes, read once and held for as long as this screen is
-     open: the size line needs its length, and the export action needs the
-     same bytes right after - reading twice would cost a second decrypt of
-     a file that can be tens of megabytes (ticket 53's own ceiling). */
+  /* A PDF's own bytes, read once and held for as long as this screen is open: the size line
+     needs its length, and the export action needs the same bytes right after - reading
+     twice would cost a second decrypt of a file that can be tens of megabytes. */
   let pdfBytes = $state<Uint8Array | null>(null);
 
   $effect(() => {
@@ -407,10 +406,9 @@
 </script>
 
 <div class="screen">
-  <!-- Titled by the paper itself (audit UI-15). The screen used to say
-       "Document" up here and then the name, the date and the link once at
-       the top and again in the fields below; the fields are where those
-       live now, and the link has one row. -->
+  <!-- Titled by the paper itself. The screen used to say "Document" up here and then the
+       name, the date and the link once at the top and again in the fields below; the fields
+       are where those live now, and the link has one row. -->
   <ScreenHeader title={stored?.title ?? m.document_title()} back={DOCUMENTS} />
 
   {#if detail.loading}

@@ -30,8 +30,8 @@ import java.nio.file.StandardCopyOption;
  *
  * <p>And there is no key derivation. A hex key arrives already stretched or
  * already random (ADR-0013, ADR-0018) and is handed to SQLCipher in its raw
- * key form, which is the whole reason this bridge exists instead of
- * {@code @capacitor-community/sqlite} (ADR-0020, ticket 11 amendment).
+ * key form, which is the whole reason this bridge exists instead of {@code
+ * @capacitor-community/sqlite} (ADR-0020).
  */
 final class SqliteConnection {
 
@@ -98,9 +98,7 @@ final class SqliteConnection {
 
     /**
      * SQLCipher reads {@code x'<hex>'} as a raw key and runs no KDF over it.
-     * An absent key opens a plain, unencrypted database - which is where
-     * ticket 11 leaves the app, since the Keystore that produces the real key
-     * is ticket 13.
+     * An absent key opens an unencrypted database.
      */
     private static String rawKeyPassword(String hexKey) {
         if (hexKey == null || hexKey.isEmpty()) return "";
@@ -280,10 +278,10 @@ final class SqliteConnection {
     }
 
     /**
-     * Close the open connection, then delete the Android database,
-     * side files and pre-migration copy (ADR-0014, ADR-0006).
-     * Locate files by name even on a cold locked boot. Reset must
-     * remove the ciphertext before a fresh key is minted.
+     * Close the open connection, then delete the Android database, side files
+     * and pre-migration copy (ADR-0006). Locate files by name even on a cold
+     * locked boot. Reset must remove the ciphertext before a fresh key is
+     * minted.
      */
     void deleteDatabaseFiles(Context context, String name) throws IOException {
         close();

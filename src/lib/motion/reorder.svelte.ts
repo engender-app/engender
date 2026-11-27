@@ -12,10 +12,9 @@ import { isReducedMotion } from './tokens';
 
 export type RowTop = { key: string; top: number; left: number };
 
-/** Where each row is painted, keyed. Both axes, so a grid that reflows
-    sideways travels as well as a list that reflows down (the clinician
-    summary's profile card, after-release 22); a list's rows only ever
-    differ in `top`. */
+/** Where each row is painted, keyed. Both axes, so a grid that reflows sideways travels as
+    well as a list that reflows down (the clinician summary's profile card); a list's rows
+    only ever differ in `top`. */
 export function measureTops(rows: HTMLElement[], keyOf: (el: HTMLElement) => string): RowTop[] {
   return rows.map((el) => {
     const box = el.getBoundingClientRect();
@@ -48,16 +47,14 @@ export function travelFrom(rows: HTMLElement[], keyOf: (el: HTMLElement) => stri
   });
 }
 
-/** The same travel for a list that changes under a read rather than under
-    a drag: a dose saved to another day, a procedure that moved to the
-    archive (after-release 05). Measured before the DOM updates, released
-    after it, every time `track` changes. Call it while the component
+/** The same travel for a list that changes under a read rather than under a drag: a dose
+    saved to another day, a procedure that moved to the archive. Measured before the DOM
+    updates, released after it, every time `track` changes. Call it while the component
     initialises; the rows need the list's own CSS translate transition.
 
-    Hand-written rather than Svelte's `animate:` directive on purpose: the
-    first `animate:` in the app pulls the keyed-each animation runtime into
-    the shared chunk every screen loads first, about 400 bytes gzip of a
-    first-load budget that has none to spare. */
+    Hand-written rather than Svelte's `animate:` directive on purpose: the first `animate:`
+    in the app pulls the keyed-each animation runtime into the shared chunk every screen
+    loads first, about 400 bytes gzip of a first-load budget that has none to spare. */
 export function travelOnChange(rows: () => HTMLElement[], keyOf: (el: HTMLElement) => string, track: () => unknown): void {
   let before: RowTop[] = [];
   $effect.pre(() => {
@@ -66,14 +63,12 @@ export function travelOnChange(rows: () => HTMLElement[], keyOf: (el: HTMLElemen
   });
   $effect(() => {
     track();
-    /* A microtask later, not now: Svelte applies an arriving row's intro
-       styles in a microtask of its own, queued while the DOM updated, so
-       measuring here saw that row at full height. The rows below it were
-       then started a whole row too high and travelled down while the row
-       also opened under them, crossing the day heading for a frame
-       (functional-audit ticket 20, a dose arriving in the log). Measured
-       after the intro, an arriving row is at its first-frame height and
-       the rows below move only as it opens. Still before the next paint. */
+    /* A microtask later, not now: Svelte applies an arriving row's intro styles in a
+       microtask of its own, queued while the DOM updated, so measuring here saw that row at
+       full height. The rows below it were then started a whole row too high and travelled
+       down while the row also opened under them, crossing the day heading for a frame.
+       Measured after the intro, an arriving row is at its first-frame height and the rows
+       below move only as it opens. Still before the next paint. */
     const measured = before;
     queueMicrotask(() => travelFrom(rows(), keyOf, measured));
   });

@@ -1,15 +1,14 @@
-/* What a finishable area is called on screen,
-   here rather than in `areaGroups.ts` for the reason its neighbours give:
-   the wording speaks paraglide, and nothing the Node tier touches may import
-   that (ADR-0016). `areaGroups.ts` holds the keys and the areas behind them;
-   this is where they get their words.
+/* What a finishable area is called on screen, here rather than in `areaGroups.ts` for the
+   reason its neighbours give: the wording speaks paraglide, and nothing the Node tier
+   touches may import that. `areaGroups.ts` holds the keys and the areas behind them; this
+   is where they get their words.
 
-   Every name is the one the More hub's own row already uses, so a mark on a
-   chart, a line in a clinician summary and the row somebody tapped to get to
-   the screen all say the same thing (ADR-0024).
+   Every name is the one the More hub's own row already uses, so a mark on a chart, a line
+   in a clinician summary and the row somebody tapped to get to the screen all say the same
+   thing.
 
-   A full `Record` over the group keys, so a group added without a name is a
-   typecheck failure rather than a raw key on a page handed to a doctor. */
+   A full `Record` over the group keys, so a group added without a name is a typecheck
+   failure rather than a raw key on a page handed to a doctor. */
 
 import { m } from '$lib/paraglide/messages';
 import { AREA_GROUPS, type AreaGroupKey } from '$lib/data/areaGroups';

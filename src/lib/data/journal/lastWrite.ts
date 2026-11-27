@@ -61,8 +61,7 @@ interface LastWriteReading extends LastWriteAreas {
 /** One area's declaration of its last write. Erased over its own area
     dependency, the same reason `DaySection` is: the list holds every area at
     once, and a test registers an area this file has never named. */
-/* LastWriteEntry stays exported only for its own test (AU-09 test-only
-   review). */
+/* LastWriteEntry stays exported only for its own test. */
 export interface LastWriteEntry {
   key: string;
   tables: readonly TableName[];
@@ -201,8 +200,7 @@ export type LastWriteKey = (typeof ENTRIES)[number]['key'];
     Restating day.ts's own reasoning for this registry's own question rather
     than reusing its list: an area with no dated record to show on a day has
     no dated write to report the last of, either. */
-/* LAST_WRITE_OPT_OUTS stays exported only for its own test (AU-09 test-only
-   review). */
+/* LAST_WRITE_OPT_OUTS stays exported only for its own test. */
 export const LAST_WRITE_OPT_OUTS: Record<Exclude<ArchiveSectionName, LastWriteKey>, string> = {
   dimensions: 'reference data, not a written stream',
   presets: 'reference data, not a written stream',
@@ -236,7 +234,7 @@ export const LAST_WRITE_OPT_OUTS: Record<Exclude<ArchiveSectionName, LastWriteKe
   // A letter is met on its unlock day (letterStatus.ts); asking when it was
   // last written is a second way to meet it before the seal does.
   letters: 'sealed until its unlock day',
-  // Phase 8 features ticket 10: sealed until the day after it was taken;
+  // Sealed until the day after it was taken;
   // asking when one was last taken is a second way to meet its figures
   // before the seal does, the same risk letters' own opt-out above guards
   // against - independent of whether the area is finishable (areaState.ts

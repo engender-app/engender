@@ -49,8 +49,8 @@ const REPLACED: Record<string, string[]> = {
   'engender-greeted-letter-ids': ['src/lib/data/acknowledgements.ts'],
   'engender-tile-snooze': ['src/lib/data/acknowledgements.ts'],
   letter_tile_snooze_until: ['src/lib/data/acknowledgements.ts', 'src/lib/data/reset.ts'],
-  /* Security-scan ticket 08: the stock notice snooze is the stock-notice
-     tile's, and every screen's height but Home's is `layoutReserves`. */
+  /* The stock notice snooze is the stock-notice tile's, and every screen's height but
+     Home's is `layoutReserves`. */
   'engender-stock-notice-snooze-until': ['src/lib/data/acknowledgements.ts'],
   stock_notice_snooze_until: ['src/lib/data/acknowledgements.ts'],
   'engender-reserve': ['src/lib/data/homeReserve.ts']
@@ -108,7 +108,7 @@ describe('plaintext storage keys', () => {
     expect(stray).toEqual([]);
   });
 
-  it('keeps the three FA 51 sweep keys out of the portable acknowledgements', () => {
+  it('keeps the three sweep keys out of the portable acknowledgements', () => {
     const acknowledgements = readFileSync(join(root, 'src/lib/data/acknowledgements.ts'), 'utf8');
     expect(acknowledgements).not.toContain('orphan-sweep');
     expect(readFileSync(join(root, 'src/lib/data/sqlite/orphan-sweep-schedule.ts'), 'utf8')).toContain(

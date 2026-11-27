@@ -1,13 +1,13 @@
 /* What the photo library calls a source and a chip.
 
-   Here rather than in `photos/library.ts` for the reason `hubLabels.ts`
-   gives: that module is pure and the Node tier tests it, and nothing the
-   Node tier touches may import paraglide (ADR-0016). The rules about which
-   chip a source answers to live there; the words live here.
+   Here rather than in `photos/library.ts` for the reason `hubLabels.ts` gives: that module
+   is pure and the Node tier tests it, and nothing the Node tier touches may import
+   paraglide. The rules about which chip a source answers to live there; the words live
+   here.
 
-   Both records are total over their key, so a seventh source or a
-   seventh chip is a typecheck failure rather than a tile with no label on
-   the screen that exists to say where a photograph came from. */
+   Both records are total over their key, so a seventh source or a seventh chip is a
+   typecheck failure rather than a tile with no label on the screen that exists to say where
+   a photograph came from. */
 
 import { m } from '$lib/paraglide/messages';
 import type { PhotoChip, PhotoSource } from '$lib/data/photos/library';

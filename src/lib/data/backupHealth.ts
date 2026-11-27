@@ -1,18 +1,15 @@
-/* How old the last backup is, and when that becomes worth saying (ticket
-   15, PRD F21). Three screens read this - Home for its notice, Settings
-   for the row, Export & import for the status line - so it lives here
-   rather than as the same two lines derived three times.
+/* How old the last backup is, and when that becomes worth saying. Three screens read this -
+   Home for its notice, Settings for the row, Export & import for the status line - so it
+   lives here rather than as the same two lines derived three times.
 
-   Apart from archive/backup.ts on purpose: this is arithmetic over one
-   number, and Home would otherwise import the export paths, and through
-   them the archive packer and Argon2id, to work out how many days ago
-   something happened. */
+   Apart from archive/backup.ts on purpose: this is arithmetic over one number, and Home
+   would otherwise import the export paths, and through them the archive packer and
+   Argon2id, to work out how many days ago something happened. */
 
 import { epochDayFromTimestamp, todayEpochDay } from './epochDay';
 
 /** Older than this and Home says so (F21). */
-/* BACKUP_STALE_DAYS stays exported only for its own test (AU-09 test-only
-   review). */
+/* BACKUP_STALE_DAYS stays exported only for its own test. */
 export const BACKUP_STALE_DAYS = 30;
 
 /** How many local days ago the last export was, or null if there has never
@@ -28,10 +25,9 @@ export function backupIsStale(lastBackupAt: number | null, today: number = today
   return age !== null && age > BACKUP_STALE_DAYS;
 }
 
-/** Which of three things Export & import's last-backup row says (last-audit
-    UI 54). Not stale is not the same as backed up: a journal never exported
-    is not stale either, and the row drew its success tick for it beside "No
-    export recorded on this device". */
+/** Which of three things Export & import's last-backup row says. Not stale is not the same
+    as backed up: a journal never exported is not stale either, and the row drew its success
+    tick for it beside "No export recorded on this device". */
 export function backupStanding(
   lastBackupAt: number | null,
   today: number = todayEpochDay()
@@ -40,16 +36,14 @@ export function backupStanding(
   return backupIsStale(lastBackupAt, today) ? 'stale' : 'recent';
 }
 
-/** Whether Home says that this browser may clear the journal (after-release
-    17, U2). The browser refusing persistent storage is not news a person
-    can act on by itself; what they can do is keep a backup elsewhere, so
-    the notice is that ask, said once: it goes for good with the first
-    backup or a dismissal. After that the stale-backup notice is the
-    reminder, and two notices asking for one export would be one too many.
-    Safari also offers installation advice independently of the persistence
-    answer, with these same backup and dismissal gates.
-    It replaced a toast that covered the Welcome screen's buttons for four
-    seconds on every cold web load. */
+/** Whether Home says that this browser may clear the journal. The browser refusing
+    persistent storage is not news a person can act on by itself; what they can do is keep a
+    backup elsewhere, so the notice is that ask, said once: it goes for good with the first
+    backup or a dismissal. After that the stale-backup notice is the reminder, and two
+    notices asking for one export would be one too many. Safari also offers installation
+    advice independently of the persistence answer, with these same backup and dismissal
+    gates. It replaced a toast that covered the Welcome screen's buttons for four seconds on
+    every cold web load. */
 export function storageNoticeShows(state: {
   persistDenied: boolean;
   dismissed: boolean;

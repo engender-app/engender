@@ -12,7 +12,7 @@ describe('pickArchive', () => {
     vi.resetAllMocks();
   });
 
-  test('asks for the archive extension with a MIME fallback (ticket 66)', async () => {
+  test('asks for the archive extension with a MIME fallback', async () => {
     vi.mocked(chooseFiles).mockResolvedValue([]);
 
     await pickArchive();

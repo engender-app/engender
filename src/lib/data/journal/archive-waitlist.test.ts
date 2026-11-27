@@ -74,7 +74,7 @@ test('an archive written before waiting lists restores its appointments with not
   const source = await device();
   await source.journal.appointments.upsertAppointment({ ...referral, epochDay: 19400 });
   const journal = (await source.journal.archive.snapshot()).journal;
-  // What a build before ticket 26 wrote: no referred-on day, no updates.
+  // What an older build wrote: no referred-on day, no updates.
   const legacy = {
     ...journal,
     appointments: journal.appointments.map(({ referredEpochDay: _r, statuses: _s, ...rest }) => rest)

@@ -5,11 +5,10 @@ import type { SqliteDriver } from '../sqlite/driver';
 
 /* Every row's travelling identity is minted here (ADR-0002).
 
-   crypto.randomUUID arrived in Chrome 92 and the API 26 emulator's WebView
-   is Chrome 69, so on an Android that old the call threw and no write of any
-   kind could complete - found by ticket 11's contract run on a device.
-   getRandomValues is far older than either, so the fallback below is what
-   makes the spec's API 26 floor real rather than nominal. */
+   Crypto.randomUUID arrived in Chrome 92 and the API 26 emulator's WebView is Chrome 69, so
+   on an Android that old the call threw and no write of any kind could complete - found by
+   contract run on a device. getRandomValues is far older than either, so the fallback below
+   is what makes the spec's API 26 floor real rather than nominal. */
 export const mintUuid = (): string =>
   typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : uuidFromRandomBytes();
 

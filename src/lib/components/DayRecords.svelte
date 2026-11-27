@@ -56,19 +56,17 @@
   let entries = $derived(records.entries);
   let alsoRows = $derived(dayRows(records, doseDrugs));
 
-  /* A day's context list is capped, and the rest is one tap away (Alicja,
-     2026-08-31, against the maximal day's twenty-one rows). Five is what the
-     card shows: enough that a typical day - four rows - is never truncated
-     at all, and short enough that a busy one stops being a wall.
+  /* A day's context list is capped, and the rest is one tap away. Five is what the card
+     shows: enough that a typical day - four rows - is never truncated at all, and short
+     enough that a busy one stops being a wall.
 
-     The overflow is a sheet rather than an in-place expand. The list can be
-     three times the viewport height on a busy day. Reserve `disclose()`
-     for a group that fits within the screen. A sheet
-     is tier 2's own answer and it already has its motion, so nothing new is
+     The overflow is a sheet rather than an in-place expand. The list can be three times the
+     viewport height on a busy day. Reserve `disclose()` for a group that fits within the
+     screen. A sheet is tier 2's own answer and it already has its motion, so nothing new is
      invented here.
 
-     Cheap by construction: the sheet's rows are the same `alsoRows` the card
-     sliced, so opening it costs no read. */
+     Cheap by construction: the sheet's rows are the same `alsoRows` the card sliced, so
+     opening it costs no read. */
   const SHOWN = 5;
   let shown = $derived(alsoRows.length > SHOWN ? alsoRows.slice(0, SHOWN) : alsoRows);
   let hidden = $derived(alsoRows.length - shown.length);
@@ -82,9 +80,9 @@
 {/snippet}
 
 {#if entries.length > 0}
-  <!-- The bar counts the entries and leaves the date to the screen's own
-       header, one line above it (release audit U17: "1 October 2026 · 1
-       entry this day" under a header that already said 1 October). -->
+  <!-- The bar counts the entries and leaves the date to the screen's own header, one line
+       above it (release: "1 October 2026 · 1 entry this day" under a header that already
+       said 1 October). -->
   <DayCard
     key={String(epochDay)}
     role={entriesRole}

@@ -1,16 +1,13 @@
-/* Quiet hours for scheduled reminders and backup failure notices. Native
-   reminders shift alarms to the end of the window; backup failures wait
-   for the next foreground check.
+/* Quiet hours for scheduled reminders and backup failure notices. Native reminders shift
+   alarms to the end of the window; backup failures wait for the next foreground check.
 
-   Kept relative-import-free and rune-free so registry.test.ts's tier can
-   read it (ADR-0016), and pure so the shared fixture can pin it against the
-   Java side (ADR-0028).
+   Kept relative-import-free and rune-free so registry.test.ts's tier can read it, and pure
+   so the shared fixture can pin it against the Java side.
 
-   No "hold until" arithmetic here, deliberately: the foreground check asks
-   only whether now is quiet, and the one place that needs an actual held
-   instant is native, where the answer has to be a wall-clock time on a real
-   date rather than a count of minutes - 07:00 on the morning summer time
-   ends is 07:00, not 07:00 plus an hour. */
+   No "hold until" arithmetic here, deliberately: the foreground check asks only whether now
+   is quiet, and the one place that needs an actual held instant is native, where the answer
+   has to be a wall-clock time on a real date rather than a count of minutes - 07:00 on the
+   morning summer time ends is 07:00, not 07:00 plus an hour. */
 
 export interface QuietHours {
   enabled: boolean;
@@ -24,7 +21,7 @@ export interface QuietHours {
     cannot be read - the same fallback ReminderPlanner.parseTime makes, and
     for the same reason: a malformed preference must not take a scheduler
     down with it. */
-/* minuteOfDay stays exported only for its own test (AU-09 test-only review). */
+/* minuteOfDay stays exported only for its own test. */
 export function minuteOfDay(hhmm: string): number {
   const match = /^(\d{1,2}):(\d{2})$/.exec(hhmm);
   if (!match) return 0;
@@ -44,7 +41,7 @@ export function minuteOfDay(hhmm: string): number {
     defensible and only one of them fails safe, since two equal times
     somebody scrolled past would otherwise hold every notification the app
     has, permanently, with nothing on screen saying so. */
-/* isQuiet stays exported only for its own test (AU-09 test-only review). */
+/* isQuiet stays exported only for its own test. */
 export function isQuiet(minute: number, quiet: QuietHours): boolean {
   if (!quiet.enabled) return false;
   const start = minuteOfDay(quiet.start);

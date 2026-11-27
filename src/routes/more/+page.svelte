@@ -40,19 +40,18 @@
 
   let lastWritesQuery = liveQuery((j) => j.lastWrite.getLastWrites(today));
   let statesQuery = liveQuery(async (j) => dilationGated(await j.areaStates.getAreaStates(), await j.procedures.getProcedures()));
-  /* The cycle row's positive gate (ADR-0043): an active testosterone regimen
-     or the explicit opt-in, so it needs the episodes. Read with the others,
-     so the row is not drawn and then taken back. */
+  /* The cycle row's positive gate: an active testosterone regimen or the explicit opt-in,
+     so it needs the episodes. Read with the others, so the row is not drawn and then taken
+     back. */
   let episodesQuery = liveQuery((j) => j.regimen.getEpisodes());
-  /* The forward half (phase 11 all-four-doors ticket 02): what is running
-     and what is next, which is what nine of this door's rows were getting
-     wrong by reporting a gap over a screen full of dated plans. One
-     assembled call, `rowForwardReads.ts`, the shape the last-write read next
-     to it already has. */
+  /* The forward half: what is running and what is next, which is what nine of this door's
+     rows were getting wrong by reporting a gap over a screen full of dated plans. One
+     assembled call, `rowForwardReads.ts`, the shape the last-write read next to it already
+     has. */
   let forwardQuery = liveQuery((j) => readRowForward(j, today));
-  /* voice-benchmark's own second read: a memo has no last write
-     in the registry the other three rows draw on (ADR-0036), so this joins
-     the other three reads rather than being folded into one of them. */
+  /* voice-benchmark's own second read: a memo has no last write in the registry the other
+     three rows draw on, so this joins the other three reads rather than being folded into
+     one of them. */
   let voiceMemoLastWriteQuery = liveQuery((j) => j.voice.lastWriteEpochDay(today));
 
   /* All four reads or none, which is a correctness rule and not only a
@@ -107,18 +106,15 @@
   });
   let sections = $derived(hubSections(reading));
 
-  /** How many record hits the door shows at all. Twenty rather than the
-      search screen's thirty, and no second page since audit item 11: this is
-      a door, a query that answers with a screenful of records is a query
-      better finished on the search screen, and the row under the list goes
-      there rather than reading twenty more here. */
+  /** How many record hits the door shows at all. Twenty rather than the search screen's
+      thirty, and no second page since: this is a door, a query that answers with a
+      screenful of records is a query better finished on the search screen, and the row
+      under the list goes there rather than reading twenty more here. */
   const PAGE = 20;
-  /** How long the record read waits after the last keystroke (the search
-      screen's own interval, phase 8 audit ticket 15): long enough that typing
-      at speed never fires a run per key, short enough that a pause reads as
-      instant. The area half is not waited out at all - it is a filter over
-      rows already on the screen, and making it lag behind the box would be
-      the screen feeling slower than it is. */
+  /** How long the record read waits after the last keystroke: long enough that typing at
+      speed never fires a run per key, short enough that a pause reads as instant. The area
+      half is not waited out at all - it is a filter over rows already on the screen, and
+      making it lag behind the box would be the screen feeling slower than it is. */
   const SEARCH_DEBOUNCE_MS = 250;
 
   let query = $state('');
@@ -267,13 +263,10 @@
        to be announced; empty it takes no room, and while a query is being
        answered it holds its line rather than letting the list jump (the two
        rules beside it in screens.css). -->
-  <!-- The line inside opens and closes its own height:
-       it used to reserve its line the moment typing began and drop it the
-       moment the box was cleared, and both moved the list under the finger
-       in one frame (Alicja, on the flipbooks: "the '0 results' simply
-       disappears and yanks the whole content underneath"). The region stays
-       the <p>, empty until both halves have answered, so the count is still
-       announced once. -->
+  <!-- The line inside opens and closes its own height: it used to reserve its line the
+       moment typing began and drop it the moment the box was cleared, and both moved the
+       list under the finger in one frame. The region stays the <p>, empty until both halves
+       have answered, so the count is still announced once. -->
   <p class="hub-count" data-hub-count aria-live="polite">
     {#if searching && settled}
       <span class="hub-count-line" transition:disclose={{ skip: leaving }}>{m.results_count({ count: resultCount })}</span>
@@ -301,19 +294,17 @@
         <div transition:disclose={{ skip: leaving }}>
         <ListCard role={matchesRole}>
           {#each matches as row (row.spec.key)}
-            <!-- Which section the row was drawn in and which kind of line it
-                 carries, both on the row rather than on wrappers of their own:
-                 a finished row is the same row under a different heading, and
-                 the line itself is the kit's `.kit-row-sub`, a class and so
-                 something the walkthrough may not grip (ADR-0029). Naming the
-                 kind rather than the element also lets a flow tell a reading
-                 apart from the line about what is behind the row, which the
-                 element could not.
+            <!-- Which section the row was drawn in and which kind of line it carries, both
+                 on the row rather than on wrappers of their own: a finished row is the same
+                 row under a different heading, and the line itself is the kit's
+                 `.kit-row-sub`, a class and so something the walkthrough may not grip.
+                 Naming the kind rather than the element also lets a flow tell a reading
+                 apart from the line about what is behind the row, which the element could
+                 not.
 
-                 A searched row keeps `data-hub-section`, which here says
-                 where the row is drawn - one of the hub's sections, or the
-                 screen that hosts it - since in this list there is no
-                 heading above it to say so. -->
+                 A searched row keeps `data-hub-section`, which here says where the row is
+                 drawn - one of the hub's sections, or the screen that hosts it - since in
+                 this list there is no heading above it to say so. -->
             <!-- The wrapper is the row's own height, and giving it back is
                  how a row leaves (rule 10): the rows under it close up with
                  it instead of jumping. `.rows-divide` is the kit's opt-in for

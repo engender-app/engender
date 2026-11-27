@@ -1,11 +1,9 @@
-/* Mirror bounded reference data in reactive memory for synchronous reads
-   (ADR-0004). Editors, cards and Home need these few dozen rows without
-   putting a loading state on the whole app. Keep the rune-free journal
-   facade below the mirror (ADR-0017).
+/* Mirror bounded reference data in reactive memory for synchronous reads (ADR-0004).
+   Editors, cards and Home need these few dozen rows without putting a loading state on the
+   whole app. Keep the rune-free journal facade below the mirror (ADR-0017).
 
-   Fill the mirror from SQLite at boot and refresh it one round trip after
-   writes to its tables. vocabulary.ts resolves catalogue labels from keys
-   above the Paraglide boundary (ADR-0016). */
+   Fill the mirror from SQLite at boot and refresh it one round trip after writes to its
+   tables. vocabulary.ts resolves catalogue labels from keys above the Paraglide boundary. */
 
 import { metricKey } from '../prefs/catalogue';
 import { prefs } from '../prefs/store.svelte';
@@ -116,13 +114,11 @@ export async function hydrateReference(journal: Journal, current: () => void = (
 
   if (registered) return;
   registered = true;
-  /* Re-read through the facade rather than the handle this first hydrate
-     was given (after-release ticket 10, audit L02-09). The listener is bound
-     once per page, and the handle is not: a web lock closes the database
-     and the unlock opens a new one, so a refresh bound to the first handle
-     re-read a closed journal, failed, and left the vocabulary stale. The
-     facade is always the journal open now, and a refresh asked for while
-     it is locked waits for the reopen. */
+  /* Re-read through the facade rather than the handle this first hydrate was given. The
+     listener is bound once per page, and the handle is not: a web lock closes the database
+     and the unlock opens a new one, so a refresh bound to the first handle re-read a closed
+     journal, failed, and left the vocabulary stale. The facade is always the journal open
+     now, and a refresh asked for while it is locked waits for the reopen. */
   onTablesWritten((tables) => {
     const slices = new Set(
       (Object.keys(SLICE_READS) as MirrorSlice[]).filter((slice) =>
@@ -186,7 +182,7 @@ export const reference = {
   /** Every body region an entry can log an intensity against, hidden ones
       included - what an entry card or the trend chart resolves a logged
       region's key against, so a region hidden after being logged still
-      shows and charts (CONTEXT: "Hidden"). */
+      shows and charts. */
   get bodyRegions(): BodyRegion[] {
     return mirror.bodyRegions;
   },
@@ -198,15 +194,15 @@ export const reference = {
     return mirror.bodyRegions.filter((r) => !r.hidden);
   },
 
-  /** All five (or six) effect categories, in seed order (phase 5 ticket 41,
-      CONTEXT: "Effect category") - what the effects settings screen manages. */
+  /** All five (or six) effect categories, in seed order - what the effects settings screen
+      manages. */
   get effectCategories(): EffectCategory[] {
     return mirror.effectCategories;
   },
 
   /** Every personal-effect catalogue entry, hidden ones and every tier
       included - what the effects settings screen manages
-      (CONTEXT: "Hidden", "Personal effect"). */
+. */
   get personalEffectTypes(): PersonalEffectCatalogEntry[] {
     return mirror.personalEffectTypes;
   },
@@ -281,7 +277,7 @@ export const reference = {
 
   /** Every presentation, most-recently-used first (presentations.ts),
       hidden ones included - what the management screen under /more offers
-      (CONTEXT: "Hidden"). */
+. */
   get presentations(): Presentation[] {
     return mirror.presentations;
   },

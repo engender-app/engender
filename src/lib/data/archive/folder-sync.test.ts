@@ -1,11 +1,10 @@
-/* Folder sync (functional audit ticket 49, folder-sync.ts).
+/* Folder sync (folder-sync.ts).
 
-   The plugin's half - which file in the folder, never one of this device's
-   own - is FolderArchivesTest.java. This is the other half: a staged archive
-   is opened with the saved backup password behind the bridge, merged with
-   Archive Merge's own rules into the journal, and its outcome reported so
-   the plugin moves past it. Two devices that share a history, as in
-   archive-merge-edits.test.ts: B is A restored from A's archive, then A
+   The plugin's half - which file in the folder, never one of this device's own - is
+   FolderArchivesTest.java. This is the other half: a staged archive is opened with the
+   saved backup password behind the bridge, merged with Archive Merge's own rules into the
+   journal, and its outcome reported so the plugin moves past it. Two devices that share a
+   history, as in archive-merge-edits.test.ts: B is A restored from A's archive, then A
    edits an entry, and A's auto-export lands in B's folder. */
 
 import assert from 'node:assert/strict';
@@ -140,9 +139,8 @@ describe('runFolderSync', () => {
     assert.deepEqual(vi.mocked(androidAutoExport.finishFolderArchive).mock.calls, [[{ modifiedAt: 6000, outcome: 'wrong-password' }]]);
   });
 
-  /* Re-check carpet 13, finding 1: a Merge that filled the device was
-     recorded as "could not be read", and the folder moved past an archive
-     that would merge fine once space was freed. */
+  /* finding 1: a Merge that filled the device was recorded as "could not be read", and the
+     folder moved past an archive that would merge fine once space was freed. */
   test('a Merge that runs out of space is reported as such and left to be tried again', async () => {
     const { a } = await twoDevices();
     const read = folderHolds(await autoExport(a, SAVED_KEY), 6500);

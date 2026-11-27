@@ -1,10 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-/* The unused provider for all of external storage was removed in phase 5.
-   Camera capture now needs a provider, limited to its disposable cache path.
-   Cordova's accessOrigins still stays empty, so cap sync cannot restore the
-   wildcard access tag no plugin uses. */
+/* The unused provider for all of external storage was removed. Camera capture now needs a
+   provider, limited to its disposable cache path. Cordova's accessOrigins still stays
+   empty, so cap sync cannot restore the wildcard access tag no plugin uses. */
 
 const root = new URL('../../../', import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, root), 'utf8');

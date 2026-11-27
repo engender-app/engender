@@ -32,7 +32,7 @@ describe('what a restore refuses before it opens anything', () => {
     expect(restoreGuard(null, '')).toBe('pick-first');
   });
 
-  it('tries an empty password, since an export may be made without one (bug session 18, item 80)', () => {
+  it('tries an empty password, since an export may be made without one', () => {
     expect(restoreGuard(file, '')).toBe(null);
   });
 

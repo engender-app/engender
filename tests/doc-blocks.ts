@@ -1,18 +1,16 @@
-/* Reads the key spaces off the code, and renders the generated blocks in
-   SCREENS.md and CONTEXT.md from them.
+/* Reads the key spaces off the code, and renders the generated blocks in and from them.
 
-   Shared by features.test.ts, which holds the manifest to the same readers,
-   and doc-blocks.test.ts, which compares each block with what is in the doc
-   and rewrites it under `npm run docs:blocks`.
+   Shared by features.test.ts, which holds the manifest to the same readers, and
+   doc-blocks.test.ts, which compares each block with what is in the doc and rewrites it
+   under `npm run docs:blocks`.
 
    A block sits between two comment lines:
 
-     <!-- generated:NAME (npm run docs:blocks writes this block from code; do not edit it here) -->
-     ...
-     <!-- /generated:NAME -->
+   <!-- generated:NAME (npm run docs:blocks writes this block from code; do not edit it
+   here) -->... <!-- /generated:NAME -->
 
-   Only the lines between the markers belong to the generator. The prose
-   around them stays hand-written. */
+   Only the lines between the markers belong to the generator. The prose around them stays
+   hand-written. */
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -67,7 +65,7 @@ export function renderTableNames(names: readonly string[]): string {
     '/* Generated from the migrated schema by `npm run features:tables`; edit a',
     '   migration, not this file. tests/node/tooling/features.test.ts fails while it differs',
     "   from the schema, and src/lib/features.ts types each feature's tables",
-    '   against it (functional audit ticket 54). */',
+    '   against it. */',
     'export const TABLE_NAMES = [',
     ...names.map((name, i) => `  '${name}'${i < names.length - 1 ? ',' : ''}`),
     '] as const;',
@@ -93,7 +91,7 @@ const list = (items: readonly string[]) => (items.length ? items.map(code).join(
 const table = (head: string[], rows: string[][]) =>
   [`| ${head.join(' | ')} |`, `| ${head.map(() => '---').join(' | ')} |`, ...rows.map((row) => `| ${row.join(' | ')} |`)].join('\n');
 
-/** SCREENS.md: every page route and the feature that owns it. */
+/** Every page route and the feature that owns it. */
 function renderRoutes(): string {
   const routes = pageRoutes();
   const hubHref = new Map(HUB_ROWS.map((row) => [row.href, row.key]));
@@ -107,7 +105,7 @@ function renderRoutes(): string {
   ].join('\n');
 }
 
-/** SCREENS.md: the More hub's rows, group by group. */
+/** The More hub's rows, group by group. */
 function renderHubRows(): string {
   const groupLabel = (key: string) => `${englishLabel(`hub_group_${key}`)} (${code(key)})`;
   return [
@@ -124,8 +122,7 @@ function renderHubRows(): string {
   ].join('\n');
 }
 
-/** CONTEXT.md: every archive section, in wire order, and the sections older
-    archives may still carry. */
+/** Every archive section, in wire order, and the sections older archives may still carry. */
 function renderArchiveSections(): string {
   const travels = (section: (typeof ARCHIVE_SECTIONS)[number]) =>
     typeof section.travels === 'string' ? section.travels : `fields: ${list(section.travels.fields)}`;
@@ -150,7 +147,7 @@ function renderArchiveSections(): string {
   ].join('\n');
 }
 
-/** CONTEXT.md: the preference catalogue. */
+/** The preference catalogue. */
 function renderPreferences(): string {
   const portable = new Set<string>(PORTABLE_KEYS);
   const local = new Set<string>(DEVICE_LOCAL_KEYS);
@@ -172,7 +169,7 @@ function renderPreferences(): string {
   ].join('\n');
 }
 
-/** CONTEXT.md: the unprompted registry. */
+/** The unprompted registry. */
 function renderUnprompted(): string {
   const tiles = new Set<string>(LIVE_TILE_ORDER);
   const where = (row: (typeof UNPROMPTED_ROWS)[number]) =>

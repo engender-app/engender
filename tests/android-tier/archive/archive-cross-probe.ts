@@ -1,16 +1,14 @@
-/* Ticket 17: one archive format, both directions.
+/* One archive format, both directions.
 
-   This probe runs inside the Android app's WebView and boots both storage
-   implementations there: the web stack (OPFS + SQLocal/sqlite3mc) and the
-   Android stack (the Capacitor SQLCipher bridge + app-private files). It
-   then proves archive round-trips both ways, under both encryption layouts:
+   This probe runs inside the Android app's WebView and boots both storage implementations
+   there: the web stack (OPFS + SQLocal/sqlite3mc) and the Android stack (the Capacitor
+   SQLCipher bridge + app-private files). It then proves archive round-trips both ways,
+   under both encryption layouts:
 
-     1) both journals encrypted
-     2) only one encrypted (web encrypted, Android plaintext)
+   1) both journals encrypted 2) only one encrypted (web encrypted, Android plaintext)
 
-   The checks mirror ticket 17's acceptance lines directly: rows and photos,
-   merge/replace behaviour, portable preferences, device-local preferences,
-   and wrong-password wording parity. */
+   The checks mirror acceptance lines directly: rows and photos, merge/replace behaviour,
+   portable preferences, device-local preferences, and wrong-password wording parity. */
 
 import { boot } from '../../../src/lib/data/sqlite/boot.ts';
 import { createAndroidSqlite } from '../../../src/lib/data/sqlite/android-driver.ts';

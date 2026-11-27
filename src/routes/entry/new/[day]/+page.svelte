@@ -20,15 +20,12 @@
     const mood = Number(raw);
     return Number.isInteger(mood) && mood >= 1 && mood <= 5 ? mood : null;
   });
-  /* The appointment debrief offer's deep link (phase 6 ticket 08, rekeyed
-     to an appointment id by ticket 58), the same query-param shape
-     `seedMood` already has. An empty param is treated as absent rather than
-     passed through - the offer's own predicate is the source of truth for
-     which appointment this can legitimately be, and a bad param should open
-     a blank entry, not a broken one. */
-  /* A chip section to open on arrival (after-release 27, audit UX-03):
-     Getting started and the empty photo library send a first photo here
-     with Photos already open, since the library itself owns no photos
+  /* The appointment debrief offer's deep link, the same query-param shape `seedMood`
+     already has. An empty param is treated as absent rather than passed through - the
+     offer's own predicate is the source of truth for which appointment this can
+     legitimately be, and a bad param should open a blank entry, not a broken one. */
+  /* A chip section to open on arrival: Getting started and the empty photo library send a
+     first photo here with Photos already open, since the library itself owns no photos
      (ADR-0085). Anything that is not a section name opens nothing. */
   let openSection = $derived.by(() => {
     const raw = page.url.searchParams.get('open');

@@ -1,12 +1,10 @@
-/* The rules the More hub keeps after the rebuild, at the
-   level a screen's source can be held to - mirrors home-contracts.ts,
-   which is where this shape of test started.
+/* The rules the More hub keeps after the rebuild, at the level a screen's source can be
+   held to - mirrors home-contracts.ts, which is where this shape of test started.
 
-   Greps for the questions that are genuinely about what is and is not in the
-   file: which surfaces the screen reaches for, and how many reads it issues.
-   Phase 8 UX ticket 02 took the row list out of the grep's hands - it lives
-   in `hubRows.ts` now and is asserted against below as a value, which is what
-   a grep over four const arrays was standing in for. */
+   Greps for the questions that are genuinely about what is and is not in the file: which
+   surfaces the screen reaches for, and how many reads it issues. took the row list out of
+   the grep's hands - it lives in `hubRows.ts` now and is asserted against below as a value,
+   which is what a grep over four const arrays was standing in for. */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -35,28 +33,25 @@ describe('what the More hub is built from', () => {
   });
 
   it('draws its rows from three templated ListRows, the grouped one, the searched one and the handoff', () => {
-    /* Two since redesign ticket 15 - the row the grouped index draws and the
-       row a search match draws - and a third since audit item 11, the one
-       row that carries a record query to the search screen. The Settings row
-       that used to be the second one is gone (the assertion below), and the
-       record hits' row is not self-closing: it carries a trailing snippet
-       for the hit's date. */
+    /* Two - the row the grouped index draws and the row a search match draws - and a third,
+       the one row that carries a record query to the search screen. The Settings row that
+       used to be the second one is gone (the assertion below), and the record hits' row is
+       not self-closing: it carries a trailing snippet for the hit's date. */
     const rowTags = markup.match(/<ListRow\b[^>]*\/>/gs) ?? [];
     expect(rowTags.length).toBe(3);
     expect(markup).toContain('data-hub-search-handoff');
-    /* In memory, not in the address: a query in `/search?q=` lands in the
-       browser's history (after-release ticket 10, audit L09-02). */
+    /* In memory, not in the address: a query in `/search?q=` lands in the browser's
+       history. */
     expect(markup).not.toContain('/search?q=');
     expect(markup).toContain('onclick={handOffSearch}');
   });
 
-  it('holds no Settings row and no pointer to preferences (redesign tickets 09 and 15)', () => {
-    /* A door named Transition cannot hold a row about appearance and data:
-       preferences are chrome, not part of anybody's transition (ADR-0036,
-       ADR-0076). They are reached from the gear in Today's header and the
-       rail's fifth row, which ticket 09 owns. `/settings` stopped being a
-       *host* with redesign ticket 51 (ADR-0084): modes is a plain
-       row on that screen now, not one this file's registry still owns. */
+  it('holds no Settings row and no pointer to preferences', () => {
+    /* A door named Transition cannot hold a row about appearance and data: preferences are
+       chrome, not part of anybody's transition. They are reached from the gear in Today's
+       header and the rail's fifth row, which owns. `/settings` stopped being a *host*
+       (ADR-0084): modes is a plain row on that screen now, not one this file's registry
+       still owns. */
     expect(more).not.toContain('/settings');
     expect(more).not.toContain('nav_settings');
   });
@@ -91,13 +86,11 @@ describe('what the More hub is built from', () => {
     expect(more).not.toContain('readFlagRoles(');
   });
 
-  it('answers the cycle gate before it draws the cycle row (ADR-0043)', () => {
-    /* The cycle row is a hub row again (pre-release-human 12: "cycle and
-       dilation should be appearing in care"), so the hub screen is the one
-       that asks `cycleTrackingVisible`, reads the episodes with its other
-       reads, and hands the answer to the registry, which leaves the row out
-       of the list and of search until it is true. Until the reads land the
-       answer is no. */
+  it('answers the cycle gate before it draws the cycle row', () => {
+    /* The cycle row is a hub row again, so the hub screen is the one that asks
+       `cycleTrackingVisible`, reads the episodes with its other reads, and hands the answer
+       to the registry, which leaves the row out of the list and of search until it is true.
+       Until the reads land the answer is no. */
     expect(more).toContain("from '$lib/data/cycleTracking'");
     expect(more).toContain('cycleTrackingVisible(');
     expect(more).toContain('cycleVisible: false');
@@ -105,10 +98,9 @@ describe('what the More hub is built from', () => {
   });
 
   it('issues three live reads for twenty rows, not one per row', () => {
-    /* Pin six hub reads. Last writes and upcoming items each use one
-       assembled call. The other reads provide area records, typed
-       search, the last memo write outside the archive registry
-       (ADR-0036), and regimen episodes for the cycle gate (ADR-0043).
+    /* Pin six hub reads. Last writes and upcoming items each use one assembled call. The
+       other reads provide area records, typed search, the last memo write outside the
+       archive registry, and regimen episodes for the cycle gate.
        tests/long-journal/budgets.json holds last-write cost. */
     const reads = more.match(/live(?:Query|List)\(/g) ?? [];
 
@@ -122,14 +114,12 @@ describe('what the More hub is built from', () => {
   });
 
   it('leaves every word of every row to the vocabulary module', () => {
-    /* A title or a line written inline here is one `hubLabels.ts`'s full
-       `Record` over the row keys cannot see missing. So every `m.` call left
-       in the screen is named, and none of them is a row's own words: the
-       hidden screen title, the search box's own label, the strings the
-       results share with the search screen, which reads the same registry,
-       and the row that hands a record query over to
-       that screen (audit item 11). `m.list_more` went with the paging
-       button the same item deleted. */
+    /* A title or a line written inline here is one `hubLabels.ts`'s full `Record` over the
+       row keys cannot see missing. So every `m.` call left in the screen is named, and none
+       of them is a row's own words: the hidden screen title, the search box's own label,
+       the strings the results share with the search screen, which reads the same registry,
+       and the row that hands a record query over to that screen. `m.list_more` went with
+       the paging button the same item deleted. */
     const paraglide = [...new Set(more.match(/\bm\.[a-z_]+\(/g) ?? [])];
 
     expect(paraglide.sort()).toEqual([
@@ -147,10 +137,9 @@ describe('what the More hub is built from', () => {
 });
 
 describe('what the door and its groups are called', () => {
-  /* Ticket 08 renamed the tab to Transition; redesign ticket 15 renames the
-     group inside it, because "Transition inside Transition" says nothing.
-     Both catalogues, since a rename in one language only is how the two
-     screens stop agreeing. */
+  /* Renamed the tab to Transition; renames the group inside it, because "Transition inside
+     Transition" says nothing. Both catalogues, since a rename in one language only is how
+     the two screens stop agreeing. */
   const catalogue = (locale: string) => JSON.parse(read(`messages/${locale}.json`)) as Record<string, string>;
 
   it('calls the group Transition steps in both languages', () => {
@@ -165,7 +154,7 @@ describe('what the door and its groups are called', () => {
     expect(catalogue('pl').hub_screen_title).toBe('Zdrowie, ciało, kroki tranzycji, wsparcie i media');
     expect(HUB_GROUP_KEYS).toHaveLength(5);
 
-    // Body was folded in audit item 10 and came back in pre-release-human 12.
+    // Body was folded and came back.
     expect(catalogue('en').hub_group_body).toBe('Body');
     expect(catalogue('pl').hub_group_body).toBe('Ciało');
   });
@@ -214,13 +203,12 @@ describe('every row the hub carries', () => {
   });
 
   it('links to cycle events and dilation from the screens that sit next to them', () => {
-    /* Alicja, 2026-11-05: both are modules on the hub in Health, and a link
-       to each stays where it was useful - dilation on the surgery list, a
-       link to the cycle log on Meds. So "a hosted row is reachable from one
-       place" does not hold for these two, on purpose. Both go through
-       HostedRows, which keeps the hidden-area rule and the ended-day line;
-       Meds' link is gated on `cycleTrackingVisible`, and dilation's by
-       `dilationGated` inside the component. */
+    /* Both are modules on the hub in Health, and a link to each stays where it was useful -
+       dilation on the surgery list, a link to the cycle log on Meds. So "a hosted row is
+       reachable from one place" does not hold for these two, on purpose. Both go through
+       HostedRows, which keeps the hidden-area rule and the ended-day line; Meds' link is
+       gated on `cycleTrackingVisible`, and dilation's by `dilationGated` inside the
+       component. */
     const hosted = read('src/lib/components/HostedRows.svelte');
     expect(hosted).toContain('dilationGated(');
 
@@ -232,10 +220,9 @@ describe('every row the hub carries', () => {
     expect(care).toContain(`keys={cycleShown ? ['cycle-events'] : []}`);
     expect(care).toContain('cycleTrackingVisible(');
     expect(care).not.toContain('href="/health/cycle-events"');
-    /* The three events under Meds' link are static: the cycle screen has no
-       address for one event, so they cannot be links, and an icon disc on a
-       row is what marks it as something to press (pre-release-human 12
-       audit). They carry the words only. */
+    /* The three events under Meds' link are static: the cycle screen has no address for one
+       event, so they cannot be links, and an icon disc on a row is what marks it as
+       something to press. They carry the words only. */
     const cycleRow = /<div class="kit-row is-static" data-cycle-event=\{event\.id\}>[\s\S]*?<\/div>/.exec(care)?.[0] ?? '';
     expect(cycleRow).toContain('cycleEventKindName(event.kind)');
     expect(cycleRow).not.toContain('kit-row-ico');
@@ -247,13 +234,12 @@ describe('every row the hub carries', () => {
   });
 
   it('draws the last three cycle events inside the Cycle link card, held with it', () => {
-    /* Alicja, 2026-11-05: the preview that left Changes comes back on Meds,
-       with the link. It is an `after` snippet of the same HostedRows card, so
-       it sits in the link's own ReadReserve and fades in with it, and the
-       card's `ready` waits for the events' read when the gate is open. A
-       preview drawn beside the card, or released before its read, would
-       arrive after the link. The link row heads the card and the events
-       follow it (prh12): the card is named before what is in it. */
+    /* The preview that left Changes comes back on Meds, with the link. It is an `after`
+       snippet of the same HostedRows card, so it sits in the link's own ReadReserve and
+       fades in with it, and the card's `ready` waits for the events' read when the gate is
+       open. A preview drawn beside the card, or released before its read, would arrive
+       after the link. The link row heads the card and the events follow it (prh12): the
+       card is named before what is in it. */
     const hosted = read('src/lib/components/HostedRows.svelte');
     const rowsAt = hosted.indexOf('{@render hostedRows()}', hosted.indexOf('<ListCard>'));
     const afterAt = hosted.indexOf('{@render after?.()}');
@@ -288,11 +274,10 @@ describe('every row the hub carries', () => {
 });
 
 describe("a module's own screen draws the hub's mark for it", () => {
-  /* pre-release-human 12 redrew the hub's marks, and a screen that still
-     drew the row's old one for its own records said the module was
-     something else once you were inside it: hair removal's sessions were
-     still the shuffle arrows under a razor row. Each line is a file, the
-     hub row whose records it draws, and the mark that row drew before. */
+  /* Redrew the hub's marks, and a screen that still drew the row's old one for its own
+     records said the module was something else once you were inside it: hair removal's
+     sessions were still the shuffle arrows under a razor row. Each line is a file, the hub
+     row whose records it draws, and the mark that row drew before. */
   const SCREENS: [string, string, string][] = [
     ['src/routes/body/hair-removal/+page.svelte', 'hair-removal', 'shuffle'],
     ['src/routes/body/wear/+page.svelte', 'wear', 'clock'],
@@ -342,7 +327,7 @@ describe("a module's own screen draws the hub's mark for it", () => {
   });
 });
 
-describe('a mark names one thing (pre-release-human 12 icon audit)', () => {
+describe('a mark names one thing', () => {
   /* The audit after the hub redo found marks that still meant what they
      meant before it: a dose drawn as a clock, a milestone as the old flag,
      surgery's phases as three borrowed marks, and Settings rows wearing

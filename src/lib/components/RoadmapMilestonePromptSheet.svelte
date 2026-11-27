@@ -57,8 +57,8 @@
     if (photo) pickedPhoto = photo;
   }
 
-  /* One write per tap, and a rejected one says so here, with the name,
-     date and photo left in the sheet (after-release 06, L05-06). */
+  /* One write per tap, and a rejected one says so here, with the name, date and photo left
+     in the sheet. */
   const confirming = writer();
   async function handleConfirm() {
     const trimmed = name.trim() || m.ms_default_name();

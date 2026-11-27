@@ -15,7 +15,7 @@ import { bool, entryPresentationFilter } from './support';
 
 export interface DayAverage {
   day: number;
-  /** The day's entries averaged, in native units (CONTEXT: Day average). */
+  /** The day's entries averaged, in native units. */
   value: number;
   /** How many entries went into the average, so a screen can say "avg of 2". */
   count: number;
@@ -30,17 +30,15 @@ interface WeeklyWearHours {
 export interface DaySpread {
   day: number;
   /** The lowest and the highest value the day's entries carried, in native
-      units (CONTEXT: Spread). Equal when the day only ever said one thing,
+      units. Equal when the day only ever said one thing,
       which is a day with no ground covered rather than a missing answer -
       whether that draws a mark is the screen's rule, not this read's. */
   low: number;
   high: number;
-  /** The day's earliest and latest reading, in the order they were logged.
-      Not the same pair as `low` and `high` past two readings, and not the
-      same order even at two: a day that ran 5 then 2 has `low` 2 and
-      `first` 5. The calendar's split draws these (Alicja, 2026-09-02:
-      chronological, earliest half on the left) and every word the app
-      writes about a spread draws the two above. */
+  /** The day's earliest and latest reading, in the order they were logged. Not the same
+      pair as `low` and `high` past two readings, and not the same order even at two: a day
+      that ran 5 then 2 has `low` 2 and `first` 5. The calendar's split draws these and
+      every word the app writes about a spread draws the two above. */
   first: number;
   last: number;
   /** How many entries the ends were taken from, the same count
@@ -111,19 +109,17 @@ export interface StatsArea {
       dimension since hidden, an archive from a build that knew a key this
       one does not - yields no points rather than an error. */
   dayAverages(metric: string, fromEpochDay: number, toEpochDay: number): Promise<DayAverage[]>;
-  /** The same days `dayAverages` answers for, reporting each one's lowest
-      and highest value instead of its middle (phase 6 unprompted ticket 11,
-      CONTEXT: Spread). One row per day that carried the metric, oldest
-      first, both ends of the range inclusive.
+  /** The same days `dayAverages` answers for, reporting each one's lowest and highest value
+      instead of its middle. One row per day that carried the metric, oldest first, both
+      ends of the range inclusive.
 
-      A separate read rather than two more fields on `DayAverage`: a day's
-      middle is what the week strip, the charts, the correlation cards and
-      every wrapped ask for, and none of them has anywhere to put an end.
-      One query for the range either way - what the calendar could not
-      afford is a query per day.
+      A separate read rather than two more fields on `DayAverage`: a day's middle is what
+      the week strip, the charts, the correlation cards and every wrapped ask for, and none
+      of them has anywhere to put an end. One query for the range either way - what the
+      calendar could not afford is a query per day.
 
-      Descriptive only. Which end came first, and which entry the day
-      "really" was, are questions this deliberately cannot answer. */
+      Descriptive only. Which end came first, and which entry the day "really" was, are
+      questions this deliberately cannot answer. */
   daySpread(metric: string, fromEpochDay: number, toEpochDay: number): Promise<DaySpread[]>;
   /**
    * Return each entry in the inclusive range that has both scale values,
@@ -140,10 +136,9 @@ export interface StatsArea {
     fromEpochDay: number,
     toEpochDay: number
   ): Promise<ConstellationReading[]>;
-  /** Every pair of scales some entry in the range carries together, with
-      how many entries do - the plane's choices, so it never offers a pair
-      it would draw empty (bug session 18, item 41). Each pair once, its two
-      keys in sort order. */
+  /** Every pair of scales some entry in the range carries together, with how many entries
+      do - the plane's choices, so it never offers a pair it would draw empty. Each pair
+      once, its two keys in sort order. */
   constellationPairs(fromEpochDay: number, toEpochDay: number): Promise<{ a: string; b: string; count: number }[]>;
   /** How many entries each day in the range holds, oldest first, days with
       none left out. Not the same question as `dayAverages`: the calendar
@@ -155,7 +150,7 @@ export interface StatsArea {
       metric's average across the entries that carry them and across the
       entries that do not, sorted by the size of the difference. Hidden tags
       are left out: the list is something to act on, and a hidden tag is out
-      of every place a user picks things (CONTEXT: Hidden). */
+      of every place a user picks things. */
   tagInsights(metric: string, fromEpochDay: number, toEpochDay: number): Promise<TagInsight[]>;
   recap(fromEpochDay: number, toEpochDay: number): Promise<Recap>;
   /**
@@ -174,9 +169,8 @@ export interface StatsArea {
     toEpochDay: number,
     presentationId?: string | null
   ): Promise<DayAverage[]>;
-  /** Multi-track somatic breakdown for an anatomical zone.
-      `presentationId` is ticket 18's same filter, forwarded to
-      getRegionSomaticBreakdown. */
+  /** Multi-track somatic breakdown for an anatomical zone. `presentationId` is same filter,
+      forwarded to getRegionSomaticBreakdown. */
   bodyRegionBreakdown(region: string, presentationId?: string | null): Promise<RegionSomaticBreakdown>;
   /** Query the inclusive range once for all body regions and apply bodyMap.ts's
       regionReading rule. Omit regions without readings so the figure can separate
@@ -191,11 +185,10 @@ export interface StatsArea {
       range. Sessions crossing a week or range boundary contribute only their
       overlap. A running session ends at `nowMs` for this read. */
   weeklyWearHours(fromEpochDay: number, toEpochDay: number, nowMs: number): Promise<WeeklyWearHours[]>;
-  /** Whether `epochDay` clears on-this-day's good-day bar (CONTEXT: Good
-      day, phase 4 features ticket 03): its day average mood at or above
-      the mood scale's midpoint, a euphoria capture logged that day, or
-      either. Never both conditions read as a caveat - this is a plain
-      yes/no, the way the rule itself is absolute. */
+  /** Whether `epochDay` clears on-this-day's good-day bar: its day average mood at or above
+      the mood scale's midpoint, a euphoria capture logged that day, or either. Never both
+      conditions read as a caveat - this is a plain yes/no, the way the rule itself is
+      absolute. */
   isGoodDay(epochDay: number): Promise<boolean>;
   /** Every distinct day in the range on which at least one untrashed entry
       carried `presentationId` (ADR-0048), oldest first. The presentation
@@ -221,19 +214,17 @@ export interface StatsArea {
   ): Promise<{ id: string; count: number }[]>;
 }
 
-/** The mood scale is 1 to 5 (CONTEXT: Mood); 3 is its midpoint and the bar
-    a day's average mood has to clear for on-this-day (CONTEXT: Good day). */
+/** The mood scale is 1 to 5; 3 is its midpoint and the bar
+    a day's average mood has to clear for on-this-day. */
 const GOOD_DAY_MOOD_FLOOR = 3;
 
-/* The days between two epoch days, both inclusive, that clear the good-day
-   bar (CONTEXT: Good day), as a subquery of `epoch_day` plus its
-   parameters. Three arms, any one enough: the day's average mood at or above
-   the midpoint, a euphoria capture logged that day, or a body region at or
-   above the euphoria floor on any one entry. One fragment for both readers
-   of the rule - `isGoodDay` asks it about a single day and `tagShare` about
-   a span - so the two cannot drift. COALESCE(key, uuid) is a tag's domain
-   id (ADR-0002); EUPHORIA_TAG_KEYS is all three built-in capture tags
-   (ticket 02/09, phase 5 ticket 32, CONTEXT: Euphoria capture). */
+/* The days between two epoch days, both inclusive, that clear the good-day bar, as a
+   subquery of `epoch_day` plus its parameters. Three arms, any one enough: the day's
+   average mood at or above the midpoint, a euphoria capture logged that day, or a body
+   region at or above the euphoria floor on any one entry. One fragment for both readers of
+   the rule - `isGoodDay` asks it about a single day and `tagShare` about a span - so the
+   two cannot drift. COALESCE(key, uuid) is a tag's domain id (ADR-0002); EUPHORIA_TAG_KEYS
+   is all three built-in capture tags. */
 function goodDaysBetween(fromEpochDay: number, toEpochDay: number): { sql: string; params: (string | number)[] } {
   const placeholders = EUPHORIA_TAG_KEYS.map(() => '?').join(', ');
   return {
@@ -631,7 +622,7 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
 
       /* Hidden tags are counted here, unlike in the insights: a recap reads
          back what the month held, and hiding a tag removes it from the
-         places a user picks things, not from the past (CONTEXT: Hidden). */
+         places a user picks things, not from the past. */
       const topTagRowsRead = driver.query<{ id: string; entries: number }>(
         `SELECT COALESCE(t.key, t.uuid) AS id, COUNT(*) AS entries
          FROM entry e
@@ -676,20 +667,18 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
         range
       );
 
-      /* One photo from each quarter of the range's photos, so a wrapped
-         shows the period's arc instead of its opening days. NTILE does the
-         spreading in SQL and the row number inside each bucket picks that
-         bucket's earliest photo, which keeps the answer bounded at four
-         rows - a decade fixture holds hundreds of photos, and reading them
+      /* One photo from each quarter of the range's photos, so a wrapped shows the period's
+         arc instead of its opening days. NTILE does the spreading in SQL and the row number
+         inside each bucket picks that bucket's earliest photo, which keeps the answer
+         bounded at four rows - a decade fixture holds hundreds of photos, and reading them
          all back to drop all but four would be the work this avoids.
 
-         Two left joins and a COALESCE for the same reason photos.inJournal
-         has them: exactly one owner column is set (the photo table's
-         CHECK), so a milestone's photo dates itself off the milestone and an
-         entry's off the entry, in one query rather than two. A day the
-         person moved the photo to wins over both, as it does in the library
-         (photoLibrary.ts), so a moved photo is a highlight of the period it
-         was moved into (after-release 27, audit L01-08). */
+         Two left joins and a COALESCE for the same reason photos.inJournal has them:
+         exactly one owner column is set (the photo table's CHECK), so a milestone's photo
+         dates itself off the milestone and an entry's off the entry, in one query rather
+         than two. A day the person moved the photo to wins over both, as it does in the
+         library (photoLibrary.ts), so a moved photo is a highlight of the period it was
+         moved into. */
       const photoRowsRead = driver.query<{ uuid: string; file_path: string; epoch_day: number; starred: number }>(
         `WITH dated AS (
            SELECT p.uuid AS uuid, p.file_path AS file_path, p.starred AS starred,

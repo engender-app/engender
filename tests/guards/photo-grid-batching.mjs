@@ -1,15 +1,12 @@
-/* The photo grid stays bounded at scale (phase 12 final-audit ticket 13,
-   audit finding P3).
+/* The photo grid stays bounded at scale.
 
-   photo-browse-compare.mjs proves browsing, selection and the wipe on a
-   handful of photos - everything that fixture seeds fits in the grid's
-   first batch, so it cannot see whether the grid ever stopped rendering
-   one node per photo. This is the other half: a library grown past what a
-   decade of real use could ever hold, checked for exactly one thing - that
-   the DOM never grew past a batch or two of it.
+   Photo-browse-compare.mjs proves browsing, selection and the wipe on a handful of photos -
+   everything that fixture seeds fits in the grid's first batch, so it cannot see whether
+   the grid ever stopped rendering one node per photo. This is the other half: a library
+   grown past what a decade of real use could ever hold, checked for exactly one thing -
+   that the DOM never grew past a batch or two of it.
 
-   Run against the dev server (no build needed):
-     node tests/guards/photo-grid-batching.mjs */
+   Run against the dev server (no build needed): node tests/guards/photo-grid-batching.mjs */
 import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { createServer } from 'vite';

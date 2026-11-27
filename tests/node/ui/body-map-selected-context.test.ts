@@ -1,9 +1,7 @@
-/* The body map names what it has selected (phase 11 pre-production UI/UX
-   ticket 30). The behaviour is proved in a real browser by
-   tests/guards/body-map-selected-context.mjs - a tap on a panel, four data states
-   and a jump that comes back. What is here is the part a browser cannot
-   see: that both catalogues carry the words, and that the jump and its
-   landing still address each other. */
+/* The body map names what it has selected. The behaviour is proved in a real browser by
+   tests/guards/body-map-selected-context.mjs - a tap on a panel, four data states and a
+   jump that comes back. What is here is the part a browser cannot see: that both catalogues
+   carry the words, and that the jump and its landing still address each other. */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

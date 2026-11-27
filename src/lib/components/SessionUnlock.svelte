@@ -105,11 +105,10 @@
     return 'ok';
   }
 
-  /* Back to idle after a refusal, never after the way in: the gate leaves
-     inside the app's opening transition, and turning the button back to
-     its idle label and emptying the field first painted both for two
-     frames before the gate went (after-release ticket 10, sampled per
-     frame). The field and label leave with the gate instead. */
+  /* Back to idle after a refusal, never after the way in: the gate leaves inside the app's
+     opening transition, and turning the button back to its idle label and emptying the
+     field first painted both for two frames before the gate went. The field and label leave
+     with the gate instead. */
   const settle = () => {
     if (!ui.appOpening) busy = false;
   };
@@ -307,11 +306,10 @@
     <Icon name="alert" size={20} />
     <div class="notice-body">
       <span class="notice-title">{m.pp_forgot_no_recovery()}</span>
-      <!-- The note follows the title's noun: a sheet headed "Forgotten your
-           PIN?" cannot open with a sentence about a passphrase (UI/UX
-           ticket 09). Biometric and device-bound keep their own notes
-           because their secret is a device that will not answer, not
-           something forgotten. -->
+      <!-- The note follows the title's noun: a sheet headed "Forgotten your PIN?" cannot
+           open with a sentence about a passphrase. Biometric and device-bound keep their
+           own notes because their secret is a device that will not answer, not something
+           forgotten. -->
       {mode === 'pin'
         ? m.pin_forgot_key_note()
         : mode === 'biometric'

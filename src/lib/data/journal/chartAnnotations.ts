@@ -44,13 +44,12 @@ interface Areas {
   eras: ErasArea;
 }
 
-/** A record's own words as a tick's line, or nothing where there are none
-    (phase 11 UI/UX ticket 49).
+/** A record's own words as a tick's line, or nothing where there are none.
 
-    One place decides what counts as written: a description nobody filled in
-    arrives as an empty string, an appointment's note as null, and a
-    procedure's notes as whatever survived a person clearing the field. The
-    kit draws no empty line because none reaches it. */
+    One place decides what counts as written: a description nobody filled in arrives as an
+    empty string, an appointment's note as null, and a procedure's notes as whatever
+    survived a person clearing the field. The kit draws no empty line because none reaches
+    it. */
 function writtenNote(text: string | null | undefined): ChartAnnotationDetail | undefined {
   const written = text?.trim();
   return written ? { type: 'note', text: written } : undefined;
@@ -87,7 +86,7 @@ export function makeChartAnnotationsArea(areas: Areas): ChartAnnotationsArea {
           name: episode.drug,
           startEpochDay: episode.startEpochDay,
           endEpochDay: episode.endEpochDay,
-          // Ticket 43: null on every episode still open, and on every one
+          // Null on every episode still open, and on every one
           // ended before the ticket shipped.
           endReason: episode.endReason
         })),

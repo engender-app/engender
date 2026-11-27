@@ -86,11 +86,10 @@
   let element = $state<HTMLElement | null>(null);
   let near = $state(false);
 
-  /* A tile reads nothing until it comes near the screen, and lets its
-     bytes go once it is well past (phase 5 audit ticket 03, finding 04).
-     A grid of hundreds of photos otherwise reads and decodes every one of
-     them on mount and holds a blob URL and a decoded thumbnail for each,
-     so the screen costs what the journal holds instead of what is on it. */
+  /* A tile reads nothing until it comes near the screen, and lets its bytes go once it is
+     well past. A grid of hundreds of photos otherwise reads and decodes every one of them
+     on mount and holds a blob URL and a decoded thumbnail for each, so the screen costs
+     what the journal holds instead of what is on it. */
   $effect(() => {
     const target = element;
     if (!target) return;
@@ -142,11 +141,10 @@
     };
   });
 
-  /* A stable colour per photo, so the placeholder does not change shade
-     between renders. Derived from the id rather than stored - it stands in
-     for pixels nobody has loaded yet. Drafts have no id and all land on
-     the same shade, which is what the editor showed before this and is
-     only visible until ticket 08 gives them real files. */
+  /* A stable colour per photo, so the placeholder does not change shade between renders.
+     Derived from the id rather than stored - it stands in for pixels nobody has loaded yet.
+     Drafts have no id and all land on the same shade, which is what the editor showed
+     before this and is only visible gives them real files. */
   const hue = $derived(
     [...(photo.id ?? '')].reduce((h, character) => (h * 31 + character.charCodeAt(0)) % 360, 7)
   );

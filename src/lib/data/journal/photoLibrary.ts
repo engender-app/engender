@@ -1,13 +1,12 @@
-/* Read visible photos and video notes from media_file across all
-   file-owning tables (ADR-0034). Sort by day, source, owner order and
-   row ID. Entry photos can override the owner's day. Dated photos
-   carry their own day, and other sources inherit the parent day.
-   Trashed entries hide their images and recordings.
+/* Read visible photos and video notes from media_file across all file-owning tables. Sort
+   by day, source, owner order and row ID. Entry photos can override the owner's day. Dated
+   photos carry their own day, and other sources inherit the parent day. Trashed entries
+   hide their images and recordings.
 
-   Keep writes with the owning area, which enforces file and row
-   ordering. photos.inJournal() still returns only photo rows for
-   callers that use photos.remove() or compare a count to that table.
-   Progress images and other sources require their own owner APIs. */
+   Keep writes with the owning area, which enforces file and row ordering.
+   photos.inJournal() still returns only photo rows for callers that use photos.remove() or
+   compare a count to that table. Progress images and other sources require their own owner
+   APIs. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { LibraryPhoto, PhotoSource } from '../photos/library';
@@ -17,7 +16,7 @@ export interface PhotoLibraryArea {
   /** Every photograph and video note in the journal, oldest first. */
   inJournal(): Promise<LibraryPhoto[]>;
   /** The starred ones, oldest first - the starred shelf's photo half
-      (CONTEXT: "Starred"), in the library's shape so the shelf can say
+, in the library's shape so the shelf can say
       where each one came from.
 
       The `photo` table alone, because `starred` is a column the `photo`

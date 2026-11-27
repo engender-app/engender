@@ -167,10 +167,9 @@ CASES['margin-first'] = CASES.none;
    234px on consecutive frames, which the sweep's own "still either side"
    rule reads as not a teleport, and this probe passed main with it. */
 const TRAVEL_FRAMES = 4;
-/* And a step of any visible size with nothing moving either side is a step,
-   however small: the 20px a collapsing notice's margin used to land short
-   is under the teleport floor and was exactly the defect (redesign ticket
-   25, frames 32 to 33). */
+/* And a step of any visible size with nothing moving either side is a step, however small:
+   the 20px a collapsing notice's margin used to land short is under the teleport floor and
+   was exactly the defect. */
 const STEP_PX = 4;
 function teleports(series, label, samples) {
   const out = [];

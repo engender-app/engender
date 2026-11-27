@@ -59,15 +59,12 @@ export interface VoiceMetric extends VoiceMetricShape {
 
 export const VOICE_METRICS: readonly VoiceMetric[] = ENTRIES;
 
-/** Where the explanations live: a sheet over the voice screen rather than
-    a screen of its own since ticket 17. */
+/** Where the explanations live: a sheet over the voice screen rather than a screen of its
+    own. */
 const VOICE_METRICS_ROUTE = '/voice';
 
-/** Where one figure's own explanation lives. Here rather than written out
-    at each call site so that a link and the section it opens cannot
-    drift: the sheet reads the same key out of the query
-    (`voice/+page.svelte`) that names which section to land on
-    (ticket 27's own rule that renaming and explaining are one edit
-    applies to the query key too). A query rather than the `#anchor`
-    ticket 27 shipped; `?metric=` opens the section on a cold load. */
+/** Where one figure's own explanation lives. Here rather than written out at each call site
+    so that a link and the section it opens cannot drift: the sheet reads the same key out
+    of the query (`voice/+page.svelte`) that names which section to land on. A query rather
+    than the `#anchor` shipped; `?metric=` opens the section on a cold load. */
 export const metricHref = (key: VoiceMetricKey): string => `${VOICE_METRICS_ROUTE}?metric=${key}`;

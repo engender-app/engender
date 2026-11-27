@@ -18,11 +18,10 @@ type Sharing = {
   share?: (data: { files: File[]; title?: string }) => Promise<void>;
 };
 
-/** `alicja-journal-2026-08-11.gnd`, or `journal-...` when the journal
-    has no display name. Folded and stripped rather than percent-escaped: it
-    passes through a share sheet, a file picker, and whatever filesystem is
-    on the other side. The extension is the caller's, because the plain
-    export writes the same name with `.csv` and `.json` (F22). */
+/** `journal-name-journal-2026-08-11.gnd`, or `journal-...` when the journal has no display
+    name. Folded and stripped rather than percent-escaped: it passes through a share sheet,
+    a file picker, and whatever filesystem is on the other side. The extension is the
+    caller's, because the plain export writes the same name with `.csv` and `.json` (F22). */
 export function exportFileName(name: string, extension: string, epochDay: number = todayEpochDay(), disguised = false): string {
   if (disguised) return `backup-${dateInputValueFromEpochDay(epochDay)}${extension}`;
   const slug = nameSlug(name);
@@ -41,9 +40,9 @@ export async function deliverFile(file: {
   return deliverBlob(file.fileName, new Blob(parts, { type: file.type }));
 }
 
-/** The same hand-off for something already whole in memory: ticket 27's
-    collage and timelapse come off a canvas as a Blob, and this is what keeps
-    them on the one share path rather than growing a second one. */
+/** The same hand-off for something already whole in memory: collage and timelapse come off
+    a canvas as a Blob, and this is what keeps them on the one share path rather than
+    growing a second one. */
 export async function deliverBlob(fileName: string, blob: Blob): Promise<Delivery> {
   if (isAndroid()) {
     return (await import('./android-file-delivery')).deliverAndroidFile({

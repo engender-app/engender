@@ -1,13 +1,11 @@
-/* "I forgot my PIN": the one way back into the app, and it costs the whole
-   journal (ADR-0014). There is no data-preserving recovery to offer -
-   the PIN only derives the key that wraps the data key (ADR-0041), and a
-   forgotten one cannot be brought back - so the honest escape hatch
-   is this one, clearly labeled, with the loss stated before it happens.
+/* "I forgot my PIN": the one way back into the app, and it costs the whole journal. There
+   is no data-preserving recovery to offer - the PIN only derives the key that wraps the
+   data key (ADR-0041), and a forgotten one cannot be brought back - so the honest escape
+   hatch is this one, clearly labeled, with the loss stated before it happens.
 
-   It wipes what this installation holds, not what an archive holds: an
-   export made earlier still restores everything, and the reset screen says
-   so. Everything is injected so the destructive part can be tested against
-   fakes rather than against a real OPFS. */
+   It wipes what this installation holds, not what an archive holds: an export made earlier
+   still restores everything, and the reset screen says so. Everything is injected so the
+   destructive part can be tested against fakes rather than against a real OPFS. */
 
 import { KEYSTORE_FILE } from './keystore-file';
 import { DEVICE_BOUND_FILE } from './journal-initialization';
@@ -15,8 +13,7 @@ import { PENDING_RECOVERY_KEY_FILE, RECOVERY_KEY_FILE } from './recovery-key-fil
 import { BOOT_MIRROR_KEYS } from './prefs/boot-cache.ts';
 import type { ListableDirectory } from './photos/opfs-file-store.ts';
 
-/* LocalDataTargets stays exported only for its own test (AU-09 test-only
-   review). */
+/* LocalDataTargets stays exported only for its own test. */
 export interface LocalDataTargets {
   /** Lets go of the database file; OPFS will not delete a file whose sync
       access handle is still open. */
@@ -64,11 +61,10 @@ export function clearBrowserMirrors(storage: Storage): void {
   for (const key of doomed) storage.removeItem(key);
 }
 
-/** What Android keeps in app-private storage for the journal, taken in the
-    order that leaves a retryable reset if any step fails: the database, then
-    the photo files sealed under the same key (ux-carpet 214; until then they
-    outlived every start-over), and the key last. A key erased first would
-    leave ciphertext nothing can open or clean up (ticket 13, ux-carpet 210). */
+/** What Android keeps in app-private storage for the journal, taken in the order that
+    leaves a retryable reset if any step fails: the database, then the photo files sealed
+    under the same key, and the key last. A key erased first would leave ciphertext nothing
+    can open or clean up. */
 export async function wipeAndroidJournalFiles(steps: {
   deleteDatabase: () => Promise<void>;
   deletePhotos: () => Promise<void>;

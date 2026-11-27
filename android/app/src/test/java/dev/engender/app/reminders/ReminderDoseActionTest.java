@@ -14,8 +14,8 @@ import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicReference;
 
-/** Functional audit ticket 20: Taken and Skip on a medication reminder's
-    notification, kept natively until the journal is open to take them. */
+/** Taken and Skip on a medication reminder's notification, kept natively until the journal
+    is open to take them. */
 public class ReminderDoseActionTest {
 
     private static final ZoneId ZONE = ZoneId.of("Europe/Warsaw");

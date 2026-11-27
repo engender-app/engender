@@ -13,7 +13,7 @@ import {
 
 const bytesFor = (bitsPerSecond: number, seconds: number) => Math.round((bitsPerSecond * seconds) / 8);
 
-describe('the caps ticket 22 fixes', () => {
+describe('video note limits', () => {
   test('are 30 seconds and 1080p, with no setting to read them from', () => {
     expect(VIDEO_MAX_DURATION_MS).toBe(30_000);
     expect(VIDEO_MAX_SHORT_EDGE).toBe(1080);

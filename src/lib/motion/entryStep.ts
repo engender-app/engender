@@ -50,10 +50,9 @@ export function footContinue(node: Element, params: { instant?: boolean } = {}):
   const row = !!parent && getComputedStyle(parent).flexDirection === 'row';
   const size = row ? box.width : box.height;
   const gap = row && parent ? parseFloat(getComputedStyle(parent).columnGap) || 0 : 0;
-  /* The gap is on the side the finish control is on: after the way on where
-     it leads the row, before it where it follows (a new entry's steps since
-     bug session 18, item 84). Read off the sibling before it, because the
-     foot's live region comes after the way on and is no control. */
+  /* The gap is on the side the finish control is on: after the way on where it leads the
+     row, before it where it follows. Read off the sibling before it, because the foot's
+     live region comes after the way on and is no control. */
   const side = node.previousElementSibling ? 'start' : 'end';
   return {
     duration: motionDuration('--dur-med'),

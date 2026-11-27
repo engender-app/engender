@@ -1,6 +1,5 @@
-/* Functional audit ticket 32: version 104 gives every milestone a
-   "celebrate" flag, on for the milestones a journal already holds, and
-   drops the felt-sense readings that hung off a milestone. A cut removes
+/* Version 104 gives every milestone a "celebrate" flag, on for the milestones a journal
+   already holds, and drops the felt-sense readings that hung off a milestone. A cut removes
    rather than converts, so a tryout's readings are all that is left. */
 
 import { test } from 'vitest';

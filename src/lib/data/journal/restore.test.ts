@@ -207,7 +207,7 @@ async function exported(journal: Journal): Promise<RestoreContents> {
 const rowCount = async (db: SqliteDriver, sql: string): Promise<number> =>
   (await db.query<{ n: number }>(`SELECT COUNT(*) AS n FROM ${sql}`))[0].n;
 
-// Trash travels since functional audit ticket 48, and its margin notes with it.
+// Trash travels, and its margin notes with it.
 test('archives carry margin notes owned by trashed entries, with the entries', async () => {
   const { driver, journal } = await everySectionDevice();
   assert.equal(await rowCount(driver, 'entry WHERE trashed_at IS NOT NULL'), 1);
@@ -229,7 +229,7 @@ test.each([
   const contents = await exported(source.journal);
   const trash = (await source.driver.query<{ id: number; uuid: string }>('SELECT id, uuid FROM entry WHERE trashed_at IS NOT NULL'))[0];
   const margin = (await source.journal.marginNotes.forEntries([trash.id])).get(trash.id)![0];
-  // An archive written before ticket 48 left the trashed entry out.
+  // An archive written left the trashed entry out.
   contents.journal.entries = contents.journal.entries.filter((row) => row.uuid !== trash.uuid);
   contents.journal.marginNotes = contents.journal.marginNotes.filter((row) => row.entryId !== trash.uuid);
   contents.journal.marginNotes.push({
@@ -355,12 +355,10 @@ test('a target own roadmap tick and custom goal survive a merge that has never h
   );
 });
 
-/* Phase 8 features ticket 69: a custom goal's text stopped being write-once
-   and its row stopped being permanent, and `roadmapGoals` carries both
-   columns as they stand rather than a history of them. What a replace owes
-   is that the journal on the other side holds exactly what this one does -
-   the new wording and not the old one, and nothing at all for the goal that
-   was deleted. */
+/* A custom goal's text stopped being write-once and its row stopped being permanent, and
+   `roadmapGoals` carries both columns as they stand rather than a history of them. What a
+   replace owes is that the journal on the other side holds exactly what this one does - the
+   new wording and not the old one, and nothing at all for the goal that was deleted. */
 test('a reworded custom goal travels as it now reads, and a deleted one does not travel at all', async () => {
   const source = await device();
   const kept = await source.journal.roadmap.addCustomGoal('Ask about remote hearings');
@@ -379,9 +377,8 @@ test('a reworded custom goal travels as it now reads, and a deleted one does not
   ]);
 });
 
-/* Functional audit ticket 34, round two: the person's categories travel
-   with the goals in them, and a merge keeps a category this device made
-   that the archive has never heard of. */
+/* The person's categories travel with the goals in them, and a merge keeps a category this
+   device made that the archive has never heard of. */
 test("a category travels with its goals, and a merge keeps this device's own", async () => {
   const source = await device();
   const category = await source.journal.roadmap.addCategory('Coming out');
@@ -484,7 +481,7 @@ test('a restored dose resolves its episode from its own timestamp, having carrie
   // A corrective episode added on the importing device moves the attribution
   // with no stored link to have got stale in transit. Its own end (day
   // before 19500, matching what the original single-episode timeline
-  // implied) is set explicitly, since ticket 38 no longer derives one.
+  // implied) is set explicitly no longer derives one.
   const originalEpisode = episodes.find((e) => e.id === source.episode)!;
   await target.journal.regimen.upsertEpisode({
     id: originalEpisode.id,
@@ -609,10 +606,9 @@ test('replace keeps built-in rows by key rather than deleting them, and never du
   const groups = await target.journal.tags.getTagGroups();
   assert.equal(groups.filter((g) => g.key === 'activities').length, 1);
   assert.equal(groups.flatMap((g) => g.tags).filter((t) => t.id === 'e-happy').length, 1);
-  /* No built-in preset is asserted here any more: nothing seeds one since
-     ticket 35 left them legacy-only, so neither journal has one to keep. The
-     custom preset still has to survive, which is the uuid half of this
-     test's claim. */
+  /* No built-in preset is asserted here any more: nothing seeds one left them legacy-only,
+     so neither journal has one to keep. The custom preset still has to survive, which is
+     the uuid half of this test's claim. */
   const presets = await target.journal.dimensions.getPresets();
   assert.deepEqual(presets.find((p) => p.id === source.preset.id)?.dims, [source.voice.key, 'femininity']);
 
@@ -675,7 +671,7 @@ test('replace applies the state the archive put on built-in rows; merge takes th
   assert.equal(mergedActivities.tags.find((t) => t.id === 'a-therapy')?.label, 'my own wording', "the target's rename is the newer");
 });
 
-test('a renamed, hidden custom scale travels as it now reads, by replace and by merge (FA 41)', async () => {
+test('a renamed, hidden custom scale travels as it now reads, by replace and by merge', async () => {
   const source = await device();
   const voice = await source.journal.dimensions.addCustomDimension({ name: 'Vocie', low: 'off', high: 'mine', min: 0, max: 10 });
   await source.journal.dimensions.renameCustomDimension(voice.key, { name: 'Voice', low: 'strained', high: 'at ease' });
@@ -691,9 +687,9 @@ test('a renamed, hidden custom scale travels as it now reads, by replace and by 
   assert.deepEqual((await merged.journal.dimensions.getDimensions()).find((d) => d.key === voice.key), expected);
 });
 
-test('an archive from a journal that shows the duplicate built-ins restores them shown (FA 41)', async () => {
+test('an archive from a journal that shows the duplicate built-ins restores them shown', async () => {
   const source = await device();
-  // A journal seeded before FA 41 holds all three visible.
+  // A journal seeded before holds all three visible.
   await source.journal.tags.setTagHidden('g-body-dys', false);
   await source.journal.tags.setTagHidden('g-soc-dys', false);
   await source.journal.bodyRegions.setRegionHidden('whole_body', false);
@@ -977,10 +973,9 @@ test('an array instead of a journal is refused before anything is written', asyn
   assert.deepEqual((await target.journal.archive.snapshot()).journal, before.journal);
 });
 
-/* A lab row written before ticket 03 has no draw time, no provider and no
-   timing columns. The payload type says otherwise, but it is a cast over
-   JSON.parse output, so the importer has to survive the fields being absent
-   rather than binding undefined at the driver. */
+/* An older lab row lacks draw time, no provider and no timing columns. The payload type
+   says otherwise, but it is a cast over JSON.parse output, so the importer has to survive
+   the fields being absent rather than binding undefined at the driver. */
 test('a lab result from an archive written before the dosing context existed still imports', async () => {
   const source = await populated();
   const contents = await exported(source.journal);
@@ -998,10 +993,9 @@ test('a lab result from an archive written before the dosing context existed sti
   assert.equal(restored.timing, null);
 });
 
-/* A milestone row written before ticket 15 has no description column. The
-   payload type says otherwise, but it is a cast over JSON.parse output, so
-   the importer has to survive the field being absent rather than binding
-   undefined at the driver. */
+/* Older milestone rows omit the description. The payload type says otherwise, but
+   it is a cast over JSON.parse output, so the importer has to survive the field being
+   absent rather than binding undefined at the driver. */
 test('a milestone from an archive written before descriptions existed still imports', async () => {
   const source = await populated();
   const contents = await exported(source.journal);
@@ -1017,14 +1011,12 @@ test('a milestone from an archive written before descriptions existed still impo
   assert.equal(restored.description, '');
 });
 
-/* An archive packed before ticket 16 (ADR-0037) still names a `doubtEntries`
-   section on the wire, and one packed before functional audit ticket 09 a
-   `counterevidenceSnapshots` section - this build's registry has no entry
-   for either any more (archiveSections.ts). The payload type says
-   otherwise, but it is a cast over JSON.parse output, so the importer sees
-   the same extra keys a real older archive would carry: on the dropped
-   list, and therefore never read, never applied, and never the reason a
-   restore fails. */
+/* An archive packed (ADR-0037) still names a `doubtEntries` section on the wire, and one
+   packed a `counterevidenceSnapshots` section - this build's registry has no entry for
+   either any more (archiveSections.ts). The payload type says otherwise, but it is a cast
+   over JSON.parse output, so the importer sees the same extra keys a real older archive
+   would carry: on the dropped list, and therefore never read, never applied, and never the
+   reason a restore fails. */
 test('an archive naming the retired doubtEntries and counterevidenceSnapshots sections restores, and drops them', async () => {
   const source = await populated();
   const contents = await exported(source.journal);
@@ -1250,10 +1242,9 @@ test('emptying the journal leaves every section at what a device with only its b
   const baseline = countsOf((await (await builtInsOnlyDevice()).journal.archive.snapshot()).journal);
   assert.deepEqual(emptied, baseline, 'a section holding more than the built-ins put there kept rows it should have lost');
 
-  /* The comparison above is only worth something if the journal it ran
-     against actually had rows to lose. `everySection` puts something in all
-     36 - which ticket 12 pinned counts for - so every section either shrank
-     or is one whose rows are all built-in reference data. */
+  /* The comparison above is only worth something if the journal it ran against actually had
+     rows to lose. `everySection` puts something in all 36 - which pinned counts for - so
+     every section either shrank or is one whose rows are all built-in reference data. */
   const shrank = Object.keys(populated).filter((section) => populated[section] > baseline[section]);
   assert.ok(shrank.length >= 25, `only ${shrank.length} sections had anything to lose, so this proves less than it looks`);
 });
@@ -1296,10 +1287,10 @@ test('emptying the journal leaves nothing behind in any table, cascades or no ca
   assert.deepEqual(await tableCounts(driver), await tableCounts((await builtInsOnlyDevice()).driver));
 });
 
-/* The demo's own clear path, which had an answer of its own until ticket 13
-   and reached seven of the thirty-six sections with it. Asserted through the
-   journal rather than through the demo bar: what matters is that the two
-   paths cannot disagree, and they cannot when there is one of them. */
+/* The demo's own clear path, which had an answer of its own and reached seven of the
+   thirty-six sections with it. Asserted through the journal rather than through the demo
+   bar: what matters is that the two paths cannot disagree, and they cannot when there is
+   one of them. */
 test("the demo's clear leaves the journal where emptying it does", async () => {
   const journal = await everySection();
   const { clearJournal } = await import('../demo/journal-seed.ts');
@@ -1314,11 +1305,10 @@ test("the demo's clear leaves the journal where emptying it does", async () => {
   assert.deepEqual(snapshot.files, [], 'the entry and milestone photo files went with their rows');
 });
 
-/* Phase 9 audit ticket 11. The two halves of a restore are separately long
-   and separately countable - photos come off the stream one at a time, and
-   the rows go in section by section inside one transaction - so the screen
-   is told which half it is in rather than being handed one number that
-   means two different things. */
+/* The two halves of a restore are separately long and separately countable - photos come
+   off the stream one at a time, and the rows go in section by section inside one
+   transaction - so the screen is told which half it is in rather than being handed one
+   number that means two different things. */
 test('a restore reports its photo files and then its sections', async () => {
   const source = await populated();
   const target = await device();
@@ -1389,11 +1379,11 @@ test('verifyArchive reports every file it drains', async () => {
 });
 
 test('an archive from before auto-logging reads its doses as the person\'s own, and its schedules as off', async () => {
-  /* A real snapshot with the two ticket-11 fields deleted from it - which is
-     exactly the shape an archive written by an earlier build has, and the
-     one case worth its own test rather than leaving to the golden fixture:
-     a restore that guessed `autoLogFromEpochDay` wrong would start writing
-     doses on somebody's behalf on a device where they never asked for it. */
+  /* A real snapshot with the two newer fields deleted from it - which is exactly the shape
+     an archive written by an earlier build has, and the one case worth its own test rather
+     than leaving to the golden fixture: a restore that guessed `autoLogFromEpochDay` wrong
+     would start writing doses on somebody's behalf on a device where they never asked for
+     it. */
   const source = await populated();
   const target = await device();
 
@@ -1477,11 +1467,10 @@ test('merging hidden goals preserves local visibility and status while legacy ch
   assert.deepEqual(await target.journal.roadmap.getGoalStatuses('pl'), { 'pl-legal-appeal': 'checked', 'pl-legal-final-copy': 'checked' });
 });
 
-/* Functional audit ticket 35: an archive written before the institution
-   list carries ticks on steps that became institutions. They arrive the way
-   migration 114 left the journal: a tick goes, a hidden flag stays, and the
-   retired "bank, insurers, clinic" step goes entirely. The institutions and
-   their dated changes travel both ways. */
+/* An archive written before the institution list carries ticks on steps that became
+   institutions. They arrive the way migration 114 left the journal: a tick goes, a hidden
+   flag stays, and the retired "bank, insurers, clinic" step goes entirely. The institutions
+   and their dated changes travel both ways. */
 test.each(['replace', 'merge'] as const)('an older archive\'s ticks on steps that became institutions keep only their hidden flag on %s', async (mode) => {
   const older = await device();
   await older.journal.roadmap.setGoalStatus('pl', 'pl-legal-final-copy', 'checked');

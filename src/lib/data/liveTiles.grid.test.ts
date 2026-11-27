@@ -208,9 +208,8 @@ describe('which kinds the grid is for', () => {
 });
 
 describe('the tier every kind is in', () => {
-  /* Phase 8 UX ticket 01. The tier is the policy: it decides the order, and
-     Home draws it as three weights so the difference is legible without
-     reading either tile. */
+  /* The tier is the policy: it decides the order, and Home draws it as three weights so the
+     difference is legible without reading either tile. */
 
   it('puts every kind in one of the three bands, and these are the bands', () => {
     const byTier = { today: [] as string[], moment: [] as string[], dormant: [] as string[] };
@@ -234,9 +233,9 @@ describe('the tier every kind is in', () => {
     }
   });
 
-  /* Functional-audit ticket 15: the patch-schedule tile was the `today`
-     tile for a dose due now. Folded into the panel, the panel takes that
-     band for that day and goes back to being a moment once it is logged. */
+  /* The patch-schedule tile was the `today` tile for a dose due now. Folded into the panel,
+     the panel takes that band for that day and goes back to being a moment once it is
+     logged. */
   it('lifts the dose panel to the today band on a day a dose is due, after the wear timer', () => {
     const due = composeHomeTiles(input());
     expect(due.filter((t) => t.tier === 'today').map((t) => t.key)).toEqual(['wear-timer', 'dose-panel']);
@@ -251,12 +250,11 @@ describe('the order, and the cap', () => {
   });
 
   it('states that order once, for the grid and for the editor that arranges it', () => {
-    /* Phase 11 ticket 04: Today's editor lists the switches in the order
-       the grid draws them, and a second nested loop over the same two
-       lists would be a copy of the order that nothing keeps in step. So
-       `composeHomeTiles` and the editor read the same array, and this is
-       what says the array is the tiered order rather than something that
-       merely happens to agree with it today. */
+    /* Today's editor lists the switches in the order the grid draws them, and a second
+       nested loop over the same two lists would be a copy of the order that nothing keeps
+       in step. So `composeHomeTiles` and the editor read the same array, and this is what
+       says the array is the tiered order rather than something that merely happens to agree
+       with it today. */
     expect([...LIVE_TILE_DRAW_ORDER]).toEqual(TIERED);
   });
 
@@ -376,11 +374,10 @@ describe('what each tile says', () => {
     expect(tile.action?.href).toBe('/care/doses?add=1');
   });
 
-  /* Phase 11 ticket 03: the panel is the dose's one home on Today, so it
-     has to say when the next one falls - the agenda's doseSlot row is
-     withheld while the panel is up (agendaReads.ts) and there is nowhere
-     else on the screen the day is stated. The fixture's schedule falls
-     every three days from fifteen days ago, which lands on today. */
+  /* The panel is the dose's one home on Today, so it has to say when the next one falls -
+     the agenda's doseSlot row is withheld while the panel is up (agendaReads.ts) and there
+     is nowhere else on the screen the day is stated. The fixture's schedule falls every
+     three days from fifteen days ago, which lands on today. */
   it('the dose panel says a dose the day expects is today, with how much and how', () => {
     /* What the patch-schedule tile used to say beside it: the episode's amount, since the schedule sets none, and
        the route in words. */
@@ -404,9 +401,8 @@ describe('what each tile says', () => {
   });
 
   it('the dose panel says yesterday\'s dose was logged for you, ahead of the next day', () => {
-    /* Phase 11 ticket 11: on the morning after an auto-logged slot the fact
-       worth reading is the row written without the person, not a date they
-       can work out from their own schedule. */
+    /* On the morning after an auto-logged slot the fact worth reading is the row written
+       without the person, not a date they can work out from their own schedule. */
     const written = [
       { id: 1, timestamp: NOW - 86_400_000, source: 'schedule', status: 'taken' }
     ] as unknown as HomeTileReads['yesterdayDoses'];
@@ -425,8 +421,7 @@ describe('what each tile says', () => {
   });
 
   it('the dose panel skips a due day a pause covers', () => {
-    /* What the patch tile's own test held before ticket 15 folded it in:
-       a declared break is not a dose due. */
+    /* What the patch tile's own test held folded it in: a declared break is not a dose due. */
     const pause = { id: 'pause-1', episodeId: 'ep-1', startEpochDay: TODAY - 1, endEpochDay: TODAY + 1, reason: 'planned' } as const;
     expect(tileNamed('dose-panel', { reads: { dosePauses: [pause] } })!.note).toBe(
       m.tile_dose_next({ date: `weekday:${TODAY + 3}` })
@@ -437,11 +432,10 @@ describe('what each tile says', () => {
     expect(tileNamed('dose-panel', { reads: { schedules: [] } })!.note).toBeUndefined();
   });
 
-  /* Functional-audit ticket 15. Today withholds the agenda's `doseSlot`
-     rows whenever the panel is drawn (agendaReads.ts), so the panel names
-     every regimen the agenda would have drawn a row for: the one whose next
-     open slot comes first, and the others after it. A regimen taken daily
-     draws no row (ADR-0067) and is not named beside one that does. */
+  /* Today withholds the agenda's `doseSlot` rows whenever the panel is drawn
+     (agendaReads.ts), so the panel names every regimen the agenda would have drawn a row
+     for: the one whose next open slot comes first, and the others after it. A regimen taken
+     daily draws no row (ADR-0067) and is not named beside one that does. */
   describe('which regimens the dose panel names', () => {
     const second: RegimenEpisode = { ...episode, id: 'ep-2', drug: 'Cyproterone', route: 'oral', startEpochDay: TODAY - 8 };
     const third: RegimenEpisode = { ...episode, id: 'ep-3', drug: 'Leuprorelin', route: 'im', startEpochDay: TODAY - 20 };
@@ -495,9 +489,8 @@ describe('what each tile says', () => {
     expect(tile.dismiss).toBeUndefined();
   });
 
-  /* Functional-audit ticket 14: the agenda already states a surgery's date
-     while it is ahead, so the tile counting down to it said the same thing
-     twice. Only the days after it are the tile's. */
+  /* The agenda already states a surgery's date while it is ahead, so the tile counting down
+     to it said the same thing twice. Only the days after it are the tile's. */
   it('the surgery tile is absent before the surgery day and on it', () => {
     for (const surgeryEpochDay of [TODAY + 10, TODAY + 1, TODAY]) {
       expect(tileNamed('surgery-countdown', { reads: { procedures: [{ ...procedure, surgeryEpochDay }] } })).toBeUndefined();
@@ -552,12 +545,11 @@ describe('what each tile says', () => {
 
 describe('the dismiss controls', () => {
   it('gives no dismiss to the three that close nothing', () => {
-    /* Wear, dose and surgery each resolve themselves - a running session
-       cannot be hidden while it runs (ADR-0039's amendment), and the other
-       two are facts about the day rather than nudges.
+    /* Wear, dose and surgery each resolve themselves - a running session cannot be hidden
+       while it runs, and the other two are facts about the day rather than nudges.
 
-       Safe space and the ready letter both offer a close action. The
-       letter opens Home's sheet. Safe space forgets the entry it was about. */
+       Safe space and the ready letter both offer a close action. The letter opens Home's
+       sheet. Safe space forgets the entry it was about. */
     for (const kind of ['wear-timer', 'dose-panel', 'surgery-countdown'] as const) {
       expect(tileNamed(kind)!.dismiss).toBeUndefined();
     }
@@ -581,8 +573,8 @@ describe('the dismiss controls', () => {
     expect(stopWear).toHaveBeenCalledWith(wearSession);
   });
 
-  /* Phase 8 features ticket 04: the cascade. One decision takes every tile
-     an area owns off the grid, and touches no other tile. */
+  /* The cascade. One decision takes every tile an area owns off the grid, and touches no
+     other tile. */
 
   it('takes an area\'s tiles off the grid once it is finished', () => {
     const areaStates: AreaStates = { wearSessions: { hidden: false, finishedEpochDay: TODAY - 1, suspendedEpochDay: null } };

@@ -55,12 +55,11 @@ public class PhotosPlugin extends Plugin {
     }
 
     /**
-     * One image, or several in one trip when the call asks for
-     * {@code multiple}, the way the web's file input picks them
-     * (after-release 27, audit L10-10). The photo picker takes at most
-     * {@link MediaStore#getPickImagesMaxLimit()} and refuses a larger
-     * {@code EXTRA_PICK_IMAGES_MAX}; the document picker on older Android
-     * takes {@code EXTRA_ALLOW_MULTIPLE}. pickedImages already reads
+     * One image, or several in one trip when the call asks for {@code
+     * multiple}, the way the web's file input picks them. The photo picker
+     * takes at most {@link MediaStore#getPickImagesMaxLimit()} and refuses a
+     * larger {@code EXTRA_PICK_IMAGES_MAX}; the document picker on older
+     * Android takes {@code EXTRA_ALLOW_MULTIPLE}. pickedImages already reads
      * either shape of result.
      */
     @PluginMethod
@@ -379,8 +378,8 @@ public class PhotosPlugin extends Plugin {
         }
     }
 
-    /** The reset's half of the photos (ux-carpet 214): the whole directory,
-        before the key they are sealed under is erased. */
+    /** The reset's half of the photos: the whole directory, before the key they are sealed
+        under is erased. */
     @PluginMethod
     public void removeDirectory(PluginCall call) {
         try {

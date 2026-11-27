@@ -1,7 +1,7 @@
-/* FA 04: the closed lists leave SQL. Version 94 rebuilds the five tables whose
-   vocabularies were CHECKs, so a stored value the code does not know no longer
-   fails at the SQL level (it renders as "other"), and folds in the structural
-   changes the hair-removal and tally tickets need so no table is rebuilt twice. */
+/* the closed lists leave SQL. Version 94 rebuilds the five tables whose vocabularies were
+   CHECKs, so a stored value the code does not know no longer fails at the SQL level (it
+   renders as "other"), and folds in the structural changes the hair-removal and tally
+   tickets need so no table is rebuilt twice. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
@@ -95,7 +95,7 @@ test('migrating a populated 92 keeps every row, child link and id counter, and c
   const children = ['hair_removal_photo', 'tryout_photo', 'felt_sense', 'milestone'];
   const childrenBefore = children.map((t) => count(db, t));
 
-  // Stops before ticket 30's v115, which reads the text cost into its own
+  // Stops before v115, which reads the text cost into its own
   // columns (cost-migration.test.ts); this test is about the rebuild.
   await runMigrations(db, fileOps, preSquashChain.filter((m) => m.version <= 114));
 

@@ -162,10 +162,9 @@ describe('the database worker started ahead of the key', () => {
   });
 });
 
-/* ux-carpet 215: a boot that failed closes its driver twice - once in boot()
-   and once in closeActiveDriver() - and the second close went to a worker
-   the first had terminated, which answers nothing. The boot waited on it
-   forever and never showed the failure. */
+/* A boot that failed closes its driver twice - once in boot() and once in
+   closeActiveDriver() - and the second close went to a worker the first had terminated,
+   which answers nothing. The boot waited on it forever and never showed the failure. */
 describe('a closed worker', () => {
   it('refuses what is sent to it after close instead of leaving it unanswered', async () => {
     const { driver } = createEncryptedWebSqlite('journal.sqlite3', key);
@@ -181,8 +180,8 @@ describe('a closed worker', () => {
   });
 });
 
-/* ux-carpet 219: the copy check and the restore are what a failed boot does
-   after it has closed its driver, so they cannot go to that driver's worker. */
+/* The copy check and the restore are what a failed boot does after it has closed its
+   driver, so they cannot go to that driver's worker. */
 describe('the pre-migration copy after the driver has closed', () => {
   it('is asked of a worker of its own, pointed at the files without opening them, and closed after', async () => {
     const { driver, fileOps } = createEncryptedWebSqlite('journal.sqlite3', key);
@@ -210,9 +209,9 @@ describe('the pre-migration copy after the driver has closed', () => {
   });
 });
 
-/* ux-carpet 222: a retry pressed while the copy check's worker still holds
-   the pool asked for it at once and failed with "Access Handles cannot be
-   created". A new connection waits for that worker to close. */
+/* A retry pressed while the copy check's worker still holds the pool asked for it at once
+   and failed with "Access Handles cannot be created". A new connection waits for that
+   worker to close. */
 describe('a connection made while a recovery worker is running', () => {
   it('sends nothing until the recovery worker has closed', async () => {
     const { driver, fileOps } = createEncryptedWebSqlite('journal.sqlite3', key);
@@ -236,10 +235,10 @@ describe('a connection made while a recovery worker is running', () => {
   });
 });
 
-/* ux-carpet 243: a tab that reloads or navigates away leaves its own
-   worker's pool for the browser to reclaim from a worker it is about to
-   kill outright, which can race the next boot's own `attach()`. Posting a
-   `close` on this tab's own `pagehide` ahead of that is what narrows it. */
+/* A tab that reloads or navigates away leaves its own worker's pool for the browser to
+   reclaim from a worker it is about to kill outright, which can race the next boot's own
+   `attach()`. Posting a `close` on this tab's own `pagehide` ahead of that is what narrows
+   it. */
 describe('releasing every live connection on pagehide', () => {
   it('posts close before retiring an unused prewarm worker', async () => {
     void prewarmJournalWorker('journal.sqlite3');

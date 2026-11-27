@@ -170,9 +170,9 @@ describe('palette change', () => {
     expect(isAppearancePending('palette')).toBe(false);
   });
 
-  /* prh12 bug 9: the new colours bloom from the sun's own centre, and the
-     circle has to cover the farthest corner of the window wherever the sun
-     is, including partly off screen above a scrolled Settings. */
+  /* The new colours bloom from the sun's own centre, and the circle has to cover the
+     farthest corner of the window wherever the sun is, including partly off screen above a
+     scrolled Settings. */
   it('reaches the farthest window corner from the sun centre', () => {
     const corner = bloomGeometry({ x: 390, y: 0 }, 390, 844);
     expect(corner.reach).toBeCloseTo(Math.hypot(390, 844), 5);
@@ -193,7 +193,7 @@ describe('palette change', () => {
     expect(gradient).toContain('blue 100px 114px, #000 114px 120px');
     expect(gradient).toContain('red 140px 154px, #000 154px 160px)');
   });
-  /* Alicja, after living with it at 600ms: "a little longer". */
+  /* "a little longer". */
   it('blooms over 800ms', () => {
     expect(DURATION_FALLBACK['--dur-bloom']).toBe(800);
   });
@@ -213,9 +213,9 @@ describe('palette change', () => {
 
 describe('bloom origin', () => {
   it('is the top right corner of the window, wherever the sun has scrolled to', () => {
-    /* Alicja, after prh12: the bloom should come out of the top right corner,
-       like the sun. A sun scrolled above the window moved the centre off
-       screen, so the circle arrived as a flat edge from the top. */
+    /* The bloom should come out of the top right corner, like the sun. A sun scrolled above
+       the window moved the centre off screen, so the circle arrived as a flat edge from the
+       top. */
     const sun = { getBoundingClientRect: () => ({ left: 390, top: -620 }) };
     const doc = {
       documentElement: { clientWidth: 390, clientHeight: 844 },

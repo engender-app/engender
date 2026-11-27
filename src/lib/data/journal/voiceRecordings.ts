@@ -1,15 +1,13 @@
-/* Voice recording staging (ticket 24, CONTEXT: "Voice recording"). Entry-only,
-   unlike photos.ts: ticket 24 excludes milestones, so there is one owner
-   column and no owner to resolve - the caller (entries.ts) already holds a
-   real entry id by the time it stages a recording, the same way it already
-   holds one when it stages a photo.
+/* Voice recording staging. Entry-only, unlike photos.ts: excludes milestones, so there is
+   one owner column and no owner to resolve - the caller (entries.ts) already holds a real
+   entry id by the time it stages a recording, the same way it already holds one when it
+   stages a photo.
 
-   The same file-before-row / row-before-file ordering photos.ts's header
-   states applies here, over the same injected PhotoFileStore: a recording is
-   exactly the kind of binary blob that store already exists to carry, so
-   this reuses it rather than standing up a second one. No thumbnail and
-   no normalize() step (out of scope: no client-side audio effects) - a
-   recording is the bytes MediaRecorder produced, written through as-is. */
+   The same file-before-row / row-before-file ordering photos.ts's header states applies
+   here, over the same injected PhotoFileStore: a recording is exactly the kind of binary
+   blob that store already exists to carry, so this reuses it rather than standing up a
+   second one. No thumbnail and no normalize() step (out of scope: no client-side audio
+   effects) - a recording is the bytes MediaRecorder produced, written through as-is. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import { afterCommit } from '../sqlite/transactor';
@@ -25,7 +23,7 @@ type RecordingRow = { uuid: string; file_path: string };
 export type StagedRecording = { id: string; fileName: string };
 
 /** A recording placed in time, for the memo browser. Entry-only
-    (CONTEXT: "Voice recording"), so unlike DatedPhoto there is no owner name
+, so unlike DatedPhoto there is no owner name
     to carry - a recording's date is always its entry's epoch day, no
     COALESCE needed. `entryId` is the way through to it (a memo is entry
     content and owns no screen of its own). */
@@ -35,18 +33,16 @@ interface DatedRecording extends VoiceRecording {
 }
 
 export interface VoiceArea {
-  /** Every recording in the journal, newest first, with the entry each one
-      belongs to (ticket 11's memo browser). Built for ticket 25's voice
-      compare picker, which was cut before shipping - this is
-      its first caller. */
+  /** Every recording in the journal, newest first, with the entry each one belongs to.
+      Built for voice compare picker, which was cut before shipping - this is its first
+      caller. */
   inJournal(): Promise<DatedRecording[]>;
-  /** The day of the most recent memo, at or before `todayEpochDay`, or null
-      where there is none. Its own method rather than a
-      `journal/lastWrite.ts` entry: a memo is entry content with no archive
-      section of its own (ADR-0036), so it has no `ArchiveSectionName` to be
-      registered under there - `hubRows.ts`'s `voice-benchmark` row is this
-      read's only caller, folding it in beside the benchmark's own last
-      write to report whichever is later. */
+  /** The day of the most recent memo, at or before `todayEpochDay`, or null where there is
+      none. Its own method rather than a `journal/lastWrite.ts` entry: a memo is entry
+      content with no archive section of its own, so it has no `ArchiveSectionName` to be
+      registered under there - `hubRows.ts`'s `voice-benchmark` row is this read's only
+      caller, folding it in beside the benchmark's own last write to report whichever is
+      later. */
   lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
 }
 

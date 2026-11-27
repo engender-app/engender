@@ -33,12 +33,10 @@ export type ReserveSlot =
 
 const HOME_SLOTS: readonly string[] = ['above', 'below', 'pinned'];
 
-/* Home's three slots keep the keys ticket 183 gave them. Other screens'
-   late blocks hold their room the same way: the
-   clinician summary's scope row, the access-mode screen's mode list, the bodies
-   that used to swap in from a page-level skeleton or cut in
-   with no placeholder at all, and the hosted-rows card a screen draws for the More hub
-   (`hosted-<host>`). */
+/* Home's three slots keep the keys gave them. Other screens' late blocks hold their room
+   the same way: the clinician summary's scope row, the access-mode screen's mode list, the
+   bodies that used to swap in from a page-level skeleton or cut in with no placeholder at
+   all, and the hosted-rows card a screen draws for the More hub (`hosted-<host>`). */
 /* Exported for its own test, which holds it to the prefix reset clears. */
 export function reserveKey(slot: ReserveSlot): string {
   return HOME_SLOTS.includes(slot) ? `engender-home-reserve-${slot}` : `engender-reserve-${slot}`;

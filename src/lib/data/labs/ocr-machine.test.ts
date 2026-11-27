@@ -264,9 +264,9 @@ describe('OcrMachine – recognition-failed path', () => {
     expect(m.state.tag).toBe('recognition-failed');
   });
 
-  /* GD-008: a photo the app refuses to open is a photo it could not read,
-     which is what this state already says - not a silent return to the
-     picker, which would look like the pick did nothing. */
+  /* A photo the app refuses to open is a photo it could not read, which is what this state
+     already says - not a silent return to the picker, which would look like the pick did
+     nothing. */
   test('lands in recognition-failed when the picked image is refused as too big', async () => {
     const refused: OcrImageSource = {
       async pickImage() {
@@ -520,10 +520,9 @@ describe('OcrMachine – source units', () => {
   });
 });
 
-/* Phase 9 audit ticket 11. Recognition on a phone photo of a lab report is
-   seconds to tens of seconds and said nothing but "Reading…" while it ran.
-   Tesseract's own logger reports {status, progress} through the pass
-   (ocr-engine.ts), so this state carries the fraction rather than the
+/* Recognition on a phone photo of a lab report is seconds to tens of seconds and said
+   nothing but "Reading…" while it ran. Tesseract's own logger reports {status, progress}
+   through the pass (ocr-engine.ts), so this state carries the fraction rather than the
    screen keeping a second copy of it beside the machine. */
 describe('recognition progress and cancelling', () => {
   test('starts with no fraction and carries whatever the recognizer reports', async () => {
@@ -597,7 +596,7 @@ describe('recognition progress and cancelling', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Stale writes, failed lookups and partial saves (after-release 05, L02-03)
+// Stale writes, failed lookups and partial saves
 // ---------------------------------------------------------------------------
 
 /** A promise the test settles by hand, to land a step after close(). */

@@ -46,14 +46,12 @@
     comfort?: { lowHz: number; highHz: number } | null;
     /** Which of the two questions this figure is answering.
 
-        `pitch` is where the voice is: absolute hertz, with the person's
-        optional comfort bracket.
+        `pitch` is where the voice is: absolute hertz, with the person's optional comfort
+        bracket.
 
-        `steadiness` is whether one note is being held: semitones either
-        side of the note itself. The vowel step's
-        task is keeping a pitch rather than reaching one, so a flat line is
-        the whole answer and an absolute scale is not what the eye is on
-        (Alicja, 2026-09-04). */
+        `steadiness` is whether one note is being held: semitones either side of the note
+        itself. The vowel step's task is keeping a pitch rather than reaching one, so a flat
+        line is the whole answer and an absolute scale is not what the eye is on. */
     reading?: 'pitch' | 'steadiness';
     role?: Role;
     [attribute: string]: unknown;

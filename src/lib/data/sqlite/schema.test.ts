@@ -1,6 +1,5 @@
-/* Verifies the schema DDL itself (ticket 02's acceptance criteria): it
-   applies cleanly through the migration runner, the deltas from the PRD
-   schema landed, and the cascades the PRD relies on actually cascade.
+/* Verifies the schema DDL itself: it applies cleanly through the migration runner, the
+   deltas from the PRD schema landed, and the cascades the PRD relies on actually cascade.
    Part of the Node tier; run with `npm test`. */
 
 import { test } from 'vitest';
@@ -22,8 +21,7 @@ import { dumpRows, dumpSchema, readSchemaFixture } from './test-support/schema-d
    after it. */
 const SQUASH_BASELINE_VERSION = 88;
 
-/* The step pre-publish ticket 01 folded 89 to 119 into, numbered where that
-   chain had reached. */
+/* Folded 89 to 119 into, numbered where that chain had reached. */
 const POST_RC1_SQUASH_VERSION = 119;
 
 const fixture = (name: string) =>
@@ -142,7 +140,7 @@ test.each([1, 78, SQUASH_BASELINE_VERSION - 1])(
 
     // Refused before anything runs. No copy is taken, because nothing is
     // about to change, and the one already there is neither restored nor
-    // retired (ADR-0006, amended by ticket 04).
+    // retired (ADR-0006).
     assert.deepEqual(calls, { copies: 0, cleanups: 0, restores: 0 });
     assert.equal(db.getUserVersion(), version);
     assert.equal(dumpRows(db.raw), before);
@@ -310,7 +308,7 @@ test('the index deletes a row without being handed its old text', async () => {
 
 test('an entry drops out of the index when the entry row goes', async () => {
   // The trigger is what makes this hold for every delete path, including
-  // ones written later that know nothing about the index - ticket 14's
+  // ones written later that know nothing about the index - 's
   // Replace import deletes entry rows wholesale.
   const db = await migratedDb();
   db.raw.exec(
@@ -478,7 +476,7 @@ test('side_effect carries no episode reference, takes a blank severity and rejec
   );
 });
 
-test('a body region holds one value on the shared 0-100 scale (ticket 39)', async () => {
+test('a body region holds one value on the shared 0-100 scale', async () => {
   const db = await migratedDb();
   db.raw.exec("INSERT INTO entry (uuid, epoch_day, timestamp, updated_at) VALUES ('e1', 100, 1000, 1000)");
 
@@ -936,17 +934,15 @@ test('a document link is optional, and an unlinked one reads back with neither h
 });
 
 test('the hand-written latest version and the migration list agree', async () => {
-  /* LATEST_SCHEMA_VERSION stopped being derived from the array in phase 5
-     audit ticket 02, so that a boot on the current schema never loads it.
-     Two places now write the number down, and this is what catches a
-     migration appended without the constant moving - including the merge
-     case, where two branches each add a version and the loser renumbers. */
+  /* LATEST_SCHEMA_VERSION stopped being derived from the array, so that a boot on the
+     current schema never loads it. Two places now write the number down, and this is what
+     catches a migration appended without the constant moving - including the merge case,
+     where two branches each add a version and the loser renumbers. */
   assert.equal(LATEST_SCHEMA_VERSION, Math.max(...migrations.map((migration) => migration.version)));
 
-  /* The squashed baseline, then the one step that folds 89 to
-     119 (pre-publish ticket 01), then contiguous: a gap below the baseline is
-     the first squash, the gap between 88 and 119 is the second, and a gap
-     above 119 is a migration that went missing. */
+  /* The squashed baseline, then the one step that folds 89 to 119, then contiguous: a gap
+     below the baseline is the first squash, the gap between 88 and 119 is the second, and a
+     gap above 119 is a migration that went missing. */
   assert.deepEqual(
     migrations.map((migration) => migration.version),
     [
@@ -1008,8 +1004,8 @@ test('a WEEKLY reminder is refused by the schema, with no trigger left to transl
   assert.deepEqual(triggers, []);
 });
 
-/* Functional audit ticket 10 cut saved questions: the migration drops the
-   table and its rows with it, and leaves every other row where it was. */
+/* Cut saved questions: the migration drops the table and its rows with it, and leaves every
+   other row where it was. */
 test('the saved-questions cut drops saved_question and nothing else', async () => {
   const db = makeNodeSqliteDb();
   await runMigrations(db, noopFileOps(), upToBaseline);
@@ -1023,10 +1019,9 @@ test('the saved-questions cut drops saved_question and nothing else', async () =
 });
 
 
-/* Functional audit ticket 34 kept only the roadmap's legal track. Ticks
-   against the three cut tracks go, with the per-track "not my path" table
-   and the document links that named a cut goal; custom goals, legal ticks
-   (an older legal key included) and documents themselves stay. */
+/* Kept only the roadmap's legal track. Ticks against the three cut tracks go, with the
+   per-track "not my path" table and the document links that named a cut goal; custom goals,
+   legal ticks (an older legal key included) and documents themselves stay. */
 test('the roadmap trim drops cut-track ticks and roadmap_track, and keeps custom goals in categories', async () => {
   const db = makeNodeSqliteDb();
   await runMigrations(db, noopFileOps(), preSquashChain.filter((migration) => migration.version <= 110));
@@ -1071,12 +1066,10 @@ test('the roadmap trim drops cut-track ticks and roadmap_track, and keeps custom
   assert.deepEqual(await db.query('PRAGMA foreign_key_check'), []);
 });
 
-/* Functional audit ticket 35 turned the post-ruling steps into
-   institutions. A tick on one of the six that became an institution is
-   dropped unless it hid the row, which stays hidden; the retired "bank,
-   insurers, clinic" step goes with its tick and its document links. Paper
-   filed against a step that became an institution stays filed, since the
-   key did not change. */
+/* Turned the post-ruling steps into institutions. A tick on one of the six that became an
+   institution is dropped unless it hid the row, which stays hidden; the retired "bank,
+   insurers, clinic" step goes with its tick and its document links. Paper filed against a
+   step that became an institution stays filed, since the key did not change. */
 test('the institution list adds its two tables and keeps only hidden flags of the steps it replaced', async () => {
   const db = makeNodeSqliteDb();
   await runMigrations(db, noopFileOps(), preSquashChain.filter((migration) => migration.version <= 113));

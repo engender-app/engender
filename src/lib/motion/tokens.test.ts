@@ -28,10 +28,9 @@ describe('motionDuration and motionDistance without a DOM', () => {
   });
 });
 
-/* Ticket 15 (MO-004): the fallback used to be a second parameter every
-   caller restated by hand, and it had already drifted - --dur-fast is
-   authored at 150ms and two call sites passed 160. Held against base.css
-   itself, the same way flagSun.test.ts holds its palette list against
+/* The fallback used to be a second parameter every caller restated by hand, and it had
+   already drifted - --dur-fast is authored at 150ms and two call sites passed 160. Held
+   against base.css itself, the same way flagSun.test.ts holds its palette list against
    palettes.css, so the next drift fails here instead of shipping. */
 describe('the fallback table agrees with what base.css authors', () => {
   const base = readFileSync(join(root, 'src/lib/theme/base.css'), 'utf8');
@@ -53,10 +52,9 @@ describe('the fallback table agrees with what base.css authors', () => {
   });
 });
 
-/* Ticket 09: content fading in from 0 is not drawn until its fade's first
-   frame, and on the Pixel that frame stalled the motion. Every arrival
-   starts at the nil opacity instead, the stylesheet's as well as the
-   script's. */
+/* Content fading in from 0 is not drawn until its fade's first frame, and on the Pixel that
+   frame stalled the motion. Every arrival starts at the nil opacity instead, the
+   stylesheet's as well as the script's. */
 describe('arrivals start at the nil opacity', () => {
   const base = readFileSync(join(root, 'src/lib/theme/base.css'), 'utf8');
   const app = readFileSync(join(root, 'src/lib/styles/app.css'), 'utf8');

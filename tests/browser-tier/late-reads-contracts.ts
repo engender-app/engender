@@ -1,18 +1,16 @@
 /* Late reads on Good moments and Tryouts.
 
-   Tryouts gates a second read beside its list, the felt-sense readings.
-   It used to sit outside the gate, so the screen painted without it and
-   it landed afterwards - a running tryout saying "No felt sense recorded
-   yet" until its readings arrived. Good moments had the same shape with
-   its snapshot history until functional audit ticket 09 cut the
-   snapshots; its one read is still held here so the pool's reveal is
-   measured. The held reads make that order certain rather than a race.
+   Tryouts gates a second read beside its list, the felt-sense readings. It used to sit
+   outside the gate, so the screen painted without it and it landed afterwards - a running
+   tryout saying "No felt sense recorded yet" until its readings arrived. Good moments had
+   the same shape with its snapshot history cut the snapshots; its one read is still held
+   here so the pool's reveal is measured. The held reads make that order certain rather than
+   a race.
 
-   The motion clause is measured, not judged: every animation frame
-   records how much of each tracked element is painted (its opacity times
-   the share of its own height no ancestor clips), and an element that
-   arrives or leaves has to do it through several frames, starting and
-   ending near nothing. */
+   The motion clause is measured, not judged: every animation frame records how much of each
+   tracked element is painted (its opacity times the share of its own height no ancestor
+   clips), and an element that arrives or leaves has to do it through several frames,
+   starting and ending near nothing. */
 import { flushSync } from 'svelte';
 import { m } from '$lib/paraglide/messages';
 import { mountScreen, until } from './mount-screen';
@@ -112,9 +110,9 @@ export async function lateReadsContracts(theme: 'light' | 'dark' = 'light'): Pro
   const runs: Record<string, Frame[]> = {};
 
   /* ---------- Good moments ---------- */
-  /* The snapshot history and its save left with functional audit ticket
-     09, so the pool is the screen's one read again. It still arrives in one
-     reveal, out of the gate's skeleton, and a refused read still says so. */
+  /* The snapshot history and its save left, so the pool is the screen's one read again. It
+     still arrives in one reveal, out of the gate's skeleton, and a refused read still says
+     so. */
   const f = await fixture('late-reads', 6);
   f.preferences!.a11yMotionReduce = false;
   f.preferences!.theme = theme;

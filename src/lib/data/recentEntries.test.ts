@@ -58,7 +58,7 @@ test('is empty for an empty read, with no month to name, and grouping is untouch
   assert.equal(headed.groups[0].monthDivider, undefined);
 });
 
-test('growing the limit only appends - nothing already drawn repaginates (ADR-0069)', () => {
+test('growing the limit only appends - nothing already drawn repaginates', () => {
   // Five days' worth, the shape "Earlier entries" reads before a tap.
   const first = [5, 4, 3, 2, 1].map((d) => entry(d, epochDayFromLocalDate(new Date(2026, 7, d))));
   // Ten days' worth - what the same read returns once the limit has grown by

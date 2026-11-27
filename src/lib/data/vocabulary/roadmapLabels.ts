@@ -1,13 +1,12 @@
-/* Localize pack names and goal titles, with optional procedural notes.
-   roadmap.ts contains stable keys without Paraglide (ADR-0002, ADR-0016).
-   An exhaustive title map catches a missing translation at typecheck.
+/* Localize pack names and goal titles, with optional procedural notes. roadmap.ts contains
+   stable keys without Paraglide (ADR-0002). An exhaustive title map catches a missing
+   translation at typecheck.
 
-   POLISH_PACK.reviewedOn dates the review against tranzycja.pl, Supreme
-   Court resolution III CZP 6/24 of 4 March 2025, the Ombudsman's ustalenie
-   płci guide, and gov.pl. The separate caveats record the law as reviewed:
-   no gender recognition statute, III CZP 20/26 pending on whether identity
-   alone grounds a change, and K/M as the only recorded marker values.
-   Notes cover procedure, deadlines and fees. */
+   POLISH_PACK.reviewedOn dates the review against tranzycja.pl, Supreme Court resolution
+   III CZP 6/24 of 4 March 2025, the Ombudsman's ustalenie płci guide, and gov.pl. The
+   separate caveats record the law as reviewed: no gender recognition statute, III CZP 20/26
+   pending on whether identity alone grounds a change, and K/M as the only recorded marker
+   values. Notes cover procedure, deadlines and fees. */
 
 import { m } from '$lib/paraglide/messages';
 import { INSTITUTION_STATUSES, isOneOf } from '../rowValues';
@@ -115,10 +114,9 @@ export const roadmapGoalNote = (goal: RoadmapGoalKey): string | null => GOAL_NOT
 export const roadmapGoalNoteSecondary = (goal: RoadmapGoalKey): string | null =>
   GOAL_NOTE_SECONDARY[goal]?.() ?? null;
 
-/* The names of the tracks functional audit ticket 34 cut, for the nameless
-   categories migration 111 made out of them (roadmap.ts,
-   LEGACY_ROADMAP_TRACKS). Said in the current language until somebody
-   renames the category. */
+/* The names of the cut, for the nameless categories migration 111 made out of them
+   (roadmap.ts, LEGACY_ROADMAP_TRACKS). Said in the current language until somebody renames
+   the category. */
 const LEGACY_CATEGORY_NAME: Record<(typeof LEGACY_ROADMAP_TRACKS)[number], Message> = {
   social: m.roadmap_category_social,
   presentational: m.roadmap_category_presentational,

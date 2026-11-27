@@ -23,9 +23,9 @@ const versions = $state<Record<TableName, number>>(
   Object.fromEntries(TABLE_NAMES.map((table) => [table, 0])) as Record<TableName, number>
 );
 
-/* The same numbers outside `$state`, for a reader that must not subscribe:
-   the last-answer store stamps an answer with the versions its run started
-   at, and checks them again on a revisit (lastResults.ts, ux-carpet 201). */
+/* The same numbers outside `$state`, for a reader that must not subscribe: the last-answer
+   store stamps an answer with the versions its run started at, and checks them again on a
+   revisit (lastResults.ts). */
 const settled = Object.fromEntries(TABLE_NAMES.map((table) => [table, 0])) as Record<TableName, number>;
 
 /** A table's current version, read without subscribing to it. */
@@ -33,12 +33,9 @@ export function settledVersionOf(table: TableName): number {
   return settled[table];
 }
 
-/** Set while `batchWrites` is running: `bump` collects tables here instead of
-    touching `versions`, so a run of writes costs one re-run of whatever reads
-    them rather than one per write (ticket 141 - a seed of a few thousand
-    statements was re-querying Home's own liveQueries after every single one,
-    and the query cost grows with the journal, which is what made the seed
-    quadratic-ish on device). `null` when no batch is open. */
+/** Set while `batchWrites` is running: `bump` collects tables here instead of touching
+    `versions`, so a run of writes costs one re-run of whatever reads them rather than one
+    per write. `null` when no batch is open. */
 let batched: Set<TableName> | null = null;
 
 /** Called after every announced write, with the tables it wrote: bumps each
