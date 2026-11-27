@@ -84,7 +84,9 @@ try {
     });
     ids.push(r1, r2, r3);
     const { markLetterGreeted } = await import('/src/lib/data/letterStatus.ts');
-    markLetterGreeted(r3);
+    // Acknowledgements live in an encrypted preference since edec8c14c.
+    const { acknowledgementStore } = await import('/src/lib/data/prefs/acknowledgementStore.svelte.ts');
+    markLetterGreeted(r3, acknowledgementStore);
     return ids;
   });
 
