@@ -6,4 +6,4 @@
    Bump this value when adding a migration. Run schema.test.ts after merging
    to catch number conflicts or disagreement with the migration list. */
 
-export const LATEST_SCHEMA_VERSION = 124;
+export const LATEST_SCHEMA_VERSION = 125;

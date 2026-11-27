@@ -7,7 +7,7 @@
    frame. See materials.css. */
 
 import type { TransitionConfig } from 'svelte/transition';
-import { EASE_OUT_CSS, isReducedMotion, motionDuration } from './tokens';
+import { crossfadeDuration, EASE_OUT_CSS, isReducedMotion, motionDuration } from './tokens';
 import { regroupSteps, type CellBox } from './regroup';
 
 /** Where each cell of a grid stands, keyed by the attribute that names it.
@@ -106,14 +106,14 @@ export function travelFollowers(before: Map<HTMLElement, number>): void {
 
     Read before the pin, since `offsetTop` of a node that is already out of
     the flow is measured against a layout that no longer holds it. */
-export function pinnedOut(node: Element): TransitionConfig {
+export function pinnedOut(node: Element, { opacityOnly = false } = {}): TransitionConfig {
   const cell = node as HTMLElement;
   const top = cell.offsetTop;
   const left = cell.offsetLeft;
   const width = cell.offsetWidth;
   const height = cell.offsetHeight;
   return {
-    duration: motionDuration('--dur-fast'),
+    duration: opacityOnly ? crossfadeDuration() : motionDuration('--dur-fast'),
     css: (t) =>
       `position: absolute;` +
       `top: ${top}px;` +
@@ -123,7 +123,7 @@ export function pinnedOut(node: Element): TransitionConfig {
       `margin: 0;` +
       `pointer-events: none;` +
       `opacity: ${t};` +
-      `transform: scale(${0.94 + 0.06 * t});`
+      (opacityOnly ? '' : `transform: scale(${0.94 + 0.06 * t});`)
   };
 }
 

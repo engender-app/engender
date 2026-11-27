@@ -128,3 +128,15 @@ describe('vendored packages', () => {
     for (const path of copied) expect(VENDORED_PACKAGES).toContain(path);
   });
 });
+
+describe('code copied rather than installed', () => {
+  it("lists the tag icons' Lucide source in the app section, with its full licence text", async () => {
+    const { noticesFromDisk } = await import('../scripts/licence-notices.mjs');
+    const { notices } = noticesFromDisk(new URL('..', import.meta.url).pathname, []);
+    const lucide = notices.sections.find((s) => s.id === 'app')!.entries.find((e) => e.name === 'Lucide');
+    expect(lucide?.licence).toBe('ISC');
+    const text = notices.texts[lucide!.texts[0]];
+    expect(text).toContain('Lucide Icons and Contributors');
+    expect(text).toContain('Cole Bemis');
+  });
+});

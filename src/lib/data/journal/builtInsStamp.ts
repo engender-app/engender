@@ -13,7 +13,7 @@
    to check it. */
 import { LATEST_SCHEMA_VERSION } from '../sqlite/schema-version';
 
-export const BUILT_INS_FINGERPRINT = 'de3b244073e6733c';
+export const BUILT_INS_FINGERPRINT = '14211b067f622817';
 
 /** The value a journal reconciled by this build carries in its header: the
     catalogue's fingerprint and the schema version, since a migration may

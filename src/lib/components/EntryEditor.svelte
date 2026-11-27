@@ -1447,9 +1447,10 @@
 
   {#snippet tagPicker()}
     <TagPicker
+      emotionFamilies
       groups={vocabulary.visibleTagGroups}
       selected={entryDraft.tags}
-      onToggle={(id) => entryDraft.toggleTag(id)}
+      onChange={(next) => entryDraft.setTags(next)}
     />
   {/snippet}
 

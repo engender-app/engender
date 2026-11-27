@@ -137,6 +137,8 @@ export interface ArchiveTag extends ArchiveStamped {
   label: string;
   builtIn: boolean;
   hidden: boolean;
+  /** An own tag's icon name. Omitted for iconless tags and in older archives. */
+  icon?: string;
 }
 
 export interface ArchiveTagGroup extends ArchiveStamped {

@@ -20,6 +20,8 @@ const TOLERANCE = 0.5;
     box before a mark starts losing its edge to the viewBox. */
 const SAFE = 1;
 
+// Tag icons keep the approved upstream Lucide paths in tagIcons.ts. The
+// optical-centring sweep below applies to the app's own drawn marks.
 const names = Object.keys(PATHS);
 
 describe('optical centring', () => {

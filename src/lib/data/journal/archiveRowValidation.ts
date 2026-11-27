@@ -96,7 +96,10 @@ const tag = object({
   id: identity,
   label: text,
   builtIn: optional(bool),
-  hidden: optional(bool)
+  hidden: optional(bool),
+  // Preserve unfamiliar names from newer archives. This build draws
+  // an icon only when it knows the name.
+  icon: optional(identity)
 });
 
 const photo = object({

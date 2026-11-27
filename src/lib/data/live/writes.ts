@@ -328,6 +328,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       addTag: ['tag'],
       renameTag: ['tag'],
       setTagHidden: ['tag'],
+      editOwnTag: ['tag'],
       reorder: ['tag'],
       // Unlinks the tag from every entry that carried it (PRD F17), so entry
       // reads change even though no entry row was touched.

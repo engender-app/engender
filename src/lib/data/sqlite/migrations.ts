@@ -24,6 +24,7 @@ import { EFFECT_CATEGORY_SPLIT } from './effect-category-split-migration.ts';
 import { PROGRESS_POSES_TABLE } from './progress-pose-migration.ts';
 import { ENTRY_TEMPLATES_DROP } from './entry-templates-drop-migration.ts';
 import { TALLY_AND_HAIR_FOLD } from './tally-and-hair-fold-migration.ts';
+import { TAG_ICON } from './tag-icon-migration.ts';
 
 /** What were migrations 89 to 119, as development builds ran them. The
     released chain runs them as the one step at 119 (see the header). */
@@ -467,5 +468,7 @@ export const migrations: Migration[] = [
   { version: 123, sql: ENTRY_TEMPLATES_DROP },
   /* The tally is removed and hair progress folds into progress photos
      (tally-and-hair-fold-migration.ts). */
-  { version: 124, sql: TALLY_AND_HAIR_FOLD }
+  { version: 124, sql: TALLY_AND_HAIR_FOLD },
+  /* Store the icon name for own tags. */
+  { version: 125, sql: TAG_ICON }
 ];

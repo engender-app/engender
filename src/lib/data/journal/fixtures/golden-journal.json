@@ -305,6 +305,188 @@
           "builtIn": false,
           "hidden": false,
           "updatedAt": 1793388955699
+        },
+        {
+          "id": "e-angry",
+          "label": "",
+          "builtIn": true,
+          "hidden": false,
+          "updatedAt": 0
+        },
+        {
+          "id": "e-proud",
+          "label": "",
+          "builtIn": true,
+          "hidden": false,
+          "updatedAt": 0
+        },
+        {
+          "id": "e-grateful",
+          "label": "",
+          "builtIn": true,
+          "hidden": false,
+          "updatedAt": 0
+        },
+        {
+          "id": "e-excited",
+          "label": "",
+          "builtIn": true,
+          "hidden": false,
+          "updatedAt": 0
+        },
+        {
+          "id": "e-close",
+          "label": "",
+          "builtIn": true,
+          "hidden": false,
+          "updatedAt": 0
+        },
+        {
+          "id": "e-content",
+          "label": "",
+          "builtIn": true,
+          "hidden": false,
+          "updatedAt": 0
+        },
+        {
+          "id": "e-relieved",
+          "label": "",
+          "builtIn": true,
+          "hidden": false,
+          "updatedAt": 0
+        },
+        {
+          "id": "e-safe",
+          "label": "",
+          "builtIn": true,
+          "hidden": false,
+          "updatedAt": 0
+        },
+        {
+          "id": "e-grounded",
+          "label": "",
+          "builtIn": true,
+          "hidden": false,
+          "updatedAt": 0
+        },
+        {
+          "id": "e-worried",
+          "label": "",
+          "builtIn": true,
+          "hidden": false,
+          "updatedAt": 0
+        },
+        {
+          "id": "e-overwhelmed",
+          "label": "",
+          "builtIn": true,
+          "hidden": false,
+          "updatedAt": 0
+        },
+        {
+          "id": "e-restless",
+          "label": "",
+          "builtIn": true,
+          "hidden": false,
+          "updatedAt": 0
+        },
+        {
+          "id": "e-panicky",
+          "label": "",
+          "builtIn": true,
+          "hidden": false,
+          "updatedAt": 0
+        },
+        {
+          "id": "e-lonely",
+          "label": "",
+          "builtIn": true,
+          "hidden": false,
+          "updatedAt": 0
+        },
+        {
+          "id": "e-disappointed",
+          "label": "",
+          "builtIn": true,
+          "hidden": false,
+          "updatedAt": 0
+        },
+        {
+          "id": "e-hurt",
+          "label": "",
+          "builtIn": true,
+          "hidden": false,
+          "updatedAt": 0
+        },
+        {
+          "id": "e-ashamed",
+          "label": "",
+          "builtIn": true,
+          "hidden": false,
+          "updatedAt": 0
+        },
+        {
+          "id": "e-empty",
+          "label": "",
+          "builtIn": true,
+          "hidden": false,
+          "updatedAt": 0
+        },
+        {
+          "id": "e-frustrated",
+          "label": "",
+          "builtIn": true,
+          "hidden": false,
+          "updatedAt": 0
+        },
+        {
+          "id": "e-irritated",
+          "label": "",
+          "builtIn": true,
+          "hidden": false,
+          "updatedAt": 0
+        },
+        {
+          "id": "e-resentful",
+          "label": "",
+          "builtIn": true,
+          "hidden": false,
+          "updatedAt": 0
+        },
+        {
+          "id": "e-furious",
+          "label": "",
+          "builtIn": true,
+          "hidden": false,
+          "updatedAt": 0
+        },
+        {
+          "id": "e-drained",
+          "label": "",
+          "builtIn": true,
+          "hidden": false,
+          "updatedAt": 0
+        },
+        {
+          "id": "e-numb",
+          "label": "",
+          "builtIn": true,
+          "hidden": false,
+          "updatedAt": 0
+        },
+        {
+          "id": "e-bored",
+          "label": "",
+          "builtIn": true,
+          "hidden": false,
+          "updatedAt": 0
+        },
+        {
+          "id": "e-unmotivated",
+          "label": "",
+          "builtIn": true,
+          "hidden": false,
+          "updatedAt": 0
         }
       ],
       "updatedAt": 0

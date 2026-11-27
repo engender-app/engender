@@ -73,7 +73,9 @@ export interface EntryDraft {
   setMood(mood: number | null): void;
   setNote(note: string): void;
   setDim(key: string, value: number): void;
-  toggleTag(id: string): void;
+  /** The picked tags as the picker hands them over, whole: one tap can
+      change several (an emotion family with its finer words). */
+  setTags(ids: string[]): void;
   /** Puts a region's slider on screen, or takes it off. Nothing is seeded:
       a region picked and left at the midpoint carries nothing and is
       dropped on save, so picking one is not itself content. */
@@ -174,8 +176,8 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
       this.dims[key] = value;
     },
 
-    toggleTag(id) {
-      this.tags = this.tags.includes(id) ? this.tags.filter((x: string) => x !== id) : [...this.tags, id];
+    setTags(ids) {
+      this.tags = [...ids];
     },
 
     toggleBodyRegion(key) {

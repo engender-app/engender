@@ -129,6 +129,10 @@ export const ANDROID_LIBRARIES = [
   }
 ];
 
+/** Code copied into the app rather than installed: the tag icons'
+    path data from Lucide 1.48.0 lives in src/lib/components/tagIcons.ts. */
+const COPIED = [{ name: 'Lucide', licence: 'ISC', files: ['scripts/licence-texts/lucide.txt'] }];
+
 /** The type the app draws with, and the faces pdf.js substitutes for the
     standard PDF fonts. */
 const FONTS = [
@@ -188,11 +192,12 @@ export function packagePathOf(id) {
  *   files: (dir: string) => string[],
  *   read: (path: string) => string,
  *   androidLibraries?: typeof ANDROID_LIBRARIES,
- *   fonts?: typeof FONTS
+ *   fonts?: typeof FONTS,
+ *   copied?: typeof COPIED
  * }} input
  * @returns {{ notices: Notices, problems: string[] }}
  */
-export function buildNotices({ app, android = [], lock, files, read, androidLibraries = [], fonts = [] }) {
+export function buildNotices({ app, android = [], lock, files, read, androidLibraries = [], fonts = [], copied = [] }) {
   const byPath = new Map(lock.map((entry) => [entry.path, entry]));
   /** @type {string[]} */
   const texts = [];
@@ -248,7 +253,7 @@ export function buildNotices({ app, android = [], lock, files, read, androidLibr
     items.map(({ name, licence, files: paths }) => ({ name, version: '', licence, texts: paths.map((path) => keep(read(path))) }));
 
   const sections = /** @type {NoticeSection[]} */ ([
-    { id: 'app', entries: packageEntries(app) },
+    { id: 'app', entries: [...packageEntries(app), ...fixedEntries(copied)].sort((a, b) => a.name.localeCompare(b.name)) },
     {
       id: 'android',
       entries: [...packageEntries(android), ...fixedEntries(androidLibraries)].sort((a, b) => a.name.localeCompare(b.name))
@@ -269,7 +274,8 @@ export function noticesFromDisk(root, shipped) {
     files: (dir) => (existsSync(join(root, dir)) ? readdirSync(join(root, dir)) : []),
     read: (path) => readFileSync(join(root, path), 'utf8'),
     androidLibraries: ANDROID_LIBRARIES,
-    fonts: FONTS
+    fonts: FONTS,
+    copied: COPIED
   });
 }
 

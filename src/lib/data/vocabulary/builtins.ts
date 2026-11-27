@@ -52,8 +52,19 @@ export const BUILT_IN_TAG_GROUPS = [
     ]
   },
   {
+    // Keep the six original emotion keys in their existing order. The
+    // remaining keys add angry and the finer words defined below.
     key: 'emotions',
-    tags: ['e-happy', 'e-calm', 'e-anxious', 'e-sad', 'e-hopeful', 'e-tired']
+    tags: [
+      'e-happy', 'e-calm', 'e-anxious', 'e-sad', 'e-hopeful', 'e-tired',
+      'e-angry',
+      'e-proud', 'e-grateful', 'e-excited', 'e-close',
+      'e-content', 'e-relieved', 'e-safe', 'e-grounded',
+      'e-worried', 'e-overwhelmed', 'e-restless', 'e-panicky',
+      'e-lonely', 'e-disappointed', 'e-hurt', 'e-ashamed', 'e-empty',
+      'e-frustrated', 'e-irritated', 'e-resentful', 'e-furious',
+      'e-drained', 'e-numb', 'e-bored', 'e-unmotivated'
+    ]
   },
   {
     key: 'activities',
@@ -78,6 +89,18 @@ export const BUILT_IN_TAG_GROUPS = [
     key: 'dysphoria_type',
     tags: ['dt-physical', 'dt-biochemical', 'dt-social', 'dt-societal', 'dt-sexual', 'dt-presentational', 'dt-existential']
   }
+] as const;
+
+/* An emotion family is a tag that opens its finer words on the marks
+   step. Picking a finer word in the tray also picks its family for stats.
+   Hopeful keeps its original tag key and appears under happy. */
+export const EMOTION_FAMILIES = [
+  { key: 'e-happy', finer: ['e-hopeful', 'e-proud', 'e-grateful', 'e-excited', 'e-close'] },
+  { key: 'e-calm', finer: ['e-content', 'e-relieved', 'e-safe', 'e-grounded'] },
+  { key: 'e-anxious', finer: ['e-worried', 'e-overwhelmed', 'e-restless', 'e-panicky'] },
+  { key: 'e-sad', finer: ['e-lonely', 'e-disappointed', 'e-hurt', 'e-ashamed', 'e-empty'] },
+  { key: 'e-angry', finer: ['e-frustrated', 'e-irritated', 'e-resentful', 'e-furious'] },
+  { key: 'e-tired', finer: ['e-drained', 'e-numb', 'e-bored', 'e-unmotivated'] }
 ] as const;
 
 export type BuiltInTagGroupKey = (typeof BUILT_IN_TAG_GROUPS)[number]['key'];

@@ -699,7 +699,7 @@
     <p class="search-hint" data-search-scope>{m.search_filters_entries_only()}</p>
 
     <p class="search-filter-label">{m.tags_label()}</p>
-    <TagPicker groups={vocabulary.tagGroups} selected={selectedTagIds} onToggle={toggleTag} />
+    <TagPicker groups={vocabulary.tagGroups} selected={selectedTagIds} onChange={(next) => (selectedTagIds = next)} />
 
     <p class="search-filter-label">{m.mood()}</p>
     <div class="tag-row" role="group" aria-label={m.search_filter_moods_aria()}>

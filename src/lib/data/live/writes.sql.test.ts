@@ -182,6 +182,7 @@ beforeAll(async () => {
   };
   await drive('tags', 'renameTag', () => journal.tags.renameTag(tag.id, 'endocrinology'));
   await drive('tags', 'setTagHidden', () => journal.tags.setTagHidden(tag.id, true));
+  await drive('tags', 'editOwnTag', () => journal.tags.editOwnTag(tag.id, { icon: 'bike' }));
   await drive('tags', 'reorder', () => journal.tags.reorder(group.key, [tag2.id, tag.id, tag3.id]));
 
   // --- presentations ----------------------------------------------------
