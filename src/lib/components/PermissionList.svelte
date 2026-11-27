@@ -154,11 +154,10 @@
   </ListCard>
   {/if}
 
-  <!-- The closer is the claim the whole list exists to make concrete, and the
-       claim is not the same on both platforms: Android holds no internet
-       permission at all, while the web app is itself something the browser
-       downloads. One key per platform, like the clipboard row above, because
-       the protection differs (UI/UX ticket 09). -->
+  <!-- The closer is the claim the whole list exists to make concrete, and the claim is not
+       the same on both platforms: Android holds no internet permission at all, while the
+       web app is itself something the browser downloads. One key per platform, like the
+       clipboard row above, because the protection differs. -->
   {#if isAndroid()}
     <p class="perm-closer" data-no-internet>{m.perms_no_internet()}</p>
   {:else if !asksOnly}

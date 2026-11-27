@@ -1,17 +1,15 @@
-/* The side-effect area. A side effect is not an Entry
-   (CONTEXT: "Side effect"): no mood, dimension values, tags or note, and no
-   regimen-episode reference - it has to work whether or not a regimen
-   episode exists.
+/* The side-effect area. A side effect is not an Entry: no mood, dimension values, tags or
+   note, and no regimen-episode reference - it has to work whether or not a regimen episode
+   exists.
 
-   getSideEffectsInRange is ticket 12's read path: it pulls a range with no
-   query logic of ticket 12's own, the same way stats.ts's fromEpochDay/
-   toEpochDay reads do.
+   GetSideEffectsInRange is read path: it pulls a range with no query logic of own, the same
+   way stats.ts's fromEpochDay/ toEpochDay reads do.
 
-   Flat, so its three writes come from flatArea.ts, with the severity check
-   passed in as that factory's pre-write guard.
+   Flat, so its three writes come from flatArea.ts, with the severity check passed in as
+   that factory's pre-write guard.
 
-   Ongoing or resolved since functional audit ticket 23: `epochDay` is when
-   it began and `resolvedEpochDay` when it ended, null while it goes on. */
+   Ongoing or resolved `epochDay` is when it began and `resolvedEpochDay` when it ended,
+   null while it goes on. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { SideEffect } from '../types';
@@ -25,8 +23,8 @@ type SideEffectInput = FlatInput<SideEffect>;
 export interface SideEffectsArea {
   getSideEffects(): Promise<SideEffect[]>;
   getSideEffectsInRange(fromEpochDay: number, toEpochDay: number): Promise<SideEffect[]>;
-  /** The day of the most recent side effect at or before `todayEpochDay`, or
-      null if there is none (phase 8 features ticket 03, lastWrite.ts). */
+  /** The day of the most recent side effect at or before `todayEpochDay`, or null if there
+      is none (lastWrite.ts). */
   lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
   /** Returns the side effect's id. Updating an unknown id throws; an
       out-of-range severity throws before anything is written. */
@@ -35,10 +33,9 @@ export interface SideEffectsArea {
   deleteSideEffect(id: string): Promise<void>;
 }
 
-/** The schema's CHECK is the backstop (like reminder's recurrence); this is
-    what turns a bad value into a message naming the ticket's own scale
-    instead of a raw SQLite constraint failure. Null passes: leaving severity
-    blank is the point of ticket 23, not a value to reject. */
+/** The schema's CHECK is the backstop (like reminder's recurrence); this is what turns a
+    bad value into a message naming own scale instead of a raw SQLite constraint failure.
+    Null passes: leaving severity blank is the point of, not a value to reject. */
 function assertValidSeverity(severity: number | null): void {
   if (severity === null) return;
   if (!Number.isInteger(severity) || severity < MIN_SEVERITY || severity > MAX_SEVERITY) {

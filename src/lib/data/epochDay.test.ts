@@ -106,9 +106,8 @@ test(`epochDayFromDateInputValue returns null for the empty string under TZ=${tz
   expect(epochDayFromDateInputValue('')).toBeNull();
 });
 
-/* Ticket 10: 16 call sites each decided by hand what an unreadable date
-   means - 15 answered "today", one answered null. This is that one answer,
-   written down once. */
+/* 16 call sites each decided by hand what an unreadable date means - 15 answered "today",
+   one answered null. This is that one answer, written down once. */
 test(`epochDayFromDateInputValueOrToday falls back to today for the empty string under TZ=${tz}`, () => {
   expect(epochDayFromDateInputValueOrToday('')).toBe(todayEpochDay());
 });
@@ -118,9 +117,9 @@ test(`epochDayFromDateInputValueOrToday passes a real value through under TZ=${t
   expect(epochDayFromDateInputValueOrToday('2024-03-01')).toBe(day);
 });
 
-/* Ticket 10: four screens (clinician summary, photo export, search, wrapped)
-   each hand-wrote the same two-ended range - start can't run past end, end
-   can't run before start. This is that pair, written once. */
+/* Four screens (clinician summary, photo export, search, wrapped) each hand-wrote the same
+   two-ended range - start can't run past end, end can't run before start. This is that
+   pair, written once. */
 test(`dayRangeStartMax lets an empty end field mean "no upper bound" under TZ=${tz}`, () => {
   expect(dayRangeStartMax('')).toBeUndefined();
 });
@@ -250,7 +249,7 @@ test(`anniversaryYears counts the anniversaries that have arrived, under TZ=${tz
 
 test(`a 29 February milestone reads as a whole year old on its 28 February anniversary, under TZ=${tz}`, () => {
   // 2025-02-28 is 365 days after 2024-02-29. The anniversary clamps to the
-  // 28th, and since last-audit UI 32 the gap clamps the same way, so the
+  // 28th, and the gap clamps the same way, so the
   // two agree that a whole year has passed rather than the gap reading a
   // day short of it.
   const milestone = epochDayFromLocalDate(new Date(2024, 1, 29));
@@ -483,13 +482,11 @@ test('calendar duration borrows across a year boundary and keeps exact-month zer
   expect(calendarDuration(day(2025, 12, 31), day(2026, 1, 1))).toEqual({ years: 0, months: 0, days: 1 });
 });
 
-/* Last-audit UI 32. The old borrow added the length of the month before the
-   end date once, so a start day longer than that month left days negative:
-   31 January to 1 March came out as 1 month and -2 days. Alicja's rule
-   (13 October 2026): a month from the 31st ends on the shorter month's last
-   day, so 31 January + 1 month is 28 or 29 February and 31 January to
-   1 March is 1 month 1 day. Every expected value below is worked by hand
-   from that rule, not from the implementation. */
+/* The old borrow added the length of the month before the end date once, so a start day
+   longer than that month left days negative: 31 January to 1 March came out as 1 month and
+   -2 days. a month from the 31st ends on the shorter month's last day, so 31 January + 1
+   month is 28 or 29 February and 31 January to 1 March is 1 month 1 day. Every expected
+   value below is worked by hand from that rule, not from the implementation. */
 test('31 January to 1 March is 1 month 1 day, never negative days', () => {
   const day = (year: number, month: number, date: number) => epochDayFromCalendarDate(year, month, date)!;
   const d = calendarDuration(day(2026, 1, 31), day(2026, 3, 1));

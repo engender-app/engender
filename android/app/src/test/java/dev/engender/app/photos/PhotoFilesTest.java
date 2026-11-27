@@ -22,11 +22,10 @@ public class PhotoFilesTest {
         assertArrayEquals(new byte[] { 1, 2, 3 }, Files.readAllBytes(target.toPath()));
     }
 
-    /* Opening the stream creates the file before a byte lands, so a write the
-       disk refused (ENOSPC) used to leave a 0-byte photo behind for the boot
-       sweep, and a sweep never runs on a boot that writes (last-audit ui 37).
-       A null payload fails at the same point a full disk does: after the open,
-       inside the write. */
+    /* Opening the stream creates the file before a byte lands, so a write the disk refused
+       (ENOSPC) used to leave a 0-byte photo behind for the boot sweep, and a sweep never
+       runs on a boot that writes. A null payload fails at the same point a full disk does:
+       after the open, inside the write. */
     @Test
     public void aFailedWriteLeavesNoFileUnderItsName() {
         File target = new File(folder.getRoot(), "b.jpg");

@@ -70,14 +70,13 @@
      tall as the tallest of them, whichever one is showing. */
   let monthSizers = $derived(Array.from({ length: 12 }, (_, i) => fmtMonthYear(year, i)));
 
-  /* Whether this journal has anything in it at all, which decides whether
-     the month and the week draw (phase 8 UX ticket 01, and Home's own rule):
-     a strip of empty bars over an empty grid is day one's placeholder, and
-     the one thing that screen owes is somewhere to start.
+  /* Whether this journal has anything in it at all, which decides whether the month and the
+     week draw: a strip of empty bars over an empty grid is day one's placeholder, and the
+     one thing that screen owes is somewhere to start.
 
-     Ticket 109: determine presence from cached journal state on initial mount
-     so hasEntries does not flip from false/null to true after mount, snapping
-     month controls and heatmap into layout. */
+     Determine presence from cached journal state on initial mount so hasEntries does not
+     flip from false/null to true after mount, snapping month controls and heatmap into
+     layout. */
   let entryCountQuery = liveQuery((j) => j.entries.countAll());
   /* The last answer lives in the encrypted acknowledgements preference now,
      not in plaintext localStorage. */
@@ -98,14 +97,12 @@
       : (cachedHasEntries ?? (prefs.onboarded ? true : false))
   );
 
-  /* Five days, not five entries: every entry of each shown day draws, so a
-     day with more than one holds its own timeline rather than a bare count
-     over a truncated one (ux-carpet ticket 13, recentEntries.ts). Growing
-     rather than fixed since ticket 18: five more days at a tap, the whole
-     read regrown at the wider limit each time rather than a second page
-     appended, which is what keeps the days already on screen from ever
-     being asked for twice (ADR-0069's "batch" is the DOM's; this is still
-     one bounded read per render). */
+  /* Five days, not five entries: every entry of each shown day draws, so a day with more
+     than one holds its own timeline rather than a bare count over a truncated one
+     (recentEntries.ts). Growing rather than fixed since five more days at a tap, the whole
+     read regrown at the wider limit each time rather than a second page appended, which is
+     what keeps the days already on screen from ever being asked for twice (ADR-0069's
+     "batch" is the DOM's; this is still one bounded read per render). */
   const RECENT_DAYS_STEP = 5;
   let recentDaysLimit = $state(restored?.recentDaysLimit ?? RECENT_DAYS_STEP);
   let recent = liveList((j) => j.entries.recentDays(recentDaysLimit));
@@ -241,14 +238,12 @@
        as the animation and leaves nothing behind. */
     const el = monthBody?.querySelector<HTMLElement>(`[${attr}="${box.key}"]`);
     if (!el) return;
-    /* The start written to the element as well as into the animation: a
-       freshly made Web Animation paints from the frame after the one that
-       makes it (reveal.ts's crossfade note), so for one frame every day sat
-       at its new place. Opened from the strip, that put rows two to five
-       under the panel's 30px clip at once, and 27 of the strip's 31 bars
-       vanished in the first frame (phase 14 ticket 18, sampled). Filled
-       forwards and cleared together, so the inline start never shows once
-       the travel is over either. */
+    /* The start written to the element as well as into the animation: a freshly made Web
+       Animation paints from the frame after the one that makes it (reveal.ts's crossfade
+       note), so for one frame every day sat at its new place. Opened from the strip, that
+       put rows two to five under the panel's 30px clip at once, and 27 of the strip's 31
+       bars vanished in the first frame. Filled forwards and cleared together, so the inline
+       start never shows once the travel is over either. */
     el.style.transformOrigin = '0 0';
     el.style.transform = from;
     const run = el.animate(
@@ -347,14 +342,12 @@
     }
   }
 
-  /* Item 11: a year is twelve taps of the chevron away, which is the whole
-     of the reason nobody lands on last August on purpose. The month label
-     itself is the way in - it already says where you are, so it is the thing
-     that offers to move you - and the sheet it opens is a year and its
-     twelve months (MonthJump.svelte, ticket 281; it was flatpickr's day
-     grid until then). The month transition's direction follows whichever
-     moved, the year or the pick, so arriving at a picked month still slides
-     the way it went. A pick closes the sheet in the same step, so the label
+  /* Item 11: a year is twelve taps of the chevron away, which is the whole of the reason
+     nobody lands on last August on purpose. The month label itself is the way in - it
+     already says where you are, so it is the thing that offers to move you - and the sheet
+     it opens is a year and its twelve months (MonthJump.svelte). The month transition's
+     direction follows whichever moved, the year or the pick, so arriving at a picked month
+     still slides the way it went. A pick closes the sheet in the same step, so the label
      slides while the sheet is on its way down. */
   let jumpOpen = $state(false);
   // Capture before a retained door deactivates. Restore before it is shown,
@@ -413,16 +406,14 @@
 
 <div class="screen">
   <ScreenHeader title={m.nav_calendar()} titleHidden screen="calendar">
-    <!-- The month on the field, at the section-heading size and in the
-         field's ink (rule 7). The live region is the <h2>, which stays put,
-         and the slot inside it is what the labels are keyed in and out of.
-         Ticket 31 keyed the heading itself; the key moved inward for two
-         reasons. A keyed <h2> puts two headings in the document outline for
-         the length of the swap. And it puts the live region on the element
-         being replaced, so a screen reader meets a brand-new region rather
-         than a change inside a standing one, which several of them announce
-         twice. Here the region stands still and only its contents change,
-         and aria-relevant defaults to additions, so the outgoing month's
+    <!-- The month on the field, at the section-heading size and in the field's ink (rule
+         7). The live region is the <h2>, which stays put, and the slot inside it is what
+         the labels are keyed in and out of. keyed the heading itself; the key moved inward
+         for two reasons. A keyed <h2> puts two headings in the document outline for the
+         length of the swap. And it puts the live region on the element being replaced, so a
+         screen reader meets a brand-new region rather than a change inside a standing one,
+         which several of them announce twice. Here the region stands still and only its
+         contents change, and aria-relevant defaults to additions, so the outgoing month's
          removal says nothing and the incoming month is announced once. -->
     {#snippet field()}
       <div class="cal-field">
@@ -622,17 +613,15 @@
     gap: var(--space-2);
   }
   .cal-field .cal-month { flex: 1; }
-  /* Beside the search control the month has the app's width less 96px:
-     99px at 195px (200% zoom on a 390px phone), where "October" (109px)
-     and "październik" (153px) were cut by the slot's walls and the button
-     under them ran 2 to 46px into the search target (last-audit UI 48).
-     Where the longest month word would not fit beside it, the month takes
-     the whole line and search moves to the line under it, at the same
-     trailing edge. The bound is in em, the app's own text size, because
-     the words grow with it and the 96px does not: 15.75em is 252px at
-     100% text, where "październik" just fits beside, and 504px at 200%.
-     Decided by the width and the text size, never by which month is
-     showing, so stepping from May to October does not move the control. */
+  /* Beside the search control the month has the app's width less 96px: 99px at 195px (200%
+     zoom on a 390px phone), where "October" (109px) and "październik" (153px) were cut by
+     the slot's walls and the button under them ran 2 to 46px into the search target. Where
+     the longest month word would not fit beside it, the month takes the whole line and
+     search moves to the line under it, at the same trailing edge. The bound is in em, the
+     app's own text size, because the words grow with it and the 96px does not: 15.75em is
+     252px at 100% text, where "październik" just fits beside, and 504px at 200%. Decided by
+     the width and the text size, never by which month is showing, so stepping from May to
+     October does not move the control. */
   @container app (max-width: 15.75em) {
     .cal-field { flex-wrap: wrap; }
     .cal-field .cal-month { flex-basis: 100%; }
@@ -654,17 +643,16 @@
     line-height: var(--leading-display);
   }
 
-  /* The slot the month name changes inside. One grid cell
-     holding both labels, so the outgoing and the incoming month occupy the
-     same place rather than pushing each other, and `overflow: hidden` is the
-     pair of walls the effect is built on: one whose top is level with the
-     text's bottom, one whose bottom is level with the text's top. The clip is
-     what hides a label, which is why neither half of the transition touches
-     opacity - a piece of text that dissolves while it travels reads as two
-     effects rather than as one object going behind something.
+  /* The slot the month name changes inside. One grid cell holding both labels, so the
+     outgoing and the incoming month occupy the same place rather than pushing each other,
+     and `overflow: hidden` is the pair of walls the effect is built on: one whose top is
+     level with the text's bottom, one whose bottom is level with the text's top. The clip
+     is what hides a label, which is why neither half of the transition touches opacity - a
+     piece of text that dissolves while it travels reads as two effects rather than as one
+     object going behind something.
 
-     It sits inside the <h2> rather than around it, which is ticket 22's one
-     change to ticket 31's markup - see the note in the markup. */
+     It sits inside the <h2> rather than around it, which is one change to markup - see the
+     note in the markup. */
   .cal-month-slot {
     display: grid;
     overflow: hidden;
@@ -672,13 +660,11 @@
   }
   .cal-month-slot > * { grid-area: 1 / 1; }
 
-  /* Holds the slot at the height of the tallest month name. Where a name
-     cannot fit the line ("październik" at 200% text on 195px) it breaks in
-     two, and the slot would be a line taller for that month alone, moving
-     the search control under it by a line in one frame when the month
-     changes. Every name is stacked in one cell, in the button's own font
-     and box, hidden and unread, so the height never depends on which month
-     is showing (last-audit UI 48). */
+  /* Holds the slot at the height of the tallest month name. Where a name cannot fit the
+     line ("październik" at 200% text on 195px) it breaks in two, and the slot would be a
+     line taller for that month alone, moving the search control under it by a line in one
+     frame when the month changes. Every name is stacked in one cell, in the button's own
+     font and box, hidden and unread, so the height never depends on which month is showing. */
   .cal-month-sizer {
     display: grid;
     visibility: hidden;

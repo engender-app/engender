@@ -37,10 +37,9 @@
   let status = $state<AndroidReminderStatus | 'unreadable'>({ notifications: 'not-required', exactAlarms: 'not-required' });
   let statusReady = $state(false);
 
-  /* Re-read whenever the screen comes back to the front, because both
-     ways out of a refusal are Android's own settings screens (ticket 41,
-     U30). Every read goes through the watcher, the ones after a request
-     too, so a read from before the trip to settings cannot land last. */
+  /* Re-read whenever the screen comes back to the front, because both ways out of a refusal
+     are Android's own settings screens. Every read goes through the watcher, the ones after
+     a request too, so a read from before the trip to settings cannot land last. */
   let statusWatch: ReturnType<typeof watchStatus<AndroidReminderStatus | 'unreadable'>> | null = null;
 
   async function requestNotifications() {

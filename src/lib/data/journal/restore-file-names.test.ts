@@ -1,5 +1,4 @@
-/* One owner per stored file, and names every store reads the same way
-   (security scan ticket 04: GD-010, GD-020, GD-024). */
+/* One owner per stored file, and names every store reads the same way. */
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { CorruptArchiveError } from '../archive/container.ts';

@@ -57,10 +57,9 @@ export const POLISH_PACK = {
   goals: POLISH_GOALS
 } as const satisfies RoadmapPack;
 
-/** Every pack this build bundles. One for now, by the phase 4 grilling
-    session's scope decision (Q14): the structure holds a second country's
-    content without a schema change, but populating one is separate content
-    work. */
+/** Every pack this build bundles. One for now, by the grilling session's scope decision
+    (Q14): the structure holds a second country's content without a schema change, but
+    populating one is separate content work. */
 /* Exported for its own test and for the reviewed-on guard in
    reviewedContent.ts, which reads each pack's reviewedOn. */
 export const ROADMAP_PACKS = [POLISH_PACK] as const satisfies readonly RoadmapPack[];
@@ -76,13 +75,12 @@ export type RoadmapGoalKey = (typeof ROADMAP_PACKS)[number]['goals'][number]['ke
 
 export type RoadmapPackKey = (typeof ROADMAP_PACKS)[number]['key'];
 
-/* The social and presentation group (pre-release human ticket 17): eight
-   plain steps, none of them a legal or medical claim, so the pack has no
-   review date and sits outside ROADMAP_PACKS, which the reviewed-on guard
-   reads. Its keys start `social-`, never `pl-social-`: isCutTrackGoal
-   below drops a tick by that older prefix, and these must survive it. The
-   person trims the list with each step's own "hide" and the group with its
-   switch (`prefs.roadmapSocialStepsShown`). */
+/* The social and presentation group: eight plain steps, none of them a legal or medical
+   claim, so the pack has no review date and sits outside ROADMAP_PACKS, which the
+   reviewed-on guard reads. Its keys start `social-`, never `pl-social-`: isCutTrackGoal
+   below drops a tick by that older prefix, and these must survive it. The person trims the
+   list with each step's own "hide" and the group with its switch
+   (`prefs.roadmapSocialStepsShown`). */
 const SOCIAL_GOALS = [
   { key: 'social-family' },
   { key: 'social-friends' },
@@ -118,12 +116,11 @@ export function socialGoalsInView(shown: boolean, hiddenGoals: readonly string[]
   return SOCIAL_GOALS.filter((goal) => !hidden.has(goal.key));
 }
 
-/** Whether a stored tick names a goal from one of the three tracks
-    functional audit ticket 34 cut (social, presentational, medical).
-    Migration 111 deleted those ticks, and a restore leaves them out of an
-    older archive the same way. Matched by the track's key prefix rather
-    than against the goals still bundled, so a tick naming a legal goal
-    that a pack renamed earlier stays exactly as it was. */
+/** Whether a stored tick names a goal from one of the three cut (social, presentational,
+    medical). Migration 111 deleted those ticks, and a restore leaves them out of an older
+    archive the same way. Matched by the track's key prefix rather than against the goals
+    still bundled, so a tick naming a legal goal that a pack renamed earlier stays exactly
+    as it was. */
 export const isCutTrackGoal = (goalKey: string): boolean => /^pl-(social|presentational|medical)-/.test(goalKey);
 
 /** Whether the Polish legal steps show.
@@ -135,12 +132,11 @@ export function polishLegalStepsShown(choice: boolean | null): boolean {
   return choice ?? false;
 }
 
-/** The tracks cut by functional audit ticket 34 that a custom goal could
-    still name. Migration 111 gave each one holding a goal a category whose
-    uuid is the track key and whose name is empty, and a restore of an older
-    archive does the same, so the person's own goals keep their grouping.
-    roadmapLabels.ts says such a category's name in the current language
-    until somebody renames it. */
+/** The tracks cut that a custom goal could still name. Migration 111 gave each one holding
+    a goal a category whose uuid is the track key and whose name is empty, and a restore of
+    an older archive does the same, so the person's own goals keep their grouping.
+    roadmapLabels.ts says such a category's name in the current language until somebody
+    renames it. */
 export const LEGACY_ROADMAP_TRACKS = ['social', 'presentational', 'medical'] as const;
 
 /** Where a custom goal sits: `LEGAL_GROUP` for the Polish legal steps, the
@@ -252,14 +248,12 @@ interface StoredTick {
   readonly hidden: boolean;
 }
 
-/** What is left of a stored tick once ticket 35 has run: the same rule
-    migration 114 applies to the journal and a restore applies to an older
-    archive. A tick on a cut track goes, and so does one on the
-    retired "bank, insurers, clinic" step. A tick on a step that became an
-    institution goes too, since an institution moves by dated changes and a
-    tick has no date to give one; only its hidden flag stays, because the
-    person said that row was not theirs to see. Every other tick is kept as
-    it was. */
+/** What is left of a stored tick once has run: the same rule migration 114 applies to the
+    journal and a restore applies to an older archive. A tick on a cut track goes, and so
+    does one on the retired "bank, insurers, clinic" step. A tick on a step that became an
+    institution goes too, since an institution moves by dated changes and a tick has no date
+    to give one; only its hidden flag stays, because the person said that row was not theirs
+    to see. Every other tick is kept as it was. */
 export function keptTick<T extends StoredTick>(tick: T): T | null {
   if (isCutTrackGoal(tick.goalKey) || tick.goalKey === RETIRED_INSTITUTIONS_STEP) return null;
   if (!isBuiltInInstitution(tick.goalKey)) return tick;

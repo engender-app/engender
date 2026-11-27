@@ -53,7 +53,7 @@ export function peaksFromSamples(samples: Float32Array, buckets: number): Float3
  * The same bars as `peaksFromSamples` of the channels' mean, without ever
  * making that mean: each sample is mixed where it is read, so a decoded
  * recording is walked once and no array the length of the recording is
- * allocated for it (security-scan ticket 07, GD-017).
+ * allocated for it.
  */
 export function peaksFromChannels(channels: readonly Float32Array[], buckets: number): Float32Array {
   const bars = new Float32Array(Math.max(0, buckets));

@@ -1,10 +1,8 @@
 <script lang="ts">
-  /* The body map's tile on the Look back door. The
-     screen is `/body-map`, which took the span in redesign ticket 05; this
-     is only the way in, with the region marked most often in the span as
-     its figure and where that region's reading mostly sat under it. A
-     tile only: the screen already exists and this component draws nothing
-     of it. */
+  /* The body map's tile on the Look back door. The screen is `/body-map`, which took the
+     span; this is only the way in, with the region marked most often in the span as its
+     figure and where that region's reading mostly sat under it. A tile only: the screen
+     already exists and this component draws nothing of it. */
   import { fmtNumber } from '$lib/data/dates';
   import { m } from '$lib/paraglide/messages';
   import { liveList } from '$lib/data/live/journal.svelte';

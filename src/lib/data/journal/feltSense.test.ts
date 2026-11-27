@@ -1,6 +1,5 @@
-/* The felt-sense area (phase 5 ticket 24, CONTEXT: "Felt-sense entry"):
-   one table, every row a tryout's. A milestone held readings too until
-   functional audit ticket 32 cut them. */
+/* The felt-sense area: one table, every row a tryout's. A milestone held readings too cut
+   them. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

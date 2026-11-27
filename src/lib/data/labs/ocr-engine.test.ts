@@ -68,12 +68,11 @@ describe('tesseractLabOcrEngine', () => {
     await expect(tesseractLabOcrEngine().recognize(new Uint8Array([1, 2, 3]))).rejects.toThrow('no engine');
   });
 
-  /* Phase 9 audit ticket 11. The bar over a lab-report scan is a real
-     fraction rather than a sweep only because the installed tesseract.js
-     reports one - so what this pins is that the reading pass is the only
-     status turned into one. Loading the core and each language's
-     traineddata each sweep 0 to 1 of their own, and forwarding those would
-     fill the bar three times before the page is read. */
+  /* The bar over a lab-report scan is a real fraction rather than a sweep only because the
+     installed tesseract.js reports one - so what this pins is that the reading pass is the
+     only status turned into one. Loading the core and each language's traineddata each
+     sweep 0 to 1 of their own, and forwarding those would fill the bar three times before
+     the page is read. */
   test('reports the reading pass and nothing before it', async () => {
     const seen: (number | null)[] = [];
     await tesseractLabOcrEngine().recognize(new Uint8Array([1, 2, 3]), {

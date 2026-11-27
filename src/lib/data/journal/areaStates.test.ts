@@ -108,10 +108,9 @@ test('hiding is independent of finishing in both directions, and un-finishing le
   });
 });
 
-/* Phase 8 features ticket 51: a stream is active, suspended or finished,
-   never two of those at once. Both directions, since a writer clearing the
-   other column wrong in either direction would leave a row this build's own
-   gate (`areaQuiet`) would still read as quiet either way - the kind of bug
+/* A stream is active, suspended or finished, never two of those at once. Both directions,
+   since a writer clearing the other column wrong in either direction would leave a row this
+   build's own gate (`areaQuiet`) would still read as quiet either way - the kind of bug
    that hides behind its own safety net. */
 test('finishing a suspended area clears the suspended day, and suspending a finished one clears the finished day', async () => {
   const { journal } = await journalWithBuiltIns();

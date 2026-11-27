@@ -1,14 +1,12 @@
 /* Shared by the three browser-driven scripts (browser-tier/run.mjs,
-   browser-tier/verify-build.mjs, walkthrough.test.mjs - ticket 20): the
-   PASS/FAIL reporting and the Chromium launch, which used to be declared
-   three times over, including three copies of the same hardcoded
-   /usr/bin/chromium-browser path. Starting the actual server each script
-   drives Chromium against stays with that script - a probe-page server, a
-   built-app preview server and a real dev server are different enough not
-   to share. `fillDate` joined the same way, once the
-   walkthrough and a gallery script both needed it. `previewBuild` is the
-   one exception to that: every probe that takes `--root` needs the same
-   chdir, and twelve copies of it had already gone wrong. */
+   browser-tier/verify-build.mjs): the PASS/FAIL reporting and the Chromium launch, which
+   used to be declared three times over, including three copies of the same hardcoded
+   /usr/bin/chromium-browser path. Starting the actual server each script drives Chromium
+   against stays with that script - a probe-page server, a built-app preview server and a
+   real dev server are different enough not to share. `fillDate` joined the same way, once
+   the walkthrough and a gallery script both needed it. `previewBuild` is the one exception
+   to that: every probe that takes `--root` needs the same chdir, and twelve copies of it
+   had already gone wrong. */
 import { chromium, firefox, webkit } from 'playwright-core';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -186,7 +184,7 @@ export async function toEntryStepWith(page, selector) {
       const at = await page.locator('[data-entry-step]').getAttribute('data-entry-step');
       // The last step's way on is still fading out as it arrives.
       if (!(await control.count()) || at === (way === '[data-screen-back]' ? 'today' : 'writing')) break;
-      // The way on from the first step waits for a face (ticket 09's sign-off).
+      // The way on from the first step waits for a face.
       if (at === 'today' && way === '[data-entry-continue]' && !(await page.locator('[data-entry-step="today"] [data-mood][aria-checked="true"]').count())) {
         await page.locator('[data-entry-step="today"] [data-mood="3"]').click();
       }
@@ -207,17 +205,12 @@ export async function continueToTheRest(page) {
   await page.waitForSelector('#ed-note');
 }
 
-/** A screen at rest, the yank sweep's own settle (ticket 100 wrote it;
- *  the hydration sweep, ticket 108, needed the same one for its sheet
- *  scenes and profile prologues): the page navigated, boot waited ready,
- *  a first run left if it was in the way, and the page-side settle
- *  stamped - toasts gone, demo bar hidden, theme on <html> the way
- *  +layout.svelte stamps it.
- *
- * @param {import('playwright-core').Page} page
- * @param {string} base
- * @param {string} path
- * @param {string} theme */
+/** A screen at rest, the yank sweep's own settle: the page navigated, boot waited ready, a
+ first run left if it was in the way, and the page-side settle stamped - toasts gone, demo
+ bar hidden, theme on <html> the way +layout.svelte stamps it.
+
+ @param {import('playwright-core').Page} page @param {string} base @param {string} path
+ @param {string} theme */
 export async function settlePage(page, base, path, theme) {
   await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
   /* Attached, not visible: at a 200%-zoom width the demo bar wraps taller
@@ -231,10 +224,9 @@ export async function settlePage(page, base, path, theme) {
     await page.waitForSelector('[data-app-root][data-boot="ready"]');
   }
   await untilSplashLets(page);
-  /* The demo bar is hidden rather than removed since redesign ticket 33:
-     setup's own scenes reach the flow through the demo's first-run control,
-     and a removed bar takes the control with it. Nothing measures the bar
-     either way - it is out of the frame and out of the flow. */
+  /* The demo bar is hidden rather than setup's own scenes reach the flow through the demo's
+     first-run control, and a removed bar takes the control with it. Nothing measures the
+     bar either way - it is out of the frame and out of the flow. */
   await page.evaluate(SETTLE_PAGE_EXPRESSION(theme));
 }
 
@@ -357,16 +349,15 @@ export function createReporter() {
   return { ok, fail, finish, block };
 }
 
-/** A server over the built app in `root`, serving build/index.html itself
-    under the production headers (serve-build.mjs, ticket 31). It was vite
-    preview until then, whose document had no CSP and no held module hints.
+/** A server over the built app in `root`, serving build/index.html itself under the
+    production headers (serve-build.mjs). It was vite preview until then, whose document had
+    no CSP and no held module hints.
 
-    It still changes into `root` first, as it did for vite preview, whose
-    SvelteKit adapter read the built server from the working directory:
-a probe given `--root <other tree>` that reads
-    relative paths afterwards keeps reading that tree. Resolve any output
-    path the caller takes before calling it. Without `--root` the root is
-    the checkout the probe runs in and the change is a no-op. */
+    It still changes into `root` first, as it did for vite preview, whose SvelteKit adapter
+    read the built server from the working directory: a probe given `--root <other tree>`
+    that reads relative paths afterwards keeps reading that tree. Resolve any output path
+    the caller takes before calling it. Without `--root` the root is the checkout the probe
+    runs in and the change is a no-op. */
 /** @param {string} root */
 export function previewBuild(root) {
   process.chdir(root);

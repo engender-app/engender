@@ -142,10 +142,9 @@ function nextLetter(facts: RowForwardFacts): RowForward | null {
 function nextAppointment(facts: RowForwardFacts): RowForward | null {
   const ahead = facts.appointments
     .filter((appointment) => appointment.epochDay >= facts.todayEpochDay)
-    /* A consult belongs to the surgery row, which states it there
-       (ADR-0066: one appointment record, two screens reading it). Saying it
-       on both rows would be the app repeating itself, which is the whole
-       complaint phase 11 is answering. */
+    /* A consult belongs to the surgery row, which states it there (ADR-0066: one
+       appointment record, two screens reading it). Saying it on both rows would be the app
+       repeating itself, which is the whole complaint is answering. */
     .filter((appointment) => appointment.procedureId === null)
     .sort((a, b) => a.epochDay - b.epochDay);
   const first = ahead[0];

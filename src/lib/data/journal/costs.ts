@@ -1,10 +1,9 @@
-/* Every record that carries a cost, in one read. The seam ticket 31's Cost reading in Look back stands on: it picks
-   the span and the presentation, and totals only through
-   costTotalsByCurrency (cost.ts), which never adds two currencies together.
+/* Every record that carries a cost, in one read. The seam Cost reading in Look back stands
+   on: it picks the span and the presentation, and totals only through costTotalsByCurrency
+   (cost.ts), which never adds two currencies together.
 
-   Read-only, and one query rather than five areas asked in turn, the same
-   budget lastWrite.ts keeps. A record with no amount and no refund is left
-   out. */
+   Read-only, and one query rather than five areas asked in turn, the same budget
+   lastWrite.ts keeps. A record with no amount and no refund is left out. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import { costFromRow, type Cost, type CostRow } from '../cost';

@@ -59,9 +59,8 @@ describe('tier 3, a glyph passing through a block', () => {
     expect(frame(drumIn(node).css!, 0)).not.toContain('.00');
   });
 
-  /* A stepper's numeral goes both ways (ticket 281's year): stepping back,
-     the new face drops in from above and the old one falls out underneath,
-     so the drum turns the way the value went. */
+  /* A stepper's numeral goes both ways: stepping back, the new face drops in from above and
+     the old one falls out underneath, so the drum turns the way the value went. */
   it('turns the other way when the value went down', () => {
     stubDocument();
     expect(frame(drumIn(node, { dir: -1 }).css!, 0)).toBe('translate: 0 -100%');

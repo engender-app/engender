@@ -97,9 +97,8 @@ export function heldReads(
   return { fixture: { ...source, journal }, release };
 }
 
-/** Counts every call an area operation receives, by `area.method`, so a
-    contract can say a screen never asked a question at all (functional-audit
-    ticket 14: a tile that is off or whose area is hidden reads nothing). */
+/** Counts every call an area operation receives, by `area.method`, so a contract can say a
+    screen never asked a question at all. */
 export function countedReads(source: ScreenFixture) {
   const calls = new Map<string, number>();
   const journal = new Proxy(source.journal, {

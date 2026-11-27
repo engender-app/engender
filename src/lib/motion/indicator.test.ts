@@ -97,20 +97,18 @@ describe('leadingEdge', () => {
 });
 
 describe('PLACE', () => {
-  /* The first placement is not a travel. An unplaced pill is pinned at
-     `left: 0; right: 0`, the whole track, and hidden by opacity; if its
-     edges ran on LEAD when it was first placed, it would fade in across
-     the whole track and then shrink onto its segment (ticket 166: about
-     280ms full-width at 4x CPU, then a two-frame snap). */
+  /* The first placement is not a travel. An unplaced pill is pinned at `left: 0; right: 0`,
+     the whole track, and hidden by opacity; if its edges ran on LEAD when it was first
+     placed, it would fade in across the whole track and then shrink onto its segment. */
   it('moves the edges in no time at all', () => {
     expect(parseFloat(PLACE.dur)).toBe(0);
     expect(parseFloat(PLACE.delay)).toBe(0);
   });
 });
 
-/* A grid of peers rather than a row (ticket 281's month picker): the pill
-   can go sideways, down, or both at once, so each axis gets its own pair of
-   clocks and leads with whichever of its edges faces the destination. */
+/* A grid of peers rather than a row: the pill can go sideways, down, or both at once, so
+   each axis gets its own pair of clocks and leads with whichever of its edges faces the
+   destination. */
 describe('gridSchedules', () => {
   it('leads with the right and bottom edges going down and across', () => {
     const s = gridSchedules(box(0, 0, 80, 56), box(88, 64, 80, 56));

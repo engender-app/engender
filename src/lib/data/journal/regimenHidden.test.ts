@@ -1,8 +1,6 @@
-/* Putting a regimen episode away (after-release 07, the promise phase 4
-   ticket 01 made): a mistaken or duplicate episode is hidden rather than
-   deleted, and every read that draws on the episode history stops seeing
-   it - Care, dose attribution, the clinician summary - until it
-   is shown again. */
+/* Putting a regimen episode away: a mistaken or duplicate episode is hidden rather than
+   deleted, and every read that draws on the episode history stops seeing it - Care, dose
+   attribution, the clinician summary - until it is shown again. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

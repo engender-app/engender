@@ -50,20 +50,18 @@ CREATE UNIQUE INDEX idx_dose_event_auto_log_slot
 DROP INDEX idx_entry_trashed_at;
 CREATE INDEX idx_entry_trashed_at ON entry(trashed_at) WHERE trashed_at IS NOT NULL;
 ` },
-  /* Functional audit ticket 18: HRT or another drug. No CHECK, by the audit's
-     CHECK policy (vocabularies live in code, drugClass.ts reads anything but
-     'hrt' as 'other'). */
+  /* HRT or another drug. No CHECK, by the audit's CHECK policy (vocabularies live in code,
+     drugClass.ts reads anything but 'hrt' as 'other'). */
   { version: 93, sql: "ALTER TABLE regimen_episode ADD COLUMN drug_class TEXT NOT NULL DEFAULT 'other';", apply: migrateDrugClass },
   { version: 94, sql: CLOSED_LISTS_REBUILD },
-  /* Functional audit ticket 10: saved questions are cut. Rows are dropped,
-     not converted, and restore skips the archive section by name. */
+  /* Saved questions are cut. Rows are dropped, not converted, and restore skips the archive
+     section by name. */
   { version: 95, sql: 'DROP TABLE saved_question;' },
-  /* Functional audit ticket 09: counterevidence snapshots are cut. They
-     copied a good-moment entry's note with no link back, so the text
-     outlived the entry once it was deleted. Rows are dropped, not
+  /* Counterevidence snapshots are cut. They copied a good-moment entry's note with no link
+     back, so the text outlived the entry once it was deleted. Rows are dropped, not
      converted; archives that still carry the section skip it on restore
-     (DROPPED_ARCHIVE_SECTION_NAMES). The child goes first so no foreign key
-     points at a dropped parent. */
+     (DROPPED_ARCHIVE_SECTION_NAMES). The child goes first so no foreign key points at a
+     dropped parent. */
   { version: 96, sql: `
 DROP TABLE doubt_snapshot_entry;
 DROP TABLE doubt_snapshot;
@@ -76,25 +74,23 @@ DELETE FROM area_state WHERE area IN ('measurementTypes', 'measurements', 'sizeR
 DELETE FROM pref WHERE key IN ('measurementUnit', 'measurementsNudgeEnabled', 'measurementProtocolDismissed');
 ` },
   { version: 98, sql: 'DROP TABLE affirmation; DROP TABLE revisit;' },
-  /* Functional audit ticket 47: when the supply held now expires and a free
-     note about where it came from. Both describe the row's current supply
-     (there is no purchase log) and both are nullable. Ticket 30's cost
-     column joins them on this row after this one. */
+  /* When the supply held now expires and a free note about where it came from. Both
+     describe the row's current supply (there is no purchase log) and both are nullable.
+     cost column joins them on this row after this one. */
   { version: 99, sql: `
 ALTER TABLE medication_stock ADD COLUMN expiry_epoch_day INTEGER;
 ALTER TABLE medication_stock ADD COLUMN pharmacy_note TEXT;
 ` },
-  /* Functional audit ticket 26: an appointment can wait without a day. */
+  /* An appointment can wait without a day. */
   { version: 100, sql: WAITLIST_REBUILD },
-  /* Functional audit ticket 23: a side effect is ongoing (NULL) until the
-     person marks the day it resolved. sideEffects.ts refuses a day before
-     the start; no CHECK, so an archive row is judged by the same code. */
+  /* A side effect is ongoing (NULL) until the person marks the day it resolved.
+     sideEffects.ts refuses a day before the start; no CHECK, so an archive row is judged by
+     the same code. */
   { version: 101, sql: 'ALTER TABLE side_effect ADD COLUMN resolved_epoch_day INTEGER;' },
-  /* Functional audit ticket 23: hair staging is free text. A grade becomes
-     the text hairStageScales.ts's legacyHairStagingText gives it, so a
-     migrated row and a restored one read alike; scale and stage go, and so
-     does the CHECK that tied them. A rebuild, since SQLite cannot drop a
-     column a CHECK names. */
+  /* Hair staging is free text. A grade becomes the text hairStageScales.ts's
+     legacyHairStagingText gives it, so a migrated row and a restored one read alike; scale
+     and stage go, and so does the CHECK that tied them. A rebuild, since SQLite cannot drop
+     a column a CHECK names. */
   { version: 102, sql: `
 CREATE TABLE hair_stage_new (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -118,21 +114,18 @@ DROP TABLE hair_stage;
 ALTER TABLE hair_stage_new RENAME TO hair_stage;
 CREATE INDEX idx_hair_stage_epoch_day ON hair_stage(epoch_day);
 ` },
-  /* Functional audit ticket 12: the Words reading is cut, and with it the
-     list of words it was told to skip. Rows are dropped, not converted;
-     archives that still carry the wordIgnore section skip it on restore
-     (DROPPED_ARCHIVE_SECTION_NAMES). */
+  /* The Words reading is cut, and with it the list of words it was told to skip. Rows are
+     dropped, not converted; archives that still carry the wordIgnore section skip it on
+     restore (DROPPED_ARCHIVE_SECTION_NAMES). */
   { version: 103, sql: 'DROP TABLE word_frequency_ignore;' },
-  /* Functional audit ticket 32. A milestone can be set not to be
-     celebrated on Home; every milestone already recorded keeps its
-     celebration. No CHECK, like roadmap_check.hidden: 0 is off and
-     anything else reads as on.
+  /* A milestone can be set not to be celebrated on Home; every milestone already recorded
+     keeps its celebration. No CHECK, like roadmap_check.hidden: 0 is off and anything else
+     reads as on.
 
-     And a milestone no longer holds felt-sense readings: they were asked
-     for and never shown. A cut removes rather than converts, so the
-     milestone rows are dropped and felt_sense is rebuilt with the tryout
-     as its one owner. Its AUTOINCREMENT counter is carried over, the way
-     CLOSED_LISTS_REBUILD carries its tables'. */
+     And a milestone no longer holds felt-sense readings: they were asked for and never
+     shown. A cut removes rather than converts, so the milestone rows are dropped and
+     felt_sense is rebuilt with the tryout as its one owner. Its AUTOINCREMENT counter is
+     carried over, the way CLOSED_LISTS_REBUILD carries its tables'. */
   { version: 104, sql: `
 ALTER TABLE milestone ADD COLUMN celebrate INTEGER NOT NULL DEFAULT 1;
 CREATE TABLE felt_sense_new (
@@ -162,8 +155,8 @@ DELETE FROM tryout_photo WHERE tryout_id IN
   (SELECT id FROM tryout WHERE kind IN ('garment', 'presentation_step'));
 DELETE FROM tryout WHERE kind IN ('garment', 'presentation_step');
 ` },
-  /* Functional audit ticket 51: one read surface for every stored attachment
-     reference. Owner tables and their cascades remain unchanged. */
+  /* One read surface for every stored attachment reference. Owner tables and their cascades
+     remain unchanged. */
   { version: 106, sql: `
 CREATE VIEW media_file AS
 SELECT p.uuid AS id, p.file_path AS file_name,
@@ -207,29 +200,26 @@ SELECT b.uuid, b.vowel_file_path, 'voiceBenchmarkVowel', b.epoch_day, NULL, b.uu
   0, NULL, 0, b.id, 1
 FROM voice_benchmark b WHERE b.vowel_file_path IS NOT NULL;
 ` },
-  /* Functional audit ticket 28: a hair-removal session can say how long it ran
-     (electrolysis is booked by the hour). NULL until written; hairRemoval.ts
-     refuses a length outside 1 to 1440 and archiveRowValidation.ts judges an
-     archive row by the same range, so no CHECK. Pain was made nullable by
-     version 94's rebuild. */
+  /* A hair-removal session can say how long it ran (electrolysis is booked by the hour).
+     NULL until written; hairRemoval.ts refuses a length outside 1 to 1440 and
+     archiveRowValidation.ts judges an archive row by the same range, so no CHECK. Pain was
+     made nullable by version 94's rebuild. */
   { version: 107, sql: 'ALTER TABLE hair_removal_session ADD COLUMN minutes INTEGER;' },
-  /* Functional audit ticket 08: the journaling pause is cut. The check-in
-     it silenced has its own pause now, one date in the checkInPausedThrough
-     preference, and the streak it bridged is gone. Rows are dropped, not
-     converted; archives that still carry the section skip it on restore
+  /* The journaling pause is cut. The check-in it silenced has its own pause now, one date
+     in the checkInPausedThrough preference, and the streak it bridged is gone. Rows are
+     dropped, not converted; archives that still carry the section skip it on restore
      (DROPPED_ARCHIVE_SECTION_NAMES). */
   { version: 108, sql: `
 DROP TABLE journaling_pause;
 DELETE FROM area_state WHERE area = 'journalingPauses';
 DELETE FROM pref WHERE key = 'pauseActiveBannerEnabled';
 ` },
-  /* Functional audit ticket 08: a reminder has no type (it only ever picked
-     an icon), and the pre-rc WEEKLY recurrence has no reader left. SQLite
-     cannot drop a column or change a CHECK in place, so the table is rebuilt,
-     its AUTOINCREMENT counter carried over, and the trigger that anchored a
-     WEEKLY insert goes with the old table. A row could only hold WEEKLY
-     between that trigger's insert and its update, so none should exist; one
-     that does becomes the seven-day progression the trigger would have made. */
+  /* A reminder has no type (it only ever picked an icon), and the pre-rc WEEKLY recurrence
+     has no reader left. SQLite cannot drop a column or change a CHECK in place, so the
+     table is rebuilt, its AUTOINCREMENT counter carried over, and the trigger that anchored
+     a WEEKLY insert goes with the old table. A row could only hold WEEKLY between that
+     trigger's insert and its update, so none should exist; one that does becomes the
+     seven-day progression the trigger would have made. */
   { version: 109, sql: `
 CREATE TABLE reminder_new (
   id               INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -264,14 +254,12 @@ INSERT INTO sqlite_sequence (name, seq) SELECT 'reminder_new', seq FROM sqlite_s
 DROP TABLE reminder;
 ALTER TABLE reminder_new RENAME TO reminder;
 ` },
-  /* Functional audit ticket 27: an appointment's time of day, and the
-     person's own notes on the people they see. Plain ADD COLUMNs after
-     ticket 26's rebuild, as its own comment planned. `time_of_day` is
-     `HH:MM` or NULL, checked in appointments.ts rather than by a CHECK
-     (the audit's CHECK policy). A provider is never shared, so deleting
-     one leaves its appointments standing with nobody named. `competence`
-     has no CHECK either: providers.ts reads anything it does not know as
-     not said. */
+  /* An appointment's time of day, and the person's own notes on the people they see. Plain
+     ADD COLUMNs after rebuild, as its own comment planned. `time_of_day` is `HH:MM` or
+     NULL, checked in appointments.ts rather than by a CHECK (the audit's CHECK policy). A
+     provider is never shared, so deleting one leaves its appointments standing with nobody
+     named. `competence` has no CHECK either: providers.ts reads anything it does not know
+     as not said. */
   { version: 110, sql: `
 CREATE TABLE provider (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -286,19 +274,16 @@ ALTER TABLE appointment ADD COLUMN time_of_day TEXT;
 ALTER TABLE appointment ADD COLUMN provider_id INTEGER REFERENCES provider(id) ON DELETE SET NULL;
 CREATE INDEX idx_appointment_provider ON appointment(provider_id);
 ` },
-  /* Functional audit ticket 34: the roadmap keeps only its legal track.
-     Ticks against the social, presentational and medical goals are dropped,
-     not converted, and so is the per-track "not my path" table, which one
-     track and the "Polish legal steps" switch leave nothing to do. A
-     document filed against a cut goal is unfiled, the way deleting a custom
-     goal unfiles one.
+  /* The roadmap keeps only its legal track. Ticks against the social, presentational and
+     medical goals are dropped, not converted, and so is the per-track "not my path" table,
+     which one track and the "Polish legal steps" switch leave nothing to do. A document
+     filed against a cut goal is unfiled, the way deleting a custom goal unfiles one.
 
-     Round two gave the person categories of their own (roadmap_category):
-     a uuid, a name, and the goals whose track holds that uuid. A custom goal
-     written under a cut track keeps its grouping in a category whose uuid
-     is the old track key and whose name is empty, which the screen fills
-     with the old track's name in the language it runs in until somebody
-     renames it. Goals under 'legal' sit with the Polish legal steps. */
+     Round two gave the person categories of their own (roadmap_category): a uuid, a name,
+     and the goals whose track holds that uuid. A custom goal written under a cut track
+     keeps its grouping in a category whose uuid is the old track key and whose name is
+     empty, which the screen fills with the old track's name in the language it runs in
+     until somebody renames it. Goals under 'legal' sit with the Polish legal steps. */
   { version: 111, sql: `
 UPDATE document SET target_kind = NULL, target_id = NULL
   WHERE target_kind = 'goal'
@@ -319,12 +304,11 @@ INSERT INTO roadmap_category (uuid, name, updated_at)
     WHERE track IN ('social', 'presentational', 'medical')
     GROUP BY track ORDER BY MIN(id);
 ` },
-  /* Functional audit ticket 25: one taper per procedure. The app reads the
-     taper as a single row, but the schema never said so, and a merge or a
-     stray write could leave a procedure with two. The newest of each
-     procedure's tapers is kept (by updated_at, then the later row), and a
-     UNIQUE index stands in for the constraint a rebuild would add: SQLite
-     enforces both the same way, and an index needs no copy of the table. */
+  /* One taper per procedure. The app reads the taper as a single row, but the schema never
+     said so, and a merge or a stray write could leave a procedure with two. The newest of
+     each procedure's tapers is kept (by updated_at, then the later row), and a UNIQUE index
+     stands in for the constraint a rebuild would add: SQLite enforces both the same way,
+     and an index needs no copy of the table. */
   { version: 112, sql: `
 DELETE FROM taper WHERE id NOT IN (
   SELECT (SELECT newest.id FROM taper newest
@@ -334,26 +318,23 @@ DELETE FROM taper WHERE id NOT IN (
 );
 CREATE UNIQUE INDEX idx_taper_procedure ON taper(procedure_id);
 ` },
-  /* Functional audit ticket 20: a medication reminder names the drug it is
-     for, in the regimen's own words, so its notification can open that
-     drug's dose log and carry Taken and Skip. Null for every other reminder,
-     which is every reminder stored before this. */
+  /* A medication reminder names the drug it is for, in the regimen's own words, so its
+     notification can open that drug's dose log and carry Taken and Skip. Null for every
+     other reminder, which is every reminder stored before this. */
   { version: 113, sql: 'ALTER TABLE reminder ADD COLUMN drug TEXT;' },
-  /* Functional audit ticket 35: the post-ruling steps that each named an
-     office became a list of institutions, moved through submitted, waiting
-     and done on dated changes. A tick on one of the six steps that became an
-     institution is dropped, since a tick has no date to give a change; a
-     hidden flag stays (the institution keeps the step's key), so a row the
-     person hid stays hidden. The "bank, insurers, clinic, phone operator"
-     step is retired, so its tick goes and paper filed against it is
-     unfiled. Paper filed against the six stays filed: same key.
+  /* The post-ruling steps that each named an office became a list of institutions, moved
+     through submitted, waiting and done on dated changes. A tick on one of the six steps
+     that became an institution is dropped, since a tick has no date to give a change; a
+     hidden flag stays (the institution keeps the step's key), so a row the person hid stays
+     hidden. The "bank, insurers, clinic, phone operator" step is retired, so its tick goes
+     and paper filed against it is unfiled. Paper filed against the six stays filed: same
+     key.
 
-     `roadmap_institution` holds the ones the person adds. A change names
-     its institution by a built-in key or such a row's uuid in one column,
-     the way roadmap_goal.track names 'legal' or a category, so no foreign
-     key; deleting an institution deletes its changes in the same
-     transaction (journal/roadmap.ts). `status` has no CHECK (the audit's
-     CHECK policy): rowValues.ts's INSTITUTION_STATUSES is the vocabulary. */
+     `roadmap_institution` holds the ones the person adds. A change names its institution by
+     a built-in key or such a row's uuid in one column, the way roadmap_goal.track names
+     'legal' or a category, so no foreign key; deleting an institution deletes its changes
+     in the same transaction (journal/roadmap.ts). `status` has no CHECK (the audit's CHECK
+     policy): rowValues.ts's INSTITUTION_STATUSES is the vocabulary. */
   { version: 114, sql: `
 UPDATE document SET target_kind = NULL, target_id = NULL
   WHERE target_kind = 'goal' AND target_id = 'pl-legal-institutions';
@@ -382,15 +363,12 @@ CREATE TABLE roadmap_institution_change (
 CREATE INDEX idx_roadmap_institution_change ON roadmap_institution_change(institution, epoch_day);
 CREATE INDEX idx_roadmap_institution_change_epoch_day ON roadmap_institution_change(epoch_day);
 ` },
-  /* Functional audit ticket 30: a cost on the records that cost money - an
-     amount, its currency and whether it was refunded. Plain ADD COLUMNs:
-     nullable amount and currency, cost.ts's assertValidCost is the rule (no
-     CHECK, the audit's CHECK policy). On the stock row it is the cost of the
-     supply held now, next to ticket 47's expiry and pharmacy note; there is
-     no purchase log. Hair removal's free-text cost is read into the new
-     columns, or into the session's note when it does not parse
-     (cost-migration.ts), and the old column is left null for ticket 50 to
-     drop. */
+  /* A cost on the records that cost money - an amount, its currency and whether it was
+     refunded. Plain ADD COLUMNs: nullable amount and currency, cost.ts's assertValidCost is
+     the rule (no CHECK, the audit's CHECK policy). On the stock row it is the cost of the
+     supply held now, next to expiry and pharmacy note; there is no purchase log. Hair
+     removal's free-text cost is read into the new columns, or into the session's note when
+     it does not parse (cost-migration.ts), and the old column is left null to drop. */
   { version: 115, sql: `
 ALTER TABLE hair_removal_session ADD COLUMN cost_amount REAL;
 ALTER TABLE hair_removal_session ADD COLUMN cost_currency TEXT;
@@ -408,27 +386,24 @@ ALTER TABLE medication_stock ADD COLUMN cost_amount REAL;
 ALTER TABLE medication_stock ADD COLUMN cost_currency TEXT;
 ALTER TABLE medication_stock ADD COLUMN cost_refunded INTEGER NOT NULL DEFAULT 0;
 `, apply: (db) => migrateHairRemovalCost(db, deviceDefaultCurrency()) },
-  /* Functional audit ticket 15: the patch-schedule tile is folded into the
-     dose panel, so the switch that turned it off has nothing left to turn
-     off. The dose panel's own switch is untouched. */
+  /* The patch-schedule tile is folded into the dose panel, so the switch that turned it off
+     has nothing left to turn off. The dose panel's own switch is untouched. */
   { version: 116, sql: "DELETE FROM pref WHERE key = 'patchScheduleTileEnabled';" },
-  /* Functional audit ticket 48: a deletion leaves a row behind for an
-     archive Merge to carry, and seeded built-ins stop reading as edits
-     (deletion-migration.ts). */
+  /* A deletion leaves a row behind for an archive Merge to carry, and seeded built-ins stop
+     reading as edits (deletion-migration.ts). */
   { version: 117, sql: DELETION_LOG },
-  /* Functional audit ticket 44: the preference catalogue sheds its dead and
-     legacy keys before 1.0 makes every rename a permanent shim. The eight
-     per-surface switches become one `surfaceOverrides` map, `lockOnLeave`
-     and the legacy cycle opt-in are read into their replacements, and the
+  /* The preference catalogue sheds its dead and legacy keys before 1.0 makes every rename a
+     permanent shim. The eight per-surface switches become one `surfaceOverrides` map,
+     `lockOnLeave` and the legacy cycle opt-in are read into their replacements, and the
      entry editor's four never-written card switches go. Done in code
      (prefs-cleanup-migration.ts) because it reads and rewrites JSON values. */
   { version: 118, sql: `
 DELETE FROM pref WHERE key IN ('entryTryoutPromptEnabled', 'entryDoseQuickLogEnabled',
   'entryProcedureRecoveryEnabled', 'entryHrtEffectsEnabled');
 `, apply: migratePrefsCleanup },
-  /* Functional audit ticket 50: the writerless columns go, the uuid-holding
-     `*_id` columns become `*_uuid`, the debrief state leaves `checklist`, and
-     a voice benchmark names its analyzer (hygiene-migration.ts). */
+  /* The writerless columns go, the uuid-holding `*_id` columns become `*_uuid`, the debrief
+     state leaves `checklist`, and a voice benchmark names its analyzer
+     (hygiene-migration.ts). */
   { version: 119, sql: MIGRATION_HYGIENE }
 ];
 
@@ -454,17 +429,15 @@ function asOneStep(version: number, steps: Migration[]): Migration {
 export const migrations: Migration[] = [
   { version: 88, sql: BASELINE_SCHEMA, baseline: true },
   asOneStep(119, POST_RC1_STEPS),
-  /* Pre-release-human 12, bug 25: progress photos, a pose-by-pose record
-     of shots taken on purpose (progress-photo-migration.ts). */
+  /* Bug 25: progress photos, a pose-by-pose record of shots taken on purpose
+     (progress-photo-migration.ts). */
   { version: 120, sql: PROGRESS_PHOTOS },
-  /* Pre-release-human 12: 'genital_sexual' splits into 'genital' and
-     'sexual' (effect-category-split-migration.ts). */
+  /* 'genital_sexual' splits into 'genital' and 'sexual'
+     (effect-category-split-migration.ts). */
   { version: 121, sql: EFFECT_CATEGORY_SPLIT },
-  /* Pre-release-human 12: progress photo poses as the person's own list
-     (progress-pose-migration.ts). */
+  /* Progress photo poses as the person's own list (progress-pose-migration.ts). */
   { version: 122, sql: PROGRESS_POSES_TABLE },
-  /* Pre-release-human 18: entry templates removed, saved ones deleted
-     (entry-templates-drop-migration.ts). */
+  /* Entry templates removed, saved ones deleted (entry-templates-drop-migration.ts). */
   { version: 123, sql: ENTRY_TEMPLATES_DROP },
   /* The tally is removed and hair progress folds into progress photos
      (tally-and-hair-fold-migration.ts). */

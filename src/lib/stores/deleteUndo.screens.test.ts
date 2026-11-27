@@ -1,12 +1,11 @@
-/* Every deletion a screen offers runs through `undoable` and offers Undo
-   (functional audit ticket 46, deleteUndo.ts), apart from the few named
-   below with the reason each is not.
+/* Every deletion a screen offers runs through `undoable` and offers Undo (deleteUndo.ts),
+   apart from the few named below with the reason each is not.
 
-   A text scan of the screens and components for a journal delete called
-   directly - `journal.<area>.delete…(`, `remove…(` or `purge…(` - rather
-   than on the journal `undoable` hands its callback. Blind spots: a delete
-   reached through another name for the journal, or one a helper module
-   outside src/routes and src/lib/components calls, is not seen. */
+   A text scan of the screens and components for a journal delete called directly -
+   `journal.<area>.delete…(`, `remove…(` or `purge…(` - rather than on the journal
+   `undoable` hands its callback. Blind spots: a delete reached through another name for the
+   journal, or one a helper module outside src/routes and src/lib/components calls, is not
+   seen. */
 
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';

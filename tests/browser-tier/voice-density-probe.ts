@@ -183,8 +183,8 @@ try {
       spineInk: ink(spine),
       traceInk: ink(document.querySelector('#drawn .pf-trace')),
       guideColour: getComputedStyle(document.documentElement).getPropertyValue('--text-2').trim(),
-      /* Phase 15 ticket 20: trans light's first role is under 3:1 on the
-         field, so every line drawn in it sits on a casing in its edge. */
+      /* Trans light's first role is under 3:1 on the field, so every line drawn in it sits
+         on a casing in its edge. */
       edge: role?.edge ?? null,
       casings: {
         trace: casingOf(document.querySelector('#drawn [data-pitch-trace]'), role?.edge ?? null),

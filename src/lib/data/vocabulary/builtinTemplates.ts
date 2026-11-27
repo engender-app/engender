@@ -1,12 +1,10 @@
-/* The part of the built-in catalogue (builtins.ts) the app reads at boot:
-   milestone and regimen templates for the vocabulary mirror, the guided
-   prompts for the entry editor, the six dimension keys the
-   first run's scales step offers before there is a journal, and the euphoria tag keys
-   the good-day rule reads. Split out of builtins.ts in
-   ux-carpet ticket 223 so the rest of the catalogue - dimensions, tag groups,
-   body regions and effect types, which only the
-   reconcile, the archive and the demo read - stays out of the first-load
-   graph. Same rule as builtins.ts: keys only, no display text, types only. */
+/* The part of the built-in catalogue (builtins.ts) the app reads at boot: milestone and
+   regimen templates for the vocabulary mirror, the guided prompts for the entry editor, the
+   six dimension keys the first run's scales step offers before there is a journal, and the
+   euphoria tag keys the good-day rule reads. Split out of builtins.ts so the rest of the
+   catalogue - dimensions, tag groups, body regions and effect types, which only the
+   reconcile, the archive and the demo read - stays out of the first-load graph. Same rule
+   as builtins.ts: keys only, no display text, types only. */
 
 import type { Lean, MilestoneTemplate, RegimenTemplate } from '../types.ts';
 
@@ -53,14 +51,12 @@ export const MILESTONE_TEMPLATE_KEYS = [
 
 export type MilestoneTemplateKey = (typeof MILESTONE_TEMPLATE_KEYS)[number];
 
-/* Starting points across estradiol, testosterone and more than one route
-   (phase 5 ticket 42, CONTEXT: "Regimen template"), widened by functional
-   audit ticket 18 to the antiandrogens, progesterone and a GnRH agonist, the
-   other drugs a feminizing or blocking regimen is built from. The same
-   "keys only" shape MILESTONE_TEMPLATE_KEYS gives above - drug, ester and
-   route wording lives in doseLabels.ts, which is where the rest of a
-   regimen episode's own closed vocabulary already lives. No dose or
-   interval key exists to carry either one by accident. */
+/* Starting points across estradiol, testosterone and more than one route, widened to the
+   antiandrogens, progesterone and a GnRH agonist, the other drugs a feminizing or blocking
+   regimen is built from. The same "keys only" shape MILESTONE_TEMPLATE_KEYS gives above -
+   drug, ester and route wording lives in doseLabels.ts, which is where the rest of a
+   regimen episode's own closed vocabulary already lives. No dose or interval key exists to
+   carry either one by accident. */
 /* REGIMEN_TEMPLATE_KEYS stays exported only for its own test (AU-09 test-only
    review). */
 export const REGIMEN_TEMPLATE_KEYS = [

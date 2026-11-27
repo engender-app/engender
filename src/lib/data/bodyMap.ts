@@ -52,13 +52,11 @@ export interface RegionSideReading {
       both ways has to stay visible as such whichever side won. */
   mixed: boolean;
   count: number;
-  /** How many of those readings the painted `value` is the mean of - the
-      dominant side's own count, which is `count` unless the region went both
-      ways (phase 11 pre-production UI/UX ticket 30). Both are needed and
-      they answer different questions: "most marked" is about how often a
-      person reached for a region at all (lookBackReadings.ts), and a mean
-      stated beside a number of readings has to be the mean of exactly those
-      readings. */
+  /** How many of those readings the painted `value` is the mean of - the dominant side's
+      own count, which is `count` unless the region went both ways. Both are needed and they
+      answer different questions: "most marked" is about how often a person reached for a
+      region at all (lookBackReadings.ts), and a mean stated beside a number of readings has
+      to be the mean of exactly those readings. */
   sideCount: number;
 }
 

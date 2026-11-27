@@ -127,10 +127,8 @@
         </div>
       {/each}
     </ListCard>
-    <!-- What the flag beside each row does (Alicja, 2026-08-26: "what does
-         the flag do in appointment check list?"). Under the list, because it
-         is about a control that is only on screen once there is something to
-         flag. -->
+    <!-- What the flag beside each row does. Under the list, because it is about a control
+         that is only on screen once there is something to flag. -->
     <p class="muted small">{m.appointment_prep_flag_hint()}</p>
   {/snippet}
   {#snippet empty()}

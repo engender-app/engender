@@ -1,6 +1,5 @@
-/* Functional audit ticket 20: what Taken and Skip on a fired medication
-   reminder write into the journal once it is unlocked, and where tapping
-   the notification itself lands. */
+/* What Taken and Skip on a fired medication reminder write into the journal once it is
+   unlocked, and where tapping the notification itself lands. */
 
 import { afterAll, test } from 'vitest';
 import assert from 'node:assert/strict';

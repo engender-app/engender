@@ -1,16 +1,14 @@
 /* The coarse-name-to-SQL-table mapping.
 
-   writes.ts's TABLE_NAMES are invalidation names, coarser than the schema on
-   purpose - 'entry' alone covers the entry row, its dimension values, its
-   tag links, its body-region values and its search index, because nothing
-   reads one without the others (writes.ts's own header says so). Until this
-   ticket that mapping lived only in comments; writes.sql.test.ts drives real
-   SQL through the recording driver and needs it as data.
+   Writes.ts's TABLE_NAMES are invalidation names, coarser than the schema on purpose -
+   'entry' alone covers the entry row, its dimension values, its tag links, its body-region
+   values and its search index, because nothing reads one without the others (writes.ts's
+   own header says so). Until this ticket that mapping lived only in comments;
+   writes.sql.test.ts drives real SQL through the recording driver and needs it as data.
 
-   Two things a real table name can never be: a coarse name is what a screen
-   declares and a driver never sees, so nothing here collides with the other,
-   and TABLE_NAMES itself is untouched (ticket 02's own scope line - this is
-   an added declaration, not a renaming). */
+   Two things a real table name can never be: a coarse name is what a screen declares and a
+   driver never sees, so nothing here collides with the other, and TABLE_NAMES itself is
+   untouched. */
 
 import type { TableName } from './writes.ts';
 

@@ -3,13 +3,11 @@
    real logic rather than the per-file `goto` boilerplate every script here
    redeclares, so it lives in one place. */
 
-/** Deletes every item on the standing prep list through the screen's own
-    control, and waits for the empty state to arrive. The page must already
-    be on /health/appointments, which is where the list is drawn since phase
-    11 all-four-doors ticket 12. The confirm handle is the record's own
-    (`recordHandles.ts` builds it from RecordSheet's `handle="appointment-item"`)
-    rather than the kit-generic one, so a wrong selector fails here instead
-    of quietly leaving the list untouched. */
+/** Deletes every item on the standing prep list through the screen's own control, and waits
+    for the empty state to arrive. The page must already be on /health/appointments, which
+    is where the list is drawn. The confirm handle is the record's own (`recordHandles.ts`
+    builds it from RecordSheet's `handle="appointment-item"`) rather than the kit-generic
+    one, so a wrong selector fails here instead of quietly leaving the list untouched. */
 export async function clearPrepList(page) {
   for (let guard = 0; guard < 40; guard += 1) {
     const rows = await page.locator('[data-delete-appointment-item]').count();

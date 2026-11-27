@@ -1,8 +1,7 @@
-/* The toast-bound half of writeOutcome.ts: a
-   write that fails says so in a toast, and a button that writes can hold
-   itself disabled while its write is in flight. A write that failed because
-   storage is full says that instead of the caller's message, since freeing
-   space is the one fix the person can make (last-audit ui 37). */
+/* The toast-bound half of writeOutcome.ts: a write that fails says so in a toast, and a
+   button that writes can hold itself disabled while its write is in flight. A write that
+   failed because storage is full says that instead of the caller's message, since freeing
+   space is the one fix the person can make. */
 import { m } from '$lib/paraglide/messages';
 import { spaceShortage } from '$lib/data/spaceShortage';
 import { toast } from './toasts.svelte';

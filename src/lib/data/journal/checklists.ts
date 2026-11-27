@@ -1,13 +1,11 @@
-/* The checklists area (phase 5 ticket 05, CONTEXT: "Checklist"). A checklist
-   item is entirely the user's own free text with no bundled counterpart, so
-   both a checklist and its items carry a minted uuid like any other
-   user-owned row (ADR-0002) - unlike `roadmap_check`, which needs neither
-   because a tick names bundled content instead of holding data of its own.
+/* The checklists area. A checklist item is entirely the user's own free text with no
+   bundled counterpart, so both a checklist and its items carry a minted uuid like any other
+   user-owned row (ADR-0002) - unlike `roadmap_check`, which needs neither because a tick
+   names bundled content instead of holding data of its own.
 
-   A checklist's owner is looked up by (kind, id) rather than resolved to a
-   foreign key: no owner table ships with this ticket, so the pair is stored
-   and matched as given, the same reasoning roadmap.ts gives for storing
-   `packKey`/`goalKey` as plain strings. */
+   A checklist's owner is looked up by (kind, id) rather than resolved to a foreign key: no
+   owner table ships with this ticket, so the pair is stored and matched as given, the same
+   reasoning roadmap.ts gives for storing `packKey`/`goalKey` as plain strings. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Checklist, ChecklistItem, ChecklistOwner } from '../types';
@@ -29,8 +27,7 @@ export interface ChecklistsArea {
       (a side-effect entry, a lab result, the appointment prep screen itself)
       never has to check whether it exists yet. */
   addToStandaloneChecklist(content: string): Promise<ChecklistItem>;
-  /** The same create-on-first-use for an owned checklist (phase 5 ticket
-      07's procedure is the first owner): the rule that a checklist appears
+  /** The same create-on-first-use for an owned checklist: the rule that a checklist appears
       when its first item does lives here once, rather than at each owner. */
   addToOwnedChecklist(owner: ChecklistOwner, content: string): Promise<ChecklistItem>;
   /** The debrief-relevant state for one appointment (ADR-0066):

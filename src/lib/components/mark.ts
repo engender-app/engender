@@ -17,10 +17,9 @@ export const MARK_SEAM = 3;
 export const MARK_TILE_RADIUS = 30;
 export const MARK_TILE = '#FFFFFF';
 
-/** The monochrome mark's ring count, fixed whatever the flag is: one colour
-    has no bands to count, and fixing the count is what keeps the print
-    header and a single-colour reproduction the same shape every time
-    (ticket 38, round one's sub-decision, kept). */
+/** The monochrome mark's ring count, fixed whatever the flag is: one colour has no bands to
+    count, and fixing the count is what keeps the print header and a single-colour
+    reproduction the same shape every time. */
 export const MARK_MONO_RINGS = 4;
 
 /** Keep the stroked tile inside Android's central 72dp safe circle
@@ -58,14 +57,12 @@ export interface MarkOptions {
   label?: string;
 }
 
-/* markSvg's two inputs are constrained rather than trusted, the way
-   icons.ts holds `size` and `cls` to one shape each (phase 12 audit finding
-   S4): the string comes back out through {@html}, so an argument that could
-   carry a quote could carry an attribute. A stripe has one fixed shape and
-   is rejected to black when it doesn't match; a label is free text with no
-   such shape, so it's escaped instead. Neither is reachable today - stripes
-   come from palettes.css, no call site passes a label - which is why
-   nothing here was exploitable before this. */
+/* MarkSvg's two inputs are constrained rather than trusted, the way icons.ts holds `size`
+   and `cls` to one shape each: the string comes back out through {@html}, so an argument
+   that could carry a quote could carry an attribute. A stripe has one fixed shape and is
+   rejected to black when it doesn't match; a label is free text with no such shape, so it's
+   escaped instead. Neither is reachable today - stripes come from palettes.css, no call
+   site passes a label - which is why nothing here was exploitable before this. */
 
 /** A hex colour, or black if the string carries anything else. */
 function hexColor(value: string): string {

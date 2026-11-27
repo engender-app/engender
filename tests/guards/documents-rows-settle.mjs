@@ -65,8 +65,8 @@ await cdp.send('Emulation.setCPUThrottlingRate', { rate: CPU });
 
 let failed = 0;
 for (let run = 1; run <= RUNS; run++) {
-  /* A visit first, then the load that is measured: cold, since the last
-     answers ticket 201 keeps live in memory and a reload clears them. */
+  /* A visit first, then the load that is measured: cold, since the last answers keeps live
+     in memory and a reload clears them. */
   await page.goto(`${base}/media/documents`, { waitUntil: 'networkidle' });
   await page.waitForTimeout(600);
   await page.goto(`${base}/media/documents`, { waitUntil: 'commit' });

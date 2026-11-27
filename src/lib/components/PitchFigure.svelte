@@ -40,15 +40,14 @@
     /** How heavily the trace is drawn. The live gauge spends this on the
         gate's steadiness reading; a stored take has one weight. */
     traceWeight?: number;
-    /** Where the take's voiced frames sat, as a shape beside the time plot
-        on this same axis (audio/density.ts, redesign ticket 42). Null for
-        a figure with nothing to draw one from: a live take whose frames are
-        still arriving, and every benchmark from before schema v58, whose
-        frames were summarized and dropped.
+    /** Where the take's voiced frames sat, as a shape beside the time plot on this same
+        axis (audio/density.ts). Null for a figure with nothing to draw one from: a live
+        take whose frames are still arriving, and every benchmark from before schema v58,
+        whose frames were summarized and dropped.
 
-        Computed by whoever decoded the track rather than here, so one decode
-        feeds the trace, the shape and the marks (benchmark.ts's own note on
-        a second caller downsampling its own copy). */
+        Computed by whoever decoded the track rather than here, so one decode feeds the
+        trace, the shape and the marks (benchmark.ts's own note on a second caller
+        downsampling its own copy). */
     density?: readonly DensitySample[] | null;
     /** Two takes on one axis, back to back across a shared spine: the
         earlier read's shape to the left of it, the later read's to the

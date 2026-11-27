@@ -1,13 +1,12 @@
-/* Every deletion other than an entry's can be undone for a while, and is
-   final after that (functional audit ticket 46, undoableDelete.ts).
+/* Every deletion other than an entry's can be undone for a while, and is final after that
+   (undoableDelete.ts).
 
-   Each case deletes one record out of a journal with something in every
-   section (the golden archive's seed), so the cascades, SET NULLs and
-   unlinking writes a delete does to rows it never names are all in play.
-   "Undone" is held to the strictest reading there is: every table, row by
-   row and rowid by rowid, equals what it was before the delete, and every
-   file is still in the store. "Final" means the deletion and its files end
-   exactly where a plain delete leaves them. */
+   Each case deletes one record out of a journal with something in every section (the golden
+   archive's seed), so the cascades, SET NULLs and unlinking writes a delete does to rows it
+   never names are all in play. "Undone" is held to the strictest reading there is: every
+   table, row by row and rowid by rowid, equals what it was before the delete, and every
+   file is still in the store. "Final" means the deletion and its files end exactly where a
+   plain delete leaves them. */
 
 import { describe, test } from 'vitest';
 import assert from 'node:assert/strict';

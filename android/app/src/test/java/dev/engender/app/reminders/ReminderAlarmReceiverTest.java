@@ -12,11 +12,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The title a Reminder notification actually shows (ticket 15's acceptance:
- * "Reminder notifications can hide sensitive titles on a locked device").
- * The app cannot learn whether the screen is locked at the moment an alarm
- * fires, so the preference is not a lock-time check - when it is on, the
- * reminder's own title never reaches the notification, locked or not.
+ * The title a Reminder notification actually shows. The app cannot learn
+ * whether the screen is locked at the moment an alarm fires, so the
+ * preference is not a lock-time check - when it is on, the reminder's own
+ * title never reaches the notification, locked or not.
  */
 public class ReminderAlarmReceiverTest {
 
@@ -98,10 +97,9 @@ public class ReminderAlarmReceiverTest {
         assertEquals("Reminders", ReminderAlarmReceiver.resolveNotificationTitle(payload, reminder));
     }
 
-    /* Functional audit ticket 21: a medication reminder says what it reminds
-       about. The app words the line (doseReminderLabel.ts) and the time is
-       part of it; hiding sensitive titles keeps only the time, the one
-       detail that setting promises to leave visible. */
+    /* A medication reminder says what it reminds about. The app words the line
+       (doseReminderLabel.ts) and the time is part of it; hiding sensitive titles keeps only
+       the time, the one detail that setting promises to leave visible. */
     @Test
     public void theTextIsTheLineTheAppWroteForTheReminder() throws Exception {
         JSONObject payload = new JSONObject();

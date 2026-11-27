@@ -1,15 +1,13 @@
-/* roleAttrs() and the derivation it opts a surface into. A surface that calls the helper but never gets added to a list
-   somewhere else was the whole bug - ticket 23's /timeline drew invisible
-   dots and rail because .timeline was missing from a hand-maintained
-   selector in kit.css, and nothing here would have caught it: the CSS was
-   valid, the tokens were spelled correctly, and the only symptom was that
-   nothing drew. What's worth holding to a test is that opting in is one
-   call now, and that kit.css has nothing left to hand-maintain.
+/* RoleAttrs and the derivation it opts a surface into. A surface that calls the helper but
+   never gets added to a list somewhere else was the whole bug - /timeline drew invisible
+   dots and rail because.timeline was missing from a hand-maintained selector in kit.css,
+   and nothing here would have caught it: the CSS was valid, the tokens were spelled
+   correctly, and the only symptom was that nothing drew. What's worth holding to a test is
+   that opting in is one call now, and that kit.css has nothing left to hand-maintain.
 
-   Half calls and half greps, on purpose: roleAttrs is a
-   function and is called, while "kit.css has nothing left to
-   hand-maintain" is a negative over a stylesheet and can only be
-   matched. */
+   Half calls and half greps, on purpose: roleAttrs is a function and is called, while
+   "kit.css has nothing left to hand-maintain" is a negative over a stylesheet and can only
+   be matched. */
 
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -70,9 +68,9 @@ describe('roleAttrs', () => {
     expect(roleAttrs(role)['data-kit-role']).toBe('');
   });
 
-  /* Phase 15 ticket 20: a chart line in a stripe under 3:1 is cased in the
-     role's edge. Only where there is one - kit.css turns a missing edge into
-     transparent, which is how every line that already read stays as it was. */
+  /* A chart line in a stripe under 3:1 is cased in the role's edge. Only where there is one
+     - kit.css turns a missing edge into transparent, which is how every line that already
+     read stays as it was. */
   it('hands a chart line its edge where the stripe needs one, and nothing where it does not', () => {
     const edged = roleAttrs({ ...role, edge: '#8f8500' }).style!;
     expect(edged).toContain('--role-edge-in: #8f8500');

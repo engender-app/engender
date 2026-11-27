@@ -230,9 +230,9 @@
     cost: CostDraft;
   };
 
-  /* A number input binds the number it parsed, or null while it holds
-     nothing parseable: blank, a lone minus, `e`. Bound as a string, the
-     field was rewritten under the caret on every key (last-audit UI 01). */
+  /* A number input binds the number it parsed, or null while it holds nothing parseable:
+     blank, a lone minus, `e`. Bound as a string, the field was rewritten under the caret on
+     every key. */
   const validValue = (value: number | null): value is number => value !== null && Number.isFinite(value);
 
   let unitStated = false;
@@ -459,9 +459,9 @@ Unit likewise: a set preferred unit wins, then the
     draft.analyte = next;
   }
 
-  /* Ticket 11's other entry point into the appointment prep list: a one-tap
-     add, seeded from the analyte already on screen. One add per tap, and a
-     failed one says so (UI 17); a later tap is a second add on purpose. */
+  /* Other entry point into the appointment prep list: a one-tap add, seeded from the
+     analyte already on screen. One add per tap, and a failed one says so (UI 17); a later
+     tap is a second add on purpose. */
   const prepWrite = writer();
   async function addToAppointmentPrep(draft: LabDraft) {
     const resultAnalyte = analyteOf(draft);
@@ -486,9 +486,8 @@ Unit likewise: a set preferred unit wins, then the
     {/snippet}
   </ScreenHeader>
 
-  <!-- The unavailable state is the shared one (SourceRecordHandoff, ticket
-       11): same notice every source-linked screen shows for a record that is
-       no longer there. -->
+  <!-- The unavailable state is the shared one: same notice every source-linked screen shows
+       for a record that is no longer there. -->
   <SourceRecordHandoff
     id={deepLinkedLabId}
     ready={deepLinkedLab !== undefined}
@@ -573,10 +572,9 @@ Unit likewise: a set preferred unit wins, then the
                context line carries .lab-context's own size and colour -
                both classes ListRow's plain title/subtitle strings have no
                room for. -->
-          <!-- Keyed by the analyte the rows belong to, so switching analyte
-               swaps the list in one piece rather than closing every old row
-               while the new ones open beside them; a delete or an Undo
-               inside one analyte still moves its row (functional audit 46). -->
+          <!-- Keyed by the analyte the rows belong to, so switching analyte swaps the list
+               in one piece rather than closing every old row while the new ones open beside
+               them; a delete or an Undo inside one analyte still moves its row. -->
           {#key results[0]?.analyte}
           {#each [...results].reverse() as r (r.id)}
             <button transition:collapse
@@ -716,10 +714,9 @@ Unit likewise: a set preferred unit wins, then the
       </Field>
       <CostField id="lab-cost" bind:draft={editor.cost} />
 
-      <!-- The detail view's copy of the context. Read-only, because it was
-           recorded when the result was saved and is not recomputed
-           afterwards (ticket 03, box 6). A saved result with no hours figure
-           says what would give it one, rather than staying blank. -->
+      <!-- The detail view's copy of the context. Read-only, because it was recorded when
+           the result was saved and is not recomputed afterwards. A saved result with no
+           hours figure says what would give it one, rather than staying blank. -->
       {#if editor.id}
         <div class="kit-panel" style="margin-bottom:var(--space-4)" data-lab-context>
           <h4>{m.labs_context_title()}</h4>

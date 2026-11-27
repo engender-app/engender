@@ -38,10 +38,9 @@ function bandOf(effect: PersonalEffectType, anchor: Anchor) {
   return days;
 }
 
-/* Ticket 02's original eight, unchanged: same keys, same windows. Ticket 41
-   widens tier 1 well past these, but this list stays exactly what it was -
-   see personalEffectWindow.ts's header for why the CHECK's own eight are
-   untouched. */
+/* Original eight, unchanged: same keys, same windows. widens tier 1 well past these, but
+   this list stays exactly what it was - see personalEffectWindow.ts's header for why the
+   CHECK's own eight are untouched. */
 const ORIGINAL_EIGHT = [
   'breast_development',
   'fat_redistribution',
@@ -53,9 +52,8 @@ const ORIGINAL_EIGHT = [
   'cycle_cessation'
 ] as const;
 
-/* Ticket 41's tier-1 widening, and the one row ticket 22 added from SOC8
-   (scalp hair loss on testosterone). Hair loss ceasing on estradiol left
-   tier 1 in ticket 22: SOC8 gives it no figure. */
+/* Tier-1 widening, and the one row added from SOC8 (scalp hair loss on testosterone). Hair
+   loss ceasing on estradiol left tier 1 in SOC8 gives it no figure. */
 const NEW_FEMINIZING_TIER_1 = [
   'decreased_muscle_mass_strength',
   'decreased_libido',
@@ -170,9 +168,8 @@ test('voice drop starts in the first month on testosterone', () => {
   assert.equal(voice.completion?.end, epochDayFromLocalDate(new Date(2026, 0, 1))); // +24 months
 });
 
-/* Phase 5 ticket 27: the drug gate. Still exhaustive over every tier-1 key,
-   original and widened alike - tier 1 is exactly the keys this file's
-   literature-window map lists. */
+/* The drug gate. Still exhaustive over every tier-1 key, original and widened alike - tier
+   1 is exactly the keys this file's literature-window map lists. */
 
 const FEMINIZING = [...ORIGINAL_EIGHT.slice(0, 4), ...NEW_FEMINIZING_TIER_1] as const;
 const MASCULINIZING = [...ORIGINAL_EIGHT.slice(4), ...NEW_MASCULINIZING_TIER_1] as const;
@@ -228,7 +225,7 @@ test('the gate reads hormone drug names in both catalogue languages', () => {
 test('a tier-2 or tier-3 key - no literature window at all - never gets a band', () => {
   // male_pattern_baldness_ceasing is a real tier-2 catalogue key
   // (vocabulary/builtins.ts): SOC8 names it but gives "variable" for both
-  // figures, so ticket 22 dropped its band. A minted custom key behaves
+  // figures, so dropped its band. A minted custom key behaves
   // identically - absence from the map is what "no band" means.
   for (const effect of ['male_pattern_baldness_ceasing', 'a1b2c3d4-custom-uuid']) {
     assert.equal(literatureWindow(effect), undefined);
@@ -278,13 +275,12 @@ test('every tier-1 window has a shape that is not none, and no other key does', 
   }
 });
 
-/* Phase 8 features ticket 49 item 1: the anchoring episode's end day.
+/* Item 1: the anchoring episode's end day.
 
-   A band is a claim about a body on the hormone the table describes, so it
-   has nothing to say about the days after that hormone stopped. Before this,
-   `literatureWindowDays` read `startEpochDay` alone, and a five-year
-   masculinizing completion band kept drawing years past a stopped regimen
-   with the Endocrine Society printed underneath it. */
+   A band is a claim about a body on the hormone the table describes, so it has nothing to
+   say about the days after that hormone stopped. Before this, `literatureWindowDays` read
+   `startEpochDay` alone, and a five-year masculinizing completion band kept drawing years
+   past a stopped regimen with the Endocrine Society printed underneath it. */
 
 test('an open episode draws exactly the bands it always drew', () => {
   // The regression guard on the clip: `endEpochDay` null is the ordinary

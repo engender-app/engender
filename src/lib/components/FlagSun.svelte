@@ -19,11 +19,10 @@
      when the navigation attribute clears. Keep it on cold boot. */
   const carried = typeof document !== 'undefined' && 'nav' in document.documentElement.dataset;
 
-  /* A gate draws this sun too (tester-report-02 ticket 07), and a gate
-     arrives as a cut and keeps still while someone types a secret: no
-     entrance and no breathing. Resting at scale 1 is also what Today's sun
-     is on the frames the opening draws, since its breathing waits for its
-     delay, so the held sun is one drawing on both sides. */
+  /* A gate draws this sun too, and a gate arrives as a cut and keeps still while someone
+     types a secret: no entrance and no breathing. Resting at scale 1 is also what Today's
+     sun is on the frames the opening draws, since its breathing waits for its delay, so the
+     held sun is one drawing on both sides. */
   let { still = false }: { still?: boolean } = $props();
 </script>
 

@@ -514,11 +514,10 @@
     };
   });
 
-  /* Focus moves in once the cards have arrived, the way a sheet's does:
-     focusing while the entrance is being set up forces a layout before its
-     keyframes attach, which ticket 115 measured as a teleport on Android.
-     Not while a press is still sliding, where focus would only chase the
-     finger, and not if Tab already went in. */
+  /* Focus moves in once the cards have arrived, the way a sheet's does: focusing while the
+     entrance is being set up forces a layout before its keyframes attach, which measured as
+     a teleport on Android. Not while a press is still sliding, where focus would only chase
+     the finger, and not if Tab already went in. */
   function focusFirstTarget() {
     if (!fanEl || ui.chooserPressing || fanEl.contains(document.activeElement)) return;
     firstFocusable(fanEl)?.focus({ preventScroll: true });
@@ -536,9 +535,8 @@
 />
 
 {#if ui.chooserOpen}
-  <!-- The scrim is the withdrawal ticket 28 built and nothing had spent yet:
-       the screen behind the fan is plainly still there and plainly not what
-       is being read. -->
+  <!-- The scrim is the withdrawal built and nothing had spent yet: the screen behind the
+       fan is plainly still there and plainly not what is being read. -->
   <div
     bind:this={scrimEl}
     class="fan-scrim scrim-withdraw"

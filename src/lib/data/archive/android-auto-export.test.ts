@@ -234,10 +234,9 @@ describe('runAndroidAutoExport', () => {
   });
 
   test('leaves the failure notice to the scheduler, whatever the outcome', async () => {
-    /* Phase 6 ticket 04: this used to take a `trigger` argument whose only
-       job was to gate notifyFailure. The notice answers to the unprompted
-       registry now - a preference, quiet hours and the disguise - which is
-       auto-export-scheduler.ts's business and failureNotice.test.ts's. */
+    /* This used to take a `trigger` argument whose only job was to gate notifyFailure. The
+       notice answers to the unprompted registry now - a preference, quiet hours and the
+       disguise - which is auto-export-scheduler.ts's business and failureNotice.test.ts's. */
     vi.mocked(androidAutoExport.finishBackup).mockRejectedValue(new Error('destination-revoked'));
 
     const result = await runAndroidAutoExport(
@@ -393,9 +392,8 @@ test('next due time and due checks use schedule windows and required prerequisit
   expect(isDue({ ...monthly, hasPassword: false }, Number.MAX_SAFE_INTEGER)).toBe(false);
 });
 
-/* Phase 9 audit ticket 11: "Back up now" on the export screen runs this,
-   and it used to swap one word on a disabled button for however long
-   packing a decade of photos takes. */
+/* "Back up now" on the export screen runs this, and it used to swap one word on a disabled
+   button for however long packing a decade of photos takes. */
 describe('runAndroidAutoExport progress and cancellation', () => {
   beforeEach(() => {
     vi.resetAllMocks();

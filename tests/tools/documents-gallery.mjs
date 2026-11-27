@@ -134,11 +134,10 @@ for (const theme of ['light', 'dark']) {
     return bytes;
   };
 
-  /* Two PDFs, and the difference between them is the whole of what ticket
-     55 added to this screen: one the renderer draws, and one it cannot
-     read at all. Both are real files rather than padding - the drawable
-     one is pages of letterheaded paper (tests/pdf-fixture.mjs), which is
-     what a person actually files. */
+  /* Two PDFs, and the difference between them is the whole of wh added to this screen: one
+     the renderer draws, and one it cannot read at all. Both are real files rather than
+     padding - the drawable one is pages of letterheaded paper (tests/pdf-fixture.mjs),
+     which is what a person actually files. */
   const importPdf = async (title, day, bytes) => {
     page.once('filechooser', (chooser) =>
       chooser.setFiles({ name: 'court-ruling.pdf', mimeType: 'application/pdf', buffer: bytes })

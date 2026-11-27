@@ -1,15 +1,15 @@
-/* Replacing a recovery key through an interruption (last-audit UI 42).
+/* Replacing a recovery key through an interruption.
 
-   A reload stands in for process death on the web: it drops the page, its
-   memory and the screen showing the key, and keeps only what was written.
-   The demo journal reopens itself with its fixed passphrase, so a reload
-   lands on Home the way a restart and an ordinary unlock would.
+   A reload stands in for process death on the web: it drops the page, its memory and the
+   screen showing the key, and keeps only what was written. The demo journal reopens itself
+   with its fixed passphrase, so a reload lands on Home the way a restart and an ordinary
+   unlock would.
 
-   Cuts that fall inside a file operation are made by holding that operation
-   forever and reloading: after the pending file is written but before the
-   key reaches the screen, and between the promoting write and the pending
-   file's removal. Which key opens the journal afterwards is asked of the
-   real recovery-key module in the page, so nothing here reads a wrap. */
+   Cuts that fall inside a file operation are made by holding that operation forever and
+   reloading: after the pending file is written but before the key reaches the screen, and
+   between the promoting write and the pending file's removal. Which key opens the journal
+   afterwards is asked of the real recovery-key module in the page, so nothing here reads a
+   wrap. */
 import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { createServer } from 'vite';

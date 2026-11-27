@@ -11,12 +11,11 @@ describe('Entry Editor Unified Logging Hub structure and guards', () => {
   const editor = read('src/lib/components/EntryEditor.svelte');
 
   it('discloses contextual sections after the chip row and its sections, before the save bar', () => {
-    /* Phase 11 ticket 19 put the note first and folded every structured
-       question - body map included - into a chip row under it. The cards
-       are offers rather than questions (ADR-0044), so they take no chip and
-       sit where they did relative to the foot: after whatever the person
-       opened, before Save. Until that ticket this asserted "between Note
-       and Body Map"; body map is now a chip's section above the cards. */
+    /* Put the note first and folded every structured question - body map included - into a
+       chip row under it. The cards are offers rather than questions (ADR-0044), so they
+       take no chip and sit where they did relative to the foot: after whatever the person
+       opened, before Save. Until this asserted "between Note and Body Map"; body map is now
+       a chip's section above the cards. */
     const notePos = editor.indexOf('name="note"');
     const chipsPos = editor.indexOf('data-editor-chips');
     const bodyMapPos = editor.indexOf('data-editor-section="body"');
@@ -38,7 +37,7 @@ describe('Entry Editor Unified Logging Hub structure and guards', () => {
     }
   });
 
-  it('every section the editor asked before ticket 19 is still asked: mode and gender on the page, the rest from a chip', () => {
+  it('keeps mode and gender on the page and opens other sections from chips', () => {
     const notePos = editor.indexOf('name="note"');
     const chipsPos = editor.indexOf('data-editor-chips');
     for (const onPage of ['text={m.presentation_label()}', 'text={m.gender_label()}']) {
@@ -68,7 +67,7 @@ describe('Entry Editor Unified Logging Hub structure and guards', () => {
     expect(editor).toContain('cycleTrackingActive');
   });
 
-  it('the star can be set on a new entry before its first save (ticket 18), on the field of every step since tester report 02 ticket 09', () => {
+  it('can star a new entry on any step before the first save', () => {
     /* Before this ticket the star was one of the header's `{#if existing}`
        actions, so a new entry - which never has an id for setEntryStarred
        to write against - could not be starred until after its first save.
@@ -93,7 +92,7 @@ describe('Entry Editor Unified Logging Hub structure and guards', () => {
     expect(actions.indexOf('data-save-star')).toBeGreaterThan(actions.indexOf('{#if stepped}'));
   });
 
-  it('a new entry\'s later steps draw marking before writing, with the attachments last (tickets 04 and 09)', () => {
+  it('a new entry\'s later steps draw marking before writing, with the attachments last', () => {
     const later = (name: string) => {
       const start = editor.indexOf(`{#snippet ${name}()}`);
       return start < 0 ? '' : editor.slice(start, editor.indexOf('{/snippet}', start));

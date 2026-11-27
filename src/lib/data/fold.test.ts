@@ -56,13 +56,12 @@ test('the SQL fold and the JS fold agree, letterform by letterform and case by c
     'À Ç Ê Ñ Ö Š Ž',
     '',
     'punctuation: "quoted", 50% - done_',
-    /* Cyrillic (phase 8 features ticket 49 item 4). Nothing here folds to
-       anything else - Cyrillic has no letterform this table strips - but
-       both sides still have to agree on its *case*, and only the JS side
-       got that for free: SQLite's `lower()` maps A-Z and nothing else, so
-       `Настя` stayed capitalised in the column while the typed query was
-       lowercased, and a name written the way anyone writes a name was
-       unfindable. Russian and Ukrainian alphabets, upper and lower. */
+    /* Cyrillic. Nothing here folds to anything else - Cyrillic has no letterform this table
+       strips - but both sides still have to agree on its *case*, and only the JS side got
+       that for free: SQLite's `lower()` maps A-Z and nothing else, so `Настя` stayed
+       capitalised in the column while the typed query was lowercased, and a name written
+       the way anyone writes a name was unfindable. Russian and Ukrainian alphabets, upper
+       and lower. */
     'Настя',
     'НАСТЯ',
     'настя',

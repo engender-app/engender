@@ -79,8 +79,8 @@ test('a successful write records createWritable, write, close and reads back', a
   vi.unstubAllGlobals();
 });
 
-/* Last-audit UI 42: a replacement writes the new wrap beside the active one,
-   never over it, and removing the pending file leaves the active one. */
+/* A replacement writes the new wrap beside the active one, never over it, and removing the
+   pending file leaves the active one. */
 test('the pending slot is its own file, and writing or removing it leaves the active key alone', async () => {
   const active = await wrapDataKeyWithRecoveryKey(crypto.getRandomValues(new Uint8Array(32)), generateRecoveryKey());
   const pending = await wrapDataKeyWithRecoveryKey(crypto.getRandomValues(new Uint8Array(32)), generateRecoveryKey());

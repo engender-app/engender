@@ -172,14 +172,12 @@ function stoppedUnderReduce() {
     for (const selector of rule.prelude.split(',').map((s) => s.trim())) {
       if (rule.context.some((at) => at.includes('prefers-reduced-motion'))) viaMedia.add(selector);
       if (selector.includes("data-a11y-motion='reduce'")) {
-        /* Two spellings of the same escape. A shared stylesheet writes the
-           toggle bare; a component's <style> has to wrap it in :global(),
-           because the html element is not in the component and Svelte
-           would otherwise scope the selector onto it. Both mean "this
-           animation is cancelled under the toggle", so both have to strip
-           back to the selector the media-query rule names, or the
-           component form silently fails to pair with it (phase 9 audit
-           ticket 11, found by Progress.svelte's indeterminate sweep). */
+        /* Two spellings of the same escape. A shared stylesheet writes the toggle bare; a
+           component's <style> has to wrap it in:global(), because the html element is not
+           in the component and Svelte would otherwise scope the selector onto it. Both mean
+           "this animation is cancelled under the toggle", so both have to strip back to the
+           selector the media-query rule names, or the component form silently fails to pair
+           with it (found by Progress.svelte's indeterminate sweep). */
         viaToggle.add(
           selector.replace(/^(?::global\(html\[data-a11y-motion='reduce'\]\)|html\[data-a11y-motion='reduce'\])\s*/, '')
         );
@@ -190,12 +188,10 @@ function stoppedUnderReduce() {
 }
 
 describe('the reduced-motion invariant', () => {
-  /* The Settings switch has to count wherever the system setting counts
-     (pre-release-human 18: "reduce motion basically does nothing"). Every
-     selector a prefers-reduced-motion block names is matched, in the same
-     file, by one keyed on html[data-a11y-motion='reduce'] - the attribute
-     the switch and the system both feed. A rule written only under the
-     media query is a movement the switch cannot stop. */
+  /* The Settings switch has to count wherever the system setting counts. Every selector a
+     prefers-reduced-motion block names is matched, in the same file, by one keyed on
+     html[data-a11y-motion='reduce'] - the attribute the switch and the system both feed. A
+     rule written only under the media query is a movement the switch cannot stop. */
   it('gives every prefers-reduced-motion rule a twin keyed on the switch', () => {
     const TOGGLE = /:global\(html\[data-a11y-motion='reduce'\]\)\s*|\[data-a11y-motion='reduce'\]/g;
     const key = (selector: string) => {
@@ -278,10 +274,9 @@ describe('the reduced-motion invariant', () => {
   });
 });
 
-/** Ticket 15's opt-outs from the default press, each with why. A new one
-    has to be added here as well as in the markup - the test cross-checks
-    both directions, so an addition or removal on one side without the
-    other fails instead of drifting quietly. */
+/** Opt-outs from the default press, each with why. A new one has to be added here as well
+    as in the markup - the test cross-checks both directions, so an addition or removal on
+    one side without the other fails instead of drifting quietly. */
 const PRESS_OPT_OUTS: { file: string; count: number; reason: string }[] = [
   {
     file: 'src/lib/components/Segmented.svelte',
@@ -398,11 +393,10 @@ describe('tier 1, response', () => {
     expect(press).toContain('var(--dur-press)');
   });
 
-  /* Ticket 15: press inverted from opt-in to opt-out. A `.press` class 81
-     call sites had to remember and 52 controls did not is replaced by one
-     rule keyed on being an interactive element inside the app root, so a
-     control presses because it is a control - the class is no longer what
-     grants it. [data-no-press] is the escape hatch, enumerated above. */
+  /* Press inverted from opt-in to opt-out. A `.press` class 81 call sites had to remember
+     and 52 controls did not is replaced by one rule keyed on being an interactive element
+     inside the app root, so a control presses because it is a control - the class is no
+     longer what grants it. [data-no-press] is the escape hatch, enumerated above. */
   it('presses any button, link or role="button" in the app by default, with no class to remember', () => {
     const press = stripComments(readFileSync(join(root, 'src/lib/motion/press.css'), 'utf8'));
     const DEFAULT_SELECTOR = "[data-app-root] :is(button, a, [role='button']):not([data-no-press])";
@@ -431,11 +425,10 @@ describe('tier 1, response', () => {
     }
   });
 
-  /* Phase 5 ticket 30. The depths used to be literals in four places, and
-     .btn's 0.97 and the primitive's 0.94 disagreed with nothing to say which
-     was right. They are three tokens now, one per size class, declared in
-     press.css and nowhere else - so a control names the class it belongs to
-     and cannot invent a fifth number. */
+  /* The depths used to be literals in four places, and.btn's 0.97 and the primitive's 0.94
+     disagreed with nothing to say which was right. They are three tokens now, one per size
+     class, declared in press.css and nowhere else - so a control names the class it belongs
+     to and cannot invent a fifth number. */
   it('writes the three depths once, in press.css', () => {
     const press = stripComments(readFileSync(join(root, 'src/lib/motion/press.css'), 'utf8'));
     const declared = rules(press).find((rule) => rule.prelude === ':root' && !isReduceContext(rule));
@@ -478,11 +471,10 @@ describe('tier 1, response', () => {
     }
   });
 
-  /* Phase 5 ticket 28: the press also collapses the one floating control's
-     shadow, so the button reads as meeting the surface rather than shrinking
-     in place. Capped to that control - it is the app's only element with a
-     shadow to collapse, and a 56px repaint is the smallest area any of this
-     ticket's materials touch. */
+  /* The press also collapses the one floating control's shadow, so the button reads as
+     meeting the surface rather than shrinking in place. Capped to that control - it is the
+     app's only element with a shadow to collapse, and a 56px repaint is the smallest area
+     any of this ticket's materials touch. */
   it('collapses the floating control shadow on the same duration as the scale', () => {
     const press = readFileSync(join(root, 'src/lib/motion/press.css'), 'utf8');
     expect(press).toMatch(/transition:[^;]*box-shadow var\(--dur-press\) var\(--ease-press\)/);
@@ -508,11 +500,10 @@ describe('tier 1, response', () => {
     expect(restored.filter((selector) => selector === '.press-add:active')).toHaveLength(2);
   });
 
-  /* Phase 5 ticket 29: --ease-press is a sampled spring, and the sample is
-     260ms long. --dur-fast cuts it at 150ms, which is after the control has
-     arrived (94% by 44ms) but well before the overshoot has settled, so the
-     control snaps to its resting size instead of springing back to it. The
-     curve and the duration are one decision, and a rule that takes half of
+  /* --ease-press is a sampled spring, and the sample is 260ms long. --dur-fast cuts it at
+     150ms, which is after the control has arrived (94% by 44ms) but well before the
+     overshoot has settled, so the control snaps to its resting size instead of springing
+     back to it. The curve and the duration are one decision, and a rule that takes half of
      it gets the worse half. */
   it('never cuts the spring short by pairing it with another duration', () => {
     const stray: string[] = [];
@@ -565,17 +556,15 @@ describe('tier 1, response', () => {
     expect(mixed, 'an unparseable linear() takes the whole shorthand with it, not just its own half').toEqual([]);
   });
 
-  /* Ticket 29 settled two depths on a Pixel 10a and they did not land in the
-     same place; ticket 30 found the reason and turned it into a rule. Scale
-     is a fraction, so one fraction moves a 320px button's edge several times
-     as far as a 48px key's. The three depths are three size classes of one
-     law - the bigger the control, the shallower the fraction.
+  /* Settled two depths on a Pixel 10a and they did not land in the same place; found the
+     reason and turned it into a rule. Scale is a fraction, so one fraction moves a 320px
+     button's edge several times as far as a 48px key's. The three depths are three size
+     classes of one law - the bigger the control, the shallower the fraction.
 
-     Ticket 15 dropped .icon-btn, .switch and .pin-key from this list: they
-     used to restate the compact depth themselves and now take it from the
-     default like any other plain control, so there is nothing of theirs
-     left to check here - the "no second owner" test below covers their
-     absence instead. Only the two deliberate exceptions remain. */
+     Dropped.icon-btn,.switch and.pin-key from this list: they used to restate the compact
+     depth themselves and now take it from the default like any other plain control, so
+     there is nothing of theirs left to check here - the "no second owner" test below covers
+     their absence instead. Only the two deliberate exceptions remain. */
   it('presses .btn and .press-add to the depth chosen for their size, both in press.css', () => {
     const press = stripComments(readFileSync(join(root, 'src/lib/motion/press.css'), 'utf8'));
     const depthOf = (selector: string) =>
@@ -609,24 +598,21 @@ describe('tier 1, response', () => {
     }
   });
 
-  /* The shell declaring a depth of its own is the state ticket 15 replaced.
-     This used to read only app.css, which is why it never saw .icon-btn,
-     .btn, .switch and .pin-key's own :active rules living one file over, in
-     components.css - four owners the "shell" check was never pointed at.
-     Every stylesheet, every component <style> block, everything but
-     press.css itself: any :active rule elsewhere that names `transform` is
-     a second owner come back, whether it is app.css's old .nav-fab number
-     or a class this ticket never heard of. */
+  /* The shell declaring a depth of its own is the state replaced. This used to read only
+     app.css, which is why it never saw.icon-btn,.btn,.switch and.pin-key's own:active rules
+     living one file over, in components.css - four owners the "shell" check was never
+     pointed at. Every stylesheet, every component <style> block, everything but press.css
+     itself: any:active rule elsewhere that names `transform` is a second owner come back,
+     whether it is app.css's old.nav-fab number or a class never heard of. */
   it('is the only stylesheet that presses a control with its own :active rule', () => {
     const restated: string[] = [];
     for (const { path, css } of [...sheets, ...svelteStyleBlocks()]) {
       if (path.endsWith('motion/press.css')) continue;
       for (const rule of rules(css)) {
         if (isReduceContext(rule)) continue;
-        /* A selector is only a press rule if :active names the element
-           itself - :not(:active) (the app's hover-vs-press exposure fix,
-           ticket 18) is the opposite of that and has to be stripped first
-           or every hover rule it guards reads as a second press owner. */
+        /* A selector is only a press rule if:active names the element itself -:not(:active)
+           is the opposite of that and has to be stripped first or every hover rule it
+           guards reads as a second press owner. */
         if (!rule.prelude.replace(/:not\([^)]*\)/g, '').includes(':active')) continue;
         /* And only a `scale(...)` restates a depth - `transform: none`
            (the disabled-key guard, harmless and pre-existing) is not one. */
@@ -636,12 +622,11 @@ describe('tier 1, response', () => {
     expect(restated, 'no stylesheet outside press.css presses a control with its own :active rule').toEqual([]);
   });
 
-  /* Ticket 15's escape hatch: [data-no-press], a short, known list rather
-     than the unbounded set of participants a class-based allowlist would
-     have to keep pace with. Cross-checked in both directions against
-     PRESS_OPT_OUTS above, so an opt-out added to markup with no matching
-     entry here fails, and so does an entry here with nothing left to point
-     at - the list can only drift by being wrong in this file. */
+  /* Escape hatch: [data-no-press], a short, known list rather than the unbounded set of
+     participants a class-based allowlist would have to keep pace with. Cross-checked in
+     both directions against PRESS_OPT_OUTS above, so an opt-out added to markup with no
+     matching entry here fails, and so does an entry here with nothing left to point at -
+     the list can only drift by being wrong in this file. */
   it('enumerates every opt-out from the default press, each with a reason', () => {
     const files = svelteFiles();
     const actual = files
@@ -702,12 +687,10 @@ describe('tier 2, the withdrawal', () => {
     expect(supports.length, 'the fallback is a @supports state, not an unstyled one').toBeGreaterThan(0);
   });
 
-  /* Reduced motion changes motion and nothing else (pre-release-human 18:
-     "reduce motion changes the colour of the background"). The withdrawal
-     used to give up its blur for the flat --scrim under both paths, which
-     is a different colour - 0.31 over a blur against 0.45, 0.6 in dark -
-     behind the very sheet the switch lives in. The blur never animates, so
-     it is not motion; it stays. Nor does any other reduced-motion rule
+  /* Reduced motion changes motion and nothing else. The withdrawal used to give up its blur
+     for the flat --scrim under both paths, which is a different colour - 0.31 over a blur
+     against 0.45, 0.6 in dark - behind the very sheet the switch lives in. The blur never
+     animates, so it is not motion; it stays. Nor does any other reduced-motion rule
      anywhere repaint a surface. */
   it('repaints nothing under either reduced-motion path', () => {
     const PAINT = /(^|;|\s)(background(-color|-image)?|backdrop-filter|color|border(-[a-z]+)?-color|fill|stroke)\s*:/;
@@ -764,10 +747,9 @@ describe('the token layer behind the five tiers', () => {
       '--dur-crossfade',
       '--ease-press',
       '--ease-out',
-      /* Phase 5 ticket 28's two new materials that are expressed as tokens:
-         the withdrawal's fixed blur radius and the pressed step of the app's
-         one shadow. The third, tier 3's wipe, is geometry rather than a
-         value and lives in $lib/motion/reveal.ts. */
+      /* Two new materials that are expressed as tokens: the withdrawal's fixed blur radius
+         and the pressed step of the app's one shadow. The third, tier 3's wipe, is geometry
+         rather than a value and lives in $lib/motion/reveal.ts. */
       '--blur-withdraw',
       '--scrim-withdraw',
       '--shadow-float-pressed'
@@ -870,7 +852,7 @@ describe('the token layer behind the five tiers', () => {
 
 /* These state changes animate with transform, opacity or clip-path.
    Check that each animation exists and clamps under reduced motion. */
-describe('ticket 25: every state change moves', () => {
+describe('every state change moves', () => {
   const kit = stripComments(readFileSync(join(root, 'src/lib/styles/kit.css'), 'utf8'));
   const components = stripComments(readFileSync(join(root, 'src/lib/styles/components.css'), 'utf8'));
   const keyframesOf = (css: string, name: string) =>
@@ -950,9 +932,8 @@ describe('ticket 25: every state change moves', () => {
   it("lands the segment label's colour on the same frame as the pill", () => {
     const segment = declarations(ruleOf(components, '.segment')?.body ?? '');
     const pill = declarations(ruleOf(components, '.segment-pill')?.body ?? '');
-    /* The pill's leading edge (redesign ticket 26: `left` on the near
-       schedule, whose fallback is --dur-med) is what lands the choice; the
-       label's colour lands with that edge. */
+    /* The pill's leading edge is what lands the choice; the label's colour lands with that
+       edge. */
     const leading = splitTopLevel(pill.transition ?? '').find((part) => words(part)[0] === 'left') ?? '';
     const pillDuration = /var\(--seg-near-dur, (var\(--dur-[a-z]+\))\)/.exec(leading)?.[1];
     expect(pillDuration).toBeDefined();
@@ -963,7 +944,7 @@ describe('ticket 25: every state change moves', () => {
 
 });
 
-describe('ticket 28: the field is a blind over the content', () => {
+describe('the field is a blind over the content', () => {
   const app = stripComments(readFileSync(join(root, 'src/lib/styles/app.css'), 'utf8'));
   const tokens = stripComments(readFileSync(join(root, 'src/lib/theme/base.css'), 'utf8'));
   const keyframesOf = (css: string, name: string) =>
@@ -971,17 +952,15 @@ describe('ticket 28: the field is a blind over the content', () => {
   const ruleOf = (css: string, prelude: string) =>
     rules(css).find((rule) => rule.prelude === prelude && !isReduceContext(rule));
 
-  /* The field is a blind over the content. Ticket 25's shared
-     name is gone: the card is split into a flat block that carries one name
-     across every screen and the elements painted on it, each named per side
-     so nothing can pair with anything and nothing morphs.
+  /* The field is a blind over the content. shared name is gone: the card is split into a
+     flat block that carries one name across every screen and the elements painted on it,
+     each named per side so nothing can pair with anything and nothing morphs.
 
-     The names are handed over by script ($lib/motion/fieldBlind), never
-     written as a rule: a rule names the outgoing and the incoming blind at
-     once at the new capture, and the browser aborts the transition. So what
-     the stylesheet is held to is that it names nothing, and the shell to
-     carrying the blind on every navigation rather than on the tab crossing
-     alone. */
+     The names are handed over by script ($lib/motion/fieldBlind), never written as a rule:
+     a rule names the outgoing and the incoming blind at once at the new capture, and the
+     browser aborts the transition. So what the stylesheet is held to is that it names
+     nothing, and the shell to carrying the blind on every navigation rather than on the tab
+     crossing alone. */
   it('names the blind and everything painted on the field by hand-over, never by rule', () => {
     for (const { path, css } of styleSources()) {
       for (const rule of rules(css)) {
@@ -995,10 +974,9 @@ describe('ticket 28: the field is a blind over the content', () => {
     expect(layout, 'every navigation, not the tab crossing alone').toContain(
       'const blind = carryBlind(document, {'
     );
-    /* The one option it takes, and the one navigation that takes it: setup's
-       finish, where the sun is the same object at the same size on both
-       sides and naming its rings would close and reopen the app's own mark
-       at the moment the app opens (redesign ticket 33, rule 12). */
+    /* The one option it takes, and the one navigation that takes it: setup's finish, where
+       the sun is the same object at the same size on both sides and naming its rings would
+       close and reopen the app's own mark at the moment the app opens. */
     expect(layout).toMatch(/holdSun: \(navigation\.from\?\.url\.pathname \?\? ''\)\.startsWith\('\/onboarding'\)/);
     expect(layout).toContain('blind.swap()');
     expect(layout).toContain('blind.release()');
@@ -1007,20 +985,18 @@ describe('ticket 28: the field is a blind over the content', () => {
   const zIndex = (prelude: string) =>
     Number(declarations(ruleOf(app, prelude)?.body ?? '')['z-index']);
 
-  /* ux-carpet 230. The blind and the rings are nested under the field's own
-     group, so their z-index only orders them inside it, and the field group
-     is what has to sit over the screen's. At auto it fell under the screen,
-     and a screen whose snapshot is opaque (the entry editor's .editor-bg)
-     hid the whole field for the length of Home to a new entry. */
+  /* The blind and the rings are nested under the field's own group, so their z-index only
+     orders them inside it, and the field group is what has to sit over the screen's. At
+     auto it fell under the screen, and a screen whose snapshot is opaque (the entry
+     editor's.editor-bg) hid the whole field for the length of Home to a new entry. */
   it('paints the field group over the screen group, since the blind is nested inside it', () => {
     expect(zIndex('::view-transition-group(field)')).toBeGreaterThan(
       zIndex('::view-transition-group(screen)')
     );
   });
 
-  /* ux-carpet 241. The sun rings are lifted out of the field group so their
-     z-index 5 orders them over the titles (*.field-part at 4) rather than
-     being trapped inside field at 3. */
+  /* The sun rings are lifted out of the field group so their z-index 5 orders them over the
+     titles (*.field-part at 4) rather than being trapped inside field at 3. */
   it('orders the sun rings above the field parts and the field parts above the field group', () => {
     expect(zIndex('::view-transition-group(*.sun-ring)')).toBeGreaterThan(
       zIndex('::view-transition-group(*.field-part)')
@@ -1171,12 +1147,11 @@ describe('ticket 28: the field is a blind over the content', () => {
     }
   });
 
-  /* What is painted on the field is printed on it: both sides ride the
-     blind's own curve, so a mark keeps its distance from the edge and
-     cannot be left hanging outside the field (Alicja, round one). The ride
-     is `translate` and the leave is `transform`, which is what lets the two
-     animations sit on one element without overwriting each other.
-     Opening sun appears independently without riding the blind overshoot. */
+  /* What is painted on the field is printed on it: both sides ride the blind's own curve,
+     so a mark keeps its distance from the edge and cannot be left hanging outside the
+     field. The ride is `translate` and the leave is `transform`, which is what lets the two
+     animations sit on one element without overwriting each other. Opening sun appears
+     independently without riding the blind overshoot. */
   it('rides everything painted on the field with the blind, on the blind\'s own curve', () => {
     const ride = 'var(--blind-dur, var(--dur-slow)) var(--blind-ease, var(--ease-out)) both';
     for (const [selector, keyframe] of [
@@ -1225,12 +1200,11 @@ describe('ticket 28: the field is a blind over the content', () => {
     }
     expect(follow[0].decls.translate).toBe('0 var(--blind-delta, 0px)');
     expect(follow.at(-1)!.decls.translate, 'ends where the screen rests').toBe('0 0');
-    /* Every pattern in the sheet, read off the sheet rather than listed
-       here: a pattern is added by writing one of these rules, so a list of
-       its own is a list that a new pattern can be left out of. Redesign
-       ticket 34 added the fifth - the app opening, which is a state change
-       rather than a navigation - and this is the shape that would have
-       failed for it. */
+    /* Every pattern in the sheet, read off the sheet rather than listed here: a pattern is
+       added by writing one of these rules, so a list of its own is a list that a new
+       pattern can be left out of. added the fifth - the app opening, which is a state
+       change rather than a navigation - and this is the shape that would have failed for
+       it. */
     const patterns = [
       ...new Set(
         [...app.matchAll(/html\[data-nav='([a-z-]+)'\]/g)].map((match) => match[1])
@@ -1405,10 +1379,9 @@ describe('the cap on animating layout', () => {
     { selector: '.kit-dist-mark', props: ['height'], note: 'a distribution column' },
     { selector: '.kit-ordered-seg', props: ['width'], note: "OrderedStrip's segments" },
     { selector: '.kit-ordered-share', props: ['width'], note: "OrderedStrip's share bar" }
-    /* `.setup-reveal` was here, onboarding's one grid-template animation: the
-       fold under the check-in switch that opened to show a time field. The
-       check-in step left setup with phase 10 redesign ticket 31 and took the
-       fold with it, so the app has no grid-template animation left. */
+    /* `.setup-reveal` was here, onboarding's one grid-template animation: the fold under
+       the check-in switch that opened to show a time field. The check-in step left setup
+       and took the fold with it, so the app has no grid-template animation left. */
   ];
 
   const LAYOUT = [
@@ -1501,20 +1474,18 @@ describe('the cap on animating layout', () => {
   });
 });
 
-/* Both travelling indicators - the navigation's pill and the switcher's -
-   run one mechanic out of $lib/motion/indicator.ts, which owns the
-   arithmetic and the two clocks an edge can be on. The component writes a
-   clock per edge into custom properties; the stylesheet carries a fallback
-   for the case where nothing has been written yet, which is a pill that has
-   not travelled.
+/* Both travelling indicators - the navigation's pill and the switcher's - run one mechanic
+   out of $lib/motion/indicator.ts, which owns the arithmetic and the two clocks an edge can
+   be on. The component writes a clock per edge into custom properties; the stylesheet
+   carries a fallback for the case where nothing has been written yet, which is a pill that
+   has not travelled.
 
-   Those two say the same thing in two places, and nothing but this makes
-   them agree. Change LEAD's duration in the module and every fallback in
-   the sheets still names the old token: a pill that has never moved would
-   then be on one duration and a pill that has on another, and the check
-   ticket 25 wrote against the switcher's leading edge - the label's colour
-   has to land on the frame the pill does - would keep passing while the
-   label drifted off it by the difference. */
+   Those two say the same thing in two places, and nothing but this makes them agree. Change
+   LEAD's duration in the module and every fallback in the sheets still names the old token:
+   a pill that has never moved would then be on one duration and a pill that has on another,
+   and the check wrote against the switcher's leading edge - the label's colour has to land
+   on the frame the pill does - would keep passing while the label drifted off it by the
+   difference. */
 describe("the travelling indicators' shared mechanic", () => {
   const source = readFileSync(join(root, 'src/lib/motion/indicator.ts'), 'utf8');
 
@@ -1583,18 +1554,17 @@ describe("the travelling indicators' shared mechanic", () => {
 });
 
 describe('the curves the tiers reach for', () => {
-  /* Phase 5 ticket 29 retired --ease-spring, a cubic-bezier whose control
-     points bulged past 1 so a press would overshoot. It never could: a
-     cubic-bezier approaches its end from one side however far its handles
-     reach, so all the bulge bought was a curve that arrived fast and hard.
-     --ease-press, a linear() sampled off a real spring, is what actually
-     overshoots and settles, and everything that was never a press wanted a
-     plain deceleration all along.
+  /* Retired --ease-spring, a cubic-bezier whose control points bulged past 1 so a press
+     would overshoot. It never could: a cubic-bezier approaches its end from one side
+     however far its handles reach, so all the bulge bought was a curve that arrived fast
+     and hard. --ease-press, a linear sampled off a real spring, is what actually overshoots
+     and settles, and everything that was never a press wanted a plain deceleration all
+     along.
 
-     Held here because the taste rule behind it - real objects decelerate,
-     bounce and elastic read as dated - is not something a curve can be
-     argued back into one rule at a time. The bounds match Impeccable's
-     mechanical detector so the two agree on what counts. */
+     Held here because the taste rule behind it - real objects decelerate, bounce and
+     elastic read as dated - is not something a curve can be argued back into one rule at a
+     time. The bounds match Impeccable's mechanical detector so the two agree on what
+     counts. */
   it('bounces nowhere: no cubic-bezier control point leaves its own range', () => {
     const offenders: string[] = [];
     for (const { path, css } of styleSources()) {

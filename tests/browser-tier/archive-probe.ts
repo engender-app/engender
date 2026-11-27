@@ -1,17 +1,15 @@
-/* Browser-tier check for ticket 13: the export path on the real platform.
+/* Browser-tier check for the export path on the real platform.
 
-   Three things can only be proved here. The archive is packed from a
-   journal on the real SQLocal driver with its photos in real OPFS, so the
-   file store's size() - which packing needs before it can encrypt anything
-   (ADR-0007) - is answered by OPFS rather than by a fake. The key is
-   derived with the real ARCHIVE_ARGON2_PARAMS through hash-wasm in a
-   browser, and the chunks go through the browser's own WebCrypto, not
-   Node's. And delivery is a real download from a real anchor click, which
-   run.mjs catches and reads back off disk with plain Node - a file that
-   nothing but the byte layout in ADR-0007 explains.
+   Three things can only be proved here. The archive is packed from a journal on the real
+   SQLocal driver with its photos in real OPFS, so the file store's size() - which packing
+   needs before it can encrypt anything (ADR-0007) - is answered by OPFS rather than by a
+   fake. The key is derived with the real ARCHIVE_ARGON2_PARAMS through hash-wasm in a
+   browser, and the chunks go through the browser's own WebCrypto, not Node's. And delivery
+   is a real download from a real anchor click, which run.mjs catches and reads back off
+   disk with plain Node - a file that nothing but the byte layout in ADR-0007 explains.
 
-   The photo is deliberately over a megabyte, so the archive spans several
-   chunks and the last one is a partial. */
+   The photo is deliberately over a megabyte, so the archive spans several chunks and the
+   last one is a partial. */
 
 import { boot } from '../../src/lib/data/sqlite/boot.ts';
 import { createEncryptedWebSqlite } from '../../src/lib/data/sqlite/mc-driver.ts';
@@ -46,7 +44,7 @@ async function run() {
   await freshOrigin();
   const result: Record<string, unknown> = {};
 
-  // The app's own store composition since ticket 09: an archive packs
+  // The app's own store composition since an archive packs
   // plaintext photo bytes read *through* the encrypting store, and its
   // size() has to answer plaintext lengths for the chunk count (ADR-0007).
   const files = encryptedFileStore(opfsPhotoFiles('archive-probe-photos'), PROBE_DATA_KEY);
@@ -119,12 +117,11 @@ async function run() {
     for await (const _file of wrong.files);
   });
 
-  /* Ticket 14: the same archive read back into a different journal, here
-     rather than only in the Node tier. A Replace runs a dozen deletes and
-     every insert inside one manual BEGIN/COMMIT through the encrypted
-     driver's worker (mc-driver.ts), and the photo files land in real OPFS,
-     encrypted per file - and this is the path where getting either wrong
-     destroys a journal that by design has no other copy. */
+  /* The same archive read back into a different journal, here rather than only in the Node
+     tier. A Replace runs a dozen deletes and every insert inside one manual BEGIN/COMMIT
+     through the encrypted driver's worker (mc-driver.ts), and the photo files land in real
+     OPFS, encrypted per file - and this is the path where getting either wrong destroys a
+     journal that by design has no other copy. */
   const restoreFiles = encryptedFileStore(opfsPhotoFiles('archive-restore-photos'), PROBE_DATA_KEY);
   const restoreSqlite = createEncryptedWebSqlite('archive-restore.sqlite3', PROBE_DATA_KEY);
   const restoreBoot = await boot({

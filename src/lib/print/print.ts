@@ -1,16 +1,16 @@
 /* Opening the print dialog, on either platform.
 
-   `window.print()` is a Chrome method, not a WebView one. On the Android
-   build it returns without printing and without failing, so both printing
-   screens had a button that did nothing there - the clinician visit summary
-   since phase 4, silently. Android's own print stack is reachable only from
-   Java, which is what print/android-bridge.ts and PrintPlugin.java are for.
+   `window.print` is a Chrome method, not a WebView one. On the Android build it returns
+   without printing and without failing, so both printing screens had a button that did
+   nothing there - the clinician visit summary in older versions, silently. Android's own
+   print stack is reachable only from Java, which is what print/android-bridge.ts and
+   PrintPlugin.java are for.
 
-   Both paths print the same document: the plugin hands Android the live
-   WebView, so the `@media print` rules decide the page in exactly the way
-   they do on the web. Neither path renders anything twice, and neither one
-   learns what the person did with the dialog - a print job's outcome is not
-   something either platform reports back, and nothing here needs it. */
+   Both paths print the same document: the plugin hands Android the live WebView, so the
+   `@media print` rules decide the page in exactly the way they do on the web. Neither path
+   renders anything twice, and neither one learns what the person did with the dialog - a
+   print job's outcome is not something either platform reports back, and nothing here needs
+   it. */
 
 import { isAndroid } from '$lib/platform';
 import { androidPrint } from './android-bridge';

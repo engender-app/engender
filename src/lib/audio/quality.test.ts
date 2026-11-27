@@ -122,14 +122,13 @@ test('the room floor is read off dB bins, and the bin is all it costs', () => {
   );
 });
 
-/* Redesign ticket 41: the two tasks answer to two floors.
+/* The two tasks answer to two floors.
 
-   `spokenTake` above is the shape of a read - three voiced bursts under
-   0.6s each with pauses between them - and it existed here for the SNR test
-   before anything asserted what the gate said about it. What the gate said
-   was `tooShort`, because the passage and the vowel shared one constant
-   over the longest *unbroken* run, and an honest read has no unbroken run
-   longer than a syllable or two. */
+   `spokenTake` above is the shape of a read - three voiced bursts under 0.6s each with
+   pauses between them - and it existed here for the SNR test before anything asserted what
+   the gate said about it. What the gate said was `tooShort`, because the passage and the
+   vowel shared one constant over the longest *unbroken* run, and an honest read has no
+   unbroken run longer than a syllable or two. */
 
 /** A read of a passage this many words long. 1.5s of voice carried, against
     English's 0.083s a word: fifteen words ask for 1.24s and clear, thirty

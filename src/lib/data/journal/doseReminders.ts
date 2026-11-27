@@ -1,13 +1,11 @@
-/* Keeping a schedule's reminders in step with it (functional audit ticket
-   21, CONTEXT: "Dose reminder"). The rules come from doseReminders.ts; this
-   is the write: read what each running episode's schedule asks for, read
-   the reminders marked as derived from it, and change only the difference.
+/* Keeping a schedule's reminders in step with it. The rules come from doseReminders.ts;
+   this is the write: read what each running episode's schedule asks for, read the reminders
+   marked as derived from it, and change only the difference.
 
-   Never opens a transaction of its own. Every caller already holds one (a
-   schedule save, an episode edit, the boot pass), and a nested transaction
-   waits behind its own caller forever (transactor.ts). Reads the tables
-   directly rather than through the regimen and doses areas, both of which
-   call in here. */
+   Never opens a transaction of its own. Every caller already holds one (a schedule save, an
+   episode edit, the boot pass), and a nested transaction waits behind its own caller
+   forever (transactor.ts). Reads the tables directly rather than through the regimen and
+   doses areas, both of which call in here. */
 
 import { DOSE_PREFIX, doseAutoSource } from '../autoSource';
 import { doseReminderRules, isHandMadeReminderFor, reminderTimesOf, type DoseReminderRule } from '../doseReminders';
@@ -104,10 +102,9 @@ export async function syncDoseReminders(
     const times = set?.episodeId === episodeId ? set.times : reminderTimesOf(current);
     const desired = running ? doseReminderRules(episode.recurrence, episode.startEpochDay, times) : [];
 
-    /* A schedule's first reminders replace the person's own reminders for
-       the same drug (ticket 21's decision, CONTEXT: "Dose reminder"), so one
-       dose does not ring twice. Only then: a reminder made by hand after the
-       schedule already has its own is the person's business. */
+    /* A schedule's first reminders replace the person's own reminders for the same drug, so
+       one dose does not ring twice. Only then: a reminder made by hand after the schedule
+       already has its own is the person's business. */
     if (running && set?.episodeId === episodeId && desired.length > 0 && current.length === 0) {
       for (const reminder of all) {
         if (!isHandMadeReminderFor(reminder, episode.drug)) continue;

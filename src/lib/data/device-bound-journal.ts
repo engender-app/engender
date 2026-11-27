@@ -125,14 +125,13 @@ export async function setupDeviceBoundJournal(): Promise<Uint8Array<ArrayBuffer>
   });
 }
 
-/** Moves an already-open journal to device-bound mode from Settings: the
-    same data key and the stored wrapping key, so nothing is re-encrypted.
+/** Moves an already-open journal to device-bound mode from Settings: the same data key and
+    the stored wrapping key, so nothing is re-encrypted.
 
-    Web only. Android's device-bound key lives in Keystore behind a bridge
-    that mints its own data key (`create()`) and cannot be asked to wrap
-    one - so on a phone this direction would mean re-encrypting the whole
-    journal, and the module does not offer it there. Ticket 53's notes carry
-    that as the follow-up it is. The caller owns credential mutation through
+    Web only. Android's device-bound key lives in Keystore behind a bridge that mints its
+    own data key (`create`) and cannot be asked to wrap one - so on a phone this direction
+    would mean re-encrypting the whole journal, and the module does not offer it there.
+    notes carry that as the follow-up it is. The caller owns credential mutation through
     old-mode cleanup. */
 export async function addDeviceBoundJournal(dataKey: Uint8Array<ArrayBuffer>, current: () => void = () => {}): Promise<void> {
   const slot = browserDeviceKeySlot();

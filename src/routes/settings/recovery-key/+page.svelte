@@ -276,18 +276,16 @@
     }
   });
 
-  /* A lock is the one departure that cannot ask: it unmounts this screen
-     and used to take the only copy of the new key with it, at a time when
-     minting had already killed the old one (last-audit UI 09). A key the lock took
-     before Done is shown again once the journal is open, and the screen
-     waits for that answer before it draws anything, so it never says "a key
-     is active" first and then swaps. Any other way off the screen has been
-     through the guard above, and forgets it. Unlocking is not a navigation,
-     so nothing else moves focus off the body; the returned key takes the
-     arrival focus a navigation would have given the screen. A screen that
-     is already gone when the answer comes (a second lock while it opened)
-     takes nothing: the sealed copy stays for the next unlock, and the
-     characters are not handed to a screen nobody can see. */
+  /* A lock is the one departure that cannot ask: it unmounts this screen and used to take
+     the only copy of the new key with it, at a time when minting had already killed the old
+     one. A key the lock took before Done is shown again once the journal is open, and the
+     screen waits for that answer before it draws anything, so it never says "a key is
+     active" first and then swaps. Any other way off the screen has been through the guard
+     above, and forgets it. Unlocking is not a navigation, so nothing else moves focus off
+     the body; the returned key takes the arrival focus a navigation would have given the
+     screen. A screen that is already gone when the answer comes (a second lock while it
+     opened) takes nothing: the sealed copy stays for the next unlock, and the characters
+     are not handed to a screen nobody can see. */
   let gone = false;
   let heldRead = $state(!recoveryKeyHeld());
   if (recoveryKeyHeld()) {
@@ -328,10 +326,9 @@
        placeholder there only flashed and faded out over the key. -->
   <ReadReserve ready={presenceRevealed} estimate={heldRead ? presenceEstimate : 0} onrest={presenceRemember}>
   {#if recoveryKeyPresence.known}
-    <!-- One step at a time, crossfading in place while the box travels to
-         the new height (last-audit UI 42): the old step fades out of flow
-         under the new one, which fades up where it rests. Mounted with the
-         reserve's own fade the first time, so only a change plays this. -->
+    <!-- One step at a time, crossfading in place while the box travels to the new height:
+         the old step fades out of flow under the new one, which fades up where it rests.
+         Mounted with the reserve's own fade the first time, so only a change plays this. -->
     <div class="rk-steps" use:resize>
     {#key step}
     <div class="screen-part" transition:crossfade data-recovery-key-step={step}>
@@ -365,8 +362,8 @@
         >
       </div>
     {:else if step === 'unfinished' || step === 'finishing'}
-      <!-- An interrupted replacement or first key (last-audit UI 42): the
-           one notice, then its three choices, or the field that finishes. -->
+      <!-- An interrupted replacement or first key: the one notice, then its three choices,
+           or the field that finishes. -->
       <div class="kit-panel" data-kit-surface data-recovery-key-unfinished>
         <h2 class="rk-shown-title">
           {recoveryKeyPresence.active ? m.rk_unfinished_replace_title() : m.rk_unfinished_make_title()}
@@ -445,16 +442,14 @@
     void focusStep();
   }}
 >
-  <!-- No "takes effect at the next start" line here, and the reason is
-       worth keeping: this branch shipped one, and it was false. Revoking
-       removes the file at once, and replacing kills the old key the moment
-       the new one is confirmed (last-audit UI 42). What survives unchanged is the
-       session already open, which holds the data key in memory and consults
-       neither file again - and that is not what somebody at this confirm is
-       asking about. The two bodies already say what stops working, and
-       since after-release ticket 10 what does not: the data key is not
-       rotated, so a copy of the journal's files taken earlier still opens
-       with the old key. -->
+  <!-- No "takes effect at the next start" line here, and the reason is worth keeping: this
+       branch shipped one, and it was false. Revoking removes the file at once, and
+       replacing kills the old key the moment the new one is confirmed. What survives
+       unchanged is the session already open, which holds the data key in memory and
+       consults neither file again - and that is not what somebody at this confirm is asking
+       about. The two bodies already say what stops working, and what does not: the data key
+       is not rotated, so a copy of the journal's files taken earlier still opens with the
+       old key. -->
   <p class="ob-text">{confirming === 'revoke' ? m.rk_revoke_body() : m.rk_replace_body()}</p>
   <!-- Danger, with a way back: both confirms lead to the written key no
        longer opening the journal, and the sheet used to offer them as the

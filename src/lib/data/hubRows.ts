@@ -85,13 +85,12 @@ export interface HubRowSpec {
 const ROWS = [
   // --- Health --------------------------------------------------------------
   {
-    /* Deepening ticket 07 put labs, the regimen and the dose log behind
-       this one row. /care opens on their live reads. It fronts no area of its own, so there is
-       nothing here for a hidden-area rule to act on and nothing whose last
-       write would not already be on the screen behind it.
+    /* Deepening put labs, the regimen and the dose log behind this one row. /care opens on
+       their live reads. It fronts no area of its own, so there is nothing here for a
+       hidden-area rule to act on and nothing whose last write would not already be on the
+       screen behind it.
 
-       Ticket 16 gave it a fifth thing: the changes somebody has noticed,
-       hosted below. */
+       Gave it a fifth thing: the changes somebody has noticed, hosted below. */
     key: 'care',
     /* `pill`, the medication mark the screen behind
        it already draws; it drew `timeline`, two dots on a rail. */
@@ -104,19 +103,18 @@ const ROWS = [
     line: 'written'
   },
   {
-    /* ADR-0043: the one row that has to be able to not exist, and the one
-       area no `hidden` flag may reach. Its absence is `cycleTrackingVisible`'s
-       to decide - an active testosterone regimen or the explicit opt-in -
-       which is a positive gate rather than a hide, and `cycleEvents` being
-       outside `HideableArea` is what stops this file reversing it.
+    /* ADR-0043: the one row that has to be able to not exist, and the one area no `hidden`
+       flag may reach. Its absence is `cycleTrackingVisible`'s to decide - an active
+       testosterone regimen or the explicit opt-in - which is a positive gate rather than a
+       hide, and `cycleEvents` being outside `HideableArea` is what stops this file
+       reversing it.
 
-       It has been on the hub, off it, hosted by two screens and, since
-       pre-release-human 12, on the hub again ("cycle and dilation should be
-       appearing in care"), in Health beside Meds. What makes that safe is
-       that the gate travels with it: `HubReading.cycleVisible` is false
-       until a screen answers it, and `hubSections` and `hubRowsMatching`
-       leave the row out until it is true, so neither the list nor the
-       search can ask about cycles of somebody the app decided not to ask. */
+       It has been on the hub, off it, hosted by two screens and, on the hub again ("cycle
+       and dilation should be appearing in care"), in Health beside Meds. What makes that
+       safe is that the gate travels with it: `HubReading.cycleVisible` is false until a
+       screen answers it, and `hubSections` and `hubRowsMatching` leave the row out until it
+       is true, so neither the list nor the search can ask about cycles of somebody the app
+       decided not to ask. */
     key: 'cycle-events',
     icon: 'calendar',
     href: '/health/cycle-events',
@@ -126,10 +124,10 @@ const ROWS = [
     line: 'read'
   },
   {
-    /* Renamed from `appointment-prep` by ticket 57 rather than joined by a
-       second row: prep, the record and the debrief were three descriptions
-       of one thing, and the one that names it is the one that stays
-       (ADR-0066). `appointment`, a page with a clock; it drew `check`, which said "done" rather than "a visit". */
+    /* Renamed from `appointment-prep` rather than joined by a second row: prep, the record
+       and the debrief were three descriptions of one thing, and the one that names it is
+       the one that stays (ADR-0066). `appointment`, a page with a clock; it drew `check`,
+       which said "done" rather than "a visit". */
     key: 'appointments',
     icon: 'appointment',
     href: '/health/appointments',
@@ -167,10 +165,9 @@ const ROWS = [
   },
   // --- Body --------------------------------------------------------------
   {
-    /* Pre-release-human 12, bug 25: shots taken on purpose, pose by pose,
-       split off the photo library, which keeps every photograph in the
-       journal. `progressShot`, a portrait with the earlier shot's head behind
-       it; it drew `camera` as a placeholder. Not finishable
+    /* Bug 25: shots taken on purpose, pose by pose, split off the photo library, which
+       keeps every photograph in the journal. `progressShot`, a portrait with the earlier
+       shot's head behind it; it drew `camera` as a placeholder. Not finishable
        (areaState.ts's NOT_FINISHABLE says why). */
     key: 'progress-photos',
     icon: 'progressShot',
@@ -214,9 +211,8 @@ const ROWS = [
     line: 'read'
   },
   {
-    /* `waveform`. It drew `curve`, a line over
-       takes, which at row size read as a hill rather than a voice. The
-       recordings ticket 17 folded in here keep `mic` on the screen's own
+    /* `waveform`. It drew `curve`, a line over takes, which at row size read as a hill
+       rather than a voice. The recordings folded in here keep `mic` on the screen's own
        Recordings tab rather than taking the row's icon with them. */
     key: 'voice-benchmark',
     icon: 'waveform',
@@ -224,15 +220,12 @@ const ROWS = [
        so the two addresses opened on the same tab. */
     href: '/voice',
     home: 'body',
-    /* Both halves of the practice, the way `AREA_GROUPS.voice` finishes them
-       together - but only the benchmarks have a last write here, since a
-       practice take is sealed until the day after it was taken. The
-       recordings the Media group's own `voice` row used to front (ticket 17
-       folded that row's screen into this one, as the Recordings tab) have no
-       archive section of their own to register either (ADR-0036: a memo is
-       entry content) - `voiceMemoLastWriteEpochDay` on `HubReading` is the
-       second, non-registry read this row alone asks, and `rowLine` folds it
-       in below. */
+    /* Both halves of the practice, the way `AREA_GROUPS.voice` finishes them together - but
+       only the benchmarks have a last write here, since a practice take is sealed until the
+       day after it was taken. The recordings the Media group's own `voice` row used to
+       front have no archive section of their own to register either (ADR-0036: a memo is
+       entry content) - `voiceMemoLastWriteEpochDay` on `HubReading` is the second,
+       non-registry read this row alone asks, and `rowLine` folds it in below. */
     areas: ['voiceBenchmarks', 'voicePracticeTakes'],
     finishes: 'voice',
     line: 'read'
@@ -319,14 +312,13 @@ const ROWS = [
   },
   // --- Media -------------------------------------------------------------
   {
-    /* Fronts content that travels inside an entry rather than a stream of
-       its own, so it has no section in the archive to ask about and cannot
-       carry a reading. What it gets instead is a line saying what is in it.
+    /* Fronts content that travels inside an entry rather than a stream of its own, so it
+       has no section in the archive to ask about and cannot carry a reading. What it gets
+       instead is a line saying what is in it.
 
-       Voice memos shared this shape and this group until ticket 17 folded
-       their browse screen into the voice screen's own Recordings tab -
-       `/media/voice/memos` has been removed, and what fronts a
-       recording on the hub is `voice-benchmark`'s row on Transition. */
+       Voice memos shared this shape and this group folded their browse screen into the
+       voice screen's own Recordings tab - `/media/voice/memos` has been removed, and what
+       fronts a recording on the hub is `voice-benchmark`'s row on Transition. */
     key: 'photos',
     icon: 'image',
     href: '/media/photos',
@@ -336,10 +328,9 @@ const ROWS = [
     line: 'written'
   },
   {
-    /* Voice memos, back on the hub beside photos (bug session 18, item 70)
-       after ticket 17 had folded them into the voice screen as its fourth
-       tab. The same shape as photos: audio an entry owns, no section of
-       its own, a written line. */
+    /* Voice memos, back on the hub beside photos had folded them into the voice screen as
+       its fourth tab. The same shape as photos: audio an entry owns, no section of its own,
+       a written line. */
     key: 'recordings',
     icon: 'mic',
     href: '/media/recordings',
@@ -401,11 +392,10 @@ export function hubRow(key: HubRowKey): HubRow {
 
 /** The screen behind a row, without any query string it carries.
 
-    No row carries one today (`voice-benchmark` did until ticket 17), but
-    anything asking which screen is behind the row - the stats card that
-    fronts the same area, the test that holds every feature screen to the
-    kit - means the screen, and a row given a query later still answers with
-    it. Here rather than as a `split` at each of those call sites. */
+    No row carries one today, but anything asking which screen is behind the row - the stats
+    card that fronts the same area, the test that holds every feature screen to the kit -
+    means the screen, and a row given a query later still answers with it. Here rather than
+    as a `split` at each of those call sites. */
 export function rowScreen(row: HubRowSpec): string {
   return row.href.split('?')[0];
 }
@@ -501,14 +491,12 @@ export type HubLine =
 
 /** Everything the hub reads, so nothing below asks for itself.
 
-    ADR-0043's positive gate is `cycleVisible`: the cycle row is a row on the
-    hub that has to be able to not exist, so the screen that draws the hub
-    answers `cycleTrackingVisible` and hands it in. Ticket 16 once took that
-    row off the hub and the gate with it; pre-release-human 12 put both back.
+    ADR-0043's positive gate is `cycleVisible`: the cycle row is a row on the hub that has
+    to be able to not exist, so the screen that draws the hub answers `cycleTrackingVisible`
+    and hands it in. once took that row off the hub and the gate with it; put both back.
 
-    Read by the front page too since phase 10 redesign ticket 05: a pinned
-    row asks the same three questions a hub row does, off the same one
-    assembled read (`pinnedRows.ts`). */
+    Read by the front page too since a pinned row asks the same three questions a hub row
+    does, off the same one assembled read (`pinnedRows.ts`). */
 export interface HubReading {
   todayEpochDay: number;
   /** One assembled call, `journal/lastWrite.ts` - not a query per row.
@@ -610,10 +598,9 @@ export function rowLine(spec: HubRowSpec, reading: HubReading): HubLine {
   if (spec.line === 'written') return { kind: 'no-stream' };
 
   const registryEpochDay = latestWrite(rowReads(spec), reading.lastWrites);
-  /* `voice-benchmark` alone also asks its second, non-registry read (the
-     field's own doc on `HubReading`) and reports whichever of the two is
-     later - a recording since the row's own last write is exactly the
-     "later of a benchmark and a recording" ticket 17 asks for. */
+  /* `voice-benchmark` alone also asks its second, non-registry read (the field's own doc on
+     `HubReading`) and reports whichever of the two is later - a recording since the row's
+     own last write is exactly the "later of a benchmark and a recording" asks for. */
   const epochDay =
     spec.key === 'voice-benchmark'
       ? laterEpochDay(registryEpochDay, reading.voiceMemoLastWriteEpochDay ?? null)
@@ -707,18 +694,16 @@ export interface MatchedRow extends DrawnRow {
   where: HubSection['key'];
 }
 
-/** A section's own place in the flag's stripes, for whichever screen is
-    colouring `hubSections`' output by role (`roleAt(activeFlag.roles, ...)`) -
-    the More hub and, since phase 10 redesign ticket 22, onboarding's areas
-    step, which draws the same sections while the person is still choosing
-    what to pin.
+/** A section's own place in the flag's stripes, for whichever screen is colouring
+    `hubSections`' output by role (`roleAt(activeFlag.roles,...)`) - the More hub and,
+    onboarding's areas step, which draws the same sections while the person is still
+    choosing what to pin.
 
-    A section's place in the list rather than its place among whatever
-    rendered, so Health keeps one stripe whether or not a finished group sits
-    below it and whether or not hiding an area emptied a group above it. The
-    finished set takes the index after the last group: it is set apart by its
-    heading and by every row in it stating the day it ended, not by losing
-    its colour. */
+    A section's place in the list rather than its place among whatever rendered, so Health
+    keeps one stripe whether or not a finished group sits below it and whether or not hiding
+    an area emptied a group above it. The finished set takes the index after the last group:
+    it is set apart by its heading and by every row in it stating the day it ended, not by
+    losing its colour. */
 export function hubSectionRoleIndex(key: HubSection['key']): number {
   return key === 'finished' ? HUB_GROUP_KEYS.length : HUB_GROUP_KEYS.indexOf(key);
 }

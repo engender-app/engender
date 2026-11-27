@@ -191,15 +191,14 @@ for (const [palette, theme] of [
 
 /* ---------- Polish, and the step it sits next to ----------
 
-   Two of the new strings are about 20 characters longer in Polish, and both
-   are body prose that wraps by design; the question a character count cannot
-   answer is whether the question still sets on two lines and whether the
-   refusal still fits its own line. So it is rendered rather than estimated.
+   Two of the new strings are about 20 characters longer in Polish, and both are body prose
+   that wraps by design; the question a character count cannot answer is whether the
+   question still sets on two lines and whether the refusal still fits its own line. So it
+   is rendered rather than estimated.
 
-   The name step beside it, at the two short viewports, because the restore
-   step overflows there and the number is only worth anything next to the
-   number an existing step posts at the same size: rule 14's short form is
-   ticket 33's work and has not landed for any step yet. */
+   The name step beside it, at the two short viewports, because the restore step overflows
+   there and the number is only worth anything next to the number an existing step posts at
+   the same size: rule 14's short form is work and has not landed for any step yet. */
 await dress('trans', 'light');
 await settle('/settings');
 await page.locator('[data-segment="pl"]').click();

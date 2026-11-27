@@ -1,16 +1,13 @@
-/* The file-level facts behind phase 11 pre-production UI/UX ticket 43.
+/* Deliberately short. What a person hears and sees - the field's accessible name, its
+   description, the chevron standing on the track rather than on a label, every kind
+   reachable - is observable behaviour and is proved against a real browser by
+   tests/guards/tryout-form-check.mjs. The spec's own Testing Decisions rule out asserting
+   markup or CSS "merely because the implementation renders it that way", so none of that is
+   repeated here.
 
-   Deliberately short. What a person hears and sees - the field's accessible
-   name, its description, the chevron standing on the track rather than on a
-   label, every kind reachable - is observable behaviour and is proved
-   against a real browser by tests/guards/tryout-form-check.mjs. The spec's own
-   Testing Decisions rule out asserting markup or CSS "merely because the
-   implementation renders it that way", so none of that is repeated here.
-
-   What is left is the two kinds of thing a grep is the right owner of, both
-   from tests/node/ui/accessibility-audit.test.ts's reasoning: a construct whose
-   absence is silent at runtime, and the catalogue parity nothing else
-   checks. */
+   What is left is the two kinds of thing a grep is the right owner of, both from
+   tests/node/ui/accessibility-audit.test.ts's reasoning: a construct whose absence is
+   silent at runtime, and the catalogue parity nothing else checks. */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';

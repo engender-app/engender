@@ -38,22 +38,20 @@ interface NewVoiceBenchmark {
       median - that follows from `f0MedianHz` and is derived at display time
       (ADR-0010, audio/pitch.ts's noteName). */
   note?: string | null;
-  /** The passage's pitch over time, already downsampled and encoded
-      (audio/track.ts, ticket 09). Null when the take held no voiced frame
-      to draw, which is a take the gate has already failed. Stored rather
-      than derived, unlike the note name: the samples it comes from are not
-      kept, so nothing downstream could recompute it (ADR-0010's own
-      exception, ADR-0059). */
+  /** The passage's pitch over time, already downsampled and encoded (audio/track.ts). Null
+      when the take held no voiced frame to draw, which is a take the gate has already
+      failed. Stored rather than derived, unlike the note name: the samples it comes from
+      are not kept, so nothing downstream could recompute it (ADR-0010's own exception,
+      ADR-0059). */
   pitchTrack?: string | null;
-  /** What recorded the take (audio/captureChain.ts, ticket 28, ADR-0061).
-      Optional here for the same reason it is nullable in the column: a
-      caller with no live track to read has nothing to say about the
-      equipment, and a made-up chain would be worse than none. The
+  /** What recorded the take (audio/captureChain.ts, ADR-0061). Optional here for the same
+      reason it is nullable in the column: a caller with no live track to read has nothing
+      to say about the equipment, and a made-up chain would be worse than none. The
       recording flow always has one. */
   captureChain?: string | null;
-  /** The corner-vowel scaling factor (audio/vowelScale.ts, ticket 30). Null
-      the same way `f1Hz`/`f2Hz` are: fewer than two of the three held vowels
-      cleared the gate, or the flow skipped the extra two entirely. */
+  /** The corner-vowel scaling factor (audio/vowelScale.ts). Null the same way `f1Hz`/`f2Hz`
+      are: fewer than two of the three held vowels cleared the gate, or the flow skipped the
+      extra two entirely. */
   resonanceScale?: number | null;
 }
 
@@ -71,9 +69,8 @@ export interface VoiceBenchmarksArea {
       Idempotent, like the journal's other deletes: a row already gone
       leaves nothing to remove. */
   deleteBenchmark(id: string): Promise<void>;
-  /** The day of the most recent benchmark at or before `todayEpochDay`, or
-      null if there is none (phase 8 features ticket 03, lastWrite.ts). One
-      bounded `MAX`, not a fetched list reduced in JS. */
+  /** The day of the most recent benchmark at or before `todayEpochDay`, or null if there is
+      none (lastWrite.ts). One bounded `MAX`, not a fetched list reduced in JS. */
   lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
 }
 

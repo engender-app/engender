@@ -45,10 +45,9 @@ export const PATHS: Record<string, string> = {
   download: '<path d="M12 1.79v12M7 8.79l5 5 5-5"/><path d="M5 19.79h14"/>',
   upload: '<path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 21h14"/>',
   tag: '<path d="M2.81 12.31V4.81a2 2 0 0 1 2-2h7.5L21.81 12.31a2.1 2.1 0 0 1 0 3L15.31 21.81a2.1 2.1 0 0 1-3 0z"/><circle cx="8.31" cy="8.31" r="1.3"/>',
-  /* Redrawn rather than shifted. Ticket 21 moved this glyph to put its
-     bounding box in the middle of the box and said in as many words that
-     optical centring across the set was ticket 31's - this is that: the pole
-     is shorter, the banner reaches further right, and the whole mark now
+  /* Redrawn rather than shifted. moved this glyph to put its bounding box in the middle of
+     the box and said in as many words that optical centring across the set was - this is
+     that: the pole is shorter, the banner reaches further right, and the whole mark now
      measures 0.28 off centre where the shifted version measured 1.6. */
   flag: '<path d="M6 21V5"/><path d="M6 6h12.5l-2.4 4 2.4 4H6"/>',
   flask: '<path d="M10 1.38v7L4.5 18.38a2 2 0 0 0 1.8 3h11.4a2 2 0 0 0 1.8-3L14 8.38V1.38"/><path d="M8 1.38h8M7.5 14.38h9"/>',
@@ -175,7 +174,7 @@ export const PATHS: Record<string, string> = {
   // a second head behind it, the earlier shot. It took `camera`, which any
   // photo screen could draw and which Photos' own tabs already do.
   progressShot: '<rect x="3.5" y="3" width="17" height="18" rx="3"/><circle cx="10.5" cy="9.5" r="2.3"/><path d="M6.5 18a4 4 0 0 1 8 0"/><path d="M15.6 7.3a2.3 2.3 0 0 1 0 4.4"/>',
-  // Eight marks from the icon audit after the hub redo (pre-release-human
+  // Eight marks from the icon audit after the hub redo (
   // 12), each for a place that borrowed a mark already standing for
   // something else.
   //
@@ -211,18 +210,16 @@ export const PATHS: Record<string, string> = {
   era: '<path d="M3 14.5h18"/><path d="M7 14.5a5 5 0 0 1 10 0"/><path d="M12 4v2.5M5.6 7.1l1.7 1.7M18.4 7.1l-1.7 1.7"/><path d="M8 18h8"/>'
 };
 
-/* The two parameters are constrained rather than escaped, because both have
-   one shape and neither wants a wider one (phase 5 security ticket 03). This
-   string is rendered through {@html} in Icon.svelte - one of two {@html}
-   sinks in the app, the other being Mark.svelte's - so an argument that
-   could carry a quote could carry an attribute, and
-   an argument that could carry `<` could carry an element. `name` needs
-   nothing: it is a key into the fixed map above and an unknown one falls back
-   to `info`.
+/* The two parameters are constrained rather than escaped, because both have one shape and
+   neither wants a wider one. This string is rendered through {@html} in Icon.svelte - one
+   of two {@html} sinks in the app, the other being Mark.svelte's - so an argument that
+   could carry a quote could carry an attribute, and an argument that could carry `<` could
+   carry an element. `name` needs nothing: it is a key into the fixed map above and an
+   unknown one falls back to `info`.
 
-   Every call site passes literals today, which is why nothing here was
-   injectable, and that is exactly the property a test should hold rather than
-   a habit: src/lib/components/icons.test.ts. */
+   Every call site passes literals today, which is why nothing here was injectable, and that
+   is exactly the property a test should hold rather than a habit:
+   src/lib/components/icons.test.ts. */
 
 /** A positive, finite pixel size, or the default. */
 function pixelSize(size: number): number {

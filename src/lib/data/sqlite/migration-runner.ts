@@ -8,9 +8,9 @@ export interface Migration {
   sql: string;
   /** Parameterized data repair inside the same transaction, before advancing the version. */
   apply?: (db: MigrationDb) => Promise<void>;
-  /** Builds the whole schema rather than stepping from the version before it
-      (the squash: ticket 34, then after-release ticket 42). Only an empty database can take it, so a
-      journal that already has a schema below it is refused by name. */
+  /** Builds the whole schema rather than stepping from the version before it. Only an empty
+      database can take it, so a journal that already has a schema below it is refused by
+      name. */
   baseline?: boolean;
 }
 
@@ -69,15 +69,12 @@ export class SchemaTooNewError extends Error {
   }
 }
 
-/** Thrown when the database is a journal from before the chain's first
-    migration, which since the squash (ticket 34, redone at 88 by after-release
-    ticket 42) means a development build's journal on a schema between 1 and
-    the baseline. The steps that would carry
-    it forward are gone, so it cannot be opened here, and running the baseline
-    over its tables only fails with a SQLite message nobody can act on. Named
-    so the failure screen can say where the journal came from and offer the
-    way out instead. Thrown before anything is
-    copied or written. */
+/** Thrown when the database is a journal from before the chain's first migration, which
+    since the squash means a development build's journal on a schema between 1 and the
+    baseline. The steps that would carry it forward are gone, so it cannot be opened here,
+    and running the baseline over its tables only fails with a SQLite message nobody can act
+    on. Named so the failure screen can say where the journal came from and offer the way
+    out instead. Thrown before anything is copied or written. */
 export class JournalBelowBaselineError extends Error {
   foundVersion: number;
   baselineVersion: number;
@@ -92,15 +89,13 @@ export class JournalBelowBaselineError extends Error {
   }
 }
 
-/** Thrown when the journal sits between two migrations of the chain: a
-    development or test build ran steps one at a time that a release runs as
-    one. Pre-publish ticket 01 folded 89 to 119 into the step at 119, so a
-    journal at 89 to 118 has no step that starts from it, and running the
-    step over its tables would fail halfway. It is refused before anything is
-    copied or written, and it reaches the same failure screen as a journal
-    below the baseline - the same development-build sentence, the same way
-    out through an archive - which is why it is one of those rather than a
-    sibling: every place that names that failure names this one too. */
+/** Thrown when the journal sits between two migrations of the chain: a development or test
+    build ran steps one at a time that a release runs as one. folded 89 to 119 into the step
+    at 119, so a journal at 89 to 118 has no step that starts from it, and running the step
+    over its tables would fail halfway. It is refused before anything is copied or written,
+    and it reaches the same failure screen as a journal below the baseline - the same
+    development-build sentence, the same way out through an archive - which is why it is one
+    of those rather than a sibling: every place that names that failure names this one too. */
 export class JournalBetweenStepsError extends JournalBelowBaselineError {
   constructor(foundVersion: number, baselineVersion: number) {
     super(foundVersion, baselineVersion);

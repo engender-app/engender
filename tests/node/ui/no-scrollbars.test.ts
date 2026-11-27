@@ -1,7 +1,6 @@
-/* No scrollbar is ever drawn in the app (Alicja, 2026-11-04, prh12). One
-   global rule hides them all, and nothing may bring one back: a class that
-   sets its own scrollbar-width outranks the `*` rule, and a reserved
-   `scrollbar-gutter` would leave an empty strip where the bar was. */
+/* No scrollbar is ever drawn in the app. One global rule hides them all, and nothing may
+   bring one back: a class that sets its own scrollbar-width outranks the `*` rule, and a
+   reserved `scrollbar-gutter` would leave an empty strip where the bar was. */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';

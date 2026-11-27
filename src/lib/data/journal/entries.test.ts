@@ -505,15 +505,13 @@ test('a trashed entry drops out of entriesForDay, recentDays and entriesWithTag,
   await assert.rejects(journal.entries.upsertEntry({ id: trashed, mood: 5 }), /unknown entry/);
 });
 
-/* Voice recordings: entry-only, sharing the photo file store
-   and the same file-before-row / row-before-file ordering (voiceRecordings.ts).
-   First-class entry media alongside a photo, so the same rules photos.test.ts
-   exercises against journal.photos.attach apply here against upsertEntry's
-   attachRecordings/removeRecordingIds instead - there is no separate
-   attach/remove call for a recording, since ticket 24 gives it no owner but
-   an entry. journal.voice.inJournal (voiceRecordings.test.ts) is the one
-   read that lists recordings across entries, for ticket 25's compare
-   picker. */
+/* Voice recordings: entry-only, sharing the photo file store and the same file-before-row /
+   row-before-file ordering (voiceRecordings.ts). First-class entry media alongside a photo,
+   so the same rules photos.test.ts exercises against journal.photos.attach apply here
+   against upsertEntry's attachRecordings/removeRecordingIds instead - there is no separate
+   attach/remove call for a recording gives it no owner but an entry.
+   journal.voice.inJournal (voiceRecordings.test.ts) is the one read that lists recordings
+   across entries, for compare picker. */
 
 async function journalWithFiles() {
   const db = await migratedDb();
@@ -754,7 +752,7 @@ test('entriesWithTag reads newest first, up to the limit, by key or by uuid', as
   assert.deepEqual(await journal.entries.entriesWithTag('no-such-tag', 0, 200, 10), []);
 });
 
-test('entriesWithTag is bound to its range, not the whole journal (carpet ticket 19)', async () => {
+test('entriesWithTag is bound to its range, not the whole journal', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.entries.upsertEntry({ epochDay: 90, mood: 1, tags: ['e-happy'] });
   await journal.entries.upsertEntry({ epochDay: 100, mood: 2, tags: ['e-happy'] });
@@ -877,7 +875,7 @@ test('a trashed entry\'s body-region euphoria does not enter the counterevidence
 });
 
 test('counterevidencePool includes an entry whose body-region euphoria clears the floor, with no euphoria tag', async () => {
-  // The case ticket 44 was found by.
+
   const { journal } = await journalWithBuiltIns();
   const euphoriaFloorValue = euphoriaValue(GOOD_DAY_REGION_EUPHORIA_FLOOR);
   const byRegion = await journal.entries.upsertEntry({
@@ -946,7 +944,7 @@ test('the purge declines to run while a journal write is in flight', async () =>
   assert.equal(await purgeExpiredTrash(db, files), 1, 'and taken once nothing is writing');
 });
 
-test('latestBadMomentEntry identifies bad moments and returns newest entry (ticket 50)', async () => {
+test('latestBadMomentEntry identifies bad moments and returns newest entry', async () => {
   const { journal } = await journalWithBuiltIns();
 
   // No entries -> undefined
@@ -1354,12 +1352,10 @@ test('counterevidencePool keeps an entry whose only mark is a high region, with 
 });
 
 test('the demo journal offers back no dysphoria-tagged day it was not starred on', async () => {
-  /* The rule stated over the fixture rather than over three hand-written
-     entries: what ticket 15 was found by is a screenful of real-looking
-     days, and the persona is the only place in the node tier that has
-     them. Its photos are drawn on a canvas, so the entries are written
-     here directly rather than through `seedPersonaJournal` - the pool
-     reads no photo. */
+  /* The rule stated over the fixture rather than over three hand-written entries: wh was
+     found by is a screenful of real-looking days, and the persona is the only place in the
+     node tier that has them. Its photos are drawn on a canvas, so the entries are written
+     here directly rather than through `seedPersonaJournal` - the pool reads no photo. */
   const { journal } = await journalWithBuiltIns();
   const today = 20_000;
   for (const { photoCount, presentationName, ...entry } of persona(today).entries) {
@@ -1380,7 +1376,7 @@ test('the demo journal offers back no dysphoria-tagged day it was not starred on
   );
 });
 
-test('an entry can mark several effects, and saving never moves the day of one already marked (ticket 289)', async () => {
+test('an entry can mark several effects, and saving never moves the day of one already marked', async () => {
   const { journal } = await journalWithBuiltIns();
   const first = await journal.personalEffects.addCustomEffectType('Softer skin');
   const second = await journal.personalEffects.addCustomEffectType('Slower hair');

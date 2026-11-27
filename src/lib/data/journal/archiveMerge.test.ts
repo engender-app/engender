@@ -1,10 +1,9 @@
-/* Every table has a Merge class, and every table merged by `updated_at`
-   records its deletions (functional audit ticket 48, archiveMerge.ts).
+/* Every table has a Merge class, and every table merged by `updated_at` records its
+   deletions (archiveMerge.ts).
 
-   Read off the migrated schema rather than a list kept beside it, so a table
-   a later ticket adds fails here until it is classified, and a table a later
-   migration rebuilds fails here if the rebuild dropped its deletion
-   trigger. */
+   Read off the migrated schema rather than a list kept beside it, so a table a later ticket
+   adds fails here until it is classified, and a table a later migration rebuilds fails here
+   if the rebuild dropped its deletion trigger. */
 
 import assert from 'node:assert/strict';
 import { test } from 'vitest';

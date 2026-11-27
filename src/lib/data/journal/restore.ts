@@ -71,14 +71,13 @@ export interface RestoreProgress {
 }
 
 export type OnRestoreProgress = (progress: RestoreProgress) => void;
-/** Chosen for what it does on Android since ticket 19: writes there used to
-    cross the Capacitor plugin-call queue, which serializes one call at a
-    time, so this bought nothing - eight in flight were eight queued. The
-    write channel that replaced that call runs each write on its own worker
-    thread, so this number now controls real concurrent disk I/O rather than
-    a queue depth nothing drained faster for. Kept at 8 rather than raised:
-    that is what the re-measured archive-restore-files baseline reflects,
-    and moving it would need a baseline of its own. */
+/** Chosen for what it does on Android since writes there used to cross the Capacitor
+    plugin-call queue, which serializes one call at a time, so this bought nothing - eight
+    in flight were eight queued. The write channel that replaced that call runs each write
+    on its own worker thread, so this number now controls real concurrent disk I/O rather
+    than a queue depth nothing drained faster for. Kept at 8 rather than raised: that is
+    what the re-measured archive-restore-files baseline reflects, and moving it would need a
+    baseline of its own. */
 const FILE_WRITE_CONCURRENCY = 8;
 
 function replacementFileName(name: string): string {

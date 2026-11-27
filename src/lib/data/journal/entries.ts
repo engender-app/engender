@@ -129,10 +129,9 @@ export interface EntryInput {
   /** Stored photos removed in this edit. They travel with the rest of the
       entry save so its fields and photos commit as one action. */
   removePhotoIds?: string[];
-  /** Recordings made in this edit, ready to store as-is (ticket 24: no
-      client-side audio effects, so nothing normalizes them the way a photo
-      is). Additive, the same reason attachPhotos is: the editor has the
-      entry's existing recording rows but not their bytes. */
+  /** Recordings made in this edit, ready to store as-is. Additive, the same reason
+      attachPhotos is: the editor has the entry's existing recording rows but not their
+      bytes. */
   attachRecordings?: Uint8Array[];
   /** Stored recordings removed in this edit, committed with the rest of the
       entry save the same way removePhotoIds is. */
@@ -151,8 +150,7 @@ export interface EntryInput {
   doseLog?: EntryDoseLogInput;
   /** Contextual post-op procedure recovery note and wound photo (ADR-0044). */
   procedureRecovery?: EntryProcedureRecoveryInput;
-  /** Contextual HRT physical effects noticed (ADR-0044), several per entry
-      since phase 12 ux-carpet ticket 289. */
+  /** Contextual HRT physical effects noticed (ADR-0044), several per entry. */
   effectMarkers?: EntryEffectMarkerInput[];
   /** Contextual cycle event (ADR-0044). */
   cycleEvent?: EntryCycleEventInput;
@@ -204,15 +202,10 @@ export interface EntriesArea {
       most recent carriers of the tag were across the whole journal, which
       is not what the row's count described. */
   entriesWithTag(tagId: string, fromEpochDay: number, toEpochDay: number, limit: number): Promise<Entry[]>;
-  /** Entries carrying any of `tagIds` or starred (CONTEXT: "Starred"),
-      newest first, at most `limit` of them - the doubt journal's
-      counterevidence pool (ticket 14 widened this from a tag-only query so
-      a person can curate their own "proof" rather than relying solely on
-      whatever happened to get the tag; ticket 32 widened `tagId` to
-      `tagIds` so the caller can pass all three euphoria tags rather than
-      just the general one). Not folded into entriesWithTag itself: that
-      one is also the stats screen's tag-insight query, for an arbitrary
-      tag, and starred entries have no business surfacing there. */
+  /** Entries carrying any of `tagIds` or starred, newest first, at most `limit` of them -
+      the doubt journal's counterevidence pool. Not folded into entriesWithTag itself: that
+      one is also the stats screen's tag-insight query, for an arbitrary tag, and starred
+      entries have no business surfacing there. */
   counterevidencePool(tagIds: readonly string[], limit: number): Promise<Entry[]>;
   /** The most recent entry qualifying as a bad moment (lowest mood, dysphoria tag,
       or body-region dysphoria intensity >= 50), newest first.
@@ -225,11 +218,10 @@ export interface EntriesArea {
       return to a bad moment needs the id it would link to and nothing else.
       */
   latestBadMomentEntryId(dysphoriaTagIds?: readonly string[]): Promise<number | undefined>;
-  /** The day of the most recent untrashed entry at or before `todayEpochDay`,
-      or null if there is none (phase 8 features ticket 03, lastWrite.ts). One
-      bounded `MAX`, not a fetched list reduced in JS. A row dated after today
-      is excluded rather than trusted - the last-write registry never lets a
-      clock-skewed row stand in for the truth. */
+  /** The day of the most recent untrashed entry at or before `todayEpochDay`, or null if
+      there is none (lastWrite.ts). One bounded `MAX`, not a fetched list reduced in JS. A
+      row dated after today is excluded rather than trusted - the last-write registry never
+      lets a clock-skewed row stand in for the truth. */
   lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
   /** Notes matching the query, unioned with the entries carrying any of
       `matchingTagIds`, newest first (ADR-0005, PRD F19).
@@ -362,7 +354,7 @@ export function makeEntriesArea(
     await driver.run(`INSERT INTO entry_tag (entry_id, tag_id) VALUES ${values}`, params);
   };
 
-  // A region is a reference-data row since ticket 30, addressed by its
+  // A region is a reference-data row, addressed by its
   // domain id (key for a built-in, uuid for a custom) - checked against the
   // body_region table the same way resolveTagIds checks tag ids, rather
   // than the closed BODY_REGION_KEYS list this used to hold in code.
@@ -588,19 +580,17 @@ export function makeEntriesArea(
     if (entryIsEmpty(e)) throw new Error(EMPTY_ENTRY_ERROR);
   }
 
-  /* The index is contentless, so it holds folded text against the entry's
-     rowid and nothing else (ADR-0005). Every write goes through here, which
-     is what keeps the fold on the index and the fold on the query the same
-     function rather than the same intention.
+  /* The index is contentless, so it holds folded text against the entry's rowid and nothing
+     else (ADR-0005). Every write goes through here, which is what keeps the fold on the
+     index and the fold on the query the same function rather than the same intention.
 
-     Clearing first makes this the same two statements for a new entry and
-     for an edit. On an insert the delete matches nothing, which costs one
-     statement inside a transaction and means neither caller has to know
-     which case it is in.
+     Clearing first makes this the same two statements for a new entry and for an edit. On
+     an insert the delete matches nothing, which costs one statement inside a transaction
+     and means neither caller has to know which case it is in.
 
-     Deletes are not here: migration v3's trigger drops the index row with
-     the entry row, so paths that delete entries without knowing about the
-     index - ticket 14's Replace import - stay correct. */
+     Deletes are not here: migration v3's trigger drops the index row with the entry row, so
+     paths that delete entries without knowing about the index - Replace import - stay
+     correct. */
   /* Share one SQL filter between entries and their result count. Let SQLite
      order and deduplicate note and tag matches. Omit empty branches because
      FTS5 rejects an empty MATCH expression. Return null when neither branch
@@ -1212,8 +1202,8 @@ export function makeEntriesArea(
       // recording rows all stay exactly as they are, so restoreEntry has
       // them to bring back. Only the search index drops the entry now -
       // trashed_at IS NULL on every other read is what hides the rest.
-      // A move to Trash and a restore from it are edits (functional audit
-      // ticket 48): they bump `updated_at`, so an archive Merge carries them.
+      // A move to Trash and a restore from it are edits (
+      // they bump `updated_at`, so an archive Merge carries them.
       await driver.transaction(async (driver) => {
         const at = now();
         await driver.run('UPDATE entry SET trashed_at = ?, updated_at = ? WHERE id = ? AND trashed_at IS NULL', [at, at, id]);

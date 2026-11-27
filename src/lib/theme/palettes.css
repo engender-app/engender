@@ -3,12 +3,11 @@
    tokens. Heat maps use one hue for intensity. Mood uses its own five-step
    ramp selected by data-mood-preset. */
 
-/* ---------- Transgender (default) ----------
-   Ticket 17: the accent was #0F7DAE, a cold clinical blue, which was doing
-   most of the work of making the default palette read as a medical
-   instrument. --accent and --accent-2 swap so the flag's rose leads. The
-   rose then had to darken from #C25B79 to #B85272, because --accent is also
-   heat-4 and white on it measured 4.14:1 against the 4.5:1 floor. */
+/* ---------- Transgender (default) ---------- the accent was #0F7DAE, a cold clinical blue,
+   which was doing most of the work of making the default palette read as a medical
+   instrument. --accent and --accent-2 swap so the flag's rose leads. The rose then had to
+   darken from #C25B79 to #B85272, because --accent is also heat-4 and white on it measured
+   4.14:1 against the 4.5:1 floor. */
 [data-palette="trans"] {
   --motif-stripes: #5BCEFA, #F5A9B8, #FFFFFF, #F5A9B8, #5BCEFA;
 }
@@ -267,14 +266,12 @@
   --on-heat-3: #FFFFFF;
 }
 
-/* ---------- Notes: the disguised journal before it unlocks ----------
-   Not a flag, and not offered in Settings (security-scan ticket 08,
-   GD-043). While disguise is on, the boot mirror, the splash and every
-   gate wear this rather than the person's flag, so a locked "Notes" app
-   shows no identity colour and the plaintext mirror names none. The slate
-   is the disguised launcher and tab icon's own (#8A94A6, favicon-notes.svg).
-   The real palette comes back with the journal, inside the unlock's own
-   transition (+layout.svelte). */
+/* ---------- Notes: the disguised journal before it unlocks ---------- Not a flag, and not
+   offered in Settings. While disguise is on, the boot mirror, the splash and every gate
+   wear this rather than the person's flag, so a locked "Notes" app shows no identity colour
+   and the plaintext mirror names none. The slate is the disguised launcher and tab icon's
+   own (#8A94A6, favicon-notes.svg). The real palette comes back with the journal, inside
+   the unlock's own transition (+layout.svelte). */
 [data-palette="notes"] {
   --motif-stripes: #8A94A6, #FFFFFF, #8A94A6;
 }
@@ -374,22 +371,19 @@
      tests/node/ui/palette-contrast.test.ts. The heat ramp keeps raw --accent. */
   --accent-ink: color-mix(in oklab, var(--accent) 72%, var(--text));
 
-  /* Lines. The app separates with a line and never with a shadow, and the
-     phase 10 direction (rule 4) leaves it two strengths: --hairline for
-     every separator and list edge, --outline for the edge drawn inside a
-     block and the sun's seams. --border (a per-palette hex at about 24%)
-     and --outline-strong (30%) retired with the cards they edged. Both are
-     --text at low alpha rather than mixes toward --surface, so one value
-     works over a card and over the page tint underneath it. */
+  /* Lines. The app separates with a line and never with a shadow, and the direction (rule
+     4) leaves it two strengths: --hairline for every separator and list edge, --outline for
+     the edge drawn inside a block and the sun's seams. --border (a per-palette hex at about
+     24%) and --outline-strong (30%) retired with the cards they edged. Both are --text at
+     low alpha rather than mixes toward --surface, so one value works over a card and over
+     the page tint underneath it. */
   --outline: color-mix(in oklab, var(--text) 19%, transparent);
   --hairline: color-mix(in oklab, var(--text) 14%, transparent);
-  /* The edge of a text field, and nothing else. A field's fill is the card
-     on a page barely lighter than it, so its edge is the only thing that
-     says where it is, and at --outline's 19% that was 1.44:1. 53% is the
-     least that clears 3:1 (WCAG 1.4.11) on bg, surface and surface-2 in
-     all 16 palettes x 2 themes; demiboy light is the tightest at 3.1:1.
-     Alicja approved an input-only token rather than a stronger rule 4
-     (pre-release-human 03 item 18, after-release 21); guarded in
+  /* The edge of a text field, and nothing else. A field's fill is the card on a page barely
+     lighter than it, so its edge is the only thing that says where it is, and at
+     --outline's 19% that was 1.44:1. 53% is the least that clears 3:1 (WCAG 1.4.11) on bg,
+     surface and surface-2 in all 16 palettes x 2 themes; demiboy light is the tightest at
+     3.1:1. Use an input-only token rather than a stronger rule 4; guarded in
      tests/node/ui/palette-contrast.test.ts. */
   --input-edge: color-mix(in oklab, var(--text) 53%, transparent);
 }

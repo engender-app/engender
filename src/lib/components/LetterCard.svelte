@@ -94,18 +94,17 @@
     else onopen?.();
   }
 
-  /* Tile's panel contract, and the same reasoning: `|global` because what
-     creates and destroys a card is the caller's `{#each}`, a parent block a
-     local transition never sees, and `skip` so a screen leaving does not
-     spend --dur-slow folding its letters up on the way out.
+  /* Tile's panel contract, and the same reasoning: `|global` because what creates and
+     destroys a card is the caller's `{#each}`, a parent block a local transition never
+     sees, and `skip` so a screen leaving does not spend --dur-slow folding its letters up
+     on the way out.
 
-     A function called as the transition starts, not a `$derived` (ticket
-     197, the same fix Tile had in 196): Svelte reads the params again when
-     the outro starts, and a derived read from a card that is already being
+     A function called as the transition starts, not a `$derived`: Svelte reads the params
+     again when the outro starts, and a derived read from a card that is already being
      destroyed hands back its value from mount - `skip: false` - and warns
-     (`derived_inert`), once per card on every navigation off a screen of
-     letters. The cards still did not fold, but only because the screen's
-     arrival window also stands `collapse` down (screenArrival.ts). */
+     (`derived_inert`), once per card on every navigation off a screen of letters. The cards
+     still did not fold, but only because the screen's arrival window also stands `collapse`
+     down (screenArrival.ts). */
   const panel = () => ({ skip: navigating.to !== null });
 </script>
 
@@ -152,12 +151,11 @@
       </span>
     {/if}
   </span>
-  <!-- The whole letter, clamped to two lines while the card is folded, once
-       it has been read. Until then nothing of it is on the card, folded or
-       on the arrival: the first lines are the letter, and a letter nobody
-       has opened yet should not be read off its envelope (Alicja,
-       2026-10-05, after audit L04-18). Opening it puts the text under the
-       mask below the folded edge, so it is uncovered by the same travel. -->
+  <!-- The whole letter, clamped to two lines while the card is folded, once it has been
+       read. Until then nothing of it is on the card, folded or on the arrival: the first
+       lines are the letter, and a letter nobody has opened yet should not be read off its
+       envelope. Opening it puts the text under the mask below the folded edge, so it is
+       uncovered by the same travel. -->
   {#if open || read}
     <!-- The first line sits above the folded edge, so the mask uncovers
          only what is under it: without a fade of its own that line was
@@ -254,12 +252,11 @@
     text-align: start;
   }
 
-  /* The press reaches into the card's own padding, above and below, so an
-     unread letter's one line ("Written 15 May 2026 - Ready", 23px) is still
-     a 48px target (last-audit UI 25, audit U38). The negative margin hands
-     the padding straight back, so the drawing does not move. Below, it takes
-     only --space-3: that is the gap above the close button on an open
-     letter, and two controls must not share a strip of screen. */
+  /* The press reaches into the card's own padding, above and below, so an unread letter's
+     one line ("Written 15 May 2026 - Ready", 23px) is still a 48px target. The negative
+     margin hands the padding straight back, so the drawing does not move. Below, it takes
+     only --space-3: that is the gap above the close button on an open letter, and two
+     controls must not share a strip of screen. */
   .letter-main-btn {
     background: none;
     border: 0;

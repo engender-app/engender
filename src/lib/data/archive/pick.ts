@@ -1,17 +1,15 @@
-/* Choosing an archive to import (ticket 14, PRD F14).
+/* Choosing an archive to import.
 
-   The web half, like photos/picker.ts is for photos: on Android this becomes
-   the shell's own file picker, and the screen above must never learn which
-   one it got.
+   The web half, like photos/picker.ts is for photos: on Android this becomes the shell's
+   own file picker, and the screen above must never learn which one it got.
 
-   Bytes rather than a File, and a stream rather than one buffer: opening an
-   archive reads the header, then the payload, then the photo files as the
-   body reaches them (pack.ts), so restoring years of photos never holds more
-   than a chunk of it.
+   Bytes rather than a File, and a stream rather than one buffer: opening an archive reads
+   the header, then the payload, then the photo files as the body reaches them (pack.ts), so
+   restoring years of photos never holds more than a chunk of it.
 
-   `bytes()` is a function and not a value, because a wrong password is a
-   retry rather than a dead end: every attempt gets its own read of the same
-   file, and a stream cannot be consumed twice. */
+   `bytes()` is a function and not a value, because a wrong password is a retry rather than
+   a dead end: every attempt gets its own read of the same file, and a stream cannot be
+   consumed twice. */
 
 import { chooseFiles } from '../fileDialog';
 import { ARCHIVE_FILE_EXTENSION, LEGACY_ARCHIVE_FILE_EXTENSION } from './container';

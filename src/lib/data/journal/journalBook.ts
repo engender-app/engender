@@ -87,9 +87,8 @@ interface JournalBookEntry {
   tags: string[];
 }
 
-/** The wrapped-style opening page's numbers (ticket 16's card takes stats,
-    not a journal). Read off the recap seam so the cover of a book says what
-    the wrapped screens say about the same range. */
+/** The wrapped-style opening page's numbers. Read off the recap seam so the cover of a book
+    says what the wrapped screens say about the same range. */
 interface JournalBookOpening {
   entryCount: number;
   milestoneCount: number;
@@ -107,14 +106,12 @@ export interface JournalBook {
   opening: JournalBookOpening | null;
 }
 
-/** How much a book holds, in the three things that decide its length: the
-    days it prints, the pictures on them and the milestones between them
-    (phase 12 final-audit ticket 20).
+/** How much a book holds, in the three things that decide its length: the days it prints,
+    the pictures on them and the milestones between them.
 
-    Counted off the assembled book rather than asked of the tables again, so
-    the line the screen shows and the pages it stands for can never disagree.
-    An unticked part needs no special case here - the assembly never read it,
-    so it counts nothing. */
+    Counted off the assembled book rather than asked of the tables again, so the line the
+    screen shows and the pages it stands for can never disagree. An unticked part needs no
+    special case here - the assembly never read it, so it counts nothing. */
 export function journalBookCounts(book: JournalBook): {
   entries: number;
   photos: number;

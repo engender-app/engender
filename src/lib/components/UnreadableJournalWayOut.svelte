@@ -1,11 +1,9 @@
 <script lang="ts">
-  /* The way out of a journal the key cannot read (ux-carpet 210). "Try
-     opening again" was the only button on that error, and retrying never
-     opens a file under a key that does not match it, so a phone left like
-     that had nothing to press short of uninstalling. The two doors here are
-     the ones DeviceBoundRecovery already offers for its own dead end, with
-     its copy and its confirmation, so the loss is stated before it happens
-     in the same words. */
+  /* The way out of a journal the key cannot read. "Try opening again" was the only button
+     on that error, and retrying never opens a file under a key that does not match it, so a
+     phone left like that had nothing to press short of uninstalling. The two doors here are
+     the ones DeviceBoundRecovery already offers for its own dead end, with its copy and its
+     confirmation, so the loss is stated before it happens in the same words. */
   import { m } from '$lib/paraglide/messages';
   import { resetApp } from '$lib/stores/boot.svelte';
   import Icon from './Icon.svelte';

@@ -419,8 +419,8 @@ test('applyRoadmapChecks inserts a check and leaves a matched pack/goal pair alo
   assert.deepEqual((await select<{ status: string }>(driver, 'SELECT status FROM roadmap_check'))[0].status, 'checked');
 });
 
-/* Pre-release human ticket 17: the social group's ticks are named 'social-',
-   not 'pl-social-', so the rule that drops the old cut track leaves them. */
+/* Pre-release human the social group's ticks are named 'social-', not 'pl-social-', so the
+   rule that drops the old cut track leaves them. */
 test('applyRoadmapChecks keeps a social-group tick beside a cut-track one', async () => {
   const driver = await migratedDb();
   const checks: ArchiveRoadmapCheck[] = [
@@ -432,9 +432,9 @@ test('applyRoadmapChecks keeps a social-group tick beside a cut-track one', asyn
   assert.deepEqual(await select(driver, 'SELECT pack_key, goal_key FROM roadmap_check'), [{ pack_key: 'social', goal_key: 'social-family' }]);
 });
 
-/* Functional audit ticket 34: an archive written before the trim still
-   carries ticks against the three cut tracks. They are skipped, the way
-   migration 111 deleted them, and a legal tick beside them still lands. */
+/* An archive written before the trim still carries ticks against the three cut tracks. They
+   are skipped, the way migration 111 deleted them, and a legal tick beside them still
+   lands. */
 test('applyRoadmapChecks skips ticks against the cut social, presentational and medical tracks', async () => {
   const driver = await migratedDb();
   const checks: ArchiveRoadmapCheck[] = [
@@ -448,12 +448,11 @@ test('applyRoadmapChecks skips ticks against the cut social, presentational and 
   assert.deepEqual(await select(driver, 'SELECT goal_key FROM roadmap_check'), [{ goal_key: 'pl-legal-court-fee' }]);
 });
 
-/* Round two of ticket 34: an archive from before the person's categories
-   carries custom goals under the cut social, presentational and medical
-   tracks and no roadmapCategories section. Each such track gets a nameless
-   category named by its key, the one migration 111 made, so those goals
-   still show; a category already here (renamed on this device) is left as
-   it is, and legal goals need none. */
+/* Round two of an archive from before the person's categories carries custom goals under
+   the cut social, presentational and medical tracks and no roadmapCategories section. Each
+   such track gets a nameless category named by its key, the one migration 111 made, so
+   those goals still show; a category already here (renamed on this device) is left as it
+   is, and legal goals need none. */
 test('adoptLegacyRoadmapTracks gives each cut track a goal still names a category of its own', async () => {
   const driver = await migratedDb();
   await driver.run("INSERT INTO roadmap_category (uuid, name, updated_at) VALUES ('social', 'Friends and family', 1)");
@@ -883,9 +882,8 @@ test('applyTaper resolves its procedure link, drops a taper whose procedure is n
   assert.deepEqual((await select<{ stages: string }>(driver, 'SELECT stages FROM taper'))[0].stages, '[]');
 });
 
-/* Functional audit ticket 25: one taper per procedure. A merge bringing a
-   second schedule for a procedure that already has one keeps the one here,
-   and so does an archive that itself carries two. */
+/* One taper per procedure. A merge bringing a second schedule for a procedure that already
+   has one keeps the one here, and so does an archive that itself carries two. */
 test('merging a second taper for a procedure that has one keeps one', async () => {
   const driver = await migratedDb();
   await seedProcedure(driver, 'proc1');

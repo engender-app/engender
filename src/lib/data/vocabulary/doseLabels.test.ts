@@ -1,6 +1,5 @@
-/* The wording a dose row's trailing attribution uses (audit U8, ticket 17).
-   Whether the row shows it at all is `showAttributionLabel`'s question,
-   tested with the rest of regimenEpisode. */
+/* The wording a dose row's trailing attribution uses. Whether the row shows it at all is
+   `showAttributionLabel`'s question, tested with the rest of regimenEpisode. */
 
 import assert from 'node:assert/strict';
 import { test, vi } from 'vitest';

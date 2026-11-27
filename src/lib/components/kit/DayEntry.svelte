@@ -97,12 +97,10 @@
 {/snippet}
 
 {#if href}
-  <!-- The transition name lives on `.kit-entry-bg`, not on this element: a
-       view transition captures a named element as one rasterised image and
-       scales it 4-8x into a full screen, and a row's note text riding inside
-       that image read as a heading-sized blow-up (Alicja, 2026-08-27: "the
-       ridiculous huge text transition"). The plain fill grows; the content
-       crossfades with the screen. -->
+  <!-- The transition name lives on `.kit-entry-bg`, not on this element: a view transition
+       captures a named element as one rasterised image and scales it 4-8x into a full
+       screen, and a row's note text riding inside that image read as a heading-sized
+       blow-up. The plain fill grows; the content crossfades with the screen. -->
   <a
     class="kit-entry"
     data-entry-card={key}

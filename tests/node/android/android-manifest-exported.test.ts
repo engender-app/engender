@@ -1,12 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-/* Phase 5 security ticket 07 (G-06). MainActivity carried a bare MAIN
-   filter and exported="true", which is what let any app on the phone start
-   the journal and set the gd_route extra. The two disguise aliases are the
-   actual entry points - LAUNCHER lives there, not on MainActivity - and an
-   activity-alias may stay exported with its target closed, so both launcher
-   identities keep working with this locked down. */
+/* MainActivity carried a bare MAIN filter and exported="true", which is what let any app on
+   the phone start the journal and set the gd_route extra. The two disguise aliases are the
+   actual entry points - LAUNCHER lives there, not on MainActivity - and an activity-alias
+   may stay exported with its target closed, so both launcher identities keep working with
+   this locked down. */
 
 const root = new URL('../../../', import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, root), 'utf8');

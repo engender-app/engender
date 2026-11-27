@@ -1,13 +1,10 @@
-/* How much of the counterevidence pool Safe space reads (ADR-0037,
-   CONTEXT: "counterevidence pool").
+/* How much of the counterevidence pool Safe space reads (ADR-0037).
 
-   One number, in one place, because more than one surface asks the same
-   query for it and they have to agree: `/doubt/evidence` draws the entries,
-   and the affirming-themes reading weighs their tags into its bars. A tile
-   saying 20 over a list showing 25 is the drift this exists to prevent - it
-   was one constant on one screen until redesign ticket 47 split that screen
-   in two, and phase 11 tickets 15 and 07 moved the second half onto Look
-   back.
+   One number, in one place, because more than one surface asks the same query for it and
+   they have to agree: `/doubt/evidence` draws the entries, and the affirming-themes reading
+   weighs their tags into its bars. A tile saying 20 over a list showing 25 is the drift
+   this exists to prevent - it was one constant on one screen split that screen in two, and
+   moved the second half onto Look back.
 
    Node-tier safe: no clock, no driver, no paraglide, no runes. */
 
@@ -23,11 +20,9 @@ export const COUNTEREVIDENCE_LIMIT = 20;
     whole. */
 export const COUNTEREVIDENCE_PREVIEW = 6;
 
-/** The pool's days split at the preview, by whole days (phase 14 ticket 18,
-    release audit U9): Good moments draws days of entries, so the split
-    rounds up to the end of the day holding the sixth entry rather than
-    cutting through it and giving that day a second date bar under the
-    control. */
+/** The pool's days split at the preview, by whole days: Good moments draws days of entries,
+    so the split rounds up to the end of the day holding the sixth entry rather than cutting
+    through it and giving that day a second date bar under the control. */
 export function previewWholeDays<G extends { entries: readonly unknown[] }>(
   groups: readonly G[],
   preview = COUNTEREVIDENCE_PREVIEW

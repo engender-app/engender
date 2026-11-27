@@ -27,12 +27,10 @@
   let from = $derived(span.start);
   let to = $derived(span.end);
 
-  /* Which pairs of ticked scales have points in the span, so the pickers
-     offer only those and the plane opens on the pair with the most (bug
-     session 18, item 41: trying pair after pair to get anything drawn).
-     `picked` is what the person chose; the axes are that pair while it has
-     points, and planeAxes' fallback otherwise - unticking a scale or moving
-     the span lands on a pair that draws rather than on an empty plane. */
+  /* Which pairs of ticked scales have points in the span, so the pickers offer only those
+     and the plane opens on the pair with the most. `picked` is what the person chose; the
+     axes are that pair while it has points, and planeAxes' fallback otherwise - unticking a
+     scale or moving the span lands on a pair that draws rather than on an empty plane. */
   let pairsQuery = liveList((j) => j.stats.constellationPairs(from, to));
   let activeKeys = $derived(vocabulary.activeDimensions.map((d) => d.key));
   let picked = $state({ x: '', y: '' });

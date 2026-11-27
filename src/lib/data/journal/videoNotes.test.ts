@@ -45,7 +45,7 @@ test('a journal with no video notes yields an empty list, not a broken join', as
   assert.deepEqual(await journal.videos.inJournal(), []);
 });
 
-test("a trashed entry's video note drops out of inJournal (phase 5 ticket 19)", async () => {
+test("a trashed entry's video note drops out of inJournal", async () => {
   const { journal } = await journalWithFiles();
   const kept = await journal.entries.upsertEntry({
     epochDay: 20000,

@@ -1,10 +1,9 @@
-/* The generated blocks in SCREENS.md and CONTEXT.md against the code.
-Dev tier, like the ADR citation guard: the
-   docs live in the private docs repo, so where they are not linked (CI) the
-   doc comparison skips with a notice and the marker tests still run.
+/* The generated blocks in and against the code. Dev tier, like the ADR citation guard: the
+   docs live in the private docs repo, so where they are not linked (CI) the doc comparison
+   skips with a notice and the marker tests still run.
 
-   `npm run docs:blocks` runs this file with DOC_BLOCKS_WRITE=1, which
-   rewrites every block from the code instead of comparing. */
+   `npm run docs:blocks` runs this file with DOC_BLOCKS_WRITE=1, which rewrites every block
+   from the code instead of comparing. */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';

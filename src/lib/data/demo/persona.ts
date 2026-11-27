@@ -35,11 +35,10 @@ import {
    depend on a demo detail. */
 const VOICE_PRACTICE = { groupKey: 'gender', label: 'voice practice', icon: 'mic' };
 
-/** The language the persona writes in (pre-publish ticket 03): the pl-PL
-    store screenshots and the Polish landing guide are taken from this
-    journal, and a Polish app full of English diary entries reads as an
-    untranslated one. Only the free text a person would type changes; every
-    day, mood, tag and draw stays where it is. */
+/** The language the persona writes in: the pl-PL store screenshots and the Polish landing
+    guide are taken from this journal, and a Polish app full of English diary entries reads
+    as an untranslated one. Only the free text a person would type changes; every day, mood,
+    tag and draw stays where it is. */
 export type PersonaLocale = 'en' | 'pl';
 
 /** An entry plus how many photos hang off it. The journal mints photo
@@ -80,11 +79,9 @@ interface PersonaEra {
   endEpochDay: number;
 }
 
-/** An appointment plus the entry that debriefs it, for the one appointment
-    that carries one. Linked by the
-    appointment's own id since ticket 58 (checklists.ts's
-    `recordDebriefEntry`), which is also what retired the date-keyed
-    mechanism this was first written against. */
+/** An appointment plus the entry that debriefs it, for the one appointment that carries
+    one. Linked by the appointment's own id (checklists.ts's `recordDebriefEntry`), which is
+    also what retired the date-keyed mechanism this was first written against. */
 interface PersonaAppointment extends AppointmentInput {
   epochDay: number;
   procedureId: null;
@@ -309,7 +306,7 @@ export function persona(today: number = todayEpochDay(), locale: PersonaLocale =
   const say = (en: string, pl: string) => (locale === 'pl' ? pl : en);
   const presentationNames: [string, string] = [say('femme', 'kobieco'), say('androgynous', 'androgynicznie')];
   const endocrinologist = say('Dr Kowalska', 'dr Kowalska');
-  // The one past-with-debrief and one future appointment ticket 64 asks
+  // The one past-with-debrief and one future appointment asks
   // for. The future one shares a day with the existing "Endocrinologist"
   // reminder below rather than drifting to its own date: a reminder to
   // attend a visit and the booked visit itself are the same appointment,
@@ -343,17 +340,15 @@ export function persona(today: number = todayEpochDay(), locale: PersonaLocale =
        note or tag. The bounds are the same two days two of the milestones
        above already mark - coming out, then HRT - so the band on the rail
        and the marks on it agree about where one chapter ended. */
-    /* Three eras, and two of them cover entries on purpose. "Before HRT" alone was the fixture ticket 48 added, and
-       it sits where the persona's own arc says it belongs - before the
-       first lab draw at today-700 - which is also before the first entry,
-       so every reading that partitions the journal by era drew nothing on
-       it. That was invisible while the era screens only listed eras; the
-       words reading (cut since by functional audit ticket 12) weighed one
-       era's words against the journal's, so an era with no notes in it was
-       the whole of what it could show. The other
-       two are dated over the two stretches the generator actually writes:
-       the previous calendar year's sparse days, and the recent run. Both
-       bounds dated on all three, for the reason `PersonaEra` gives. */
+    /* Three eras, and two of them cover entries on purpose. "Before HRT" alone was the
+       fixture added, and it sits where the persona's own arc says it belongs - before the
+       first lab draw at today-700 - which is also before the first entry, so every reading
+       that partitions the journal by era drew nothing on it. That was invisible while the
+       era screens only listed eras; the words reading weighed one era's words against the
+       journal's, so an era with no notes in it was the whole of what it could show. The
+       other two are dated over the two stretches the generator actually writes: the
+       previous calendar year's sparse days, and the recent run. Both bounds dated on all
+       three, for the reason `PersonaEra` gives. */
     eras: [
       { name: say('Before HRT', 'Przed HRT'), startEpochDay: today - 940, endEpochDay: today - 745 },
       { name: say('First year on HRT', 'Pierwszy rok na HRT'), startEpochDay: today - 622, endEpochDay: today - 259 },
@@ -430,7 +425,7 @@ export function persona(today: number = todayEpochDay(), locale: PersonaLocale =
       }
     ],
     // One document, dated well before HRT start: the referral that started
-    // it (ADR-0065). No link - ticket 56, the one that gives a
+    // it (ADR-0065). No link -, the one that gives a
     // document a link, has not landed.
     documents: [{ epochDay: today - 760, title: 'Skierowanie do endokrynologa' }],
     /* Two labs across the estradiol series, which is what raises the

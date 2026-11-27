@@ -33,10 +33,9 @@ async function sourceJpeg(width: number, height: number): Promise<Uint8Array> {
   return new Uint8Array(await blob.arrayBuffer());
 }
 
-/** One entry, one stored photo, one removal, one save, one resume, one
-    re-save - with `clearMirrorOnSave` toggling whether the save clears the
-    mirror the way EntryEditor.svelte's fix does, or leaves it for `onDestroy`
-    the way it worked before ticket 16. */
+/** One entry, one stored photo, one removal, one save, one resume, one re-save - with
+    `clearMirrorOnSave` toggling whether the save clears the mirror the way
+    EntryEditor.svelte's fix does, or leaves it for `onDestroy` the way it worked. */
 async function runSequence(
   journal: Journal,
   draftStore: EntryDraftStore,

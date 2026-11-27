@@ -77,8 +77,8 @@
     <Icon name="plus" size={20} /><span>{m.body_regions_add()}</span>
   </button>
 
-  <!-- Gated on the vocabulary mirror (ticket 152's gap): a cold open paints
-       before it fills, so the lists cut in at full opacity when it did. Held at last visit's height, faded in. -->
+  <!-- Gated on the vocabulary mirror: a cold open paints before it fills, so the lists cut
+       in at full opacity when it did. Held at last visit's height, faded in. -->
   <ReadReserve ready={listsRevealed} estimate={listsEstimate} onrest={listsRemember}>
     <div class="managed-tags">
       {#each customs as r (r.id)}

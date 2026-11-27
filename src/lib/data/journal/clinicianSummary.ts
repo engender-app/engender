@@ -90,8 +90,7 @@ interface ClinicianSummaryContents {
   regimen: ClinicianSummaryRegimen;
   exposure: ExposureCounters;
   labs: LabResult[];
-  /** Side effects active at any point in the range, ongoing or resolved
-      (functional audit ticket 23's `resolvedEpochDay`). */
+  /** Side effects active at any point in the range, ongoing or resolved. */
   sideEffects: SideEffect[];
   /** Every change marked so far that the timeline shows, oldest first -
       not range-filtered, see readChangesNoticed below. */
@@ -233,14 +232,12 @@ async function readRegimen(reading: ClinicianSummaryReading): Promise<ClinicianS
   };
 }
 
-/* Exposure counters, with the excluded drugs' rows dropped. Route days are a route total, not a drug total
-   (daysOnEachRoute merges across whatever episodes used that route), so
-   they are recounted by that same function over the printed drugs'
-   episodes only: before functional audit ticket 39 they kept every drug,
-   and with a drug that is not HRT off by default an SSRI's oral days still
-   reached the page as "oral" days. `excludedDoses` stays as-is - it counts
-   doses the drug log itself could not attribute, which a drug toggle does
-   not change. */
+/* Exposure counters, with the excluded drugs' rows dropped. Route days are a route total,
+   not a drug total (daysOnEachRoute merges across whatever episodes used that route), so
+   they are recounted by that same function over the printed drugs' episodes only: they kept
+   every drug, and with a drug that is not HRT off by default an SSRI's oral days still
+   reached the page as "oral" days. `excludedDoses` stays as-is - it counts doses the drug
+   log itself could not attribute, which a drug toggle does not change. */
 async function readExposure({ exposure, regimen, fromEpochDay, toEpochDay, excludedDrugs }: ClinicianSummaryReading) {
   const counters = await exposure.getCounters(fromEpochDay, toEpochDay);
   if (excludedDrugs.size === 0) return counters;
@@ -367,7 +364,7 @@ const SECTIONS = [
     // appointments pointing at it. The summary's own "since
     // your last appointment" range is not this section's - it lives in the
     // route itself (clinician-summary/+page.svelte), reading
-    // appointments.ts's mostRecentPastAppointment since ticket 58.
+    // appointments.ts's mostRecentPastAppointment.
     //
     // The recovery checklist as well as the procedure: an item ticked off on
     // it changes what this section prints, and that checklist is an ordinary

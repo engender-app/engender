@@ -1,10 +1,9 @@
 <script lang="ts">
-  /* The add-photo day prompt (ticket 47, ADR-0008/0015): the entry editor's
-     and the milestone editor's own add-photo flows opened the identical
-     sheet - a title, a hint, one Day field, Save and Skip - differing only
-     in what "day" and "save"/"skip" mean to each caller's own draft. Shared
-     here rather than repeated a third time the next screen grows an
-     add-photo flow of its own. */
+  /* The add-photo day prompt (ADR-0008/0015): the entry editor's and the milestone editor's
+     own add-photo flows opened the identical sheet - a title, a hint, one Day field, Save
+     and Skip - differing only in what "day" and "save"/"skip" mean to each caller's own
+     draft. Shared here rather than repeated a third time the next screen grows an add-photo
+     flow of its own. */
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import Field from '$lib/components/kit/Field.svelte';

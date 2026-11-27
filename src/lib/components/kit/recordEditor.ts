@@ -1,9 +1,8 @@
-/* The state machine every settings screen that logs a dated record
-   hand-rolled for itself (phase 5 UX ticket 39a): an editor draft, a
-   delete-confirm target, and the four moves between them. Framework-free
-   and unit-testable on its own - recordEditor.svelte.ts wraps it in
-   `$state` and is where the reactive object screens actually import lives.
-   Same split kit/barRow.ts already makes from BarRows.svelte. */
+/* The state machine every settings screen that logs a dated record hand-rolled for itself:
+   an editor draft, a delete-confirm target, and the four moves between them. Framework-free
+   and unit-testable on its own - recordEditor.svelte.ts wraps it in `$state` and is where
+   the reactive object screens actually import lives. Same split kit/barRow.ts already makes
+   from BarRows.svelte. */
 
 export type RecordEditorOptions<TRecord extends { id: string }, TDraft extends { id?: string } = TRecord> = {
   /** Build a fresh draft for "add new". Omit for a delete-only record type

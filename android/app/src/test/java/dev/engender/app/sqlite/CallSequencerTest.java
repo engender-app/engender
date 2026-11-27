@@ -11,9 +11,9 @@ import org.junit.Test;
 
 /**
  * A JVM test - no device needed. The JS driver pipelines its bridge calls and
- * numbers them (ux-carpet 200, ADR-0089); this is the half that puts them back
- * in order. Each case delivers calls out of order and reads back the order they
- * reached "SQLite" in.
+ * numbers them (ADR-0089); this is the half that puts them back in order.
+ * Each case delivers calls out of order and reads back the order they reached
+ * "SQLite" in.
  */
 public class CallSequencerTest {
 

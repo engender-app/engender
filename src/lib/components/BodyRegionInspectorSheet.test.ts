@@ -32,10 +32,9 @@ describe('BodyRegionInspectorSheet component contract', () => {
 });
 
 describe('/body-map page inspector wiring', () => {
-  /* Redesign ticket 40: the figure is the only region control on this
-     screen. The hotspots, the chips row and the picker in the first chart
-     card's header were four ways to make one choice, and all four opened
-     the sheet, so the map could not be browsed at all. */
+  /* The figure is the only region control on this screen. The hotspots, the chips row and
+     the picker in the first chart card's header were four ways to make one choice, and all
+     four opened the sheet, so the map could not be browsed at all. */
   it('has exactly one region control, which is the figure', () => {
     expect(pageFile).toContain('data-body-map-figure');
     expect(pageFile).toContain('<BodyRegionMap');

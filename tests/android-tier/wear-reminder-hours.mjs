@@ -1,16 +1,15 @@
-/* Wear reminder hours on Android (last-audit UI 01). The field renders only
-   on Android, so tests/guards/wear-entry-check.mjs cannot reach it.
+/* Wear reminder hours on Android. The field renders only on Android, so
+   tests/guards/wear-entry-check.mjs cannot reach it.
 
-   Run against a disposable emulator with a demo debug APK installed under a
-   separate applicationId, never the real app:
-     node tests/android-tier/wear-reminder-hours.mjs emulator-5574 [dev.engender.app.test]
+   Run against a disposable emulator with a demo debug APK installed under a separate
+   applicationId, never the real app: node tests/android-tier/wear-reminder-hours.mjs
+   emulator-5574 [dev.engender.app.test]
 
-   Types the hours one key at a time through Android's own input (`adb shell
-   input text`, one character per call), the way a keyboard sends them. On
-   the old string binding (API 35 emulator, 2026-10-15) 1, ., 5 read 1, 1,
-   51. Then checks the saved reminder against the session's own start, and
-   that Stop with the hours cleared and the reminder still switched on keeps
-   the reminder that was set. */
+   Types the hours one key at a time through Android's own input (`adb shell input text`,
+   one character per call), the way a keyboard sends them. On the old string binding 1,., 5
+   read 1, 1, 51. Then checks the saved reminder against the session's own start, and that
+   Stop with the hours cleared and the reminder still switched on keeps the reminder that
+   was set. */
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';

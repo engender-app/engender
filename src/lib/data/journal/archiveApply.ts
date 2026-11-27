@@ -535,7 +535,7 @@ export async function applyEntries(restoring: Restoring): Promise<void> {
     // Absent on an archive written before this ticket - null, the same
     // resting state an unset presentation always reads (ADR-0010).
     entry.presentationId != null && presentations.has(entry.presentationId) ? entry.presentationId : null,
-    // Trash travels since ticket 48; absent before it, in the journal.
+    // Trash travels; absent before it, in the journal.
     entry.trashedAt ?? null,
     stampOf(entry, ts)
   ];
@@ -688,7 +688,7 @@ export async function applyMilestones(restoring: Restoring): Promise<void> {
     const values = [
       milestone.name,
       milestone.epochDay,
-      // An archive written before ticket 15 has no description key, so
+      // An archive written has no description key, so
       // JSON.parse leaves it undefined rather than null.
       milestone.description ?? '',
       milestone.templateKey,
@@ -742,11 +742,10 @@ export async function applyMilestones(restoring: Restoring): Promise<void> {
    An unchecked row exists only to hold visibility, so it can take the
    Archive's status while keeping this device's hidden flag. Replace has
    already emptied the table before this runs. */
-/** After the custom goals land: an archive written before functional audit
-    ticket 34's round two has goals under the cut social, presentational and
-    medical tracks and no categories, so each such track gets the nameless
-    category migration 111 made for it, its uuid the track key. A category
-    already here keeps its name, on a merge as on a replace. */
+/** After the custom goals land: an archive written round two has goals under the cut
+    social, presentational and medical tracks and no categories, so each such track gets the
+    nameless category migration 111 made for it, its uuid the track key. A category already
+    here keeps its name, on a merge as on a replace. */
 export async function adoptLegacyRoadmapTracks({ driver, ts }: Restoring): Promise<void> {
   await driver.run(
     `INSERT OR IGNORE INTO roadmap_category (uuid, name, updated_at)
@@ -764,10 +763,9 @@ export async function applyRoadmapChecks(restoring: Restoring): Promise<void> {
     'SELECT pack_key, goal_key, status FROM roadmap_check'
   );
   const statuses = new Map(rows.map((row) => [roadmapCheckId(row.pack_key, row.goal_key), row.status]));
-  /* An older archive's ticks go through the rules migrations 111 and 114
-     applied to the journal (keptTick): a tick on a track ticket 34 cut or
-     on the retired "bank, insurers, clinic" step is skipped, and one on a
-     step that became an institution keeps only its hidden
+  /* An older archive's ticks go through the rules migrations 111 and 114 applied to the
+     journal (keptTick): a tick on a track cut or on the retired "bank, insurers, clinic"
+     step is skipped, and one on a step that became an institution keeps only its hidden
      flag, so nothing comes back as an invisible row. */
   const checks = journal.roadmapChecks.flatMap((check) => {
     const kept = keptTick({ ...check, hidden: check.hidden ?? false });
@@ -1000,7 +998,7 @@ export async function applyDoseSchedules(restoring: Restoring): Promise<void> {
       schedule.recurrenceKind,
       schedule.everyNDays,
       schedule.dosesPerDay,
-      // `?? null` because an archive from before ticket 11 has no such
+      // `?? null` because an archive from has no such
       // field: a restored schedule is switched off until the person says
       // otherwise on this device.
       schedule.autoLogFromEpochDay ?? null,
@@ -1161,17 +1159,15 @@ export async function applyProgressPoses(restoring: Restoring): Promise<void> {
   }
 }
 
-/** A costed row's three cost columns from its archive fields; absent (an
-    archive written before functional audit ticket 30) is no cost. */
+/** A costed row's three cost columns from its archive fields; absent is no cost. */
 function costValues(row: ArchiveCostFields): [number | null, string | null, number] {
   return [row.costAmount ?? null, row.costCurrency ?? null, row.costRefunded ? 1 : 0];
 }
 
-/** A session's cost columns and note. An archive written before ticket 30
-    carries the free-text `cost` instead, read by the rule version 115 used
-    (cost.ts, cost-migration.ts): a clean parse is the amount, anything else
-    joins the note, so a restore loses no text the migration would have
-    kept. */
+/** A session's cost columns and note. An archive written carries the free-text `cost`
+    instead, read by the rule version 115 used (cost.ts, cost-migration.ts): a clean parse
+    is the amount, anything else joins the note, so a restore loses no text the migration
+    would have kept. */
 function sessionCostAndNote(session: ArchiveHairRemovalSession): [number | null, string | null, number, string | null] {
   const note = session.note ?? null;
   const legacy = session.cost?.trim() ?? '';
@@ -1252,7 +1248,7 @@ export async function applyProcedures(restoring: Restoring): Promise<void> {
       procedure.name,
       procedure.surgeryEpochDay,
       procedure.notes,
-      // Absent on an archive written before ticket 17, read the same
+      // Absent on an archive written, read the same
       // way `upsertProcedure` defaults a write that names neither.
       procedure.kind ?? 'custom',
       procedure.dilationOptIn ? 1 : 0,

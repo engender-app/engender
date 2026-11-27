@@ -226,7 +226,7 @@ export async function readEntries({ driver, photos, recordings, videos }: Sectio
     updated_at: number;
     trashed_at: number | null;
   }>(
-    // Trashed entries travel with their Trash time (functional audit ticket
+    // Trashed entries travel with their Trash time ( ticket
     // 48), so moving one to Trash, restoring it, or deleting it for good on
     // one device reaches the other through a Merge.
     `SELECT id, uuid, epoch_day, timestamp, mood, note, starred, presentation_uuid, updated_at, trashed_at

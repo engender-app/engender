@@ -149,11 +149,11 @@
     findById: (id) => letters.find((letter) => letter.id === id)
   });
 
-  // Ticket 18: only a sealed letter's unlock day is worth a mark elsewhere -
+  // Only a sealed letter's unlock day is worth a mark elsewhere -
   // once it has opened the day has already passed.
   let calendarFor = $state<Letter | null>(null);
 
-  // Ticket 41: preserve waiting list position when returning from the ready-letters jump.
+  // Preserve waiting list position when returning from the ready-letters jump.
   let waitingScroll: number | null = null;
 
   function onJump() {

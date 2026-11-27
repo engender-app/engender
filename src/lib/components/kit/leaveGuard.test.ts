@@ -52,7 +52,7 @@ describe('leaveGuardCore', () => {
     expect(state.pendingDeparture).not.toBeNull();
   });
 
-  it('lets a navigation that keeps the screen through without asking (bug session 18, item 91)', () => {
+  it('lets a navigation that keeps the screen through without asking', () => {
     /* The voice screen's "what these numbers mean" link opens a sheet by a
        real navigation to the same route with ?metric=; the take is still
        there afterwards, so there is nothing to discard. */

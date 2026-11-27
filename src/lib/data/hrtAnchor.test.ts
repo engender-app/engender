@@ -4,11 +4,10 @@ import { epochDayFromLocalDate, epochDayMonthsAgo } from './epochDay.ts';
 import { hrtAnchor, literatureWindowDays } from './personalEffectWindow.ts';
 import type { RegimenEpisode } from './types.ts';
 
-/* Functional audit ticket 18: the effects timeline anchors on HRT, never on
-   the first episode of any drug. Before it, the earliest episode of all
-   anchored, so an SSRI started a year before estradiol moved every onset
-   band a year early and, because sertraline names no literature table,
-   took the bands away entirely. */
+/* The effects timeline anchors on HRT, never on the first episode of any drug. Before it,
+   the earliest episode of all anchored, so an SSRI started a year before estradiol moved
+   every onset band a year early and, because sertraline names no literature table, took the
+   bands away entirely. */
 
 const E_START = epochDayFromLocalDate(new Date(2024, 0, 1));
 const SSRI_START = epochDayMonthsAgo(E_START, 12);

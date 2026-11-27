@@ -62,9 +62,9 @@
       `{#each}` below regardless of which of the three shapes that row
       takes - the only thing a band needs from a row is where it sits. */
   let itemEls = $state<(HTMLElement | undefined)[]>([]);
-  /** One hidden copy of each band's name, in `eraBandRanges` order, set in
-      the same type as the drawn name: what its rendered length is, measured
-      before the band it goes into is placed (last-audit UI 51). */
+  /** One hidden copy of each band's name, in `eraBandRanges` order, set in the same type as
+      the drawn name: what its rendered length is, measured before the band it goes into is
+      placed. */
   let rulerEls = $state<(HTMLElement | undefined)[]>([]);
 
   interface BandRect {
@@ -90,23 +90,18 @@
       bare circle's. */
   const DOT_RING_PX = 4;
 
-  /** `.tl-era-band`'s border. `labelTop` counts from the band's outer
-      edge, the way its rows were measured, but an absolutely placed child
-      counts from inside the border, so without this the name sat 1px
-      lower than the stretch it was placed in (last-audit UI 51). */
+  /** `.tl-era-band`'s border. `labelTop` counts from the band's outer edge, the way its
+      rows were measured, but an absolutely placed child counts from inside the border, so
+      without this the name sat 1px lower than the stretch it was placed in. */
   const BAND_EDGE_PX = 1;
 
-  /** A rough vertical advance per character of a rotated `--text-xs` bold
-      name (Alicja, 2026-09-16: an era too short for its own name has to be
-      "artificially lengthened a little on the timeline" - "Full time"
-      read as a barely-legible knot rather than a band). Generous rather
-      than tight: a band a few pixels taller than its name strictly needs
-      reads as a band with room to breathe, and a band a few pixels short
-      of it reads as broken. This sets how long a short band is drawn; the
-      name's measured length (`rulerEls`) is what decides whether the name
-      actually fits between the band's dots, which a whole band's length
-      says nothing about - "Full time" was 88px long and still ran into
-      the today dot that took 20px of it (last-audit UI 51). */
+  /** A rough vertical advance per character of a rotated `--text-xs` bold name. Generous
+      rather than tight: a band a few pixels taller than its name strictly needs reads as a
+      band with room to breathe, and a band a few pixels short of it reads as broken. This
+      sets how long a short band is drawn; the name's measured length (`rulerEls`) is what
+      decides whether the name actually fits between the band's dots, which a whole band's
+      length says nothing about - "Full time" was 88px long and still ran into the today dot
+      that took 20px of it. */
   const CHAR_HEIGHT_PX = 8;
   const LABEL_PADDING_PX = 16;
   /** Never under the touch floor either (`floor`, the --touch-target
@@ -288,10 +283,9 @@
       >
         <span class="tl-dot"></span>
         <div class="tl-body">
-          <!-- Straight into the editor the list below opens (ticket 99
-               item 4, kept by ticket 43): the two drawings of a milestone
-               are on one screen now, so this is a call rather than the
-               `?edit=` deep link it used to be from the other tab. -->
+          <!-- Straight into the editor the list below opens: the two drawings of a
+               milestone are on one screen now, so this is a call rather than the `?edit=`
+               deep link it used to be from the other tab. -->
           <button type="button" class="tl-body-link" data-tl-open onclick={() => onOpen(item.milestone)}>
             <div class="tl-head">
               <span class="tl-name" data-tl-name>{item.milestone.name}</span>
@@ -337,13 +331,11 @@
     padding-left: 40px;
   }
 
-  /* The thread, top to bottom, behind everything - including the gap and
-     the today marker, which used to interrupt it. A timeline whose axis
-     stops is not an axis. An era's own band paints over it further down
-     this stretch, on purpose: the thread is what an unnamed stretch draws,
-     the band is what the same stretch draws once it is named, and neither
-     needs to show through the other (Alicja, 2026-09-16: "the thread needs
-     to be below the era rails"). */
+  /* The thread, top to bottom, behind everything - including the gap and the today marker,
+     which used to interrupt it. A timeline whose axis stops is not an axis. An era's own
+     band paints over it further down this stretch, on purpose: the thread is what an
+     unnamed stretch draws, the band is what the same stretch draws once it is named, and
+     neither needs to show through the other. */
   .timeline::before {
     content: '';
     position: absolute;
@@ -483,9 +475,8 @@
     padding: var(--space-4);
   }
 
-  /* Wraps everything but the provenance line - the row's own click target
-     (ticket 99 item 4), kept out of the provenance <a> so the two never
-     nest. */
+  /* Wraps everything but the provenance line - the row's own click target, kept out of the
+     provenance <a> so the two never nest. */
   .tl-body-link {
     display: block;
     width: 100%;

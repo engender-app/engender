@@ -153,8 +153,8 @@ for (const locale of ['en', 'pl']) {
           check(/hands shook/.test(plate.notes[0] ?? ''), `${where} ${grain}: the milestone's line is not its own words`);
           const dated = /^\d/.test(plate.notes[0] ?? '');
           check(grain === 'day' ? !dated : dated, `${where} ${grain}: the line's date is wrong`);
-          /* Carpet ticket 08's cap, which this ticket keeps: the plate may
-             not grow back across the midline it took a corner to clear. */
+          /* Cap, which keeps: the plate may not grow back across the midline it took a
+             corner to clear. */
           check(
             plate.width <= plate.plotWidth / 2 + 0.5,
             `${where} ${grain}: the plate is ${plate.width.toFixed(1)}px of a ${plate.plotWidth.toFixed(1)}px plot`

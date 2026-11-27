@@ -101,7 +101,7 @@ test('the confirmations that promise an undo name the window it really has', asy
     [...readFileSync(new URL(`../../../messages/${file}`, import.meta.url), 'utf8').matchAll(pattern)].map((match) => match[1]);
   const english = said('en.json', /undo it for (\d+) seconds/g);
   const polish = said('pl.json', /Przez (\d+) sekund możesz to cofnąć/g);
-  // 7 since pre-release-human 13, where Alicja cut the sentence from six
+  // 7, where cut the sentence from six
   // delete hints whose Undo toast already says it; the floor guards the two
   // patterns, not a count.
   assert.ok(english.length >= 7 && polish.length >= english.length, `${english.length} English, ${polish.length} Polish`);

@@ -1,13 +1,12 @@
 /* Reconciling the built-in vocabulary into the journal, by key (ADR-0002).
 
-   One idempotent operation, not a seed-if-empty branch: it adds what is
-   missing and touches nothing else, so it is safe on every boot and runs
-   again before an import applies - a Replace import must not be able to
-   leave the journal short of a built-in it needs (ticket 14 reuses this).
+   One idempotent operation, not a seed-if-empty branch: it adds what is missing and touches
+   nothing else, so it is safe on every boot and runs again before an import applies - a
+   Replace import must not be able to leave the journal short of a built-in it needs.
 
-   Keys only, no display text: a built-in's wording lives in the message
-   catalogue and is resolved at display time (F25), so name/label columns
-   are stored as '' for built-ins and never read for them. */
+   Keys only, no display text: a built-in's wording lives in the message catalogue and is
+   resolved at display time (F25), so name/label columns are stored as '' for built-ins and
+   never read for them. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { TableName } from '../live/writes';
@@ -31,10 +30,9 @@ async function presentKeys(driver: SqliteDriver, table: string): Promise<Set<str
   return new Set(rows.map((r) => r.key));
 }
 
-/** With a `stamp`, also records in the journal header which catalogue it
-    now holds (builtInsStamp.ts, ticket 208), in the same transaction, so a
-    reconcile that fails part-way leaves the old stamp and the next boot
-    tries again. */
+/** With a `stamp`, also records in the journal header which catalogue it now holds
+    (builtInsStamp.ts), in the same transaction, so a reconcile that fails part-way leaves
+    the old stamp and the next boot tries again. */
 export async function reconcileBuiltIns(driver: SqliteDriver, stamp?: number): Promise<void> {
   await driver.transaction(async (driver) => {
     await reconcileBuiltInsWithin(driver);

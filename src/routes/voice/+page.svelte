@@ -72,8 +72,8 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
-  /* Three tasks. Recordings left for a Media row of their own (bug session
-     18, item 70); an old `?tab=recordings` link opens on Benchmark. */
+  /* Three tasks. Recordings left for a Media row of their own; an old `?tab=recordings`
+     link opens on Benchmark. */
   type Tab = 'record' | 'practise' | 'compare';
   const TABS: Tab[] = ['record', 'practise', 'compare'];
 
@@ -264,8 +264,7 @@
     selected = stepCompareAnchor(selected, which, direction, anchors);
   }
 
-  /* The benchmark flow owns its unsaved take, so a switch away from its tab
-     asks it first (ticket 04, audit L05-02). */
+  /* The benchmark flow owns its unsaved take, so a switch away from its tab asks it first. */
   let benchmarkFlow = $state<ReturnType<typeof VoiceBenchmarkFlow> | undefined>();
 
   function changeTab(next: string) {
@@ -584,11 +583,9 @@
     </div>
   {/if}
 
-  <!-- The metric reference (phase 8 features ticket 27, ADR-0060; a sheet
-       rather than its own screen since ticket 17). Reference data like
-       `/support/resources`: the table is compiled in, so there is nothing
-       to wait for and nothing that can be empty - only the figure each
-       section opens with reads the journal, through `anchors`, already
+  <!-- The metric reference (ADR-0060). Reference data like `/support/resources`: the table
+       is compiled in, so there is nothing to wait for and nothing that can be empty - only
+       the figure each section opens with reads the journal, through `anchors`, already
        fetched for the compare tab above. -->
   <Sheet
     open={metricSheetKey !== null}
@@ -648,27 +645,23 @@
     scroll-margin-top: var(--space-5);
   }
 
-  /* The two takes stack rather than sitting side by side (Alicja,
-     2026-09-04: "in the compare module, it shouldn't be side-by-side - not
-     enough space for that"). Two pitch figures in half of 390px is 160px
-     of plot each, and the gutter numbers alone are 40 of it.
+  /* The two takes stack rather than sitting side by side. Two pitch figures in half of
+     390px is 160px of plot each, and the gutter numbers alone are 40 of it.
 
-     Its own class rather than a change to `.compare-wrap`, which is the
-     two-up grid the progress-photo comparison uses: two photographs side by
-     side is what that layout is for and it is not this ticket's to move
-     (screens.css's own note on the same conflict). */
+     Its own class rather than a change to `.compare-wrap`, which is the two-up grid the
+     progress-photo comparison uses: two photographs side by side is what that layout is for
+     and it is not this ticket's to move (screens.css's own note on the same conflict). */
   .vc-stack {
     display: flex;
     flex-direction: column;
     gap: var(--space-5);
   }
 
-  /* The earlier/later row under a take. It lived in screens.css while the
-     progress-photo comparison read it too; redesign ticket 55 put that
-     comparison on one draggable divider (PhotoWipe.svelte), which left this
-     screen as the only consumer and check-screens-classes.mjs asking for
-     the rule here. Its buttons were sized 36px until SH-106 and take
-     `.icon-btn`'s own 44px since; the rule carries no size of its own. */
+  /* The earlier/later row under a take. It lived in screens.css while the progress-photo
+     comparison read it too; put that comparison on one draggable divider
+     (PhotoWipe.svelte), which left this screen as the only consumer and
+     check-screens-classes.mjs asking for the rule here. Its buttons were sized 36px until
+     SH-106 and take `.icon-btn`'s own 44px since; the rule carries no size of its own. */
   .compare-nav {
     display: flex;
     align-items: center;

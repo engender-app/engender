@@ -104,10 +104,10 @@ test('runs steps in the documented order: prefs, then open+migrate, then persist
 });
 
 test('reports ready before either housekeeping pass has run', async () => {
-  /* Phase 5 audit finding 03: journalIsOpen() unparks every liveQuery in the
-     app, and it only runs once boot() resolves - so a screen's first read used
-     to wait on two passes whose results no screen needs. The purge and the
-     sweep both grow with the journal; what a screen waits for must not. */
+  /* Audit finding 03: journalIsOpen unparks every liveQuery in the app, and it only runs
+     once boot resolves - so a screen's first read used to wait on two passes whose results
+     no screen needs. The purge and the sweep both grow with the journal; what a screen
+     waits for must not. */
   const order: string[] = [];
   let housekeepingScheduled = false;
   let runHousekeeping: (() => void) | null = null;
@@ -177,7 +177,7 @@ test('persistRequest resolves not-denied when no hook is given', async () => {
   if (result.phase === 'ready') assert.equal(await result.persistRequest, false);
 });
 
-test('reports ready without waiting on the persistence request (ticket 202: Firefox answers it only through a permission prompt, unbounded)', async () => {
+test('reports ready without waiting on the persistence request (Firefox answers it only through a permission prompt, unbounded)', async () => {
   const result = await boot({
     createDriver: makeFakeDriver,
     fileOps: noopFileOps(),
@@ -254,7 +254,7 @@ test('a failed migration lets the update guard go, so the app is not stuck on th
 });
 
 test('a failing photo sweep still boots: housekeeping must not cost the app its screens', async () => {
-  // Ticket 11 made this reachable - the sweep hits OPFS, which can fail on
+  // Made this reachable - the sweep hits OPFS, which can fail on
   // quota or in a browser without it. Reference data is different: a screen
   // cannot render without it, so that failure is still the caller's.
   const result = await boot({
@@ -272,7 +272,7 @@ test('a failing photo sweep still boots: housekeeping must not cost the app its 
 });
 
 test('a failing trash purge still boots: housekeeping must not cost the app its screens', async () => {
-  // Phase 5 ticket 19, the same reasoning the photo sweep above gets: a
+  // The same reasoning the photo sweep above gets: a
   // failed purge leaves the trash for the next boot to try again.
   let sweptAnyway = false;
   const result = await boot({
@@ -322,11 +322,10 @@ test('retries transient database lock errors during boot with exponential backof
   assert.deepEqual(sleepCalls, [50, 100]);
 });
 
-/* ux-carpet 243: a tab that just navigated away or reloaded can still be
-   letting go of the OPFS SAH pool when this tab's own worker asks for it,
-   and the browser reports that collision through the web driver's own
-   message rather than through SQLite's "database is locked" - so boot()'s
-   already-retrying loop has to recognise this one too. */
+/* A tab that just navigated away or reloaded can still be letting go of the OPFS SAH pool
+   when this tab's own worker asks for it, and the browser reports that collision through
+   the web driver's own message rather than through SQLite's "database is locked" - so
+   boot()'s already-retrying loop has to recognise this one too. */
 test('retries the OPFS access-handle collision the web driver reports on a raced reload', async () => {
   let attempts = 0;
   const sleepCalls: number[] = [];

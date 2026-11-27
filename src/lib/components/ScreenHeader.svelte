@@ -88,14 +88,12 @@
        they were written as lead paragraphs. On its own row it also keeps
        the body's measure instead of being squeezed between an arrow and an
        action. -->
-  <!-- The back control is on its own line above the title rather than beside
-       it (Alicja, 2026-08-25: the header text "shouldn't be more to the right
-       than the smaller text below it"). Beside it, a 48px control pushed the
-       title 48px in while the date, the hints and every section heading under
-       it started at the screen's own edge, so the largest text on the screen
-       was the one thing out of the column. Above it, the title starts where
-       the content does and the arrow keeps its full target. Material's own
-       large-title pattern puts it there too. -->
+  <!-- The back control is on its own line above the title rather than beside it. Beside it,
+       a 48px control pushed the title 48px in while the date, the hints and every section
+       heading under it started at the screen's own edge, so the largest text on the screen
+       was the one thing out of the column. Above it, the title starts where the content
+       does and the arrow keeps its full target. Material's own large-title pattern puts it
+       there too. -->
   <!-- activeFlag sets --field and --field-ink behind back, title and
        actions, including after a disguised unlock. Keep the subtitle
        on the page below. The nonbinary field reaches 4.41:1, so its

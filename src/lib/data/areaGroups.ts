@@ -20,19 +20,17 @@ export type AreaGroupKey =
 
 /** Which areas each group finishes, together.
 
-    Most of them front exactly one area. Voice fronts two: a benchmark and a practice take are both dated records of
-    the same practice, so `voice` finishes them together. A voice memo belongs to an entry and travels inside
-    `entries` (CONTEXT: "Area"), so the memos screen is not finishable and
-    has no group here.
+    Most of them front exactly one area. Voice fronts two: a benchmark and a practice take
+    are both dated records of the same practice, so `voice` finishes them together. A voice
+    memo belongs to an entry and travels inside `entries`, so the memos screen is not
+    finishable and has no group here.
 
-    `effects` is the fourth, from phase 11 all-four-doors ticket 13: a side
-    effect and a change you were hoping for both landed on one screen and one
-    axis, and the group followed the screen -
-    `personalEffects` and `sideEffects` finish together now, and the old
-    `side-effects` group is gone rather than renamed, for the reason `sizes`
-    was: `areaState.ts` keys what is finished by `sideEffects`, the archive
-    section, so nothing already finished is disturbed by the screen above it
-    merging. */
+    `effects` is the fourth, from a side effect and a change you were hoping for both landed
+    on one screen and one axis, and the group followed the screen - `personalEffects` and
+    `sideEffects` finish together now, and the old `side-effects` group is gone rather than
+    renamed, for the reason `sizes` was: `areaState.ts` keys what is finished by
+    `sideEffects`, the archive section, so nothing already finished is disturbed by the
+    screen above it merging. */
 export const AREA_GROUPS = {
   wear: ['wearSessions'],
   'hair-removal': ['hairRemovalSessions'],

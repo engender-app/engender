@@ -185,14 +185,13 @@ and the running tryout's readings are
     until(() => recapRuns > recapRunsAfterMilestone, 'the narrowed recap to be re-read after an entry write')
   );
 
-  /* Ticket 14: a query whose reads all sit past its first `await` costs a
-     wasted round trip unless seeded. `readWhatIsWaiting` is that shape only
-     once something unrelated is awaited first, the way `/coming-back` awaits
-     its gap before ever touching `j` - copied here rather than reduced away,
-     since a direct `await readWhatIsWaiting(j, ...)` call is itself the
-     query's first synchronous operation and never exhibits the bug at all.
-     An unseeded run of the real shape should settle at two closure runs, a
-     run seeded with WAITING_TABLES at one. */
+  /* A query whose reads all sit past its first `await` costs a wasted round trip unless
+     seeded. `readWhatIsWaiting` is that shape only once something unrelated is awaited
+     first, the way `/coming-back` awaits its gap before ever touching `j` - copied here
+     rather than reduced away, since a direct `await readWhatIsWaiting(j,...)` call is
+     itself the query's first synchronous operation and never exhibits the bug at all. An
+     unseeded run of the real shape should settle at two closure runs, a run seeded with
+     WAITING_TABLES at one. */
   const gap = Promise.resolve(TODAY - 40);
   let unseededRuns = 0;
   let unseededQuery: LiveQuery<number>;
@@ -246,14 +245,13 @@ and the running tryout's readings are
   flushSync();
   await new Promise((resolve) => setTimeout(resolve, 200));
 
-  /* Phase 8 audit ticket 15: /search's own debounce, proved as a run count
-     rather than by timing (the ticket's own acceptance criterion). A
-     hand-wired $state + $effect + setTimeout rather than the real route:
-     what has to be proved is the reactivity contract itself (a closure's
-     dependency is whatever `$state` it reads before its first await), which
-     needs nothing from the journal. The interval here is the probe's own,
-     not /search's SEARCH_DEBOUNCE_MS - "many keystrokes settle at one run"
-     holds at any interval, not at one particular millisecond count. */
+  /* /search's own debounce, proved as a run count rather than by timing (the ticket's own
+     acceptance criterion). A hand-wired $state + $effect + setTimeout rather than the real
+     route: what has to be proved is the reactivity contract itself (a closure's dependency
+     is whatever `$state` it reads before its first await), which needs nothing from the
+     journal. The interval here is the probe's own, not /search's SEARCH_DEBOUNCE_MS - "many
+     keystrokes settle at one run" holds at any interval, not at one particular millisecond
+     count. */
   const DEBOUNCE_PROBE_MS = 60;
   let typedQuery = $state('');
   let debouncedQuery = $state('');
@@ -304,10 +302,9 @@ and the running tryout's readings are
   const clearedWithoutWaitingTheDebounce = debouncedQuery === '';
   await until(() => debounceRuns > debounceRunsAfterTenKeystrokes, 'the cleared query to reach the counting query');
 
-  /* ux-carpet 201: a query asked again paints the answer it gave last time,
-     in the frame it is created, while nothing it read has been written -
-     and a lock takes every such answer away. One call site, mounted four
-     times the way a tab is left and revisited. */
+  /* A query asked again paints the answer it gave last time, in the frame it is created,
+     while nothing it read has been written - and a lock takes every such answer away. One
+     call site, mounted four times the way a tab is left and revisited. */
   const mountEntryCount = () => {
     let read!: LiveQuery<number>;
     const destroy = $effect.root(() => {

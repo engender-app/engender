@@ -1,21 +1,11 @@
 #!/usr/bin/env node
-/* Links the private docs repo into this checkout (npm run docs:link).
+/* Links optional maintainer documentation into this checkout (npm run docs:link).
 
-   CONTEXT.md, PRODUCT.md, SCREENS.md, DIRECTION.md and the private docs live
-   in a private sibling git repo, `engender-docs`, next to the primary
-   checkout. The ADRs are not there any more: they are tracked in this repo at
-   docs/adr/. Git worktrees do not share untracked files, so each checkout
-   gets gitignored symlinks: the four root files at the repo root, and
-   docs/internal at the docs repo (or docs worktree) root. The links point at:
+   The primary checkout and detached worktrees link the sibling docs repo on main. A branch
+   worktree gets a matching branch in the docs repo.
 
-   - the primary checkout, and any detached worktree (merge and testing
-     worktrees), link the docs repo's own main checkout;
-   - a worktree on a branch gets its own docs worktree on a docs branch with
-     the same name, under <docs repo>/.worktrees/, so an ADR written for a
-     ticket reaches docs main only when the orchestrator merges that ticket.
-
-   Run it from any checkout. It is safe to run twice. It never replaces a real
-   file or folder, and it adds no remote and no URL anywhere. */
+   Run from any checkout. Existing symlinks can be reused. Regular files and directories are
+   left in place. */
 import { execFileSync } from 'node:child_process';
 import { existsSync, lstatSync, mkdirSync, readlinkSync, rmSync, symlinkSync, realpathSync } from 'node:fs';
 import { dirname, join } from 'node:path';

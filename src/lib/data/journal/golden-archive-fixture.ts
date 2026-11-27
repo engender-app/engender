@@ -58,15 +58,13 @@ export async function builtInsOnlyDevice(): Promise<{ driver: SqliteDriver; jour
   return { driver, journal };
 }
 
-/** Devices that reconciled before phase 5 ticket 35 kept eight built-in
-    preset rows (reconcile.ts's own history says why it stopped: the picker
-    they backed is gone and nothing reads them any more). A fresh journal
-    never gets them - there is no public API left that makes a built-in
-    preset row, `addPreset` only ever makes a custom one - so this seeds them
-    the same way reconcile once did, directly. Without it, `everySection()`
-    can only ever produce one preset row, and the fixture loses the built-in
-    shape `readPresets`/`applyPresets` still have to carry for a device that
-    reconciled before ticket 35. */
+/** Devices that reconciled kept eight built-in preset rows (reconcile.ts's own history says
+    why it stopped: the picker they backed is gone and nothing reads them any more). A fresh
+    journal never gets them - there is no public API left that makes a built-in preset row,
+    `addPreset` only ever makes a custom one - so this seeds them the same way reconcile
+    once did, directly. Without it, `everySection()` can only ever produce one preset row,
+    and the fixture loses the built-in shape `readPresets`/`applyPresets` still have to
+    carry for a device that reconciled. */
 
 /** A journal with something in all 36 sections, and the customizations that
     make the vocabulary ones more than the built-ins: a custom dimension in a

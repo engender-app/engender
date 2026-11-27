@@ -66,8 +66,8 @@ test('nothing shipped is past its limit on the day it was last reviewed', () => 
   expect(staleContent(REVIEWED_CONTENT, newest)).toEqual([]);
 });
 
-/* Functional audit ticket 35: the institution notes were checked on a day
-   of their own, so they fall due on their own and not with the court steps. */
+/* The institution notes were checked on a day of their own, so they fall due on their own
+   and not with the court steps. */
 test('the roadmap institutions are registered under their own reviewed-on day', () => {
   expect(REVIEWED_CONTENT).toContainEqual({ area: 'Roadmap', item: 'institutions to update after the ruling', kind: 'legal', reviewedOn: INSTITUTIONS_REVIEWED_ON });
 });

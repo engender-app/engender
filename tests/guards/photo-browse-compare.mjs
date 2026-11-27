@@ -52,13 +52,11 @@ try {
   await visit('/media/photos');
   const hair = fixture.ownerPhotos.find(p => p.source === 'progress' && p.epochDay === 15002);
   const tile = id => page.locator(`[data-photo-key="${id}"] [data-photo-cell]`);
-  /* Ticket 52 (audit U44): the change-day action on an entry's or a
-     milestone's photograph sat on the tile's bottom-left corner and its
-     22px disc covered the first letter of the date under the photo. Every
-     owner-dated tile, phone to desktop: neither the action's 48px target
-     nor its disc may touch any tile's caption, every caption glyph must
-     still answer a tap as its own tile, and the action must answer at its
-     own centre. */
+  /* The change-day action on an entry's or a milestone's photograph sat on the tile's
+     bottom-left corner and its 22px disc covered the first letter of the date under the
+     photo. Every owner-dated tile, phone to desktop: neither the action's 48px target nor
+     its disc may touch any tile's caption, every caption glyph must still answer a tap as
+     its own tile, and the action must answer at its own centre. */
   const ownerDated = fixture.ownerPhotos.filter(p => p.source === 'entry' || p.source === 'milestone');
   assert.equal(ownerDated.length, 2);
   for (const width of [320, 390, 1280]) {
@@ -116,9 +114,8 @@ try {
   assert.equal(await page.locator('[data-segment="compare"]').count(), 0);
   assert.equal(await page.locator('[data-compare-open]').count(), 0);
 
-  /* Progress photos, seeded only now so the library's own layout checks
-     above ran on the six owners alone: comparing lives on their own screen
-     since pre-release-human 12. */
+  /* Progress photos, seeded only now so the library's own layout checks above ran on the
+     six owners alone: comparing lives on their own screen. */
   Object.assign(fixture, await page.evaluate(async () => {
     const { journal: j } = await import('/src/lib/data/live/journal.svelte.ts');
     const canvas = document.createElement('canvas'); canvas.width = canvas.height = 16;

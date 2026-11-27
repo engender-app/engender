@@ -365,9 +365,8 @@ test('each row-shape check accepts its edges and refuses each half-shape', () =>
   }
 });
 
-/* Security scan ticket 03: a row can be well-typed and still hold a value no
-   screen survives. Each case below is one crafted archive, refused whole
-   before any write, through Replace and Merge alike. */
+/* A row can be well-typed and still hold a value no screen survives. Each case below is one
+   crafted archive, refused whole before any write, through Replace and Merge alike. */
 const FUTURE_BOUND = 36525;
 const scalarDomainRefusals: [string, (journal: ArchiveJournal) => void][] = [
   ['entry day below the first day', (j) => { j.entries[0].epochDay = -1; }],

@@ -61,13 +61,11 @@ const SHAPE: Record<ChartAnnotationKind, 'point' | 'span'> = {
   suspendedArea: 'point'
 };
 
-/** What one tick says beyond its own name, carried from the record behind
-    it (phase 11 UI/UX ticket 49).
+/** What one tick says beyond its own name, carried from the record behind it.
 
-    Raw rather than written out, for the reason `finishedArea`'s `name` is a
-    key: this tier imports no paraglide (ADR-0016), and a severity and a site
-    are both words the catalogue owns. kit/chartAnnotation.ts turns each of
-    these into the line a reader sees.
+    Raw rather than written out, for the reason `finishedArea`'s `name` is a key: this tier
+    imports no paraglide (ADR-0016), and a severity and a site are both words the catalogue
+    owns. kit/chartAnnotation.ts turns each of these into the line a reader sees.
 
     Only text written behind a record reaches this field. */
 export type ChartAnnotationDetail =

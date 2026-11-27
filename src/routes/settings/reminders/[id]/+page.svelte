@@ -140,9 +140,8 @@
   {:else if detail.loading && !detail.isNew}
     <div out:crossfade><Skeleton variant="block" count={1} /></div>
   {:else if !detail.isNew && !detail.record}
-    <!-- An id that names nothing stored: a deleted reminder, an old link.
-         Before ticket 04 this drew an empty editable form, and Save made a
-         new reminder out of it. -->
+    <!-- An id that names nothing stored: a deleted reminder, an old link. this drew an
+         empty editable form, and Save made a new reminder out of it. -->
     <div class="screen-part" in:crossfade>
       <Notice
         icon="bell"

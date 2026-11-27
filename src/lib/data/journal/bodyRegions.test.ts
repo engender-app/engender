@@ -1,6 +1,5 @@
-/* The body-region area (phase 5 ticket 30, CONTEXT: "Reference data" -
-   amended): id-or-key addressing and the built-in/custom split. A body
-   region has no delete, so there is nothing to test there. */
+/* The body-region area: id-or-key addressing and the built-in/custom split. A body region
+   has no delete, so there is nothing to test there. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

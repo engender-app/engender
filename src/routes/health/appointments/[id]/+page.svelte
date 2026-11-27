@@ -141,9 +141,9 @@
   /* The standing prep list (AppointmentPrep). */
   let checklistQuery = liveList((j) => j.checklists.getStandaloneChecklist().then((c) => c?.items));
 
-  /* The debrief, scoped to this appointment (checklists.ts, ticket 58):
-     the entry where one was written, for any past visit; the offer only on
-     the most recent one, which is the one visit it belongs to. */
+  /* The debrief, scoped to this appointment (checklists.ts): the entry where one was
+     written, for any past visit; the offer only on the most recent one, which is the one
+     visit it belongs to. */
   let appointmentsQuery = liveList((j) => j.appointments.getAppointments());
   let isLastVisit = $derived(
     visitState === 'past' && mostRecentPastAppointment(appointmentsQuery.rows, today)?.id === detail.id

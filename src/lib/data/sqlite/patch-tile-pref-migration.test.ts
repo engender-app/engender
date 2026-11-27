@@ -1,6 +1,5 @@
-/* Functional audit ticket 15: the patch-schedule tile is folded into the
-   dose panel, so version 116 drops the switch that turned it off. Every
-   other preference stays as it was. */
+/* The patch-schedule tile is folded into the dose panel, so version 116 drops the switch
+   that turned it off. Every other preference stays as it was. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

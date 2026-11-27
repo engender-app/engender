@@ -167,8 +167,7 @@
     line-height: 1.1;
     font-variant-numeric: tabular-nums;
     overflow-wrap: anywhere;
-    /* A headline may name what it measures on a line of its own above the
-       figure (the compare tile, bug session 18 item 87). */
+    /* A headline may name what it measures on a line of its own above the figure. */
     white-space: pre-line;
   }
 

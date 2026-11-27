@@ -3,11 +3,10 @@
   import { journalTextAutocomplete } from '$lib/platform';
   import { navigating, page } from '$app/state';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
-  /* Electrolysis and laser sessions, on the surface kit. Two lists on the screen and a third inside the editor,
-     all of them `.list-group` before this; the recency rows open the
-     add-session form with their own area chosen (pre-production UI/UX
-     ticket 28), the session photos state something and go nowhere, so
-     they stay static rows, and the sessions themselves open the editor. */
+  /* Electrolysis and laser sessions, on the surface kit. Two lists on the screen and a
+     third inside the editor, all of them `.list-group` before this; the recency rows open
+     the add-session form with their own area chosen, the session photos state something and
+     go nowhere, so they stay static rows, and the sessions themselves open the editor. */
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import Disclosure from '$lib/components/kit/Disclosure.svelte';
@@ -47,11 +46,9 @@
   import { deviceDefaultCurrency } from '$lib/data/cost';
   import { costLine } from '$lib/data/vocabulary/costLabel';
 
-  /* The strip's fill shares the chromatic role with the recency figures
-     (ticket 56, following ticket 44's own rule for dilation and wear):
-     index 0 is the only role guaranteed chromatic on every palette, and a
-     logged day filled in a palette's achromatic band is a day drawn as
-     nothing. */
+  /* The strip's fill shares the chromatic role with the recency figures: index 0 is the
+     only role guaranteed chromatic on every palette, and a logged day filled in a palette's
+     achromatic band is a day drawn as nothing. */
   const SECTION_ROLE = { recency: 0, strip: 0, sessions: 1 };
 
   /* '' is no rating: the draft opens unrated and an unrated session stores
@@ -90,11 +87,9 @@
 
   const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
 
-  /* The log is a week at a time now (phase 10 redesign ticket 56, reusing
-     ticket 44's DayStrip/dayStrip.ts). A day here is `logged` or nothing -
-     there is no `expected`, the same restraint wear's own strip applies,
-     because nothing schedules a hair-removal session and hairRemovalSchedule.ts
-     refuses due framing on purpose. */
+  /* The log is a week at a time now. A day here is `logged` or nothing - there is no
+     `expected`, the same restraint wear's own strip applies, because nothing schedules a
+     hair-removal session and hairRemovalSchedule.ts refuses due framing on purpose. */
   let sessionsByDay = $derived.by(() => {
     const byDay = new Map<number, HairRemovalSession[]>();
     for (const session of sessions) {
@@ -145,13 +140,11 @@
     record.editor = blankDraft(HAIR_REMOVAL_AREAS[0], epochDay);
   }
 
-  /** A recency row's handoff (pre-production UI/UX ticket 28): no per-area
-      history destination exists - the body-map inspector reads the
-      dysphoria-scoped region vocabulary, which these treatment areas are
-      deliberately never merged with - so the row opens the existing
-      add-session form with its area already chosen. A seeded blank is a
-      clean baseline: nothing saves until Save, and dismissing an untouched
-      form closes it directly. */
+  /** A recency row's handoff: no per-area history destination exists - the body-map
+      inspector reads the dysphoria-scoped region vocabulary, which these treatment areas
+      are deliberately never merged with - so the row opens the existing add-session form
+      with its area already chosen. A seeded blank is a clean baseline: nothing saves until
+      Save, and dismissing an untouched form closes it directly. */
   function openSessionForArea(area: HairRemovalAreaKey) {
     record.editor = blankDraft(area);
   }

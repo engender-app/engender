@@ -96,13 +96,12 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* Two lines: the day it belongs to with the way through to it, and the
-     transport under them across the row's whole width. The leading mic
-     square this row used to carry went with ticket 46 - the play control
-     says what the row holds, and 36px of icon was 36px the waveform wanted.
-     The row's main span is still a static container rather than a link: the
-     entry link and the player are the two real controls (kit.css's own note
-     on .kit-row.is-split makes the same split for a different pair). */
+  /* Two lines: the day it belongs to with the way through to it, and the transport under
+     them across the row's whole width. The leading mic square this row used to carry went -
+     the play control says what the row holds, and 36px of icon was 36px the waveform
+     wanted. The row's main span is still a static container rather than a link: the entry
+     link and the player are the two real controls (kit.css's own note on.kit-row.is-split
+     makes the same split for a different pair). */
   .memo-row-body {
     flex: 1;
     min-width: 0;

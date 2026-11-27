@@ -1,13 +1,13 @@
-/* The Android tier's probe: boots the native driver through the
-  Capacitor bridge and runs the shared contract suite over it - the same
-  suite src/lib/data/journal/contract-suite.test.ts runs over node:sqlite.
+/* The Android tier's probe: boots the native driver through the Capacitor bridge and runs
+  the shared contract suite over it - the same suite
+  src/lib/data/journal/contract-suite.test.ts runs over node:sqlite.
 
-   It loads inside the real app's WebView, which the instrumentation test
-   points at this bundle with Bridge.setServerBasePath, so the plugin, the
-   bridge and the WebView are the ones the app ships rather than stand-ins.
+  It loads inside the real app's WebView, which the instrumentation test points at this
+  bundle with Bridge.setServerBasePath, so the plugin, the bridge and the WebView are the
+  ones the app ships rather than stand-ins.
 
-  Ticket 12 extends the contract with photo-file checks too, so the probe
-  uses app-private files through the Photos plugin. */
+  Extends the contract with photo-file checks too, so the probe uses app-private files
+  through the Photos plugin. */
 
 import { boot } from '../../src/lib/data/sqlite/boot.ts';
 import { createAndroidSqlite } from '../../src/lib/data/sqlite/android-driver.ts';

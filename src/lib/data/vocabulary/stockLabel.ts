@@ -52,9 +52,8 @@ function stockOpenedLabel(openedEpochDay: number | null): string | null {
   return openedEpochDay === null ? null : m.stock_opened_line({ date: fmtWindowDay(openedEpochDay) });
 }
 
-/** The in-use window's own line, plain either side of it (ticket 13: no
-    adjective for a container past its window, unlike stockRunOutLabel's
-    `warn`). Null when nothing was typed to project from. */
+/** The in-use window's own line, plain either side of it. Null when nothing was typed to
+    project from. */
 function stockWindowLabel(window: InUseWindow, asOfEpochDay: number): string | null {
   const end = inUseWindowEndEpochDay(window);
   if (end === null) return null;

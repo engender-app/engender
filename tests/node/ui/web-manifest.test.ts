@@ -140,9 +140,9 @@ describe('the web app manifest', () => {
   });
 });
 
-/* The disguised install (ticket 25, F24). An installed app has no tab strip,
-   so this file is the whole disguise there: whatever it says is what the
-   launcher, the window switcher and the install prompt say. */
+/* The disguised install. An installed app has no tab strip, so this file is the whole
+   disguise there: whatever it says is what the launcher, the window switcher and the
+   install prompt say. */
 describe('the disguised manifest', () => {
   it('says nothing about a journal, a transition or this app', () => {
     const words = /gender|diary|transition|journal|trans|entry|entries|mood|hrt/i;

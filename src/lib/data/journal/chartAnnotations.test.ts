@@ -42,9 +42,8 @@ test('gathers every dated area a chart can be annotated with', async () => {
   );
 });
 
-/* Phase 6 ticket 03: an era joins the six other areas, but only where it has
-   a day to mark. An open start reaches back before the journal and has no
-   boundary of its own to draw. */
+/* An era joins the six other areas, but only where it has a day to mark. An open start
+   reaches back before the journal and has no boundary of its own to draw. */
 test('a bounded era marks the day it starts, and an open start marks nothing', async () => {
   const journal = await journalWith();
 
@@ -81,8 +80,8 @@ test('a dose pause is named by the drug of the episode it belongs to', async () 
   assert.equal(pause?.name, 'estradiol valerate');
 });
 
-/* Ticket 43: the regimen source carries the episode's end reason straight
-   through, null on every episode that is still open or has none. */
+/* The regimen source carries the episode's end reason straight through, null on every
+   episode that is still open or has none. */
 test('a regimen annotation carries its episode\'s end reason', async () => {
   const journal = await journalWith();
 
@@ -144,8 +143,8 @@ test('a procedure with no date set annotates nothing', async () => {
   assert.deepEqual(await journal.chartAnnotations.getAnnotations(20000, 20199, TODAY), []);
 });
 
-/* Phase 8 features ticket 59: a past appointment joins the seam like any
-   other dated area, named by the person's own kind. */
+/* A past appointment joins the seam like any other dated area, named by the person's own
+   kind. */
 test('a past appointment marks the day it happened, named by its own kind', async () => {
   const journal = await journalWith();
 
@@ -247,7 +246,7 @@ test('an unfinished episode reaches to today and not to the end of the range', a
   assert.equal(found.endsInRange, false);
 });
 
-/* Phase 8 features ticket 04: the day a stream ended. */
+/* The day a stream ended. */
 
 test('a finished area marks the day it ended, on any chart covering it', async () => {
   const journal = await journalWith();
@@ -296,9 +295,9 @@ test('hiding an area draws nothing: only a finish day is a day', async () => {
   assert.equal(marks.filter((a) => a.kind === 'finishedArea').length, 0);
 });
 
-/* Phase 8 features ticket 51: the day a stream was paused. Same shape as the
-   finished mark above, on the one area here with a real case for it
-   (hairRemovalSessions is not fronted by anything else, unlike voice). */
+/* The day a stream was paused. Same shape as the finished mark above, on the one area here
+   with a real case for it (hairRemovalSessions is not fronted by anything else, unlike
+   voice). */
 
 test('a suspended area marks the day it was paused, distinct from a finished one', async () => {
   const journal = await journalWith();
@@ -329,10 +328,10 @@ test('a row fronting two areas marks suspended once, and not at all until both a
   assert.equal(suspended[0].name, 'voice');
 });
 
-/* Phase 11 UI/UX ticket 49: a tick carries what the record behind it says,
-   raw. The words are kit/chartAnnotation.ts's - this tier imports no
-   paraglide (ADR-0016) - so what is asserted here is which field reached the
-   annotation, and that a record with nothing written on it carries nothing. */
+/* A tick carries what the record behind it says, raw. The words are
+   kit/chartAnnotation.ts's - this tier imports no paraglide (ADR-0016) - so what is
+   asserted here is which field reached the annotation, and that a record with nothing
+   written on it carries nothing. */
 
 test('a milestone, a procedure and an appointment carry their own text', async () => {
   const journal = await journalWith();

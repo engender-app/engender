@@ -26,8 +26,7 @@ export type DayTaperSession = TaperSession & { slot: SessionSlotNumber };
 interface TaperSessionInput {
   id?: string;
   epochDay: number;
-  /** Defaults to ''. Nothing is required beyond the day (ticket 12: this is
-      a logging surface, not an adherence tool). */
+  /** Defaults to ''. Nothing is required beyond the day. */
   note?: string;
 }
 

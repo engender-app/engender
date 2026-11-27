@@ -39,10 +39,9 @@ const ROUTES = flag(
     '/more,/settings/tags,/settings/access-mode'
 ).split(',');
 const JUMP_PX = 24;
-/* `--step` lowers the floor a lone step is reported at (ticket 205 asks
-   for 2px). `--arrivals` also reports a block that first paints after the
-   screen's first frame already at full painted opacity: content cut in
-   rather than faded (ticket 205, 184's ReadGate finding). */
+/* `--step` lowers the floor a lone step is reported at. `--arrivals` also reports a block
+   that first paints after the screen's first frame already at full painted opacity: content
+   cut in rather than faded. */
 const STEP_PX = Number(flag('step', '4'));
 const ARRIVALS = args.includes('--arrivals');
 const TRAVEL_FRAMES = 4;

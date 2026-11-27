@@ -96,17 +96,14 @@
     return formatted;
   });
 
-  /* What is next for this procedure, which the card had nowhere to say
-     (audit item 13): the screen ended at 520px with the journey's own
-     forward fact locked inside the open card's consult list. The nearest
-     consult from today on, in ticket 12's grammar - `gapTo` and the same
-     two strings a hub row uses for a consult, so a row saying "Consult in
-     12 days" and this card cannot come to disagree about either the
-     arithmetic or the words.
+  /* What is next for this procedure, which the card had nowhere to say : the screen ended
+     at 520px with the journey's own forward fact locked inside the open card's consult
+     list. The nearest consult from today on, in grammar - `gapTo` and the same two strings
+     a hub row uses for a consult, so a row saying "Consult in 12 days" and this card cannot
+     come to disagree about either the arithmetic or the words.
 
-     Only a card still running: an archived procedure keeps no forward
-     reading (`open`'s own rule above), and a consult dated after one is a
-     record of something else. */
+     Only a card still running: an archived procedure keeps no forward reading (`open`'s own
+     rule above), and a consult dated after one is a record of something else. */
   let nextConsult = $derived(
     open
       ? [...procedure.consults]

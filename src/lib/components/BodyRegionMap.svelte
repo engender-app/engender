@@ -264,14 +264,11 @@
   </div>
 
   {#if placement.elsewhere.length}
-    <!-- Docked to the figure and sharing its card. A region with no one
-         place on a body - `body_facial_hair`, and every region somebody
-         added themselves - is a pill here, which is the shape this screen
-         has always given a region that has to carry its own name (Alicja,
-         2026-09-14: "for the 'elsewhere' parts, we want to preserve the nice
-         looking pills"). The reading rides in a swatch beside the name
-         rather than in the pill's own fill, because nothing may be written
-         on a region's fill. -->
+    <!-- Docked to the figure and sharing its card. A region with no one place on a body -
+         `body_facial_hair`, and every region somebody added themselves - is a pill here,
+         which is the shape this screen has always given a region that has to carry its own
+         name. The reading rides in a swatch beside the name rather than in the pill's own
+         fill, because nothing may be written on a region's fill. -->
     <div class="region-elsewhere">
       <p class="region-elsewhere-head">{m.body_map_elsewhere()}</p>
       <div class="region-elsewhere-pills">

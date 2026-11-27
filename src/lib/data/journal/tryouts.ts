@@ -62,11 +62,10 @@ export interface TryoutsArea {
       is the dated record, and how the tryout itself felt that day reaches it
       through `feltSense.onDay`. */
   getPhotosOnDay(epochDay: number): Promise<TryoutPhotoOnDay[]>;
-  /** The day of the most recent tryout photo, across every tryout, at or
-      before `todayEpochDay`, or null if there is none (phase 8 features
-      ticket 03, lastWrite.ts). The same exclusion `getPhotosOnDay` makes: a
-      tryout's own start/end days are a span, not a dated write, and its
-      felt-sense history is `feltSenseEntries`' own registered area. */
+  /** The day of the most recent tryout photo, across every tryout, at or before
+      `todayEpochDay`, or null if there is none (lastWrite.ts). The same exclusion
+      `getPhotosOnDay` makes: a tryout's own start/end days are a span, not a dated write,
+      and its felt-sense history is `feltSenseEntries`' own registered area. */
   lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
   /** Normalizes nothing itself - `photo` must already be through
       normalizePhoto (photoPicking.ts), same as photos.ts's attach. Returns

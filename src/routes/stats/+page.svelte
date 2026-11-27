@@ -122,10 +122,9 @@
   });
   let railHistory = $derived(historyBands(railAnnotationsQuery.rows));
   let railSurgeries = $derived(surgeryMarks(railAnnotationsQuery.rows));
-  /* The same facts as a list, for the finger the 8px bands are not for
-     (phase 11 UI/UX ticket 25). One read behind both: the list is built
-     from what the rail is already drawing, so a fact cannot be on one and
-     missing from the other. */
+  /* The same facts as a list, for the finger the 8px bands are not for. One read behind
+     both: the list is built from what the rail is already drawing, so a fact cannot be on
+     one and missing from the other. */
   let facts = $derived(
     railStart === null
       ? []
@@ -163,9 +162,8 @@
     live = span;
     setLastLookBackSpan(span);
   });
-  /* Picking an existing era counts as handled too (redesign ticket 48
-     review): a stretch already named is not the "just dragged this out"
-     moment the offer is for. Exact-match only, resolved with `eraBands`,
+  /* Picking an existing era counts as handled too: a stretch already named is not the "just
+     dragged this out" moment the offer is for. Exact-match only, resolved with `eraBands`,
      the same clamp SpanTimeline draws the bands with. */
   let existingEraSpans = $derived(
     railStart === null ? [] : eraBands(erasQuery.rows, railStart, today).map((band) => ({ start: band.start, end: band.end }))
@@ -382,12 +380,11 @@
     factsQuery.value?.readSpan.start === from && factsQuery.value?.readSpan.end === to
   );
 
-  /* Both this door's late reads share one "answered" condition (the
-     ReadGroup below already gated on it): `vocabulary.ready` closes the
-     gap ticket 152 named here - `shown` reads the vocabulary mirror for
-     the active scale, and a cold boot can settle `factsQuery` before
-     that mirror fills, so the average and scale-arc rows would arrive a
-     beat after the entries row with nothing gating that second pop. */
+  /* Both this door's late reads share one "answered" condition (the ReadGroup below already
+     gated on it): `vocabulary.ready` closes the gap named here - `shown` reads the
+     vocabulary mirror for the active scale, and a cold boot can settle `factsQuery` before
+     that mirror fills, so the average and scale-arc rows would arrive a beat after the
+     entries row with nothing gating that second pop. */
   let factsAnswered = $derived(!factsQuery.loading && vocabulary.ready);
 
   /* Held at last visit's height until the read answers, then faded in:
@@ -410,40 +407,34 @@
     return standing && standing.value !== null ? nativeValue(shown.key, standing.value) : '';
   });
 
-  /* The two optional rows freeze their content the instant the card
-     itself decides to leave (ux-carpet 234, item 2). The fold above
-     (factsQuery) synced `activeAverage` and `dimChange` against each
-     other, but the same reactive flush that drops `entryCount` under
-     the floor also nulls both of them - so their own `{#if}`s saw that
-     same flip and started their own `transition:collapse` at the same
-     instant as the card's, one collapse nested inside the other, which
-     read as the rows sliding into each other rather than the card
-     closing as a block. `closingFacts` only updates while the card is
-     staying open, so once `enoughEntries` goes false the rows keep
-     showing whatever they last held and never see their own condition
-     flip - the card's own collapse is what plays. While the card holds,
-     a row's data genuinely emptying still updates here immediately, so
-     that row's own collapse still runs as before. */
+  /* The two optional rows freeze their content the instant the card itself decides to
+     leave. The fold above (factsQuery) synced `activeAverage` and `dimChange` against each
+     other, but the same reactive flush that drops `entryCount` under the floor also nulls
+     both of them - so their own `{#if}`s saw that same flip and started their own
+     `transition:collapse` at the same instant as the card's, one collapse nested inside the
+     other, which read as the rows sliding into each other rather than the card closing as a
+     block. `closingFacts` only updates while the card is staying open, so once
+     `enoughEntries` goes false the rows keep showing whatever they last held and never see
+     their own condition flip - the card's own collapse is what plays. While the card holds,
+     a row's data genuinely emptying still updates here immediately, so that row's own
+     collapse still runs as before. */
   let closingFacts = $state<{ activeAverage: string; dimChange: RecapDimChange | null }>({
     activeAverage: '',
     dimChange: null
   });
-  /* `.pre`, so the card's first mount (ux-carpet 255) sees `closingFacts`
-     already carrying the two optional rows rather than adding them a tick
-     later: a plain `$effect` runs after the DOM commit that flips
-     `enoughEntries`, so the Entries row painted alone and the average and
-     scale-arc rows arrived in a second, ungated pop once this effect
-     caught up. The guard is what protects the closing case (above), not
-     which queue the effect runs in - a change here still sees the same
-     `enoughEntries` this flush, before or after paint. */
+  /* `.pre`, so the card's first mount sees `closingFacts` already carrying the two optional
+     rows rather than adding them a tick later: a plain `$effect` runs after the DOM commit
+     that flips `enoughEntries`, so the Entries row painted alone and the average and
+     scale-arc rows arrived in a second, ungated pop once this effect caught up. The guard
+     is what protects the closing case (above), not which queue the effect runs in - a
+     change here still sees the same `enoughEntries` this flush, before or after paint. */
   $effect.pre(() => {
     if (enoughEntries) closingFacts = { activeAverage, dimChange };
   });
 
-  /* The on-this-day tile opens in place (phase 11 ticket 07, the audit's
-     finding 8): the route it used to open was 844px holding one card and
-     500px of nothing. The block discloses under the pair; the tile's own
-     href still points at the route, which a notification deep-links to. */
+  /* The on-this-day tile opens in place: the route it used to open was 844px holding one
+     card and 500px of nothing. The block discloses under the pair; the tile's own href
+     still points at the route, which a notification deep-links to. */
   let dayOpen = $state(false);
   $effect.pre(() => {
     if (isDoorActive()) return;
@@ -528,11 +519,10 @@
       />
     </div>
 
-    <!-- The rail's own facts as a list, folded, directly under the rail
-         (phase 11 UI/UX ticket 25): the way to an era, an episode, a
-         tryout or a milestone that does not depend on hitting an 8px band,
-         with every fact's exact dates written out. It sets the same span
-         the band on the rail sets, so the two never disagree. -->
+    <!-- The rail's own facts as a list, folded, directly under the rail: the way to an era,
+         an episode, a tryout or a milestone that does not depend on hitting an 8px band,
+         with every fact's exact dates written out. It sets the same span the band on the
+         rail sets, so the two never disagree. -->
     {#if facts.length && isDoorActive()}
       <SpanFacts
         {facts}

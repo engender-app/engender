@@ -158,12 +158,10 @@ export function ownSeries(benchmarks: readonly BenchmarkForSeries[], key: OwnSer
 const numbers = (samples: readonly Sample[]): number[] =>
   samples.filter((sample): sample is number => sample !== null);
 
-/** The most recent benchmark that measured this figure at all, in its own
-    unit - null where none has (the metric reference sheet's own mini
-    figure, phase 11 ticket 17). Newest first over the same benchmarks and
-    the same per-figure read `ownSeries` uses, so a benchmark this figure's
-    trend already treats as unmeasured (a skipped vowel, an implausible
-    rate) is skipped here too rather than read a second, looser way. */
+/** The most recent benchmark that measured this figure at all, in its own unit - null where
+    none has. Newest first over the same benchmarks and the same per-figure read `ownSeries`
+    uses, so a benchmark this figure's trend already treats as unmeasured (a skipped vowel,
+    an implausible rate) is skipped here too rather than read a second, looser way. */
 export function latestReading(benchmarks: readonly BenchmarkForSeries[], key: OwnSeriesMetricKey): number | null {
   const read = FIGURES[key].read;
   for (let i = benchmarks.length - 1; i >= 0; i--) {

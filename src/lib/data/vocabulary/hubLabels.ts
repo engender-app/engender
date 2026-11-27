@@ -29,11 +29,10 @@ const ROW_TITLE: Record<HubRowKey, () => string> = {
   letters: m.letters_title,
   tryouts: m.tryout_title,
   doubt: m.safe_space_title,
-  /* `vb_screen_title` ("Voice") rather than `vb_title` ("Voice benchmark"):
-     ticket 17 folded the memos row's screen into this one as a fourth tab,
-     so the row and the screen it opens say the same name now. `vb_title`
-     stays what it was for the two callers still specifically about the
-     benchmark - the search hit and the area label. */
+  /* `vb_screen_title` ("Voice") rather than `vb_title` ("Voice benchmark"): folded the
+     memos row's screen into this one as a fourth tab, so the row and the screen it opens
+     say the same name now. `vb_title` stays what it was for the two callers still
+     specifically about the benchmark - the search hit and the area label. */
   'voice-benchmark': m.vb_screen_title,
   wear: m.wear_log,
   effects: m.effects_timeline,
@@ -102,17 +101,15 @@ export function hubGroupHeading(key: HubGroupKey | 'finished'): string {
 
 /** How long until a dated day, in the hub's own grammar.
 
-    `fmtDuration` rather than a bare day count, which is the grammar the two
-    backwards lines on this same row already use ("Last logged 1 year 4
-    months ago"). A forward line in a different unit beside them would read
-    as a different kind of measurement, and it degrades better: a letter
-    sealed for three years says "1 year 4 months", not "487 days".
+    `fmtDuration` rather than a bare day count, which is the grammar the two backwards lines
+    on this same row already use ("Last logged 1 year 4 months ago"). A forward line in a
+    different unit beside them would read as a different kind of measurement, and it
+    degrades better: a letter sealed for three years says "1 year 4 months", not "487 days".
 
-    Exported because a gap is no longer only a row's to state: ADR-0067's
-    amendment (phase 11 all-four-doors ticket 12) lets an area's own screen
-    say one too, and the visit screen saying "in 12 days" under a hub row
-    saying "Endocrinologist in 12 days" has to be the same arithmetic in the
-    same words. One function rather than two that agree today. */
+    Exported because a gap is no longer only a row's to state: ADR-0067's amendment lets an
+    area's own screen say one too, and the visit screen saying "in 12 days" under a hub row
+    saying "Endocrinologist in 12 days" has to be the same arithmetic in the same words. One
+    function rather than two that agree today. */
 export function gapTo(epochDay: number, todayEpochDay: number): string {
   return fmtDuration(calendarDuration(todayEpochDay, epochDay));
 }

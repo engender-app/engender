@@ -520,10 +520,9 @@ describe('OcrMachine – source units', () => {
   });
 });
 
-/* Phase 9 audit ticket 11. Recognition on a phone photo of a lab report is
-   seconds to tens of seconds and said nothing but "Reading…" while it ran.
-   Tesseract's own logger reports {status, progress} through the pass
-   (ocr-engine.ts), so this state carries the fraction rather than the
+/* Recognition on a phone photo of a lab report is seconds to tens of seconds and said
+   nothing but "Reading…" while it ran. Tesseract's own logger reports {status, progress}
+   through the pass (ocr-engine.ts), so this state carries the fraction rather than the
    screen keeping a second copy of it beside the machine. */
 describe('recognition progress and cancelling', () => {
   test('starts with no fraction and carries whatever the recognizer reports', async () => {

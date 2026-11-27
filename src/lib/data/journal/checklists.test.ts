@@ -185,20 +185,17 @@ test('getDebriefState reads everything the offer predicate needs in one call', a
 });
 
 test('a journal with no most recent past appointment gets no debrief offer', async () => {
-  /* Phase 8 features ticket 49 item 6, rekeyed by ticket 58. Both halves of
-     the gate are already tested apart - `getDebriefState` answers a null
-     appointment id with itemCount/dismissed/debriefEntryId that all read
-     as "nothing recorded" above, and `debriefOfferVisible` answers false
-     to a null id in debriefOffer.test.ts - but nothing joined them, so
-     nothing would notice a read that started defaulting the id, or a
-     predicate that stopped checking it. The claim being kept is persona
-     2's: a clinician-facing surface must not describe someone who has
-     never had a clinician.
+  /* Item 6, rekeyed. Both halves of the gate are already tested apart - `getDebriefState`
+     answers a null appointment id with itemCount/dismissed/debriefEntryId that all read as
+     "nothing recorded" above, and `debriefOfferVisible` answers false to a null id in
+     debriefOffer.test.ts - but nothing joined them, so nothing would notice a read that
+     started defaulting the id, or a predicate that stopped checking it. The claim being
+     kept is persona 2's: a clinician-facing surface must not describe someone who has never
+     had a clinician.
 
-     Adding a prep question is deliberately not enough. Somebody can write
-     down what they want to ask long before they have anywhere to ask it,
-     and the offer stays silent until an appointment is actually on
-     record. */
+     Adding a prep question is deliberately not enough. Somebody can write down what they
+     want to ask long before they have anywhere to ask it, and the offer stays silent until
+     an appointment is actually on record. */
   const { journal } = await journalWithBuiltIns();
 
   assert.equal(debriefOfferVisible(await journal.checklists.getDebriefState(null)), false);

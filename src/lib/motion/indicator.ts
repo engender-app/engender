@@ -117,11 +117,10 @@ export function schedules(direction: -1 | 0 | 1): { near: Schedule; far: Schedul
   };
 }
 
-/** The clocks for a pill crossing a grid rather than a row (ticket 281's
-    month picker): each axis is a row of its own, so each pair of insets
-    takes `schedules` for the way the pill went along that axis. A move
-    straight down keeps left and right together, and a diagonal leads with
-    the two edges facing the destination. */
+/** The clocks for a pill crossing a grid rather than a row: each axis is a row of its own,
+    so each pair of insets takes `schedules` for the way the pill went along that axis. A
+    move straight down keeps left and right together, and a diagonal leads with the two
+    edges facing the destination. */
 export function gridSchedules(
   from: Box,
   to: Box

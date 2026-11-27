@@ -1,9 +1,8 @@
 <script lang="ts">
-  /* The delete-confirm shape every record-logging settings screen repeated:
-     a question, an optional hint line, a danger button and a ghost one
-     (phase 5 UX ticket 39a). The component takes every string as a prop -
-     it does not own copy, since a screen's own wording (and whether it has
-     a hint at all) is its business. */
+  /* The delete-confirm shape every record-logging settings screen repeated: a question, an
+     optional hint line, a danger button and a ghost one. The component takes every string
+     as a prop - it does not own copy, since a screen's own wording (and whether it has a
+     hint at all) is its business. */
   import { m } from '$lib/paraglide/messages';
   import Sheet from '$lib/components/Sheet.svelte';
   import { collapse } from '$lib/motion/reveal';

@@ -28,14 +28,13 @@ export function nativeValue(metric: string, value: number): string {
   return fmtNumber(amount === 0 ? 0 : amount, metric === 'mood' ? { minimumFractionDigits: 1, maximumFractionDigits: 1 } : { maximumFractionDigits: 0 });
 }
 
-/** A day's two ends in words, or null for a day that covered no ground
-    (phase 6 unprompted ticket 11, CONTEXT: Spread).
+/** A day's two ends in words, or null for a day that covered no ground.
 
-    Written once because two surfaces say it: the calendar reads it out on
-    the cell it marks, and the values sheet on /stats prints it beside the
-    day's average. Both are native units (ADR-0012) - the mark's geometry is
-    the only normalized half of this feature - and both leave the day's order
-    unsaid, because the read cannot answer which end came first. */
+    Written once because two surfaces say it: the calendar reads it out on the cell it
+    marks, and the values sheet on /stats prints it beside the day's average. Both are
+    native units (ADR-0012) - the mark's geometry is the only normalized half of this
+    feature - and both leave the day's order unsaid, because the read cannot answer which
+    end came first. */
 export function spreadNote(metric: string, spread: Pick<DaySpread, 'low' | 'high'> | undefined): string | null {
   if (!coveredGround(spread)) return null;
   return m.day_spread({ low: nativeValue(metric, spread.low), high: nativeValue(metric, spread.high) });

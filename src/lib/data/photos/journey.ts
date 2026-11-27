@@ -17,10 +17,9 @@
 import { dateInputValueFromEpochDay, todayEpochDay } from '../epochDay';
 import { nameSlug } from '../fold';
 
-/** A dated photograph, whichever table it came from. Structural rather than
-    `DatedPhoto` since phase 11 ticket 14 put the library's own shape behind
-    the export grid: everything below is about days and ids, the same
-    widening compare-state.ts already made for the wipe. */
+/** A dated photograph, whichever table it came from. Structural rather than `DatedPhoto`
+    put the library's own shape behind the export grid: everything below is about days and
+    ids, the same widening compare-state.ts already made for the wipe. */
 type Dated = { id: string; epochDay: number };
 
 /** The two things a journey can be exported as. A collage is one composed
@@ -154,11 +153,10 @@ export const timelapseDurationMs = (count: number): number => count * TIMELAPSE_
 
 /* --- fitting one rectangle into another --------------------------------- */
 
-/* Neither of these ever scales a photo up, which is ticket 27's out-of-scope
-   line ("upscaling beyond what the already-normalized source photos
-   support") and the rule normalize.ts already follows for the same reason:
-   there is no detail left to recover, so a bigger draw only buys a softer
-   picture. A photo smaller than the frame sits smaller in it. */
+/* Neither of these ever scales a photo up, which is out-of-scope line ("upscaling beyond
+   what the already-normalized source photos support") and the rule normalize.ts already
+   follows for the same reason: there is no detail left to recover, so a bigger draw only
+   buys a softer picture. A photo smaller than the frame sits smaller in it. */
 
 /** Where the whole photo lands inside the box, centred, with empty space on
     the sides that run short. Used for a video frame, which is one fixed size
@@ -217,11 +215,11 @@ export const JOURNEY_MIME: Record<JourneyOutput, string> = {
   timelapse: 'video/webm'
 };
 
-/** `alicja-journey-2025-08-13.jpg`. Deliberately not exportFileName()'s
-    `-journal-`: a collage of progress photos is not a copy of the journal,
-    and someone with both files in a downloads folder has to be able to
-    tell which is the backup. The slug is shared with it, though, because
-    what survives a share sheet and a foreign filesystem is one question. */
+/** `journal-name-journey-2025-08-13.jpg`. Deliberately not exportFileName's `-journal-`: a
+    collage of progress photos is not a copy of the journal, and someone with both files in
+    a downloads folder has to be able to tell which is the backup. The slug is shared with
+    it, though, because what survives a share sheet and a foreign filesystem is one
+    question. */
 export function journeyFileName(
   name: string,
   output: JourneyOutput,

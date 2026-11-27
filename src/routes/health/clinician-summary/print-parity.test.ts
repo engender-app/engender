@@ -60,12 +60,11 @@ describe('clinician summary print parity', () => {
   });
 });
 
-/* Ticket 34: print preparation stays attached to its chosen scope. The
-   action moves into the frame-hosted foot ($lib/components/SaveBar.svelte,
-   the arrangement carpet 26 built so nothing sits under a pinned bar at
-   any scroll position), with the scope it prints stated beside it, so a
-   long preview never separates the reader from either. */
-describe('the print foot (ticket 34)', () => {
+/* Print preparation stays attached to its chosen scope. The action moves into the
+   frame-hosted foot ($lib/components/SaveBar.svelte, the arrangement carpet 26 built so
+   nothing sits under a pinned bar at any scroll position), with the scope it prints stated
+   beside it, so a long preview never separates the reader from either. */
+describe('the print foot', () => {
   it('shares included items between summaries and states the range only in the print foot', () => {
     expect(page).toContain('let scopeText = $derived.by(');
     expect(page).toContain('m.clinician_summary_scope({');

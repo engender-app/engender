@@ -332,13 +332,11 @@
   let hitRows = $derived(searchHitRows(elsewhereResults.hits, debouncedQuery));
   let hitsRemaining = $derived(Math.max(0, elsewhereResults.total - elsewhereResults.hits.length));
 
-  /* The starred shelf's photo half (ticket 18: `/search/starred` folded
-     in). Gated on the toggle rather than always read - a search screen
-     nobody asked the starred question of has no business paying for this
-     query every render. Unbounded, the same as the old shelf's own read:
-     self-limiting by how much a person actually stars, not by how large
-     the journal is (ADR-0004's concern is a per-render bound, not a floor
-     under every read). */
+  /* The starred shelf's photo half. Gated on the toggle rather than always read - a search
+     screen nobody asked the starred question of has no business paying for this query every
+     render. Unbounded, the same as the old shelf's own read: self-limiting by how much a
+     person actually stars, not by how large the journal is (ADR-0004's concern is a
+     per-render bound, not a floor under every read). */
   let starredPhotosQuery = liveList((j) => starredPhotosAsked(j.photoLibrary, { starred: starredOnly }));
   let starredPhotos = $derived(starredPhotosQuery.rows);
 
@@ -524,10 +522,8 @@
     <!-- The one thing that has to stay on the screen once the filters left
          it: with the panel in a sheet, these chips are the only place the
          state of the query is visible. -->
-    <!-- A chip taken off fades where it stood while the rest slide into
-         its place, Clear all with them, and the row travels to its new
-         height when that takes a line away (functional audit 10: the
-         row had cut chips out in one frame and jumped the rest). -->
+    <!-- A chip taken off fades where it stood while the rest slide into its place, Clear
+         all with them, and the row travels to its new height when that takes a line away. -->
     <div class="search-chips" transition:disclose={whileStaying} use:resize>
       {#each chipRow as chip (chip.key)}
         <button

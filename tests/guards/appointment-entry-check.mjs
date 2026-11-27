@@ -300,10 +300,8 @@ try {
   });
   const linkedRow = page.locator(`[data-appointment="${linked}"]`);
   await page.locator(`[data-visit-lead][data-appointment="${linked}"]`).waitFor();
-  /* The opening is a <button>, and a button takes the browser's own face
-     unless told otherwise (last-audit UI 53: Liberation Sans on Linux,
-     Roboto on Android). Its lines read in the body face; the gap alone keeps
-     the display face. */
+  /* The opening is a <button>, and a button takes the browser's own face unless told
+     otherwise. Its lines read in the body face; the gap alone keeps the display face. */
   const leadFaces = await page.locator('[data-visit-lead]').evaluate((lead) => {
     const face = (value) => {
       const probe = document.createElement('span');

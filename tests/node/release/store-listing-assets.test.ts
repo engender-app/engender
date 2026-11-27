@@ -9,7 +9,7 @@ describe('store listing metadata', () => {
     for (const locale of ['en-US', 'pl-PL']) {
       const screenshots = readdirSync(new URL(`${locale}/images/phoneScreenshots/`, root)).sort();
       // The listing leads with a scale being set and what Look back makes of it
-      // (tester-report-02 ticket 06); Play orders the shots by file name.
+      // ; Play orders the shots by file name.
       expect(screenshots).toEqual(['01-new-entry.png', '02-look-back.png', '03-home.png', '04-care.png', '05-voice.png', '06-roadmap.png', '07-settings-privacy.png']);
       for (const [file, width, height] of [
         ['icon.png', 512, 512], ['featureGraphic.png', 1024, 500],

@@ -176,12 +176,11 @@ test('one word reaches every registered area, folded on both sides', async () =>
   }
 });
 
-/* Phase 8 features ticket 52, ADR-0065: "Search finds a document by the
-   title the person wrote and by nothing else." The registry's own
-   `one word reaches every registered area` test covers the positive half;
-   this is the negative one, and it is the half the ADR is actually about -
-   the app never reads a document, so neither its stored file nor its
-   travelling id may be a way to find it. */
+/* ADR-0065: "Search finds a document by the title the person wrote and by nothing else."
+   The registry's own `one word reaches every registered area` test covers the positive
+   half; this is the negative one, and it is the half the ADR is actually about - the app
+   never reads a document, so neither its stored file nor its travelling id may be a way to
+   find it. */
 test('a document is found by its title and by neither its file nor its id', async () => {
   const { journal } = await journalWithBuiltIns();
   const id = await journal.documents.addDocument(
@@ -278,14 +277,12 @@ test('a row that matched on two of its columns shows the one its area prefers', 
 });
 
 test('a Cyrillic word in a scanned area is found however either side was capitalised', async () => {
-  /* Phase 8 features ticket 49 item 4, the non-entry half - and the half
-     that was genuinely broken. An entry note goes through `foldText` in JS
-     on both sides, where `toLowerCase()` handles Cyrillic; a milestone name
-     is matched by `foldedSql` inside SQL, and SQLite's `lower()` maps A-Z
-     and nothing else. So `Настя` stayed capitalised in the column while
-     `настя` was folded on the query side, and the two never met. Anyone
-     keeping this journal in Russian or Ukrainian could not find a name they
-     had written down. */
+  /* Item 4, the non-entry half - and the half that was genuinely broken. An entry note goes
+     through `foldText` in JS on both sides, where `toLowerCase` handles Cyrillic; a
+     milestone name is matched by `foldedSql` inside SQL, and SQLite's `lower` maps A-Z and
+     nothing else. So `Настя` stayed capitalised in the column while `настя` was folded on
+     the query side, and the two never met. Anyone keeping this journal in Russian or
+     Ukrainian could not find a name they had written down. */
   const { journal } = await journalWithBuiltIns();
   await journal.milestones.upsertMilestone({ name: 'Настя', epochDay: DAY });
   await journal.milestones.upsertMilestone({ name: 'Ґалаґан', epochDay: DAY });

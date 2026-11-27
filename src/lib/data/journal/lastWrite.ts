@@ -236,7 +236,7 @@ export const LAST_WRITE_OPT_OUTS: Record<Exclude<ArchiveSectionName, LastWriteKe
   // A letter is met on its unlock day (letterStatus.ts); asking when it was
   // last written is a second way to meet it before the seal does.
   letters: 'sealed until its unlock day',
-  // Phase 8 features ticket 10: sealed until the day after it was taken;
+  // Sealed until the day after it was taken;
   // asking when one was last taken is a second way to meet its figures
   // before the seal does, the same risk letters' own opt-out above guards
   // against - independent of whether the area is finishable (areaState.ts

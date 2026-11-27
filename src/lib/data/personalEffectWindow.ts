@@ -174,10 +174,9 @@ function afterAnchor(anchorEpochDay: number, months: number): number {
   return epochDayMonthsAgo(anchorEpochDay, -months);
 }
 
-/** Where HRT began, which drug its bands are read against, and where it
-    stopped (functional audit ticket 18, CONTEXT: "HRT start"). The three
-    parts of an answer `literatureWindowDays` needs, in the shape of an
-    episode so a single episode still passes as one. */
+/** Where HRT began, which drug its bands are read against, and where it stopped. The three
+    parts of an answer `literatureWindowDays` needs, in the shape of an episode so a single
+    episode still passes as one. */
 export type HrtAnchor = Pick<RegimenEpisode, 'drug' | 'startEpochDay' | 'endEpochDay'>;
 
 /**

@@ -1,13 +1,11 @@
-/* The one message that asks the service worker to keep the PDF renderer's
-   worker and fonts (phase 14 pre-release ticket 13; shell-assets.ts has why
-   they are out of the install).
+/* The one message that asks the service worker to keep the PDF renderer's worker and fonts
+   (shell-assets.ts has why they are out of the install).
 
-   Its own module rather than a line in sw-messages.ts on purpose. The page
-   side is the lazily loaded document code, and a lazy chunk importing from
-   sw-messages made Rollup split that module's constants away from
-   shell-assets.ts's, which the OCR code and the update code had been sharing
-   as one tiny chunk. That adds a file to the first-load graph, whose budget
-   has no file-count headroom (check:first-load-budget). Here only the worker
+   Its own module rather than a line in sw-messages.ts on purpose. The page side is the
+   lazily loaded document code, and a lazy chunk importing from sw-messages made Rollup
+   split that module's constants away from shell-assets.ts's, which the OCR code and the
+   update code had been sharing as one tiny chunk. That adds a file to the first-load graph,
+   whose budget has no file-count headroom (check:first-load-budget). Here only the worker
    and the document code import it. */
 
 /** Sent when a document builds its worker. A message of its own,

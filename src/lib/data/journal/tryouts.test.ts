@@ -1,5 +1,4 @@
-/* Tryouts (phase 4 ticket 16, widened past name/pronoun by phase 5 ticket
-   13, CONTEXT: "Tryout", "Felt-sense entry"). */
+/* Tryouts. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
@@ -129,8 +128,8 @@ test('entries in a tryout\'s date range are read by date overlap, not a stored l
   );
 });
 
-/* Phase 5 ticket 13: `kind` widens past name/pronoun, and a non-name/pronoun
-   tryout carries a free-text description alongside its label. */
+/* `kind` widens past name/pronoun, and a non-name/pronoun tryout carries a free-text
+   description alongside its label. */
 
 test('a tryout can be any of the widened kinds, each with its own free-text description', async () => {
   const { journal } = await journalWithBuiltIns();
@@ -175,8 +174,7 @@ test('a blank description is stored as null, the same as an absent one', async (
   assert.equal(tryout.description, null);
 });
 
-/* Phase 5 ticket 13: photos, through the same pipeline procedures.ts's
-   recovery photos use. */
+/* Photos, through the same pipeline procedures.ts's recovery photos use. */
 
 test('a tryout photo round-trips through the same pipeline procedures use, oldest first', async () => {
   const { files, journal } = await journalWithFiles();
@@ -243,7 +241,7 @@ test('the sweep leaves a referenced tryout photo alone and reclaims an orphaned 
   assert.ok(files.names().includes(thumbFileName(`${kept}.jpg`)));
 });
 
-/* Phase 5 deepening ticket 11: adopt a tryout permanently. */
+/* Adopt a tryout permanently. */
 
 test('adoptTryout closes the tryout and optionally creates a timeline milestone, writing no reading onto it', async () => {
   const { journal } = await journalWithBuiltIns();

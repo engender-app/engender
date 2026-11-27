@@ -1,15 +1,12 @@
 <script lang="ts">
-  /* What the disguise looks like from outside the app, and what it does not
-     cover. Settings has drawn this since ticket 15; setup's last question
-     asks for the same thing, and two copies
-     of a block whose whole job is to be accurate about the launcher is how
-     the two drift.
+  /* What the disguise looks like from outside the app, and what it does not cover. Settings
+     has drawn this; setup's last question asks for the same thing, and two copies of a
+     block whose whole job is to be accurate about the launcher is how the two drift.
 
-     It says the same thing on both screens on purpose. Settings binds `on`
-     to the stored preference, or to the answer its switch is saving while
-     that write runs; setup binds it to the answer it is holding - but the
-     icon, the name and the note do not vary with it. The disguise
-     is what it is; `on` only says whether it is in force, which is the
+     It says the same thing on both screens on purpose. Settings binds `on` to the stored
+     preference, or to the answer its switch is saving while that write runs; setup binds it
+     to the answer it is holding - but the icon, the name and the note do not vary with it.
+     The disguise is what it is; `on` only says whether it is in force, which is the
      difference between a proposal and a description. */
 
   import { appWordmark } from '$lib/disguise/identity';

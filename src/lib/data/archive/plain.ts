@@ -1,18 +1,17 @@
-/* The plain export (ticket 15, PRD F22): the journal as CSV or JSON, with
-   no encryption anywhere near it. The screen puts it behind a warning and a
-   confirm; this file only knows how to write the two files.
+/* The plain export: the journal as CSV or JSON, with no encryption anywhere near it. The
+   screen puts it behind a warning and a confirm; this file only knows how to write the two
+   files.
 
-   It reads the same snapshot the encrypted archive is packed from, so
-   there is one description of what a journal holds rather than two that
-   drift. What it does not reuse is the archive's identity: uuids and file
-   names mean nothing in a spreadsheet, and there is no plain import path
-   to match rows for (F22). The CSV is what a person reads, so it carries
-   words - dimension names, tag labels, values in native units (ADR-0012).
+   It reads the same snapshot the encrypted archive is packed from, so there is one
+   description of what a journal holds rather than two that drift. What it does not reuse is
+   the archive's identity: uuids and file names mean nothing in a spreadsheet, and there is
+   no plain import path to match rows for (F22). The CSV is what a person reads, so it
+   carries words - dimension names, tag labels, values in native units (ADR-0012).
 
-   Built-in rows are stored as bare keys with no wording at all
-   (builtins.ts), so the names have to come from the message catalogue.
-   They arrive as functions rather than as an import: labels.ts is
-   paraglide, and nothing the Node tier touches may import it (ADR-0016). */
+   Built-in rows are stored as bare keys with no wording at all (builtins.ts), so the names
+   have to come from the message catalogue. They arrive as functions rather than as an
+   import: labels.ts is paraglide, and nothing the Node tier touches may import it
+   (ADR-0016). */
 
 import { dateInputValueFromEpochDay } from '../epochDay';
 import { ARCHIVE_FORMAT_VERSION } from './container';

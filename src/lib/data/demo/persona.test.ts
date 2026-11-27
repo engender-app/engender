@@ -1,6 +1,6 @@
-/* The demo persona writes in the app's language (pre-publish ticket 03).
-   The pl-PL store screenshots and the Polish landing guide are taken from
-   this journal, so English entries there read as an untranslated app. */
+/* The demo persona writes in the app's language. The pl-PL store screenshots and the Polish
+   landing guide are taken from this journal, so English entries there read as an
+   untranslated app. */
 
 import assert from 'node:assert/strict';
 import { test } from 'vitest';

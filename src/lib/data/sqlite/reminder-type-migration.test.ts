@@ -1,5 +1,5 @@
-/* Functional audit ticket 08: version 109 rebuilds reminder without its type
-   column and without WEEKLY, keeping every row, its id and the id counter. */
+/* Version 109 rebuilds reminder without its type column and without WEEKLY, keeping every
+   row, its id and the id counter. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

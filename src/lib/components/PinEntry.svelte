@@ -186,10 +186,9 @@
       if (outcome === 'device-gone') {
         /* Not counted against the throttle: nothing was guessed and no
            number of tries would get anywhere. */
-        /* Two sentences for one state, because the key is in two different
-           places: the browser's own store on the web, and Android Keystore
-           on a phone (ticket sec-02-06). "This browser" on a phone would be
-           telling somebody about a store their PIN was never bound to. */
+        /* Two sentences for one state, because the key is in two different places: the
+           browser's own store on the web, and Android Keystore on a phone. "This browser"
+           on a phone would be telling somebody about a store their PIN was never bound to. */
         fail(isAndroid() ? m.su_device_key_gone_android() : m.su_device_key_gone());
         return;
       }

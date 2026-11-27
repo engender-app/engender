@@ -379,14 +379,13 @@ describe('palette contrast coverage', () => {
     }
   });
 
-  /* Ticket 17: --accent is the heat ramp's top step as well as the app's
-     one accent, so it is sized to be sat on, not to be read as text. On
-     trans light it measured 4.10:1 against --surface-2 and 4.38:1 against
-     --bg, under the 4.5:1 floor small accent-coloured text needs.
-     --accent-ink is the same hue pulled toward --text until it clears that
-     floor on all three surfaces, in every palette and theme - so a section
-     link or a caption can be accent-coloured without a per-palette
-     exception. The ramp keeps raw --accent; this token is text only. */
+  /* --accent is the heat ramp's top step as well as the app's one accent, so it is sized to
+     be sat on, not to be read as text. On trans light it measured 4.10:1 against
+     --surface-2 and 4.38:1 against --bg, under the 4.5:1 floor small accent-coloured text
+     needs. --accent-ink is the same hue pulled toward --text until it clears that floor on
+     all three surfaces, in every palette and theme - so a section link or a caption can be
+     accent-coloured without a per-palette exception. The ramp keeps raw --accent; this
+     token is text only. */
   it('keeps --accent-ink readable as small text on all three surfaces in every palette and theme', () => {
     const percent = accentMixPercent('accent-ink');
     for (const palette of PALETTES) {
@@ -404,9 +403,9 @@ describe('palette contrast coverage', () => {
     }
   });
 
-  /* Final-audit ticket 22: a destructive button used to set --danger on
-     its own --danger-soft ground. It sits on the page now, drawn with just
-     an edge, so --danger's contrast is against whichever surface is under it. */
+  /* A destructive button used to set --danger on its own --danger-soft ground. It sits on
+     the page now, drawn with just an edge, so --danger's contrast is against whichever
+     surface is under it. */
   it.each(['danger', 'danger-deep'])('keeps --%s readable as a button label on all three surfaces in every palette and theme', (token) => {
     for (const theme of THEMES) {
       const danger = rawDeclaration(blockBody(String.raw`(?<!\])\[data-theme="${theme}"\]`), token)!.split(/\s/)[0];
@@ -423,12 +422,11 @@ describe('palette contrast coverage', () => {
     }
   });
 
-  /* After-release 21 (audit A11Y-11): a text field's edge is the only thing
-     that says where the field is, since its fill is --surface on a page
-     about 1.07:1 away. --outline, the line every block shares, is 1.44:1
-     there; Alicja approved an input-only token at 3:1 (WCAG 1.4.11) and
-     left every other line where it is. Checked as the browser paints it:
-     --text at that alpha over each ground a field sits on. */
+  /* A text field's edge is the only thing that says where the field is, since its fill is
+     --surface on a page about 1.07:1 away. --outline, the line every block shares, is
+     1.44:1 there; Use an input-only token at 3:1 (WCAG 1.4.11) and left every other line
+     where it is. Checked as the browser paints it: --text at that alpha over each ground a
+     field sits on. */
   it('draws a text field\'s edge at 3:1 against every ground it sits on', () => {
     const raw = rawDeclaration(blockBody(':root'), 'input-edge');
     const match = raw && /var\(--text\)\s*(\d+)%,\s*transparent/.exec(raw);
@@ -486,7 +484,7 @@ describe('palette contrast coverage', () => {
 });
 
 /* Compute both contrast tables from exact hex values. */
-describe('the field and the fills (phase 10)', () => {
+describe('the field and the fills', () => {
   function stripesOf(palette: string): string[] {
     const raw = /--motif-stripes:\s*([^;]+);/.exec(blockBody(String.raw`\[data-palette="${palette}"\]`));
     if (!raw) throw new Error(`No --motif-stripes for ${palette}`);
@@ -537,10 +535,8 @@ describe('the field and the fills (phase 10)', () => {
     expect(field.ratio).toBeGreaterThanOrEqual(4.5);
   });
 
-  /* Two flags name their own band (Alicja, 2026-09-07: the rainbow on the
-     ticket 06 renders, bisexual on ticket 23's); the other six fall to the
-     rule. Without the name each would take the rule's answer, which is what
-     the first expectation of each pair pins. */
+  /* Two flags name their own band; the other six fall to the rule. Without the name each
+     would take the rule's answer, which is what the first expectation of each pair pins. */
   it('names the rainbow blue and the bisexual dark blue, and lets the other six fall to the rule', () => {
     expect(flagField(stripesOf('rainbow'))!.hex).toBe('#FF8C00');
     expect(flagField(stripesOf('rainbow'), 'rainbow')!.hex).toBe('#004CFF');
@@ -596,13 +592,11 @@ describe('the field and the fills (phase 10)', () => {
     }
   });
 
-  /* Small text on a fill: a tag's 12px label sits on --role-draw in
-     --role-fill-ink, and a tag can be handed any role index, so every
-     stripe of every flag has to carry that ink at 4.5:1 on both themes -
-     not only the two indices Home happens to use. The ink is the one
-     roles.ts computes for the heat ramp's deepest step, which is the stripe
-     undiluted. The day bar was the other thing written this way until
-     ux-carpet ticket 282; it is a block of ink now, below. */
+  /* Small text on a fill: a tag's 12px label sits on --role-draw in --role-fill-ink, and a
+     tag can be handed any role index, so every stripe of every flag has to carry that ink
+     at 4.5:1 on both themes - not only the two indices Home happens to use. The ink is the
+     one roles.ts computes for the heat ramp's deepest step, which is the stripe undiluted.
+     The day bar was the other thing written this way; it is a block of ink now, below. */
   it('keeps small text in the fill ink readable on every stripe of every flag, both themes', () => {
     for (const palette of PALETTES) {
       for (const theme of THEMES) {
@@ -621,13 +615,12 @@ describe('the field and the fills (phase 10)', () => {
     }
   });
 
-  /* Phase 15 ticket 20, WCAG 1.4.11: a chart line that carries the reading
-     answers to 3:1 against everything it is drawn over. The stripe itself
-     stays the line's colour (the test above holds that), and where it cannot
-     reach 3:1 on its own the line is edged in role.edge, which is what an
-     eye finds the line by. So the line's boundary is the edge where there is
-     one and the stripe where there is not, and that boundary is what is
-     measured here, on every role of every flag, both themes. */
+  /* WCAG 1.4.11: a chart line that carries the reading answers to 3:1 against everything it
+     is drawn over. The stripe itself stays the line's colour (the test above holds that),
+     and where it cannot reach 3:1 on its own the line is edged in role.edge, which is what
+     an eye finds the line by. So the line's boundary is the edge where there is one and the
+     stripe where there is not, and that boundary is what is measured here, on every role of
+     every flag, both themes. */
   describe('essential chart graphics (WCAG 1.4.11)', () => {
     const kitCss = readFileSync('src/lib/styles/kit.css', 'utf8');
 
@@ -709,13 +702,12 @@ describe('the field and the fills (phase 10)', () => {
   });
 });
 
-/* An unlock's sun (tester-report-02 ticket 07). The field stops carrying
-   type: what sits on it is Today's own sun, drawn by FlagSun in the flag's
-   own colours, and the control, its status line and the way out stay on the
-   page where the floors above already hold them. Two things are new and
-   measured here: the sun on a gate is the palette's own, never nudged to pass
-   a ratio (decision 1), and where it falls short of 3:1 against the field
-   that is written down rather than fixed by changing a flag. */
+/* An unlock's sun. The field stops carrying type: what sits on it is Today's own sun, drawn
+   by FlagSun in the flag's own colours, and the control, its status line and the way out
+   stay on the page where the floors above already hold them. Two things are new and
+   measured here: the sun on a gate is the palette's own, never nudged to pass a ratio
+   (decision 1), and where it falls short of 3:1 against the field that is written down
+   rather than fixed by changing a flag. */
 describe("an unlock's sun", () => {
   const stripesOf = (palette: string) =>
     /--motif-stripes:\s*([^;]+);/.exec(blockBody(String.raw`\[data-palette="${palette}"\]`))![1]
@@ -754,14 +746,12 @@ describe("an unlock's sun", () => {
   });
 });
 
-/* "Clearer text and borders" (Settings, html[data-a11y-legibility='boost']).
-   It used to pull --text-2 to 76% of --text and each line one alpha step
-   darker, which measured as 6.47:1 at worst for secondary text and 1.53:1
-   for a hairline - real, and too small to see on a phone (pre-release-human
-   18: "the rest basically does nothing"). The boost now owes numbers a
-   person can see: secondary text at WCAG's enhanced 7:1, an outline at the
-   3:1 a non-text edge needs, a hairline at 2:1, and a heavier focus ring,
-   on all three surfaces in every palette and theme. */
+/* "Clearer text and borders" (Settings, html[data-a11y-legibility='boost']). It used to
+   pull --text-2 to 76% of --text and each line one alpha step darker, which measured as
+   6.47:1 at worst for secondary text and 1.53:1 for a hairline - real, and too small to see
+   on a phone. The boost now owes numbers a person can see: secondary text at WCAG's
+   enhanced 7:1, an outline at the 3:1 a non-text edge needs, a hairline at 2:1, and a
+   heavier focus ring, on all three surfaces in every palette and theme. */
 describe('the legibility boost', () => {
   const base = readFileSync('src/lib/theme/base.css', 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
   const boost = /html\[data-palette\]\[data-theme\]\[data-a11y-legibility='boost'\]\s*\{([^}]*)\}/.exec(base)?.[1] ?? '';
@@ -796,10 +786,9 @@ describe('the legibility boost', () => {
   });
 });
 
-/* Security-scan ticket 08 (GD-043): the neutral palette a disguised journal
-   wears until it unlocks. Not in PALETTES, which is the person's choices, so
-   held to the same floors here: text on every surface, accent-coloured text,
-   and the primary button's ink on its accent. */
+/* The neutral palette a disguised journal wears until it unlocks. Not in PALETTES, which is
+   the person's choices, so held to the same floors here: text on every surface,
+   accent-coloured text, and the primary button's ink on its accent. */
 describe('the disguised palette', () => {
   it('meets the text, accent-ink and button floors in both themes', () => {
     const percent = accentMixPercent('accent-ink');

@@ -221,11 +221,10 @@ public final class FileDeliveryPlugin extends Plugin {
             if (destination == null) throw new IllegalStateException("destination-unavailable");
             try (OutputStream output = new ParcelFileDescriptor.AutoCloseOutputStream(destination);
                  InputStream input = delivery.openStream()) {
-                /* The preflight (last-audit ui 37): refused only when one of
-                   Android's on-device providers handed over a file whose own
-                   volume measured short. Any other provider, a cloud drive
-                   included, goes straight to the write, whose ENOSPC is
-                   still caught below. */
+                /* The preflight: refused only when one of Android's on-device providers
+                   handed over a file whose own volume measured short. Any other provider, a
+                   cloud drive included, goes straight to the write, whose ENOSPC is still
+                   caught below. */
                 Long available = StorageFailure.isLocalProvider(uri.getAuthority())
                     ? StorageFailure.availableBytes(destination)
                     : null;

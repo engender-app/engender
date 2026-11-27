@@ -1,14 +1,12 @@
-/* Display wording for a lab draw's dosing context, here
-   beside doseLabels.ts for the reason that file gives: the wording speaks
-   paraglide, and nothing the Node tier touches may import that (ADR-0016).
-   labTiming.ts derives the figures and stays free of it; this is where they
-   get their words.
+/* Display wording for a lab draw's dosing context, here beside doseLabels.ts for the reason
+   that file gives: the wording speaks paraglide, and nothing the Node tier touches may
+   import that (ADR-0016). labTiming.ts derives the figures and stays free of it; this is
+   where they get their words.
 
-   Descriptive only. Every string here says where a draw fell and stops: no
-   phrasing names one draw time as better than another, and the
-   comparability flag says the points differ without saying which is right.
-   That is the whole difference between this and the draw-timing helper
-   rejected at the phase 4 grilling session (Q15). */
+   Descriptive only. Every string here says where a draw fell and stops: no phrasing names
+   one draw time as better than another, and the comparability flag says the points differ
+   without saying which is right. That is the whole difference between this and the
+   draw-timing helper rejected at the grilling session (Q15). */
 
 import { m } from '$lib/paraglide/messages';
 import { intlLocale } from '$lib/data/dates';

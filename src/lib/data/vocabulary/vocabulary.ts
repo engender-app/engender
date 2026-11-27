@@ -91,8 +91,7 @@ function localizeRegimenTemplate(t: RegimenTemplate): RegimenTemplate {
     rows at all - a template is a suggestion the app ships. */
 const milestoneTemplates: MilestoneTemplate[] = milestoneTemplateRows();
 
-/** Same shape as `milestoneTemplates` above, for regimen episodes (phase 5
-    ticket 42, CONTEXT: "Regimen template"). */
+/** Same shape as `milestoneTemplates` above, for regimen episodes. */
 const regimenTemplates: RegimenTemplate[] = regimenTemplateRows();
 
 export const vocabulary = {
@@ -125,15 +124,13 @@ export const vocabulary = {
     if (!dim.builtIn) return m.scale_custom_note({ low: dim.low, high: dim.high });
     return builtInDimensionNote(dim.key) ?? undefined;
   },
-  /** The lean the ticked scales carry -
-      `null` when both `femininity` and `masculinity` are ticked, or neither,
-      and every lean-tagged picker should render unranked. Shared by every
-      picker that ranks by lean, so the derivation is computed once rather
-      than at each call site.
+  /** The lean the ticked scales carry - `null` when both `femininity` and `masculinity` are
+      ticked, or neither, and every lean-tagged picker should render unranked. Shared by
+      every picker that ranks by lean, so the derivation is computed once rather than at
+      each call site.
 
-      Read off the scales actually drawn rather than off the stored list, so
-      a ticked scale this install no longer has cannot lean a picker
-      (ticket 35 replaced the preset the lean used to come from). */
+      Read off the scales actually drawn rather than off the stored list, so a ticked scale
+      this install no longer has cannot lean a picker. */
   get activeLean(): 'femme' | 'masc' | null {
     return scaleLean(this.activeDimensions.map((d) => d.key));
   },
@@ -148,9 +145,8 @@ export const vocabulary = {
   get tags(): Tag[] {
     return reference.tags.map(localizeTag);
   },
-  /** All five (or six) effect categories, in seed order, in the wording the
-      current language gives them (phase 5 ticket 41, CONTEXT: "Effect
-      category") - what the effects settings screen manages. */
+  /** All five (or six) effect categories, in seed order, in the wording the current
+      language gives them - what the effects settings screen manages. */
   get effectCategories(): EffectCategory[] {
     return reference.effectCategories.map(localizeEffectCategory);
   },
@@ -180,19 +176,15 @@ export const vocabulary = {
   get milestoneTemplates(): MilestoneTemplate[] {
     return milestoneTemplates.map(localizeTemplate);
   },
-  /** The built-in regimen episode suggestions (phase 5 ticket 42, CONTEXT:
-      "Regimen template"), in the wording the current language gives them -
-      what the regimen editor's "add new" picker offers above manual entry.
-      Ranked by the active preset's lean:
-      matching templates first, the rest after in their existing order -
-      every template still shown, just reordered. */
+  /** The built-in regimen episode suggestions, in the wording the current language gives
+      them - what the regimen editor's "add new" picker offers above manual entry. Ranked by
+      the active preset's lean: matching templates first, the rest after in their existing
+      order - every template still shown, just reordered. */
   get regimenTemplates(): RegimenTemplate[] {
     return rankByLean(regimenTemplates.map(localizeRegimenTemplate), this.activeLean);
   },
-  /** Every body region, hidden built-ins and custom ones included, in the
-      wording the user sees (ticket 09, reference-data area since ticket
-      30) - what an entry card or the trend chart resolves a logged
-      region's key against. */
+  /** Every body region, hidden built-ins and custom ones included, in the wording the user
+      sees - what an entry card or the trend chart resolves a logged region's key against. */
   get bodyRegions(): BodyRegion[] {
     return reference.bodyRegions.map(localizeBodyRegion);
   },

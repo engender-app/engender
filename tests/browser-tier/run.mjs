@@ -39,12 +39,11 @@ const server = await createServer({ configFile: `${here}/browser-tier.vite.confi
 await server.listen();
 const port = server.config.server.port;
 
-/* Fake camera and microphone, for phase 5 ticket 22's probe: video notes
-   record through getUserMedia, and the only way to exercise the real capture
-   path headlessly is to give Chromium a synthetic device and pre-grant the
-   permission. Inert for every other probe here - none of them ask for a
-   media device. The fake camera produces a moving pattern with a tone on the
-   audio track, which is exactly what a re-encode has to carry over. */
+/* Fake camera and microphone, for probe: video notes record through getUserMedia, and the
+   only way to exercise the real capture path headlessly is to give Chromium a synthetic
+   device and pre-grant the permission. Inert for every other probe here - none of them ask
+   for a media device. The fake camera produces a moving pattern with a tone on the audio
+   track, which is exactly what a re-encode has to carry over. */
 const browser = await launchChromium({
   args: [
     '--use-fake-device-for-media-stream',
@@ -281,7 +280,7 @@ await block('covered weekly dose slots agree across rendered screens', 2, async 
   }
 });
 
-// --- Ticket 03: FTS5 + OPFS mechanics, against a synthetic table -----------
+// --- FTS5 + OPFS mechanics, against a synthetic table -----------
 await block('ticket 03 browser tier', 5, async () => {
   const first = await load('/', 'probe');
   if (first.error) throw new Error(first.error);
@@ -331,16 +330,14 @@ await block('Replace boot housekeeping on encrypted OPFS', 7, async () => {
   if (result.checks.length !== 7) throw new Error(`Expected 7 housekeeping checks, got ${result.checks.length}`);
 });
 
-// --- Ticket 04: the real driver + boot() against the real schema -----------
+// --- the real driver + boot() against the real schema -----------
 await block('ticket 04 browser tier', 9, async () => {
   const first = await load('/driver.html', 'driver-probe');
   if (first.error) throw new Error(first.error);
 
-  /* Compared against the migration list rather than a literal. This read
-     `=== 6` from ticket 04 until phase 5 ticket 22, so it had been failing
-     since v7 and saying nothing useful while it did - a hardcoded schema
-     version is exactly what goes stale first, and it collides between
-     branches besides. */
+  /* Compared against the migration list rather than a literal. This read `=== 6`, so it had
+     been failing since v7 and saying nothing useful while it did - a hardcoded schema
+     version is exactly what goes stale first, and it collides between branches besides. */
   if (first.userVersion === first.latestSchemaVersion)
     ok(`boot() opens the database and migrates it to the current schema (v${first.userVersion})`);
   else
@@ -354,7 +351,7 @@ await block('ticket 04 browser tier', 9, async () => {
 
   ok(`navigator.storage.persist() resolved (denied: ${first.persistDenied})`);
 
-  // Ticket 07: run()'s changes/lastInsertRowid contract, which the
+  // Run()'s changes/lastInsertRowid contract, which the
   // journal's throw-on-unknown-id behaviour sits on (ADR-0002/0017).
   const rc = first.runContract;
   if (rc.insertChanges === 1 && rc.updateChanges === 1 && rc.missChanges === 0)
@@ -364,11 +361,10 @@ await block('ticket 04 browser tier', 9, async () => {
     ok('run() reports lastInsertRowid as the row just inserted (checked against its uuid)');
   else fail('run() reports lastInsertRowid as the row just inserted (checked against its uuid)', JSON.stringify(rc));
 
-  /* Ticket 134: two transactions started at once, over the driver the app
-     ships. Before the fix the second BEGIN failed with "cannot start a
-     transaction within a transaction" and its ROLLBACK discarded the first
-     one's insert, so both halves of this - nothing rejected, both rows
-     committed - are what the regression would break. */
+  /* Two transactions started at once, over the driver the app ships. Before the fix the
+     second BEGIN failed with "cannot start a transaction within a transaction" and its
+     ROLLBACK discarded the first one's insert, so both halves of this - nothing rejected,
+     both rows committed - are what the regression would break. */
   const ct = first.concurrentTransactions;
   if (ct.rejected.length === 0 && ct.committed === 2)
     ok('two transactions started at once both commit, one after the other');
@@ -379,7 +375,7 @@ await block('ticket 04 browser tier', 9, async () => {
     ok('the production web driver passes the shared journal and ownership contract');
   else fail('the production web driver passes the shared journal and ownership contract', JSON.stringify(contract.filter((check) => !check.ok)));
 
-  // Ticket 10: the recap counts and buckets with window functions,
+  // The recap counts and buckets with window functions,
   // and this build is the only one that can tell us whether it has them.
   if (first.windowFunctionRun >= 1) ok('the WASM build has the window functions the recap reads with');
   else fail('the WASM build has the window functions the recap reads with', JSON.stringify(first.windowFunctionRun));
@@ -391,7 +387,7 @@ await block('ticket 04 browser tier', 9, async () => {
   else fail('data written before a reload is still there after boot() re-runs', 'marker entry was gone after reload');
 });
 
-// --- Ticket 09: folded search against the WASM SQLite, via the journal ----
+// --- folded search against the WASM SQLite, via the journal ----
 await block('ticket 09 browser tier', 12, async () => {
   const r = await load('/search.html', 'search-probe');
   if (r.error) throw new Error(r.error);
@@ -401,7 +397,7 @@ await block('ticket 09 browser tier', 12, async () => {
     else fail(label, `got ${JSON.stringify(actual)}, expected ${JSON.stringify(expected)}`);
   };
 
-  // The case FTS5 cannot do on its own: ticket 03's probe proves plain FTS5
+  // The case FTS5 cannot do on its own: probe proves plain FTS5
   // returns nothing for 'zazolc' and for ł. Through the fold, both land.
   eq("'lozko' finds 'łóżko' in the WASM build", r.folded.lozko, [r.ids.bed]);
   eq("'zazolc' finds 'zażółć' in the WASM build", r.folded.zazolc, [r.ids.gesla]);
@@ -421,7 +417,7 @@ await block('ticket 09 browser tier', 12, async () => {
   eq('a deleted entry leaves the index', r.afterDelete, []);
 });
 
-// --- Ticket 12: crypto primitives, and hash-wasm's no-network-fetch claim -
+// --- crypto primitives, and hash-wasm's no-network-fetch claim -
 await block('ticket 12 browser tier', 3, async () => {
   const requestUrls = [];
   const onRequest = (req) => requestUrls.push(req.url());
@@ -442,7 +438,7 @@ await block('ticket 12 browser tier', 3, async () => {
   else fail('hash-wasm makes no separate request for its WASM - it is bundled as base64, not fetched', wasmRequests.join(', '));
 });
 
-// --- Ticket 11: normalize() against a real canvas, and the OPFS store -----
+// --- normalize() against a real canvas, and the OPFS store -----
 await block('ticket 11 browser tier', 23, async () => {
   const r = await load('/photos.html', 'photos-probe');
   if (r.error) throw new Error(r.error);
@@ -527,7 +523,7 @@ await block('ticket 11 browser tier', 23, async () => {
 
   // The safety property: the sweep deletes everything the store lists, so
   // the store must see only its own directory - never the SAHPool
-  // directory holding the database (ticket 09 moved it off the root).
+  // directory holding the database.
   const photoRoot = String(r.photoDirectory).split('/')[0];
   const poolDir = r.rootNames.find((n) => n.includes('sahpool') || n.includes('mc-pool'));
   if (r.rootNames.includes(photoRoot) && poolDir && !r.listed.includes(poolDir))
@@ -563,10 +559,9 @@ await block('ticket 11 browser tier', 23, async () => {
   if (sweptToKeptOnly) ok('the boot sweep reclaims a file no row references, against real OPFS');
   else fail('the boot sweep reclaims a file no row references, against real OPFS', JSON.stringify(r.filesAfterSweep));
 
-  /* The picker, driven through a real file dialog. Two files rather than
-     one, because an entry holds several photos and the input is set
-     multiple; the bytes are handed straight to normalize(), which is what
-     ticket 08's editor will do with them. A 1x1 PNG is enough - what is
+  /* The picker, driven through a real file dialog. Two files rather than one, because an
+     entry holds several photos and the input is set multiple; the bytes are handed straight
+     to normalize, which is what editor will do with them. A 1x1 PNG is enough - what is
      being tested is that bytes survive the trip, not what they depict. */
   const pngBuffer = Buffer.from(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
@@ -595,7 +590,7 @@ await block('ticket 11 browser tier', 23, async () => {
   else fail('picked bytes go straight into normalize()', JSON.stringify(picked.normalizedSizes));
 });
 
-// --- Ticket 13: the archive, packed on the real platform and downloaded --
+// --- the archive, packed on the real platform and downloaded --
 await block('ticket 13 browser tier', 10, async () => {
   const r = await load('/archive.html', 'archive-probe');
   if (r.error) throw new Error(r.error);
@@ -626,9 +621,8 @@ await block('ticket 13 browser tier', 10, async () => {
     ok('a wrong password fails with nothing but "wrong password"');
   else fail('a wrong password fails with nothing but "wrong password"', JSON.stringify(r.wrongPassword));
 
-  /* Ticket 14: the same archive restored into another journal on the real
-     platform, where a Replace is a dozen deletes and every insert inside one
-     BEGIN/COMMIT through the SQLite worker. */
+  /* The same archive restored into another journal on the real platform, where a Replace is
+     a dozen deletes and every insert inside one BEGIN/COMMIT through the SQLite worker. */
   const restored = r.restored ?? {};
   if (
     restored.entries === 1 &&
@@ -686,7 +680,7 @@ await block('ticket 13 browser tier', 10, async () => {
   console.log('INFO  cross-platform archive round-trips are verified in tests/android-tier');
 });
 
-// --- Ticket 09: at-rest encryption, gated by the closed-app scan -
+// --- at-rest encryption, gated by the closed-app scan -
 await block('ticket 09 (phase 2) browser tier', 10, async () => {
   const r = await load('/encryption.html', 'encryption-probe');
   if (r.error) throw new Error(r.error);
@@ -778,7 +772,7 @@ await block('legacy storage refusal', 3, async () => {
   else fail('legacy refusal leaves files untouched', JSON.stringify(r));
 });
 
-// --- Ticket 04: when a waiting release may take over ------------
+// --- when a waiting release may take over ------------
 await block('ticket 04 (phase 2) update guard', 5, async () => {
   const r = await load('/update.html', 'update-probe');
   if (r.error) throw new Error(r.error);
@@ -826,7 +820,7 @@ await block('ticket 04 (phase 2) update guard', 5, async () => {
     );
 });
 
-// --- Ticket 04: forward migration, refusal and the copy ---------
+// --- forward migration, refusal and the copy ---------
 await block('ticket 04 (phase 2) migration and rollback', 10, async () => {
   const r = await load('/migration.html', 'migration-probe');
   if (r.error) throw new Error(r.error);
@@ -916,7 +910,7 @@ await block('ticket 04 (phase 2) migration and rollback', 10, async () => {
   else fail('a clean boot after the restore retires the copy', JSON.stringify(r.copyAfterRestoredBoot));
 });
 
-// --- Ticket 27: the photo journey export, against a real canvas and MediaRecorder ---
+// --- the photo journey export, against a real canvas and MediaRecorder ---
 await block('ticket 27 photo journey export', 20, async () => {
   const r = await load('/journey.html', 'journey-probe');
   if (r.error) throw new Error(r.error);
@@ -971,9 +965,9 @@ await block('ticket 27 photo journey export', 20, async () => {
     ok('a photo with no file, reclaimed or never stored, leaves a gap rather than failing the whole export');
   else fail('a photo with no file leaves a gap', `rendered: ${r.missingPhotoStillRendered}, ${JSON.stringify(r.gapColour)}`);
 
-  /* Ticket 27's out-of-scope line: no "upscaling beyond what the
-     already-normalized source photos support". A 200px photo in a 360px cell
-     sits at 200px, so the cell corner is still surround. */
+  /* Out-of-scope line: no "upscaling beyond what the already-normalized source photos
+     support". A 200px photo in a 360px cell sits at 200px, so the cell corner is still
+     surround. */
   if (near(r.tinyCentreColour, GREEN) && near(r.tinyCornerColour, SURROUND))
     ok(`a photo smaller than its cell is centred at its own size, not stretched to fill (200px in a ${r.tinyCell}px cell)`);
   else
@@ -1013,7 +1007,7 @@ await block('ticket 27 photo journey export', 20, async () => {
   if (r.recordingTookMs >= 2000) ok(`recording runs in real time, as the duration estimate says (${r.recordingTookMs}ms for 3 photos)`);
   else fail('recording runs in real time', `${r.recordingTookMs}ms for 3 photos at 700ms each`);
 
-  // --- generating is not sharing (ticket 27's whole posture) --------------
+  // --- generating is not sharing --------------
   if (r.shareCallsAfterGenerating === 0)
     ok('a collage and a timelapse both exist and nothing has been shared: generating transmits nothing');
   else fail('generating transmits nothing', `navigator.share was called ${r.shareCallsAfterGenerating} time(s)`);
@@ -1035,7 +1029,7 @@ await block('ticket 27 photo journey export', 20, async () => {
   else fail('the share sheet receives the generated collage', JSON.stringify(shared.sharedFile));
 });
 
-// --- Phase 5 ticket 22: the video note re-encode ---------------------------
+// --- the video note re-encode ---------------------------
 await block('phase 5 ticket 22 video note re-encode', 9, async () => {
   const r = await load('/video-notes.html', 'video-note-probe');
   if (r.error) throw new Error(r.error);
@@ -1048,9 +1042,8 @@ await block('phase 5 ticket 22 video note re-encode', 9, async () => {
     ok(`startVideoRecording() produces a real capture off the fake camera (${(r.sourceSize / 1024) | 0}KB)`);
   else fail('startVideoRecording() produces a real capture', `captured: ${r.captured}, ${r.sourceSize} bytes`);
 
-  /* The claim ticket 22 actually makes: a file over the ceiling is
-     compressed further rather than accepted as-is. Size is the whole point,
-     so this is the assertion that matters. */
+  /* A file over the ceiling is compressed further rather than accepted as-is. Size is the
+     whole point, so this is the assertion that matters. */
   if (r.reencodedSize !== null && r.reencodedSize < r.sourceSize)
     ok(
       `re-encoding compresses an oversized capture rather than accepting it (${(r.sourceSize / 1024) | 0}KB to ${(r.reencodedSize / 1024) | 0}KB)`
@@ -1068,7 +1061,7 @@ await block('phase 5 ticket 22 video note re-encode', 9, async () => {
     ok('the re-encoded file is still the same video, not an empty one of the right length');
   else fail('the re-encoded file is still the same video', JSON.stringify(r.reencodedFrame));
 
-  // 480p in, 480p out. Ticket 22's 1080p is a cap, and upscaling would only
+  // 480p in, 480p out. 1080p is a cap, and upscaling would only
   // spend bits on detail that is not there (ADR-0008's rule for photos).
   if (r.reencodedFrame?.height === r.sourceFrame.height && r.reencodedFrame.height < r.maxShortEdge)
     ok(`a capture below the ${r.maxShortEdge}p cap keeps its own size rather than being upscaled to it`);
@@ -1082,10 +1075,10 @@ await block('phase 5 ticket 22 video note re-encode', 9, async () => {
     ok('the target comes from limits.ts, so the probe exercises the real decision');
   else fail('the target comes from limits.ts', JSON.stringify(r.targetForOversized));
 
-  /* A video note is video AND audio (ticket 22's scope line). reencode.ts has
-     to mute the <video> it plays to satisfy the autoplay policy, so this is
-     the check that the mute does not also silence the track it carries over -
-     the failure it guards against would store every note without its sound. */
+  /* A video note is video AND audio. reencode.ts has to mute the <video> it plays to
+     satisfy the autoplay policy, so this is the check that the mute does not also silence
+     the track it carries over - the failure it guards against would store every note
+     without its sound. */
   if (r.sourceHasAudio && r.reencodedHasAudio)
     ok('the re-encode carries the audio over, so speech survives what the picture gives up');
   else
@@ -1099,7 +1092,7 @@ await block('phase 5 ticket 22 video note re-encode', 9, async () => {
   else fail('a file the browser cannot decode yields null', `got ${r.undecodableGivesNull}`);
 });
 
-// --- Phase 5 ticket 30: the control kit, measured rather than assumed ------
+// --- the control kit, measured rather than assumed ------
 /* The 48px floor is the one thing in this ticket that cannot be read off a
    stylesheet: min-height on a class says nothing about what the element it
    ends up on actually measures, which is exactly how the switch shipped 48px
@@ -1193,9 +1186,9 @@ await block('phase 5 ticket 30 control kit', 23, async () => {
     }
   }
 
-  /* The press. .btn's transform is the one this ticket moved onto a token,
-     and a token that resolves to nothing is a control with no press at all -
-     which is the state ticket 29 found on Android and no test could see. */
+  /* The press..btn's transform is the one moved onto a token, and a token that resolves to
+     nothing is a control with no press at all - which is the state found on Android and no
+     test could see. */
   const pressed = await page.evaluate(() => {
     const read = (el) => getComputedStyle(el).transform;
     const btn = document.querySelector('.btn');
@@ -1304,7 +1297,7 @@ await block('phase 5 ticket 30 control kit', 23, async () => {
   else fail('reduced motion takes all three press depths to 1', JSON.stringify(reduced));
 });
 
-// --- Phase 9 audit ticket 07: Segmented's radiogroup takes arrow keys ------
+// --- Segmented's radiogroup takes arrow keys ------
 /* Still on controls.html from the block above. svelte-check's warning named
    two composite radiogroups Tab walked one stop per option rather than one
    stop for the group - this is the keyboard half a unit test can't see,
@@ -1343,7 +1336,7 @@ await block('phase 9 audit ticket 07 segmented keyboard nav', 4, async () => {
   else fail('ArrowLeft moves back to the previous segment', afterLeft);
 });
 
-// --- Phase 9 audit ticket 07: MoodChips' radiogroup takes arrow keys -------
+// --- MoodChips' radiogroup takes arrow keys -------
 await block('U03 radio selection and disabled choices', 2, async () => {
   await checkRadioGroup(page, page.locator('[data-segmented="range"]'));
   ok('Segmented: Space, arrows, Tab re-entry and disabled choices');
@@ -1459,7 +1452,7 @@ await block('release blockers 09 switch semantics and keyboard', 5, async () => 
   else fail('a second Space flips it back', back);
 });
 
-// --- Ticket 09: bar and donut hover interactivity ---------------------------
+// --- bar and donut hover interactivity ---------------------------
 /* A mouse hover and a keyboard focus are both real DOM events Playwright can
    drive; a finger is the one input this suite has to fake, since headless
    Chromium has nothing to tap with. dispatchEvent gives pointerType: 'touch'
@@ -1541,7 +1534,7 @@ await block('ticket 09 chart hover interactivity', 10, async () => {
   else fail('Enter again toggles the reveal back off', shareAfterSecondEnter);
 });
 
-// --- Phase 5 audit ticket 03: what a grid of photos actually reads ---------
+// --- what a grid of photos actually reads ---------
 await block('phase 5 audit ticket 03 thumbnail grid', 5, async () => {
   await page.setViewportSize({ width: 400, height: 600 });
   const thumbs = await load('/thumbs.html', 'thumbs');
@@ -1589,7 +1582,7 @@ await block('phase 5 audit ticket 03 thumbnail grid', 5, async () => {
     );
 });
 
-// --- Phase 5 audit deepening ticket 03: a read declares what it computes --
+// --- a read declares what it computes --
 try {
   const live = await load('/live-reads.html', 'live-reads-probe');
   if (live.error) throw new Error(live.error);
@@ -1632,9 +1625,8 @@ try {
       live.narrowed.error ?? `still ${live.narrowed.afterEntry} run(s)`
     );
 
-  /* Phase 8 audit ticket 13: a read fed the ids a live list beside it
-     holds depends on that list as well as on its own tables. Both halves
-     have to reach it. */
+  /* A read fed the ids a live list beside it holds depends on that list as well as on its
+     own tables. Both halves have to reach it. */
   if (live.feltSense.runsAfterTryout > live.feltSense.runsBefore && live.feltSense.latestDay === live.feltSense.expectedDay)
     ok('a read fed a live list re-runs for the list it reads and for the table it asks');
   else
@@ -1686,7 +1678,7 @@ for (const cpu of [1, 4]) {
   });
 }
 
-// --- ux-carpet 201: a revisit paints the last answer, a lock forgets it ----
+// --- a revisit paints the last answer, a lock forgets it ----
 try {
   const live = await load('/live-reads.html', 'live-reads-probe');
   if (live.error) throw new Error(live.error);
@@ -1708,7 +1700,7 @@ try {
   fail('ux-carpet 201 last answers', e.message ?? String(e));
 }
 
-// --- Phase 8 audit ticket 14: a seeded query declares its tables on the
+// --- a seeded query declares its tables on the
 // first pass, so it settles in one run rather than discovering a late read
 // and paying for a second ---------------------------------------------------
 try {
@@ -1736,7 +1728,7 @@ try {
   fail('phase 8 audit ticket 14 seeded live reads', e.message ?? String(e));
 }
 
-// --- Phase 8 audit ticket 15: search waits for the typist ------------------
+// --- search waits for the typist ------------------
 try {
   const live = await load('/live-reads.html', 'live-reads-probe');
   if (live.error) throw new Error(live.error);
@@ -1758,7 +1750,7 @@ try {
   fail('phase 8 audit ticket 15 search waits for the typist', e.message ?? String(e));
 }
 
-// --- Phase 5 audit deepening ticket 09: a dependent read waits for its record
+// --- a dependent read waits for its record
 await block('ticket 09 detail draft', 3, async () => {
   const detail = await load('/detail-draft.html', 'detail-draft-probe');
   if (detail.error) throw new Error(detail.error);
@@ -1789,7 +1781,7 @@ await block('ticket 09 detail draft', 3, async () => {
   else fail('the entries in the tryout range arrive either way', 'no entries found in range');
 });
 
-// --- Phase 5 audit deepening ticket 10: a field cannot render a control
+// --- a field cannot render a control
 // without an association - Field.svelte mints the id when a screen has no
 // reason to name one, and hands the same string to the label and the
 // control either way.
@@ -1843,12 +1835,10 @@ await block('phase 5 audit deepening ticket 10 field association', 5, async () =
   else fail('a hidden field still gives its control a real for/id pair, just off screen', JSON.stringify(hiddenField));
 });
 
-/* Phase 5 deepening ticket 21. "A section with no rows renders no DOM" is
-   an acceptance criterion, and it is a DOM fact about the real component
-   rather than anything the node tier can see - dayRows.ts imports paraglide
-   and $lib, neither of which resolves under vitest.config.ts. The gallery
-   fixture already mounts DayRecords.svelte against the real cascade, so
-   this drives it. */
+/* "A section with no rows renders no DOM" is an acceptance criterion, and it is a DOM fact
+   about the real component rather than anything the node tier can see - dayRows.ts imports
+   paraglide and $lib, neither of which resolves under vitest.config.ts. The gallery fixture
+   already mounts DayRecords.svelte against the real cascade, so this drives it. */
 await block('phase 5 deepening ticket 21 day composition', 9, async () => {
   await page.goto(`http://localhost:${port}/day.html`, { waitUntil: 'networkidle' });
   await page.waitForSelector('body[data-day-ready]', { state: 'attached' });
@@ -1938,18 +1928,16 @@ await block('phase 5 deepening ticket 21 day composition', 9, async () => {
     ok(`the overflow opens a sheet holding the whole list, all ${opened.rows} rows`);
   else fail('the overflow opens a sheet holding the whole list', JSON.stringify(opened));
 
-  /* The count on that row is what is hidden, not what exists: the whole
-     list the sheet drew, less the five the card showed. Both halves are
-     read from the page and the arithmetic is the assertion, because the
-     card's label and the sheet's list are two code paths over one day - a
-     sheet that drew ten rows would leave the card's "21 more" disagreeing
-     with it and fail here.
+  /* The count on that row is what is hidden, not what exists: the whole list the sheet
+     drew, less the five the card showed. Both halves are read from the page and the
+     arithmetic is the assertion, because the card's label and the sheet's list are two code
+     paths over one day - a sheet that drew ten rows would leave the card's "21 more"
+     disagreeing with it and fail here.
 
-     Written out as numbers until phase 9 audit ticket 12: the day held 24
-     rows and the label said 19, and both were literals here. Registering
-     the appointment and document areas made it 26 and 21, the app was
-     right both times, and the test failed on main for weeks naming the
-     numbers it had been told rather than the ones the screen drew. */
+     Written out as numbers until the day held 24 rows and the label said 19, and both were
+     literals here. Registering the appointment and document areas made it 26 and 21, the
+     app was right both times, and the test failed on main for weeks naming the numbers it
+     had been told rather than the ones the screen drew. */
   const hidden = opened.rows - maximal.rows;
   if (maximal.moreLabel && maximal.moreLabel.includes(String(hidden)))
     ok(`the overflow row counts what is hidden rather than what the day holds (${hidden} of ${opened.rows})`);
@@ -1968,13 +1956,12 @@ await block('phase 5 deepening ticket 21 day composition', 9, async () => {
   else fail('three hair photos are one row and two doses are two rows', `${hairRows} photo rows, ${doseRows} dose rows`);
 });
 
-/* Phase 11 ticket 19: a dose row names the drug it carries, so concurrent
-   regimens at the same amount and route stay two rows before either is
-   opened, and a dose nothing attributes to says so instead of inventing a
-   name. The fixture states the attribution facts directly - they are what
-   the route resolves with attributeDrug and passes down; what this drives
-   is the wording, which lives in dayRows.ts and is the part a node-tier
-   test cannot reach (dayRows.ts imports paraglide and $lib). */
+/* A dose row names the drug it carries, so concurrent regimens at the same amount and route
+   stay two rows before either is opened, and a dose nothing attributes to says so instead
+   of inventing a name. The fixture states the attribution facts directly - they are what
+   the route resolves with attributeDrug and passes down; what this drives is the wording,
+   which lives in dayRows.ts and is the part a node-tier test cannot reach (dayRows.ts
+   imports paraglide and $lib). */
 await block('phase 11 ticket 19 day dose rows name their drug', 3, async () => {
   await page.goto(`http://localhost:${port}/day.html`, { waitUntil: 'networkidle' });
   await page.waitForSelector('body[data-day-ready]', { state: 'attached' });
@@ -2014,7 +2001,7 @@ await block('phase 11 ticket 19 day dose rows name their drug', 3, async () => {
   else fail('a dose older than every episode says so rather than borrowing today’s regimen', JSON.stringify(uncovered));
 });
 
-// --- Phase 5 deepening ticket 15: the voice benchmark engine ---------------
+// --- the voice benchmark engine ---------------
 await block('phase 5 deepening ticket 15 voice benchmark engine', 6, async () => {
   const r = await load('/voice-benchmark.html', 'voice-benchmark-probe');
   if (r.error) throw new Error(r.error);
@@ -2055,7 +2042,7 @@ await block('phase 5 deepening ticket 15 voice benchmark engine', 6, async () =>
   else fail('a take pushed into the rails is caught while it is happening', `peak ${r.loudPeak}, ${JSON.stringify(r.loudFailed)}`);
 });
 
-// --- Phase 8 features ticket 28: the chain a take was recorded through ----
+// --- the chain a take was recorded through ----
 await block('phase 8 features ticket 28 capture chain', 2, async () => {
   const r = await load('/voice-benchmark.html', 'voice-benchmark-probe');
   if (r.error) throw new Error(r.error);
@@ -2078,7 +2065,7 @@ await block('phase 8 features ticket 28 capture chain', 2, async () => {
   else fail('the flags come off the track rather than from the request', `${unprocessed} against ${processed}`);
 });
 
-// --- Phase 8 features ticket 09: the stored track, and the figure drawn on
+// --- the stored track, and the figure drawn on
 //     the absolute axis, both off a real recording -------------------------
 await block('phase 8 features ticket 09 voice figure', 7, async () => {
   const r = await load('/voice-benchmark.html', 'voice-benchmark-probe');
@@ -2166,7 +2153,7 @@ await block('entry capture ownership', 14, async () => {
   else fail('actual video duration cap', JSON.stringify(r.cap));
 });
 
-// --- Phase 8 audit ticket 03: closing the microphone when the screen goes -
+// --- closing the microphone when the screen goes -
 await block('phase 8 audit ticket 03 mic teardown', 7, async () => {
   const r = await load('/mic-teardown.html', 'mic-teardown-probe');
   if (r.error) throw new Error(r.error);
@@ -2203,7 +2190,7 @@ await block('phase 8 audit ticket 03 mic teardown', 7, async () => {
 
 });
 
-// --- Ticket 16: the draft mirror's stale-removal repro,
+// --- the draft mirror's stale-removal repro,
 //     and that clearing it on save (EntryEditor.svelte's fix) closes it.
 await block('ticket 16 browser tier', 10, async () => {
   const r = await load('/draft-mirror.html', 'draft-mirror-probe');
@@ -2252,8 +2239,8 @@ await block('ticket 16 browser tier', 10, async () => {
   else fail('the re-save no longer throws', after.resaveError);
 });
 
-/* --- Ticket 27: the metric reference, and that the
-       sentence under a figure lands on that figure's own section. --- */
+/* --- the metric reference, and that the sentence under a figure lands on that figure's own
+       section. --- */
 await block('ticket 27 browser tier', 7, async () => {
   const r = await load('/voice-metrics.html', 'voice-metrics-probe');
   if (r.error) throw new Error(r.error);
@@ -2312,8 +2299,7 @@ await block('ticket 27 browser tier', 7, async () => {
   else fail('the whole table carries one reviewed-on date', JSON.stringify(reviewed));
 });
 
-/* --- Redesign ticket 42: the pitch density, and the figure blocks that
-       replaced the definition list. --- */
+/* --- the pitch density, and the figure blocks that replaced the definition list. --- */
 await block('redesign ticket 42 browser tier', 9, async () => {
   const r = await load('/voice-density.html', 'voice-density-probe');
   if (r.error) throw new Error(r.error);
@@ -2346,9 +2332,9 @@ await block('redesign ticket 42 browser tier', 9, async () => {
     ok(`the shape is a 2px square-capped series with no fill, on a 1px guide spine (${outline.stroke})`);
   else fail('the shape is a 2px square-capped series with no fill, on a 1px guide spine', JSON.stringify({ outline, spine }));
 
-  /* Phase 15 ticket 20: a line whose stripe is under 3:1 on the field is
-     drawn on a casing in the role's edge - the trace, the density's outline
-     and a figure's history line alike. Removing a casing fails here. */
+  /* A line whose stripe is under 3:1 on the field is drawn on a casing in the role's edge -
+     the trace, the density's outline and a figure's history line alike. Removing a casing
+     fails here. */
   const cased = Object.entries(drawn.casings).filter(([, c]) => !isCased(c));
   if (drawn.edge && cased.length === 0)
     ok(`the trace, the outline and the history lines each sit on a casing in the role's edge (${drawn.edge})`);
@@ -2380,8 +2366,8 @@ await block('redesign ticket 42 browser tier', 9, async () => {
   else fail('a change of capture chain takes the history off every figure at once', JSON.stringify(broken));
 });
 
-/* --- Ticket 29: the own-series trends, and that a
-       change of capture chain arrives as a break with a reason in it. --- */
+/* --- the own-series trends, and that a change of capture chain arrives as a break with a
+       reason in it. --- */
 await block('ticket 29 browser tier', 7, async () => {
   const r = await load('/voice-own-series.html', 'voice-own-series-probe');
   if (r.error) throw new Error(r.error);
@@ -2432,11 +2418,10 @@ await block('ticket 29 browser tier', 7, async () => {
   if (banded.length === 0) ok('no band, target region or heat ramp is drawn on any of the six');
   else fail('no band, target region or heat ramp is drawn on any of the six', JSON.stringify(banded));
 
-  /* Native units, on the plot itself rather than under a finger: every
-     plot has to carry the ends of its own scale, written in the figure's
-     own unit (ADR-0012). A scrub readout would not do - a card that says
-     nothing until it is touched is the axis-free strip ticket 09 already
-     rejected. */
+  /* Native units, on the plot itself rather than under a finger: every plot has to carry
+     the ends of its own scale, written in the figure's own unit (ADR-0012). A scrub readout
+     would not do - a card that says nothing until it is touched is the axis-free strip
+     already rejected. */
   const units = {
     span: /Hz/,
     spread: /semitone/,
@@ -2480,7 +2465,7 @@ await block('entry contextual text survives typing and clears before save', 1, a
   ok('new and existing entries preserve typed spaces and newlines, trim on save, and save cleared recovery without a note');
 });
 
-// --- Phase 8 audit ticket 25: a screen's own decision, read as a value -----
+// --- a screen's own decision, read as a value -----
 /* The first check here that mounts a whole screen and asks what it decided.
    Everything else in this file drives a module or a gallery; the entry
    editor is a component that only runs mounted. See entry-editor-probe.ts on
@@ -2504,11 +2489,10 @@ await block('phase 8 audit ticket 25 entry editor', 10, async () => {
     recoveryHref: '/'
   });
 
-  /* Tester report 02, ticket 03: a new entry saved from its first step.
-     The face alone writes the mood and nothing else; a face and one moved
-     scale write exactly that scale, and every scale left alone writes
-     nothing. Both fail on an editor that opens on the note, which has no
-     first step to finish on. */
+  /* A new entry saved from its first step. The face alone writes the mood and nothing else;
+     a face and one moved scale write exactly that scale, and every scale left alone writes
+     nothing. Both fail on an editor that opens on the note, which has no first step to
+     finish on. */
   eq('a first step finished with a face alone saves that mood and nothing else', r.firstStepMoodOnly, {
     mood: 4, dims: {}, note: '', tags: [], shownValue: null
   });
@@ -2517,12 +2501,11 @@ await block('phase 8 audit ticket 25 entry editor', 10, async () => {
     mood: moved.mood, scales: Object.keys(moved.dims).length, value: String(Object.values(moved.dims)[0]), note: moved.note
   }, { mood: 2, scales: 1, value: moved?.shownValue, note: '' });
 
-  /* Tester report 02, ticket 04: the second step. A save from it writes what
-     the first step set and what the second added (a mode, a tag chosen on the
-     page with no chip opened first, the note, the star), through the same
-     finish control the first step has. Its parts stand in the order Alicja
-     chose, the note and the attachments last, and a step back keeps the draft.
-     All fail on the old single page, which has no tags open and the note first. */
+  /* The second step. A save from it writes what the first step set and what the second
+     added (a mode, a tag chosen on the page with no chip opened first, the note, the star),
+     through the same finish control the first step has. Its parts stand in display order,
+     the note and the attachments last, and a step back keeps the draft. All fail on the old
+     single page, which has no tags open and the note first. */
   const second = r.secondStepSave;
   eq('a second step finished saves what both steps set', second && {
     mood: second.mood, scales: Object.keys(second.dims).length, note: second.note, tags: second.tags,
@@ -2545,11 +2528,10 @@ await block('phase 8 audit ticket 25 entry editor', 10, async () => {
   }, { count: 1, same: true });
 });
 
-/* Tester report 02, ticket 09: a step with nothing to show is not drawn. Every
-   body region hidden and no card offered, on its own page load (?skipBody=1)
-   so the hidden regions cannot reach the cases above: the walk goes from the
-   marks step straight to the note, and the progress has three segments. It
-   fails on an editor that draws the body step regardless. */
+/* A step with nothing to show is not drawn. Every body region hidden and no card offered,
+   on its own page load (?skipBody=1) so the hidden regions cannot reach the cases above:
+   the walk goes from the marks step straight to the note, and the progress has three
+   segments. It fails on an editor that draws the body step regardless. */
 await block('tester report 02 ticket 09 a step with nothing to show is skipped', 2, async () => {
   const r = await load('/entry-editor.html?skipBody=1', 'entry-editor-probe');
   if (r.error) throw new Error(r.error);
@@ -2562,12 +2544,11 @@ await block('tester report 02 ticket 09 a step with nothing to show is skipped',
   eq('the progress counts the three steps shown', v?.segments, ['today', 'marks', 'writing']);
 });
 
-/* Tester report 02, ticket 03, box 5: a person who has unticked every scale
-   gets the faces alone on a new entry's first step, with both ways on in view
-   at 360x640. It is its own page load (?hideScales=1) in a phone-sized window,
-   so unticking the scales cannot reach the cases above. It fails when the step
-   draws the scales block regardless (a heading, a slider, a hint), and when
-   the window pushes either control off the screen. */
+/* Box 5: a person who has unticked every scale gets the faces alone on a new entry's first
+   step, with both ways on in view at 360x640. It is its own page load (?hideScales=1) in a
+   phone-sized window, so unticking the scales cannot reach the cases above. It fails when
+   the step draws the scales block regardless (a heading, a slider, a hint), and when the
+   window pushes either control off the screen. */
 await block('tester report 02 ticket 03 first step with every scale hidden', 7, async () => {
   const previous = page.viewportSize();
   try {
@@ -2592,16 +2573,14 @@ await block('tester report 02 ticket 03 first step with every scale hidden', 7, 
   }
 });
 
-/* Phase 8 features ticket 55: the PDF renderer.
+/* The PDF renderer.
 
-   Node cannot run any of this - the worker, the canvases and the font
-   directory are all browser-side - and the walkthrough drives the screen
-   rather than the renderer. What is left, and what is here, is that the
-   library the app pinned actually draws a page from bytes, that its text
-   comes out (which is a check on the local font directory, since the
-   fixture names a standard face it does not carry), and that the two
-   failures the screen has copy for really are the two the module
-   produces. */
+   Node cannot run any of this - the worker, the canvases and the font directory are all
+   browser-side - and the walkthrough drives the screen rather than the renderer. What is
+   left, and what is here, is that the library the app pinned actually draws a page from
+   bytes, that its text comes out (which is a check on the local font directory, since the
+   fixture names a standard face it does not carry), and that the two failures the screen
+   has copy for really are the two the module produces. */
 await block('phase 8 features ticket 55 PDF renderer', 8, async () => {
   const r = await load('/pdf.html', 'pdf');
   if (r.error) throw new Error(r.error);
@@ -2663,7 +2642,7 @@ await block('phase 8 features ticket 55 PDF renderer', 8, async () => {
     );
 });
 
-// --- Phase 8 features ticket 66: a long list renders a batch at a time ----
+// --- a long list renders a batch at a time ----
 await block('phase 8 features ticket 66 batched list', 8, async () => {
   const r = await load('/batched-list.html', 'batched-list');
   if (r.error) throw new Error(r.error);
@@ -2691,8 +2670,8 @@ await block('phase 8 features ticket 66 batched list', 8, async () => {
     ok('the list runs out at its own length and the control goes with it');
   else fail('the list exhausts and drops its control', JSON.stringify(r));
 
-  /* Ticket 67: a deep link's row (index 47, the second batch of thirty)
-     renders in one step, not by growing a batch at a time. */
+  /* A deep link's row (index 47, the second batch of thirty) renders in one step, not by
+     growing a batch at a time. */
   eq('a deep link past the first batch renders exactly enough batches to include the row', r.onFocusArrival, 60);
 
   /* And leaving that expanded list and coming back with no link in hand
@@ -2701,7 +2680,7 @@ await block('phase 8 features ticket 66 batched list', 8, async () => {
   eq('a link-expanded list is not what a later, link-free visit remembers', r.onReturnAfterFocus, 30);
 });
 
-// --- Ticket redesign-30: the lock step splits choosing from typing --------
+// --- the lock step splits choosing from typing --------
 await block('ticket redesign-30 the lock step splits in two', 2, async () => {
   /* The gates fixture, not a probe page: this is the
      real JournalGate over the real stylesheets, moved into the same
@@ -2710,14 +2689,12 @@ await block('ticket redesign-30 the lock step splits in two', 2, async () => {
   await page.waitForSelector('body[data-gates-ready]', { state: 'attached' });
   await page.setViewportSize({ width: 320, height: 568 });
 
-  /* The baseline this ticket did not create: GateScreen's mark and title
-     plus PinPad's own touch-target keypad already overflow 320x568 on
-     today's plain PIN unlock gate, before this ticket's screen ever
-     existed. Read before the split screen, so the check below is against
-     what the shared gate shell actually costs rather than against the
-     no-scroll rule ticket 29 states for the sizes it names - closing that
-     rule needs GateScreen and PinPad sized for a short viewport, which is
-     ticket 34's "the gates" look, not this ticket's structural split. */
+  /* The baseline did not create: GateScreen's mark and title plus PinPad's own touch-target
+     keypad already overflow 320x568 on today's plain PIN unlock gate, in older versions's
+     screen ever existed. Read before the split screen, so the check below is against what
+     the shared gate shell actually costs rather than against the no-scroll rule states for
+     the sizes it names - closing that rule needs GateScreen and PinPad sized for a short
+     viewport, which is "the gates" look, not structural split. */
   await page.selectOption('select[aria-label="Scene"]', 'unlock-pin');
   await page.waitForSelector('[data-pin-pad]');
   const baseline = await page.locator('.app-main').evaluate((el) => el.scrollHeight);
@@ -2729,9 +2706,9 @@ await block('ticket redesign-30 the lock step splits in two', 2, async () => {
   await page.locator('[data-access-continue]').click();
   await page.waitForSelector('[data-access-secret="pin"]');
 
-  /* Screen two carries one instruction and the pad, and nothing else
-     (ticket 30's scope): the consequence and the export note both moved to
-     screen one, and neither should have followed the pad here. */
+  /* Screen two carries one instruction and the pad, and nothing else: the consequence and
+     the export note both moved to screen one, and neither should have followed the pad
+     here. */
   const carriedOver = await page.locator('.am-secret .am-notice, .am-secret [data-access-export-note]').count();
   if (carriedOver === 0) ok('the secret screen carries no consequence text or export note - both stayed on screen one');
   else fail('the secret screen carries no consequence text or export note', `${carriedOver} node(s) found`);
@@ -2754,10 +2731,10 @@ await block('ticket redesign-30 the lock step splits in two', 2, async () => {
 
 // --- Ticket U08: the gate's own prompt only where authentication is viable -
 await block('ticket U08 browser tier', 7, async () => {
-  /* 7 ok/fail calls: three states, the gate-held invariant, no sheet
-     anywhere, no-lock silence then one fire after repair, and the three
-     outcomes staying distinguishable. Lock-timing ticket 01 removed the
-     consent question, so the prompt fires on its own wherever it can. */
+  /* 7 ok/fail calls: three states, the gate-held invariant, no sheet anywhere, no-lock
+     silence then one fire after repair, and the three outcomes staying distinguishable.
+     Lock-timing removed the consent question, so the prompt fires on its own wherever it
+     can. */
   const r = await load('/android-consent.html', 'android-consent-probe');
   if (r.error) throw new Error(r.error);
 
@@ -2791,7 +2768,7 @@ await block('ticket U08 browser tier', 7, async () => {
   else fail('cancellation, failure and key loss stay distinguishable', JSON.stringify(u));
 });
 
-// --- Ticket 141: batching the demo seed's writes -----------------------
+// --- batching the demo seed's writes -----------------------
 await block('ticket 141 demo seed write batching', 3, async () => {
   const r = await load('/demo-seed-batching.html', 'demo-seed-batching-probe');
   if (r.error) throw new Error(r.error);

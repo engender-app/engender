@@ -1,6 +1,5 @@
-/* Ticket 09 characterization: pins the mapping that already worked (home,
-   calendar, stats, settings) so the refactor to a table only changes the
-   seven routes that lit no tab at all. */
+/* Characterization: pins the mapping that already worked (home, calendar, stats, settings)
+   so the refactor to a table only changes the seven routes that lit no tab at all. */
 import { describe, expect, it } from 'vitest';
 
 import { activeTabKey, borrowsTab, litTabKey, RAIL_SETTINGS, railTabKey } from './active-tab.ts';
@@ -19,9 +18,8 @@ describe('activeTabKey', () => {
   it('lights stats for stats and every wrapped view', () => {
     expect(activeTabKey('/stats')).toBe('stats');
     expect(activeTabKey('/wrapped')).toBe('stats');
-    /* The arbitrary range recap used to own is a wrapped now (phase 5 UX
-       ticket 23, spec 07), so the tab it lights comes from the /wrapped
-       prefix rather than from a prefix of the deleted route's own. */
+    /* The arbitrary range recap used to own is a wrapped now, so the tab it lights comes
+       from the /wrapped prefix rather than from a prefix of the deleted route's own. */
     expect(activeTabKey('/wrapped/month')).toBe('stats');
     expect(activeTabKey('/wrapped/month')).toBe('stats');
   });
@@ -50,12 +48,11 @@ describe('activeTabKey', () => {
     expect(activeTabKey('/settings/access-mode', 'calendar')).toBe('calendar');
   });
 
-  /* Phase 14 ticket 15 (V14): every screen under /settings follows the
-     chrome rule above, with no exceptions. Eras lit the fourth door and the
-     ignore list lit Look back whatever the person had come from, while
-     tags borrowed - settings subpages answering
-     different needs. Each of them now lights the tab the gear (or the
-     link) was pressed from, and Today on a cold load, like the hub. */
+  /* Every screen under /settings follows the chrome rule above, with no exceptions. Eras
+     lit the fourth door and the ignore list lit Look back whatever the person had come
+     from, while tags borrowed - settings subpages answering different needs. Each of them
+     now lights the tab the gear (or the link) was pressed from, and Today on a cold load,
+     like the hub. */
   it('lets every settings subpage borrow its origin, eras included', () => {
     for (const path of ['/settings/eras', '/settings/tags', '/settings/trash']) {
       expect(activeTabKey(path, 'calendar'), path).toBe('calendar');
@@ -82,19 +79,18 @@ describe('activeTabKey', () => {
     expect(activeTabKey('/care/labs')).toBe('settings');
   });
 
-  /* Features ticket 33: the 23 hub-row screens moved off /settings/<slug>
-     onto their own HubGroupKey-named address, and the tab still has to
-     light for all of them - one case per new prefix, not per moved route,
-     since the table matches on prefix rather than on the full path. */
+  /* Features the 23 hub-row screens moved off /settings/<slug> onto their own
+     HubGroupKey-named address, and the tab still has to light for all of them - one case
+     per new prefix, not per moved route, since the table matches on prefix rather than on
+     the full path. */
   it('lights settings for every group the hub rows moved onto', () => {
     expect(activeTabKey('/health/surgery')).toBe('settings');
     expect(activeTabKey('/transition/milestones')).toBe('settings');
     expect(activeTabKey('/media/photos')).toBe('settings');
   });
 
-  /* All-four-doors ticket 21: the retired Practice prefix's own screens
-     moved to addresses that say which door group holds them, and the tab
-     they light is unchanged - `/voice` alone got no door prefix. */
+  /* The retired Practice prefix's own screens moved to addresses that say which door group
+     holds them, and the tab they light is unchanged - `/voice` alone got no door prefix. */
   it('lights settings for every address the retired Practice prefix left behind', () => {
     expect(activeTabKey('/care/changes')).toBe('settings');
     expect(activeTabKey('/body/wear')).toBe('settings');

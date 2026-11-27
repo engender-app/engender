@@ -1,16 +1,14 @@
-/* Browser-tier check for ticket 11. Two things can only be proved here:
+/* Browser-tier check. Two things can only be proved here:
 
-   normalize() needs a real decoder and a real canvas, and the claims it
-   makes are about bytes a canvas produced - that no EXIF survives
-   (ADR-0015), that the rotation the EXIF described survived instead, and
-   that a big photo comes back at 2048px. A Node-tier test could only
-   assert against a stub encoder, which would prove nothing about the one
-   that actually runs.
+   Normalize() needs a real decoder and a real canvas, and the claims it makes are about
+   bytes a canvas produced - that no EXIF survives (ADR-0015), that the rotation the EXIF
+   described survived instead, and that a big photo comes back at 2048px. A Node-tier test
+   could only assert against a stub encoder, which would prove nothing about the one that
+   actually runs.
 
-   The OPFS file store is the other: write/read/list/remove against real
-   OPFS, plus the one that matters for safety - that it works in a
-   subdirectory of its own, so the orphan sweep can never see the database
-   file SQLocal keeps in the OPFS root. */
+   The OPFS file store is the other: write/read/list/remove against real OPFS, plus the one
+   that matters for safety - that it works in a subdirectory of its own, so the orphan sweep
+   can never see the database file SQLocal keeps in the OPFS root. */
 
 import { boot } from '../../src/lib/data/sqlite/boot.ts';
 import { createEncryptedWebSqlite } from '../../src/lib/data/sqlite/mc-driver.ts';
@@ -139,14 +137,13 @@ async function run() {
   await files.remove('nothing-here.jpg');
   result.removeMissingWasQuiet = true;
 
-  /* --- the whole creation path, on the real platform --------------------
-     Everything above tests one piece. This runs the path a picked photo
-     actually takes - normalize, attach, read the row back, load the
-     thumbnail the way PhotoThumb does - against the real encrypted driver
-     and real OPFS, which is the only place it can be run at all. The Node
-     tier can do the rows and the fake store, never the canvas or OPFS.
-     The store is the app's own composition since ticket 09: per-file
-     AES-GCM over the OPFS adapter, under the same key as the database. */
+  /* --- the whole creation path, on the real platform -------------------- Everything above
+     tests one piece. This runs the path a picked photo actually takes - normalize, attach,
+     read the row back, load the thumbnail the way PhotoThumb does - against the real
+     encrypted driver and real OPFS, which is the only place it can be run at all. The Node
+     tier can do the rows and the fake store, never the canvas or OPFS. The store is the
+     app's own composition since per-file AES-GCM over the OPFS adapter, under the same key
+     as the database. */
   const journalFiles = encryptedFileStore(files, PROBE_DATA_KEY);
   const { driver, fileOps } = createEncryptedWebSqlite('photos-probe.sqlite3', PROBE_DATA_KEY);
   const booted = await boot({ createDriver: () => driver, fileOps });
@@ -183,7 +180,7 @@ async function run() {
   result.thumbFromStore = thumbBytes ? await sizeOf(thumbBytes) : null;
   result.fullIsStoredToo = (await journalFiles.read(entry!.photos[0].fileName!)) !== null;
   // And the file a thief would copy is ciphertext: no JPEG signature on
-  // the raw OPFS bytes the encrypted store wrapped (ticket 09; the
+  // the raw OPFS bytes the encrypted store wrapped (; the
   // encryption probe scans every file, this pins the photo path itself).
   const rawStored = await files.read(entry!.photos[0].fileName!);
   result.storedPhotoIsCiphertext =
@@ -224,7 +221,7 @@ async function run() {
     filePhotoPicker()
       .pick()
       .then(async (picked) => {
-        // What the editor will do with them at ticket 08: the bytes go
+        // What the editor will do with them at the bytes go
         // straight into normalize(), whatever the dialog called the files.
         const normalizedSizes = [];
         let firstBytes: number[] = [];

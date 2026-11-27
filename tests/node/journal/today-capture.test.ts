@@ -1,12 +1,10 @@
-/* Guard for after-release ticket 02: a screen must not hold on to the day it
-   was mounted on.
+/* A screen must not hold on to the day it was mounted on.
 
-   `todayEpochDay()` reads only the clock, so `const today = todayEpochDay()`
-   in a component's script, or a `$derived` whose body calls it, is computed
-   once and never again; the screen then shows yesterday after midnight.
-   `currentDay()` (src/lib/stores/today.svelte.ts) is the reactive read. Calls
-   inside a function body, which run when something happens, are fine and are
-   what writes should use. */
+   `todayEpochDay()` reads only the clock, so `const today = todayEpochDay()` in a
+   component's script, or a `$derived` whose body calls it, is computed once and never
+   again; the screen then shows yesterday after midnight. `currentDay()`
+   (src/lib/stores/today.svelte.ts) is the reactive read. Calls inside a function body,
+   which run when something happens, are fine and are what writes should use. */
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';

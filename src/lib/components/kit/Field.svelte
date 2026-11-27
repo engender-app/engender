@@ -19,14 +19,12 @@
     children
   }: {
     label: string;
-    /** Help for the control, its own paragraph under the label and pointed
-        at by the control's `aria-describedby` - the second argument
-        `children` is handed. It used to be folded into the label's own
-        text, `{label} {hint}`, which made the sentence part of the field's
-        accessible name: "Ended" and "Leave blank if there is no end date."
-        were read as one name and ran together on screen at 200% text
-        (phase 11 pre-production ticket 43). A label names, help explains,
-        and a screen reader owes them separately. */
+    /** Help for the control, its own paragraph under the label and pointed at by the
+        control's `aria-describedby` - the second argument `children` is handed. It used to
+        be folded into the label's own text, `{label} {hint}`, which made the sentence part
+        of the field's accessible name: "Ended" and "Leave blank if there is no end date."
+        were read as one name and ran together on screen at 200% text. A label names, help
+        explains, and a screen reader owes them separately. */
     hint?: string;
     /** A screen names its own id only when something else has to agree
         with it (a walkthrough handle, a fixture). Everything else is

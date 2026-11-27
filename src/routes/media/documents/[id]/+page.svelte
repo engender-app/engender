@@ -133,10 +133,9 @@
     };
   });
 
-  /* A PDF's own bytes, read once and held for as long as this screen is
-     open: the size line needs its length, and the export action needs the
-     same bytes right after - reading twice would cost a second decrypt of
-     a file that can be tens of megabytes (ticket 53's own ceiling). */
+  /* A PDF's own bytes, read once and held for as long as this screen is open: the size line
+     needs its length, and the export action needs the same bytes right after - reading
+     twice would cost a second decrypt of a file that can be tens of megabytes. */
   let pdfBytes = $state<Uint8Array | null>(null);
 
   $effect(() => {

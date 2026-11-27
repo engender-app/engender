@@ -321,9 +321,8 @@ test('selected kinds read only their own facts and preserve default marks', asyn
   assert.deepEqual(all.map((mark) => mark.kind), ['appointment', 'doseSlot', 'doseSlot']);
 });
 
-/* An episode's own span bounds its marks (after-release ticket 01, L01-09):
-   a planned end stops them, and an episode that starts later in the range
-   marks its days even though it is not active today. */
+/* An episode's own span bounds its marks: a planned end stops them, and an episode that
+   starts later in the range marks its days even though it is not active today. */
 async function weeklyFrom(journal: Awaited<ReturnType<typeof journalWithBuiltIns>>['journal'], startEpochDay: number, endEpochDay: number | null) {
   const episodeId = await journal.regimen.upsertEpisode({
     drug: 'testosterone',

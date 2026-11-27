@@ -15,7 +15,7 @@ import { appVersion, isReleaseVersion } from './app-version.mjs';
 const SECRETS = [
   /-----BEGIN [A-Z ]*PRIVATE KEY-----/,
   /-----BEGIN PGP PRIVATE KEY BLOCK-----/,
-  // Gradle's signing block, which ticket 18 will have the credentials for.
+  // Gradle's signing block, which will have the credentials for.
   /storePassword\s*=/,
   /keyPassword\s*=/
 ];
@@ -98,10 +98,9 @@ function secretsIn(directory) {
 }
 
 mkdirSync(out, { recursive: true });
-/* Clear what this script wrote last time and nothing else. A second run at a
-   different version would otherwise checksum and publish the previous
-   version's tarballs alongside its own, while anything ticket 18 left in the
-   directory has to survive. */
+/* Clear what this script wrote last time and nothing else. A second run at a different
+   version would otherwise checksum and publish the previous version's tarballs alongside
+   its own, while anything left in the directory has to survive. */
 for (const name of readdirSync(out)) {
   if (/^(engender-(web|src)-.*\.tar\.gz|SHA256SUMS|\.reproducibility-check\.tar\.gz)$/.test(name)) {
     rmSync(join(out, name));
@@ -139,8 +138,8 @@ if (leaked.length) {
   process.exit(1);
 }
 
-/* Last, so it covers whatever else is in the directory - a signed APK from
-   ticket 18 included - and never itself. */
+/* Last, so it covers whatever else is in the directory - a signed APK included - and never
+   itself. */
 const sums = readdirSync(out)
   .filter((name) => name !== 'SHA256SUMS' && statSync(join(out, name)).isFile())
   .sort()

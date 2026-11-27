@@ -20,9 +20,8 @@ import { choosePassphrase, firstRun } from './built-flow.mjs';
 // The generation manifest comes from the same recipe as the worker and APK.
 const OCR_ASSETS = JSON.parse(readFileSync('build/tesseract/assets.json', 'utf8')).assets;
 
-/* The emitted workers the shell does not install (phase 14 pre-release
-   ticket 13; shell-assets.ts has the reasoning). Named by pattern because
-   their names carry a hash. PDF fonts are checked by directory below. */
+/* The emitted workers the shell does not install (shell-assets.ts has the reasoning). Named
+   by pattern because their names carry a hash. PDF fonts are checked by directory below. */
 const PDF_WORKER = /^\/_app\/immutable\/workers\/pdf-worker-[^/]+\.js$/;
 const PHOTO_WORKER = /^\/_app\/immutable\/workers\/normalize\.worker-[^/]+\.js$/;
 const UNUSED_WORKER = /^\/_app\/immutable\/workers\/sqlite3-worker1-bundler-friendly-[^/]+\.js$/;
@@ -43,13 +42,12 @@ async function openScreen(page, origin, path) {
   await page.waitForSelector('.app[data-boot="ready"]', { timeout: 30000 });
 }
 
-/** What the release cache holds right now: its name, every path in it, and the
-    bytes it adds up to.
+/** What the release cache holds right now: its name, every path in it, and the bytes it
+    adds up to.
 
-    Measured rather than derived from the file list, because what a first visit
-    actually costs is what the browser stored, and the two came apart once
-    already: the audit found a 54.06 MB shell whose asset list read as
-    unremarkable (phase 5 performance ticket 01). */
+    Measured rather than derived from the file list, because what a first visit actually
+    costs is what the browser stored, and the two came apart once already: the audit found a
+    54.06 MB shell whose asset list read as unremarkable. */
 async function measureCache(page) {
   return await page.evaluate(async () => {
     const names = await caches.keys();
@@ -136,9 +134,8 @@ try {
     record();
   });
 
-  /* The page every check below loads is the document that ships (ticket
-     31, audit PERF-05): vite preview rendered its own, with no CSP and no
-     held module hints, so nothing here ever ran under either. */
+  /* The page every check below loads is the document that ships: vite preview rendered its
+     own, with no CSP and no held module hints, so nothing here ever ran under either. */
   const served = await (await fetch(`${origin}/`)).text();
   if (served === readFileSync('build/index.html', 'utf8')) ok('the served document is build/index.html, byte for byte');
   else fail('the served document is build/index.html, byte for byte', `${served.length}B served against ${statSync('build/index.html').size}B on disk`);
@@ -161,9 +158,8 @@ try {
   await page.waitForSelector('[data-access-modes]', { timeout: 10000 });
   ok('the access-mode module appears at the one onboarding step that needs it, and only there');
 
-  /* Ticket 30 split choosing a mode from typing its secret into two
-     screens: the consequence screen names the mode first, and only its own
-     Continue reaches the fields. */
+  /* Split choosing a mode from typing its secret into two screens: the consequence screen
+     names the mode first, and only its own Continue reaches the fields. */
   await choosePassphrase(page, PASSPHRASE);
 
   // Give boot() time to open the database and load the sqlite3mc
@@ -198,16 +194,14 @@ try {
   if (page.url() === `${origin}/`) ok('Home stays put - no late navigation undid finishing onboarding');
   else fail('Home stays put after finishing onboarding', page.url());
 
-  /* The session rule (ADR-0018), on the production build - the walkthrough
-     can't test this because the demo build unlocks itself: a reload ends
-     the unlocked session, the unwrapped key dies with it, and the journal
-     opens again only for the passphrase.
+  /* The session rule (ADR-0018), on the production build - the walkthrough can't test this
+     because the demo build unlocks itself: a reload ends the unlocked session, the
+     unwrapped key dies with it, and the journal opens again only for the passphrase.
 
-     This doubles as ticket 54's other half: a returning user, with a
-     keystore already on the device, still meets the gate first - the
-     first-run exception above only ever applied to needs-setup, and a
-     reload here is needs-unlock. Nothing onboarding does is reachable from
-     this screen; there is no [data-next] to find. */
+     This doubles as other half: a returning user, with a keystore already on the device,
+     still meets the gate first - the first-run exception above only ever applied to
+     needs-setup, and a reload here is needs-unlock. Nothing onboarding does is reachable
+     from this screen; there is no [data-next] to find. */
   await page.reload({ waitUntil: 'networkidle' });
   await page.waitForSelector('#journal-passphrase', { timeout: 10000 });
   const confirmField = await page.locator('#journal-passphrase-confirm').count();
@@ -247,9 +241,9 @@ try {
   if (demoBar.length === 0) ok('production build contains no demo bar');
   else fail('production build contains no demo bar', `found ${demoBar.join(', ')}`);
 
-  /* Functional audit ticket 32: `?celebrate=1` forces Home's milestone
-     celebration for review. Behind `__DEMO__`, the read of the parameter
-     folds away, so a production build has no way to be told to celebrate. */
+  /* `?celebrate=1` forces Home's milestone celebration for review. Behind `__DEMO__`, the
+     read of the parameter folds away, so a production build has no way to be told to
+     celebrate. */
   if (!/\.get\(\s*["'`]celebrate["'`]\s*\)/.test(bundle)) ok('production build ignores ?celebrate=1');
   else fail('production build ignores ?celebrate=1', 'the bundle still reads the celebrate parameter');
 
@@ -264,12 +258,12 @@ try {
 await initialContext.close();
 await browser.close();
 
-/* --- Phase 2 ticket 03: install the app, kill the network, start it again -
+/* --- install the app, kill the network, start it again -
 
-   A profile directory rather than the throwaway context above, for two
-   reasons: Chromium answers every installability question about an incognito
-   profile with `in-incognito` and looks no further, and a restart that the
-   browser remembers nothing about would not be much of a restart. */
+   A profile directory rather than the throwaway context above, for two reasons: Chromium
+   answers every installability question about an incognito profile with `in-incognito` and
+   looks no further, and a restart that the browser remembers nothing about would not be
+   much of a restart. */
 const profile = await mkdtemp(join(tmpdir(), 'engender-install-'));
 // Disable Firefox HTTP caches so an uncached offline navigation needs the worker.
 const profileOptions = browserEngine() === 'firefox' ? { firefoxUserPrefs: {
@@ -454,11 +448,9 @@ try {
       ['/manifest.webmanifest', '/manifest-notes.webmanifest'].every((path) => shell.paths.includes(path)) &&
       readdirSync(new URL('../../static/icons/', import.meta.url)).every((icon) => shell.paths.includes(`/icons/${icon}`))
   };
-  /* Nothing is stored twice (ticket 31, audit PERF-04). The SQLocal stack
-     shipped one chunk under both chunks/ and workers/chunks/, the same 64 KB
-     brotli each, and before ticket 13 its wasm twice the same way. The route
-     stubs under nodes/ are SvelteKit's and identical on purpose, so they are
-     left out. */
+  /* Nothing is stored twice. The SQLocal stack shipped one chunk under both chunks/ and
+     workers/chunks/, the same 64 KB brotli each, and its wasm twice the same way. The route
+     stubs under nodes/ are SvelteKit's and identical on purpose, so they are left out. */
   const byContent = new Map();
   for (const path of shell.paths.filter((p) => p.startsWith('/_app/immutable/') && !p.startsWith('/_app/immutable/nodes/'))) {
     const key = createHash('sha256').update(readFileSync(`build${path}`)).digest('hex');
@@ -516,8 +508,8 @@ try {
      builds under a ENGENDER_VERSION nobody derives and insists on seeing
      exactly that string - and the rules live in tests/node/release/app-version.test.ts. */
   await openScreen(cold, origin, '/settings');
-  /* Phase 5 ticket 24: the About row is a ListRow now, whose own handle is
-     data-list-row="about" rather than a settings-specific attribute. */
+  /* The About row is a ListRow now, whose own handle is data-list-row="about" rather than a
+     settings-specific attribute. */
   await cold.locator('[data-list-row="about"]').click();
   const shownVersion = (await cold.locator('[data-app-version]').innerText()).trim();
   const builtVersion = appVersion();

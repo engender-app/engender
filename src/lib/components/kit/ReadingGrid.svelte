@@ -1,19 +1,17 @@
 <script lang="ts">
-  /* The grid the reading tiles sit in: two columns at
-     390px, every row the height of its tallest tile, hairlines between -
-     a list's rule (rule 4) read across two columns. The grid draws the
-     lines and the tiles sit between them, so a tile absent for want of
-     data leaves no gap and no orphaned rule: the next tile takes its place
-     and the lines follow the count.
+  /* The grid the reading tiles sit in: two columns at 390px, every row the height of its
+     tallest tile, hairlines between - a list's rule (rule 4) read across two columns. The
+     grid draws the lines and the tiles sit between them, so a tile absent for want of data
+     leaves no gap and no orphaned rule: the next tile takes its place and the lines follow
+     the count.
 
-     The last odd tile stays half-width. Nine tiles is four rows and one on
-     the fixture, and any tile can be the odd one on some span, so a rule
-     that widened it would move a tile between two shapes as the span
-     dragged (Alicja on the spike: no answer, so the page's own default).
+     The last odd tile stays half-width. Nine tiles is four rows and one on the fixture, and
+     any tile can be the odd one on some span, so a rule that widened it would move a tile
+     between two shapes as the span dragged.
 
-     It carries the chart role (`roleAttrs`), which is what a tile's
-     drawing takes its ink from - one stripe for every drawing on the door,
-     the same index every chart on it has always shared. */
+     It carries the chart role (`roleAttrs`), which is what a tile's drawing takes its ink
+     from - one stripe for every drawing on the door, the same index every chart on it has
+     always shared. */
   import type { Snippet } from 'svelte';
   import { roleAttrs } from './role';
   import { settleCells } from './readingGrid';

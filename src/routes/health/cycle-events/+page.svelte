@@ -1,17 +1,15 @@
 <script lang="ts">
-  /* The cycle event log (phase 5 ticket 03, CONTEXT: "Cycle event"). Cycle
-     events are their own record type, mirroring side-effects.ts exactly:
-     no mood, dimension values, tags or note, and no stored regimen-episode
-     reference - the list and editor below work whether or not a regimen
-     episode exists. The chart is the one thing side effects has no analog
-     for: it reads regimen.getEpisodes() only to draw bands behind the
-     events, which is why it, and not the list or editor, is the part that
-     changes shape when there is no regimen history yet.
+  /* The cycle event log. Cycle events are their own record type, mirroring side-effects.ts
+     exactly: no mood, dimension values, tags or note, and no stored regimen-episode
+     reference - the list and editor below work whether or not a regimen episode exists. The
+     chart is the one thing side effects has no analog for: it reads regimen.getEpisodes()
+     only to draw bands behind the events, which is why it, and not the list or editor, is
+     the part that changes shape when there is no regimen history yet.
 
      Purely descriptive throughout (see Clue's own guidance for trans users:
-     https://helloclue.com/articles/cycle-a-z/tips-for-using-clue-when-you're-trans):
-     no prediction of a next period, no fertility framing, no assumption
-     that a regular cycle exists. */
+     https://helloclue.com/articles/cycle-a-z/tips-for-using-clue-when-you're-trans): no
+     prediction of a next period, no fertility framing, no assumption that a regular cycle
+     exists. */
   import { undoable } from '$lib/stores/deleteUndo';
   import { collapse, crossfade, resize } from '$lib/motion/reveal';
   import { fadeOnly, motionDuration } from '$lib/motion/tokens';
@@ -52,11 +50,10 @@
 
   const KINDS: CycleEventKind[] = ['period_occurred', 'spotting', 'nothing_this_month'];
 
-  /* The strip's fill takes role 0 (ticket 56, following ticket 44's rule for
-     dilation and wear): index 0 is the only role guaranteed chromatic on every
-     palette, and a logged day filled in a palette's achromatic band is a
-     day drawn as nothing. The chart draws its own line colour
-     (CycleEventChart.svelte) and takes no role here. */
+  /* The strip's fill takes role 0: index 0 is the only role guaranteed chromatic on every
+     palette, and a logged day filled in a palette's achromatic band is a day drawn as
+     nothing. The chart draws its own line colour (CycleEventChart.svelte) and takes no role
+     here. */
   const SECTION_ROLE = { strip: 0, sessions: 1 };
 
   const today = $derived(currentDay());
@@ -86,11 +83,9 @@
       : []
   );
 
-  /* The log is a week at a time now (phase 10 redesign ticket 56, reusing
-     ticket 44's DayStrip/dayStrip.ts). A day here is `logged` or nothing -
-     there is no `expected`, the same restraint wear's own strip applies:
-     nothing schedules a cycle event, and this screen has always refused to
-     predict one. */
+  /* The log is a week at a time now. A day here is `logged` or nothing - there is no
+     `expected`, the same restraint wear's own strip applies: nothing schedules a cycle
+     event, and this screen has always refused to predict one. */
   let eventsByDay = $derived.by(() => {
     const byDay = new Map<number, CycleEvent[]>();
     for (const event of events) {

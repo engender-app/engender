@@ -176,7 +176,7 @@ describe('refusals', () => {
     expect(r.stderr).toMatch(/CONTEXT\.md, docs\/internal already exist here as real files or folders/);
     expect(readFileSync(join(app, 'CONTEXT.md'), 'utf8')).toBe('precious\n');
     expect(readFileSync(join(app, 'docs', 'internal', 'keep.md'), 'utf8')).toBe('precious\n');
-    // Nothing is half-linked: PRODUCT.md and SCREENS.md stay unlinked too.
+    // Nothing is half-linked: and stay unlinked too.
     expect(existsSync(join(app, 'PRODUCT.md'))).toBe(false);
   });
 

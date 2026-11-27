@@ -31,11 +31,9 @@
     /** Which two are being compared: `left` is the earlier photograph and
         `right` the later one, always. */
     pair: ComparePair;
-    /** A press of one of the four earlier/later controls. The caller owns
-        the pair. A caller that picks its pair with these controls alone
-        passes this; Progress photos picks both from its own grid, and
-        without it the controls are not drawn (pre-release-human 12: four
-        arrows under a pair the person had just chosen read as clutter). */
+    /** A press of one of the four earlier/later controls. The caller owns the pair. A
+        caller that picks its pair with these controls alone passes this; Progress photos
+        picks both from its own grid, and without it the controls are not drawn. */
     onPair?: (next: ComparePair) => void;
     /** The date block pinned to that photograph's corner of the frame. */
     date: (photo: TPhoto) => string;

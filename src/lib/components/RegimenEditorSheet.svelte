@@ -4,10 +4,9 @@
   import { m } from '$lib/paraglide/messages';
   import type { RegimenEpisode } from '$lib/data/types';
 
-  /* Hiding is the episode's only removal (phase 4 ticket 01: hide, never
-     delete). The toast carries the way back for anyone who tapped it by
-     mistake. Module-level so the regimen screen's hidden list shows an
-     episode again through the same words. */
+  /* Hiding is the episode's only removal (never delete). The toast carries the way back for
+     anyone who tapped it by mistake. Module-level so the regimen screen's hidden list shows
+     an episode again through the same words. */
   export async function setEpisodeHidden(episode: Pick<RegimenEpisode, 'id' | 'drug'>, hidden: boolean) {
     await journal.regimen.setEpisodeHidden(episode.id, hidden);
     if (hidden) {
@@ -976,22 +975,19 @@ that shape always renders the main span as a
     }
   }
 
-  /* Short values in a wide field read as adrift rather than centred on it -
-     "2" and "mg" sitting flush against the field's left edge with most of
-     its width empty beside them (Alicja, 2026-08-27). */
+  /* Short values in a wide field read as adrift rather than centred on it - "2" and "mg"
+     sitting flush against the field's left edge with most of its width empty beside them. */
   [data-amount-dose],
   [data-amount-unit] {
     text-align: center;
   }
 
-  /* The schedule section opens inside `.disclosed` (components.css), which
-     is a plain flow-root wrapper with no spacing of its own - every field
-     in it carries its own `margin-bottom` and self-spaces, but the dose
-     amounts list is a ListCard, which does not, so it sat flush against
-     "Add an amount" beneath it with nothing between them (Alicja,
-     2026-08-27: "the buttons row below is too close to the list's end").
-     `--space-4` matches what `.field`'s own margin already gives every
-     other pair of rows in this same disclosed block. */
+  /* The schedule section opens inside `.disclosed` (components.css), which is a plain
+     flow-root wrapper with no spacing of its own - every field in it carries its own
+     `margin-bottom` and self-spaces, but the dose amounts list is a ListCard, which does
+     not, so it sat flush against "Add an amount" beneath it with nothing between them.
+     `--space-4` matches what `.field`'s own margin already gives every other pair of rows
+     in this same disclosed block. */
   .disclosed :global(.kit-list) {
     margin-bottom: var(--space-4);
   }

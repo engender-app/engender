@@ -1,11 +1,10 @@
-/* Folder sync (functional audit ticket 49, folder-sync.ts).
+/* Folder sync (folder-sync.ts).
 
-   The plugin's half - which file in the folder, never one of this device's
-   own - is FolderArchivesTest.java. This is the other half: a staged archive
-   is opened with the saved backup password behind the bridge, merged with
-   Archive Merge's own rules into the journal, and its outcome reported so
-   the plugin moves past it. Two devices that share a history, as in
-   archive-merge-edits.test.ts: B is A restored from A's archive, then A
+   The plugin's half - which file in the folder, never one of this device's own - is
+   FolderArchivesTest.java. This is the other half: a staged archive is opened with the
+   saved backup password behind the bridge, merged with Archive Merge's own rules into the
+   journal, and its outcome reported so the plugin moves past it. Two devices that share a
+   history, as in archive-merge-edits.test.ts: B is A restored from A's archive, then A
    edits an entry, and A's auto-export lands in B's folder. */
 
 import assert from 'node:assert/strict';

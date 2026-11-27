@@ -1,19 +1,16 @@
-/* The recovery key's own form (ADR-0054, ticket sec-01): the string a
-   person writes down, and the one thing that turns it back into a secret
-   the KDF can take.
+/* The recovery key's own form (ADR-0054): the string a person writes down, and the one
+   thing that turns it back into a secret the KDF can take.
 
-   Nothing here is cryptography - the wrap is `keystore.ts`'s, unchanged.
-   What this module owns is that a key can be read off paper by somebody
-   who is not a computer, and that a key typed slightly wrong is told apart
-   from a key that is simply not this journal's. Those are two different
-   sentences at the gate, and the check symbol is the only thing that can
-   distinguish them: a wrong key and a mistyped key both fail the wrap
-   identically (aesGcm.ts deliberately cannot tell a wrong key from
-   corruption), so a wrong-key message on a typo would send somebody
-   looking for different paper.
+   Nothing here is cryptography - the wrap is `keystore.ts`'s, unchanged. What this module
+   owns is that a key can be read off paper by somebody who is not a computer, and that a
+   key typed slightly wrong is told apart from a key that is simply not this journal's.
+   Those are two different sentences at the gate, and the check symbol is the only thing
+   that can distinguish them: a wrong key and a mistyped key both fail the wrap identically
+   (aesGcm.ts deliberately cannot tell a wrong key from corruption), so a wrong-key message
+   on a typo would send somebody looking for different paper.
 
-   Deliberately rune-free and DOM-free, so it runs in the Node tier next to
-   the rest of the pure model (ADR-0017). */
+   Deliberately rune-free and DOM-free, so it runs in the Node tier next to the rest of the
+   pure model (ADR-0017). */
 
 /** Crockford base32: the digits and the alphabet with I, L, O and U left
     out, so nothing in a written key can be confused for 1, 0 or a word. */

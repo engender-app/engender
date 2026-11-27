@@ -17,10 +17,9 @@ test('staleness turns over after thirty days, not on the thirtieth', () => {
   assert.equal(backupIsStale(startOfDayTimestamp(20676 - BACKUP_STALE_DAYS - 1), 20676), true);
 });
 
-/* Last-audit UI 54 (U53): not stale is not the same as backed up. Export &
-   import drew its success tick for every journal that was not stale, and
-   one never exported is not stale, so "none from this device"
-   sat beside a tick. */
+/* Not stale is not the same as backed up. Export & import drew its success tick for every
+   journal that was not stale, and one never exported is not stale, so "none from this
+   device" sat beside a tick. */
 test('a journal never exported stands apart from a recent backup and a stale one', () => {
   const today = 20676;
   assert.equal(backupStanding(null, today), 'never');

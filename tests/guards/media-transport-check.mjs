@@ -152,8 +152,8 @@ async function drive(label, row, toggle, scrub) {
   check(`${label}: and says where it now is ("${spoken}")`, !!spoken && spoken !== aria.text);
 }
 
-/* Phase 11 ticket 19 put the editor's sections behind a chip row, one open
-   at a time - the walkthrough's own openSection, restated. */
+/* Put the editor's sections behind a chip row, one open at a time - the walkthrough's own
+   openSection, restated. */
 async function openSection(section) {
   await continueToTheRest(page);
   const chip = page.locator(`[data-section-chip="${section}"]`);
@@ -193,10 +193,9 @@ try {
     '.video-row [data-transport-scrub]'
   );
 
-  /* One thing at a time across the two media is not checked here any
-     more: since phase 11 ticket 19 the editor opens one section at a time,
-     and it is the only screen that draws both players, so a recording and a
-     video note are never on screen together. */
+  /* One thing at a time across the two media is not checked here any more: the editor opens
+     one section at a time, and it is the only screen that draws both players, so a
+     recording and a video note are never on screen together. */
 
   /* Full screen: it takes the whole player rather than the picture alone,
      so the transport goes with it, and leaving has to put everything back. */

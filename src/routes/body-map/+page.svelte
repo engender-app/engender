@@ -109,18 +109,17 @@
      view. */
   let mapQuery = liveList((j) => j.stats.bodyRegionMap(spanFrom, spanTo, modeFilter));
 
-  /* What the figure is saying about the region that is picked, in words
-     (phase 11 pre-production UI/UX ticket 30). Before this the screen named
-     the pick once, in the heading over the two charts - which is under the
-     mode filter and, on a 390px phone, under the fold - so a tap on a panel
-     answered with a colour and nothing else, and the name of the thing you
-     had just selected was somewhere you had to scroll to find.
+  /* What the figure is saying about the region that is picked, in words. Before this the
+     screen named the pick once, in the heading over the two charts - which is under the
+     mode filter and, on a 390px phone, under the fold - so a tap on a panel answered with a
+     colour and nothing else, and the name of the thing you had just selected was somewhere
+     you had to scroll to find.
 
-     The same reading the panel is painted from, off one answer rather than a
-     second pass over the same rows (bodyMap.ts's regionSummary): the fill,
-     the accessible name on the button and this sentence can then only ever
-     agree. A region the range never mentions is absent from the rows
-     entirely, and says so - never a zero, which on this scale is a reading. */
+     The same reading the panel is painted from, off one answer rather than a second pass
+     over the same rows (bodyMap.ts's regionSummary): the fill, the accessible name on the
+     button and this sentence can then only ever agree. A region the range never mentions is
+     absent from the rows entirely, and says so - never a zero, which on this scale is a
+     reading. */
   let selectedSummary = $derived(regionSummary(mapQuery.rows.find((r) => r.region === region)));
   let summaryText = $derived.by(() => {
     if (selectedSummary.kind === 'none') return m.body_map_selected_none();
@@ -191,15 +190,14 @@
           onSelect={(picked) => (region = picked)}
         />
 
-        <!-- The pick, in words, on the figure's own card: the name, what the
-             range has to say about that region, and the way down to its two
-             charts. No hairline over it - the elsewhere cluster above ends on
-             one already, and a second line a few pixels under the first reads
-             as a mistake rather than as a boundary.
+        <!-- The pick, in words, on the figure's own card: the name, what the range has to
+             say about that region, and the way down to its two charts. No hairline over it
+             - the elsewhere cluster above ends on one already, and a second line a few
+             pixels under the first reads as a mistake rather than as a boundary.
 
-             Keyed on the region, so the words ease in on a pick rather than
-             swapping in place, and the sentence's slot travels between its own
-             two heights rather than stepping (ticket 25's ease-in, rule 10). -->
+             Keyed on the region, so the words ease in on a pick rather than swapping in
+             place, and the sentence's slot travels between its own two heights rather than
+             stepping. -->
         <div class="body-map-selected" data-body-map-context>
           <div class="body-map-selected-line">
             <div class="body-map-selected-name-slot">
@@ -248,11 +246,10 @@
         </div>
       {/if}
 
-      <!-- Which region the two charts below describe. The figure says it in
-           colour and this says it in words, which is also the equivalent the
-           shapes owe a screen reader beyond their own names. Keyed, so the
-           label eases in on a change rather than swapping in place (ticket
-           25's ease-in). -->
+      <!-- Which region the two charts below describe. The figure says it in colour and this
+           says it in words, which is also the equivalent the shapes owe a screen reader
+           beyond their own names. Keyed, so the label eases in on a change rather than
+           swapping in place. -->
       {#key region}
         <h2
           class="body-map-reading-head"

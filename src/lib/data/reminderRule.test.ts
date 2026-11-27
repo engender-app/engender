@@ -185,9 +185,8 @@ it('rejects the pre-rc WEEKLY recurrence like any word it does not know', () => 
   expect(() => assertValidRule(rule)).toThrow('invalid reminder rule: WEEKLY');
 });
 
-/* Functional audit ticket 20: which firing a Taken or Skip tap answers. The
-   tap can come long after the alarm, after midnight or after quiet hours
-   held it, and the slot it fills is the occurrence's own day. */
+/* Which firing a Taken or Skip tap answers. The tap can come long after the alarm, after
+   midnight or after quiet hours held it, and the slot it fills is the occurrence's own day. */
 describe('the occurrence a moment answers to', () => {
   const none = { interval: null, anchorEpochDay: null, epochDay: null };
   const local = (day: number, time: string) => new Date(timestampAtLocalTime(day, time));

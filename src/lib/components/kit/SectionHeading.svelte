@@ -18,14 +18,12 @@
     crossfade = false
   }: {
     text: string;
-    /** For a heading whose words the person can change while it is on
-        screen (a roadmap category renamed in place, functional audit ticket
-        34): the old and the new words crossfade in one grid cell, the way
-        `sub` does, rather than swapping in one frame. The words take what
-        the line leaves beside the action and wrap inside it, and the row is
-        top-aligned, so a new name a line longer or shorter only grows or
-        shrinks the heading downward: the action never wraps to a line of its
-        own and nothing re-centres. The caller animates that height. */
+    /** For a heading whose words the person can change while it is on screen: the old and
+        the new words crossfade in one grid cell, the way `sub` does, rather than swapping
+        in one frame. The words take what the line leaves beside the action and wrap inside
+        it, and the row is top-aligned, so a new name a line longer or shorter only grows or
+        shrinks the heading downward: the action never wraps to a line of its own and
+        nothing re-centres. The caller animates that height. */
     crossfade?: boolean;
     /** A second line under the heading saying which part of the area comes
         first - the Journal's month over its first day.
@@ -35,10 +33,9 @@
         under the heading moves.
         Omitted, there is no second line. */
     sub?: string;
-    /** An anchor for the area this names, when something links into the
-        middle of a screen (phase 11 ticket 15: Safe space's way down lands
-        on the letters screen's Open section). Omitted everywhere else - a
-        heading needs no id to name an area, only to be addressed by one. */
+    /** An anchor for the area this names, when something links into the middle of a screen.
+        Omitted everywhere else - a heading needs no id to name an area, only to be
+        addressed by one. */
     id?: string;
     /** Lets a same-page link move keyboard focus onto the named area. */
     focusable?: boolean;

@@ -2,15 +2,13 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect, it } from 'vitest';
 
-/* Lock-timing ticket 01: one screen decides how the journal opens and when
-   it asks again. Replaces the lock-on-leave inertness test, whose switch is
-   gone from both screens that drew it.
+/* Lock-timing one screen decides how the journal opens and when it asks again. Replaces the
+   lock-on-leave inertness test, whose switch is gone from both screens that drew it.
 
-   A source read, the same weak shape that test owned up to: the node tier
-   cannot mount a .svelte file (ADR-0016), and what is guarded here is which
-   screens mount which control under which condition, which is what a grep
-   sees. The walkthrough drives the real timing choice and the lock it
-   causes. */
+   A source read, the same weak shape that test owned up to: the node tier cannot mount
+   a.svelte file (ADR-0016), and what is guarded here is which screens mount which control
+   under which condition, which is what a grep sees. The walkthrough drives the real timing
+   choice and the lock it causes. */
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const read = (path: string) => readFileSync(`${root}${path}`, 'utf8');
@@ -48,8 +46,8 @@ it('both places ask it only under a mode with a secret', () => {
 });
 
 it('nothing offers a choice about the Android start prompt: it always fires', () => {
-  /* Alicja, on the ticket 01 sign-off: the prompt fires by itself, with no
-     option. The pref, its first-boot question and its switch are gone. */
+  /* The prompt fires by itself, with no option. The pref, its first-boot question and its
+     switch are gone. */
   const offenders = screens.filter((file) => /bioOptIn|bio_ask_boot|bio_row_/.test(file.source)).map((file) => file.path);
   expect(offenders).toEqual([]);
   expect(read('src/lib/components/AndroidKeyGate.svelte')).toMatch(/if \(fired\) return;[\s\S]*?void authenticate\(false\);/);

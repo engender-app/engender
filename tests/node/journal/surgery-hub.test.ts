@@ -8,7 +8,7 @@ const root = fileURLToPath(new URL('../../..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');
 const PROCEDURE_SCREEN = 'src/routes/health/surgery/[id]/+page.svelte';
 
-describe('Procedure Care & Recovery Hub (Ticket 12)', () => {
+describe('Procedure Care & Recovery Hub', () => {
   it('derives the 5 lifecycle phases accurately', () => {
     const today = 20000;
     expect(procedurePhase(null, today)).toBe('planning');
@@ -27,7 +27,7 @@ describe('Procedure Care & Recovery Hub (Ticket 12)', () => {
     expect(cardCode).toContain('data-phase-pill');
     expect(cardCode).toContain('data-linked-milestone');
     expect(cardCode).toContain('data-open-procedure');
-    // Ticket 52: the reading is the number on the card and the journey is
+    // The reading is the number on the card and the journey is
     // the rail beside it, so both are hooks a probe can find.
     expect(cardCode).toContain('data-procedure-reading');
     expect(cardCode).toContain('data-procedure-strip');
@@ -129,10 +129,9 @@ describe('Procedure Care & Recovery Hub (Ticket 12)', () => {
     expect(procedurePhase(proc.surgeryEpochDay, 20150, proc.archived)).toBe('archived');
   });
 
-  /* Functional-audit ticket 24: the one notes field and the one checklist
-     used to be retitled by phase ("Consult questions & notes", "Recovery
-     feelings diary", "Clearance & packing list" and four more), which made
-     one field look like five. */
+  /* The one notes field and the one checklist used to be retitled by phase ("Consult
+     questions & notes", "Recovery feelings diary", "Clearance & packing list" and four
+     more), which made one field look like five. */
   it('shows one Notes and one Checklist in every phase', () => {
     const pageCode = read(PROCEDURE_SCREEN);
     const notes = [...pageCode.matchAll(/\{@render notesBlock\(([^)]*)\)\}/g)].map((match) => match[1]);

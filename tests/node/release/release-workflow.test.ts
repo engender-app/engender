@@ -150,8 +150,8 @@ describe('walkthrough CI coverage', () => {
   });
 });
 
-/* The structure that keeps a release honest (security-scan ticket 01). The
-   workflow files are read as text, so these helpers slice them by job. */
+/* The structure that keeps a release honest. The workflow files are read as text, so these
+   helpers slice them by job. */
 function jobsOf(text: string): Record<string, string> {
   const body = text.split('\njobs:\n')[1] ?? '';
   const heads = [...body.matchAll(/^  ([a-z][a-z0-9-]*):\n/gm)];

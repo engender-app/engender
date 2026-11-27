@@ -1,6 +1,6 @@
-/* Extracted from +layout.svelte (final audit A8), which passes in the one
-   fact only the shell has: whether a gate is being drawn instead of the app.
-   Everything else here is read off the navigation and the document. */
+/* Extracted from +layout.svelte, which passes in the one fact only the shell has: whether a
+   gate is being drawn instead of the app. Everything else here is read off the navigation
+   and the document. */
 import type { OnNavigate } from '@sveltejs/kit';
 
 import { ui } from '$lib/stores/ui.svelte';
@@ -44,18 +44,16 @@ export function navigateWithTransition(navigation: OnNavigate, replacesApp: bool
      `replaceRoute` was asked to keep still. */
   claimScrollHold(navigation.to?.url);
 
-  /* The arrival window opens here rather than only in the layout's
-     `afterNavigate`, and the difference is most of the second defect phase
-     9 carpet ticket 04 was filed for. A screen whose panels have their
-     reads cached draws them in the same tick it mounts, which is before
-     `afterNavigate` runs - so the window was still holding the *previous*
-     arrival, the panels read it as a change and played entrances, and
-     Home's tile block animated from a height measured while it was still
-     filling to a height 194px short of the one it settled at, then snapped
-     the rest in the frame the transition ended (measured on the demo
-     journal, returning from the calendar). Marking on the way out covers
-     the panels that are there on mount; the mark after arrival covers the
-     ones whose reads answer a few dozen milliseconds later. */
+  /* The arrival window opens here rather than only in the layout's `afterNavigate`, and the
+     difference is most of the second defect was filed for. A screen whose panels have their
+     reads cached draws them in the same tick it mounts, which is before `afterNavigate`
+     runs - so the window was still holding the *previous* arrival, the panels read it as a
+     change and played entrances, and Home's tile block animated from a height measured
+     while it was still filling to a height 194px short of the one it settled at, then
+     snapped the rest in the frame the transition ended (measured on the demo journal,
+     returning from the calendar). Marking on the way out covers the panels that are there
+     on mount; the mark after arrival covers the ones whose reads answer a few dozen
+     milliseconds later. */
   markScreenArrival();
 
   if (!navigation.to) return releasePrevious();
@@ -64,13 +62,10 @@ export function navigateWithTransition(navigation: OnNavigate, replacesApp: bool
     to: navigation.to.url.pathname,
     type: navigation.type,
     delta: navigation.delta,
-    /* `cutsInsteadOfMoving`, not `chromelessPath`: a route with no bar is
-       not therefore a route the app did not walk to. The return moment is
-       on neither list, so stepping into it and back out both move
-       (redesign ticket 35; Alicja read the cut as a yank between frames 7
-       and 8 of the empty state's flipbook) - and setup's two legs are not
-       the same question either, which is redesign ticket 33's own finding:
-       arriving is the shell redirecting because there is no app yet, and
+    /* `cutsInsteadOfMoving`, not `chromelessPath`: a route with no bar is not therefore a
+       route the app did not walk to. The return moment is on neither list, so stepping into
+       it and back out both move - and setup's two legs are not the same question either,
+       own finding: arriving is the shell redirecting because there is no app yet, and
        leaving is the app opening. The table says which is which. */
     isChromeless:
       replacesApp || cutsInsteadOfMoving(navigation.from?.url.pathname ?? null, navigation.to.url.pathname),
@@ -113,11 +108,10 @@ export function navigateWithTransition(navigation: OnNavigate, replacesApp: bool
      closed to nothing rather than a case to skip - and see
      $lib/motion/fieldBlind for why this is not a stylesheet rule. */
   const blind = carryBlind(document, {
-    /* Setup's finish is the one navigation whose sun is the same object at
-       the same size on both sides (redesign ticket 33, rule 12): it has
-       grown one step's worth per step and arrives at Home's resting
-       scale, so it holds still inside the two snapshots while the field
-       closes around it rather than closing and opening its own rings. */
+    /* Setup's finish is the one navigation whose sun is the same object at the same size on
+       both sides: it has grown one step's worth per step and arrives at Home's resting
+       scale, so it holds still inside the two snapshots while the field closes around it
+       rather than closing and opening its own rings. */
     holdSun: (navigation.from?.url.pathname ?? '').startsWith('/onboarding'),
     shareSun:
       (navigation.from?.url.pathname === '/' && navigation.to.url.pathname === '/settings') ||
@@ -151,20 +145,16 @@ export function navigateWithTransition(navigation: OnNavigate, replacesApp: bool
            snapped at the end of its transition. See
            $lib/motion/outgoingScreen for why waiting is not an option. */
         dropOutgoingScreens();
-        /* Before the "new" side is captured, not after: a view transition
-           photographs the incoming screen the instant this callback's own
-           promise resolves, and the layout's `afterNavigate` - the only other
-           caller of restoreScroll - fires as its own separate SvelteKit
-           lifecycle callback with no ordering promised against that
-           capture. Losing the race meant the photograph was always taken
-           at scroll 0, and the real scroll position only snapped in once
-           afterNavigate ran a moment later - on a screen with anything to
-           scroll, the fade-in's last frame and that snap landed close
-           enough together to read as one motion (Alicja, 2026-08-27, on
-           the transition roadmap: "the fade-in jumps a lot of pixels").
-           Restoring here as well as there is not a race fixed by luck -
-           this one is provably before the capture, and afterNavigate's own
-           call becomes a harmless no-op restoring the same value again. */
+        /* Before the "new" side is captured, not after: a view transition photographs the
+           incoming screen the instant this callback's own promise resolves, and the
+           layout's `afterNavigate` - the only other caller of restoreScroll - fires as its
+           own separate SvelteKit lifecycle callback with no ordering promised against that
+           capture. Losing the race meant the photograph was always taken at scroll 0, and
+           the real scroll position only snapped in once afterNavigate ran a moment later -
+           on a screen with anything to scroll, the fade-in's last frame and that snap
+           landed close enough together to read as one motion. Restoring here as well as
+           there is not a race fixed by luck - this one is provably before the capture, and
+           afterNavigate's own call becomes a harmless no-op restoring the same value again. */
         if (navigation.to) restoreScroll(navigation.to.url, navigation.type);
       } finally {
         /* The incoming screen has mounted and the outgoing one is gone.

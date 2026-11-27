@@ -3,9 +3,8 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import { connectStepPreview, type StepBackBridge } from './step-preview';
 import { armStepPreview, registerStepBack } from '../navigation/stepBack';
 
-/* The handshake between the web's step machine and the native StepBack
-   callback (ticket 04, box 5). The web is the source of truth; the native
-   side only follows what it is told. */
+/* The handshake between the web's step machine and the native StepBack callback. The web is
+   the source of truth; the native side only follows what it is told. */
 function fakeBridge() {
   const listeners = new Map<string, (event?: { progress: number }) => void>();
   const removed: string[] = [];

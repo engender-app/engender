@@ -1,18 +1,15 @@
-/* An archive that carries the retired prep date still restores (phase 8
-   features ticket 58, ADR-0066; schema v119, functional audit ticket 50).
+/* An archive that carries the retired prep date still restores (ADR-0066).
 
-   `checklist.appointment_epoch_day` stopped being written by ticket 58 - the
-   prep date became a read over the appointment record - and ticket 50 dropped
-   the column, but every backup written before carries the field and those
-   have to keep restoring. The restore reads past it: the list and its items
-   come back, and there is no column left to hold the date.
+   `checklist.appointment_epoch_day` stopped being written - the prep date became a read
+   over the appointment record - and dropped the column, but every backup written before
+   carries the field and those have to keep restoring. The restore reads past it: the list
+   and its items come back, and there is no column left to hold the date.
 
-   The hazard is quiet. Nothing writes the field any more, so a snapshot
-   taken on a current build has null there and would restore the same whether
-   the reader looked at it or not - a test built that way would pass with a
-   restore that choked on a real date. So the value is put into the snapshot
-   by hand, the way archive-legacy-consults.ts puts a payload back into its
-   pre-rename shape. */
+   The hazard is quiet. Nothing writes the field any more, so a snapshot taken on a current
+   build has null there and would restore the same whether the reader looked at it or not -
+   a test built that way would pass with a restore that choked on a real date. So the value
+   is put into the snapshot by hand, the way archive-legacy-consults.ts puts a payload back
+   into its pre-rename shape. */
 
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
@@ -32,8 +29,8 @@ async function device(): Promise<{ driver: SqliteDriver; journal: Journal }> {
 
 async function* noFiles(): AsyncGenerator<{ name: string; bytes: Uint8Array }> {}
 
-/** What a build before ticket 58 would have written: the standalone
-    checklist carrying the date somebody set on the prep screen. */
+/** What an older build would have written: the standalone checklist carrying the date
+    somebody set on the prep screen. */
 function asWrittenBeforeTheRetirement(journal: ArchiveJournal, epochDay: number): ArchiveJournal {
   const legacy = {
     ...journal,

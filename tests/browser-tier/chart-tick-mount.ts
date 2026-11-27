@@ -1,11 +1,10 @@
-/* Mounts the tick-readout gallery (phase 11 UI/UX ticket 49) with the app's
-   own stylesheets, in the order +layout.svelte imports them, so the plate is
-   judged against the real cascade rather than a copy of it.
+/* Mounts the tick-readout gallery with the app's own stylesheets, in the order
+   +layout.svelte imports them, so the plate is judged against the real cascade rather than
+   a copy of it.
 
-   The flag is refreshed here for the reason body-map-mount.ts records: the
-   shell publishes it and nothing reads it for itself, so a fixture that
-   stamps `data-palette` has to tell the publisher or every role draws the
-   previous palette. */
+   The flag is refreshed here for the reason body-map-mount.ts records: the shell publishes
+   it and nothing reads it for itself, so a fixture that stamps `data-palette` has to tell
+   the publisher or every role draws the previous palette. */
 import { mountInto, publishFixture } from './mount.ts';
 import '$lib/theme/fonts.css';
 import '$lib/theme/base.css';

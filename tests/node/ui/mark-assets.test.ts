@@ -26,8 +26,8 @@ const exists = (path: string) => existsSync(fileURLToPath(new URL(path, root)));
     different set from the one that ships. */
 const palettes = [...read('src/lib/theme/palettes.css').matchAll(/\[data-palette="([a-z]+)"\]\s*\{\s*--motif-stripes:/g)]
   .map((match) => match[1])
-  /* The disguised gate's neutral palette is not a flag and has no mark
-     (security-scan ticket 08), the same skip render-mark.mjs makes. */
+  /* The disguised gate's neutral palette is not a flag and has no mark, the same skip
+     render-mark.mjs makes. */
   .filter((name) => name !== DISGUISED_PALETTE);
 
 const manifest = read('android/app/src/main/AndroidManifest.xml');

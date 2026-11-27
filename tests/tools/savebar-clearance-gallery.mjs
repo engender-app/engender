@@ -264,9 +264,8 @@ const toEnd = () =>
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
   });
 
-/** The bottom of the frame: the foot with enough of the column over it to
-    read the arrangement. One crop per scene, not a whole screen (Alicja,
-    ticket 07's sign-off). */
+/** The bottom of the frame: the foot with enough of the column over it to read the
+    arrangement. One crop per scene, not a whole screen. */
 const shoot = async (name, note, height = 300) => {
   await strip();
   const frame = await page.evaluate(() => {

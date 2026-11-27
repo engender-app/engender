@@ -6,9 +6,8 @@ import static org.junit.Assert.assertNull;
 import org.junit.Test;
 
 /**
- * sanitizeLaunchRoute's allowlist (phase 4 features ticket 04 added the
- * wrapped and on-this-day shapes to the existing reminder/check-in ones).
- * Pure string logic, so a plain JVM test covers it without an emulator.
+ * SanitizeLaunchRoute's allowlist. Pure string logic, so a plain JVM test
+ * covers it without an emulator.
  */
 public class ReminderSchedulerRouteTest {
 

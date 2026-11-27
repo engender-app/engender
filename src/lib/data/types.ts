@@ -22,8 +22,7 @@ export interface Photo {
       demo persona's placeholders, which render as the gradient PhotoThumb
       otherwise uses while loading. A photo row always has one. */
   fileName: string | null;
-  /** Chosen counterevidence (phase 5 ticket 14, CONTEXT: "Starred").
-      Curation metadata, not content - a photo's owner never changes
+  /** Chosen counterevidence. Curation metadata, not content - a photo's owner never changes
       because of it. */
   starred: boolean;
 }
@@ -32,11 +31,10 @@ export interface Photo {
     minted on write, by the repository, never in a screen. */
 type DraftPhoto = Omit<Photo, 'id'>;
 
-/** An in-app audio recording belonging to exactly one entry (phase 4 ticket
-    24, CONTEXT: "Voice recording"). Entry-only, unlike Photo: no milestone
-    owner. One file per row, unlike Photo: nothing normalizes or thumbnails
-    a recording (out of scope by the ticket - no client-side audio
-    effects), so `fileName` names the one file the entry's playback reads. */
+/** An in-app audio recording belonging to exactly one entry. Entry-only, unlike Photo: no
+    milestone owner. One file per row, unlike Photo: nothing normalizes or thumbnails a
+    recording (out of scope by the ticket - no client-side audio effects), so `fileName`
+    names the one file the entry's playback reads. */
 export interface VoiceRecording {
   id: string;
   fileName: string;
@@ -70,9 +68,8 @@ export interface VoiceBenchmark {
   /** What recorded it (audio/captureChain.ts, ADR-0061), null on a
       benchmark taken before schema v65. */
   captureChain: string | null;
-  /** The corner-vowel scaling factor (audio/vowelScale.ts, phase 8 features
-      ticket 30), null on a benchmark taken before schema v66 and on one that
-      held fewer than two of the three vowels. */
+  /** The corner-vowel scaling factor (audio/vowelScale.ts), null on a benchmark taken
+      before schema v66 and on one that held fewer than two of the three vowels. */
   resonanceScale: number | null;
 }
 
@@ -93,11 +90,10 @@ export interface VoicePracticeTake {
   feltSense: number | null;
 }
 
-/** A short in-app video recording belonging to exactly one entry (phase 5
-    ticket 22, CONTEXT: "Video note"). VoiceRecording's shape, and its own
-    interface rather than a shared one for the reason journal/videoNotes.ts
-    gives: a rename on one must not silently change the other. One file, no
-    thumbnail - a poster frame would be derived state (ADR-0010). */
+/** A short in-app video recording belonging to exactly one entry. VoiceRecording's shape,
+    and its own interface rather than a shared one for the reason journal/videoNotes.ts
+    gives: a rename on one must not silently change the other. One file, no thumbnail - a
+    poster frame would be derived state (ADR-0010). */
 export interface VideoNote {
   id: string;
   fileName: string;
@@ -121,36 +117,29 @@ export interface Entry {
   photos: Photo[];
   recordings: VoiceRecording[];
   videos: VideoNote[];
-  /** By body-region domain id (journal/bodyRegions.ts), independent of
-      dims and tags - ticket 09 does not require ticket 02's "physical"
-      dysphoria tag to be present to log a region. A region's value is one
-      position on the shared 0-100 scale (bodyMap.ts), dysphoria below the
-      midpoint and euphoria above it; a region is
-      present here only when it has something to say, so one left at the
-      midpoint is dropped on save rather than stored blank. */
+  /** By body-region domain id (journal/bodyRegions.ts), independent of dims and tags - does
+      not require "physical" dysphoria tag to be present to log a region. A region's value
+      is one position on the shared 0-100 scale (bodyMap.ts), dysphoria below the midpoint
+      and euphoria above it; a region is present here only when it has something to say, so
+      one left at the midpoint is dropped on save rather than stored blank. */
   bodyRegions: Record<string, number>;
-  /** Chosen counterevidence (phase 5 ticket 14, CONTEXT: "Starred"). Sits
-      outside the seven-field content closure above - the same category
-      the uuid/day/timestamp identity fields already are - so it never
-      enters entryIsEmpty()'s count and starring an entry can never be
-      what keeps it from being empty. Joins 'g-euphoria'-tagged entries in
-      the doubt journal's counterevidence pool (entries.ts,
-      counterevidencePool). */
+  /** Chosen counterevidence. Sits outside the seven-field content closure above - the same
+      category the uuid/day/timestamp identity fields already are - so it never enters
+      entryIsEmpty()'s count and starring an entry can never be what keeps it from being
+      empty. Joins 'g-euphoria'-tagged entries in the doubt journal's counterevidence pool
+      (entries.ts, counterevidencePool). */
   starred: boolean;
-  /** The presentation this entry was logged under (phase 5 deepening
-      ticket 17, ADR-0048, CONTEXT: "Presentation") - a domain id (uuid) or
-      null. An entry holds at most one, and null is a resting state rather
-      than a gap: most entries carry none, and the fluidity engine's chip
-      never pre-fills the last one used. */
+  /** The presentation this entry was logged under (ADR-0048) - a domain id (uuid) or null.
+      An entry holds at most one, and null is a resting state rather than a gap: most
+      entries carry none, and the fluidity engine's chip never pre-fills the last one used. */
   presentationId: string | null;
 }
 
-/** A dated note an entry's owner added afterwards, on rereading (phase 8
-    features ticket 07, CONTEXT: "Margin note"). Owned by exactly one entry,
-    which never travels here (`FeltSenseEntry`'s own reasoning: the caller
-    already knows which entry it asked for). Never the entry's own `note` -
-    the two are stored, read and rendered apart on purpose, so that adding,
-    editing or removing one can never touch the other. */
+/** A dated note an entry's owner added afterwards, on rereading. Owned by exactly one
+    entry, which never travels here (`FeltSenseEntry`'s own reasoning: the caller already
+    knows which entry it asked for). Never the entry's own `note` - the two are stored, read
+    and rendered apart on purpose, so that adding, editing or removing one can never touch
+    the other. */
 export interface MarginNote {
   id: string;
   /** The day the note itself was written, not the entry's day - a fact
@@ -159,13 +148,11 @@ export interface MarginNote {
   text: string;
 }
 
-/** A named way of showing up that a person moves between repeatedly - "mode"
-    on screen, after the vernacular (phase 5 deepening ticket 17, ADR-0048,
-    CONTEXT: "Presentation"). Owns a name and a colour and nothing else: no
-    scales, no body regions, no tags - `prefs.activeScales` keeps sole
-    ownership of which scales the editor offers. Nothing ships built in
-    (ADR-0048: the app assumes nothing about direction), so unlike Tag or
-    GenderDimension there is no `builtIn` flag. */
+/** A named way of showing up that a person moves between repeatedly - "mode" on screen,
+    after the vernacular (ADR-0048). Owns a name and a colour and nothing else: no scales,
+    no body regions, no tags - `prefs.activeScales` keeps sole ownership of which scales the
+    editor offers. Nothing ships built in (ADR-0048: the app assumes nothing about
+    direction), so unlike Tag or GenderDimension there is no `builtIn` flag. */
 export interface Presentation {
   id: string;
   name: string;
@@ -271,12 +258,10 @@ export interface Reminder {
   /** One-off only (recurrence null): the concrete day. */
   epochDay: number | null;
   enabled: boolean;
-  /** Which feature manages this reminder on this person's behalf, e.g.
-      `stock:estradiol valerate` (phase 4 ticket 04, stockReminder.ts).
-      Null for every reminder a person created themselves. The general
-      reminders editor never sets this, so saving a reminder through it -
-      even one that started out managed - clears it: that is the handoff
-      this field exists to record. */
+  /** Which feature manages this reminder on this person's behalf, e.g. `stock:estradiol
+      valerate` (stockReminder.ts). Null for every reminder a person created themselves. The
+      general reminders editor never sets this, so saving a reminder through it - even one
+      that started out managed - clears it: that is the handoff this field exists to record. */
   autoSource: string | null;
   /** The drug a medication reminder is for, in the regimen's own words,
       or null for any other reminder. Its
@@ -316,23 +301,21 @@ export interface LabResult {
   /** Null when no dose preceded the draw, or when an hours figure would
       have needed a draw time nobody recorded. */
   timing: LabTiming | null;
-  /** What the test cost (functional audit ticket 30, cost.ts). */
+  /** What the test cost (cost.ts). */
   cost: Cost;
 }
 
-/** One line of the person's own comfort list (phase 6 ticket 14, CONTEXT:
-    "Comfort list"): who to text, which walk, which playlist - entirely
-    their own words, with nothing shipped by the app behind it, the same
+/** One line of the person's own comfort list: who to text, which walk, which playlist -
+    entirely their own words, with nothing shipped by the app behind it, the same
     distinction ChecklistItem's own doc comment draws. */
 export interface ComfortItem {
   id: string;
   text: string;
 }
 
-/** What someone is trying out (phase 4 ticket 16, widened past name/pronoun
-    by phase 5 ticket 13, CONTEXT: "Tryout"): a name or pronoun set, a
-    style or makeup - one record type covering whatever is being tried, rather than a second type forked
-    alongside this one for everything that is not a name or pronoun set. */
+/** What someone is trying out: a name or pronoun set, a style or makeup - one record type
+    covering whatever is being tried, rather than a second type forked alongside this one
+    for everything that is not a name or pronoun set. */
 export type TryoutKind = (typeof TRYOUT_KINDS)[number];
 
 /** A tryout can overlap other tryouts. A null endEpochDay marks one still running.
@@ -377,21 +360,18 @@ export interface FeltSenseEntry {
   note: string | null;
 }
 
-/* An episode's end is a stored, explicit day, set only by the "end this
-   episode" action - not inferred from another episode
-   starting. Before ticket 38 the end was never stored (ADR-0010): the day
-   before the next episode's start, or "ongoing" for the latest one. That
-   derivation stops holding once two episodes for different drugs can
-   overlap on purpose - there is no longer a single "next" episode to read
-   an end off, so the person's own act of ending one is the only source
-   left for that fact. Null while an episode is still going. */
+/* An episode's end is a stored, explicit day, set only by the "end this episode" action -
+   not inferred from another episode starting. the end was never stored (ADR-0010): the day
+   before the next episode's start, or "ongoing" for the latest one. That derivation stops
+   holding once two episodes for different drugs can overlap on purpose - there is no longer
+   a single "next" episode to read an end off, so the person's own act of ending one is the
+   only source left for that fact. Null while an episode is still going. */
 export interface RegimenEpisode {
   id: string;
   drug: string;
-  /** HRT or another drug (functional audit ticket 18, CONTEXT: "Drug
-      class"). Only HRT episodes anchor the effects timeline, its onset
-      bands and the hair anchor. Inferred from `drug` when an episode is
-      made (drugClass.ts) and the person's to change after that. */
+  /** HRT or another drug. Only HRT episodes anchor the effects timeline, its onset bands
+      and the hair anchor. Inferred from `drug` when an episode is made (drugClass.ts) and
+      the person's to change after that. */
   drugClass: DrugClass;
   /** Nullable: antiandrogens and some routes have none. */
   ester: string | null;
@@ -410,11 +390,10 @@ export interface RegimenEpisode {
   endReason: EpisodeEndReason | null;
 }
 
-/** Three ways a course can stop, drafted in the ticket rather than guessed
-    at later (CONTEXT: "Regimen episode", ticket 43) - switching to a
-    different drug or route, a pause with no plan yet to resume it, or a
-    deliberate stop. None is preferred over another, mirroring `PauseReason`'s
-    own rule below. */
+/** Three ways a course can stop, drafted in the ticket rather than guessed at later -
+    switching to a different drug or route, a pause with no plan yet to resume it, or a
+    deliberate stop. None is preferred over another, mirroring `PauseReason`'s own rule
+    below. */
 /** Whether an episode is part of gender-affirming hormone therapy. Two
     values on purpose: the one question anything asks of it is "does this
     count as HRT starting". */
@@ -464,11 +443,10 @@ export interface ScheduledDose {
 
 interface DoseEventFields {
   id: string;
-  /** Epoch milliseconds, and load-bearing - unlike an Entry's Timestamp,
-      which only orders same-day entries (CONTEXT: "Timestamp"). Ticket 03
-      derives hours-since-last-dose from this, and sublingual estradiol
-      peaks in one to two hours, so a day would not be precise enough to
-      derive anything from. */
+  /** Epoch milliseconds, and load-bearing - unlike an Entry's Timestamp, which only orders
+      same-day entries. derives hours-since-last-dose from this, and sublingual estradiol
+      peaks in one to two hours, so a day would not be precise enough to derive anything
+      from. */
   timestamp: number;
   dose: number;
   doseUnit: string;
@@ -565,9 +543,9 @@ export interface DoseSchedule {
     expected slots - neither is judged. */
 export type PauseReason = 'planned' | 'accidental';
 
-/** A dated range on one episode during which no dose is expected, so a gap
-    that was a break does not read as a missed dose - in the adherence view
-    or in ticket 04's consumption-rate projection. */
+/** A dated range on one episode during which no dose is expected, so a gap that was a break
+    does not read as a missed dose - in the adherence view or in consumption-rate
+    projection. */
 export interface DosePause {
   id: string;
   /** A RegimenEpisode id. */
@@ -580,16 +558,15 @@ export interface DosePause {
   reason: PauseReason;
 }
 
-/** A named stretch of the person's own timeline (phase 6 ticket 01,
-    ADR-0049, CONTEXT: "Era") - "before I knew", "first year", "after I
-    moved". Owns a name and two bounds and nothing else: no colour, no mute
-    rule, no photo policy, for the reason Presentation owns none. Anything
-    hung on it becomes a second place to configure the app, and the second
-    such thing makes this the only place two rules can be read together.
+/** A named stretch of the person's own timeline (ADR-0049) - "before I knew", "first year",
+    "after I moved". Owns a name and two bounds and nothing else: no colour, no mute rule,
+    no photo policy, for the reason Presentation owns none. Anything hung on it becomes a
+    second place to configure the app, and the second such thing makes this the only place
+    two rules can be read together.
 
-    Both bounds are nullable, and the two invariants that make an era-filtered
-    read a partition rather than a double-count are in `eras.ts`: at most one
-    era with no start, at most one with no end, and no two overlapping. */
+    Both bounds are nullable, and the two invariants that make an era-filtered read a
+    partition rather than a double-count are in `eras.ts`: at most one era with no start, at
+    most one with no end, and no two overlapping. */
 export interface Era {
   id: string;
   name: string;
@@ -613,9 +590,8 @@ export interface SideEffect {
   resolvedEpochDay: number | null;
 }
 
-/** The three states phase 5 ticket 03 logs. Fixed rather than user-defined;
-    'nothing_this_month' is a real, loggable state here, not the absence of
-    a row. */
+/** The three states logs. Fixed rather than user-defined; 'nothing_this_month' is a real,
+    loggable state here, not the absence of a row. */
 export type CycleEventKind = (typeof CYCLE_EVENT_KINDS)[number];
 
 /* No episode reference (CONTEXT: "Cycle event"): this record stands alone
@@ -656,17 +632,15 @@ export interface WearSession {
   note: string | null;
 }
 
-/* Preferences are not here: they live in SQLite's `pref` table and are
-   described by prefs/catalogue.ts. Neither is a whole-journal
-   type: the `DB` object the demo store held went with it in ticket 08, and
-   what an archive carries is the archive module's own shape. */
+/* Preferences are not here: they live in SQLite's `pref` table and are described by
+   prefs/catalogue.ts. Neither is a whole-journal type: the `DB` object the demo store held
+   went with it, and what an archive carries is the archive module's own shape. */
 
-/** Which of a preset's two directional dimensions a roadmap goal, milestone
-    template, or regimen template speaks to most (phase 5 ticket 43, CONTEXT:
-    "Lean") - `femme`, `masc`, or `neutral` when it speaks to neither.
-    Authored by hand per item, since none of the three has dimensions of its
-    own to derive one from. Never used to hide, filter, or gate: it only
-    orders a picker so whichever matches the active preset sorts first. */
+/** Which of a preset's two directional dimensions a roadmap goal, milestone template, or
+    regimen template speaks to most - `femme`, `masc`, or `neutral` when it speaks to
+    neither. Authored by hand per item, since none of the three has dimensions of its own to
+    derive one from. Never used to hide, filter, or gate: it only orders a picker so
+    whichever matches the active preset sorts first. */
 export type Lean = 'femme' | 'masc' | 'neutral';
 
 /** A milestone the app suggests by name. No lean: every milestone template names a kind of event rather than a
@@ -676,13 +650,11 @@ export interface MilestoneTemplate {
   name: string;
 }
 
-/** A built-in suggestion for a `RegimenEpisode` (phase 5 ticket 42, CONTEXT:
-    "Regimen template"): picking one pre-fills `drug`, `ester` and `route`
-    only, the same shape `MilestoneTemplate` gives a milestone's name. `name`
-    labels the picker row and is never itself written into the episode.
-    Carries no dose or interval on purpose - those are where a suggestion
-    starts reading as a recommendation, which this app's HRT tracking
-    otherwise never does. What the user saves from one is an ordinary
+/** A built-in suggestion for a `RegimenEpisode`: picking one pre-fills `drug`, `ester` and
+    `route` only, the same shape `MilestoneTemplate` gives a milestone's name. `name` labels
+    the picker row and is never itself written into the episode. Carries no dose or interval
+    on purpose - those are where a suggestion starts reading as a recommendation, which this
+    app's HRT tracking otherwise never does. What the user saves from one is an ordinary
     RegimenEpisode, with no stored link back to the template it came from. */
 export interface RegimenTemplate {
   key: string;
@@ -693,37 +665,30 @@ export interface RegimenTemplate {
   lean: Lean;
 }
 
-/** A stable key into `personal_effect_type` (schema.ts) - an open
-    vocabulary now, not a closed union. Phase 4 ticket 07 closed this list
-    at four feminizing markers; phase 5 ticket 02 reopened it once to
-    reach trans-masc parity and closed it again at eight, calling that
-    closure final. Phase 5 ticket 41 is the third revisit and stops
-    closing it: roughly forty feminizing and thirty masculinizing
-    built-ins, plus whatever a person adds of their own, the same
-    `key: string` a `MeasurementType` or `BodyRegion` uses rather than a
-    string-literal union `labels.ts` would otherwise have to cover
-    exhaustively. "Masculinizing fat redistribution" stays a distinct key
-    from "fat redistribution" - the two describe different, not opposite,
+/** A stable key into `personal_effect_type` (schema.ts) - an open vocabulary now, not a
+    closed union. closed this list at four feminizing markers; reopened it once to reach
+    trans-masc parity and closed it again at eight, calling that closure final. is the third
+    revisit and stops closing it: roughly forty feminizing and thirty masculinizing
+    built-ins, plus whatever a person adds of their own, the same `key: string` a
+    `MeasurementType` or `BodyRegion` uses rather than a string-literal union `labels.ts`
+    would otherwise have to cover exhaustively. "Masculinizing fat redistribution" stays a
+    distinct key from "fat redistribution" - the two describe different, not opposite,
     changes - and every existing key from the eight is unchanged. */
 export type PersonalEffectType = string;
 
-/** Which of the source material's two time-course tables a built-in
-    effect's window is a claim about, and so which hormone it names
-    (phase 4 ticket 07, widened phase 5 ticket 41). A property of the
-    effect, not a field ever stored on a marker or asked of a person - the
-    app has no gender or direction field and this does not become the
-    first one. Null only for a custom effect: a person's own addition
-    carries no direction pushed onto it by this app, and renders in
-    neither the feminizing nor masculinizing group of the timeline. */
+/** Which of the source material's two time-course tables a built-in effect's window is a
+    claim about, and so which hormone it names. A property of the effect, not a field ever
+    stored on a marker or asked of a person - the app has no gender or direction field and
+    this does not become the first one. Null only for a custom effect: a person's own
+    addition carries no direction pushed onto it by this app, and renders in neither the
+    feminizing nor masculinizing group of the timeline. */
 export type EffectDirection = (typeof EFFECT_DIRECTIONS_STORED)[number];
 
-/** A named, toggleable collection over the effect catalogue (phase 5
-    ticket 41, CONTEXT: "Effect category"), the same semantics as `TagGroup`
-    - turning one off hides its effects from the timeline and the "mark a
-    change" picker without touching any marker already recorded against
-    them. Built-in only: five or six categories taken from the source
-    material's own grouping, no custom-category creation asked for, so
-    unlike `TagGroup` there is no `builtIn` flag or per-row add. */
+/** A named, toggleable collection over the effect catalogue, the same semantics as
+    `TagGroup` - turning one off hides its effects from the timeline and the "mark a change"
+    picker without touching any marker already recorded against them. Built-in only: five or
+    six categories taken from the source material's own grouping, no custom-category
+    creation asked for, so unlike `TagGroup` there is no `builtIn` flag or per-row add. */
 export interface EffectCategory {
   key: string;
   name: string;
@@ -768,19 +733,15 @@ export interface PersonalEffect {
 export { HAIR_REMOVAL_METHODS };
 export type HairRemovalMethod = (typeof HAIR_REMOVAL_METHODS)[number];
 
-/** One electrolysis/laser session (phase 5 ticket 08, CONTEXT: pending). A
-    dated series like Measurement above, not a single replaced
-    value: a person logs many sessions over time. `area` is a plain string
-    rather than a literal union here, the same treatment DoseEvent's
-    `injectionSite` gets: it is validated against hairRemovalAreas.ts's own
-    closed vocabulary above the schema seam (journal/hairRemoval.ts), which
-    is never the body-region vocabulary (BodyRegion above) - see
-    hairRemovalAreas.ts's header for why the two stay separate. `painRating`
-    is the same 1-5 scale
-    SideEffect.severity uses. `cost` and `provider` are both free text,
-    matching LabResult.provider's own no-list, no-normalization treatment -
-    there is no ledger here, only a per-session note of what was paid and to
-    whom. */
+/** One electrolysis/laser session. A dated series like Measurement above, not a single
+    replaced value: a person logs many sessions over time. `area` is a plain string rather
+    than a literal union here, the same treatment DoseEvent's `injectionSite` gets: it is
+    validated against hairRemovalAreas.ts's own closed vocabulary above the schema seam
+    (journal/hairRemoval.ts), which is never the body-region vocabulary (BodyRegion above) -
+    see hairRemovalAreas.ts's header for why the two stay separate. `painRating` is the same
+    1-5 scale SideEffect.severity uses. `cost` and `provider` are both free text, matching
+    LabResult.provider's own no-list, no-normalization treatment - there is no ledger here,
+    only a per-session note of what was paid and to whom. */
 export interface HairRemovalSession {
   id: string;
   epochDay: number;
@@ -789,23 +750,20 @@ export interface HairRemovalSession {
   painRating: number | null;
   /** How long the session ran, in whole minutes; null when not written down. */
   minutes: number | null;
-  /** What the session cost (functional audit ticket 30, cost.ts). The
-      free-text cost before it was read into this, or into `note` where it
-      did not parse, by version 115. */
+  /** What the session cost (cost.ts). The free-text cost before it was read into this, or
+      into `note` where it did not parse, by version 115. */
   cost: Cost;
   provider: string;
   /** The person's own words on the session, or null. */
   note: string | null;
 }
 
-/* A free-write note to the person's future self, sealed until
-   `unlockEpochDay` (phase 4 ticket 19, CONTEXT: "Milestone", "Countdown",
-   "Anniversary"). No `sealed` flag: whether it is readable follows from
-   comparing `unlockEpochDay` against today, computed above the seam by
-   letterStatus.ts rather than stored (ADR-0010), the same reasoning that
-   keeps `kind` off Milestone. The seal is a UI-level gate only - no
-   second cryptographic layer sits under this row beyond the journal's
-   existing whole-database encryption (ADR-0020). */
+/* A free-write note to the person's future self, sealed until `unlockEpochDay`. No `sealed`
+   flag: whether it is readable follows from comparing `unlockEpochDay` against today,
+   computed above the seam by letterStatus.ts rather than stored (ADR-0010), the same
+   reasoning that keeps `kind` off Milestone. The seal is a UI-level gate only - no second
+   cryptographic layer sits under this row beyond the journal's existing whole-database
+   encryption (ADR-0020). */
 export interface Letter {
   id: string;
   epochDay: number;
@@ -813,15 +771,13 @@ export interface Letter {
   unlockEpochDay: number;
 }
 
-/** What a person last reported having of one drug (phase 4 ticket 04,
-    CONTEXT: pending). One per drug, matched by `sameDrug` (`RegimenEpisode.drug`'s
-    own convention) rather than per episode - see schema.ts. Neither
-    `quantity` nor `recordedEpochDay` is a running total: saving a fresh
-    count replaces the old one outright, the way `DoseSchedule` replaces per
-    episode, because a person reporting stock is always answering "how much
-    do I have today", never "how much did I have last time plus what I
-    have now". Remaining and its run-out day are never stored (ADR-0010) -
-    stockProjection.ts derives both from this and the dose log on every
+/** What a person last reported having of one drug. One per drug, matched by `sameDrug`
+    (`RegimenEpisode.drug`'s own convention) rather than per episode - see schema.ts.
+    Neither `quantity` nor `recordedEpochDay` is a running total: saving a fresh count
+    replaces the old one outright, the way `DoseSchedule` replaces per episode, because a
+    person reporting stock is always answering "how much do I have today", never "how much
+    did I have last time plus what I have now". Remaining and its run-out day are never
+    stored (ADR-0010) - stockProjection.ts derives both from this and the dose log on every
     read. */
 export interface MedicationStock {
   id: string;
@@ -836,8 +792,7 @@ export interface MedicationStock {
   /** Set once a person's own edit or delete took that prompt over; a fresh
       `upsertEntry` (stock.ts) is the only thing that clears it. */
   reminderDismissed: boolean;
-  /** When this container was opened (ticket 13, "What is open, and until
-      when"). Null until a person types one. */
+  /** When this container was opened. Null until a person types one. */
   openedEpochDay: number | null;
   /** As typed, or null when an end date was typed instead - never derived
       from `inUseEndEpochDay` (inUseWindow.ts). */
@@ -845,10 +800,10 @@ export interface MedicationStock {
   /** As typed, or null when a window in days was typed instead - never
       derived from `inUseWindowDays`. */
   inUseEndEpochDay: number | null;
-  /** How many days a restock takes for this drug (redesign phase 10 ticket
-      01). Null is the normal state - the app assumes nothing until a person
-      types one. Feeds `reorderByEpochDay` (stockProjection.ts) alongside the
-      run-out day; never folded into the run-out projection itself. */
+  /** How many days a restock takes for this drug. Null is the normal state - the app
+      assumes nothing until a person types one. Feeds `reorderByEpochDay`
+      (stockProjection.ts) alongside the run-out day; never folded into the run-out
+      projection itself. */
   leadTimeDays: number | null;
   /** How many doses one unit holds - five to a vial, say. Null means one dose per unit (stockProjection.ts). */
   dosesPerUnit: number | null;
@@ -859,8 +814,8 @@ export interface MedicationStock {
   /** Where the supply came from, in the person's words - a pharmacy, a
       batch. Null when empty. */
   pharmacyNote: string | null;
-  /** What the supply held now cost (functional audit ticket 30, cost.ts).
-      There is no purchase log: a fresh count replaces it like the expiry. */
+  /** What the supply held now cost (cost.ts). There is no purchase log: a fresh count
+      replaces it like the expiry. */
   cost: Cost;
 }
 
@@ -874,13 +829,11 @@ export interface ChecklistOwner {
   id: string;
 }
 
-/** One line of a checklist (phase 5 ticket 05, CONTEXT: "Checklist"): free
-    text the user wrote, checked or not, and whether it is still open past
-    whatever event closed its checklist's usual window - a visit, a
-    procedure's recovery close-out. Never bundled content: unlike a
-    **Roadmap goal**, there is nothing behind an item but what the user
-    typed, the distinction CONTEXT already draws between Custom and
-    Built-in. */
+/** One line of a checklist: free text the user wrote, checked or not, and whether it is
+    still open past whatever event closed its checklist's usual window - a visit, a
+    procedure's recovery close-out. Never bundled content: unlike a **Roadmap goal**, there
+    is nothing behind an item but what the user typed, the distinction CONTEXT already draws
+    between Custom and Built-in. */
 export interface ChecklistItem {
   id: string;
   content: string;
@@ -888,33 +841,28 @@ export interface ChecklistItem {
   carriedForward: boolean;
 }
 
-/** An ordered list of checklist items, standalone or scoped to one owner
-    record. Ticket 07's recovery checklist and ticket
-    11's appointment prep list are both this same shape - the owner is what
-    differs between the two call sites, not the item. */
+/** An ordered list of checklist items, standalone or scoped to one owner record. recovery
+    checklist and appointment prep list are both this same shape - the owner is what differs
+    between the two call sites, not the item. */
 export interface Checklist {
   id: string;
   owner: ChecklistOwner | null;
   items: ChecklistItem[];
 }
 
-/** The tri-state a roadmap goal's tick can hold (phase 5 ticket 20,
-    CONTEXT: "Roadmap goal"): 'unchecked' is untaken, 'checked' is done,
-    and 'not-my-path' says the step is not part of this person's own path
-    rather than left undone. Stored the same way for a bundled goal (named
-    by its pack and goal key) and a custom one (named by its uuid) - the
-    two differ only in whether the row that carries it exists because of
-    the tick or regardless of it. */
+/** The tri-state a roadmap goal's tick can hold: 'unchecked' is untaken, 'checked' is done,
+    and 'not-my-path' says the step is not part of this person's own path rather than left
+    undone. Stored the same way for a bundled goal (named by its pack and goal key) and a
+    custom one (named by its uuid) - the two differ only in whether the row that carries it
+    exists because of the tick or regardless of it. */
 export type RoadmapGoalStatus = 'unchecked' | 'checked' | 'not-my-path';
 
-/** A user-authored roadmap goal (phase 5 ticket 20, CONTEXT: "Roadmap
-    goal", "Custom"): free text someone added themselves, uuid-identified
-    rather than named by a pack and a key the way a bundled goal is, and
-    never translated or reseeded - the split CONTEXT already draws between
-    Custom and Built-in. `track` says where it sits: 'legal' for the Polish
-    legal steps, or the uuid of one of the person's categories. Appended to the end of its group; the roadmap already
-    refuses ordering between goals (roadmap.ts), so creation order is all
-    there is to keep. */
+/** A user-authored roadmap goal: free text someone added themselves, uuid-identified rather
+    than named by a pack and a key the way a bundled goal is, and never translated or
+    reseeded - the split CONTEXT already draws between Custom and Built-in. `track` says
+    where it sits: 'legal' for the Polish legal steps, or the uuid of one of the person's
+    categories. Appended to the end of its group; the roadmap already refuses ordering
+    between goals (roadmap.ts), so creation order is all there is to keep. */
 export interface CustomRoadmapGoal {
   id: string;
   track: string;
@@ -995,18 +943,16 @@ export interface Procedure {
   /** Chosen by the person. Age never decides whether a procedure belongs in
       their archive. */
   archived: boolean;
-  /** What the procedure cost (functional audit ticket 30, cost.ts). */
+  /** What the procedure cost (cost.ts). */
   cost: Cost;
 }
 
-/** One consult on the way to a procedure, as the procedure's own screen
-    reads it: a date, and the minted id that lets one
-    mistyped date be dropped on its own (ADR-0002).
+/** One consult on the way to a procedure, as the procedure's own screen reads it: a date,
+    and the minted id that lets one mistyped date be dropped on its own (ADR-0002).
 
-    Since phase 8 features ticket 57 this is a projection of `Appointment`
-    rather than a record of its own - the same rows, narrowed to what the
-    surgery journey shows about them. The word survives because a procedure
-    still shows its consults (ADR-0066); the second table did not. */
+    This is a projection of `Appointment` rather than a record of its own - the same rows,
+    narrowed to what the surgery journey shows about them. The word survives because a
+    procedure still shows its consults (ADR-0066); the second table did not. */
 export interface ProcedureConsult {
   id: string;
   epochDay: number;
@@ -1033,7 +979,7 @@ export interface Appointment {
   time: string | null;
   /** Who it is with, the person's own `Provider` record, or null. */
   providerId: string | null;
-  /** What the visit cost (functional audit ticket 30, cost.ts). */
+  /** What the visit cost (cost.ts). */
   cost: Cost;
 }
 
@@ -1069,15 +1015,12 @@ export interface AppointmentStatusUpdate {
   status: string;
 }
 
-/** One row of the body-region reference-data area (phase 5 ticket 30,
-    CONTEXT: "Reference data" - amended). Flat: a
-    built-in's `name` is '' and its wording comes from the message
-    catalogue by `id`; a custom region carries the name the person typed
-    and is never translated. No location on the body-map illustration -
-    a custom region is a named row with an intensity, listed rather than
-    positioned. Hides rather than deletes, the same as a Tag or a
-    GenderDimension, so a region's logged intensities keep resolving and
-    charting after it is hidden (CONTEXT: "Hidden"). */
+/** One row of the body-region reference-data area. Flat: a built-in's `name` is '' and its
+    wording comes from the message catalogue by `id`; a custom region carries the name the
+    person typed and is never translated. No location on the body-map illustration - a
+    custom region is a named row with an intensity, listed rather than positioned. Hides
+    rather than deletes, the same as a Tag or a GenderDimension, so a region's logged
+    intensities keep resolving and charting after it is hidden. */
 export interface BodyRegion {
   id: string;
   name: string;
@@ -1085,15 +1028,14 @@ export interface BodyRegion {
   hidden: boolean;
 }
 
-/** One stretch of a dilation taper (phase 8 features ticket 12, CONTEXT:
-    "Taper"): a session every `everyNDays` days, for `days` days, before the
-    next stage takes over. Typed in from the person's own surgeon's plan,
-    never a default this app ships (out of scope, ticket 12).
+/** One stretch of a dilation taper: a session every `everyNDays` days, for `days` days,
+    before the next stage takes over. Typed in from the person's own surgeon's plan, never a
+    default this app ships.
 
-    `timesPerDay` makes it "N times a day for D days" instead, which is how post-vaginoplasty schedules are given. A
-    stage carrying it is saved with `everyNDays: 1`, so a build that does
-    not know the field reads it as a daily stage rather than as nothing.
-    Absent means one session on each expected day. */
+    `timesPerDay` makes it "N times a day for D days" instead, which is how
+    post-vaginoplasty schedules are given. A stage carrying it is saved with `everyNDays:
+    1`, so a build that does not know the field reads it as a daily stage rather than as
+    nothing. Absent means one session on each expected day. */
 export interface TaperStage {
   everyNDays: number;
   days: number;

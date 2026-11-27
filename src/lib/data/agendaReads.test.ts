@@ -63,8 +63,8 @@ test('the forward read is dayAhead, asked for the thirty days from today', async
 });
 
 test('every kind reaches the projection, and the cap folds the fourth', async () => {
-  /* Functional-audit ticket 14 removed the per-kind switches, so all five
-     kinds ADR-0067 admits are drawn and only the cap decides what folds. */
+  /* Removed the per-kind switches, so all five kinds ADR-0067 admits are drawn and only the
+     cap decides what folds. */
   const { areas } = recordingAreas([
     { kind: 'appointment', epochDay: TODAY + 1 },
     { kind: 'milestone', epochDay: TODAY + 2 },
@@ -79,14 +79,12 @@ test('every kind reaches the projection, and the cap folds the fourth', async ()
   assert.deepEqual(projection?.folded.map((item) => item.kind), ['surgery']);
 });
 
-/* Phase 11 ticket 03. Today draws a dose panel whenever a regimen is
-   running, and that panel now carries the next slot's own day - so a
-   doseSlot row in the band beside it is the same medication stated twice,
-   which is the defect the ticket is named after. The flag the caller passes
-   is whether the panel is drawn: since functional-audit ticket 15 the panel
-   names every regimen the band could draw a row for (liveTiles.ts), and
-   with the tile switched off the band keeps the kind, because otherwise a
-   day some schedule expects would be on the screen nowhere at all. */
+/* Today draws a dose panel whenever a regimen is running, and that panel now carries the
+   next slot's own day - so a doseSlot row in the band beside it is the same medication
+   stated twice, which is the defect the ticket is named after. The flag the caller passes
+   is whether the panel is drawn: the panel names every regimen the band could draw a row
+   for (liveTiles.ts), and with the tile switched off the band keeps the kind, because
+   otherwise a day some schedule expects would be on the screen nowhere at all. */
 test('the dose kind is withheld while the panel accounts for every dose', async () => {
   const marks: DayAheadMark[] = [
     { kind: 'doseSlot', epochDay: TODAY + 6 },
@@ -120,7 +118,7 @@ test('the schedule is asked about the week behind, ending yesterday', async () =
 });
 
 test('every read is issued before the first await, so a live query sees all three', async () => {
-  // What lets ticket 13 mount this in an unseeded `liveQuery`: dependencies
+  // What lets mount this in an unseeded `liveQuery`: dependencies
   // are discovered from the operations a closure calls, and a read sitting
   // past an earlier `await` is discovered a re-run late (WAITING_TABLES's
   // own reason for existing). All of these are in flight in the same tick.
@@ -130,10 +128,9 @@ test('every read is issued before the first await, so a live query sees all thre
   await pending;
 });
 
-/* Functional-audit ticket 14: the appointment-today tile is gone, and what
-   it said - which appointment, and where - is the agenda's today row now.
-   A mark is still a day and a kind (ADR-0067); only today's appointment row
-   names the visit, because today is the one day the person needs the name
+/* The appointment-today tile is gone, and what it said - which appointment, and where - is
+   the agenda's today row now. A mark is still a day and a kind (ADR-0067); only today's
+   appointment row names the visit, because today is the one day the person needs the name
    and the place rather than the date. */
 const endo: AppointmentDayRecord = {
   id: 'appt-1',

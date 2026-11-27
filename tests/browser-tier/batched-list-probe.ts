@@ -1,18 +1,15 @@
-/* Browser-tier check for phase 8 features ticket 66: a long list renders a
-   batch at a time and grows as it is scrolled.
+/* Browser-tier check for a long list renders a batch at a time and grows as it is scrolled.
 
-   Here rather than in the Node tier because what has to be shown is an
-   IntersectionObserver firing against a real scroll region under a real
-   layout - the one part of this feature no arithmetic test can reach. The
-   counting itself is node-tested in
-   src/lib/components/kit/batchedList.test.ts, and this asserts the two
-   things that only exist in a browser: that scrolling grows the list without
-   anything being pressed, and that the control at the end grows it too.
+   Here rather than in the Node tier because what has to be shown is an IntersectionObserver
+   firing against a real scroll region under a real layout - the one part of this feature no
+   arithmetic test can reach. The counting itself is node-tested in
+   src/lib/components/kit/batchedList.test.ts, and this asserts the two things that only
+   exist in a browser: that scrolling grows the list without anything being pressed, and
+   that the control at the end grows it too.
 
-   The stylesheets are imported the way gates-mount.ts imports them, in
-   +layout.svelte's order, because a row with no height makes a scroll region
-   that never scrolls and an observer that fires immediately - the fixture
-   would pass while measuring nothing. */
+   The stylesheets are imported the way gates-mount.ts imports them, in +layout.svelte's
+   order, because a row with no height makes a scroll region that never scrolls and an
+   observer that fires immediately - the fixture would pass while measuring nothing. */
 import { mountInto, publishFixture } from './mount.ts';
 import '$lib/theme/fonts.css';
 import '$lib/theme/base.css';
@@ -73,10 +70,10 @@ publishFixture('batched-list', async () => {
     await until(() => rendered() >= TOTAL, 500);
   }
 
-  /* Ticket 67: a deep link's row, past the first batch, rendered in one step
-     rather than by growing a batch at a time. A second, independent mount -
-     the fixture's own `key` keeps its remembered count apart from the one
-     above, the same way a screen with two batched lists does. */
+  /* A deep link's row, past the first batch, rendered in one step rather than by growing a
+     batch at a time. A second, independent mount - the fixture's own `key` keeps its
+     remembered count apart from the one above, the same way a screen with two batched lists
+     does. */
   const FOCUS_INDEX = 47; // second batch of thirty: rows 30-59.
   const focusTarget = document.createElement('div');
   document.body.append(focusTarget);

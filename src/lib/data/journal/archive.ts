@@ -82,13 +82,11 @@ export interface ArchiveArea {
   merge(contents: RestoreContents, onProgress?: OnRestoreProgress): Promise<void>;
 }
 
-/** restore.ts behind a dynamic import: it drags in pack.ts/codec.ts/
-    payload.ts, an 82KB chunk that otherwise rides every eager path into this
-    file (ticket 21's audit, ticket 27). One wrapper per entry point rather
-    than repeating `await import('./restore')` at each of the eight call
-    sites below - a dynamic import of the same specifier already resolves
-    from the module loader's own cache, so there is nothing here worth
-    memoizing by hand. */
+/** Restore.ts behind a dynamic import: it drags in pack.ts/codec.ts/ payload.ts, an 82KB
+    chunk that otherwise rides every eager path into this file. One wrapper per entry point
+    rather than repeating `await import('./restore')` at each of the eight call sites below
+    - a dynamic import of the same specifier already resolves from the module loader's own
+    cache, so there is nothing here worth memoizing by hand. */
 async function restoreArchive(
   driver: SqliteDriver,
   files: PhotoFileStore,
@@ -219,11 +217,10 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
          from preview.photoCount, so the denominator cannot disagree with
          the numerator if either ever changes. */
       const fileCount = preview.assets.reduce((n, asset) => n + (asset.kind === 'photo' ? 2 : 1), 0);
-      /* A preview somebody abandoned, and an import that threw on an
-         undecodable photo, both leave no record: neither reaches the
-         transaction the history row is written in (ticket 03, audit A1).
-         An attachment is a photo row or a recording row, which is what
-         "attachments" counts on the way back out. */
+      /* A preview somebody abandoned, and an import that threw on an undecodable photo,
+         both leave no record: neither reaches the transaction the history row is written
+         in. An attachment is a photo row or a recording row, which is what "attachments"
+         counts on the way back out. */
       const added = await commitImport(
         driver,
         files,

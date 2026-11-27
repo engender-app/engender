@@ -1,12 +1,10 @@
-/* The licence check CI runs. engender is GPL-3.0-only
-   and one channel - F-Droid, ticket 18 - rebuilds from source and rejects a
-   dependency graph it cannot build freely. A dependency arriving under a
-   licence nobody looked at is the way that turns into a rejected build long
-   after the dependency became load-bearing.
+/* The licence check CI runs. engender is GPL-3.0-only and one channel - F-Droid, - rebuilds
+   from source and rejects a dependency graph it cannot build freely. A dependency arriving
+   under a licence nobody looked at is the way that turns into a rejected build long after
+   the dependency became load-bearing.
 
-   The allowed list is what the tree actually uses rather than every licence
-   that would be acceptable, so a new one surfaces as a decision instead of
-   passing on a technicality. */
+   The allowed list is what the tree actually uses rather than every licence that would be
+   acceptable, so a new one surfaces as a decision instead of passing on a technicality. */
 import { describe, expect, it } from 'vitest';
 import { licenceProblems } from '../../../scripts/check-licences.mjs';
 

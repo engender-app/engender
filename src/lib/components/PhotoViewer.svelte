@@ -4,10 +4,9 @@
   import { readPhoto } from '$lib/stores/photoFiles';
   import Sheet from './Sheet.svelte';
 
-  /* A tap on an attachment's thumbnail opens this rather than doing nothing
-     (ticket CARPET-06). Full resolution via readPhoto, not the thumbnail
-     PhotoThumb reads elsewhere - the same reasoning as
-     PhotoAlignmentReview.svelte's reference image: a lightbox showing a
+  /* A tap on an attachment's thumbnail opens this rather than doing nothing. Full
+     resolution via readPhoto, not the thumbnail PhotoThumb reads elsewhere - the same
+     reasoning as PhotoAlignmentReview.svelte's reference image: a lightbox showing a
      72px-sourced thumbnail blown up would show less than the photo has. */
   let {
     photo,

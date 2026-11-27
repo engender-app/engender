@@ -1,5 +1,5 @@
-/* Reconciling built-ins by key is one idempotent operation, called from
-   boot and reused by ticket 14's Replace (ADR-0002, ADR-0017). */
+/* Reconciling built-ins by key is one idempotent operation, called from boot and reused by
+   Replace (ADR-0002, ADR-0017). */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
@@ -22,7 +22,7 @@ test('seeds every built-in dimension, group and tag into an empty journal, and n
   await openJournal(db, fakeFileStore()).reconcileBuiltIns();
 
   assert.equal(count(db, 'gender_dimension'), BUILT_IN_DIMENSIONS.length);
-  // Ticket 35 left the presets legacy-only, so an empty journal gets none.
+  // Legacy presets stay out of an empty journal.
   assert.equal(count(db, 'gender_preset'), 0);
   assert.equal(count(db, 'tag_group'), BUILT_IN_TAG_GROUPS.length);
   assert.equal(count(db, 'tag'), BUILT_IN_TAG_GROUPS.flatMap((g) => g.tags).length);
@@ -60,7 +60,7 @@ test('restores a missing built-in without touching custom rows', async () => {
 });
 
 // The physical schema tables reconcileBuiltIns inserts into, mapped to the
-// logical TableName writes.ts announces (ticket 28's drift guard): a new
+// logical TableName writes.ts announces: a new
 // built-in table added to reconcile.ts without an entry here, or without a
 // matching RECONCILE_TABLES entry, fails this test instead of silently
 // missing its invalidation.
@@ -95,11 +95,10 @@ test('RECONCILE_TABLES names exactly the tables reconcileBuiltIns writes', async
   assert.deepEqual([...written].toSorted(), [...RECONCILE_TABLES].toSorted());
 });
 
-/* Functional audit ticket 41: three built-ins repeat another one - the two
-   gender-group dysphoria flags repeat the physical and social dysphoria
-   types, and the whole-body region repeats the euphoria/dysphoria scale. A
-   journal created now seeds them hidden; a journal that already holds them
-   keeps whatever it had. */
+/* Three built-ins repeat another one - the two gender-group dysphoria flags repeat the
+   physical and social dysphoria types, and the whole-body region repeats the
+   euphoria/dysphoria scale. A journal created now seeds them hidden; a journal that already
+   holds them keeps whatever it had. */
 const hiddenOf = (db: Awaited<ReturnType<typeof migratedDb>>, table: string, key: string): number | undefined =>
   (db.raw.prepare(`SELECT hidden FROM ${table} WHERE key = ?`).get(key) as { hidden: number } | undefined)?.hidden;
 

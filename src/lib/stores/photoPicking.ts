@@ -1,15 +1,15 @@
-/* Picking photos in an editor: the three steps ticket 11 left for ticket 08,
-   in one place because both editors take them.
+/* Picking photos in an editor: the three steps left, in one place because both editors take
+   them.
 
-   Normalizing happens here rather than on save, so a file this app cannot
-   read - HEIC, or something that is not an image at all - is refused while
-   the picker is still the thing in front of the user, and so the tile can show
-   what they actually chose. The bytes are stored when the entry or milestone
-   is (ADR-0008: files land before the row that names them).
+   Normalizing happens here rather than on save, so a file this app cannot read - HEIC, or
+   something that is not an image at all - is refused while the picker is still the thing in
+   front of the user, and so the tile can show what they actually chose. The bytes are
+   stored when the entry or milestone is (ADR-0008: files land before the row that names
+   them).
 
-   It sits next to photoFiles.ts rather than in `data/`, for the same reason
-   that one does: it reports failures by raising a toast, which is an app-level
-   concern the data layer has no business knowing about. */
+   It sits next to photoFiles.ts rather than in `data/`, for the same reason that one does:
+   it reports failures by raising a toast, which is an app-level concern the data layer has
+   no business knowing about. */
 
 import { androidPickedBytes, cameraPhotoPicker, filePhotoPicker, PickDeferredError, type PickedBytes } from '../data/photos/picker';
 import { claimPending, holdPending, type ClaimBy } from './pendingPick';

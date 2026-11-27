@@ -1,16 +1,15 @@
 /* Recording a voice note in the editor.
 
-   One seam, both platforms, unlike photoPicking.ts's camera capture: an
-   Android photo needs the system camera app (photos/picker.ts), but audio
-   capture is plain `getUserMedia`/`MediaRecorder`, which the same Chromium
-   WebView Capacitor already wraps on Android handles exactly like the
-   browser does. Capacitor's own WebChromeClient requests RECORD_AUDIO at
-   the OS level and grants the WebView resource on approval - see
-   AndroidManifest.xml's permission block - so there is no native bridge
-   for this the way photos.ts needs one for the camera intent.
+   One seam, both platforms, unlike photoPicking.ts's camera capture: an Android photo needs
+   the system camera app (photos/picker.ts), but audio capture is plain
+   `getUserMedia`/`MediaRecorder`, which the same Chromium WebView Capacitor already wraps
+   on Android handles exactly like the browser does. Capacitor's own WebChromeClient
+   requests RECORD_AUDIO at the OS level and grants the WebView resource on approval - see
+   AndroidManifest.xml's permission block - so there is no native bridge for this the way
+   photos.ts needs one for the camera intent.
 
-   No normalize() step: ticket 24 excludes client-side audio effects, so
-   the bytes MediaRecorder produced are exactly what gets stored. */
+   No normalize step: excludes client-side audio effects, so the bytes MediaRecorder
+   produced are exactly what gets stored. */
 
 import { captureChainOf, deviceFromUserAgent } from '$lib/audio/captureChain';
 import { chooseFiles } from '$lib/data/fileDialog';
@@ -67,21 +66,20 @@ const UNPROCESSED_AUDIO: MediaTrackConstraints = {
   autoGainControl: false
 };
 
-/** What the platform will say about the hardware, for the chain a
-    benchmark records (audio/captureChain.ts, ticket 28, ADR-0061).
+/** What the platform will say about the hardware, for the chain a benchmark records
+    (audio/captureChain.ts, ADR-0061).
 
-    Client hints rather than the user agent: Chrome 110 reduced the Android
-    user agent string and froze its model token to `Android 10; K` on every
-    phone, so parsing it can no longer tell two phones apart.
-    `getHighEntropyValues(['model'])` still answers with the build model,
-    and both of this app's platforms are Chromium in a secure context
-    (capacitor.config.ts sets `androidScheme: 'https'`). Where the API is
-    missing, or answers with nothing, the user agent's platform token
-    stands in and the microphone's own label carries the difference.
+    Client hints rather than the user agent: Chrome 110 reduced the Android user agent
+    string and froze its model token to `Android 10; K` on every phone, so parsing it can no
+    longer tell two phones apart. `getHighEntropyValues(['model'])` still answers with the
+    build model, and both of this app's platforms are Chromium in a secure context
+    (capacitor.config.ts sets `androidScheme: 'https'`). Where the API is missing, or
+    answers with nothing, the user agent's platform token stands in and the microphone's own
+    label carries the difference.
 
-    Not an ambient fingerprinting surface: it is read at the moment a
-    benchmark opens the microphone, stored inside the same encrypted
-    journal as the audio it describes (ADR-0020), and shown to nobody. */
+    Not an ambient fingerprinting surface: it is read at the moment a benchmark opens the
+    microphone, stored inside the same encrypted journal as the audio it describes
+    (ADR-0020), and shown to nobody. */
 async function deviceName(): Promise<string> {
   const hints = navigator.userAgentData;
   if (hints) {

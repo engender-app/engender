@@ -1,19 +1,16 @@
-/* Ticket U08 (pre-production UI/UX), reshaped by lock-timing ticket 01:
-   the Android key gate fires the platform prompt by itself, but only where
-   the platform can actually honor it.
+/* Ticket U08 (pre-production UI/UX), reshaped by lock-timing the Android key gate fires the
+   platform prompt by itself, but only where the platform can actually honor it.
 
-   U08's finding UX22 was that the "Open automatically?" question mounted
-   over the two recovery states - a device with no screen lock and an
-   invalidated key. Ticket 01 removed the question and its preference at
-   Alicja's word: the prompt always fires on a healthy gate. What this
-   still guards is the U08 half: on the recovery states nothing fires, and
-   once the screen lock is back the prompt fires then, once.
+   U08's finding UX22 was that the "Open automatically?" question mounted over the two
+   recovery states - a device with no screen lock and an invalidated key. removed the
+   question and its preference at word: the prompt always fires on a healthy gate. What this
+   still guards is the U08 half: on the recovery states nothing fires, and once the screen
+   lock is back the prompt fires then, once.
 
-   AndroidKeyGate itself, mounted per case, with bootState moved through the
-   same transitions boot uses and Android Keystore stubbed at the Capacitor
-   boundary (android-consent.html sets that stub up before this module
-   loads). No case ever leaves the gate states: the journal field stays null
-   and the status stays needs-authentication. */
+   AndroidKeyGate itself, mounted per case, with bootState moved through the same
+   transitions boot uses and Android Keystore stubbed at the Capacitor boundary
+   (android-consent.html sets that stub up before this module loads). No case ever leaves
+   the gate states: the journal field stays null and the status stays needs-authentication. */
 
 import { bootState } from '../../src/lib/stores/boot.svelte';
 import { bootStates, bootTransitions } from '../../src/lib/stores/boot-state';

@@ -52,9 +52,9 @@ export function documentChrome(
   journalShown = false
 ): DocumentChrome {
   return {
-    /* Disguised, nothing before the journal shows wears the person's flag
-       (security-scan ticket 08, GD-043): a gate is the screen most likely
-       to be seen by someone else, and the flag names who holds the phone. */
+    /* Disguised, nothing before the journal shows wears the person's flag: a gate is the
+       screen most likely to be seen by someone else, and the flag names who holds the
+       phone. */
     palette: prefs.disguise && !journalShown ? DISGUISED_PALETTE : prefs.palette,
     moodPreset: prefs.moodPreset,
     /* `system` is a stored value and not an attribute: the document only

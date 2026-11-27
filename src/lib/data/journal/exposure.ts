@@ -1,12 +1,9 @@
-/* The exposure counters area (phase 4 ticket 05, CONTEXT: "Regimen
-   episode", "Dose event"). A view stitched together from rows `doses` and
-   `regimen` own, the same way stock.ts is a view over `doses`, `regimen`
-   and `reminders` - this area owns no table of its own, and reads no
-   driver directly.
+/* The exposure counters area. A view stitched together from rows `doses` and `regimen` own,
+   the same way stock.ts is a view over `doses`, `regimen` and `reminders` - this area owns
+   no table of its own, and reads no driver directly.
 
-   Nothing here is stored: every counter is recomputed from the dose log
-   and the regimen episode history for whatever range is asked for
-   (exposureCounters.ts, ADR-0010). */
+   Nothing here is stored: every counter is recomputed from the dose log and the regimen
+   episode history for whatever range is asked for (exposureCounters.ts, ADR-0010). */
 
 import type { DoseTotal, RegimenDays, RouteDays } from '../exposureCounters';
 import { cumulativeDoseTotals, daysOnEachRoute, timeOnEachRegimen } from '../exposureCounters';

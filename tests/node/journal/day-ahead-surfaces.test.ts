@@ -1,10 +1,8 @@
-/* `/day/[day]`'s own rules from phase 8 features ticket 62 (ADR-0067), at
-   the level a grep can hold - the same split calendar-contracts.ts uses
-   for the calendar's own ticket 61. What each behaviour actually renders
-   for a real journal is tests/walkthrough.test.mjs's question; this is the
-   wiring a typecheck cannot see: that a future day's write affordances sit
-   behind the right branch, and that nothing here draws a second string for
-   a concept the app already names. */
+/* `/day/[day]`'s own rules (ADR-0067), at the level a grep can hold - the same split
+   calendar-contracts.ts uses for the calendar's own. What each behaviour actually renders
+   for a real journal is tests/walkthrough.test.mjs's question; this is the wiring a
+   typecheck cannot see: that a future day's write affordances sit behind the right branch,
+   and that nothing here draws a second string for a concept the app already names. */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -19,9 +17,8 @@ const day = read(DAY_ROUTE);
 const dayAheadRows = read('src/lib/components/dayAheadRows.ts');
 
 describe('the add-entry button on a past day or today', () => {
-  /* Tester report 02, ticket 08: an empty day said "Add another entry for
-     this day" under "Nothing logged this day". The day's own read decides
-     the wording; a day that holds an entry keeps "another". */
+  /* An empty day said "Add another entry for this day" under "Nothing logged this day". The
+     day's own read decides the wording; a day that holds an entry keeps "another". */
   it('says "an entry" on a day with no entry and "another entry" on a day with one', () => {
     expect(day).toMatch(/noEntryYet = \$derived\(day != null && day\.entries\.length === 0\)/);
     expect(markupOf(day)).toContain('{noEntryYet ? m.add_entry_for_day() : m.add_another_entry()}');

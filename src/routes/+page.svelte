@@ -94,11 +94,9 @@
      "this block's condition went false" from "the page unmounted it". */
   let panel = $derived({ skip: navigating.to !== null || !doorActive() });
 
-  /* The live tiles, as one read (deepening ticket 07). Home used to hold
-     thirteen queries, eleven predicates and an eleven-ternary count for
-     this grid, none of which drew anything by itself; what is left here is
-     the `{#each}` and the one sheet a tile opens rather than handles in
-     place. */
+  /* The live tiles, as one read. Home used to hold thirteen queries, eleven predicates and
+     an eleven-ternary count for this grid, none of which drew anything by itself; what is
+     left here is the `{#each}` and the one sheet a tile opens rather than handles in place. */
   let letterDismissSheetOpen = $state(false);
   const liveTiles = homeTiles(() => today, {
     onLetterDismiss: () => (letterDismissSheetOpen = true)
@@ -198,12 +196,11 @@
   let countPending = $derived(entryCountQuery.loading || journalBoundsQuery.loading);
   const countFade = (_node: Element) => fadeOnly(motionDuration('--dur-fast'));
 
-  /* How long ago the journey anchor was (functional audit 33), counted from
-     the milestone the person marked in Milestones and re-read with `today`,
-     so a Home left open across a month boundary moves from "30 days" to
-     "1 month" the same way the greeting moves to the new day. Boot fills
-     the milestone mirror and the preferences before the splash lifts, so
-     on a cold load the line is in place in the first frame Home shows. */
+  /* How long ago the journey anchor was, counted from the milestone the person marked in
+     Milestones and re-read with `today`, so a Home left open across a month boundary moves
+     from "30 days" to "1 month" the same way the greeting moves to the new day. Boot fills
+     the milestone mirror and the preferences before the splash lifts, so on a cold load the
+     line is in place in the first frame Home shows. */
   const anchorLine = $derived(journeyAnchorLine(vocabulary.journeyAnchor, today));
 
   $effect(() => {
@@ -248,9 +245,8 @@
     if (epochDay === today + 1) return m.tomorrow();
     return weekdayDay(epochDay);
   }
-  /** A row's second line: when it falls, and for today's appointment where
-      it is and how many others share the day (functional-audit ticket 14,
-      which folded the appointment-today tile into this row). */
+  /** A row's second line: when it falls, and for today's appointment where it is and how
+      many others share the day. */
   function agendaLine(item: AgendaItem): string {
     const when = agendaWhen(item.epochDay);
     if (!item.appointment) return when;
@@ -263,17 +259,16 @@
   const dayNumber = (epochDay: number) => fmtDay(epochDay, { day: 'numeric' });
   const fullDay = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
 
-  /* The pinned rows (ADR-0073): the person's arrangement, or the
-     default resolved from what onboarding was told, over the same two reads
-     the Transition door makes and the same line rule, so a pinned row and
-     its hub row say the same thing about a quiet area. Both reads or
-     neither, for the hub's own reason: a finished row drawn with a reading
-     under it for a frame is a wrong state, not a partial one. The order is
-     the person's and nothing here sorts it.
+  /* The pinned rows (ADR-0073): the person's arrangement, or the default resolved from what
+     onboarding was told, over the same two reads the Transition door makes and the same
+     line rule, so a pinned row and its hub row say the same thing about a quiet area. Both
+     reads or neither, for the hub's own reason: a finished row drawn with a reading under
+     it for a frame is a wrong state, not a partial one. The order is the person's and
+     nothing here sorts it.
 
-     Ticket 106: while queries are resolving, render with quiet standing
-     lines rather than an empty list, so the section does not expand by
-     ~300px and snap content below downward on hydration. */
+     While queries are resolving, render with quiet standing lines rather than an empty
+     list, so the section does not expand by ~300px and snap content below downward on
+     hydration. */
   /* Edit mode, which is a state of this block rather than a
      screen of its own: the rows being arranged are these rows, so the
      arrangement happens where they are. Off on arrival every time -
@@ -300,10 +295,9 @@
     const states = await j.areaStates.getAreaStates();
     return pinReadKey.split('|').includes('dilation') ? dilationGated(states, await j.procedures.getProcedures()) : states;
   });
-  /* The forward half (phase 11 all-four-doors ticket 02). A pinned row draws
-     the same line its hub row does, so it asks the same assembled question -
-     the milestones pin said "Nothing logged for 1 year 4 months" over the
-     same journal the agenda below it was already drawing a hearing from. */
+  /* The forward half. A pinned row draws the same line its hub row does, so it asks the
+     same assembled question - the milestones pin said "Nothing logged for 1 year 4 months"
+     over the same journal the agenda below it was already drawing a hearing from. */
   let forwardQuery = liveQuery(async (j) => {
     const key = pinReadKey;
     const value = await readRowForward(j, today, pinReads.forward);
@@ -493,12 +487,11 @@
       lastBackupAt: prefs.lastBackupAt
     }) && !ui.appOpening
   );
-  /* A recovery key replacement (or first key) the screen never got to
-     confirm, after a reload or a killed process (last-audit UI 42). Home is
-     where an unlock lands, so this is where the person learns that the old
-     key still works and the new one cannot be shown again; the choices live
-     on the recovery key screen. Read with the fold, so it arrives with the
-     other notices rather than after them. */
+  /* A recovery key replacement (or first key) the screen never got to confirm, after a
+     reload or a killed process. Home is where an unlock lands, so this is where the person
+     learns that the old key still works and the new one cannot be shown again; the choices
+     live on the recovery key screen. Read with the fold, so it arrives with the other
+     notices rather than after them. */
   let recoveryKeyRead = $state(false);
   void refreshRecoveryKeyPresence().then(() => (recoveryKeyRead = true));
   let showRecoveryKeyNotice = $derived(recoveryKeyPresence.known && recoveryKeyPresence.pending && !ui.appOpening);
@@ -506,17 +499,14 @@
     backupIsStale(prefs.lastBackupAt, today) && !prefs.backupNoticeDismissed && !ui.appOpening
   );
 
-  /* The appointment debrief offer (phase 6 ticket 08, rekeyed to an
-     appointment id by ticket 58, ADR-0066): the most recent past
-     appointment (appointments.ts's own pure selector, over the one read
-     the appointments screen already needs), joined with the standalone
-     checklist's debrief state scoped to that same id
+  /* The appointment debrief offer (ADR-0066): the most recent past appointment
+     (appointments.ts's own pure selector, over the one read the appointments screen already
+     needs), joined with the standalone checklist's debrief state scoped to that same id
      (checklists.ts's `getDebriefState`), folded through the pure predicate
-     (vocabulary/debriefOffer.ts) rather than re-deriving the rule here.
-     Its own `itemCount` rather than a bare presence check, since an
-     appointment with no prep item at all still has to read as "nothing to
-     prepare for" (What to Build #1) - a checklist that has never been
-     created answers that the same way an empty one does. */
+     (vocabulary/debriefOffer.ts) rather than re-deriving the rule here. Its own `itemCount`
+     rather than a bare presence check, since an appointment with no prep item at all still
+     has to read as "nothing to prepare for" (What to Build #1) - a checklist that has never
+     been created answers that the same way an empty one does. */
   let appointmentsQuery = liveList((j) => j.appointments.getAppointments());
   let lastAppointmentId = $derived(mostRecentPastAppointment(appointmentsQuery.rows, today)?.id ?? null);
   let debriefStateQuery = liveQuery((j) => j.checklists.getDebriefState(lastAppointmentId));
@@ -536,19 +526,16 @@
   );
   let stockDismissSheetOpen = $state(false);
 
-  /* The reserve (phase 12 ux-carpet ticket 183, Alicja's call: "reserve +
-     fade"). On a cold open the today tier, the agenda, the stock and debrief
-     notices and the rest of the tiles all answered in the same frame, ~50ms
-     after the screen had painted without them, and every block under them
-     teleported - the log strip 396px, the pinned rows 977px. Two slots now
-     hold the room those blocks rested at last time (homeReserve.ts) until
-     every read that decides them has agreed, then crossfade them in, and a
-     wrong guess travels (`resize`) rather than jumps.
+  /* The reserve. On a cold open the today tier, the agenda, the stock and debrief notices
+     and the rest of the tiles all answered in the same frame, ~50ms after the screen had
+     painted without them, and every block under them teleported - the log strip 396px, the
+     pinned rows 977px. Two slots now hold the room those blocks rested at last time
+     (homeReserve.ts) until every read that decides them has agreed, then crossfade them in,
+     and a wrong guess travels (`resize`) rather than jumps.
 
-     The agenda and grid must both answer before their shared projection
-     can draw. The debrief offer also waits for the current appointment id's
-     answer, carried with its result. A failed read counts as answered - it
-     will not answer any better by waiting. */
+     The agenda and grid must both answer before their shared projection can draw. The
+     debrief offer also waits for the current appointment id's answer, carried with its
+     result. A failed read counts as answered - it will not answer any better by waiting. */
   const settledFor = <T,>(read: { loading: boolean; failed: boolean; value: T | undefined }, askedWith: (value: T) => boolean) =>
     !read.loading && (read.failed || (read.value !== undefined && askedWith(read.value)));
   let foldReadsAgree = $derived(
@@ -672,22 +659,19 @@
     <!-- Under the field and over the foot: a waiting release, if there is
          one (UpdateNoticeSlot.svelte). -->
     <UpdateNoticeSlot />
-    <!-- The foot: one line of who and when, one of how much, and the gear at
-         the line's end. On the page rather than the field because all three
-         are small type (rule 3), and because a gear in the field's corner
-         competed with the wordmark (Alicja, ticket 06 round one). -->
+    <!-- The foot: one line of who and when, one of how much, and the gear at the line's
+         end. On the page rather than the field because all three are small type (rule 3),
+         and because a gear in the field's corner competed with the wordmark. -->
     <div class="home-foot" data-home-foot>
       <div class="home-foot-lines">
         <p class="home-hello" data-home-hello>{prefs.name ? m.home_hello_named({ name: prefs.name, date: fmtDay(today, { weekday: 'long', day: 'numeric', month: 'long' }) }) : fmtDay(today, { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-        <!-- How long since the journey anchor (functional audit 33): one
-             line, absent when no anchor is set or the anchor is still
-             ahead. Between the day and the count, since it is the fact
-             about the person's own journey and the count is about the
-             journal. It opens and closes its own height when the anchor is
-             set or cleared on a settled screen, and a new count of months
-             crosses in place, the two lines in one grid cell. The words
-             fade (global, so they also fade when the line itself arrives,
-             not only when the key changes). -->
+        <!-- How long since the journey anchor: one line, absent when no anchor is set or
+             the anchor is still ahead. Between the day and the count, since it is the fact
+             about the person's own journey and the count is about the journal. It opens and
+             closes its own height when the anchor is set or cleared on a settled screen,
+             and a new count of months crosses in place, the two lines in one grid cell. The
+             words fade (global, so they also fade when the line itself arrives, not only
+             when the key changes). -->
         {#if anchorLine}
           <p class="home-anchor" data-home-anchor transition:collapse={panel}>
             {#key anchorLine}<span transition:countFade|global>{anchorLine}</span>{/key}
@@ -716,11 +700,9 @@
           <p class="home-count" aria-hidden="true">&nbsp;</p>
         {/if}
       </div>
-      <!-- Preferences are chrome, not content, so they leave the fourth door
-           and live here (ticket 09, which also gives the rail its fifth item
-           and takes the Settings row out of the hub). Placed by ticket 23 as
-           part of the foot; a plain link, because an unwired control is a
-           dead control. -->
+      <!-- Preferences are chrome, not content, so they leave the fourth door and live here.
+           Placed as part of the foot; a plain link, because an unwired control is a dead
+           control. -->
       <a class="icon-btn press home-gear" href="/settings" aria-label={m.nav_settings()} data-home-gear>
         <Icon name="settings" size={22} />
       </a>
@@ -774,10 +756,9 @@
     <!-- The milestone notice shares the agenda’s colour. Its confetti plays
          on arrival and stops. The flag sun and mood faces own the loops. -->
     {#if celebrate}
-      <!-- Nine pieces over the notice that says which milestone it is (Alicja,
-           2026-08-25: "we want the same confetti animation when it's a
-           milestone day"). A moment that plays once and stops costs nothing
-           after it stops, and this one fires on the day a milestone lands. -->
+      <!-- Nine pieces over the notice that says which milestone it is. A moment that plays
+           once and stops costs nothing after it stops, and this one fires on the day a
+           milestone lands. -->
       <div class="home-celebrate">
         {@render cheer()}
         <Notice
@@ -794,13 +775,11 @@
         />
       </div>
     {/if}
-    <!-- The today tier leads Home, above the agenda (phase 8 features
-         ticket 63, ADR-0067; redesign ticket 13): what is happening now - a
-         wear session running, a dose the day expects, an appointment on the
-         date - answers before what is coming does, and both before "how are
-         you feeling". A reorder rather than a second grid: this is the same
-         today-tier row the block below used to draw in its own turn, only
-         moved. Empty, and nothing here renders at all. -->
+    <!-- The today tier leads Home, above the agenda (ADR-0067): what is happening now - a
+         wear session running, a dose the day expects, an appointment on the date - answers
+         before what is coming does, and both before "how are you feeling". A reorder rather
+         than a second grid: this is the same today-tier row the block below used to draw in
+         its own turn, only moved. Empty, and nothing here renders at all. -->
     {#if todayTiles.length > 0}
       <div transition:collapse={panel}>
         {@render tileRow(todayTiles, TILE_BLOCKS.find((block) => block.tier === 'today')!)}
@@ -817,16 +796,14 @@
         <ListCard role={tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.agenda)}>
           {#each agendaRows as item, i (item.key)}
             {@const label = dayAheadMarkLabel(item.kind)}
-            <!-- Each row owns its height and gives it back (rule 10): a row
-                 the fold discloses opens rather than appears, and one whose
-                 day passes closes, the rows under it following. The day
-                 block on it arrives the way every block does, clipping open
-                 from its left edge, the rows of one arrival one stagger step
-                 apart: counted from the first row the
-                 screen shows, or from the first row the fold lets out, so a
-                 row arriving out of the fold never waits its turn behind
-                 rows that were already there (ticket 25's lesson on the
-                 tiles). Capped where the tiles' stagger is. -->
+            <!-- Each row owns its height and gives it back (rule 10): a row the fold
+                 discloses opens rather than appears, and one whose day passes closes, the
+                 rows under it following. The day block on it arrives the way every block
+                 does, clipping open from its left edge, the rows of one arrival one stagger
+                 step apart: counted from the first row the screen shows, or from the first
+                 row the fold lets out, so a row arriving out of the fold never waits its
+                 turn behind rows that were already there. Capped where the tiles' stagger
+                 is. -->
             <div class="rows-divide" transition:disclose={panel} style:--row-index={Math.min(6, i < agenda.shown.length ? i : i - agenda.shown.length)}>
               <ListRow
                 key={item.key}
@@ -908,19 +885,17 @@
     <MoodChips value={latestToday?.mood ?? null} onPick={onQuickLog} />
   </div>
 
-  <!-- The notices, below the strip since phase 11 ticket 03. They used to
-       sit between the agenda and the strip, which put them inside "Coming
-       up" to the eye: rule 1 makes a heading name everything down to the
-       next rule, so a person read their month as a dose and a nag about
-       backups. Under no heading of their own, and with no coloured side
-       border and no role - the flag colours the areas of the journal, and
-       this is the app talking about itself.
+  <!-- The notices, below the strip. They used to sit between the agenda and the strip,
+       which put them inside "Coming up" to the eye: rule 1 makes a heading name everything
+       down to the next rule, so a person read their month as a dose and a nag about
+       backups. Under no heading of their own, and with no coloured side border and no role
+       - the flag colours the areas of the journal, and this is the app talking about
+       itself.
 
-       The second reserve holds all three notices and the rest
-       of the tiles, between the log strip and the pinned rows. The backup
-       notice is in it although it has no read of its own: it waits for the
-       real preferences, which land when the journal opens, and drawn then
-       it shoved the pinned rows 179px in the frame boot went ready. -->
+       The second reserve holds all three notices and the rest of the tiles, between the log
+       strip and the pinned rows. The backup notice is in it although it has no read of its
+       own: it waits for the real preferences, which land when the journal opens, and drawn
+       then it shoved the pinned rows 179px in the frame boot went ready. -->
   <ReadReserve ready={foldRevealed} estimate={reserveBelow} onrest={rememberBelow} data-home-reserve="below">
     {#if showRecoveryKeyNotice}
       <Notice
@@ -982,14 +957,12 @@
       />
     {/if}
 
-    <!-- The appointment debrief offer: in-app only, per
-         the unprompted registry's admission rule (registry.ts) - nothing here
-         schedules a notification. Offered once; dismissing or writing about
-         it both stop it for good until a newer past appointment supersedes it
-         (debriefOfferVisible, checklists.ts, ticket 58). No coloured side
-         border and no role, the same reasoning the backup notice's own
-         comment gives: this is the app naming an appointment the person
-         recorded, not one of the journal's own coloured areas. -->
+    <!-- The appointment debrief offer: in-app only, per the unprompted registry's admission
+         rule (registry.ts) - nothing here schedules a notification. Offered once;
+         dismissing or writing about it both stop it for good until a newer past appointment
+         supersedes it (checklists.ts). No coloured side border and no role, the same
+         reasoning the backup notice's own comment gives: this is the app naming an
+         appointment the person recorded, not one of the journal's own coloured areas. -->
     {#if showDebriefOffer}
       <Notice
         icon="appointment"
@@ -1008,19 +981,17 @@
       />
     {/if}
 
-    <!-- The rest of the live tiles (ticket 45, capped and weighted by phase 8
-         UX ticket 01) - the moment weight as a card, the dormant weight as a
-         quiet list row. The today tier's own row leads the screen; this
-         block never draws it.
+    <!-- The rest of the live tiles - the moment weight as a card, the dormant weight as a
+         quiet list row. The today tier's own row leads the screen; this block never draws
+         it.
 
-         Two shapes rather than the three the grid as a whole has: a moment is
-         a card in the two-up grid, and a dormant nudge is a line in a list
-         with no action of its own - tapping it opens the screen the action
-         lived on. They share one role, so they still read as one area of the
-         screen (HOME_AREA_ROLE.liveTiles).
+         Two shapes rather than the three the grid as a whole has: a moment is a card in the
+         two-up grid, and a dormant nudge is a line in a list with no action of its own -
+         tapping it opens the screen the action lived on. They share one role, so they still
+         read as one area of the screen (HOME_AREA_ROLE.liveTiles).
 
-         Separation is an opaque surface and a line: box-shadow is banned in
-         the kit and tested for. -->
+         Separation is an opaque surface and a line: box-shadow is banned in the kit and
+         tested for. -->
     {#if momentTiles.length > 0 || quietTiles.length > 0 || tileSplit.folded.length > 0}
       <div class="home-tiles" transition:collapse={panel}>
         {@render tileRow(momentTiles, TILE_BLOCKS.find((block) => block.tier === 'moment')!)}
@@ -1071,18 +1042,16 @@
     {/if}
   </ReadReserve>
 
-  <!-- The pinned rows (ADR-0073): what the person put on their
-       front page, in their order, each with its reading and the day of it
-       or the line about what is behind it, off the same registry and the
-       same line rule as the Transition door. A pin naming a hidden area
-       resolves to nothing before it gets here.
+  <!-- The pinned rows (ADR-0073): what the person put on their front page, in their order,
+       each with its reading and the day of it or the line about what is behind it, off the
+       same registry and the same line rule as the Transition door. A pin naming a hidden
+       area resolves to nothing before it gets here.
 
-       The block is here whether or not anything is pinned, which it was not
-       before ticket 14: the last row of it is the way into the edit mode,
-       and an empty arrangement that drew no heading would have left
-       somebody who unpinned everything with no way back. With nothing
-       pinned it is the one row, and that row asks for the first pin rather
-       than repeating the heading. -->
+       The block is here whether or not anything is pinned, which it was not before the last
+       row of it is the way into the edit mode, and an empty arrangement that drew no
+       heading would have left somebody who unpinned everything with no way back. With
+       nothing pinned it is the one row, and that row asks for the first pin rather than
+       repeating the heading. -->
   <div data-home-pinned bind:this={pinnedSection}>
     {#if editing}
       <div transition:collapse={panel} data-home-editing>
@@ -1294,8 +1263,8 @@
   .home-field {
     position: relative; z-index: 1;
     display: flex; align-items: flex-end;
-    /* The colour is the blind's, not this element's (redesign ticket 28,
-       components.css); what stays here is the box that measures it. */
+    /* The colour is the blind's, not this element's (components.css); what stays here is
+       the box that measures it. */
     color: var(--field-ink);
     padding: var(--space-4) var(--space-5) var(--space-4);
     margin: calc(-1 * var(--field-bleed-top)) calc(-1 * var(--screen-inset)) 0;
@@ -1408,8 +1377,8 @@
     top: 0;
     left: 0;
     width: 100%;
-    /* Far enough down to cross the notice it is thrown over rather than
-       stopping at its top edge (Alicja, 2026-08-25). */
+    /* Far enough down to cross the notice it is thrown over rather than stopping at its top
+       edge. */
     height: 46px;
     pointer-events: none;
   }

@@ -183,14 +183,12 @@ export const OFFERS = {
     }
   },
 
-  /* Phase 8 features ticket 51. Manual only, with no automatic trigger and
-     no declined-forever preference the way `area-finished` has one: nothing
-     about a stopped stream implies a pause the way nothing added for
-     `FINISH_SUGGESTION_QUIET_DAYS` implies a finish, so there is no
-     observation here to suggest from. It is registered anyway, rather than
-     the sheet writing `setAreasSuspended` directly, for the same reason
-     every other write in this file is: one path to the record, and the sheet
-     is the confirmation regardless of what opened it. */
+  /* Manual only, with no automatic trigger and no declined-forever preference the way
+     `area-finished` has one: nothing about a stopped stream implies a pause the way nothing
+     added for `FINISH_SUGGESTION_QUIET_DAYS` implies a finish, so there is no observation
+     here to suggest from. It is registered anyway, rather than the sheet writing
+     `setAreasSuspended` directly, for the same reason every other write in this file is:
+     one path to the record, and the sheet is the confirmation regardless of what opened it. */
   'area-suspended': {
     key: 'area-suspended',
     trigger: "opened by hand from the area's own screen; no automatic trigger offers this",

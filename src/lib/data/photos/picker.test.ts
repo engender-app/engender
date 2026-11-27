@@ -102,9 +102,8 @@ describe('androidPickedBytes', () => {
     expect(vi.mocked(androidPhotos.readPickedChunk)).toHaveBeenCalledWith({ token: 'a-token' });
   });
 
-  /* The fallback's whole point after ticket 14: a 25 MB scan crosses as
-     several bounded strings rather than one 34 MB allocation, so what
-     arrives has to be the pieces in the order they came. */
+  /* The fallback's whole point after a 25 MB scan crosses as several bounded strings rather
+     than one 34 MB allocation, so what arrives has to be the pieces in the order they came. */
   test('joins the fallback chunks in the order the bridge answered them', async () => {
     bridgeAnswers([
       [1, 2],
@@ -231,8 +230,8 @@ describe('filePhotoPicker', () => {
   });
 });
 
-/* Security-scan ticket 07, GD-019: the ceiling per file left the count and
-   the total open, and every selected file's bytes were held at once. */
+/* GD-019: the ceiling per file left the count and the total open, and every selected file's
+   bytes were held at once. */
 describe('filePhotoPicker selection budget', () => {
   beforeEach(() => {
     vi.resetAllMocks();

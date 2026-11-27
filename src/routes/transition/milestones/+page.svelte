@@ -188,10 +188,9 @@
     return [{ id: 'milestone-photo', fileName: photo.kind === 'stored' ? photo.photo.fileName : null }];
   }
 
-  /* The day-prompt (ticket 47, ADR-0008/0015): normalizing always strips
-     whatever date the picked file carried, so a photo picked or captured
-     here is asked for a day before it lands in the draft. A milestone
-     shows at most one photo, so this holds at most one pending pick -
+  /* The day-prompt (ADR-0008/0015): normalizing always strips whatever date the picked file
+     carried, so a photo picked or captured here is asked for a day before it lands in the
+     draft. A milestone shows at most one photo, so this holds at most one pending pick -
      unlike the entry editor's queue, there is never a second to lose. */
   let pendingMilestonePhoto = $state<NormalizedPhoto | null>(null);
   let pendingMilestoneDay = $state('');

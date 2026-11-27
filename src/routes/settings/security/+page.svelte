@@ -1,19 +1,16 @@
 <script lang="ts">
-  /* How the app answers "is this you", in one place (ticket 18, rebuilt by
-     ticket 53).
+  /* How the app answers "is this you", in one place.
 
-     There used to be three rows here for three disconnected mechanisms: a
-     passphrase, an app-lock PIN that encrypted nothing, and a biometric
-     toggle with no surface to apply to. ADR-0041 collapses the first two into
-     one access mode, so this screen now has one row that matters - which mode
-     the journal is on - plus the switches that sit beside it.
+     There used to be three rows here for three disconnected mechanisms: a passphrase, an
+     app-lock PIN that encrypted nothing, and a biometric toggle with no surface to apply
+     to. ADR-0041 collapses the first two into one access mode, so this screen now has one
+     row that matters - which mode the journal is on - plus the switches that sit beside it.
 
-     That row also says when the mode's secret is asked for again, because
-     it is the same secret and the same screen decides both (lock-timing
-     ticket 01). The lock-on-leave switch that used to sit here as a second
-     mechanism is that screen's second question now. The Android "Open
-     automatically" switch is gone altogether: the screen-lock prompt always
-     fires by itself at start (lock-timing ticket 01). */
+     That row also says when the mode's secret is asked for again, because it is the same
+     secret and the same screen decides both. The lock-on-leave switch that used to sit here
+     as a second mechanism is that screen's second question now. The Android "Open
+     automatically" switch is gone altogether: the screen-lock prompt always fires by itself
+     at start. */
   import { m } from '$lib/paraglide/messages';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { bootState } from '$lib/stores/boot.svelte';
@@ -41,11 +38,9 @@
     return hasSecret ? `${name} · ${lockAfterSub[prefs.lockAfter]()}` : name;
   });
 
-  /* Read once on mount rather than derived from anything: whether a
-     recovery key exists is a file on disk, not app state, and this screen
-     is the only place that asks. Undefined until it answers, so the row
-     states neither thing while it does not know (ADR-0054, ticket
-     sec-01). */
+  /* Read once on mount rather than derived from anything: whether a recovery key exists is
+     a file on disk, not app state, and this screen is the only place that asks. Undefined
+     until it answers, so the row states neither thing while it does not know (ADR-0054). */
   refreshRecoveryKeyPresence();
 </script>
 

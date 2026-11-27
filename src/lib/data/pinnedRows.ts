@@ -37,17 +37,15 @@ export type PinPreferences = Pick<PreferenceValues, 'pinnedRows' | 'onboardingAr
     same rowLine reading that the hub shows, including when it goes quiet. */
 export type PinnedRow = DrawnRow;
 
-/** The default set: saved onboarding choices for older journals, or the
-    three-row default when no choice was stored.
+/** The default set: saved onboarding choices for older journals, or the three-row default
+    when no choice was stored.
 
-    In registry order rather than in the order somebody ticked a list of
-    checkboxes, which is an artefact of reading down a page rather than an
-    arrangement. The hub's order is one they have already met, and ticket 14
-    is where an order of their own is made.
+    In registry order rather than in the order somebody ticked a list of checkboxes, which
+    is an artefact of reading down a page rather than an arrangement. The hub's order is one
+    they have already met, and is where an order of their own is made.
 
-    Held apart from the arrangement rather than flattened into it so that
-    "back to what I said at the start" stays computable after the front page
-    has been rearranged. */
+    Held apart from the arrangement rather than flattened into it so that "back to what I
+    said at the start" stays computable after the front page has been rearranged. */
 /* defaultPins stays exported only for its own test (AU-09 test-only
    review). */
 export function defaultPins(

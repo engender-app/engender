@@ -1,10 +1,9 @@
-/* The forward read (phase 11 all-four-doors ticket 02): that every area is
-   asked exactly once through its own method, that the dose owner supplies
-   the next uncovered slot, and that the soonest stock run-out is handed
+/* The forward read: that every area is asked exactly once through its own method, that the
+   dose owner supplies the next uncovered slot, and that the soonest stock run-out is handed
    to the projection.
 
-   What each fact turns into is `rowForward.test.ts`'s question. This is
-   about what gets asked and what is handed on. */
+   What each fact turns into is `rowForward.test.ts`'s question. This is about what gets
+   asked and what is handed on. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

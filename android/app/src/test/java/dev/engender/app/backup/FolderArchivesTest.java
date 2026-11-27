@@ -47,8 +47,8 @@ public class FolderArchivesTest {
         assertEquals("b", FolderArchives.newest(folder, Collections.emptyList(), 19, Collections.emptyList()).uri);
     }
 
-    /* Backups were .ttbackup before ticket 10 renamed them .gnd: a phone on an
-       older build shares the folder, so its archives still count. */
+    /* Backups were.ttbackup renamed them.gnd: a phone on an older build shares the folder,
+       so its archives still count. */
     @Test public void takesAnotherDevicesArchiveUnderEitherExtension() {
         List<Document> folder = Arrays.asList(
             new Document("old", "auto-backup-20.ttbackup", 20, 100),

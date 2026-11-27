@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { builtInPassageKey, customPassageKey, wordCountOf } from './passages.ts';
 
-/* A benchmark's series key (ticket 15, CONTEXT: "Benchmark passage"). */
+/* A benchmark's series key. */
 
 test('the word count comes from the text, however it is spaced', () => {
   assert.equal(wordCountOf('the morning bus takes the long way round'), 8);

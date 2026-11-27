@@ -1,16 +1,14 @@
-/* Browser-tier check for ticket 27's photo journey export.
+/* Browser-tier check for photo journey export.
 
-   Three things can only be proved here. The collage and the timelapse are
-   bytes a canvas produced, so a Node-tier test could only assert against a
-   stub encoder. MediaRecorder does not exist in Node at all. And the claim
-   the ticket actually makes - that generating an export transmits nothing,
-   and only the share step does - is a claim about navigator.share, which
-   means watching a real one.
+   Three things can only be proved here. The collage and the timelapse are bytes a canvas
+   produced, so a Node-tier test could only assert against a stub encoder. MediaRecorder
+   does not exist in Node at all. And the claim the ticket actually makes - that generating
+   an export transmits nothing, and only the share step does - is a claim about
+   navigator.share, which means watching a real one.
 
-   The source photos are three flat colours in journey order, which is what
-   makes the composition checkable: a collage that drew them out of order,
-   or drew the surround where a photo should be, comes back with the wrong
-   pixel in the wrong cell. */
+   The source photos are three flat colours in journey order, which is what makes the
+   composition checkable: a collage that drew them out of order, or drew the surround where
+   a photo should be, comes back with the wrong pixel in the wrong cell. */
 
 import { collageLayout, fitCover, journeyFileName, TIMELAPSE_EDGE } from '../../src/lib/data/photos/journey.ts';
 import {
@@ -169,11 +167,10 @@ async function run() {
   );
   result.coverOfPortrait = fitCover(800, 1200, layout.cell, layout.cell);
 
-  /* --- a photo smaller than its cell ------------------------------------
-     Ticket 27 puts upscaling out of scope and normalize.ts never upscales on
-     the way in, so a small import must sit small rather than be stretched to
-     fill. Drawn on its own so the cell is the full 360px: the corner of that
-     cell has to be surround and its centre the photo. */
+  /* --- a photo smaller than its cell ------------------------------------ upscaling out of
+     scope and normalize.ts never upscales on the way in, so a small import must sit small
+     rather than be stretched to fill. Drawn on its own so the cell is the full 360px: the
+     corner of that cell has to be surround and its centre the photo. */
   const tiny = await renderCollage([{ fileName: 'tiny.jpg', caption: '4 Feb 2025' }], async () =>
     solidJpeg(200, 200, GREEN)
   );

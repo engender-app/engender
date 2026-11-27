@@ -192,9 +192,8 @@ the route carries the reminder's id
             .setContentIntent(AppLaunch.openAppIntent(context, route, "reminder:" + id, 1));
 
         if (isDoseReminder(reminder) && !id.isBlank()) {
-            /* Under disguise the first button says Done rather than Taken:
-               a notification is one of the outside surfaces disguise still
-               covers (functional audit spec, Disguise). */
+            /* Under disguise the first button says Done rather than Taken: a notification
+               is one of the outside surfaces disguise still covers. */
             JSONObject texts = payload.optJSONObject("texts");
             String taken = texts == null ? "Taken"
                 : texts.optString(DisguiseAlias.isDisguised(context) ? "doseDone" : "doseTaken", "Taken");

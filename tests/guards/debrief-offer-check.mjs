@@ -39,9 +39,8 @@ const check = (label, ok) => ok ? reporter.ok(label) : reporter.fail(label, 'Con
 
 try {
   await settle('/health/appointments');
-  /* The prep list's own add, beside its heading: `[data-add]` in the screen
-     header books an appointment (phase 11 all-four-doors ticket 12 put both
-     on one screen). */
+  /* The prep list's own add, beside its heading: `[data-add]` in the screen header books an
+     appointment. */
   await page.locator('[data-add-prep]').click();
   await page.locator('#appointment-prep-input').fill('ask about labs');
   await page.locator('[data-save-appointment-item]').click();
@@ -51,7 +50,7 @@ try {
   await page.waitForSelector('[data-appointment-item]');
 
   // The demo persona already has a past appointment with its debrief written
-  // (ticket 64's seed), so the resting state is a journal whose most recent
+  // , so the resting state is a journal whose most recent
   // past appointment is settled - which is the state that must stay quiet.
   await settle('/');
   check(

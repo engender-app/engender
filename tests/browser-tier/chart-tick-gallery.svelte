@@ -1,18 +1,17 @@
 <script lang="ts">
-  /* The readout a chart draws under a pointer, with the line each tick now
-     draws under its own name (phase 11 UI/UX ticket 49).
+  /* The readout a chart draws under a pointer, with the line each tick now draws under its
+     own name.
 
-     Three charts, one per grain, because the rule about dating a line is a
-     rule about how many days a position stands for: the day grain's
-     positions are days and the readout already names them, the week and
-     month grains' are buckets and a tick inside one has to say which day it
-     was. Every chart carries the same eight ticks so the three readouts can
-     be read against each other.
+     Three charts, one per grain, because the rule about dating a line is a rule about how
+     many days a position stands for: the day grain's positions are days and the readout
+     already names them, the week and month grains' are buckets and a tick inside one has to
+     say which day it was. Every chart carries the same eight ticks so the three readouts
+     can be read against each other.
 
-     Real everything: `annotationsInRange` places them, `AreaChart` draws
-     them, and the words come out of the catalogue the app ships. Only the
-     sources are written here rather than read from SQLite, which is the
-     seam chartAnnotations.test.ts covers against a real database. */
+     Real everything: `annotationsInRange` places them, `AreaChart` draws them, and the
+     words come out of the catalogue the app ships. Only the sources are written here rather
+     than read from SQLite, which is the seam chartAnnotations.test.ts covers against a real
+     database. */
   import { onMount } from 'svelte';
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';

@@ -1,13 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-/* Phase 5 security ticket 01 (F-02). Both attributes shipped wrong once -
-   allowBackup defaulted to true with no rules to narrow it, and the whole
-   private directory went to Google's cloud backup and to device-to-device
-   transfer. What left was the WebView's localStorage draft, the reminder
-   titles and the backup destination's label, in plaintext. Neither
-   attribute has anything on a device to fail against, so this is where a
-   regression gets caught. */
+/* Both attributes shipped wrong once - allowBackup defaulted to true with no rules to
+   narrow it, and the whole private directory went to Google's cloud backup and to
+   device-to-device transfer. What left was the WebView's localStorage draft, the reminder
+   titles and the backup destination's label, in plaintext. Neither attribute has anything
+   on a device to fail against, so this is where a regression gets caught. */
 
 const root = new URL('../../../', import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, root), 'utf8');

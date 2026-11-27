@@ -195,8 +195,8 @@ export function assembleReminderSyncPayload(input: {
   todayEpochDay: number;
   quietHours: QuietHours;
   texts: AndroidReminderTexts;
-  /** What each reminder's notification says. Without it a notification
-      shows the stored title over the time, as it did before ticket 21. */
+  /** What each reminder's notification says. Without it a notification shows the stored
+      title over the time, as it did. */
   notificationWords?: (reminder: Reminder) => { title: string; text: string };
 }): AndroidReminderSyncPayload {
   const words = input.notificationWords;

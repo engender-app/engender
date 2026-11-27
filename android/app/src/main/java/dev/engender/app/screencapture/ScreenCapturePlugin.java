@@ -66,15 +66,13 @@ public class ScreenCapturePlugin extends Plugin {
         return allowed && !disguised;
     }
 
-    /** Applies the stored capture choice and the live disguise state. Disguise
-        is read off the launcher alias, as the widgets and notifications do, so
-        it holds from the first frame of a cold start with no WebView and needs
-        no second copy of the preference. Neither the stored choice nor the
-        window flag is changed by disguise going on or off. A journal lock hides
-        no screenshot, but while a lock is set the Recents preview is never
-        kept (Android 13+), because it would show the journal after the lock
-        engaged (tester report 02 ticket 07, Alicja 2026-11-12, over her
-        2026-10-06 "a lock hides neither"). */
+    /** Applies the stored capture choice and the live disguise state. Disguise is read off
+        the launcher alias, as the widgets and notifications do, so it holds from the first
+        frame of a cold start with no WebView and needs no second copy of the preference.
+        Neither the stored choice nor the window flag is changed by disguise going on or
+        off. A journal lock hides no screenshot, but while a lock is set the Recents preview
+        is never kept (Android 13+), because it would show the journal after the lock
+        engaged. */
     public static void applyWindowFlags(Activity activity) {
         applyWindowFlags(activity, isAllowed(activity));
     }

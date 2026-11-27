@@ -1,13 +1,12 @@
-/* Ticket 09 (MO-003): Svelte's JS-driven transitions (Sheet, Toasts) sit
-   outside CSS's reach, so neither reduced-motion selector in theme/base.css
-   can clamp their durations the way it clamps every CSS animation and
-   transition. These mirror the same --dur-* and --motion-distance- tokens
-   and the same html[data-a11y-motion] signal +layout.svelte already stamps, so
-   a Svelte transition and its CSS neighbours never drift apart.
+/* Svelte's JS-driven transitions (Sheet, Toasts) sit outside CSS's reach, so neither
+   reduced-motion selector in theme/base.css can clamp their durations the way it clamps
+   every CSS animation and transition. These mirror the same --dur-* and --motion-distance-
+   tokens and the same html[data-a11y-motion] signal +layout.svelte already stamps, so a
+   Svelte transition and its CSS neighbours never drift apart.
 
-   It also carries the two pieces every JS-driven transition here shares: the
-   easing, and opacity-alone, which is what both tier 2's reduced-motion
-   substitute and tier 3's no-clip-path fallback come down to. */
+   It also carries the two pieces every JS-driven transition here shares: the easing, and
+   opacity-alone, which is what both tier 2's reduced-motion substitute and tier 3's
+   no-clip-path fallback come down to. */
 
 import { quintOut } from 'svelte/easing';
 import type { TransitionConfig } from 'svelte/transition';
@@ -20,11 +19,9 @@ import type { TransitionConfig } from 'svelte/transition';
     look alike. */
 export const EASE_OUT = quintOut;
 
-/** The same --ease-out curve as EASE_OUT, as the string form WAAPI's own
-    `animate()` takes - `Animation` has no `css(t)` to hand a JS function to,
-    so the two constants exist for the two APIs and must be kept to the one
-    curve by hand (phase 5 ticket 32.17's `resize`, the first primitive that
-    animates via WAAPI rather than a Svelte transition). */
+/** The same --ease-out curve as EASE_OUT, as the string form WAAPI's own `animate()` takes
+    - `Animation` has no `css(t)` to hand a JS function to, so the two constants exist for
+    the two APIs and must be kept to the one curve by hand. */
 export const EASE_OUT_CSS = 'cubic-bezier(0.22, 1, 0.36, 1)';
 
 /** --ease-out-soft's control points: --ease-out with the instant off the
@@ -82,11 +79,10 @@ function readCssNumber(token: string, fallback: number): number {
 export type DurationToken = '--dur-fast' | '--dur-med' | '--dur-slow' | '--dur-press' | '--dur-authored' | '--dur-sun-open' | '--dur-bloom';
 type DistanceToken = '--motion-distance-sm' | '--motion-distance-md';
 
-/** The values base.css authors each token at, for the no-DOM path -
-    exported so tokens.test.ts can hold this table against base.css itself
-    rather than trusting it not to drift. Ticket 15 (MO-004): 27 call sites
-    used to restate one of these by hand, and --dur-fast (150ms) had
-    already drifted to 160 at two of them. One table, read once. */
+/** The values base.css authors each token at, for the no-DOM path - exported so
+    tokens.test.ts can hold this table against base.css itself rather than trusting it not
+    to drift. (MO-004): 27 call sites used to restate one of these by hand, and --dur-fast
+    (150ms) had already drifted to 160 at two of them. One table, read once. */
 export const DURATION_FALLBACK: Record<DurationToken, number> = {
   '--dur-fast': 150,
   '--dur-med': 240,

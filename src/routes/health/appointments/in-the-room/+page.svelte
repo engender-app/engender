@@ -40,19 +40,17 @@
   let items = $derived(checklistQuery.rows);
 
   /* The appointment this room is, resolved by the rule the room owns
-     (chosenAppointmentOnDay, appointments.ts): the appointment chosen below when the
-     day holds more than one, the one appointment when the day holds exactly one,
-     and none when the day is ambiguous and unchosen - or when the chosen
-     appointment was deleted or moved off the day, where falling back to
-     whichever appointment is left would attach this room's answers to an appointment
-     the person never chose (ticket 12, audit I3).
+     (chosenAppointmentOnDay, appointments.ts): the appointment chosen below when the day
+     holds more than one, the one appointment when the day holds exactly one, and none when
+     the day is ambiguous and unchosen - or when the chosen appointment was deleted or moved
+     off the day, where falling back to whichever appointment is left would attach this
+     room's answers to an appointment the person never chose.
 
-     None is an ordinary state, not a failure. The list is standing and
-     unowned (ADR-0066), so reading it on a day with nothing booked is
-     allowed - somebody rehearsing the night before is reading the same
-     questions. What that day has nowhere to put is an answer, and the
-     screen says so by not offering a field rather than by taking one and
-     dropping it. */
+     None is an ordinary state, not a failure. The list is standing and unowned (ADR-0066),
+     so reading it on a day with nothing booked is allowed - somebody rehearsing the night
+     before is reading the same questions. What that day has nowhere to put is an answer,
+     and the screen says so by not offering a field rather than by taking one and dropping
+     it. */
   let appointmentsQuery = liveList((j) => j.appointments.getAppointments());
   let todaysAppointments = $derived(appointmentsOnDay(appointmentsQuery.rows, today));
   let ambiguousDay = $derived(todaysAppointments.length > 1);
@@ -97,11 +95,10 @@
   /* Keyed by item id rather than by position: the list is live, and an item
      deleted from the prep screen in another tab must not slide somebody
      else's answer onto a different question. */
-  /* Drafts per appointment, because two appointments on one day are two visits
-     and each holds its own answers (ticket 12, audit I3): switching the
-     choice above switches which set the field reads, and nothing typed
-     under one appointment can land under another. Restored into from what was
-     held (below), so a remount finds them again (ticket 05, audit I2). */
+  /* Drafts per appointment, because two appointments on one day are two visits and each
+     holds its own answers: switching the choice above switches which set the field reads,
+     and nothing typed under one appointment can land under another. Restored into from what
+     was held (below), so a remount finds them again. */
   let drafts = $state<Record<string, Record<string, string>>>({});
   let appointmentDrafts = $derived((appointment ? drafts[appointment.id] : undefined) ?? {});
 
@@ -162,13 +159,11 @@
 </script>
 
 <div class="screen room">
-  <!-- No actions: nothing lives beside the title. The back control returns
-       to whichever screen led here, which is the appointment screen and nowhere
-       else since phase 11 all-four-doors ticket 12 (smartBack), falling
-       back to it by name for a deep link or a reload (carpet 27). The title
-       is shown in the field like every other screen's (after-release 28,
-       audit UI-10): hidden, the field held only the back arrow and read as
-       a band with nothing in it above the question. -->
+  <!-- No actions: nothing lives beside the title. The back control returns to whichever
+       screen led here, which is the appointment screen and nowhere else (smartBack),
+       falling back to it by name for a deep link or a reload (carpet 27). The title is
+       shown in the field like every other screen's: hidden, the field held only the back
+       arrow and read as a band with nothing in it above the question. -->
   <ScreenHeader
     title={m.in_the_room_title()}
     screen="in-the-room"
@@ -178,12 +173,10 @@
   <ReadGate read={checklistQuery} variant="block" count={1}>
     {#snippet rows()}
       <div class="room-stage" data-in-the-room>
-        <!-- Only when the day is ambiguous (ticket 12, audit I3): which
-             appointment these answers belong to is a fact only the person has.
-             One control above the question, so it is reachable before any
-             answering starts and states the choice the field under it keys
-             off; a day with one booking needs no step and shows nothing
-             here. -->
+        <!-- Only when the day is ambiguous: which appointment these answers belong to is a
+             fact only the person has. One control above the question, so it is reachable
+             before any answering starts and states the choice the field under it keys off;
+             a day with one booking needs no step and shows nothing here. -->
         {#if ambiguousDay || (chosenAppointmentId !== null && !appointment && todaysAppointments.length > 0)}
           <button
             class="room-visit"
@@ -321,14 +314,12 @@
     gap: var(--space-6);
   }
 
-  /* Which appointment these answers belong to (ticket 12, audit I3). Quiet on
-     purpose: it sits above the largest text in the app and must not compete
-     with it, so it reads as a line of small text that happens to open the
-     choice, not as a fourth control. Left-aligned rather than centred under
-     the question, because it states a fact about the day ("morning, at the
-     clinic") rather than asking anything. The hit area is the full-height
-     row it occupies, which clears the touch floor without padding the pill
-     out to a button's size. */
+  /* Which appointment these answers belong to. Quiet on purpose: it sits above the largest
+     text in the app and must not compete with it, so it reads as a line of small text that
+     happens to open the choice, not as a fourth control. Left-aligned rather than centred
+     under the question, because it states a fact about the day ("morning, at the clinic")
+     rather than asking anything. The hit area is the full-height row it occupies, which
+     clears the touch floor without padding the pill out to a button's size. */
   .room-visit {
     display: inline-flex;
     align-items: center;
@@ -371,13 +362,11 @@
     line-height: var(--leading-display);
     letter-spacing: var(--display-track);
     text-wrap: balance;
-    /* The words are the person's own, and a single one can be wider than
-       the screen: "spironolactone" at this size is wider than the 155px a
-       390px phone leaves at 200% zoom. As a flex item the question took that
-       word's width as its own floor and ran off the right edge, cutting
-       every line with it (last-audit UI 48). It breaks inside the word
-       instead, the rule .screen-title takes for the same reason; a question
-       whose words fit is untouched. */
+    /* The words are the person's own, and a single one can be wider than the screen:
+       "spironolactone" at this size is wider than the 155px a 390px phone leaves at 200%
+       zoom. As a flex item the question took that word's width as its own floor and ran off
+       the right edge, cutting every line with it. It breaks inside the word instead, the
+       rule.screen-title takes for the same reason; a question whose words fit is untouched. */
     min-width: 0;
     overflow-wrap: break-word;
   }

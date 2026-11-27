@@ -18,21 +18,17 @@ export function registerServiceWorkerAfterBoot(status: string): void {
   whenIdle(registerServiceWorker);
 }
 
-/** Installs the offline shell, which is also what makes
-    the app installable: without a worker Chromium offers no install prompt.
-    Then watches for the next release.
+/** Installs the offline shell, which is also what makes the app installable: without a
+    worker Chromium offers no install prompt. Then watches for the next release.
 
-    Not in development, where the precached shell would be served ahead of
-    every edit and no change would reach the browser until the worker was
-    unregistered by hand.
+    Not in development, where the precached shell would be served ahead of every edit and no
+    change would reach the browser until the worker was unregistered by hand.
 
-    Not on Android either (phase 5 performance ticket 01). Neither half of what
-    this does has a job there: every asset the WebView loads is already a local
-    file inside the APK, so there is no offline shell to build, and a new
-    release arrives as an APK rather than as a worker script, so there is no
-    update to watch for. Registering anyway copied about 50 MB of the app's own
-    assets into WebView cache storage - a second copy of what was already on
-    the device. */
+    Not on Android either. Neither half of what this does has a job there: every asset the
+    WebView loads is already a local file inside the APK, so there is no offline shell to
+    build, and a new release arrives as an APK rather than as a worker script, so there is
+    no update to watch for. Registering anyway copied about 50 MB of the app's own assets
+    into WebView cache storage - a second copy of what was already on the device. */
 function registerServiceWorker(): void {
   void ensureServiceWorkerRegistration().catch(() => {
     /* Background registration failure leaves the journal usable online. */

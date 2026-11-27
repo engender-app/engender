@@ -48,39 +48,34 @@ export const CREDENTIAL_PROFILES = {
     purpose: 'Wraps the Journal data key under a short PIN, sealed to this device.',
     params: PIN_ENCRYPTION_ARGON2_PARAMS
   },
-  /* Ticket 55 asked whether a WebAuthn PRF secret needs a profile of its own
-     the way a PIN did, and the answer is no in the direction that matters. A
-     PRF output is 32 bytes an authenticator produced, so there is no small
-     input space here for KDF cost to defend - nobody enumerates 2^256, and
-     no number this profile could carry would change that. What the cost is
-     still for is the same thing the passphrase profile's is: a cold start
-     can spend about half a second and no more.
+  /* Asked whether a WebAuthn PRF secret needs a profile of its own the way a PIN did, and
+     the answer is no in the direction that matters. A PRF output is 32 bytes an
+     authenticator produced, so there is no small input space here for KDF cost to defend -
+     nobody enumerates 2^256, and no number this profile could carry would change that. What
+     the cost is still for is the same thing the passphrase profile's is: a cold start can
+     spend about half a second and no more.
 
-     So it deliberately shares the passphrase profile's numbers rather than
-     restating them. Re-tuning the journal's cold-start budget should move
-     both, because it is one budget; the registry keeps the two named apart
-     so that a future reason to separate them has somewhere to land. */
+     So it deliberately shares the passphrase profile's numbers rather than restating them.
+     Re-tuning the journal's cold-start budget should move both, because it is one budget;
+     the registry keeps the two named apart so that a future reason to separate them has
+     somewhere to land. */
   'biometric-prf': {
     purpose: 'Wraps the Journal data key under a secret only a platform authenticator releases.',
     params: JOURNAL_ARGON2_PARAMS
   },
-  /* The written recovery key (ADR-0054, ticket sec-01), sharing the
-     passphrase's numbers for one of biometric mode's reasons and one of
-     its own.
+  /* The written recovery key (ADR-0054), sharing the passphrase's numbers for one of
+     biometric mode's reasons and one of its own.
 
-     Shared for the same reason: 120 bits of alphabet is not a space
-     anybody enumerates, so there is no small input for Argon2id cost to
-     defend here, and no number this profile could carry would change
-     that.
+     Shared for the same reason: 120 bits of alphabet is not a space anybody enumerates, so
+     there is no small input for Argon2id cost to defend here, and no number this profile
+     could carry would change that.
 
-     Its own reason: this derivation is not on the cold-start path. A
-     recovery key is derived when one is minted and on the rare boot that
-     uses it, so the half-second budget that shapes the passphrase profile
-     is not the constraint it is there - this one could afford to be
-     heavier. It is not, because heavier would buy nothing against 120
-     bits, and a profile that costs more without protecting more is just a
-     slower screen. Named apart so that a real reason to diverge has
-     somewhere to land. */
+     Its own reason: this derivation is not on the cold-start path. A recovery key is
+     derived when one is minted and on the rare boot that uses it, so the half-second budget
+     that shapes the passphrase profile is not the constraint it is there - this one could
+     afford to be heavier. It is not, because heavier would buy nothing against 120 bits,
+     and a profile that costs more without protecting more is just a slower screen. Named
+     apart so that a real reason to diverge has somewhere to land. */
   'recovery-key': {
     purpose: 'Wraps the Journal data key under a written key kept off the device.',
     params: JOURNAL_ARGON2_PARAMS

@@ -379,8 +379,8 @@ public class PhotosPlugin extends Plugin {
         }
     }
 
-    /** The reset's half of the photos (ux-carpet 214): the whole directory,
-        before the key they are sealed under is erased. */
+    /** The reset's half of the photos: the whole directory, before the key they are sealed
+        under is erased. */
     @PluginMethod
     public void removeDirectory(PluginCall call) {
         try {

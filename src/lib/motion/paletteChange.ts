@@ -45,11 +45,10 @@ export function bloomGradient(stripes: string[], reach: number, outer: number, s
   return `radial-gradient(circle farthest-side, transparent 0px ${px(reach)}, ${stops.join(', ')})`;
 }
 
-/** Where the bloom grows from: the window's top right corner, which is
-    where the sun's centre sits on an unscrolled screen. Not the sun's
-    current position - on Settings the theme row is usually scrolled to,
-    which carried the sun (and the centre) off the top of the window and
-    made the circle arrive as a flat edge (Alicja, after prh12). */
+/** Where the bloom grows from: the window's top right corner, which is where the sun's
+    centre sits on an unscrolled screen. Not the sun's current position - on Settings the
+    theme row is usually scrolled to, which carried the sun (and the centre) off the top of
+    the window and made the circle arrive as a flat edge. */
 export function bloomOrigin(doc: Document): { x: number; y: number } {
   return { x: doc.documentElement.clientWidth, y: 0 };
 }

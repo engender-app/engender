@@ -65,11 +65,10 @@ export type AndroidKeyRefusal =
     the only thing SQLCipher's raw-key open accepts. */
 const KEY_HEX = /^[0-9a-f]{64}$/i;
 
-/** `hasKey`, when the caller already asked the bridge (boot's survey does,
-    moments before auto-unlock), saves asking again: a cold launch's bridge
-    results reach JS through the Android UI thread, and each extra round trip
-    there can land behind the WebView's first frame (ux-carpet 207). The
-    answer means the same either way. */
+/** `hasKey`, when the caller already asked the bridge (boot's survey does, moments before
+    auto-unlock), saves asking again: a cold launch's bridge results reach JS through the
+    Android UI thread, and each extra round trip there can land behind the WebView's first
+    frame. The answer means the same either way. */
 export async function openAndroidDataKey(
   bridge: KeystoreBridge,
   request: UnlockRequest,
@@ -93,12 +92,11 @@ export async function openAndroidDataKey(
   return keyOrRefusal(hexKey);
 }
 
-/** The app-lock screen's biometric key (ticket 17's gate, on Android). No
-    data key is involved and none should be: by then the Journal is open and
-    its key is in memory, and app lock is a casual-access layer rather than an
-    encryption credential (ADR-0014). Only `authenticated` unlocks; everything
-    else is a state the screen can name, with the PIN pad still there behind
-    it either way. */
+/** The app-lock screen's biometric key. No data key is involved and none should be: by then
+    the Journal is open and its key is in memory, and app lock is a casual-access layer
+    rather than an encryption credential (ADR-0014). Only `authenticated` unlocks;
+    everything else is a state the screen can name, with the PIN pad still there behind it
+    either way. */
 export async function confirmWithBiometrics(
   bridge: KeystoreBridge,
   request: UnlockRequest

@@ -51,18 +51,16 @@ for (const match of source.matchAll(SELECTOR_CALL)) {
   for (const m of selector.matchAll(ID_TOKEN)) handles.add(m[0]);
 }
 
-/* A handle exists if a component owns it. A data-* attribute is always
-   written as a literal attribute name somewhere; an id is usually an `id=`
-   attribute but sometimes only a bare string a snippet turns into one
-   (routes/compare/+page.svelte's date rows), so any matching quoted
-   literal counts too.
+/* A handle exists if a component owns it. A data-* attribute is always written as a literal
+   attribute name somewhere; an id is usually an `id=` attribute but sometimes only a bare
+   string a snippet turns into one (routes/compare/+page.svelte's date rows), so any
+   matching quoted literal counts too.
 
-   The exception is a record sheet's three buttons, whose handles are built
-   from the record's own name (recordHandles.ts, phase 5 audit ticket 09).
-   `data-save-lab` is nowhere in src/ as a literal, but `handle="lab"` is,
-   and that is the same claim: a screen named this record, so the sheet it
-   renders stamps all three. A slug no screen passes still fails here, the
-   same as a misspelt attribute would. */
+   The exception is a record sheet's three buttons, whose handles are built from the
+   record's own name (recordHandles.ts). `data-save-lab` is nowhere in src/ as a literal,
+   but `handle="lab"` is, and that is the same claim: a screen named this record, so the
+   sheet it renders stamps all three. A slug no screen passes still fails here, the same as
+   a misspelt attribute would. */
 function ownsRecordHandle(handle: string): boolean {
   const slug = recordHandleSlug(handle);
   return slug !== null && new RegExp(`\\bhandle=["']${slug}["']`).test(srcText);
@@ -89,12 +87,11 @@ const INJECTED_HANDLES: Record<string, string> = {
     'the entry-to-entry flow adds a throwaway <a> via page.evaluate to prove the editor remounts rather than reusing stale params (walkthrough.test.mjs ~line 346)'
 };
 
-/* Handles a flow asserts *absent* on purpose. Each one still has to be a
-   real handle some component owns elsewhere - just not on the screen under
-   test - or the assertion could never fail and is refused below. Empty for
-   now: ticket 01 deleted the one absence check that existed
-   ([data-day-average] on day detail), because no component has ever owned
-   that handle. */
+/* Handles a flow asserts *absent* on purpose. Each one still has to be a real handle some
+   component owns elsewhere - just not on the screen under test - or the assertion could
+   never fail and is refused below. Empty for now: deleted the one absence check that
+   existed ([data-day-average] on day detail), because no component has ever owned that
+   handle. */
 const DELIBERATE_ABSENCE_HANDLES: Record<string, string> = {};
 
 /* A removed surface can still be checked by the walkthrough. Keep its old

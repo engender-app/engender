@@ -66,11 +66,10 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
-  /* Ticket 27. Two steps, deliberately not one: this screen makes a file and
-     holds it, and it takes a second press to hand that file to the share
-     sheet. Nothing here writes to storage - the collage exists in a Blob
-     until somebody shares it or leaves the screen, which is what keeps the
-     export off the device unless a person asked for it. */
+  /* Two steps, deliberately not one: this screen makes a file and holds it, and it takes a
+     second press to hand that file to the share sheet. Nothing here writes to storage - the
+     collage exists in a Blob until somebody shares it or leaves the screen, which is what
+     keeps the export off the device unless a person asked for it. */
 
   /* The whole library, minus its video notes: a
      collage and a timelapse are made by decoding each frame as a

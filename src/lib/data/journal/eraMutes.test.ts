@@ -1,9 +1,8 @@
-/* Era mutes (phase 6 ticket 05, ADR-0049, CONTEXT: "Resurfacing consent").
-   What is asked here is that the area is idempotent both ways and that a
-   mute naming a deleted era is left exactly where it is - no error, no
-   cleanup job - which is the ticket's own acceptance criterion. Whether a
-   day resolves as muted is resurfacingConsent.test.ts's question, over
-   these same rows once they are read back as a Set. */
+/* Era mutes (ADR-0049). What is asked here is that the area is idempotent both ways and
+   that a mute naming a deleted era is left exactly where it is - no error, no cleanup job -
+   which is the ticket's own acceptance criterion. Whether a day resolves as muted is
+   resurfacingConsent.test.ts's question, over these same rows once they are read back as a
+   Set. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

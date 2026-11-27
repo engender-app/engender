@@ -219,10 +219,9 @@ export async function homeContracts(): Promise<Result[]> {
     globalThis.Date = RealDate;
   }
   await screen.remove();
-  /* Functional audit 33: with a journey anchor, the foot says how long ago
-     it was, and a Home that stays mounted moves the count on when the day
-     completes another month. The anchor sits 45 days back, and the clock is
-     walked to the eve of the second month and then onto it. */
+  /* With a journey anchor, the foot says how long ago it was, and a Home that stays mounted
+     moves the count on when the day completes another month. The anchor sits 45 days back,
+     and the clock is walked to the eve of the second month and then onto it. */
   const anchorDay = today - 45;
   const anchorId = await f.journal.milestones.upsertMilestone({ name: 'Started HRT', epochDay: anchorDay });
   f.preferences!.journeyAnchorMilestoneId = anchorId;
@@ -270,9 +269,8 @@ export async function homeContracts(): Promise<Result[]> {
   const promptEntry = (await f.journal.entries.entriesForDay(today))[0];
   screen = await mountScreen(`/?quickLogDims=${promptEntry.id}`, f);
   await until(() => root().querySelector('[data-home-log] [data-mood="4"]'), 'quick mood');
-  /* Functional-audit ticket 14: a mood-only save opens no follow-up sheet.
-     The address the editor used to land on after one is the old way in, so
-     it is the one that has to open nothing now. */
+  /* A mood-only save opens no follow-up sheet. The address the editor used to land on after
+     one is the old way in, so it is the one that has to open nothing now. */
   await check('A mood-only save opens no scales follow-up sheet', async () => {
     await new Promise((resolve) => setTimeout(resolve, 300));
     return !root().querySelector('[data-quick-log-dims],[data-sheet] [data-qld-input]');
@@ -494,9 +492,9 @@ export async function homeContracts(): Promise<Result[]> {
   });
   await screen.remove();
 
-  /* Functional-audit ticket 14: a tile whose kind is switched off, or whose
-     area is hidden, issues no read at all - not a read whose answer is then
-     ignored. Each pair is a read only the tile grid makes on Home. */
+  /* A tile whose kind is switched off, or whose area is hidden, issues no read at all - not
+     a read whose answer is then ignored. Each pair is a read only the tile grid makes on
+     Home. */
   const TILE_READS = [
     'wearSessions.getRunningSession',
     'regimen.getEpisodes',

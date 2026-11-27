@@ -1,9 +1,7 @@
-/* Effect categories (phase 5 ticket 41, CONTEXT: "Effect category"): a
-   named, toggleable collection over the effect catalogue - tag_group's
-   own semantics (`setGroupEnabled`, tags.ts), reused rather than
-   reinvented. Built-in only, no custom-category creation asked for, so
-   unlike tag_group there is no add/rename/reorder here - just the get and
-   the toggle. */
+/* Effect categories: a named, toggleable collection over the effect catalogue - tag_group's
+   own semantics (`setGroupEnabled`, tags.ts), reused rather than reinvented. Built-in only,
+   no custom-category creation asked for, so unlike tag_group there is no add/rename/reorder
+   here - just the get and the toggle. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { EffectCategory } from '../types';

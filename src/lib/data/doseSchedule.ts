@@ -1,12 +1,10 @@
-/* Expected dose slots, and pairing them against what was actually logged.
-   Pure, and kept above the journal seam next to
-   regimenEpisode.ts for the same reason: a slot is a question about a
-   schedule and a range of days, not a row anyone stores. Nothing here
+/* Expected dose slots, and pairing them against what was actually logged. Pure, and kept
+   above the journal seam next to regimenEpisode.ts for the same reason: a slot is a
+   question about a schedule and a range of days, not a row anyone stores. Nothing here
    reads a clock or a database.
 
-   Deliberately no verdict. This file answers "what was expected, and what
-   is logged against it", and stops: no target rate, no streak, no
-   good/bad. The comparison is the feature (ticket 02, out of scope). */
+   Deliberately no verdict. This file answers "what was expected, and what is logged against
+   it", and stops: no target rate, no streak, no good/bad. The comparison is the feature. */
 
 import { epochDayFromTimestamp, timestampAtLocalTime, weekdayOfEpochDay } from './epochDay';
 import { spanCoversDay } from './span';
@@ -339,16 +337,15 @@ export interface Adherence {
   unmatched: DoseEvent[];
 }
 
-/** How many days off its slot's own day a dose may sit and still fill that
-    slot (after-release ticket 01, amending ADR-0086). Kept under half the gap
-    between two slots, so a dose can never be in reach of two different slot
-    days: a weekly injection taken up to three days late or early is still
-    that week's, and a daily schedule (or an every-other-day one, where a
-    one-day-late dose is exactly as near the next slot) stays same-day only.
+/** How many days off its slot's own day a dose may sit and still fill that slot (amending
+    ADR-0086). Kept under half the gap between two slots, so a dose can never be in reach of
+    two different slot days: a weekly injection taken up to three days late or early is
+    still that week's, and a daily schedule (or an every-other-day one, where a one-day-late
+    dose is exactly as near the next slot) stays same-day only.
 
-    A weekday recurrence's gaps differ round the week, Monday and Thursday
-    being three days and then four, and the narrower gap decides. A schedule
-    that expects nothing has no gap to halve and answers zero. */
+    A weekday recurrence's gaps differ round the week, Monday and Thursday being three days
+    and then four, and the narrower gap decides. A schedule that expects nothing has no gap
+    to halve and answers zero. */
 export function slotToleranceDays(schedule: Pick<DoseSchedule, 'recurrence'>): number {
   let gap: number;
   if (schedule.recurrence.kind === 'everyNDays') {

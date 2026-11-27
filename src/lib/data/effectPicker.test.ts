@@ -1,6 +1,5 @@
-/* The noticed-effects picker's list (phase 12 ux-carpet ticket 289): which
-   effects a regimen's drugs leave on offer, how they group, what a search
-   keeps. Pure, so a fixture is a handful of literals. */
+/* The noticed-effects picker's list: which effects a regimen's drugs leave on offer, how
+   they group, what a search keeps. Pure, so a fixture is a handful of literals. */
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import type { PersonalEffectCatalogEntry } from './types.ts';
@@ -88,8 +87,8 @@ test('a query folds case and diacritics, searches flat, and stays inside the fil
   assert.deepEqual(keys(widened), [[null, ['breast_development']]]);
 });
 
-/* Functional audit ticket 23: the built-ins the audit pruned are hidden in
-   code, never deleted, because a marker names its effect by key. */
+/* The built-ins the audit pruned are hidden in code, never deleted, because a marker names
+   its effect by key. */
 test('a retired built-in is not offered for a new pick', () => {
   const offered = offeredEffectTypes(
     [effect('cycle_cessation', 'masculinizing', 'genital'), effect('voice_drop', 'masculinizing', 'body_shape')],

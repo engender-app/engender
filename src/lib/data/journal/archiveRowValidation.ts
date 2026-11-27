@@ -317,7 +317,7 @@ const ROWS = {
     method: oneOf(HAIR_REMOVAL_METHODS),
     painRating: nullable(integerBetween(1, 5)),
     minutes: optional(nullable(integerBetween(1, 1440))),
-    // The free text before ticket 30; restore reads it by cost.ts's rule.
+    // The free text; restore reads it by cost.ts's rule.
     cost: optional(text),
     provider: text,
     photos: list(hairRemovalPhoto),

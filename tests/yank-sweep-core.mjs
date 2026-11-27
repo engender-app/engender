@@ -37,25 +37,20 @@ export const TELEPORT_RATIO = 4;
 /** Opacity at or above this is on screen; under GONE it is not there. */
 export const VISIBLE = 0.5;
 export const GONE = 0.03;
-/** The blind's own defect, named by Alicja on the recording: "it first
-    yanks and takes up the whole screen, then it yanks back to its target
-    state". A mark rendering larger than its own resting bounds for a frame
-    or two. The floor absorbs ordinary sub-pixel rounding and one-line
-    reflows; the ratio keeps a small mark's growth from needing a huge pixel
-    count to count as huge. */
+/** The blind's own defect, named by "it first yanks and takes up the whole screen, then it
+    yanks back to its target state". A mark rendering larger than its own resting bounds for
+    a frame or two. The floor absorbs ordinary sub-pixel rounding and one-line reflows; the
+    ratio keeps a small mark's growth from needing a huge pixel count to count as huge. */
 export const BLOAT_PX = 24;
 export const BLOAT_RATIO = 1.4;
 /** How long to follow a gesture. The door change is 380ms and the slowest
     stagger runs a few frames past it; what is left is the stillness that
     says it landed rather than stopped. */
 export const SCENE_MS = 1100;
-/** The hydration sweep's own two clocks. Its blind spot was
- *  never the arithmetic - it was the window: the gesture sweep's settle
- *  waits 1400ms before recording, and the cold-mount pops (SQLite
- *  liveQuery resolving at 500ms-1500ms, tickets 106 and 107) happen
- *  entirely inside that wait. So the hydration window records from the
- *  navigation itself and holds for three seconds, with nothing settled
- *  on the page first. */
+/** The hydration sweep's own two clocks. Its blind spot was never the arithmetic - it was
+ the window: the gesture sweep's settle waits 1400ms before recording, and the cold-mount
+ pops happen entirely inside that wait. So the hydration window records from the navigation
+ itself and holds for three seconds, with nothing settled on the page first. */
 export const HYDRATION_MS = 3000;
 /** Scenes that open a sheet after mount are the one exception: the sheet's
  *  own hydration is the question there, so the screen underneath is
@@ -198,12 +193,10 @@ function markColorDelta(a, b) {
   return Math.max(dBg, dFg, dBc);
 }
 
-/** The names the app hands to a view transition: the blind, the field that
-    contains it (ticket 99 round 2 named it so its clip survives
-    promotion), the page under it, the bar, then one per mark printed on
-    each side of the field and one per ring of the sun on each side. Read
-    from the pseudo elements, so a name that is not participating on a
-    frame simply answers nothing. */
+/** The names the app hands to a view transition: the blind, the field that contains it, the
+    page under it, the bar, then one per mark printed on each side of the field and one per
+    ring of the sun on each side. Read from the pseudo elements, so a name that is not
+    participating on a frame simply answers nothing. */
 export const VT_NAMES = [
   'blind',
   'field',
@@ -251,11 +244,10 @@ const SCENES = [
   { name: 'span-offer-appear', at: '/stats', act: '[data-span-band]', when: 'persona', after: {"selector": "[data-era-offer]"}, is: 'a span settled on the rail, the "name this stretch" offer opening its own height (redesign ticket 48)' },
   { name: 'mood-pick', at: '/', act: '[data-mood="4"]', after: {"route": "/entry/new/today"}, is: 'a mood picked, the row looking at it' },
   { name: 'notice-dismiss', at: '/', act: '[data-backup-notice] [data-notice-dismiss]', when: 'persona', reseed: true, after: {"selector": "[data-backup-notice]", "absent": true}, is: 'a notice dismissed, its height closing' },
-  /* Redesign ticket 47: Safe space opens on the breath and everything else
-     is one tap down, so the tap off that screen is the gesture the ticket
-     added and the one place a person mid-crisis meets a navigation. The
-     letters row it used to tap went with FA 09; the resources row is the
-     way down every journal has. */
+  /* Safe space opens on the breath and everything else is one tap down, so the tap off that
+     screen is the gesture added and the one place a person mid-crisis meets a navigation.
+     The letters row it used to tap went with; the resources row is the way down every
+     journal has. */
   { name: 'safe-space-way-down', at: '/doubt', act: '[data-list-row="resources"]', nav: true, after: {"route": "/support/resources"}, is: 'a way down from the breath' },
 
   /* Transition screens: buttons, switchers and modals */
@@ -271,15 +263,13 @@ const SCENES = [
   { name: 'roadmap-open-institution', at: '/transition/roadmap', act: '[data-institution]', when: 'persona', after: {"selector": "[data-sheet]"}, is: 'an institution sheet opening' },
   { name: 'roadmap-add-institution', at: '/transition/roadmap', act: '[data-add-institution]', after: {"selector": "[data-sheet]"}, is: 'the add institution sheet opening' },
   { name: 'letters-compose', freshEmpty: true, at: '/transition/letters', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the compose letter sheet opening' },
-  /* Phase 11 ticket 15: the good-moments list opens on six and discloses
-     the rest in place, so the control collapses while fourteen cards clip
-     open under it. New movement, and the one on this screen most likely to
-     read as a jump. */
+  /* The good-moments list opens on six and discloses the rest in place, so the control
+     collapses while fourteen cards clip open under it. New movement, and the one on this
+     screen most likely to read as a jump. */
   { name: 'doubt-evidence-see-all', at: '/doubt/evidence', act: '[data-evidence-see-all]', when: 'persona', after: {"selector": "[data-evidence-see-all]", "absent": true}, is: 'the rest of the good moments disclosed under the six' },
-  /* `[data-letter-open]` rather than `[data-letter]` since redesign ticket
-     45: a sealed letter's card answers no press at all now, and it is the
-     first card on the screen, so the old selector picked the one letter that
-     cannot open. This handle is on the two states that can. */
+  /* `[data-letter-open]` rather than `[data-letter]` a sealed letter's card answers no
+     press at all now, and it is the first card on the screen, so the old selector picked
+     the one letter that cannot open. This handle is on the two states that can. */
   { name: 'letters-read', at: '/transition/letters', act: '[data-letter-open]', when: 'persona', after: {"selector": "[data-letter-state=\"reading\"]"}, is: 'a letter unfolded to read' },
   { name: 'tryouts-open', at: '/transition/tryouts', act: '[data-open-tryout], a[data-tryout]', when: 'persona', nav: true, after: {"route": "chosen-href"}, is: 'navigating to tryout detail' },
   { name: 'eras-add', at: '/settings/eras', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the add era sheet opening' },
@@ -301,11 +291,10 @@ const SCENES = [
   { name: 'doses-sheet', at: '/care/doses', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the dose editor sheet opening' },
   { name: 'surgery-sheet', at: '/health/surgery', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the procedure sheet opening' },
   { name: 'regimen-edit', at: '/care/regimen', act: '[data-episode]', when: 'persona', after: {"selector": "[data-sheet]"}, is: 'opening regimen episode editor' },
-  /* Ticket 09 (ADR-0084): the stock editor stopped being its own screen,
-     so opening it is no longer one `at`/`act` step from a cold load - it
-     is a sheet off Care's regimen block, which the carpet's ticket 139
-     sweep can add a scene for once it is naming sheet-opens-sheet scenes
-     generally. */
+  /* The stock editor stopped being its own screen, so opening it is no longer one
+     `at`/`act` step from a cold load - it is a sheet off Care's regimen block, which the
+     carpet's sweep can add a scene for once it is naming sheet-opens-sheet scenes generally
+     (ADR-0084). */
   /* Setup's four movements. `firstRun` is what these
      need that no other scene does: the flow is reached through the demo's
      first-run control and then walked, and the settle deliberately leaves
@@ -947,9 +936,9 @@ export const prepareSceneExpression = (scene) => `(async () => {
 /** Ignore injected demo chrome and the letter button replaced during its
     card's unfold. A sun ring is redrawn on flag change so it keeps the new
     stripe colour through the transition. */
-/* Ticket 259's clipped arrivals, scrolling sheets and faded skeleton moves
-   are filtered in findYanks, where their frame state can be checked. A
-   mark-name exemption here would also hide real defects on those marks. */
+/* Clipped arrivals, scrolling sheets and faded skeleton moves are filtered in findYanks,
+   where their frame state can be checked. A mark-name exemption here would also hide real
+   defects on those marks. */
 export const EXEMPT = /^\.demo-bar|\[data-toast\]|^\.toast|^\.sun-ring\||\.letter-main-btn\./;
 
 /** The six deliberately wrong marks. All sit among real neighbours: the
@@ -1738,15 +1727,14 @@ function resting(values) {
   return best;
 }
 
-/* ---------- the render detector (ticket 100's camera half) ----------
- *
- * Moved here from yank-sweep-device.mjs when the hydration sweep needed the same instrument on the desktop: a cold mount is the one
- * moment the DOM sampler cannot watch, because the navigation destroys the
- * page that was sampling - but a CDP screencast keeps arriving from the
- * compositor across the load, on the desktop exactly as on the phone. The
- * thresholds and the arithmetic are shared so the two cameras cannot drift;
- * what each transport does with a finding (evidence triples, the report)
- * stays with the transport. */
+/* ---------- the render detector ----------
+
+ Moved here from yank-sweep-device.mjs when the hydration sweep needed the same instrument
+ on the desktop: a cold mount is the one moment the DOM sampler cannot watch, because the
+ navigation destroys the page that was sampling - but a CDP screencast keeps arriving from
+ the compositor across the load, on the desktop exactly as on the phone. The thresholds and
+ the arithmetic are shared so the two cameras cannot drift; what each transport does with a
+ finding (evidence triples, the report) stays with the transport. */
 
 /** Two renders of the same pixel differing by less than this are the same
  *  render: PNG is lossless, so what moves under this is jpeg-less dither
@@ -1797,16 +1785,13 @@ export async function paintBlankSentinel(evaluate, wait) {
   await wait(PRENAV_SETTLE_MS);
 }
 
-/** A screencast frame with almost no internal contrast: the sentinel
- *  fill above, or the browser's own blank paint between the old and new
- *  document. Read by shape - the spread between its darkest and
- *  lightest pixel - rather than by matching a specific color: an
- *  earlier attempt matched frames against the sentinel's own average
- *  gray value, which collided with the persistent-storage toast's
- *  average gray landing in the same range and mis-dropped real content
- *  (ticket 192's triage). `DIFF_EPS` is the render detector's own noise
- *  floor for "the same render", so anything flatter than that is
- *  read as blank rather than as painted content. */
+/** A screencast frame with almost no internal contrast: the sentinel fill above, or the
+ browser's own blank paint between the old and new document. Read by shape - the spread
+ between its darkest and lightest pixel - rather than by matching a specific color: an
+ earlier attempt matched frames against the sentinel's own average gray value, which
+ collided with the persistent-storage toast's average gray landing in the same range and
+ mis-dropped real content. `DIFF_EPS` is the render detector's own noise floor for "the same
+ render", so anything flatter than that is read as blank rather than as painted content. */
 export function isBlankGray(gray) {
   let min = 255;
   let max = 0;
@@ -1817,19 +1802,14 @@ export function isBlankGray(gray) {
   return max - min <= DIFF_EPS;
 }
 
-/** `Page.startScreencast` delivers whatever is on screen the instant it
- *  starts, which for a cold scene is still the previous scene's real,
- *  painted content - not blank at all - so a check that only drops
- *  frames already flat would walk straight past it and leave it in the
- *  analysed cast (ticket 192's first attempt: the old document's real
- *  frame plus the sentinel still made the same before/blank/after triple
- *  the render detector reads as a dropout). This scans forward through
- *  whatever the old document was showing, keeps going while the sentinel
- *  fill is on screen, and stops the moment something else is painted -
- *  the new document's first real frame. Bounded, and a no-op if the
- *  sentinel never shows up in that window: better to leave a cast
- *  unfiltered than to mistake real hydration content for "still the old
- *  document" and eat it. */
+/** `Page.startScreencast` delivers whatever is on screen the instant it starts, which for a
+ cold scene is still the previous scene's real, painted content - not blank at all - so a
+ check that only drops frames already flat would walk straight past it and leave it in the
+ analysed cast. This scans forward through whatever the old document was showing, keeps
+ going while the sentinel fill is on screen, and stops the moment something else is painted
+ - the new document's first real frame. Bounded, and a no-op if the sentinel never shows up
+ in that window: better to leave a cast unfiltered than to mistake real hydration content
+ for "still the old document" and eat it. */
 const PRENAV_SCAN_LIMIT = 6;
 export function dropLeadingBlankFrames(cast) {
   let i = 0;
@@ -2021,11 +2001,10 @@ const HYDRATION_SCENES = [
   { name: 'home-celebrate', at: '/?celebrate=1', when: 'persona', is: 'the celebration card variant of Home' },
   { name: 'coming-back', at: '/coming-back', is: 'the return surface, reached by hand' },
   { name: 'doubt', at: '/doubt', is: 'Safe space, opening on the breath (redesign ticket 47)' },
-  /* `doubt-moments` and `doubt-readings` were here until phase 11 ticket 15
-     folded them into `/transition/letters` and the Look back door. Both
-     addresses redirect now, so a scene on either would have hydrated the
-     screen it points at under the wrong name - and both of those screens
-     are already swept, as `letters` and `stats` below. */
+  /* `doubt-moments` and `doubt-readings` were here folded them into `/transition/letters`
+     and the Look back door. Both addresses redirect now, so a scene on either would have
+     hydrated the screen it points at under the wrong name - and both of those screens are
+     already swept, as `letters` and `stats` below. */
   { name: 'doubt-comfort', at: '/doubt/comfort', is: "Safe space's comfort list" },
   { name: 'doubt-evidence', at: '/doubt/evidence', is: 'Good moments, the counterevidence pool' },
   { name: 'on-this-day', at: '/on-this-day', is: 'on this day and its lookbacks' },
@@ -2052,13 +2031,12 @@ const HYDRATION_SCENES = [
   /* More hub and the Body group */
   { name: 'more', at: '/more', is: 'the hub itself' },
   { name: 'hair-removal', at: '/body/hair-removal', is: 'electrolysis and laser sessions' },
-  /* Ticket 21: wear moved off the retired Practice prefix onto its own
-     door. */
+  /* Wear moved off the retired Practice prefix onto its own door. */
   { name: 'wear', at: '/body/wear', is: 'wear time tracked plainly' },
   /* Health group */
   { name: 'care', at: '/care', is: 'the care dashboard' },
-  /* Ticket 21: personal effects moved off the retired Practice prefix onto
-     the door it was always about. */
+  /* Personal effects moved off the retired Practice prefix onto the door it was always
+     about. */
   {
     name: 'changes',
     at: '/care/changes',
@@ -2073,9 +2051,9 @@ const HYDRATION_SCENES = [
   { name: 'doses', at: '/care/doses', is: 'the dose log' },
   { name: 'labs', at: '/care/labs', is: 'lab results' },
   { name: 'regimen', at: '/care/regimen', is: 'the regimen editor' },
-  /* Ticket 09 (ADR-0084): stock and exposure stopped being screens - stock
-     is a sheet off 'care' above, and exposure's own figure is a line on
-     it - so neither gets a scene of its own here any more. */
+  /* Stock and exposure stopped being screens - stock is a sheet off 'care' above, and
+     exposure's own figure is a line on it - so neither gets a scene of its own here any
+     more (ADR-0084). */
   /* Transition group */
   { name: 'milestones', at: '/transition/milestones', is: 'the milestone rail over its list' },
   { name: 'roadmap', at: '/transition/roadmap', is: 'the roadmap checklist' },
@@ -2083,22 +2061,20 @@ const HYDRATION_SCENES = [
   { name: 'letter-detail', at: '/transition/letters/{letter}', needs: 'letter', when: 'persona', is: 'one letter, read' },
   { name: 'tryouts', at: '/transition/tryouts', is: 'presentation tryouts' },
   { name: 'tryout-detail', at: '/transition/tryouts/{tryout}', needs: 'tryout', when: 'persona', is: 'one tryout over time' },
-  /* Pre-release-human 12 gave procedures, appointments and progress photos
-     screens of their own. */
+  /* Gave procedures, appointments and progress photos screens of their own. */
   { name: 'procedure-detail', at: '/health/surgery/{procedure}', needs: 'procedure', when: 'persona', is: 'one procedure laid out' },
   { name: 'appointment-detail', at: '/health/appointments/{appointment}', needs: 'appointment', when: 'persona', is: 'one appointment laid out' },
   { name: 'progress-photos', at: '/transition/progress-photos', is: 'progress photos by pose' },
   { name: 'eras', at: '/settings/eras', is: 'named spans of a life' },
-  /* Ticket 21: the voice benchmark moved off the retired Practice prefix -
-     to the root rather than under a door prefix, unlike its siblings, but
-     still Transition's screen. Its metrics and memos stubs did not move
-     (settings-route-redirects.test.ts), so they keep their addresses. */
+  /* The voice benchmark moved off the retired Practice prefix - to the root rather than
+     under a door prefix, unlike its siblings, but still Transition's screen. Its metrics
+     and memos stubs did not move (settings-route-redirects.test.ts), so they keep their
+     addresses. */
   { name: 'voice', at: '/voice', is: 'the voice benchmark' },
   { name: 'voice-record', at: '/voice?tab=record', is: 'the benchmark record tab' },
   { name: 'voice-metrics', at: '/voice?metric=pitch', is: 'the metric reference' },
   { name: 'voice-memos', at: '/media/recordings', is: 'the memo browser' },
-  /* Support group (ticket 21: resources moved off the retired Practice
-     prefix onto the door ADR-0072 gave it) */
+  /* Support group (ADR-0072) */
   { name: 'resources', at: '/support/resources', is: 'organisations and helplines' },
   /* Media */
   { name: 'photos', at: '/media/photos', is: 'progress photos, then and now' },
@@ -2119,10 +2095,9 @@ const HYDRATION_SCENES = [
   { name: 'dimension', at: '/settings/dimension', is: 'a custom dimension' },
   { name: 'export', at: '/settings/export', is: 'backup, restore and import' },
   { name: 'journal-book', at: '/settings/journal-book', is: 'the print of a chosen range' },
-  /* No live-tiles scene: deepening ticket 09 merged that screen into
-     /settings/notifications, and the route now client-replaces to it, so
-     a scene pinned to the old path can only ever time out - the
-     notifications scene below already covers the merged surface. */
+  /* No live-tiles scene: deepening merged that screen into /settings/notifications, and the
+     route now client-replaces to it, so a scene pinned to the old path can only ever time
+     out - the notifications scene below already covers the merged surface. */
   { name: 'notifications', at: '/settings/notifications', is: 'the notifications half of the registry' },
   { name: 'permissions', at: '/settings/permissions', is: 'what the app asks the device for' },
   { name: 'trash', at: '/settings/trash', is: 'the 30-day window' },
@@ -2179,18 +2154,13 @@ export function hydrationScreensFor({ prove = false, only = [] } = {}) {
     : scenes;
 }
 
-/** The id of the first record a list screen shows, per its HYDRATION_NEEDS
- *  entry: off a card's attribute, or off the first link into the detail
- *  route - one segment after the prefix and not the "new" editor, so a
- *  list's own add-controls cannot pose as a record.
- *
- *  Polled for `waitMs` rather than read once. The crawlers settle a list
- *  on boot and network idle, and its rows are a liveQuery that can answer
- *  after both; a read that finds nothing is only an honest "no record"
- *  once the list has had time to draw one. (ux-carpet 235: this used to
- *  compare segment counts with the prefix's trailing slash counted as a
- *  segment, so it rejected every real id and took `/entry/new/<day>` for
- *  one - seven detail scenes skipped on every run.) */
+/** The id of the first record a list screen shows, per its HYDRATION_NEEDS entry: off a
+ card's attribute, or off the first link into the detail route - one segment after the
+ prefix and not the "new" editor, so a list's own add-controls cannot pose as a record.
+
+ Polled for `waitMs` rather than read once. The crawlers settle a list on boot and network
+ idle, and its rows are a liveQuery that can answer after both; a read that finds nothing is
+ only an honest "no record" once the list has had time to draw one. */
 export const scrapeIdExpression = (need, { waitMs = 3000 } = {}) => `(async () => {
   const need = ${JSON.stringify(need)};
   const find = () => {
@@ -2225,10 +2195,9 @@ export const scrapeIdExpression = (need, { waitMs = 3000 } = {}) => `(async () =
     sweep measured a persona seed at ~266 entries in ~15 minutes
     on the phone - roughly one insert every 3 s through the worker - so the
     cap now clears a 40 minute jump and only bounds a genuinely wedged bar. */
-/*  Today drawn *and* the boot finished. The greeting alone renders while a
-    journal is still opening, so a walk that stopped at it could read a boot
-    that went on to fail as a success (ux-carpet 210 did, and 213 is why
-    Today no longer stays up under the failure notice). */
+/* Today drawn *and* the boot finished. The greeting alone renders while a journal is still
+    opening, so a walk that stopped at it could read a boot that went on to fail as a
+    success. */
 const ON_TODAY_BOOTED = `(document.querySelector('[data-app-root]')?.dataset.boot === 'ready' && !!document.querySelector('[data-home-hello]'))`;
 const DEMO_BAR_IDLE = `for (let i = 0; i < 4800 && document.querySelector('[data-demo-busy]'); i++) await sleep(500);`;
 const AWAIT_DEMO_JUMP = `

@@ -1,16 +1,14 @@
 <script lang="ts">
-  /* Where a picker's body is shown (phase 12 pickers, tickets 01 and 02):
-     the app's own bottom Sheet on a phone, and on a desktop a popover
-     hung from the field, which a pointer can reach without the page
-     going away behind it. The date and the time picker share it, each
-     handing over its body as `panel`.
+  /* Where a picker's body is shown: the app's own bottom Sheet on a phone, and on a desktop
+     a popover hung from the field, which a pointer can reach without the page going away
+     behind it. The date and the time picker share it, each handing over its body as
+     `panel`.
 
-     pickerField.svelte.ts mounts this outside the screen (see the note
-     there), so it owns both ends of the popover's motion itself. The popover is a
-     block, and a block does not fade up from nothing: it
-     unrolls from the field's edge on a clip, travelling the last few
-     pixels with it, and rolls back up into the field on the way out. Under
-     reduced motion it crossfades instead. */
+     PickerField.svelte.ts mounts this outside the screen (see the note there), so it owns
+     both ends of the popover's motion itself. The popover is a block, and a block does not
+     fade up from nothing: it unrolls from the field's edge on a clip, travelling the last
+     few pixels with it, and rolls back up into the field on the way out. Under reduced
+     motion it crossfades instead. */
   import type { Snippet } from 'svelte';
   import type { TransitionConfig } from 'svelte/transition';
   import { crossfadeDuration, EASE_OUT, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';

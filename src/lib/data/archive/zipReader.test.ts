@@ -301,7 +301,7 @@ test('prefix sniffing refuses truncated member ranges and corrupt deflate stream
   assert.throws(() => openZip(bytes.subarray(0, bytes.length - 10)));
 });
 
-/* ---- input budget (security scan ticket 06) ---- */
+/* ---- input budget ---- */
 
 const MIB = 1024 * 1024;
 

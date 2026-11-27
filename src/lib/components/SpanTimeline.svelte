@@ -188,15 +188,12 @@
      had switched the transition off. */
   let moving = $state(false);
 
-  /* At rest the rail is low: the span is a band a little taller than the
-     history under it and the handles are two short grips on the axis,
-     suggested rather than offered (Alicja, on the first renders: "the
-     handles are suggested but are not as high/big. they only get bigger
-     when the user taps"). The first touch or focus anywhere on the rail
-     raises it - the lifted bands, the frame, the era names and the full
-     grips clip open upwards on --dur-med - and a touch or focus that leaves
-     the rail lowers it again. The rail's box never changes height, so
-     nothing under it moves either way. */
+  /* At rest the rail is low: the span is a band a little taller than the history under it
+     and the handles are two short grips on the axis, suggested rather than offered. The
+     first touch or focus anywhere on the rail raises it - the lifted bands, the frame, the
+     era names and the full grips clip open upwards on --dur-med - and a touch or focus that
+     leaves the rail lowers it again. The rail's box never changes height, so nothing under
+     it moves either way. */
   let root = $state<HTMLElement | undefined>();
   let active = $state(false);
   const raise = () => { if (doorActive()) active = true; };
@@ -412,11 +409,10 @@
      themselves; marks set it to the month behind themselves. */
   const pickMark = (day: number) => commit(defaultSpan(railStart, day));
 
-  /* A mark says what it is when pointed at (bug session 18, item 83): its
-     name and day rise over it on hover, and a tap shows them for a few
-     seconds as well as picking the stretch. The marks are hidden from the
-     reader because the list under the rail holds the same facts as rows,
-     so this label is for the eye only. */
+  /* A mark says what it is when pointed at: its name and day rise over it on hover, and a
+     tap shows them for a few seconds as well as picking the stretch. The marks are hidden
+     from the reader because the list under the rail holds the same facts as rows, so this
+     label is for the eye only. */
   type MarkTip = { key: string; name: string; day: number; held: boolean };
   let tip = $state<MarkTip | null>(null);
   let tipTimer: ReturnType<typeof setTimeout> | undefined;
@@ -599,20 +595,18 @@
     </div>
     </div>
 
-    <!-- The eras as targets: one transparent button per era, the rail's
-         full height across the era's stretch, inside the span or out of it.
-         Pointing anywhere in an era's column selects the era whole.
+    <!-- The eras as targets: one transparent button per era, the rail's full height across
+         the era's stretch, inside the span or out of it. Pointing anywhere in an era's
+         column selects the era whole.
 
-         This one and every other target drawn on the rail below - the
-         history bands and the day marks - is for a finger or a pointer
-         only: out of the tab order and hidden from assistive tech (phase 14
-         ticket 29, accessibility audit A04). They cannot all be 48px, and
-         most cannot be 24: a band is 8px or 6px high and two milestones a
-         fortnight apart are three pixels apart. The list under the rail
-         (SpanFacts) holds every one of these facts as a row at the target
-         floor, with its dates written out, and sets the same span; that is
-         the way in for Tab and TalkBack. The rail's own controls for them
-         are the two handles, which are 48px. -->
+         This one and every other target drawn on the rail below - the history bands and the
+         day marks - is for a finger or a pointer only: out of the tab order and hidden from
+         assistive tech. They cannot all be 48px, and most cannot be 24: a band is 8px or
+         6px high and two milestones a fortnight apart are three pixels apart. The list
+         under the rail (SpanFacts) holds every one of these facts as a row at the target
+         floor, with its dates written out, and sets the same span; that is the way in for
+         Tab and TalkBack. The rail's own controls for them are the two handles, which are
+         48px. -->
     <div class="span-tl-targets">
       {#each bands as band (band.id)}
         {@const shape = segment(band.start, band.end)}
@@ -1145,19 +1139,17 @@
     z-index: 2;
   }
 
-  /* The handles: the grip of ink is drawn in the middle of its day, and
-     the button around it is the 48px target, reaching away from the span -
-     left of the start's grip, right of the end's - so at a short span the
-     two targets meet at the grips rather than lying on top of each other,
-     and a finger on either grip gets the handle it can see. Placed by
+  /* The handles: the grip of ink is drawn in the middle of its day, and the button around
+     it is the 48px target, reaching away from the span - left of the start's grip, right of
+     the end's - so at a short span the two targets meet at the grips rather than lying on
+     top of each other, and a finger on either grip gets the handle it can see. Placed by
      transform alone, so a move is a transform and nothing else.
 
-     The target is the button's own box rather than a pseudo element
-     around a 14px button (phase 14 ticket 29, accessibility audit A04):
-     a hit area drawn by `::before` answers a finger, but the box an
-     accessibility service measures and announces is the element's, and
-     that was 14px wide. Same geometry as before: the handle's width plus
-     the 6px the grip's far side carried, from the same left edge. */
+     The target is the button's own box rather than a pseudo element around a 14px button: a
+     hit area drawn by `::before` answers a finger, but the box an accessibility service
+     measures and announces is the element's, and that was 14px wide. Same geometry as
+     before: the handle's width plus the 6px the grip's far side carried, from the same left
+     edge. */
   .span-tl-handle {
     position: absolute;
     top: -6px;

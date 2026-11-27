@@ -1,15 +1,13 @@
-/* Standalone dev server for the browser-tier probe - separate
-   from the app's own vite.config.ts on purpose, since this only exists to
-   serve probe.ts to a real browser over COOP/COEP, and ticket 04 owns
-   wiring the SQLite driver into the app itself. Named so svelte-check's project
-   auto-discovery (which globs for vite.config.*) does not pick it up -
-   run.mjs loads it explicitly.
+/* Standalone dev server for the browser-tier probe - separate from the app's own
+   vite.config.ts on purpose, since this only exists to serve probe.ts to a real browser
+   over COOP/COEP, and owns wiring the SQLite driver into the app itself. Named so
+   svelte-check's project auto-discovery (which globs for vite.config.*) does not pick it up
+   - run.mjs loads it explicitly.
 
-   The svelte plugin is here only for `$state`: ticket 22's probe is the
-   first one to import a store (videoRecording.ts, by way of toast()), and
-   without it a rune reaches the browser unprocessed and throws. This is
-   plain @sveltejs/vite-plugin-svelte, not the sveltekit() plugin the app
-   config uses - there is no route tree here for it to need. */
+   The svelte plugin is here only for `$state`: probe is the first one to import a store
+   (videoRecording.ts, by way of toast), and without it a rune reaches the browser
+   unprocessed and throws. This is plain @sveltejs/vite-plugin-svelte, not the sveltekit
+   plugin the app config uses - there is no route tree here for it to need. */
 import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';

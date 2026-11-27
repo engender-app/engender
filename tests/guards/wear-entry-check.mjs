@@ -1,11 +1,10 @@
-/* Wear session duration keeps what is typed into it (last-audit UI 01).
+/* Wear session duration keeps what is typed into it.
 
-   The backfill duration field bound its number through a getter that
-   handed back a string, so every keystroke after a decimal point or a
-   minus sign rewrote the field under the caret: 72.5 hours saved as 572,
-   -3 read 3. Typed one key at a time here, the way a person types; `fill`
-   sets the whole value at once and never showed it. The reminder hours
-   field shares the binding but renders only on Android;
+   The backfill duration field bound its number through a getter that handed back a string,
+   so every keystroke after a decimal point or a minus sign rewrote the field under the
+   caret: 72.5 hours saved as 572, -3 read 3. Typed one key at a time here, the way a person
+   types; `fill` sets the whole value at once and never showed it. The reminder hours field
+   shares the binding but renders only on Android;
    tests/node/journal/number-field-bindings.test.ts holds that one to the same rule.
 
    Run: node tests/guards/wear-entry-check.mjs (dev server, no build needed). */

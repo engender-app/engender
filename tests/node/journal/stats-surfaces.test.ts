@@ -52,9 +52,8 @@ describe('the summary panels wait for the floor', () => {
     expect(readings.days).toMatch(/\{#if !moodQuery\.loading && enoughEntries && anyDays\}\s*<ChartCard[^>]*>\s*<OrderedStrip\s+steps=\{moodSteps\}/);
   });
 
-  /* Cards hand BarRows a position between 0 and 1 in something's own
-     range, and the primitive re-normalised them against their own longest
-     bar until ticket 11 gave it a `scale`. */
+  /* Cards hand BarRows a position between 0 and 1 in something's own range, and the
+     primitive re-normalised them against their own longest bar. */
   it('asks for the track where the bar is an absolute position', () => {
     expect(readings.dayByDay).toMatch(/<BarRows\s+rows=\{scaleRows\}[^>]*measure="track"/);
   });
@@ -63,18 +62,17 @@ describe('the summary panels wait for the floor', () => {
     expect(readings.dayByDay).toContain('{#if withData.length > 1 && plotted.points.length}');
   });
 
-  /* The sheet and the link that opened it went in ticket 99 item 26. The
-     gate did not: the series is still written out for a screen reader, and
-     an empty list under an empty chart would be as wrong as an empty sheet
-     was. tests/node/ui/accessibility-audit.test.ts holds the other half. */
+  /* The sheet and the link that opened it went item 26. The gate did not: the series is
+     still written out for a screen reader, and an empty list under an empty chart would be
+     as wrong as an empty sheet was. tests/node/ui/accessibility-audit.test.ts holds the
+     other half. */
   it('writes the values out only where there are values', () => {
     expect(readings.dayByDay).toMatch(/\{#if valueRows\.length\}\s*<ul class="visually-hidden" data-values-list/);
   });
 });
 
-/* The area index - a row per area in the More hub's own four groups - was
-   removed by ticket 99 item 36. What survives it is the rule the index was
-   held to, which outlives the block itself. */
+/* The area index - a row per area in the More hub's own four groups - was removed item 36.
+   What survives it is the rule the index was held to, which outlives the block itself. */
 describe('the stats tab keeps out of the areas' + "'" + ' business', () => {
   it('asks for no per-area read at all', () => {
     for (const call of ['getMeasurementsInRange', 'getMostRecentAnalyte', 'weeklyWearHours']) {
@@ -83,9 +81,8 @@ describe('the stats tab keeps out of the areas' + "'" + ' business', () => {
   });
 });
 
-/* Redesign ticket 11: the door leads with the person's history, and one
-   span drives every read on it. Phase 11 ticket 07: under the facts, the
-   door is a grid of readings and a resurfacing block, and nothing else. */
+/* The door leads with the person's history, and one span drives every read on it. under the
+   facts, the door is a grid of readings and a resurfacing block, and nothing else. */
 describe('the Look back door leads with the rail, and the span is the range', () => {
   it('opens on the title, the rail, the facts, the grid, then the resurfacing pair', () => {
     const body = markup(stats);
@@ -113,8 +110,8 @@ describe('the Look back door leads with the rail, and the span is the range', ()
     expect(stats).not.toContain('stats_look_back');
   });
 
-  /* Ticket 06: the line naming the span used to be the header's subtitle,
-     two elements above the rail it is a reading of. The rail owns it now. */
+  /* The line naming the span used to be the header's subtitle, two elements above the rail
+     it is a reading of. The rail owns it now. */
   it('writes the span under the rail rather than under the title', () => {
     expect(stats).not.toContain('subtitle={spanLabel}');
     expect(timeline).toContain('data-span-state-line');
@@ -164,9 +161,8 @@ describe('the Look back door leads with the rail, and the span is the range', ()
     expect(timeline).not.toMatch(/transition:dateFade/);
   });
 
-  /* Functional audit ticket 12: one way into Wrapped, the gated tile in the
-     resurfacing pair. The quick picks are gone, and no address on the door
-     names a cadence of its own. */
+  /* One way into Wrapped, the gated tile in the resurfacing pair. The quick picks are gone,
+     and no address on the door names a cadence of its own. */
   it('reaches Wrapped through the tile alone', () => {
     expect(stats).not.toContain("'/wrapped/");
     expect(stats).not.toContain('key="lookback-quick"');
@@ -194,12 +190,10 @@ describe('the Look back door leads with the rail, and the span is the range', ()
     expect(stats).toMatch(/\{#if enoughEntries\}\s*<div class="screen-part">\s*<div data-lookback-facts transition:collapse/);
   });
 
-  /* ux-carpet ticket 255: the facts answered within the screen's own arrival
-     window and popped in at full opacity, shoving the quick picks below by
-     94-184px in one frame - nothing held their room. `ReadReserve` is the
-     standing fix for a late-arriving block: hold
-     last visit's height, fade the answer in over it, let any guess error
-     travel rather than jump. */
+  /* The facts answered within the screen's own arrival window and popped in at full
+     opacity, shoving the quick picks below by 94-184px in one frame - nothing held their
+     room. `ReadReserve` is the standing fix for a late-arriving block: hold last visit's
+     height, fade the answer in over it, let any guess error travel rather than jump. */
   it('holds the facts\' room and fades the read in, rather than popping at full opacity', () => {
     expect(stats).toContain("import ReadReserve from '$lib/components/kit/ReadReserve.svelte';");
     expect(stats).toContain("import { readReserve, rememberReserve } from '$lib/data/homeReserve';");
@@ -219,13 +213,12 @@ describe('the Look back door leads with the rail, and the span is the range', ()
     expect(stats).not.toMatch(/<ReadReserve ready=\{factsRevealed\}[^>]*>\s*<div class="screen-part">\s*\{#if enoughEntries\}/);
   });
 
-  /* ux-carpet 234, item 2: the average and scale-arc rows used to gate their
-     own `transition:collapse` on the live `activeAverage`/`dimChange`, which
-     flips false in the same reactive flush as `enoughEntries` when a span
-     narrows under the floor - so a row's own collapse ran concurrently with
-     the card's, and the two read as sliding into each other. `closingFacts`
-     only updates while the card is staying open, so the rows show what they
-     last held for the whole of the card's own exit and never see their own
+  /* Ux-, item 2: the average and scale-arc rows used to gate their own
+     `transition:collapse` on the live `activeAverage`/`dimChange`, which flips false in the
+     same reactive flush as `enoughEntries` when a span narrows under the floor - so a row's
+     own collapse ran concurrently with the card's, and the two read as sliding into each
+     other. `closingFacts` only updates while the card is staying open, so the rows show
+     what they last held for the whole of the card's own exit and never see their own
      condition flip mid-collapse. */
   it('freezes the two optional rows while the card itself is closing', () => {
     expect(stats).toMatch(/\$effect\.pre\(\(\) => \{\s*if \(enoughEntries\) closingFacts = \{ activeAverage, dimChange \};\s*\}\);/);
@@ -261,9 +254,9 @@ describe('the Look back door leads with the rail, and the span is the range', ()
   });
 });
 
-/* Phase 11 ticket 07: every reading is a tile stating one figure for the
-   span and opening a screen at that span; a reading with no data in the
-   span has no tile; the door and the screen draw one component. */
+/* Every reading is a tile stating one figure for the span and opening a screen at that
+   span; a reading with no data in the span has no tile; the door and the screen draw one
+   component. */
 describe('the readings are tiles, each opening its own screen at the span', () => {
   it('draws every reading on the door in tile view, in the ticket\'s order, handed the resolved span', () => {
     const body = markup(stats);
@@ -302,8 +295,7 @@ describe('the readings are tiles, each opening its own screen at the span', () =
     expect(readings.cost).toMatch(/\{#if !costsQuery\.loading && first\}\s*<ReadingTile/);
   });
 
-  /* The plane's tile is its drawing (Alicja on the spike: "drop the title -
-     just show the small header and a bigger graph"). */
+  /* The plane's tile is its drawing. */
   it('gives the plane\'s tile no headline and every other tile one', () => {
     const planeTile = markup(readings.plane).match(/<ReadingTile[\s\S]*?>/)?.[0] ?? '';
     expect(planeTile).not.toContain('headline=');
@@ -344,8 +336,7 @@ describe('the readings are tiles, each opening its own screen at the span', () =
   });
 });
 
-/* Ticket 20: the tag card is one section per scale, each row a bar out of a
-   zero line (redesign ticket 05 drew it as paired dots on one list). */
+/* The tag card is one section per scale, each row a bar out of a zero line. */
 describe('the tag card draws one section per scale as diverging bars', () => {
   it('feeds DivergingBars per scale group, not PairedDots or BarRows', () => {
     expect(readings.tags).toContain('<DivergingBars');
@@ -366,10 +357,9 @@ describe('the tag card draws one section per scale as diverging bars', () => {
   it('still opens the entries sheet for a tag row, and skips the dose-day row', () => {
     expect(readings.tags).toMatch(/const pickCorrelationRow = \(key: string\) => \{[\s\S]{0,200}occurrence\.kind === 'tag'/);
   });
-  /* After-release 27 (audit L06-06): the ranking spans every scale and
-     never read a picked metric, so the picker that sat on it changed
-     nothing on the card. The one picker in the file since functional audit
-     ticket 12 is the share ring's days filter, on its own card. */
+  /* The ranking spans every scale and never read a picked metric, so the picker that sat on
+     it changed nothing on the card. The one picker in the file is the share ring's days
+     filter, on its own card. */
   it('carries no metric picker, since every scale has its own section', () => {
     const ranking = readings.tags.slice(readings.tags.indexOf('kind="tags-moved"'), readings.tags.indexOf('kind="tag-share"'));
     expect(ranking).toContain('<DivergingBars');
@@ -387,9 +377,8 @@ describe('the tag card draws one section per scale as diverging bars', () => {
   });
 });
 
-/* Phase 11 ticket 07: the on-this-day tile opens in place, and the route it
-   used to open still renders the same block for the notification deep link
-   (ADR-0028). */
+/* The on-this-day tile opens in place, and the route it used to open still renders the same
+   block for the notification deep link (ADR-0028). */
 describe('the resurfacing block', () => {
   it('opens the day under the pair without leaving the door, and keeps the route on the same block', () => {
     expect(stats).toMatch(/onOpen=\{\(event\) => \{\s*event\.preventDefault\(\);\s*dayOpen = !dayOpen;/);
@@ -403,9 +392,8 @@ describe('the resurfacing block', () => {
   });
 });
 
-/* Functional audit ticket 12. The constellation's own rendered check is in
-   tests/browser-tier/look-back-contracts.ts; these hold the template
-   facts beside it. */
+/* The constellation's own rendered check is in tests/browser-tier/look-back-contracts.ts;
+   these hold the template facts beside it. */
 describe('Look back says each thing once', () => {
   it('plots the constellation without asking for a mode', () => {
     expect(readings.plane).not.toContain('vocabulary.presentations.length');
@@ -423,11 +411,10 @@ describe('Look back says each thing once', () => {
     expect(readings.days).not.toContain('<Donut');
   });
 
-  /* Alicja's sign-off on the ticket: the mood strip was one chart behind
-     a tile of its own, and "if it's just a single chart, it should display
-     a screen before". It draws on the door over the grid, in the tiles'
-     own read group (over, since a leaving grid folds out of flow and a
-     strip under it jumped up), and has no tile, no screen and no title on the route. */
+  /* The mood strip was one chart behind a tile of its own, and "if it's just a single
+     chart, it should display a screen before". It draws on the door over the grid, in the
+     tiles' own read group (over, since a leaving grid folds out of flow and a strip under
+     it jumped up), and has no tile, no screen and no title on the route. */
   it('draws the mood strip on the door, with no tile and no screen of its own', () => {
     const body = markup(stats);
     expect(body).toMatch(/<ReadGroup[^>]*>\s*<DaysReading span=\{resolvedSpan\} \{enoughEntries\} \/>\s*<ReadingGrid/);

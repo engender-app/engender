@@ -80,9 +80,8 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
-  /* One bundled pack, so no picker: the phase 4 scope decision ships
-     Polish only. A second pack would turn this into a choice, and nothing
-     below assumes there is one. */
+  /* One bundled pack, so no picker: the scope decision ships Polish only. A second pack
+     would turn this into a choice, and nothing below assumes there is one. */
   const pack = POLISH_PACK;
 
   /* Closed by default: the pack's own provenance used
@@ -549,12 +548,9 @@
     aria-label={`${roadmapGoalTitle(key)} — ${stateLabel(status)}`}
     onclick={() => toggleBuiltIn(key)}
   >
-    <!-- Both glyphs stay in the markup and cross on opacity and a
-         scale rather than being added and removed (ux-carpet
-         ticket 236, the same fix appointment-prep's .ap-tick
-         already carries): a glyph that appears in one frame is a
-         yank in both directions, and which one shows is on the
-         box's own classes. -->
+    <!-- Both glyphs stay in the markup and cross on opacity and a scale rather than being
+         added and removed: a glyph that appears in one frame is a yank in both directions,
+         and which one shows is on the box's own classes. -->
     <span class="roadmap-box" class:roadmap-ticked={status === 'checked'} class:roadmap-skip={status === 'not-my-path'}>
       <span class="roadmap-tick" class:roadmap-tick-shown={status === 'checked'} aria-hidden="true"><Icon name="check" size={20} /></span>
       <span class="roadmap-tick" class:roadmap-tick-shown={status === 'not-my-path'} aria-hidden="true"><Icon name="x" size={16} /></span>
@@ -733,9 +729,8 @@
       </button>
     {/if}
 
-    <!-- The social and presentation steps (pre-release human ticket 17),
-         above the legal group: nothing in them is tied to a country, so
-         they are the part of the roadmap every reader has. With the switch
+    <!-- The social and presentation steps, above the legal group: nothing in them is tied
+         to a country, so they are the part of the roadmap every reader has. With the switch
          off, or every step hidden, there is nothing to draw. -->
     {#if socialGoals.length > 0}
       <section class="roadmap-group" data-roadmap-social transition:disclose>
@@ -982,11 +977,10 @@
   onDismiss={() => void answerMilestoneOffer('decline', null)}
 />
 
-<!-- The goal sheet (ADR-0068): a step, not a record. It holds
-     the tick, the documents filed against it, and a link out to the
-     milestone it minted - and nothing a person wrote, because a built-in
-     goal has nowhere to write it and a custom one's own text editing is
-     ticket 69's. -->
+<!-- The goal sheet (ADR-0068): a step, not a record. It holds the tick, the documents filed
+     against it, and a link out to the milestone it minted - and nothing a person wrote,
+     because a built-in goal has nowhere to write it and a custom one's own text editing is
+     's. -->
 <Sheet busy={goalWrite.busy || visibilityWrite.busy} open={selectedGoal !== null} title={selectedTitle} onClose={closeGoalSheet}>
   {#if selectedGoal}
     <!-- The sheet stays open over a rewording, so its heading crossfades to
@@ -1160,12 +1154,10 @@
     margin-top: var(--space-6);
   }
 
-  /* An empty square until it is ticked, so a row reads as a checkbox
-     rather than as a link into somewhere. The border and the colour cross
-     on --dur-fast (ux-carpet ticket 236, matching appointment-prep's
-     .ap-box): the square is not the control - the row is - so what answers
-     the tap is the tick landing rather than a press depth, and a colour
-     change is the feedback reduced motion keeps. */
+  /* An empty square until it is ticked, so a row reads as a checkbox rather than as a link
+     into somewhere. The border and the colour cross on --dur-fast: the square is not the
+     control - the row is - so what answers the tap is the tick landing rather than a press
+     depth, and a colour change is the feedback reduced motion keeps. */
   .roadmap-box {
     position: relative;
     border: 2px solid var(--outline);

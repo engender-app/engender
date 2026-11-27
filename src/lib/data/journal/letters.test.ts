@@ -1,5 +1,4 @@
-/* The letters area (phase 4 ticket 19, CONTEXT: "Milestone", "Countdown",
-   "Anniversary"). */
+/* The letters area. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

@@ -40,9 +40,8 @@
     formants: Formants | null;
     /** Null where there was no vowel take to measure the room from. */
     snrDb: number | null;
-    /** The corner-vowel scaling factor (audio/vowelScale.ts, ticket 30).
-        Null under two usable held vowels, the same as a benchmark that
-        skipped them or held only "ah". */
+    /** The corner-vowel scaling factor (audio/vowelScale.ts). Null under two usable held
+        vowels, the same as a benchmark that skipped them or held only "ah". */
     resonanceScale: number | null;
     /** Every take this screen may draw a history from, oldest first, with
         *this* take last - saved or not, since a summary is shown before the
@@ -278,13 +277,11 @@
   {/if}
 </div>
 
-<!-- The one way in. Outside the figures rather than as a last block of
-     them: it is not a figure, and this is where ticket 27 put it. Its own
-     words are the sheet's title, so the link says where it goes without a
-     second string to keep in step. Opens on pitch (`metricHref`'s own
-     lead figure) rather than the bare screen with nothing open, since
-     ticket 17 folded the reference into a sheet a link has to name a
-     section to open at all. -->
+<!-- The one way in. Outside the figures rather than as a last block of them: it is not a
+     figure, and this is where put it. Its own words are the sheet's title, so the link says
+     where it goes without a second string to keep in step. Opens on pitch (`metricHref`'s
+     own lead figure) rather than the bare screen with nothing open folded the reference
+     into a sheet a link has to name a section to open at all. -->
 <p class="vf-more" {...roleAttrs(role)}>
   <a href={metricHref('pitch')}>
     <span>{m.vm_title()}</span>

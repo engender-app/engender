@@ -111,7 +111,7 @@ test('the PIN and the device secret combine unambiguously', async () => {
   expect(combinePinWithDevice('1234', secret)).toContain('1234');
 });
 
-/* --- the phone's binding (ticket sec-02-06) ------------------------------ */
+/* --- the phone's binding ------------------------------ */
 
 test('the Keystore binding is stable across reads, the same property the browser one has', async () => {
   const binding = keystoreDeviceBinding(fakeBridge());

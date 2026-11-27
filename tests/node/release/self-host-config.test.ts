@@ -1,13 +1,12 @@
-/* The self-hosting configs in deploy/self-host/ (phase 13 self-hosting ticket
-   01) are server blocks and nothing else. Every response header, cache rule
-   and compression setting lives in deploy/nginx/journal-headers.conf and
-   journal-site.conf, which production and every self-hosted copy include as
-   they are. A second copy of the CSP is the kind that falls behind: the first
-   change to the policy lands in one file, and the self-hosted origins keep
-   the old one with nothing to say so.
+/* The self-hosting configs in deploy/self-host/ are server blocks and nothing else. Every
+   response header, cache rule and compression setting lives in
+   deploy/nginx/journal-headers.conf and journal-site.conf, which production and every
+   self-hosted copy include as they are. A second copy of the CSP is the kind that falls
+   behind: the first change to the policy lands in one file, and the self-hosted origins
+   keep the old one with nothing to say so.
 
-   tests/hosting/run.mjs serves the real image and checks what comes back;
-   this is the cheap half that runs without Docker. */
+   Tests/hosting/run.mjs serves the real image and checks what comes back; this is the cheap
+   half that runs without Docker. */
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test } from 'vitest';

@@ -1,10 +1,10 @@
-/* The unknown-address screen (phase 15 last-audit UI ticket 23, U35).
+/* The unknown-address screen.
 
-   A source scan, as for the other screens: the node tier cannot mount a
-   `.svelte` file (ADR-0016). It is not on feature-screens.test.ts's list on
-   purpose - that file reads `src/routes/<route>/+page.svelte`, and this is a
-   `+error.svelte` with no journal read, so its loading-state and `Notice`
-   assertions have nothing to hold. What matters about this one is below. */
+   A source scan, as for the other screens: the node tier cannot mount a `.svelte` file
+   (ADR-0016). It is not on feature-screens.test.ts's list on purpose - that file reads
+   `src/routes/<route>/+page.svelte`, and this is a `+error.svelte` with no journal read, so
+   its loading-state and `Notice` assertions have nothing to hold. What matters about this
+   one is below. */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';

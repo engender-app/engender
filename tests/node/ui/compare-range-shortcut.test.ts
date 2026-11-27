@@ -1,11 +1,8 @@
-/* Tests for phase 11 ticket 32: explicit preceding-span comparison shortcut.
-   Verifies:
-   - 7-day span pairing with immediately preceding 7 days without overlap or off-by-one.
-   - Leap day and DST transitions preserve exact calendar-day counts.
-   - Ticket 21 replaced the shortcut: arriving with a span opens on that
-     span against the one before it, and a visit without one on the last 30
-     days.
-   - Back restores the original Look back span. */
+/* Tests for explicit preceding-span comparison shortcut. Verifies: - 7-day span pairing
+   with immediately preceding 7 days without overlap or off-by-one. - Leap day and DST
+   transitions preserve exact calendar-day counts. - replaced the shortcut: arriving with a
+   span opens on that span against the one before it, and a visit without one on the last 30
+   days. - Back restores the original Look back span. */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -27,7 +24,7 @@ const comparePage = read('src/routes/compare/+page.svelte');
 const statsPage = read('src/routes/stats/+page.svelte');
 const compareTile = read('src/lib/components/readings/CompareTile.svelte');
 
-describe('preceding-span comparison shortcut (ticket 32)', () => {
+describe('preceding-span comparison shortcut', () => {
   describe('calendar arithmetic and span pairing', () => {
     it('pairs a seven-day span with immediately preceding seven days without overlap or off-by-one', () => {
       // 7-day span: days 100 to 106 inclusive
@@ -125,7 +122,7 @@ describe('preceding-span comparison shortcut (ticket 32)', () => {
       expect(compareTile).not.toContain("compareStretchQuery");
     });
 
-    it('Compare opens on A = the door span and B = the period before it, with no shortcut notice (ticket 21)', () => {
+    it('Compare opens on A = the door span and B = the period before it, with no shortcut notice', () => {
       expect(comparePage).toContain("let aChoice = $state<PeriodChoice>(untrack(() => arrivalA(originSpan)));");
       expect(comparePage).toContain("let bChoice = $state<PeriodChoice>({ kind: 'preceding' });");
       expect(comparePage).toContain("return other ? precedingWindow(other) : null;");
@@ -133,7 +130,7 @@ describe('preceding-span comparison shortcut (ticket 32)', () => {
       expect(comparePage).not.toContain('<Notice');
     });
 
-    it('A visit with no span defaults A to the last 30 days (ticket 21)', () => {
+    it('A visit with no span defaults A to the last 30 days', () => {
       expect(comparePage).toContain("{ kind: 'last30' }");
       expect(comparePage).toContain('return defaultSideA(today);');
     });

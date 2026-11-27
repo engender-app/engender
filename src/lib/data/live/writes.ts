@@ -119,12 +119,10 @@ export const TABLE_NAMES = [
   'feltSense',
   /* Time-capsule letters. */
   'letter',
-  /* Voice recordings. Its own name rather than folded
-     into 'entry' the way `tryout` folds two
-     tables into one name: unlike those, a screen elsewhere - a future
-     voice-notes browsing view, or ticket 25's compare mode - could read
-     recordings without reading the rest of an entry, the same reason
-     'photo' gets its own name instead of folding into 'entry' too. */
+  /* Voice recordings. Its own name rather than folded into 'entry' the way `tryout` folds
+     two tables into one name: unlike those, a screen elsewhere - a future voice-notes
+     browsing view, or compare mode - could read recordings without reading the rest of an
+     entry, the same reason 'photo' gets its own name instead of folding into 'entry' too. */
   'voiceRecording',
   /* Voice benchmarks. Kept apart from
      'voiceRecording' for the same reason the table is: a benchmark and a
@@ -171,20 +169,17 @@ export const TABLE_NAMES = [
      is only the region rows themselves: built-in hide/unhide and a custom
      region being added. */
   'bodyRegion',
-  /* The effect catalogue's toggleable categories (phase 5 ticket 41,
-     CONTEXT: "Effect category") - tag_group's own semantics, over the
+  /* The effect catalogue's toggleable categories - tag_group's own semantics, over the
      effect vocabulary rather than tags. */
   'effectCategory',
   /* The effect vocabulary itself: the open catalogue
      'personalEffect' markers name, built-in and custom alike. Hiding or
      adding an effect type has not touched a single marker, and the reverse. */
   'personalEffectType',
-  /* The fluidity engine's named presentations (phase 5 deepening ticket 17,
-     ADR-0048, CONTEXT: "Presentation"): a name and a flag-role colour, built
-     and hidden the way a tag is. An entry's own
-     `presentation_uuid` is announced under 'entry' instead, the same split
-     'tag' and 'entry_tag' get - resolving which presentation an id names is
-     this table's business, not the entry's. */
+  /* The fluidity engine's named presentations (ADR-0048): a name and a flag-role colour,
+     built and hidden the way a tag is. An entry's own `presentation_uuid` is announced
+     under 'entry' instead, the same split 'tag' and 'entry_tag' get - resolving which
+     presentation an id names is this table's business, not the entry's. */
   'presentation',
   /* The import log: its own name so the settings
      screen's `importLog` read does not re-run on every other write - only
@@ -286,7 +281,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       deleteEntry: ['entry', 'photo', 'voiceRecording', 'videoNote'],
       // Brings a trashed entry, its photos, recordings and video notes back.
       restoreEntry: ['entry', 'photo', 'voiceRecording', 'videoNote'],
-      // Delete forever (functional audit 46): the trashed entry and every
+      // Delete forever: the trashed entry and every
       // row hanging off it, margin notes included, and a debrief link to it
       // set to null by its foreign key.
       purgeEntry: ['entry', 'photo', 'voiceRecording', 'videoNote', 'marginNote', 'checklist'],
@@ -448,7 +443,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       addDocument: ['document'],
       updateDocument: ['document'],
       deleteDocument: ['document'],
-      // Ticket 56: the target lives on the same row as everything else.
+      // The target lives on the same row as everything else.
       setDocumentTarget: ['document']
     },
     reads: {
@@ -627,7 +622,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   procedures: classify<Journal['procedures']>()({
     writes: {
       upsertProcedure: ['procedure'],
-      // Ticket 56: also nulls a document's link to it.
+      // Also nulls a document's link to it.
       deleteProcedure: ['procedure', 'appointment', 'checklist', 'milestone', 'document'],
       setNotes: ['procedure'],
       addConsult: ['appointment'],
@@ -800,7 +795,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   }),
   regimen: classify<Journal['regimen']>()({
     // Each carries the episode's schedule reminders along with it: a rename,
-    // an end day or hiding all change or remove them (functional audit 21).
+    // an end day or hiding all change or remove them.
     writes: {
       upsertEpisode: ['regimen', 'reminder'],
       endEpisode: ['regimen', 'reminder'],
@@ -862,19 +857,17 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     writes: {},
     reads: { getCosts: ['hairRemoval', 'appointment', 'procedure', 'lab', 'stock'] }
   }),
-  /* Read-only for the same reason exposure below is: an annotation is
-     selected out of seven other areas' rows on every read and stored nowhere
-     (ADR-0010). One table per area behind it -
-     'dose' covers the pauses, which is where DosePause lives. 'era' joined
-     in phase 6 ticket 03, for the boundary a bounded era's start draws. */
+  /* Read-only for the same reason exposure below is: an annotation is selected out of seven
+     other areas' rows on every read and stored nowhere (ADR-0010). One table per area
+     behind it - 'dose' covers the pauses, which is where DosePause lives. 'era' joined, for
+     the boundary a bounded era's start draws. */
   chartAnnotations: classify<Journal['chartAnnotations']>()({
     writes: {},
     reads: {
-      /* 'areaState' since phase 8 features ticket 04: the day a stream
-         ended draws beside the seven kinds above. */
+      /* 'areaState' since the day a stream ended draws beside the seven kinds above. */
       // 'appointment' because getProcedures reads it for a journey's
       // consults, not because an appointment draws a mark of
-      // its own - that is ticket 59's.
+      // its own - that is 's.
       getAnnotations: [
         'milestone',
         'regimen',
@@ -887,8 +880,8 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
       ]
     }
   }),
-  // Read-only, like stats below: exposure counters never write (phase 4
-  // ticket 05).
+  // Read-only, like stats below: exposure counters never write (
+
   exposure: classify<Journal['exposure']>()({
     writes: {},
     reads: { getCounters: ['dose', 'regimen'] }
@@ -946,7 +939,7 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
     // what getMilestones joins onto them.
     reads: { getBook: [...HYDRATED_ENTRY, 'milestone', 'procedure', 'tryout', 'roadmapGoal', 'sideEffect'] }
   }),
-  // The one area that never writes: stats (ADR-0017's ticket-10 amendment).
+  // The one area that never writes: stats (ADR-0017).
   stats: classify<Journal['stats']>()({
     writes: {},
     /* A metric that is not mood is read through `entry_dimension_value` and
@@ -1009,17 +1002,15 @@ const OPERATIONS: { [Area in keyof Omit<Journal, JournalWideOperation>]: Classif
   })
 };
 
-/* The operations that are the journal's rather than an area's, and so have no
-   entry in the map above: reconciling the built-in vocabulary, and emptying
-   the journal of every row. Both are classified
-   where they are wrapped instead - one against the reference tables
+/* The operations that are the journal's rather than an area's, and so have no entry in the
+   map above: reconciling the built-in vocabulary, and emptying the journal of every row.
+   Both are classified where they are wrapped instead - one against the reference tables
    reconcile.ts names, the other against all of them.
 
-   Exported because journal.svelte.ts's lazy proxy needs the same list: an
-   operation on the journal itself is a function to call, not an area to build
-   a facade of operations for, and the proxy has no other way to tell them
-   apart. It knew only `reconcileBuiltIns` by name until ticket 13 added the
-   second, which is exactly the shape that forgets the third. */
+   Exported because journal.svelte.ts's lazy proxy needs the same list: an operation on the
+   journal itself is a function to call, not an area to build a facade of operations for,
+   and the proxy has no other way to tell them apart. It knew only `reconcileBuiltIns` by
+   name. */
 export const JOURNAL_WIDE = ['reconcileBuiltIns', 'discardEverything', 'undoable'] as const;
 
 type JournalWideOperation = (typeof JOURNAL_WIDE)[number];
@@ -1062,11 +1053,10 @@ export function tablesWrittenBy(area: string, operation: string): TableName[] {
   return tables;
 }
 
-/** Whether an area's operation changes the journal: a classified write.
-    The journal-wide operations all do, and the facade marks those itself.
-    The facade hands this to the
-    session gate, which refuses a change made after a lock rather than
-    queueing it for whoever unlocks next (security-scan ticket 08). */
+/** Whether an area's operation changes the journal: a classified write. The journal-wide
+    operations all do, and the facade marks those itself. The facade hands this to the
+    session gate, which refuses a change made after a lock rather than queueing it for
+    whoever unlocks next. */
 export function isJournalCommand(area: string, operation: string): boolean {
   return BY_NAME[area]?.writes[operation] !== undefined;
 }
@@ -1159,7 +1149,7 @@ function announcing(
       const result = await implementation(...args);
       succeeded = true;
       // A write that looked and changed nothing says so, and announcing it
-      // anyway is how the run-out reconcile kept waking itself (ux-carpet 199).
+      // anyway is how the run-out reconcile kept waking itself.
       if (result === NOTHING_WRITTEN) return undefined;
       if (result !== noWriteResult) onWrite(tables);
       return result;

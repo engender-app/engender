@@ -98,11 +98,10 @@
         same reason Notice's dismiss does - an icon button with no
         accessible name cannot be reached by voice or announced at all. */
     action?: RowAction;
-    /** The caller's own attributes, landing on the row itself - the same
-        contract Tile and Notice already have. `data-list-row` names the
-        slot and the handle beside it names the thing in it, which is what
-        lets a screen keep the walkthrough handle it has had since phase 4
-        while the container underneath it changes (ADR-0029). */
+    /** The caller's own attributes, landing on the row itself - the same contract Tile and
+        Notice already have. `data-list-row` names the slot and the handle beside it names
+        the thing in it, which is what lets a screen keep the walkthrough handle it has had
+        in older versions while the container underneath it changes (ADR-0029). */
     [attribute: string]: unknown;
   } = $props();
 

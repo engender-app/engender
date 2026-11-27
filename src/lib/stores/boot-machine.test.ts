@@ -258,9 +258,8 @@ test('an opened journal is ready, and journal-opened alone asks for no warning',
   expect(quiet.effects).toEqual([]);
 });
 
-/* ticket 202: the persistence request's answer no longer holds up
-   journal-opened, so a refusal arrives as its own event - whenever the
-   browser answers - and still reaches the same warning. */
+/* The persistence request's answer no longer holds up journal-opened, so a refusal arrives
+   as its own event - whenever the browser answers - and still reaches the same warning. */
 test('a persist-request-denied event, once ready, still warns', () => {
   const denied = walk(
     started('web'),
@@ -347,9 +346,8 @@ test('any other failed open asks the disk whether it can offer a way back', () =
   ).toBe(false);
 });
 
-/* After-release ticket 09: the failure screen says what happened in the
-   person's words, so the state carries which failure this was and keeps the
-   raw text only as the detail a bug report needs. */
+/* The failure screen says what happened in the person's words, so the state carries which
+   failure this was and keeps the raw text only as the detail a bug report needs. */
 test('a journal from below the baseline names itself and asks for no restore', () => {
   const { machine, effects } = failedOpen(new JournalBelowBaselineError(50, 78));
 
@@ -366,8 +364,8 @@ test('a below-baseline refusal that arrives as text is still named', () => {
   expect(walk(started('web'), { type: 'boot-failed', message: text }).machine.boot.failure).toBe('below-baseline');
 });
 
-/* Pre-publish ticket 01: a development journal between the baseline and the
-   squashed step gets the same screen, by type and as text. */
+/* A development journal between the baseline and the squashed step gets the same screen, by
+   type and as text. */
 test('a journal between the baseline and the squashed step is named like one below the baseline', () => {
   const { machine, effects } = failedOpen(new JournalBetweenStepsError(100, 88));
   expect(machine.boot).toMatchObject({ status: 'error', failure: 'below-baseline', recoverable: false });
@@ -559,8 +557,8 @@ for (const demo of [false, true]) {
   }
 }
 
-/* After-release ticket 10: a web lock closes the journal, and the handle
-   boot state held for the page is built over the key a lock lets go of. */
+/* A web lock closes the journal, and the handle boot state held for the page is built over
+   the key a lock lets go of. */
 test('a lock takes the journal handle out of ready state and the unlock puts the new one in', () => {
   const before = {} as never;
   const after = {} as never;
@@ -612,8 +610,8 @@ test('a duplicate key never replaces a ready journal or changes its access mode'
   expect(KEY).toEqual(before);
 });
 
-/* A mid-session unlock reaches the reopen through `key-obtained` like every
-   other key, so ticket 29's guard against a second key covers it too. */
+/* A mid-session unlock reaches the reopen through `key-obtained` like every other key, so
+   the guard against a second key covers it too. */
 function lockedReady() {
   const opened = walk(started('web'), surveyedWeb({ keystoreSecretSource: 'passphrase' }), {
     type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true
@@ -630,7 +628,7 @@ test('a key while a web lock has the journal closed reopens it, and nothing else
   expect(unlocked.machine.boot.accessMode).toBe('passphrase');
 });
 
-test('a second key while the reopen is under way is the duplicate ticket 29 refuses', () => {
+test('ignores a second key while the reopen is under way', () => {
   const first = reduce(lockedReady(), { type: 'key-obtained', dataKey: KEY, accessMode: 'passphrase', unlocked: true });
   const second = reduce(first.machine, { type: 'key-obtained', dataKey: new Uint8Array(32), accessMode: 'passphrase', unlocked: true });
   expect(second.effects).toEqual([]);

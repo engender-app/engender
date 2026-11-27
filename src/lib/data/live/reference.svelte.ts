@@ -116,13 +116,11 @@ export async function hydrateReference(journal: Journal, current: () => void = (
 
   if (registered) return;
   registered = true;
-  /* Re-read through the facade rather than the handle this first hydrate
-     was given (after-release ticket 10, audit L02-09). The listener is bound
-     once per page, and the handle is not: a web lock closes the database
-     and the unlock opens a new one, so a refresh bound to the first handle
-     re-read a closed journal, failed, and left the vocabulary stale. The
-     facade is always the journal open now, and a refresh asked for while
-     it is locked waits for the reopen. */
+  /* Re-read through the facade rather than the handle this first hydrate was given. The
+     listener is bound once per page, and the handle is not: a web lock closes the database
+     and the unlock opens a new one, so a refresh bound to the first handle re-read a closed
+     journal, failed, and left the vocabulary stale. The facade is always the journal open
+     now, and a refresh asked for while it is locked waits for the reopen. */
   onTablesWritten((tables) => {
     const slices = new Set(
       (Object.keys(SLICE_READS) as MirrorSlice[]).filter((slice) =>
@@ -198,8 +196,8 @@ export const reference = {
     return mirror.bodyRegions.filter((r) => !r.hidden);
   },
 
-  /** All five (or six) effect categories, in seed order (phase 5 ticket 41,
-      CONTEXT: "Effect category") - what the effects settings screen manages. */
+  /** All five (or six) effect categories, in seed order - what the effects settings screen
+      manages. */
   get effectCategories(): EffectCategory[] {
     return mirror.effectCategories;
   },

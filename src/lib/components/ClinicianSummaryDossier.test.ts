@@ -18,10 +18,10 @@ const printCss = readFileSync(
 const labels = readFileSync(root + '/src/lib/data/vocabulary/clinicianSummaryLabels.ts', 'utf8');
 const messages = ['en', 'pl'].map((locale) => readFileSync(`${root}/messages/${locale}.json`, 'utf8'));
 
-/* Functional-audit ticket 38: one section mechanism and one label set. The
-   page draws the registry's sections by walking its keys, one snippet per
-   key, and names each one from the same record the include switches use. */
-describe('one layer, one label set (functional-audit ticket 38)', () => {
+/* One section mechanism and one label set. The page draws the registry's sections by
+   walking its keys, one snippet per key, and names each one from the same record the
+   include switches use. */
+describe('one layer, one label set', () => {
   it('takes the registry\'s own summary, not a second dossier shape', () => {
     expect(dossierComponent).toContain('interface Props');
     expect(dossierComponent).toContain('summary: ClinicianSummary');
@@ -61,22 +61,22 @@ describe('ClinicianSummaryDossier component contract', () => {
     expect(dossierComponent).toContain('m.doses()');
   });
 
-  it('prints an ended episode\'s end reason as a clause on its own date range, when one is set (ticket 43)', () => {
+  it('prints an ended episode\'s end reason as a clause on its own date range, when one is set', () => {
     expect(dossierComponent).toContain('m.clinician_summary_regimen_end_reason(');
     expect(dossierComponent).toContain('ep.endReason');
   });
 
-  /* Ticket 67: restores the record-linking ticket 09's rewrite dropped when
-     the flat, static rows became a printed table. */
+  /* Restores the record-linking rewrite dropped when the flat, static rows became a printed
+     table. */
   it('links every regimen and dose row back to its own record', () => {
     expect(dossierComponent).toContain('href={`/care/regimen#${ep.id}`}');
     expect(dossierComponent).toContain('href={`/care/doses#${dose.id}`}');
     expect(dossierComponent).toContain('class="dossier-row-link"');
   });
 
-  /* Phase 11 ticket 11: a dose a schedule wrote on the person's behalf is
-     marked where it leaves the device, and the mark is explained in words
-     rather than left as a symbol a reader has to guess at. */
+  /* A dose a schedule wrote on the person's behalf is marked where it leaves the device,
+     and the mark is explained in words rather than left as a symbol a reader has to guess
+     at. */
   it('marks an auto-logged dose in the dose table and explains the mark in a legend', () => {
     expect(dossierComponent).toContain("dose.source === 'schedule'");
     expect(dossierComponent).toContain('data-dose-auto-logged');
@@ -163,10 +163,10 @@ describe('clinician-print.css contract', () => {
   });
 });
 
-/* Ticket 08: every section's table shows its first rows on screen and every
-   row in print. The floor is 12 (the ticket's own proposal, kept - see the
-   component's own comment on PREVIEW_ROW_FLOOR for why). */
-describe('ClinicianSummaryDossier preview truncation (ticket 08)', () => {
+/* Every section's table shows its first rows on screen and every row in print. The floor is
+   12 (the ticket's own proposal, kept - see the component's own comment on
+   PREVIEW_ROW_FLOOR for why). */
+describe('ClinicianSummaryDossier preview truncation', () => {
   it('sets the row floor to twelve', () => {
     expect(dossierComponent).toContain('const PREVIEW_ROW_FLOOR = 12;');
   });
@@ -177,8 +177,8 @@ describe('ClinicianSummaryDossier preview truncation (ticket 08)', () => {
      A count rather than one assertion per table so a table added later that
      forgets the mark fails loudly instead of silently passing everything
      else. */
-  /* Thirteen table templates since functional-audit ticket 39 added the
-     changes noticed; the ongoing and resolved side effects share one. */
+  /* Thirteen table templates added the changes noticed; the ongoing and resolved side
+     effects share one. */
   it('marks every table row past the floor as an overflow row, on every one of the dossier\'s table templates', () => {
     const marks = dossierComponent.match(/class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}/g) ?? [];
     expect(marks.length).toBe(13);
@@ -261,8 +261,8 @@ describe('stacked rows at phone width (after-release 22)', () => {
   });
 });
 
-/* Functional-audit ticket 39: what leaves the device. */
-describe('HRT drugs by default, the changes noticed, and honest side-effect headings (functional-audit ticket 39)', () => {
+/* What leaves the device. */
+describe('HRT drugs by default, the changes noticed, and honest side-effect headings', () => {
   const sideEffectNames = messages.map((catalogue) => JSON.parse(catalogue).clinician_summary_section_side_effects as string);
 
   it('files a resolved side effect under its own heading, never under an "active" one', () => {

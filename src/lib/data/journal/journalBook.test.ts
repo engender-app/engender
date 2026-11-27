@@ -164,10 +164,9 @@ test('a trashed entry stays out of the book', async () => {
   assert.deepEqual(book.entries, []);
 });
 
-/* The summary line the screen shows instead of the whole document (phase 12
-   final-audit ticket 20). Counted off the assembled book rather than asked
-   for separately, which is the only way the line and the pages can never
-   disagree. */
+/* The summary line the screen shows instead of the whole document. Counted off the
+   assembled book rather than asked for separately, which is the only way the line and the
+   pages can never disagree. */
 
 test('the counts are the book\'s own entries, their photos and its milestones', async () => {
   const journal = await journalWithFiles();

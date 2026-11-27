@@ -1,17 +1,14 @@
-/* Archive Merge applies edits, deletions and restores (functional audit
-   ticket 48, archiveMerge.ts).
+/* Archive Merge applies edits, deletions and restores (archiveMerge.ts).
 
-   Two devices that share a history: A is a journal with something in every
-   section, and B is A restored from its own archive, so every row has the
-   same identity on both. Then one side changes and the other merges its
-   archive.
+   Two devices that share a history: A is a journal with something in every section, and B
+   is A restored from its own archive, so every row has the same identity on both. Then one
+   side changes and the other merges its archive.
 
-   The edit cases are one per table merged by `updated_at`, written as SQL
-   rather than through each area's API: what is under test is the archive's
-   rule for a row, and a stamped UPDATE is exactly what every area's edit
-   leaves behind. The rows a table's children follow (an entry's tags, a
-   preset's scales, a schedule's weekdays) and Trash have
-   cases of their own, through the areas' APIs where one exists. */
+   The edit cases are one per table merged by `updated_at`, written as SQL rather than
+   through each area's API: what is under test is the archive's rule for a row, and a
+   stamped UPDATE is exactly what every area's edit leaves behind. The rows a table's
+   children follow (an entry's tags, a preset's scales, a schedule's weekdays) and Trash
+   have cases of their own, through the areas' APIs where one exists. */
 
 import assert from 'node:assert/strict';
 import { describe, test } from 'vitest';

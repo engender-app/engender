@@ -13,9 +13,8 @@
     onModuleChange: (row: HubRow, enabled: boolean) => void;
   } = $props();
 
-  /* The switches sit under the hub's own group headings, in the hub's order,
-     so this long list reads in the shape the app is laid out in (Alicja,
-     pre-release-human 18: "group those functions, make it more readable"). */
+  /* The switches sit under the hub's own group headings, in the hub's order, so this long
+     list reads in the shape the app is laid out in. */
   const groupOf = (row: HubRow): HubGroupKey => row.home;
   const groups = HUB_GROUP_KEYS.map((key) => ({ key, rows: FEATURE_MODULE_ROWS.filter((row) => groupOf(row) === key) }))
     .filter((group) => group.rows.length > 0);

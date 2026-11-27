@@ -5,10 +5,9 @@ import { describe, expect, it } from 'vitest';
 const root = fileURLToPath(new URL('../../..', import.meta.url));
 const care = readFileSync(root + 'src/routes/care/+page.svelte', 'utf8');
 
-/* One lane per running drug (phase 11 all-four-doors ticket 10). Greps for
-   the same reason the block above is: every one of these is a fact about
-   which branch a piece of the template sits in, not a function with an
-   answer to call. The arithmetic itself is tested where it lives
+/* One lane per running drug. Greps for the same reason the block above is: every one of
+   these is a fact about which branch a piece of the template sits in, not a function with
+   an answer to call. The arithmetic itself is tested where it lives
    (src/lib/data/careSpine.test.ts). */
 describe('the spine draws one lane per running regimen', () => {
   it('draws every running episode, in railEpisodes order', () => {
@@ -33,9 +32,8 @@ describe('the spine draws one lane per running regimen', () => {
   it('gives each lane its own stripe, and a name that opens that drug\'s own block', () => {
     expect(care).toContain('{...laneAttrs(index, labelRows(lane.marks))}');
     expect(care).toContain('roleAttrs(roleAt(activeFlag.roles, index))');
-    /* Phase 11 UI/UX ticket 25: the name is the lane's heading and the jump
-       to the medication rows below, addressed by the episode's own id so a
-       free-text drug name never becomes a fragment. */
+    /* The name is the lane's heading and the jump to the medication rows below, addressed
+       by the episode's own id so a free-text drug name never becomes a fragment. */
     expect(care).toContain('<span class="care-lane-drug">{lane.drug}</span>');
     expect(care).toContain('href={`#${blockAnchor(lane.episodeId)}`}');
     expect(care).toContain('id={blockAnchor(lane.episode.id)}');

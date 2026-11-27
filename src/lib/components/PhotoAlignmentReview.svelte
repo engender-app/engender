@@ -8,12 +8,10 @@
   import Sheet from './Sheet.svelte';
   import Slider from './Slider.svelte';
 
-  /* The compare-and-retake step ticket 12 asks for instead of a live camera
-     overlay (ADR-0033): once the native camera intent returns a shot, this is
-     where the person judges it against their last photo before anything is
-     ever written to storage. Retaking re-invokes the same native capture -
-     there is no camera surface here, only two already-decoded photos and a
-     slider. */
+  /* Compare and retake after capture (ADR-0033): once the native camera intent returns a
+     shot, this is where the person judges it against their last photo before anything is
+     ever written to storage. Retaking re-invokes the same native capture - there is no
+     camera surface here, only two already-decoded photos and a slider. */
 
   let {
     photo,

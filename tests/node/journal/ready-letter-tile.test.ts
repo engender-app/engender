@@ -39,7 +39,7 @@ function memoryStore(): AcknowledgementStore {
   return { read: () => value, write: (next) => { value = next; } };
 }
 
-describe('Ready letter status logic (ticket 01)', () => {
+describe('Ready letter status logic', () => {
   it('identifies sealed vs unlocked letters by todayEpochDay', () => {
     expect(isLetterSealed({ unlockEpochDay: 150 }, 100)).toBe(true);
     expect(isLetterSealed({ unlockEpochDay: 150 }, 150)).toBe(false);

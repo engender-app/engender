@@ -1,7 +1,6 @@
-/* Ticket 09: six routes matched no prefix here at all, so no tab lit for
-   them - the body map, the comparison view, doses, the doubt journal, an
-   open entry, and on-this-day. A table keyed by tab, rather
-   than a chain of `path.startsWith` branches, keeps adding a route to one
+/* Six routes matched no prefix here at all, so no tab lit for them - the body map, the
+   comparison view, doses, the doubt journal, an open entry, and on-this-day. A table keyed
+   by tab, rather than a chain of `path.startsWith` branches, keeps adding a route to one
    place: append the prefix to the array for the tab it belongs to. */
 
 type TabRoute = { key: string; prefixes: string[] };

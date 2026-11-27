@@ -19,9 +19,8 @@ export async function readWrappedPeriod(
     /** The selected scale, which tag insights follow - the same one the
         stats hub's own insight card reads. */
     metric: string;
-    /** The year's rows shade the selected scale rather than mood (phase 11
-        ticket 07, WrappedYear.svelte), and only a year has a prose section
-        for letters to the future self. */
+    /** The year's rows shade the selected scale rather than mood (WrappedYear.svelte), and
+        only a year has a prose section for letters to the future self. */
     year: boolean;
   }
 ) {

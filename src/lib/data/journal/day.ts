@@ -304,7 +304,7 @@ export const DAY_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> 
   // view listing the day it was written is a second place to meet it, out of
   // the order the seal exists to keep.
   letters: 'sealed until its unlock day',
-  // Phase 8 features ticket 10: sealed until the day after it was taken
+  // Sealed until the day after it was taken
   // (voicePracticeTakes.ts), so a day-view row would be a second place to
   // meet its figures before the seal does - the same risk letters' own
   // opt-out above guards against, independent of whether the area is
@@ -312,20 +312,20 @@ export const DAY_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> 
   // question, and says why there).
   voicePracticeTakes: 'sealed until the day after it was taken',
 
-  // Phase 7 ticket 03: this device's own bookkeeping about where an import
+  // This device's own bookkeeping about where an import
   // came from, dated by when the import ran rather than by anything the
   // person did that day - the settings screen it reads into is where it
   // belongs, the same reasoning `medicationStock` gives.
   importLog: 'device bookkeeping, dated by when the import ran, not a diary record',
   deletions: 'which records were deleted, for an archive Merge to carry; not a diary record',
 
-  // Phase 8 deepening ticket 13: `finished_epoch_day` is a day, but it is
+  // `finished_epoch_day` is a day, but it is
   // the day a person stopped adding to a stream rather than something they
   // did that day - a statement about their practice of tracking. Where the
   // date belongs on a dated surface is a chart annotation beside the regimen
   // changes and pauses (chartAnnotations.ts), not a record in a day's list.
   areaStates: 'a statement about the practice of tracking, not a record of a day',
-  // Phase 8 features ticket 07: a margin note is drawn beside the entry it
+  // A margin note is drawn beside the entry it
   // annotates, on this screen among others (DayRecords.svelte's own batched
   // read, not a hydrated field of Entry - entries.ts stays untouched by this
   // ticket). Keyed by the day it was written on, a margin note would need a
@@ -333,7 +333,7 @@ export const DAY_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> 
   // it belongs to, it already is one - the entry's own row.
   marginNotes: 'drawn beside the entry it annotates, not as a section of its own',
 
-  // Pre-release-human 12, bug 25: read pose by pose on its own timeline
+  // Bug 25: read pose by pose on its own timeline
   // and in the photo library, which is where a progress photo is looked at.
   progressPhotos: 'its own pose timeline and the photo library are where it is read'
 };

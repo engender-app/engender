@@ -1,15 +1,13 @@
 /* Which tier-2 pattern one screen becomes another with.
 
-   The primitives themselves were built by ticket 17 and live in
-   $lib/motion/navigation.ts. What was missing was the decision: nothing in
-   the app chose between them, so every navigation was the same 6px slide
-   from .screen's own entrance animation whether it crossed the four tabs,
+   The primitives themselves were built and live in $lib/motion/navigation.ts. What was
+   missing was the decision: nothing in the app chose between them, so every navigation was
+   the same 6px slide from.screen's own entrance animation whether it crossed the four tabs,
    opened a detail, or went back.
 
-   It is a pure function and it lives here rather than in the layout for the
-   same reason active-tab.ts does: the rule is a table, the layout is where
-   a table gets buried, and a rule nobody can run in a test is one nobody
-   can check. */
+   It is a pure function and it lives here rather than in the layout for the same reason
+   active-tab.ts does: the rule is a table, the layout is where a table gets buried, and a
+   rule nobody can run in a test is one nobody can check. */
 
 import { activeTabKey } from './active-tab';
 
@@ -80,48 +78,38 @@ export function screenTransition(facts: NavigationFacts): ScreenTransition {
      button and a launcher shortcut all open it with nothing behind them,
      and a container transform with no container is a crossfade wearing a
      longer duration. */
-  /* Home's recent-entry rows are the exception Alicja called out on the
-     same ticket as this file's own container transform (phase 5 ticket 99
-     item 23: "transition from home to a recent entry should be
-     good-looking, it should be the same as transition between nav tabs").
-     From Home an entry opens as a peer crossing - the fade-through a tab
-     switch gets - and Home is the one source that gets it: the day detail
-     and search keep the transform, and leaving the editor back to Home
-     already fades through the tab rule at the bottom, since /entry lights
-     the calendar tab and / is no tab's step. */
+  /* Home's recent-entry rows are the exception called out on as this file's own container
+     transform. From Home an entry opens as a peer crossing - the fade-through a tab switch
+     gets - and Home is the one source that gets it: the day detail and search keep the
+     transform, and leaving the editor back to Home already fades through the tab rule at
+     the bottom, since /entry lights the calendar tab and / is no tab's step. */
   if (isEntryEditor(to)) {
-    /* Out of a sheet it is a fade-through whatever screen the sheet was
-       over. The tag insights on /stats open a sheet of the entries carrying
-       a tag, and those cards are a correct source by the rule above - so
-       the card's box grew out of an open modal into the whole screen while
-       the sheet sat behind it, which is item 23's complaint arriving on a
-       second surface (Alicja, carpet ticket 10). A sheet is not a place a
-       screen grows out of: what happened is that a modal was dismissed and
-       a screen replaced the one underneath it, and the transform says the
-       card became the screen instead.
+    /* Out of a sheet it is a fade-through whatever screen the sheet was over. The tag
+       insights on /stats open a sheet of the entries carrying a tag, and those cards are a
+       correct source by the rule above - so the card's box grew out of an open modal into
+       the whole screen while the sheet sat behind it, which is item 23's complaint arriving
+       on a second surface. A sheet is not a place a screen grows out of: what happened is
+       that a modal was dismissed and a screen replaced the one underneath it, and the
+       transform says the card became the screen instead.
 
-       A fact and not a route, unlike the two carve-outs below. /stats draws
-       entry cards only inside that sheet today, so naming the route would
-       be right by accident and wrong the day a screen draws them both
-       ways. */
+       A fact and not a route, unlike the two carve-outs below. /stats draws entry cards
+       only inside that sheet today, so naming the route would be right by accident and
+       wrong the day a screen draws them both ways. */
     if (fromSheet) return 'fade-through';
     if (from === NO_CONTAINER) return 'shared-axis';
     if (from === '/') return 'fade-through';
     return 'container';
   }
 
-  /* A screen with several views of itself is not a sequence. Wrapped's four
-     cadence tabs are one screen showing a different period, so crossing them
-     is tier 3 - change within a screen - and the chart's own re-tween is what
-     carries it. Slid as a shared axis the whole screen travelled and every
-     figure on it was torn down and rebuilt (Alicja, 2026-08-25: "the
-     switchers in wrapped shouldn't make the screen re-render").
+  /* A screen with several views of itself is not a sequence. Wrapped's four cadence tabs
+     are one screen showing a different period, so crossing them is tier 3 - change within a
+     screen - and the chart's own re-tween is what carries it. Slid as a shared axis the
+     whole screen travelled and every figure on it was torn down and rebuilt.
 
-     A table rather than a rule, and one entry long, for the same reason the
-     rest of this file is a table: /entry/1 to /entry/2 is also two leaves of
-     one route and it is emphatically not this - it is the container transform
-     ticket 22 built. Which of the two a route is cannot be read off its
-     shape. */
+     A table rather than a rule, and one entry long, for the same reason the rest of this
+     file is a table: /entry/1 to /entry/2 is also two leaves of one route and it is
+     emphatically not this - it is the container transform built. Which of the two a route
+     is cannot be read off its shape. */
   if (SWITCHES_VIEWS_IN_PLACE.some((parent) => from.startsWith(parent) && to.startsWith(parent))) {
     return 'none';
   }
@@ -172,16 +160,13 @@ function isBack(from: string, to: string, type: string, delta: number | undefine
      change rather than a step up, so it is excluded by hand. */
   if (to === '/') return false;
   if (from.startsWith(to.endsWith('/') ? to : `${to}/`)) return true;
-  /* /more is the settings tab's own hub, the same role /stats or /calendar
-     plays for theirs - but a features-phase ticket already reaches it from
-     routes a URL prefix cannot see it under (/care/doses) and links
-     straight to /settings/* pages that skip an intervening /settings step
-     (the roadmap and the rest of More's rows), so the check above never fires
-     for the one back link most of those screens actually have. Without
-     this, closing the roadmap read as a step deeper instead of a step up -
-     the wrong shared-axis direction, which is what a slide in the wrong
-     direction off the bottom of an easing curve reads as a yank (Alicja,
-     2026-08-28: "no sliding up animation there at all... a smooth quick
-     transition like when I click on any other 'more' tab and go back"). */
+  /* /more is the settings tab's own hub, the same role /stats or /calendar plays for theirs
+     - but a features-phase ticket already reaches it from routes a URL prefix cannot see it
+     under (/care/doses) and links straight to /settings/* pages that skip an intervening
+     /settings step (the roadmap and the rest of More's rows), so the check above never
+     fires for the one back link most of those screens actually have. Without this, closing
+     the roadmap read as a step deeper instead of a step up - the wrong shared-axis
+     direction, which is what a slide in the wrong direction off the bottom of an easing
+     curve reads as a yank. */
   return to === '/more' && activeTabKey(from, chromeOrigin) === 'settings';
 }

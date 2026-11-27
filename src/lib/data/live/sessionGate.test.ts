@@ -90,9 +90,8 @@ test('a queued call counts as in flight once it starts, so the next lock waits f
   assert.equal(await queued, 'done');
 });
 
-/* Security-scan ticket 08 (GD-040): a write made after a lock was queued
-   and ran against the next session, so a tap on quick add in the lock's
-   first frame landed once the owner unlocked. */
+/* A write made after a lock was queued and ran against the next session, so a tap on quick
+   add in the lock's first frame landed once the owner unlocked. */
 test('a command made after a lock ended its session is rejected and never reaches the next one', async () => {
   const gate = sessionGate<string>();
   gate.open('first session');

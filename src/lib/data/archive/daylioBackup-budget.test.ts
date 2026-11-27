@@ -1,6 +1,5 @@
-/* The Daylio input budget as the backup importer meets it (security scan
-   ticket 06). Limits and the measured export they come from:
-   daylioInputBudget.ts. */
+/* The Daylio input budget as the backup importer meets it. Limits and the measured export
+   they come from: daylioInputBudget.ts. */
 
 import { expect, test } from 'vitest';
 import { strToU8, zipSync } from 'fflate';

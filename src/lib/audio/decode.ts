@@ -1,10 +1,9 @@
 /* Recorded audio back into samples, at whatever rate the caller analyses at.
 
-   Lifted out of voiceBenchmark.ts on ticket 46, which needed the same decode
-   for a waveform's bars. The OfflineAudioContext's own rate is what does the
-   resampling, so there is no resampler in this tree to get wrong, and a
-   caller that wants an envelope rather than a pitch can ask for a quarter of
-   the rate and wait a quarter as long. */
+   Lifted out of voiceBenchmark.ts, which needed the same decode for a waveform's bars. The
+   OfflineAudioContext's own rate is what does the resampling, so there is no resampler in
+   this tree to get wrong, and a caller that wants an envelope rather than a pitch can ask
+   for a quarter of the rate and wait a quarter as long. */
 
 import { refuseAudioOverBudget } from '../data/media/audio-budget';
 import { peaksFromChannels } from '../media/peaks';
@@ -12,9 +11,9 @@ import { peaksFromChannels } from '../media/peaks';
 /**
  * The envelope of recorded bytes: `buckets` bars of loudness at `sampleRate`.
  * Same decode as `decodeToMono`, but the result is the bars and nothing the
- * length of the recording survives it: the channels are folded into the
- * bars where they sit, with no mixed copy, and the decoded buffer goes out
- * of scope on return (security-scan ticket 07, GD-017).
+ * length of the recording survives it: the channels are folded into the bars
+ * where they sit, with no mixed copy, and the decoded buffer goes out of
+ * scope on return.
  */
 export async function decodeToPeaks(bytes: Uint8Array, sampleRate: number, buckets: number): Promise<Float32Array> {
   refuseAudioOverBudget(bytes);

@@ -107,11 +107,10 @@
     }
   });
 
-  /* Ticket 18: the recovery window as one side of `/compare` - only once
-     there is a surgery date to measure from (planning and pre-op have no
-     days yet). Its end clamps to today for the first 90 days and holds at
-     that cutoff after, archived or not (ADR-0010's "clamp at read time").
-     It is open-ended only while it still ends today. */
+  /* The recovery window as one side of `/compare` - only once there is a surgery date to
+     measure from (planning and pre-op have no days yet). Its end clamps to today for the
+     first 90 days and holds at that cutoff after, archived or not (ADR-0010's "clamp at
+     read time"). It is open-ended only while it still ends today. */
   let recoveryWindow = $derived(
     stored && stored.surgeryEpochDay !== null && phase !== 'planning' && phase !== 'pre_op'
       ? { start: stored.surgeryEpochDay, end: Math.min(today, stored.surgeryEpochDay + SURGERY_RECOVERY_CUTOFF_DAYS) }
@@ -266,7 +265,7 @@
     await replaceRoute(LIST);
   }
 
-  // Ticket 18: only once there is a date to hand off.
+  // Only once there is a date to hand off.
   let calendarSheet = $state(false);
 
   let consultSheet = $state(false);
@@ -532,8 +531,8 @@
   {#if withActions}{@render consultActions()}{/if}
 {/snippet}
 
-<!-- Ticket 18: the recovery window as one side of `/compare`, offered only
-     once there is one (surgery day onward). -->
+<!-- The recovery window as one side of `/compare`, offered only once there is one (surgery
+     day onward). -->
 {#snippet compareBlock()}
   {#if compareLink.state.status !== 'hidden'}
     {@const compareNotice = compareStretchNoticeProps(compareLink.state, recoveryOpenEnded, SURGERY_COMPARE_COPY)}

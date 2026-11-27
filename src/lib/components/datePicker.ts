@@ -1,10 +1,9 @@
-/* The arithmetic under DatePicker (phase 12 pickers, ticket 01), kept out of
-   the components so the node tier can hold it: which day sits in which of a
-   month's 42 cells, what a typed date means, where a key moves the cursor,
-   and when a swipe turns the month.
+/* The arithmetic under DatePicker, kept out of the components so the node tier can hold it:
+   which day sits in which of a month's 42 cells, what a typed date means, where a key moves
+   the cursor, and when a swipe turns the month.
 
-   Days are epoch days (ADR-0001) and months are month keys, `year * 12 +
-   month`, so a month step is `+ 1` and never a Date rolling over. */
+   Days are epoch days (ADR-0001) and months are month keys, `year * 12 + month`, so a month
+   step is `+ 1` and never a Date rolling over. */
 import { FIRST_EPOCH_DAY, MAX_FUTURE_EPOCH_DAYS, epochDayFromLocalDate, localDateFromEpochDay } from '../data/epochDay';
 
 export function monthKey(year: number, month: number): number {

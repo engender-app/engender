@@ -1,7 +1,6 @@
-/* Functional audit ticket 30: a cost travels on each of the five records
-   that carry one, an older archive restores with none, and hair removal's
-   old text cost in an older archive is read by the same rule as the
-   migration (cost.ts), so nothing typed is lost on a restore either. */
+/* A cost travels on each of the five records that carry one, an older archive restores with
+   none, and hair removal's old text cost in an older archive is read by the same rule as
+   the migration (cost.ts), so nothing typed is lost on a restore either. */
 
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
@@ -60,7 +59,7 @@ test('every cost travels and a Replace restores it', async () => {
   assert.deepEqual(await costsOf(await restored(snapshot.journal)), await costsOf(source));
 });
 
-test('an archive written before ticket 30 restores every record with no cost', async () => {
+test('an older archive restores records with no cost', async () => {
   const snapshot = await (await costedJournal()).archive.snapshot();
   const older = structuredClone(snapshot.journal) as unknown as Record<string, Record<string, unknown>[]>;
   for (const section of ['hairRemovalSessions', 'appointments', 'procedures', 'labResults', 'medicationStock']) {

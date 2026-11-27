@@ -33,7 +33,7 @@ const enMessages = JSON.parse(read('messages/en.json'));
 const plMessages = JSON.parse(read('messages/pl.json'));
 
 
-describe('Stock projection and depletion logic (ticket 02)', () => {
+describe('Stock projection and depletion logic', () => {
   const TODAY = 20000;
 
   it('triggers when remaining days are <= threshold (7 days)', () => {
@@ -243,7 +243,7 @@ describe('Localization keys for stock notice', () => {
   }
 });
 
-describe('The reorder-by day, on screen (ticket 16)', () => {
+describe('The reorder-by day, on screen', () => {
   it('names the same day everywhere: Home reads actionableEpochDay through the shared sentence', () => {
     expect(home).toContain("import { stockNotice } from '$lib/data/vocabulary/stockLabel';");
     expect(home).toContain('stockNotice(');
@@ -261,7 +261,7 @@ describe('The reorder-by day, on screen (ticket 16)', () => {
   });
 
   it('the stock surface carries a lead-time field, typed as an optional day count', () => {
-    // Ticket 09 (ADR-0084): the stock editor is a sheet off Care now, not
+    // The stock editor is a sheet off Care now, not (ADR-0084).
     // its own screen at /settings/stock.
     const stockSheet = read('src/routes/care/+page.svelte');
     expect(stockSheet).toContain('m.stock_lead_time_label()');

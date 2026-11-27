@@ -7,10 +7,8 @@
 
 * { box-sizing: border-box; margin: 0; }
 
-/* No scrollbar is ever drawn, on any scroll container (Alicja, 2026-11-04:
-   "sometimes a scroll bar appears on the right in the app. that should NOT
-   happen ever"). Scrolling itself is untouched. A class selector that sets
-   its own scrollbar-width outranks this, so none may. */
+/* No scrollbar is ever drawn, on any scroll container. Scrolling itself is untouched. A
+   class selector that sets its own scrollbar-width outranks this, so none may. */
 * { scrollbar-width: none; }
 *::-webkit-scrollbar { display: none; }
 
@@ -28,12 +26,10 @@ body {
   line-height: var(--leading-body);
   background: var(--bg);
   color: var(--text);
-  /* An app, not a web page: dragging or long-pressing a label, heading or
-     row title selected it with a browser handle over it, which is not
-     anything a person asked for here (phase 5 ticket 32.20, "most of the
-     text in the app shouldnt be selectable"). Off by default, and opted
-     back in below on the surfaces that carry the person's own writing -
-     not the other way round, since that is the smaller list. */
+  /* An app, not a web page: dragging or long-pressing a label, heading or row title
+     selected it with a browser handle over it, which is not anything a person asked for
+     here. Off by default, and opted back in below on the surfaces that carry the person's
+     own writing - not the other way round, since that is the smaller list. */
   -webkit-user-select: none;
   user-select: none;
 }
@@ -118,25 +114,19 @@ body {
   overflow-y: auto;
   overflow-x: hidden;
   position: relative;
-  /* No `scrollbar-gutter: stable` here any more: with no scrollbar drawn
-     there is no width to reserve, so Sheet.svelte locking this element to
-     `overflow: hidden` while a sheet is open still shifts nothing (it was
-     the gutter that fixed the jump in hair removal, Alicja, 2026-08-27,
-     when the scrollbar was drawn). */
+  /* No `scrollbar-gutter: stable` here any more: with no scrollbar drawn there is no width
+     to reserve, so Sheet.svelte locking this element to `overflow: hidden` while a sheet is
+     open still shifts nothing. */
   overscroll-behavior: contain;
-  /* Scroll position here is scroll-region.ts's own to manage - it remembers
-     and restores per path deliberately, because this element rather than
-     the window is what scrolls, so the browser's default handling never
-     sees it (that file's own comment). Scroll anchoring is a second,
-     competing authority over the same number: it nudges scrollTop on its
-     own whenever content already above the viewport changes size, which
-     several stacked `{#if query.loading}` sections each resolving at a
-     slightly different moment does continuously for the first few hundred
-     ms after a screen mounts. Restoring to 767 and then watching the
-     browser walk it back down toward 598 over the next several frames,
-     unprompted, is exactly that fight (Alicja, 2026-08-27, on the
-     transition roadmap: "the fade-in jumps a lot of pixels"; measured with
-     a scroll listener across a real back navigation to /more). */
+  /* Scroll position here is scroll-region.ts's own to manage - it remembers and restores
+     per path deliberately, because this element rather than the window is what scrolls, so
+     the browser's default handling never sees it (that file's own comment). Scroll
+     anchoring is a second, competing authority over the same number: it nudges scrollTop on
+     its own whenever content already above the viewport changes size, which several stacked
+     `{#if query.loading}` sections each resolving at a slightly different moment does
+     continuously for the first few hundred ms after a screen mounts. Restoring to 767 and
+     then watching the browser walk it back down toward 598 over the next several frames,
+     unprompted, is exactly that fight. */
   overflow-anchor: none;
   width: 100%;
   max-width: 100%;
@@ -177,32 +167,29 @@ body {
 
 /* The foot itself: the one commitment a deep screen asks for.
 
-   It sits *on* the floating bar rather than above it, keeping `--space-2`
-   and giving the breath back - the trade the sticky version documented and
-   Alicja asked for (2026-08-25, "too high"). Held as the padding under the
-   controls, since a box in the frame's flow has no scroll port for an
-   offset to be measured from. Its ground is the page's, as it always was:
-   the foot is where the column ends, not a surface over it (rule 4).
+   It sits *on* the floating bar rather than above it, keeping `--space-2` and giving the
+   breath back - the trade the sticky version documented and asked for. Held as the padding
+   under the controls, since a box in the frame's flow has no scroll port for an offset to
+   be measured from. Its ground is the page's, as it always was: the foot is where the
+   column ends, not a surface over it (rule 4).
 
-   Two of the three arrangements are in the app's vocabulary already: rule
-   12's foot is a primary with the ways past it under it, and rule 15's is
-   one control. `row` is the third - two of equal weight, where declining is
-   as ordinary an outcome as keeping (a voice take). */
+   Two of the three arrangements are in the app's vocabulary already: rule 12's foot is a
+   primary with the ways past it under it, and rule 15's is one control. `row` is the third
+   - two of equal weight, where declining is as ordinary an outcome as keeping (a voice
+   take). */
 .app-savebar {
   flex: 0 0 auto;
   display: flex;
   padding: var(--space-3) var(--screen-inset) calc(var(--nav-clearance) - var(--space-5) + var(--space-2));
-  /* Opaque, and this is mechanism rather than decoration. The column gives
-     up the foot's room on the last frame of its arrival and takes it back
-     on the first frame of its leave ($lib/motion/foot), which is invisible
-     only because the strip being clipped is already covered: through a
-     see-through foot the same swap reads as a band of content disappearing
-     in one frame. `.return-foot` says the same thing for the same reason
+  /* Opaque, and this is mechanism rather than decoration. The column gives up the foot's
+     room on the last frame of its arrival and takes it back on the first frame of its leave
+     ($lib/motion/foot), which is invisible only because the strip being clipped is already
+     covered: through a see-through foot the same swap reads as a band of content
+     disappearing in one frame. `.return-foot` says the same thing for the same reason
      ("opaque, or the rows scroll through it").
 
-     The ground is the page's, so nothing here is a surface (rule 4). No
-     hairline over it since bug session 18: Alicja found the line
-     clutter, and the foot's buttons already say where the column ends. */
+     The ground is the page's, so nothing here is a surface (rule 4). No hairline over it
+     found the line clutter, and the foot's buttons already say where the column ends. */
   background: var(--bg);
 }
 .app-savebar .btn { width: 100%; }
@@ -238,9 +225,9 @@ body {
   --nav-clearance: calc(
     var(--nav-bar-height, var(--bottom-nav-height)) + var(--nav-float-gap) + var(--inset-bottom) + var(--space-5)
   );
-  /* Trimmed from --space-3/5px for ticket 08: the four tab labels grew, and
-     every px reclaimed from the bar's own margins is a px the five equal
-     columns (below) can give the label instead of the ellipsis. */
+  /* Trimmed from --space-3/5px for the four tab labels grew, and every px reclaimed from
+     the bar's own margins is a px the five equal columns (below) can give the label instead
+     of the ellipsis. */
   --nav-float-gap: var(--space-2);
   --nav-bar-pad: 4px;
 }
@@ -297,17 +284,15 @@ body {
   margin-bottom: var(--space-3);
 }
 
-/* The floor reaches one level down, because most screens put their content
-   inside a branch wrapper: `{#if loading}...{:else}<div>` needs an element to
-   hang the branch on, and that div was the whole of it. So the blocks a
-   person actually reads were not the children the rule above was written
-   about, and 52 of these wrappers across the app were holding their contents
-   flush - the collage screen's photo count sat on the picker above it and on
-   the grid below it, and the wear log's empty notice sat on its range
-   switcher (Alicja, 2026-08-26).
+/* The floor reaches one level down, because most screens put their content inside a branch
+   wrapper: `{#if loading}...{:else}<div>` needs an element to hang the branch on, and that
+   div was the whole of it. So the blocks a person actually reads were not the children the
+   rule above was written about, and 52 of these wrappers across the app were holding their
+   contents flush - the collage screen's photo count sat on the picker above it and on the
+   grid below it, and the wear log's empty notice sat on its range switcher.
 
-   Named rather than reached through with `.screen > * > *`, which would put
-   a margin inside every card, list and chart on the screen.
+   Named rather than reached through with `.screen > * > *`, which would put a margin inside
+   every card, list and chart on the screen.
 
    --space-5 to match the floor above it. */
 /* A reserve's body (ReadReserve.svelte) stands where the screen's own
@@ -323,19 +308,15 @@ body {
   margin-bottom: var(--space-3);
 }
 
-/* The last row keeps its 20 too. It does not add to the wrapper's: the
-   wrapper is a plain block with nothing on its bottom edge, so the two
-   margins collapse into one 20 - the same gap a `:last-child { 0 }` rule
-   used to give by taking the row's away. That rule made a row's margin
-   depend on whether anything came after it, the neighbour dependence the
-   `.screen > *` comment above rules out: a row inserted as the new last
-   child handed its predecessor 20px in the frame it was inserted, and a
-   last row leaving took 20px from the one before it in the frame it was
-   removed, a step no transition on either row can animate (ux-carpet
-   ticket 195; ticket 166's voice task line, 248 -> 268px). The collapse
-   holds while a wrapper animates its height as well: `resize` and
-   `maskHeight` clip with `overflow: clip`, which is not a formatting
-   context. */
+/* The last row keeps its 20 too. It does not add to the wrapper's: the wrapper is a plain
+   block with nothing on its bottom edge, so the two margins collapse into one 20 - the same
+   gap a `:last-child { 0 }` rule used to give by taking the row's away. That rule made a
+   row's margin depend on whether anything came after it, the neighbour dependence the
+   `.screen > *` comment above rules out: a row inserted as the new last child handed its
+   predecessor 20px in the frame it was inserted, and a last row leaving took 20px from the
+   one before it in the frame it was removed, a step no transition on either row can
+   animate. The collapse holds while a wrapper animates its height as well: `resize` and
+   `maskHeight` clip with `overflow: clip`, which is not a formatting context. */
 
 /* Except an inline-level row, whose margins never collapse: last in the
    wrapper, its 20 would sit inside the wrapper on top of the wrapper's own
@@ -374,10 +355,9 @@ body {
   z-index: 30;
 }
 
-/* The bar's corner and the add button's are the same shape: both take
-   --r-block (phase 10, rule 5), the one corner the app has, so the button
-   reads as sitting inside the plane rather than as a second unrelated
-   rounded thing. The bar used to derive its corner from the button's
+/* The bar's corner and the add button's are the same shape: both take --r-block, the one
+   corner the app has, so the button reads as sitting inside the plane rather than as a
+   second unrelated rounded thing. The bar used to derive its corner from the button's
    --r-add plus the pad; with one radius there is nothing to derive. */
 .nav-item {
   display: grid;
@@ -600,12 +580,11 @@ body {
 }
 .nav-add {
   justify-self: center;
-  /* The pill travels under this, not over it (Alicja, 2026-08-25). The pill is
-     positioned and the add button was not, and a positioned element beats a
-     static sibling however the source is ordered - so the highlight crossed
-     the bar's centre in front of its most prominent control. One stacking
-     position is the whole fix; the pill keeps its place behind the tabs, which
-     it already had by source order. */
+  /* The pill travels under this, not over it. The pill is positioned and the add button was
+     not, and a positioned element beats a static sibling however the source is ordered - so
+     the highlight crossed the bar's centre in front of its most prominent control. One
+     stacking position is the whole fix; the pill keeps its place behind the tabs, which it
+     already had by source order. */
   position: relative;
   z-index: 1;
   width: 56px; height: 56px;
@@ -814,10 +793,9 @@ html[data-nav='fade-through']::view-transition-new(screen) {
    blind's box, and the edge is the only thing that moves. */
 ::view-transition-group(blind) { z-index: 3; animation: none; }
 ::view-transition-group(*.field-part) { z-index: 4; }
-/* The sun above everything the field carries, both closing and opening: it
-   is the app's own mark rather than one more thing painted on a card, and a
-   ring passing behind a title that is on its way out reads as the drawing
-   being interrupted (Alicja, 2026-09-09, on Transition to Today). */
+/* The sun above everything the field carries, both closing and opening: it is the app's own
+   mark rather than one more thing painted on a card, and a ring passing behind a title that
+   is on its way out reads as the drawing being interrupted. */
 ::view-transition-group(*.sun-ring) { z-index: 5; }
 /* Today and Settings share the same sun. One incoming image fills the
    shared box; the outgoing image cannot form a second set of seams. */
@@ -952,10 +930,9 @@ html[data-blind-scroll='enter']::view-transition-new(blind) {
     field-part-in var(--dur-fast) var(--ease-in-out) var(--dur-fast) both,
     part-follow var(--blind-dur, var(--dur-slow)) var(--blind-ease, var(--ease-out)) both;
 }
-/* `--fp-from` is how far the part had faded in when a navigation landed on
-   another one that was still running (fieldBlind.ts, ticket 285): the
-   outgoing photograph is taken of the resting DOM at full opacity, and
-   fading out from full is the part popping to full in one frame. */
+/* `--fp-from` is how far the part had faded in when a navigation landed on another one that
+   was still running (fieldBlind.ts): the outgoing photograph is taken of the resting DOM at
+   full opacity, and fading out from full is the part popping to full in one frame. */
 @keyframes field-part-out {
   from { opacity: var(--fp-from, 1); }
   to { opacity: 0; transform: translateY(var(--part-travel, 12px)); }
@@ -997,27 +974,22 @@ html[data-blind-hold='short'] {
    element cannot read a custom property off the element it was taken from.
    Both sides in one rule: the outgoing ring closes on the same beat the
    incoming one opens on. */
-/* Closing rides with the blind - the sun is one of the things printed on
-   the field, and as the field hides, what's on it goes with it. Opening
-   does not (Alicja, 2026-09-10, ticket 99 round 2 - a fourth motion note
-   on top of the glitch this round already fixed): "make the sun appearing
-   NOT move with the blind - we don't want it to overshoot like the blind
-   - we just want it to appear independently. but when the blind HIDES,
-   the sun SHOULD follow it". The arriving sun draws where it will rest
-   and only scales there; nothing about a blind's own settle (the
-   overshoot --blind-ease can carry) touches it. */
+/* Closing rides with the blind - the sun is one of the things printed on the field, and as
+   the field hides, what's on it goes with it. Opening does not: "make the sun appearing NOT
+   move with the blind - we don't want it to overshoot like the blind - we just want it to
+   appear independently. but when the blind HIDES, the sun SHOULD follow it". The arriving
+   sun draws where it will rest and only scales there; nothing about a blind's own settle
+   (the overshoot --blind-ease can carry) touches it. */
 ::view-transition-old(*.sun-ring) {
   animation:
     sun-ring-close var(--dur-fast) var(--ease-in-out) both,
     blind-lead var(--blind-dur, var(--dur-slow)) var(--blind-ease, var(--ease-out)) both;
 }
 ::view-transition-new(*.sun-ring) {
-  /* Much slower than the fast tier it drew on before (Alicja, 2026-09-10:
-     "the sun appearing should be much slower", then "even slower", then
-     "let's go for 900ms") - --dur-sun-open (theme/base.css), its own
-     token rather than reusing --dur-slow or --dur-authored, since
-     neither of those numbers is this one and changing either would move
-     something else that asked for nothing. */
+  /* Much slower than the fast tier it drew on before - --dur-sun-open (theme/base.css), its
+     own token rather than reusing --dur-slow or --dur-authored, since neither of those
+     numbers is this one and changing either would move something else that asked for
+     nothing. */
   animation: sun-ring-open var(--dur-sun-open) var(--ease-out) both;
 }
 /* Where the field arrives from above, off a screen that was scrolled, the sun rides in with it. The rings open in place and do not follow
@@ -1070,14 +1042,12 @@ html[data-nav='shared-axis-back']::view-transition-old(screen) {
 html[data-nav='shared-axis-back']::view-transition-new(screen) {
   animation-name: screen-axis-back-in, blind-follow;
 }
-/* The incoming screen holds at nil opacity for the first 25% of its
-   --dur-med (60ms) and fades up after, while its slide runs the whole way.
-   The outgoing screen's --dur-fast ease-out is at 0.13 by then and 0.06
-   when the new one shows, so no frame holds two legible screens and only
-   one holds neither: the calendar and a day sat over each other at
-   0.56/0.29 and 0.28/0.52 for two frames (pre-release 18, item 54), the
-   double exposure redesign ticket 25 already took out of the reduced-motion
-   crossfade. */
+/* The incoming screen holds at nil opacity for the first 25% of its --dur-med (60ms) and
+   fades up after, while its slide runs the whole way. The outgoing screen's --dur-fast
+   ease-out is at 0.13 by then and 0.06 when the new one shows, so no frame holds two
+   legible screens and only one holds neither: the calendar and a day sat over each other at
+   0.56/0.29 and 0.28/0.52 for two frames (pre-release 18, item 54), the already took out of
+   the reduced-motion crossfade. */
 @keyframes screen-axis-out { to { opacity: 0; transform: translateX(calc(-1 * var(--motion-distance-md))); } }
 @keyframes screen-axis-in {
   from { opacity: var(--nil-opacity); transform: translateX(var(--motion-distance-md)); }
@@ -1145,18 +1115,15 @@ html[data-nav='open']::view-transition-new(screen) {
    --dur-crossfade, which the 1ms clamp deliberately does not reach. A screen
    change that cuts with no acknowledgement at all is a worse answer to
    "reduce motion" than a change of opacity that moves nothing. */
-/* Out, then in, rather than both at once. A
-   simultaneous crossfade of two text-dense doors is a double exposure for
-   its whole length - "the 'today' appears well before the old screen fades
-   out", then, once both halves ran the same curve, still two screens
-   legible at once through the middle frames (Alicja, round one and two).
-   So the outgoing screen fades to the page over --dur-crossfade and the
-   incoming one fades up from it over the next --dur-crossfade, each on its
-   own and linear; no frame holds two screens. The delay is a token, so the
-   1ms clamp is not what times it - --dur-crossfade sits outside the clamp
-   on purpose, and the whole change is 240ms of opacity and nothing else.
-   The new image is held at its first frame through the delay
-   (fill-mode both), or it would sit at full opacity under the old one. */
+/* Out, then in, rather than both at once. A simultaneous crossfade of two text-dense doors
+   is a double exposure for its whole length - "the 'today' appears well before the old
+   screen fades out", then, once both halves ran the same curve, still two screens legible
+   at once through the middle frames. So the outgoing screen fades to the page over
+   --dur-crossfade and the incoming one fades up from it over the next --dur-crossfade, each
+   on its own and linear; no frame holds two screens. The delay is a token, so the 1ms clamp
+   is not what times it - --dur-crossfade sits outside the clamp on purpose, and the whole
+   change is 240ms of opacity and nothing else. The new image is held at its first frame
+   through the delay (fill-mode both), or it would sit at full opacity under the old one. */
 html[data-a11y-motion='reduce']::view-transition-old(screen) {
   animation-name: screen-fade-away;
   animation-duration: var(--dur-crossfade) !important;
@@ -1302,16 +1269,14 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
   transition-timing-function: var(--ease-out);
 }
 .rail-item:hover { background: var(--surface-2); color: var(--text); }
-/* Not over the lit row. The hover wash predates the travelling pill and used
-   to sit beside it; once the pill became the lit fill, a pointer parked on
-   the row it just landed on painted --surface-2 straight over the pink - so
-   the rail's highlight settled cool grey-blue where the bar's settles in the
-   accent, and the two shapes of the same navigation disagreed on what a lit
-   tab looks like (Alicja, 2026-09-08: "the web nav bg highlight color turns
-   blue... we want it to look just like the android nav"). The bar never had
-   this because .nav-item:hover only ever changed the ink. The lit row's own
-   ink already survives hover, since .rail-item.is-active is declared after
-   it; the fill is the whole of what was wrong. */
+/* Not over the lit row. The hover wash predates the travelling pill and used to sit beside
+   it; once the pill became the lit fill, a pointer parked on the row it just landed on
+   painted --surface-2 straight over the pink - so the rail's highlight settled cool
+   grey-blue where the bar's settles in the accent, and the two shapes of the same
+   navigation disagreed on what a lit tab looks like. The bar never had this
+   because.nav-item:hover only ever changed the ink. The lit row's own ink already survives
+   hover, since.rail-item.is-active is declared after it; the fill is the whole of what was
+   wrong. */
 .rail-item.is-active:hover { background: none; }
 /* The fill is .nav-pill's now, the same shape the bar uses, travelling down
    instead of across. What stays here is the colour and the weight. */
@@ -1393,10 +1358,9 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
     display: none !important;
   }
 
-  /* The foot is where a screen's actions live - and an action is a screen
-     affordance by definition, so the bar never reaches paper even when its
-     controls each carry `no-print` and leave it an empty band behind
-     (ticket 34's print surfaces were the first to catch it). */
+  /* The foot is where a screen's actions live - and an action is a screen affordance by
+     definition, so the bar never reaches paper even when its controls each carry `no-print`
+     and leave it an empty band behind. */
   .app-savebar {
     display: none !important;
   }
@@ -1409,11 +1373,10 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
     margin-bottom: var(--space-4);
   }
 
-  /* The letterhead (PrintLetterhead.svelte), which both printing surfaces
-     put at the top of their print-only heading. Inset from the corner of
-     the sheet rather than flush with it (Alicja, 2026-09-21): @page's own
-     15mm is the paper's margin, and this is the lockup standing off that,
-     so the mark does not read as something that fell off the edge. */
+  /* The letterhead (PrintLetterhead.svelte), which both printing surfaces put at the top of
+     their print-only heading. Inset from the corner of the sheet rather than flush with it:
+     @page's own 15mm is the paper's margin, and this is the lockup standing off that, so
+     the mark does not read as something that fell off the edge. */
   .print-lockup { padding: var(--space-4) 0 var(--space-4) var(--space-4); }
 
   .screen {

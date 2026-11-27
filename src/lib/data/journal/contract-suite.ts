@@ -62,7 +62,7 @@ function recorder() {
  * Runs the contract against an already-migrated driver.
  *
  * The caller supplies the journal's file store because the two tiers hold
- * photos differently and this suite is not about photos (ticket 12 is).
+ * photos differently and this suite is not about photos.
  */
 export async function runJournalContract(
   driver: SqliteDriver,
@@ -361,11 +361,10 @@ export async function runJournalContract(
     for (const id of [matchId, wrongMoodId, outsideRangeId]) await journal.entries.deleteEntry(id).catch(() => {});
   });
 
-  /* Functional audit ticket 10: mode, body region and one scale's range,
-     each alone and each with text, through the same two reads /search
-     makes. The region and scale halves are EXISTS subqueries over their
-     own tables, and the scale's range binds two numbers, so they belong on
-     every driver rather than in a Node-only test. */
+  /* Mode, body region and one scale's range, each alone and each with text, through the
+     same two reads /search makes. The region and scale halves are EXISTS subqueries over
+     their own tables, and the scale's range binds two numbers, so they belong on every
+     driver rather than in a Node-only test. */
   await r.section('mode, body region and a scale range narrow the search, alone and with text', async () => {
     const femme = await journal.presentations.addPresentation('filterprobe femme', 0);
     const work = await journal.presentations.addPresentation('filterprobe work', 1);
@@ -473,15 +472,13 @@ export async function runJournalContract(
     r.equal('foldText strips Polish letterforms', foldText('Zażółć Gęślą Jaźń ŁÓŻKO'), 'zazolc gesla jazn lozko');
   });
 
-  /* Window functions, which ADR-0012's aggregates lean on in three places:
-     `daySpread`'s FIRST_VALUE/LAST_VALUE over a named WINDOW clause below,
-     and `recap`'s ROW_NUMBER and NTILE. A build compiled with
-     SQLITE_OMIT_WINDOWFUNC fails here and nowhere else.
+  /* Window functions, which ADR-0012's aggregates lean on in three places: `daySpread`'s
+     FIRST_VALUE/LAST_VALUE over a named WINDOW clause below, and `recap`'s ROW_NUMBER and
+     NTILE. A build compiled with SQLITE_OMIT_WINDOWFUNC fails here and nowhere else.
 
-     It used to be the streak's gaps-and-islands query, which phase 8 UX
-     ticket 01 deleted; the day spread was picked to replace it because the
-     WINDOW clause is the syntax an omitted-window-function build refuses
-     earliest. */
+     It used to be the streak's gaps-and-islands query, which deleted; the day spread was
+     picked to replace it because the WINDOW clause is the syntax an omitted-window-function
+     build refuses earliest. */
   await r.section('window functions', async () => {
     const spreadDay = 1000;
     for (const mood of [2, 5, 3]) {

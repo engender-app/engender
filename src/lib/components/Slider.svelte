@@ -164,17 +164,15 @@
 </div>
 
 <style>
-  /* An unset slider. The thumb has to rest somewhere, and where
-     it rests is not a value anyone logged - on a body region both axes start
-     this way, so a mid-track thumb would otherwise read as a middling score.
-     Ticket 31 dimmed it; dimmed, a half-filled track beside a "-" still read
-     as a value (audit UX-17), so the thumb and the fill are not drawn at all
-     until the first touch, and fade in under the finger when it lands, over
-     240ms in-out: at 150ms ease-out the first frame took 44% of the fade.
-     The groove and the ruler stay: they are the control, and the scale is
-     true whether or not there is a value on it yet. Here rather than in
-     components.css with the rest of the slider, because that sheet is part
-     of the first load and only an editor draws an unset scale. */
+  /* An unset slider. The thumb has to rest somewhere, and where it rests is not a value
+     anyone logged - on a body region both axes start this way, so a mid-track thumb would
+     otherwise read as a middling score. dimmed it; dimmed, a half-filled track beside a "-"
+     still read as a value, so the thumb and the fill are not drawn at all until the first
+     touch, and fade in under the finger when it lands, over 240ms in-out: at 150ms ease-out
+     the first frame took 44% of the fade. The groove and the ruler stay: they are the
+     control, and the scale is true whether or not there is a value on it yet. Here rather
+     than in components.css with the rest of the slider, because that sheet is part of the
+     first load and only an editor draws an unset scale. */
   .slider-fill { transition: opacity var(--dur-med) var(--ease-in-out); }
   .slider-thumb {
     transition: box-shadow var(--dur-fast) var(--ease-out), opacity var(--dur-med) var(--ease-in-out);

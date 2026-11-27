@@ -65,11 +65,10 @@ test('a site picker nobody tapped refuses the save, and each route carries only 
   assert.equal(oral.scheduled, null);
 });
 
-/* The two days the clocks change (after-release ticket 01, L03-03). A typed
-   time is a wall-clock time, and adding hours to local midnight lands an
-   hour off on both: 23 hours in the spring day, 25 in the autumn one. Run
-   with TZ=Europe/Warsaw to exercise it; in a zone with no DST the readback
-   is trivially right. */
+/* The two days the clocks change. A typed time is a wall-clock time, and adding hours to
+   local midnight lands an hour off on both: 23 hours in the spring day, 25 in the autumn
+   one. Run with TZ=Europe/Warsaw to exercise it; in a zone with no DST the readback is
+   trivially right. */
 for (const day of ['2026-03-29', '2026-10-25', '2026-07-15']) {
   test(`a dose typed at 10:00 on ${day} reads back 10:00`, () => {
     const saved = new Date(draftTimestamp(day, '10:00'));

@@ -116,8 +116,8 @@ describe('sheet rise', () => {
     expect(frame(css!, 1)).toMatch(/translateY\(0px\)/);
   });
 
-  /* Ticket 38: a 24px nudge under an opacity fade is a crossfade, which is
-    /* The scrim announces the sheet. The sheet itself does not fade up from nothing. */
+  /* A 24px nudge under an opacity fade is a crossfade, which is /* The scrim announces the
+    sheet. The sheet itself does not fade up from nothing. */
   it('does not fade - a solid object slides', () => {
     stubDocument(TOKENS);
     const { css } = sheetRise(sheetNode(300, 800));
@@ -149,10 +149,9 @@ describe('sheet rise', () => {
     expect(frame(sheetRise(sheetNode(120, 800)).css!, 0)).toMatch(/translateY\(680px\)/);
   });
 
-  /* The field's own settle, which is what Alicja asked a sheet to
-     take: coming up it runs past its mark and comes back. Svelte reads an
-     entrance as t = easing(p) and the geometry below uses u = 1 - t, so an
-     easing that passes 1 is the sheet passing its resting place. */
+  /* The field's own settle, which is what asked a sheet to take: coming up it runs past its
+     mark and comes back. Svelte reads an entrance as t = easing(p) and the geometry below
+     uses u = 1 - t, so an easing that passes 1 is the sheet passing its resting place. */
   it('runs past its mark coming up, and lands on it', () => {
     stubDocument(TOKENS);
     const { easing } = sheetRise(sheetNode(300, 800), {}, { direction: 'in' });

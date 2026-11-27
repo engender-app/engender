@@ -227,19 +227,16 @@
       : null
   );
 
-  /* The settle crossfade. Swapping straight segments for the monotone curve
-     is a real corner-rounding, not a redraw of the same shape, and doing it
-     in the single frame `moving` goes false read as the line jumping into
-     its resting state rather than arriving there (Alicja, 2026-08-28: "the
-     graph line jumps to smoothed out state ... it needs to be smooth when
-     it starts being drawn"). `dots`/`last` do not change between the two -
-     only the curve interpolation between them does - so this only ever
-     needs to fade the line and fill layers, and `path` above is already the
-     settled, smooth geometry underneath by the time this plays: what fades
-     is a snapshot of the last straight-segment frame, laid on top of it and
-     faded to nothing, never a second live copy recomputed on every frame -
-     rebuilding the smoothed curve that often is the cost geometry.ts's own
-     note measured and ruled out. */
+  /* The settle crossfade. Swapping straight segments for the monotone curve is a real
+     corner-rounding, not a redraw of the same shape, and doing it in the single frame
+     `moving` goes false read as the line jumping into its resting state rather than
+     arriving there. `dots`/`last` do not change between the two - only the curve
+     interpolation between them does - so this only ever needs to fade the line and fill
+     layers, and `path` above is already the settled, smooth geometry underneath by the time
+     this plays: what fades is a snapshot of the last straight-segment frame, laid on top of
+     it and faded to nothing, never a second live copy recomputed on every frame -
+     rebuilding the smoothed curve that often is the cost geometry.ts's own note measured
+     and ruled out. */
   let lastMovingPath = $state<{ line: string; fill: string; overlay: string } | null>(null);
   let wasMoving = false;
 
@@ -429,14 +426,12 @@
         viewBox="0 0 {plotWidth} {HEIGHT}"
         aria-hidden="true"
       >
-        <!-- Keyed on whether the plot has a line to draw at all. Across that
-             line the drawing is a different kind of thing - a filled line
-             with its marks, or one reading on its own in the middle - and
-             the tween cannot travel between them: from two readings to one,
-             the area, the annotation marks and the ring all went in one
-             frame and the ring jumped to the centre (phase 14 ticket 18,
-             sampled on a chart's undo). So the two drawings crossfade, the
-             old one held as it was while it fades. -->
+        <!-- Keyed on whether the plot has a line to draw at all. Across that line the
+             drawing is a different kind of thing - a filled line with its marks, or one
+             reading on its own in the middle - and the tween cannot travel between them:
+             from two readings to one, the area, the annotation marks and the ring all went
+             in one frame and the ring jumped to the centre. So the two drawings crossfade,
+             the old one held as it was while it fades. -->
         {#key plottable}
         <g
           transform="translate({PAD}, {PAD})"
@@ -451,9 +446,8 @@
                and neither of these two is the other's footnote - so both are
                plain strokes of equal weight, and the second is dashed. -->
           {#if !overlaid}<path class="kit-area-fill" d={path.fill} />{/if}
-          <!-- Each line sits on its casing: the line's edge where the stripe
-               alone is under 3:1 against the plot, transparent where it is
-               not (kit.css's --role-edge, phase 15 ticket 20). -->
+          <!-- Each line sits on its casing: the line's edge where the stripe alone is under
+               3:1 against the plot, transparent where it is not (kit.css's --role-edge). -->
           <path class="kit-area-casing" d={path.line} />
           <path class="kit-area-line" d={path.line} />
           {#if overlayPath}
@@ -511,17 +505,13 @@
             {/each}
           {/if}
           {#if highlight && !overlaid}
-            <!-- An outer ring around the existing mark, drawn whatever the
-                 point count - ticket 17's own warning that this has to
-                 still read when most of the range is highlighted is what
-                 keeps this out of the <=60 gate above. Wider than both the
-                 plain dot (r=2.5) and the latest-reading ring (r=5) it can
-                 land on, so a highlighted last reading draws two visibly
-                 concentric rings rather than one ring on top of another the
-                 same size - and dashed, so the highlight still reads when a
-                 presentation's role happens to be the chart's own role
-                 (ticket 17's note: colour is not the only thing telling two
-                 marks apart, the same reason the second series is dashed). -->
+            <!-- An outer ring around the existing mark, drawn whatever the point count -
+                 own warning that this has to still read when most of the range is
+                 highlighted is what keeps this out of the <=60 gate above. Wider than both
+                 the plain dot (r=2.5) and the latest-reading ring (r=5) it can land on, so
+                 a highlighted last reading draws two visibly concentric rings rather than
+                 one ring on top of another the same size - and dashed, so the highlight
+                 still reads when a presentation's role happens to be the chart's own role. -->
             {#each path.dots as dot, i (i)}
               {#if dot && highlight.at[i]}
                 <circle class="kit-area-highlight" cx={dot.x} cy={dot.y} r="7.5" />
@@ -532,11 +522,10 @@
             <!-- What a scroll used to be for: the exact reading under the
                  finger. Dotted, so it reads as a measurement laid over the
                  chart rather than as another mark drawn on it. -->
-            <!-- From the baseline up to the reading and no further: a line
-                 that carries on past the value is a gridline, and it made the
-                 chart look like it had an axis it does not have (Alicja,
-                 2026-08-25). With two series that is the higher of the two
-                 marks, for the same reason. -->
+            <!-- From the baseline up to the reading and no further: a line that carries on
+                 past the value is a gridline, and it made the chart look like it had an
+                 axis it does not have. With two series that is the higher of the two marks,
+                 for the same reason. -->
             <line
               class="kit-area-scrub"
               x1={at.x}
@@ -679,12 +668,10 @@
   {/if}
 
   {#if shownAnnotations.length}
-    <!-- No caption under the plot: the marks are named where they are, on
-         hover and on the scrub (Alicja, bug session 18, item 39). This is
-         the same thing for somebody who cannot see where a mark sits. A
-         scrub is a way of reading a picture, so it is no use here, and the
-         chart's own numbers are already offered as a list by the screens
-         that draw one. -->
+    <!-- No caption under the plot: the marks are named where they are, on hover and on the
+         scrub. This is the same thing for somebody who cannot see where a mark sits. A
+         scrub is a way of reading a picture, so it is no use here, and the chart's own
+         numbers are already offered as a list by the screens that draw one. -->
     <!-- Named after the chart it belongs to: a screen drawing two charts off
          one range draws this list twice, and an unlabelled second copy is a
          list of dates with nothing saying what they are a list of. -->
@@ -702,15 +689,13 @@
 {/if}
 
 <style>
-  /* The casing under each line: the same path a pixel wider each side, in
-     the line's edge (--role-edge, phase 15 ticket 20). It is transparent
-     wherever the stripe clears 3:1 against the plot by itself, so only the
-     lines that could not be found get a boundary, and the line on top stays
-     the flag's own colour. The second series' casing is dashed with it:
-     the line's 7px dashes paint 9px with their square caps, so the casing
-     paints exactly those 9px (butt caps, shifted back the 1px a cap reaches)
-     and leaves the 3px gaps empty, which keeps the dash that tells the two
-     series apart. */
+  /* The casing under each line: the same path a pixel wider each side, in the line's edge.
+     It is transparent wherever the stripe clears 3:1 against the plot by itself, so only
+     the lines that could not be found get a boundary, and the line on top stays the flag's
+     own colour. The second series' casing is dashed with it: the line's 7px dashes paint
+     9px with their square caps, so the casing paints exactly those 9px (butt caps, shifted
+     back the 1px a cap reaches) and leaves the 3px gaps empty, which keeps the dash that
+     tells the two series apart. */
   .kit-area-casing {
     fill: none;
     stroke: var(--role-edge);

@@ -145,12 +145,11 @@ describe('roleAt', () => {
   });
 });
 
-/* A tile's ground is the stripe itself at full strength (phase 10 rule 3),
-   which is a different demand from every other role consumer: a chart line
-   or an icon glyph on a shade is faint, and a whole block of a shade is the
-   page. Agender is the case - one colour and three shades - where reading
-   the whole role list hands the tiles #1A1A1A and Home draws black blocks on
-   a near-black page. */
+/* A tile's ground is the stripe itself at full strength, which is a different demand from
+   every other role consumer: a chart line or an icon glyph on a shade is faint, and a whole
+   block of a shade is the page. Agender is the case - one colour and three shades - where
+   reading the whole role list hands the tiles #1A1A1A and Home draws black blocks on a
+   near-black page. */
 describe("a tile's role", () => {
   it('takes a colour on every palette, whatever index the area asks for', () => {
     for (const palette of PALETTES) {
@@ -270,14 +269,12 @@ describe('the two colours a role carries', () => {
     expect(distance(pink.mark, pink.stripe)).toBeLessThan(distance(pink.ink, pink.stripe) - 0.05);
   });
 
-  /* The third colour, for a mark that shares a card with another mark
-     (phase 6 ticket 12's second chart line). A fill and a lone mark owe no
-     ratio and take the stripe exactly, which is the decision that stopped
-     nonbinary's yellow turning olive - but a stripe that cannot be seen
-     against the card at all is not a faint line, it is no line. That only
-     ever happens to a flag's shades: a white band on the light theme and a
-     near-black one on the dark theme sit on their own ground. A colour, at
-     any lightness, still reads as itself. */
+  /* The third colour, for a mark that shares a card with another mark. A fill and a lone
+     mark owe no ratio and take the stripe exactly, which is the decision that stopped
+     nonbinary's yellow turning olive - but a stripe that cannot be seen against the card at
+     all is not a faint line, it is no line. That only ever happens to a flag's shades: a
+     white band on the light theme and a near-black one on the dark theme sit on their own
+     ground. A colour, at any lightness, still reads as itself. */
   for (const palette of PALETTES) {
     for (const theme of THEMES) {
       it(`draws a paired mark in the flag's own colour, ${palette} ${theme}`, () => {

@@ -40,9 +40,8 @@ function linearToSrgb(c: number): number {
   return clamped <= 0.0031308 ? clamped * 12.92 : 1.055 * clamped ** (1 / 2.4) - 0.055;
 }
 
-/* Not exported: palette-contrast.test.ts read it directly until ticket 27
-   put mood's band behind `contrast` and the polar readings below, and
-   nothing else ever wanted a raw luminance. */
+/* Not exported: palette-contrast.test.ts read it directly put mood's band behind `contrast`
+   and the polar readings below, and nothing else ever wanted a raw luminance. */
 function luminance(hex: string): number {
   const { r, g, b } = toRgb(hex);
   return 0.2126 * srgbToLinear(r) + 0.7152 * srgbToLinear(g) + 0.0722 * srgbToLinear(b);

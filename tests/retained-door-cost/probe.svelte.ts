@@ -133,11 +133,10 @@ async function main() {
       let marker = `retaineddoorfreshness${index}`;
       let freshNotes = false;
       let notesCalls = 0;
-      /* Look back's recap is the canary since functional audit ticket 12
-         cut Words, whose whole-journal note read this used to watch. The
-         counters reset just before each save, so any recap asked after that
-         is the hidden door refreshing; the sample keys keep their old names
-         so RESULTS.md stays comparable. */
+      /* Look back's recap is the canary cut Words, whose whole-journal note read this used
+         to watch. The counters reset just before each save, so any recap asked after that
+         is the hidden door refreshing; the sample keys keep their old names so RESULTS.md
+         stays comparable. */
       const recap = raw.stats.recap;
       raw.stats.recap = async (...args) => {
         notesCalls++;

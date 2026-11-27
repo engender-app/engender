@@ -115,11 +115,10 @@ interface DoseScheduleInput {
       silently turned the instruction off would be the worst of the two
       directions to get wrong. */
   autoLogFromEpochDay: number | null;
-  /** The times the schedule's reminders ring at (functional audit ticket
-      21, doseReminders.ts): a list, empty or null for no reminders. Left out,
-      the reminders keep the times they have and only follow the new rhythm,
-      which is what a save that is about something else (the auto-log
-      switch, a fixture) should do. */
+  /** The times the schedule's reminders ring at (doseReminders.ts): a list, empty or null
+      for no reminders. Left out, the reminders keep the times they have and only follow the
+      new rhythm, which is what a save that is about something else (the auto-log switch, a
+      fixture) should do. */
   reminderTimes?: readonly string[] | null;
 }
 
@@ -281,12 +280,10 @@ export interface DosesArea {
       editor's same six keys while keeping labels out of the Node tier
       (ADR-0016). Boot can rerun this safely. */
   autoLogDueDoses(todayEpochDay: number, routeWords: readonly RouteOption[]): Promise<number>;
-  /** The day of the most recent dose at or before `todayEpochDay`, or null
-      if there is none (phase 8 features ticket 03, lastWrite.ts). The table
-      stores a `timestamp`, not an `epoch_day`, so the bound is the start of
-      the day after `todayEpochDay` and the result converts back with
-      `epochDayFromTimestamp`. One bounded `MAX`, not a fetched list reduced
-      in JS. */
+  /** The day of the most recent dose at or before `todayEpochDay`, or null if there is none
+      (lastWrite.ts). The table stores a `timestamp`, not an `epoch_day`, so the bound is
+      the start of the day after `todayEpochDay` and the result converts back with
+      `epochDayFromTimestamp`. One bounded `MAX`, not a fetched list reduced in JS. */
   lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
   /** How many non-skipped doses carry each distinct `drug` value, within
       each of `ranges`, in the range order given. A dose in none of them is

@@ -63,9 +63,8 @@ try {
   const withList = await sections();
   console.log('sections with a list:', withList.join(' / '));
   check('a list shows the way into the room', (await page.locator('[data-list-row="in-the-room"]').count()) === 1);
-  /* The class, not the one string ticket 71 replaced: a check that greps
-     for wording no catalogue carries can only pass. A heading naming one
-     visit is what that ticket forbade, in either language. */
+  /* The class, not the one string replaced: a check that greps for wording no catalogue
+     carries can only pass. A heading naming one visit is what forbade, in either language. */
   check('a heading is drawn over each area', withList.length > 0);
   check(
     'no heading claims a single visit',
@@ -99,11 +98,10 @@ try {
   /* The headings are the screen's areas, and emptying one area's list must
      not reorder or rename the others. */
   check('the first heading does not move with the rows', withList[0] === emptied[0]);
-  /* Both verbs survive an empty list, which is the half ticket 12 moved out
-     from behind a gate. The room used to be hidden here on the theory that
-     it would have nothing in it; it opens on its own empty state instead,
-     whose action is the way back to this screen, and a verb that comes and
-     goes with the list is a screen changing shape under somebody. */
+  /* Both verbs survive an empty list, which is the half moved out from behind a gate. The
+     room used to be hidden here on the theory that it would have nothing in it; it opens on
+     its own empty state instead, whose action is the way back to this screen, and a verb
+     that comes and goes with the list is a screen changing shape under somebody. */
   check(
     'an empty list still offers the room, which opens on its own empty state',
     (await page.locator('[data-list-row="in-the-room"]').count()) === 1

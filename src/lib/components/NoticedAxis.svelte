@@ -320,20 +320,16 @@
     background: var(--role-draw, var(--accent));
   }
 
-  /* A side effect is the same dot hollow - `MilestoneRail`'s own ring for
-     "the other kind of mark", but drawn in `--text-2` rather than in
-     `--role-draw`. Every side effect carries the 'other' direction, which
-     on trans is the flag's own white band - a role a filled dot can take
-     undiluted (`--role-draw` owes no ratio, `roles.ts`'s own reasoning for
-     "a lone mark"), but a 2px ring of it is close enough to `--bg` on the
-     light theme to disappear (Alicja, on this ticket's sign-off render:
-     "hollow ones in light mode is invisible"). `--text-2` is the stem's own
-     colour (`.na-mark::after`, below), already held to a contrast floor
-     against `--bg` in both themes, so the ring reads as the stem extended
-     into a circle rather than as a shade of whichever role a side effect
-     happens to carry - kind is a shape signal now, fully independent of
-     the per-direction colour, which is the stronger reading of "never
-     colour alone" anyway. */
+  /* A side effect is the same dot hollow - `MilestoneRail`'s own ring for "the other kind
+     of mark", but drawn in `--text-2` rather than in `--role-draw`. Every side effect
+     carries the 'other' direction, which on trans is the flag's own white band - a role a
+     filled dot can take undiluted (`--role-draw` owes no ratio, `roles.ts`'s own reasoning
+     for "a lone mark"), but a 2px ring of it is close enough to `--bg` on the light theme
+     to disappear. `--text-2` is the stem's own colour (`.na-mark::after`, below), already
+     held to a contrast floor against `--bg` in both themes, so the ring reads as the stem
+     extended into a circle rather than as a shade of whichever role a side effect happens
+     to carry - kind is a shape signal now, fully independent of the per-direction colour,
+     which is the stronger reading of "never colour alone" anyway. */
   .na-mark[data-kind='side-effect']::before {
     background: var(--bg);
     box-shadow: inset 0 0 0 2px var(--text-2);

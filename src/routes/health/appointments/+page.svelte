@@ -100,11 +100,10 @@
   let past = $derived([...appointments].reverse().filter((a) => a.epochDay < today));
   let lastVisit = $derived(mostRecentPastAppointment(appointments, today));
 
-  /* The debrief, scoped to the appointment it belongs to (checklists.ts,
-     ticket 58): the offer where it is still open, the entry where one was
-     written. One shape answers both, and `debriefOfferVisible` is the same
-     pure predicate Home folds over the same read rather than a second
-     statement of the rule. */
+  /* The debrief, scoped to the appointment it belongs to (checklists.ts): the offer where
+     it is still open, the entry where one was written. One shape answers both, and
+     `debriefOfferVisible` is the same pure predicate Home folds over the same read rather
+     than a second statement of the rule. */
   let debriefStateQuery = liveQuery((j) => j.checklists.getDebriefState(lastVisit?.id ?? null));
   let debriefEntryId = $derived(debriefStateQuery.value?.debriefEntryId ?? null);
   let showDebriefOffer = $derived(!!debriefStateQuery.value && debriefOfferVisible(debriefStateQuery.value));
@@ -500,20 +499,17 @@
           <ListCard role={roleAt(activeFlag.roles, 0)}>
             {#each past as appointment (appointment.id)}
               <div transition:collapse>{@render visitRow(appointment)}</div>
-              <!-- The debrief belongs to the most recent visit and to no other:
-                   one entry is linked at a time (checklists.ts), and back-filling
-                   history is entering a record rather than living through a
-                   visit. Under that visit's own row rather than in a notice of
-                   its own, and carrying its day either way - adjacency alone
-                   would read as the debrief of whichever visit the eye lands on
-                   next, which is the reading ticket 58 already fixed once on the
-                   completed row. It opens and closes its height, so the offer
-                   arrives by moving.
+              <!-- The debrief belongs to the most recent visit and to no other: one entry
+                   is linked at a time (checklists.ts), and back-filling history is entering
+                   a record rather than living through a visit. Under that visit's own row
+                   rather than in a notice of its own, and carrying its day either way -
+                   adjacency alone would read as the debrief of whichever visit the eye
+                   lands on next, which is the reading already fixed once on the completed
+                   row. It opens and closes its height, so the offer arrives by moving.
 
-                   Its own handle rather than Home's `data-debrief-offer`: Home
-                   draws the same offer as a Notice with a Notice's controls, and
-                   one selector over two shapes is a check that passes on the
-                   wrong surface. -->
+                   Its own handle rather than Home's `data-debrief-offer`: Home draws the
+                   same offer as a Notice with a Notice's controls, and one selector over
+                   two shapes is a check that passes on the wrong surface. -->
               {#if appointment.id === lastVisit?.id && showDebriefOffer}
                 <div transition:collapse>
                   <ListRow
@@ -559,15 +555,13 @@
       </button>
     {/snippet}
   </SectionHeading>
-  <!-- Not a ReadGate (measured, ticket 27): the gate swaps its rows for its
-       empty branch in one frame, so the last provider deleted vanished and
-       the page under a bottom-of-screen scroll stepped 120px, and its
-       wrapper's resize held the old height through a row's own collapse and
-       then stepped the scroller 45px when it let go. Here the list and the
-       notice each open and close their own height, so the one leaving and
-       the one arriving overlap rather than cut. Nothing is drawn until the
-       read has answered; this is the screen's last section, so nothing
-       under it waits on it. -->
+  <!-- Not a ReadGate: the gate swaps its rows for its empty branch in one frame, so the
+       last provider deleted vanished and the page under a bottom-of-screen scroll stepped
+       120px, and its wrapper's resize held the old height through a row's own collapse and
+       then stepped the scroller 45px when it let go. Here the list and the notice each open
+       and close their own height, so the one leaving and the one arriving overlap rather
+       than cut. Nothing is drawn until the read has answered; this is the screen's last
+       section, so nothing under it waits on it. -->
   <div class="screen-part">
     {#if providersQuery.rows.length}
       <div data-providers transition:collapse>
@@ -645,10 +639,9 @@
     border: 1px solid var(--outline);
     border-radius: var(--r-block);
     color: var(--role-fill-ink);
-    /* A button takes the browser's own face, not the body's, unless told
-       to (last-audit UI 53). The face only: the lines keep the leading and
-       weight they were laid out at, so the block grows no more than
-       Nunito's own metrics make it. */
+    /* A button takes the browser's own face, not the body's, unless told to. The face only:
+       the lines keep the leading and weight they were laid out at, so the block grows no
+       more than Nunito's own metrics make it. */
     font-family: inherit;
     text-align: left;
     text-decoration: none;

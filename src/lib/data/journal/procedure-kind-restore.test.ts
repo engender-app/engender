@@ -27,8 +27,8 @@ async function device(): Promise<{ driver: SqliteDriver; journal: Journal }> {
     one - the legacy payload is about the `kind` field alone. */
 async function* noFiles(): AsyncGenerator<{ name: string; bytes: Uint8Array }> {}
 
-/** What the build before ticket 17 would have written: no `kind` or
-    `dilationOptIn` on a procedure at all. */
+/** What an older build would have written: no `kind` or `dilationOptIn` on a procedure at
+    all. */
 function asWrittenBeforeTheKind(journal: ArchiveJournal): ArchiveJournal {
   return {
     ...journal,

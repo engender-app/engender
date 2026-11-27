@@ -1,5 +1,4 @@
-/* What a lock takes out of the page besides the database and the key
-   (after-release ticket 10; audit L09-02, L09-03 and SEC-08). */
+/* What a lock takes out of the page besides the database and the key. */
 
 import { afterEach, expect, it, vi } from 'vitest';
 import { forgetJournalContent, forgetOnLock } from './forget-content.ts';

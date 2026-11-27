@@ -44,37 +44,32 @@ export function portablePreferences(values: PreferenceValues): PortablePreferenc
 
 export interface ArchivePhoto extends ArchiveStamped {
   id: string;
-  /** The opaque `<uuid>.jpg` of ticket 11, resolved against whatever root
-      the importing platform uses. Never a path. */
+  /** The opaque `<uuid>.jpg` of, resolved against whatever root the importing platform
+      uses. Never a path. */
   fileName: string;
-  /** Chosen counterevidence (phase 5 ticket 14, CONTEXT: "Starred"). Added
-      before the 1.0.0 format cutoff without a version step. From 1.0.0 on,
-      wire changes require a format version and payload migration. */
+  /** Chosen counterevidence. Added before the 1.0.0 format cutoff without a version step.
+      From 1.0.0 on, wire changes require a format version and payload migration. */
   starred: boolean;
-  /** The day this photo shows on, when it overrides its owner's
-      (ticket 47, ADR-0008/0015). Null on every photo before this ticket
-      and on any photo nobody has corrected since - restore.ts writes
-      `?? null` for an archive whose payload predates this field. */
+  /** The day this photo shows on, when it overrides its owner's (ADR-0008/0015). Null on
+      every photo before this ticket and on any photo nobody has corrected since -
+      restore.ts writes `?? null` for an archive whose payload predates this field. */
   epochDayOverride: number | null;
 }
 
-/** One voice recording (phase 4 ticket 24, CONTEXT: "Voice recording"). Its
-    own interface rather than reused ArchivePhoto, for the reason this
-    file's header gives: a rename on one must not silently change what the
-    other travels as. Structurally the same shape today - an id and an
-    opaque file name - because a recording has no thumbnail pair to carry
-    and no owner but an entry. */
+/** One voice recording. Its own interface rather than reused ArchivePhoto, for the reason
+    this file's header gives: a rename on one must not silently change what the other
+    travels as. Structurally the same shape today - an id and an opaque file name - because
+    a recording has no thumbnail pair to carry and no owner but an entry. */
 export interface ArchiveVoiceRecording extends ArchiveStamped {
   id: string;
   /** The opaque `<uuid>.webm` of voiceRecordings/names.ts. Never a path. */
   fileName: string;
 }
 
-/** One video note (phase 5 ticket 22, CONTEXT: "Video note"). Its own
-    interface rather than reused ArchiveVoiceRecording, for the reason this
-    file's header gives: a rename on one must not silently change what the
-    other travels as. Structurally the same shape today, and for the same
-    reasons - no thumbnail pair to carry and no owner but an entry. */
+/** One video note. Its own interface rather than reused ArchiveVoiceRecording, for the
+    reason this file's header gives: a rename on one must not silently change what the other
+    travels as. Structurally the same shape today, and for the same reasons - no thumbnail
+    pair to carry and no owner but an entry. */
 export interface ArchiveVideoNote extends ArchiveStamped {
   id: string;
   /** The opaque `<uuid>.webm` of videoNotes/names.ts. Never a path. */
@@ -99,17 +94,14 @@ export interface ArchiveEntry extends ArchiveStamped {
       the same forward-compatible treatment lab_result.analyte already
       gets. */
   bodyRegions: Record<string, number>;
-  /** Chosen counterevidence (phase 5 ticket 14, CONTEXT: "Starred"). Same
-      no-format-version-step reasoning as ArchivePhoto.starred. */
+  /** Chosen counterevidence. Same no-format-version-step reasoning as ArchivePhoto.starred. */
   starred: boolean;
   /** The presentation this entry was filed under (ADR-0048), by domain id (uuid), or null. Carried as plain text the
       same way ArchiveMilestone.procedureId/tryoutId are - restore.ts
       resolves no rowid against it. Absent on an archive written before this
       ticket, read the same way an unset presentation always reads. */
   presentationId: string | null;
-  /** When the entry went to Trash, or null while it is in the journal.
-      Absent on an archive written before functional
-      audit ticket 48, which left trashed entries out. */
+  /** When the entry went to Trash, or null while it is in the journal. Older archives omitted trashed entries. */
   trashedAt?: number | null;
 }
 
@@ -182,10 +174,9 @@ export interface ArchiveMilestone extends ArchiveStamped {
    The archive carries the recorded context because its original dose
    log may be unavailable. Wire changes since 1.0.0 require a format
    version and payload migration. */
-/** A cost as it travels (functional audit ticket 30, cost.ts): the three
-    columns each costed record holds, flat on its row. Optional on the hand-
-    written sections so an archive written before the ticket parses, where it
-    reads as no cost; the flat sections declare the same default
+/** A cost as it travels (cost.ts): the three columns each costed record holds, flat on its
+    row. Optional on the hand- written sections so an archive written before the ticket
+    parses, where it reads as no cost; the flat sections declare the same default
     (archiveSections.ts). */
 export interface ArchiveCostFields {
   costAmount?: number | null;
@@ -207,17 +198,15 @@ interface ArchiveLabResult extends ArchiveCostFields, ArchiveStamped {
   timingDayOfInterval: number | null;
 }
 
-/** The dilation taper schedule (phase 8 features ticket 12, CONTEXT:
-    "Taper"). One row, since the app models one taper at a time; the array
-    shape is only what a section travels as. `stagesJson` is the stage
-    sequence as JSON text, exactly as the `taper` table itself stores it
-    (taper.ts), and the stage sequence is scalar to both. Never the
-    expansion: that stays derived and never travels (ADR-0010).
+/** The dilation taper schedule. One row, since the app models one taper at a time; the
+    array shape is only what a section travels as. `stagesJson` is the stage sequence as
+    JSON text, exactly as the `taper` table itself stores it (taper.ts), and the stage
+    sequence is scalar to both. Never the expansion: that stays derived and never travels
+    (ADR-0010).
 
-    `procedureId` is the uuid of the procedure the taper dilates for
-    (schema v83), not the rowid the column holds on a device - the same
-    trade `ArchiveAppointment` makes for the same link, and the reason
-    neither is a flat section. */
+    `procedureId` is the uuid of the procedure the taper dilates for (schema v83), not the
+    rowid the column holds on a device - the same trade `ArchiveAppointment` makes for the
+    same link, and the reason neither is a flat section. */
 export interface ArchiveTaper extends ArchiveStamped {
   id: string;
   procedureId: string;
@@ -238,8 +227,7 @@ interface ArchiveSideEffect extends ArchiveStamped {
   name: string;
   severity: number | null;
   epochDay: number;
-  /** Absent in an archive written before functional audit ticket 23, which
-      reads as ongoing. */
+  /** Absent in an archive written, which reads as ongoing. */
   resolvedEpochDay?: number | null;
 }
 
@@ -272,12 +260,11 @@ interface ArchiveVoicePracticeTake extends ArchiveStamped {
   feltSense: number | null;
 }
 
-/** One bundled transition-roadmap goal with a status recorded at all
-    (phase 4 ticket 23, widened phase 5 ticket 20 for the tri-state), named
-    by its pack and its goal key rather than a uuid - both strings mean the
-    same thing on every device, so two installs that recorded the same
-    goal recorded the same goal (ADR-0002). An unchecked visible goal travels as absence. A hidden unchecked goal
-    carries a row so its visibility survives restore. */
+/** One bundled transition-roadmap goal with a status recorded at all, named by its pack and
+    its goal key rather than a uuid - both strings mean the same thing on every device, so
+    two installs that recorded the same goal recorded the same goal (ADR-0002). An unchecked
+    visible goal travels as absence. A hidden unchecked goal carries a row so its visibility
+    survives restore. */
 export interface ArchiveRoadmapCheck extends ArchiveStamped {
   packKey: string;
   goalKey: string;
@@ -331,15 +318,14 @@ export interface ArchiveChecklistItem extends ArchiveStamped {
   carriedForward: boolean;
 }
 
-/** A checklist, standalone or scoped to an owner record.
-    `ownerKind`/`ownerId` travel as a pair, both present or both absent, the
-    same nullable pairing the row itself keeps (schema.ts) - there is
-    no owner table to resolve either against yet.
+/** A checklist, standalone or scoped to an owner record. `ownerKind`/`ownerId` travel as a
+    pair, both present or both absent, the same nullable pairing the row itself keeps
+    (schema.ts) - there is no owner table to resolve either against yet.
 
-    `appointmentEpochDay` was the standalone checklist's own date, retired by phase 8 ticket 58 and its column dropped
-    by schema v119. It stays in the shape, always written null and ignored on
-    read, so an archive from before still restores and one written now still
-    reads on an older build. */
+    `appointmentEpochDay` was the standalone checklist's own date, retired and its column
+    dropped by schema v119. It stays in the shape, always written null and ignored on read,
+    so an archive from before still restores and one written now still reads on an older
+    build. */
 export interface ArchiveChecklist extends ArchiveStamped {
   id: string;
   ownerKind: string | null;
@@ -360,21 +346,19 @@ export interface ArchiveProcedurePhoto extends ArchiveStamped {
   fileName: string;
 }
 
-/** One procedure and its recovery log.
-    `surgeryEpochDay` is null for a procedure with no date set yet. The
-    recovery checklist is not here: it is an ordinary `checklist` row
-    carrying this procedure's id as its owner, so it travels in the
-    `checklists` section. Neither section has to apply before the other -
-    an owner pair is matched by uuid, not resolved to a rowid.
+/** One procedure and its recovery log. `surgeryEpochDay` is null for a procedure with no
+    date set yet. The recovery checklist is not here: it is an ordinary `checklist` row
+    carrying this procedure's id as its owner, so it travels in the `checklists` section.
+    Neither section has to apply before the other - an owner pair is matched by uuid, not
+    resolved to a rowid.
 
-    Consults became appointments in ticket 57, and travel in the
-    `appointments` section naming this procedure.
+    Consults became appointments, and travel in the `appointments` section naming this
+    procedure.
 
-    `kind` and `dilationOptIn` are phase 9 carpet ticket 17. Both are
-    optional only so an archive written before this ticket parses -
-    applying one reads an absent `kind` as `custom` and an absent
-    `dilationOptIn` as false, the same defaults `upsertProcedure` gives a
-    write that names neither. */
+    `kind` and `dilationOptIn` are. Both are optional only so an archive written in older
+    versions parses - applying one reads an absent `kind` as `custom` and an absent
+    `dilationOptIn` as false, the same defaults `upsertProcedure` gives a write that names
+    neither. */
 export interface ArchiveProcedure extends ArchiveCostFields, ArchiveStamped {
   id: string;
   name: string;
@@ -383,8 +367,8 @@ export interface ArchiveProcedure extends ArchiveCostFields, ArchiveStamped {
   photos: ArchiveProcedurePhoto[];
   kind?: ProcedureKind;
   dilationOptIn?: boolean;
-  /** Absent on archives written before ticket 37; those procedures remain
-      ongoing rather than being classified from their age. */
+  /** Absent on archives written; those procedures remain ongoing rather than being
+      classified from their age. */
   archived?: boolean;
 }
 
@@ -435,12 +419,10 @@ export interface ArchiveAppointmentStatus extends ArchiveStamped {
   status: string;
 }
 
-/** A "first noticed" marker against the open effect catalogue (phase 4
-    ticket 07, widened phase 5 ticket 41). `effect` was already loosened
-    from PersonalEffectType to a plain string before that type itself
-    opened up (the schema carries no CHECK to enforce it
-    on the way back in); restore.ts now validates against
-    ArchivePersonalEffectType rows carried in the same journal instead. */
+/** A "first noticed" marker against the open effect catalogue. `effect` was already
+    loosened from PersonalEffectType to a plain string before that type itself opened up
+    (the schema carries no CHECK to enforce it on the way back in); restore.ts now validates
+    against ArchivePersonalEffectType rows carried in the same journal instead. */
 interface ArchivePersonalEffect extends ArchiveStamped {
   id: string;
   effect: string;
@@ -473,9 +455,8 @@ export interface ArchiveProgressPhoto extends ArchiveStamped {
   fileName: string;
 }
 
-/** A progress photo pose (pre-release-human 12, version 122): a built-in
-    by key, renamed or hidden, or the person's own by uuid. The shape of
-    ArchiveBodyRegion. An archive written before 122 has no such section,
+/** A progress photo pose: a built-in by key, renamed or hidden, or the person's own by
+    uuid. The shape of ArchiveBodyRegion. An archive written before 122 has no such section,
     and restore reads it as empty: the built-ins stay as reconciled. */
 export interface ArchiveProgressPose extends ArchiveStamped {
   id: string;
@@ -505,12 +486,10 @@ export interface ArchiveHairRemovalSession extends ArchiveCostFields, ArchiveSta
   area: string;
   method: string;
   painRating: number | null;
-  /** Absent in an archive written before functional audit ticket 28, which
-      reads as no length. */
+  /** Absent in an archive written, which reads as no length. */
   minutes?: number | null;
-  /** The free-text cost an archive written before functional audit ticket
-      30 carries. Never written now; restore reads it by cost.ts's rule into
-      the cost fields, or into `note` where it does not parse. */
+  /** The free-text cost an archive written carries. Never written now; restore reads it by
+      cost.ts's rule into the cost fields, or into `note` where it does not parse. */
   cost?: string;
   provider: string;
   photos: ArchiveHairRemovalPhoto[];
@@ -518,8 +497,7 @@ export interface ArchiveHairRemovalSession extends ArchiveCostFields, ArchiveSta
   note?: string | null;
 }
 
-/* An archive written before functional audit ticket 08 also carries a
-   `type`; nothing reads it now, and restore ignores it. */
+/* An archive written also carries a `type`; nothing reads it now, and restore ignores it. */
 interface ArchiveReminder extends ArchiveStamped {
   id: string;
   title: string;
@@ -529,11 +507,9 @@ interface ArchiveReminder extends ArchiveStamped {
   anchorEpochDay: number | null;
   epochDay: number | null;
   enabled: boolean;
-  /** Which feature manages this reminder, e.g. `stock:estradiol valerate`.
-      Null for a reminder a person created themselves.
-      Travels so restoring a device's own backup keeps that device's own
-      hand-off state - see the coalescing note at applyReminders (an
-      archive from before ticket 04 has no such field at all). */
+  /** Which feature manages this reminder, e.g. `stock:estradiol valerate`. Null for a
+      reminder a person created themselves. Travels so restoring a device's own backup keeps
+      that device's own hand-off state - see the coalescing note at applyReminders. */
   autoSource: string | null;
   /** The drug a medication reminder is for.
       Absent from an archive written before that ticket, which restores it
@@ -647,12 +623,10 @@ export interface ArchiveTryoutPhoto extends ArchiveStamped {
   fileName: string;
 }
 
-/** Something being tried out (phase 4 ticket 16, widened past name/pronoun
-    by phase 5 ticket 13). No "current" flag: several can travel with
-    overlapping or long-closed ranges, and nothing here may single one
-    out. `kind` is loosened from TryoutKind, the way ArchiveMeasurement
-    loosens `type`: the schema's CHECK enforces it on the way back in
-    (restore.ts), not this boundary type. */
+/** Something being tried out. No "current" flag: several can travel with overlapping or
+    long-closed ranges, and nothing here may single one out. `kind` is loosened from
+    TryoutKind, the way ArchiveMeasurement loosens `type`: the schema's CHECK enforces it on
+    the way back in (restore.ts), not this boundary type. */
 export interface ArchiveTryout extends ArchiveStamped {
   id: string;
   kind: string;
@@ -663,11 +637,10 @@ export interface ArchiveTryout extends ArchiveStamped {
   photos: ArchiveTryoutPhoto[];
 }
 
-/** One point in a tryout's felt-sense history, named
-    by the tryout's own travelling uuid rather than its rowid, which means
-    nothing on the device importing this (ADR-0002). Phase 5 ticket 24 let a
-    milestone own readings too; functional audit ticket 32 cut them, and an
-    older archive's milestone readings are dropped on restore (restore.ts). */
+/** One point in a tryout's felt-sense history, named by the tryout's own travelling uuid
+    rather than its rowid, which means nothing on the device importing this (ADR-0002). let
+    a milestone own readings too; cut them, and an older archive's milestone readings are
+    dropped on restore (restore.ts). */
 export interface ArchiveFeltSenseEntry extends ArchiveStamped {
   id: string;
   tryoutId: string;
@@ -676,12 +649,11 @@ export interface ArchiveFeltSenseEntry extends ArchiveStamped {
   note: string | null;
 }
 
-/** A margin note (phase 8 features ticket 07, CONTEXT: "Margin note"),
-    named by its entry's own travelling uuid rather than its rowid, the same
-    rule `ArchiveFeltSenseEntry`'s owner fields follow - nothing on the
-    device importing this knows a rowid it did not mint (ADR-0002). Exactly
-    one owner, unlike a felt-sense entry's two: a margin note always
-    belongs to an entry, so there is nothing to make optional. */
+/** A margin note, named by its entry's own travelling uuid rather than its rowid, the same
+    rule `ArchiveFeltSenseEntry`'s owner fields follow - nothing on the device importing
+    this knows a rowid it did not mint (ADR-0002). Exactly one owner, unlike a felt-sense
+    entry's two: a margin note always belongs to an entry, so there is nothing to make
+    optional. */
 export interface ArchiveMarginNote extends ArchiveStamped {
   id: string;
   entryId: string;
@@ -689,13 +661,13 @@ export interface ArchiveMarginNote extends ArchiveStamped {
   text: string;
 }
 
-/** One piece of paper the person keeps (ADR-0065). Its own interface rather than a reused ArchivePhoto, for the
-    reason this file's header gives: a rename on one must not silently change
-    what the other travels as. It carries a day and a title of its own, which
-    a photo does not - a document is a record, not content hanging off one.
+/** One piece of paper the person keeps (ADR-0065). Its own interface rather than a reused
+    ArchivePhoto, for the reason this file's header gives: a rename on one must not silently
+    change what the other travels as. It carries a day and a title of its own, which a photo
+    does not - a document is a record, not content hanging off one.
 
-    ADR-0065's optional link to a goal, a milestone, a procedure or an
-    episode is ticket 56's and is not on the wire yet. */
+    ADR-0065's optional link to a goal, a milestone, a procedure or an episode is and is not
+    on the wire yet. */
 interface ArchiveDocument extends ArchiveStamped {
   id: string;
   epochDay: number;
@@ -725,20 +697,18 @@ interface ArchiveMedicationStock extends ArchiveCostFields, ArchiveStamped {
   recordedEpochDay: number;
   reminderEverCreated: boolean;
   reminderDismissed: boolean;
-  /** Ticket 13's "what is open, and until when". Absent on an archive
-      written before this ticket, which is what the flat table's own
-      `whenAbsent: null` (archiveSections.ts) is for. */
+  /** "what is open, and until when". Absent on an archive written in older versions, which
+      is what the flat table's own `whenAbsent: null` (archiveSections.ts) is for. */
   openedEpochDay: number | null;
   inUseWindowDays: number | null;
   inUseEndEpochDay: number | null;
-  /** How many days a restock takes (redesign phase 10 ticket 01). Absent on
-      an archive written before this ticket, read as null the same way. */
+  /** How many days a restock takes. Absent on an archive written before this ticket, read
+      as null the same way. */
   leadTimeDays: number | null;
   /** Doses one unit holds. Absent on an archive
       written before it, read as null the same way. */
   dosesPerUnit: number | null;
-  /** Functional audit ticket 47. Absent on an archive written before it,
-      read as null the same way. */
+  /** Absent on an archive written before it, read as null the same way. */
   expiryEpochDay: number | null;
   pharmacyNote: string | null;
 }
@@ -836,17 +806,16 @@ export interface ArchiveJournal {
   areaStates: ArchiveAreaState[];
   marginNotes: ArchiveMarginNote[];
   documents: ArchiveDocument[];
-  /** Ticket 48. Absent on an archive written before it, read as none. */
+  /** Absent on an archive written before it, read as none. */
   deletions: ArchiveDeletion[];
 }
 
-/** A named stretch of the person's timeline (phase 6 ticket 01, ADR-0049,
-    CONTEXT: "Era"). Both bounds travel as null when they are open, which is
-    the whole of what an open bound is: the clamp a surface applies to read
-    it as two concrete dates is computed against the importing journal's own
-    data and is never written down (ADR-0010), so an archive restored onto a
-    device with a different first entry resolves "before I knew" against that
-    device rather than against the one it was exported from. */
+/** A named stretch of the person's timeline (ADR-0049). Both bounds travel as null when
+    they are open, which is the whole of what an open bound is: the clamp a surface applies
+    to read it as two concrete dates is computed against the importing journal's own data
+    and is never written down (ADR-0010), so an archive restored onto a device with a
+    different first entry resolves "before I knew" against that device rather than against
+    the one it was exported from. */
 interface ArchiveEra extends ArchiveStamped {
   id: string;
   name: string;
@@ -854,32 +823,28 @@ interface ArchiveEra extends ArchiveStamped {
   endEpochDay: number | null;
 }
 
-/** Which eras are muted from resurfacing (phase 6 ticket 05, ADR-0049,
-    CONTEXT: "Resurfacing consent"). A uuid an importing device has no era
-    for names nothing there either, the same resting state it is on the
-    device it travelled from - nothing here resolves it against
-    `ArchiveEra`, so an archive can carry a mute for an era trimmed by a
-    merge on the far side without either device having to reconcile that. */
+/** Which eras are muted from resurfacing (ADR-0049). A uuid an importing device has no era
+    for names nothing there either, the same resting state it is on the device it travelled
+    from - nothing here resolves it against `ArchiveEra`, so an archive can carry a mute for
+    an era trimmed by a merge on the far side without either device having to reconcile
+    that. */
 interface ArchiveEraMute extends ArchiveStamped {
   eraUuid: string;
 }
 
-/** One line of the person's own comfort list (phase 6 ticket 14, CONTEXT:
-    "Comfort list"). `position` travels explicitly rather than being
-    inferred from array order, the same as any other flat area with a
-    person-set order. */
+/** One line of the person's own comfort list. `position` travels explicitly rather than
+    being inferred from array order, the same as any other flat area with a person-set
+    order. */
 interface ArchiveComfortItem extends ArchiveStamped {
   id: string;
   text: string;
   position: number;
 }
 
-/** A named presentation (phase 5 deepening ticket 17, ADR-0048, CONTEXT:
-    "Presentation"). No `builtIn` flag: unlike ArchiveTag or
-    ArchiveGenderDimension it ships nothing seeded, so every row travels the
-    same way. `roleIndex` is an index into the active flag's roles
-    (theme/roles.ts), never a colour of its own - the same reason
-    ArchiveMilestone carries no rendered label. */
+/** A named presentation (ADR-0048). No `builtIn` flag: unlike ArchiveTag or
+    ArchiveGenderDimension it ships nothing seeded, so every row travels the same way.
+    `roleIndex` is an index into the active flag's roles (theme/roles.ts), never a colour of
+    its own - the same reason ArchiveMilestone carries no rendered label. */
 interface ArchivePresentation extends ArchiveStamped {
   id: string;
   name: string;
@@ -887,10 +852,9 @@ interface ArchivePresentation extends ArchiveStamped {
   hidden: boolean;
 }
 
-/** A standardized voice take (phase 5 deepening ticket 15, CONTEXT: "Voice
-    benchmark"). Its two audio files travel in the body like a recording's,
-    named by the same opaque `<uuid>.webm`; the vowel half is absent on a
-    take that skipped or failed that step, and its three figures with it. */
+/** A standardized voice take. Its two audio files travel in the body like a recording's,
+    named by the same opaque `<uuid>.webm`; the vowel half is absent on a take that skipped
+    or failed that step, and its three figures with it. */
 interface ArchiveVoiceBenchmark extends ArchiveStamped {
   id: string;
   epochDay: number;
@@ -910,13 +874,11 @@ interface ArchiveVoiceBenchmark extends ArchiveStamped {
   /** The downsampled pitch track, absent on an
       archive written before it and on any take from before schema v58. */
   pitchTrack: string | null;
-  /** What recorded it (audio/captureChain.ts, ticket 28). It travels
-      because a restored benchmark that lost its chain would silently
-      rejoin a series it does not belong to. */
+  /** What recorded it (audio/captureChain.ts). It travels because a restored benchmark that
+      lost its chain would silently rejoin a series it does not belong to. */
   captureChain: string | null;
-  /** The corner-vowel scaling factor (audio/vowelScale.ts, ticket 30),
-      absent on an archive written before it and null on any take that held
-      fewer than two of the three vowels. */
+  /** The corner-vowel scaling factor (audio/vowelScale.ts), absent on an archive written
+      before it and null on any take that held fewer than two of the three vowels. */
   resonanceScale: number | null;
 }
 

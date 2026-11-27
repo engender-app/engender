@@ -192,13 +192,11 @@ export function lockBackground(
       restoreInert.push(child);
     }
   }
-  /* The withdrawal crossfades rather than snapping (ux-carpet 232):
-     components.css fades a pre-blurred `::after` in. It needs the browser to have
-     painted the *un*-withdrawn state at least once first or there is
-     nothing to crossfade from - an `::after` this selector has never
-     matched has no prior frame to animate away from. One
-     `requestAnimationFrame` is that one frame; a class added in the same
-     tick as `inert` would never be seen on its own. */
+  /* The withdrawal crossfades rather than snapping: components.css fades a pre-blurred
+     `::after` in. It needs the browser to have painted the *un*-withdrawn state at least
+     once first or there is nothing to crossfade from - an `::after` this selector has never
+     matched has no prior frame to animate away from. One `requestAnimationFrame` is that
+     one frame; a class added in the same tick as `inert` would never be seen on its own. */
   let withdrawRaf: ReturnType<typeof requestAnimationFrame> | undefined =
     options.withdraw === false
       ? undefined
@@ -212,12 +210,11 @@ export function lockBackground(
     mainEl.style.overflow = 'hidden';
   }
 
-  /* The blurred copy over the background fades out with the overlay's own
-     exit rather than vanishing when the node is finally destroyed: dropped
-     at release, it went from fully blurred to sharp in one frame at the end
-     of every sheet's dismissal (phase 15 ticket 04, measured on the discard
-     sheet). Only an element no other open overlay still holds is let go,
-     so a sheet closing over another leaves the background withdrawn. */
+  /* The blurred copy over the background fades out with the overlay's own exit rather than
+     vanishing when the node is finally destroyed: dropped at release, it went from fully
+     blurred to sharp in one frame at the end of every sheet's dismissal. Only an element no
+     other open overlay still holds is let go, so a sheet closing over another leaves the
+     background withdrawn. */
   const recede = () => {
     if (withdrawRaf !== undefined) cancelAnimationFrame(withdrawRaf);
     withdrawRaf = undefined;

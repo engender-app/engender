@@ -1,11 +1,9 @@
-/* Where the rotation map's twelve dots sit (phase 4 ticket 02, re-spaced in
-   phase 6 ticket 13, re-placed against the shared silhouette in phase 11
-   ticket 48).
+/* Where the rotation map's twelve dots sit.
 
-   Beside InjectionSiteMap.svelte rather than inside it because the spacing
-   is the only claim the map makes that can be got wrong silently: twelve
-   touch targets on one small figure either stay separate or quietly overlap,
-   and a component's <style> block is not somewhere a test can ask. */
+   Beside InjectionSiteMap.svelte rather than inside it because the spacing is the only
+   claim the map makes that can be got wrong silently: twelve touch targets on one small
+   figure either stay separate or quietly overlap, and a component's <style> block is not
+   somewhere a test can ask. */
 
 import type { InjectionSite, InjectionSiteRegion } from '../data/doseSchedule';
 import { FIGURE_BOX, type Pt } from './bodySilhouette';

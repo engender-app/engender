@@ -91,14 +91,12 @@
   const group = readGroup();
   const panel = () => ({ skip: navigating.to !== null || heldByReadGroup(group) });
 
-  /* The value on the block counts up where it is a count (phase 10 rule 10,
-     redesign ticket 25): from nothing on arrival, from the last number on a
-     change, over --dur-slow so it lands on the frame the block's own clip
-     does (kit.css, kit-block-in). A name, a duration or a date is not a
-     count and is written straight; `asCount` is what decides, so a tile
-     never guesses from its own key. The runner reads the token layer and
-     substitutes the final number under reduced motion, and the effect's
-     cleanup cancels a travel the next change or an unmount interrupts. */
+  /* The value on the block counts up where it is a count: from nothing on arrival, from the
+     last number on a change, over --dur-slow so it lands on the frame the block's own clip
+     does (kit.css, kit-block-in). A name, a duration or a date is not a count and is
+     written straight; `asCount` is what decides, so a tile never guesses from its own key.
+     The runner reads the token layer and substitutes the final number under reduced motion,
+     and the effect's cleanup cancels a travel the next change or an unmount interrupts. */
   /* Seeded synchronously so no frame draws an empty value: a count starts
      at "0" in the frame the tile mounts, everything else at itself. The
      effect below takes over from there; untrack, because this is the one
@@ -127,12 +125,11 @@
       <span class="kit-tile-title">{title}</span>
       {#if value}<span class="kit-tile-value">{shown}</span>{/if}
     </a>
-    <!-- Its own row rather than inside .kit-tile-main (ticket 99 item 9): the
-         note used to make .kit-tile-main a two-line block, which is-split's
-         align-items: center then centred as a whole - so the value, which
-         actually reads on the first of those two lines, sat visibly above
-         the action button's true centre. Out here, the title/value line and
-         the action button share one row and centre against each other. -->
+    <!-- Its own row rather than inside.kit-tile-main: the note used to make.kit-tile-main a
+         two-line block, which is-split's align-items: center then centred as a whole - so
+         the value, which actually reads on the first of those two lines, sat visibly above
+         the action button's true centre. Out here, the title/value line and the action
+         button share one row and centre against each other. -->
     {#if note}<span class="kit-tile-note"><span class="kit-tile-note-text">{note}</span></span>{/if}
     {#if action.href}
       <a
@@ -179,13 +176,12 @@
       <span class="kit-tile-title">{title}</span>
       {#if value}<span class="kit-tile-value">{shown}</span>{/if}
     </a>
-    <!-- Outside the link, as on the action shape above and for the reason
-         phase 10's rule 3 gives: the note is a foot of page colour along the
-         bottom edge of the block, and a foot spans the block's full width
-         whatever controls the tile carries. Inside the link it was one cell
-         of the tile's grid, so the foot stopped short of both edges and left
-         a sliver of stripe down each side. The whole tile still taps
-         through - the block above the foot is the link. -->
+    <!-- Outside the link, as on the action shape above and for the reason rule 3 gives: the
+         note is a foot of page colour along the bottom edge of the block, and a foot spans
+         the block's full width whatever controls the tile carries. Inside the link it was
+         one cell of the tile's grid, so the foot stopped short of both edges and left a
+         sliver of stripe down each side. The whole tile still taps through - the block
+         above the foot is the link. -->
     {#if note}<span class="kit-tile-note"><span class="kit-tile-note-text">{note}</span></span>{/if}
     <button
       type="button"

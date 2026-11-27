@@ -26,17 +26,15 @@ export { onTablesWritten, batchWrites } from './tableVersions.svelte';
    the journal is in another module. */
 const open = $state<{ journal: Journal | null }>({ journal: null });
 
-/* Same value as `open.journal`, reachable without a reactive read, behind
-   the gate everything queues on until it lands. A screen that rendered during
-   boot - Home's quick log is reachable at first paint - can then save without
-   knowing whether the worker has caught up. The preference store solves the
-   same problem by replaying writes; the journal only has to queue them,
-   because nothing here needs an answer before the database has one.
+/* Same value as `open.journal`, reachable without a reactive read, behind the gate
+   everything queues on until it lands. A screen that rendered during boot - Home's quick
+   log is reachable at first paint - can then save without knowing whether the worker has
+   caught up. The preference store solves the same problem by replaying writes; the journal
+   only has to queue them, because nothing here needs an answer before the database has one.
 
-   A gate rather than a promise resolved once since after-release ticket 10:
-   a lock on the web closes the database, and the gate is what lets every
-   call already running finish first, holds the ones made while locked, and
-   hands them the reopened journal instead of the closed one. */
+   A gate rather than a promise resolved a lock on the web closes the database, and the gate
+   is what lets every call already running finish first, holds the ones made while locked,
+   and hands them the reopened journal instead of the closed one. */
 const journals = sessionGate<Journal>();
 
 let wrapped: Journal | null = null;
@@ -75,9 +73,8 @@ export async function journalIsClosing(): Promise<void> {
   await journals.close();
 }
 
-/** The lock's first, synchronous step on the web (security-scan ticket 08):
-    the session is over for commands from this instant, before the close
-    that drains it has even started. */
+/** The lock's first, synchronous step on the web: the session is over for commands from
+    this instant, before the close that drains it has even started. */
 export function journalSessionEnded(): void {
   open.journal = null;
   journals.end();
@@ -298,13 +295,11 @@ function query<T>(
   site: string | null,
   when: () => boolean = () => true
 ): LiveQuery<T> {
-  /* A warm revisit paints the answer this query gave last time, if nothing
-     it read has been written since (lastResults.ts, ux-carpet 201). Asked
-     here, while the component initialises, rather than in the effect: a
-     value set by the effect lands a flush after the first render, and the
-     read's skeleton and its reserve's crossfade would already be under way.
-     The closure is run once against a journal that answers nothing, only to
-     learn what it asks for. */
+  /* A warm revisit paints the answer this query gave last time, if nothing it read has been
+     written since (lastResults.ts). Asked here, while the component initialises, rather
+     than in the effect: a value set by the effect lands a flush after the first render, and
+     the read's skeleton and its reserve's crossfade would already be under way. The closure
+     is run once against a journal that answers nothing, only to learn what it asks for. */
   const doorActive = useDoorActivity();
   const instance = ++queriesMade;
   liveQueries.add(instance);

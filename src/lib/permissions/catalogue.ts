@@ -9,15 +9,14 @@
 export const GRANT_KEYS = ['notifications', 'exactAlarms', 'microphone', 'camera'] as const;
 export type GrantKey = (typeof GRANT_KEYS)[number];
 
-/** The ones that need no permission. Five of them because the system asks
-    instead and hands the app exactly one thing back; the last two because
-    they are the device's own business and the app only ever gets the answer.
+/** The ones that need no permission. Five of them because the system asks instead and hands
+    the app exactly one thing back; the last two because they are the device's own business
+    and the app only ever gets the answer.
 
-    All seven, rather than the five the ticket's Scope enumerated: the whole
-    claim of this list is that it is the whole list, and the inventory
-    (`.scratch/phase-10/redesign/permissions-inventory.md`) files battery
-    optimisation and the biometric under exactly this heading. A list that
-    quietly drops two of them is not the claim it says it is. */
+    All seven, rather than the five the ticket's Scope enumerated: the whole claim of this
+    list is that it is the whole list, and the inventory files battery optimisation and the
+    biometric under exactly this heading. A list that quietly drops two of them is not the
+    claim it says it is. */
 export const AMBIENT_KEYS = [
   'takePhoto',
   'pickFile',

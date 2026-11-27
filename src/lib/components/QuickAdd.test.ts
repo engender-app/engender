@@ -6,7 +6,7 @@ const root = fileURLToPath(new URL('../../..', import.meta.url));
 const componentsCss = readFileSync(root + '/src/lib/styles/components.css', 'utf8');
 const sweepCore = readFileSync(root + '/tests/yank-sweep-core.mjs', 'utf8');
 
-describe('Quick add fan transitions and compositing contracts (ticket 105)', () => {
+describe('Quick add fan transitions and compositing contracts', () => {
   it('disables CSS transition on .fan-scrim to prevent WAAPI interference', () => {
     // Keep CSS transitions disabled so Svelte WAAPI controls opacity
     expect(componentsCss).toMatch(/\.fan-scrim\s*\{[^}]*transition:\s*none;/);
@@ -24,7 +24,7 @@ describe('Quick add fan transitions and compositing contracts (ticket 105)', () 
   });
 });
 
-describe('Quick add backdate sheet entrance (last-audit ui 29)', () => {
+describe('Quick add backdate sheet entrance', () => {
   const backdateSheet = readFileSync(root + '/src/lib/components/QuickAddBackdateSheet.svelte', 'utf8');
 
   it('mounts its Sheet closed and opens it in an effect, so the entrance plays', () => {

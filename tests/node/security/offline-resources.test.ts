@@ -67,9 +67,8 @@ test('every outbound link opens outside the app', () => {
   expect(outbound.filter((a) => !a.includes('target="_blank"'))).toEqual([]);
 });
 
-/* One country at a time since bug session 18: the switch used to
-   jump down one page and name each country twice. Both regions stay
-   compiled in, so the directory is complete offline either way; within a
+/* One country at a time the switch used to jump down one page and name each country twice.
+   Both regions stay compiled in, so the directory is complete offline either way; within a
    region, helplines and support come first and reading after. */
 test('a country switch shows one region, talk first and reading after', () => {
   const screen = readFileSync(join(rootPath, SCREEN), 'utf8');

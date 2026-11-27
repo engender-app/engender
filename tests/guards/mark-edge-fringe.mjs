@@ -14,11 +14,10 @@ import { MARK_SEAM, markSvg } from '../../src/lib/components/mark.ts';
    cannot hide by matching the page. */
 const GROUND = [0x22, 0x25, 0x2c];
 
-/* Only sizes where the edge is at least a whole pixel: MARK_SEAM is 3 of
-   100, so it is sub-pixel below 34 and there is no ink to walk up to - at
-   16px the whole mark is a smear, which ticket 38 accepted rather than
-   worked around. A walk that cannot find the ink would read the tile's own
-   white interior as the outside and fail on a drawing that is fine. */
+/* Only sizes where the edge is at least a whole pixel: MARK_SEAM is 3 of 100, so it is
+   sub-pixel below 34 and there is no ink to walk up to - at 16px the whole mark is a smear,
+   which accepted rather than worked around. A walk that cannot find the ink would read the
+   tile's own white interior as the outside and fail on a drawing that is fine. */
 const SIZES = [48, 96, 192, 512].filter((size) => (size * MARK_SEAM) / 100 >= 1);
 const luma = ([r, g, b]) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
 const groundLuma = luma(GROUND);

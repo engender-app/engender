@@ -61,8 +61,8 @@ test('a closed ready journal can enter the same newer-schema refusal as cold boo
   expect(bootTransitions.toSchemaTooNew(closed)).toMatchObject({ status: 'schema-too-new', journal: null });
 });
 
-/* ticket 202: the persistence request's answer arrives on its own, after
-   ready rather than folded into it - so its own transition marks it. */
+/* The persistence request's answer arrives on its own, after ready rather than folded into
+   it - so its own transition marks it. */
 test('markPersistDenied sets persistDenied once ready, and is a no-op otherwise', () => {
   const ready = bootTransitions.toReady(bootStates.booting(), { journal: {} as never });
   expect(bootTransitions.markPersistDenied(ready).persistDenied).toBe(true);

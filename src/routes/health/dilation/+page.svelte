@@ -513,10 +513,8 @@
         </div>
       {/if}
 
-      <!-- The schedule itself, under the reading of it rather than over: it
-           is where the taper is edited, not what a person opens this screen
-           to find out (rule 16, and the same lesson ticket 54 took on the
-           roadmap - open on where you are, not on the pack's provenance). -->
+      <!-- The schedule itself, under the reading of it rather than over: it is where the
+           taper is edited, not what a person opens this screen to find out. -->
       <div class="screen-part">
         <SectionHeading text={m.schedule_title()} />
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.schedule)}>

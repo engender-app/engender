@@ -18,15 +18,14 @@ const read = (path: string) => readFileSync(root + path, 'utf8');
 
 const svelteFiles = globSync('src/**/*.svelte', { cwd: root });
 
-/* The screens that deliberately do not take this header, each with a header
-   of its own that another ticket owns. Listed rather than inferred, so
-   adding a headerless screen is a decision someone writes down.
+/* The screens that deliberately do not take this header, each with a header of its own that
+   another ticket owns. Listed rather than inferred, so adding a headerless screen is a
+   decision someone writes down.
 
-   /settings/lock left this list with ticket 53: the app-lock gate it framed
-   is retired, and its replacement is a chromeless gate the layout renders
-   rather than a route. /settings/live-tiles left it with phase 11 ticket
-   04: a redirect is a `+page.ts` stub now and has no component at all, so
-   there is nothing here to exempt. */
+   /settings/lock left this list with the app-lock gate it framed is retired, and its
+   replacement is a chromeless gate the layout renders rather than a route.
+   /settings/live-tiles left it with a redirect is a `+page.ts` stub now and has no
+   component at all, so there is nothing here to exempt. */
 const WITHOUT = new Map([
   ['src/routes/+page.svelte', 'Home wears the flag sun as its header (ticket 19)'],
   ['src/routes/entry/[id]/+page.svelte', 'renders EntryEditor, which carries the header'],
@@ -73,9 +72,8 @@ describe('every screen gets its header from one component', () => {
   it('does not repeat a tab name in the screen that tab opens', () => {
     /* Hide a screen title that repeats its tab name. Look back keeps its
        title because the subtitle names the active period. */
-    /* One door's tab (the fourth) can say either of two things depending on
-       disguise (ticket 08, hubTabLabel) - both are listed, so the guard
-       still catches whichever one a header regresses to repeating. */
+    /* One door's tab (the fourth) can say either of two things depending on disguise - both
+       are listed, so the guard still catches whichever one a header regresses to repeating. */
     const TAB_TITLES = new Map([
       ['src/routes/calendar/+page.svelte', ['m.nav_journal()']],
       ['src/routes/more/+page.svelte', ['m.nav_more()', 'm.nav_transition()']]

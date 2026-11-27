@@ -93,9 +93,8 @@ test('the plain paths deliver the journal in the format they name', async () => 
   assert.deepEqual(JSON.parse(await collect(json.delivered[0])).journal, emptySnapshot.journal);
 });
 
-/* Phase 9 audit ticket 11: the screen's bar is fed from here, so the watch
-   has to reach the one path that can pack for minutes and be harmless on
-   the two that cannot. */
+/* The screen's bar is fed from here, so the watch has to reach the one path that can pack
+   for minutes and be harmless on the two that cannot. */
 test('the encrypted export reports its progress to the caller', async () => {
   const { deliver, delivered } = fakeDelivery();
   const reports: { done: number; total: number }[] = [];

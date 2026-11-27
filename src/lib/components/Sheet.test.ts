@@ -4,10 +4,9 @@ import { describe, expect, it } from 'vitest';
 
 const root = fileURLToPath(new URL('../../..', import.meta.url));
 const sheetFile = readFileSync(root + '/src/lib/components/Sheet.svelte', 'utf8');
-/* The background lock and the focus trap moved here on redesign ticket 45,
-   when the letter arrival became the second surface that covers the whole
-   shell. The guarantees below are unchanged and still Sheet's, so they are
-   asserted against whichever file now carries each line rather than
+/* The background lock and the focus trap moved here, when the letter arrival became the
+   second surface that covers the whole shell. The guarantees below are unchanged and still
+   Sheet's, so they are asserted against whichever file now carries each line rather than
    loosened - a rule tested in one file holds nowhere else. */
 const overlayLockFile = readFileSync(root + '/src/lib/components/overlayLock.ts', 'utf8');
 

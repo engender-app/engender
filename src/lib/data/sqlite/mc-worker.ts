@@ -98,10 +98,9 @@ const handlers: Record<string, (args: never) => unknown | Promise<unknown>> = {
     await warmModule(args.wasmBinary);
   },
 
-  /* The files and the key without the live database (ux-carpet 219): what
-     the copy check and the restore need on a worker of their own after a
-     failed boot, when the live file is the one that could not be migrated
-     and opening it is not the point. */
+  /* The files and the key without the live database: what the copy check and the restore
+     need on a worker of their own after a failed boot, when the live file is the one that
+     could not be migrated and opening it is not the point. */
   async target(args: { path: string; hexKey: string }) {
     await attach(args.path);
     databasePath = poolPath(args.path);
@@ -221,21 +220,18 @@ const handlers: Record<string, (args: never) => unknown | Promise<unknown>> = {
     db!.exec(`VACUUM INTO 'file:${backupPath}?vfs=${MC_VFS}&hexkey=${hexKey}'`);
   },
 
-  /* Ticket 04: the copy becomes the live Journal again, after a migration
-     that could not be finished.
+  /* The copy becomes the live Journal again, after a migration that could not be finished.
 
-     VACUUM INTO in the other direction, from the copy as source, for the
-     reason the copy itself is written that way: the pool's bytes are opaque,
-     there is no sqlite3_backup_* in this wasm build, and importDb wants the
-     plaintext magic that an encrypted file does not carry. Both connections
-     are keyed with the same hexkey, so the restored database is ciphertext on
-     disk like everything else the pool holds.
+     VACUUM INTO in the other direction, from the copy as source, for the reason the copy
+     itself is written that way: the pool's bytes are opaque, there is no sqlite3_backup_*
+     in this wasm build, and importDb wants the plaintext magic that an encrypted file does
+     not carry. Both connections are keyed with the same hexkey, so the restored database is
+     ciphertext on disk like everything else the pool holds.
 
-     The live database is closed first, and the target unlinked, because
-     VACUUM INTO refuses an existing target and the file being replaced is the
-     one this worker has open. The copy stays where it is afterwards: it is
-     still the only insurance, and ADR-0006 retires it at the next clean boot,
-     which is a boot that found nothing pending - not this one. */
+     The live database is closed first, and the target unlinked, because VACUUM INTO refuses
+     an existing target and the file being replaced is the one this worker has open. The
+     copy stays where it is afterwards: it is still the only insurance, and ADR-0006 retires
+     it at the next clean boot, which is a boot that found nothing pending - not this one. */
   async restorePreMigrationCopy() {
     if (!poolUtil!.getFileNames().includes(backupPath)) {
       throw new Error('there is no pre-migration copy to restore');

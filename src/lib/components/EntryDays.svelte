@@ -30,18 +30,15 @@
   }: {
     groups: EntryDayGroup[];
     role?: Role;
-    /** Batched by the caller, one read for the whole page rather than one
-        per entry (phase 8 features ticket 07, marginNotes.ts's own
-        reasoning). Omitted, every entry reads as carrying none - the
-        starred shelf (starred/+page.svelte) draws no margin-note
-        affordance for exactly that reason: it is not one of the four
-        surfaces the ticket names. */
+    /** Batched by the caller, one read for the whole page rather than one per entry
+        (marginNotes.ts's own reasoning). Omitted, every entry reads as carrying none - the
+        starred shelf (starred/+page.svelte) draws no margin-note affordance for exactly
+        that reason: it is not one of the four surfaces the ticket names. */
     marginNotesByEntry?: Map<number, MarginNote[]>;
-    /** Set where the whole run is disclosed at once by a control (Good
-        moments' "See all", phase 14 ticket 18): each day clips open from
-        its own left edge, one --stagger-step behind the one above, the
-        way every block in the app arrives. Without
-        it a run mounts as it stands, and only a day added later opens. */
+    /** Set where the whole run is disclosed at once by a control: each day clips open from
+        its own left edge, one --stagger-step behind the one above, the way every block in
+        the app arrives. Without it a run mounts as it stands, and only a day added later
+        opens. */
     arrive?: boolean;
     /** Each day's heading level, handed to DayCard: the placing screen's
         to say. */

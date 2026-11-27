@@ -11,10 +11,9 @@ export type PreferredLabUnits = Partial<Record<PreferredUnitAnalyte, string>>;
 
 export const PREFERRED_UNIT_ANALYTES: readonly PreferredUnitAnalyte[] = ['estradiol', 'testosterone'];
 
-/** Steroids only. Estradiol and testosterone convert by molar mass, a physical
-    constant. Prolactin, LH and FSH convert against an assay-specific
-    calibration standard instead, so they get no fixed factor here - see
-    ticket 14 (portability) and ADR-0026. */
+/** Steroids only. Estradiol and testosterone convert by molar mass, a physical constant.
+    Prolactin, LH and FSH convert against an assay-specific calibration standard instead, so
+    they get no fixed factor here - (ADR-0026). */
 export const ALLOWED_PREFERRED_UNITS: Record<PreferredUnitAnalyte, readonly string[]> = {
   estradiol: ['pg/mL', 'pmol/L'],
   testosterone: ['ng/dL', 'nmol/L']

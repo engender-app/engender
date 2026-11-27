@@ -46,21 +46,19 @@ export type AreaStates = Partial<Record<HideableArea, AreaState>>;
 
 export const AREA_STATES_BEFORE_READ: AreaStates = {};
 
-/** The areas a person can declare finished: the original nine approved area
-    by area by Alicja on 2026-09-03, plus `voicePracticeTakes`, which that ticket posed as an open choice rather
-    than a decision Alicja had already made - "decide with the deepening
-    spec's ticket 13 in hand whether practice takes join the finishable set
-    or sit behind the same row" - resolved here and worth her confirming.
+/** The areas a person can declare finished: the original nine approved area by area by plus
+    `voicePracticeTakes`, which posed as an open choice rather than a decision had already
+    made - "decide with the deepening spec's in hand whether practice takes join the
+    finishable set or sit behind the same row" - resolved here and worth her confirming.
 
-    The rule they satisfy: finishing is a statement about the person's
-    *practice of tracking*, so it fits an accumulating dated series they
-    decide they are done adding to - and says nothing on top of a thing that
-    already ends itself, which is what `NOT_FINISHABLE` below is mostly
-    about.
+    The rule they satisfy: finishing is a statement about the person's *practice of
+    tracking*, so it fits an accumulating dated series they decide they are done adding to -
+    and says nothing on top of a thing that already ends itself, which is what
+    `NOT_FINISHABLE` below is mostly about.
 
-    Declared as the array so the literals stay narrow: a union written by
-    hand beside a widened `readonly ArchiveSectionName[]` would make
-    `Unfinishable` collapse to `never` and the whole check below vacuous. */
+    Declared as the array so the literals stay narrow: a union written by hand beside a
+    widened `readonly ArchiveSectionName[]` would make `Unfinishable` collapse to `never`
+    and the whole check below vacuous. */
 /* FINISHABLE_AREAS stays exported for its own test, and cross-checked in
    areaGroups.test.ts (AU-09 test-only review). */
 export const FINISHABLE_AREAS = [
@@ -86,14 +84,13 @@ export const FINISHABLE_AREAS = [
 
 export type FinishableArea = (typeof FINISHABLE_AREAS)[number];
 
-/** The finishable areas that can also be paused, not done (phase 8 features
-    ticket 51, ADR-0052 amendment). Cut from ticket 44's own answer: don't
-    build a general `suspended` field speculatively, and let whichever area
-    names a real case propose it against that need. Asked directly, two did -
-    a temporary break from voice practice, and pausing electrolysis or laser
-    for a while - and none of the other seven did, so they are not here. A
-    later ticket naming a case for one of those adds it to this list, the same
-    way `FINISHABLE_AREAS` itself grows one area at a time. */
+/** The finishable areas that can also be paused, not done (ADR-0052 amendment). Cut from
+    own answer: don't build a general `suspended` field speculatively, and let whichever
+    area names a real case propose it against that need. Asked directly, two did - a
+    temporary break from voice practice, and pausing electrolysis or laser for a while - and
+    none of the other seven did, so they are not here. A a later change naming a case for
+    one of those adds it to this list, the same way `FINISHABLE_AREAS` itself grows one area
+    at a time. */
 export const SUSPENDABLE_AREAS = [
   'hairRemovalSessions',
   'voiceBenchmarks',
@@ -104,21 +101,20 @@ export type SuspendableArea = (typeof SUSPENDABLE_AREAS)[number];
 
 type Unfinishable = Exclude<ArchiveSectionName, FinishableArea>;
 
-/** Every area that deliberately **cannot** be finished, and why - a full
-    `Record` over whatever `FINISHABLE_AREAS` does not name, the shape
-    `DAY_OPT_OUTS` uses (`day.ts`). A new archive section is a compile error
-    here until somebody either declares it finishable or writes down why it
-    is not, so nobody has to remember the check.
+/** Every area that deliberately **cannot** be finished, and why - a full `Record` over
+    whatever `FINISHABLE_AREAS` does not name, the shape `DAY_OPT_OUTS` uses (`day.ts`). A
+    new archive section is a compile error here until somebody either declares it finishable
+    or writes down why it is not, so nobody has to remember the check.
 
     Two families of reason, and the difference matters:
 
-    *Practice-based.* A judgement under Alicja's rule: the area already ends
-    per record, so an area-level finish on top of it says nothing new. The
-    wording is derived from that rule rather than quoted from her.
+    *Practice-based.* A judgement under the area already ends per record, so an area-level
+    finish on top of it says nothing new. The wording is derived from that rule rather than
+    quoted from her.
 
-    *Structural.* A fact about the schema rather than a judgement about
-    practice - reference data, or content that belongs to another record.
-    These need no product call and cannot drift. */
+    *Structural.* A fact about the schema rather than a judgement about practice - reference
+    data, or content that belongs to another record. These need no product call and cannot
+    drift. */
 /* NOT_FINISHABLE stays exported only for its own test (AU-09 test-only
    review). */
 export const NOT_FINISHABLE: Record<Unfinishable, string> = {
@@ -145,7 +141,7 @@ export const NOT_FINISHABLE: Record<Unfinishable, string> = {
   labResults: 'results arrive from outside on whatever schedule the prescription needs, so there is no practice of the person’s to declare done',
   reminders: 'an intention for a future day, switched off one reminder at a time',
   checklists: 'a list is answered and done with per list, which is the same statement one level down',
-  // Phase 8 features ticket 52, ADR-0065: paper keeps arriving. There is no
+  // ADR-0065: paper keeps arriving. There is no
   // state in which somebody is done being sent opinions, referrals and
   // rulings, so an area-level finish here would be a statement nobody is in
   // a position to make.

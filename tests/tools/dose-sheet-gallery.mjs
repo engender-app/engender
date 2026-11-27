@@ -289,12 +289,11 @@ for (const palette of PALETTES) {
     await page.locator('.site-map').screenshot({ path: `${outDir}/dose-recency-map-${palette}-${theme}.png` });
     process.stdout.write(`  dose-recency-map-${palette}-${theme}\n`);
 
-    /* The sheet as a screen, at the two places a person stops scrolling:
-       the whole figure with its key, and the list. Asked for by Alicja on
-       2026-09-02 - "no screen with a list visible" - and it is the shot
-       that shows what the figure's height costs, which is why the figure is
-       432px and frames the silhouette from the crown to just above the knee
-       rather than drawing all 176 units of it. */
+    /* The sheet as a screen, at the two places a person stops scrolling: the whole figure
+       with its key, and the list. Asked for by - "no screen with a list visible" - and it
+       is the shot that shows what the figure's height costs, which is why the figure is
+       432px and frames the silhouette from the crown to just above the knee rather than
+       drawing all 176 units of it. */
     if (palette === 'trans') {
       for (const [name, handle] of [
         ['map', '.site-map'],

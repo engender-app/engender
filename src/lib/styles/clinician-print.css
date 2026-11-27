@@ -10,13 +10,12 @@
   line-height: 1.5;
 }
 
-/* The space between parts is each part's own bottom margin rather than the
-   column's gap. A part switched off closes to nothing (disclose, functional
-   audit ticket 39), and a gap kept its 16px slot until the frame the part
-   was removed, where the parts below then jumped. A margin closes with the
-   part. Bottom rather than top, so no part gains or loses a margin in one
-   frame when the part above it goes. The disclaimer is always last. Screen
-   only: print lays the column out as blocks with its own section margins. */
+/* The space between parts is each part's own bottom margin rather than the column's gap. A
+   part switched off closes to nothing, and a gap kept its 16px slot until the frame the
+   part was removed, where the parts below then jumped. A margin closes with the part.
+   Bottom rather than top, so no part gains or loses a margin in one frame when the part
+   above it goes. The disclaimer is always last. Screen only: print lays the column out as
+   blocks with its own section margins. */
 @media screen {
   .clinician-dossier > :not(:last-child) {
     margin-bottom: var(--space-4);
@@ -273,13 +272,12 @@
   margin: var(--space-2) 0;
 }
 
-/* Ticket 08: a table's rows past the preview floor are paper only - present
-   for print (the whole point of hiding them on screen is a page that reads
-   short there, not a page that reads short everywhere) and hidden until
-   then, the same "display: none until @media print" shape `.print-heading`
-   above already carries for the same reason. `.dossier-truncate-note`
-   below is the opposite of this: a screen-only line, so it takes app.css's
-   own `.no-print` instead of a second rule saying the same thing backwards. */
+/* A table's rows past the preview floor are paper only - present for print (the whole point
+   of hiding them on screen is a page that reads short there, not a page that reads short
+   everywhere) and hidden until then, the same "display: none until @media print" shape
+   `.print-heading` above already carries for the same reason. `.dossier-truncate-note`
+   below is the opposite of this: a screen-only line, so it takes app.css's own `.no-print`
+   instead of a second rule saying the same thing backwards. */
 .dossier-row-overflow {
   display: none;
 }

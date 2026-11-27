@@ -54,11 +54,11 @@ public class SensitiveClipboardPlugin extends Plugin {
     }
 
     /**
-     * The interval, read as the integer type it arrived as. The bridge
-     * parses the call with org.json, which makes 60000 an Integer and only
-     * a value past Integer.MAX_VALUE a Long, while PluginCall.getLong answers
-     * for a Long alone. Reading it with getLong turned every copy the
-     * recovery key screen made into the reject below (last-audit UI 34).
+     * The interval, read as the integer type it arrived as. The bridge parses
+     * the call with org.json, which makes 60000 an Integer and only a value
+     * past Integer.MAX_VALUE a Long, while PluginCall.getLong answers for a
+     * Long alone. Reading it with getLong turned every copy the recovery key
+     * screen made into the reject below.
      */
     static Long clearAfterMs(PluginCall call) {
         Object value = call.getData().opt("clearAfterMs");

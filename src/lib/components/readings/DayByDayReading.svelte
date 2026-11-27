@@ -74,11 +74,9 @@
   let series = $derived(seriesQuery.value ?? new Map<string, DayAverage[]>());
   let seriesFor = $derived((key: string): DayAverage[] => series.get(key) ?? []);
 
-  /* Only scales with readings in the span are offered, and a stored choice
-     with none here falls back to the first that has some (bug session 18,
-     item 40: picking an empty scale took the whole tile off the door, and
-     with it the way back to the picker). The stored preference is kept, so
-     a span where that scale has readings shows it again. */
+  /* Only scales with readings in the span are offered, and a stored choice with none here
+     falls back to the first that has some. The stored preference is kept, so a span where
+     that scale has readings shows it again. */
   let withData = $derived(metrics.filter((mt) => seriesFor(mt.key).length > 0));
   let shown = $derived(withData.find((mt) => mt.key === shownMetric(metrics).key) ?? withData[0] ?? shownMetric(metrics));
   let metricOptions = $derived(withData.map((mt) => ({ value: mt.key, label: mt.name })));

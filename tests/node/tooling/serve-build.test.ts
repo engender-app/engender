@@ -1,8 +1,6 @@
-/* The server the browser checks boot the built app from (after-release
-   ticket 31, audit PERF-05). It has to hand out the document that ships,
-   with the headers production sends, or a check passes against a page no
-   person will ever load: vite preview's document had no CSP and no held
-   module hints. */
+/* The server the browser checks boot the built app from. It has to hand out the document
+   that ships, with the headers production sends, or a check passes against a page no person
+   will ever load: vite preview's document had no CSP and no held module hints. */
 import { readFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';

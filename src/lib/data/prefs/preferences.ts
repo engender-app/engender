@@ -77,11 +77,10 @@ function bootSubset(values: PreferenceValues): BootPreferences {
     // across a loop over a union of key types.
     boot[key] = values[key] as never;
   }
-  /* The mirror is plaintext and the first paint and the lock screen read
-     it, so while the journal is disguised it names no flag at all, not
-     even the default one, which is a flag too (functional audit ticket 45,
-     then security-scan ticket 08). The real choice stays in the table, and
-     the mirror is rewritten with it the moment disguise goes off. */
+  /* The mirror is plaintext and the first paint and the lock screen read it, so while the
+     journal is disguised it names no flag at all, not even the default one, which is a flag
+     too. The real choice stays in the table, and the mirror is rewritten with it the moment
+     disguise goes off. */
   if (boot.disguise) boot.palette = DISGUISED_PALETTE;
   return boot;
 }

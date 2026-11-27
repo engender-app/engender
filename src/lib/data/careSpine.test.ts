@@ -309,10 +309,9 @@ test('a dose today, one tomorrow and a run-out weeks out all stay readable', () 
   }
 });
 
-/* The same rule at a width nobody measured it at (phase 11 UI/UX ticket
-   25): 200% zoom on a 390px phone leaves the rail about 97px, where the
-   fraction sized for 292px is 33px and two captions at 34px apart print
-   over each other. */
+/* The same rule at a width nobody measured it at: 200% zoom on a 390px phone leaves the
+   rail about 97px, where the fraction sized for 292px is 33px and two captions at 34px
+   apart print over each other. */
 test('a rail narrow enough to be measured in is the rule the captions follow', () => {
   const facts = { labDrawEpochDay: null, lanes: [lane({ lastDoseEpochDay: TODAY, nextDoseEpochDay: TODAY + 3, runOutEpochDay: TODAY + 25 })] };
   const wide = careSpine(facts, TODAY, 292);
@@ -520,13 +519,12 @@ test('a dose from an earlier episode of the same drug still counts as the last o
   assert.equal(facts.lastDoseEpochDay, TODAY - 60);
 });
 
-/* The one edge the drug-name scoping reads differently to the whole-log
-   scan it replaced: a dose logged before any episode covered it at all
-   (nothing running yet, or an episode later deleted from under it). The
-   old, unfiltered read counted it regardless; attributeDrug has nothing to
-   attribute it to and drops it. A deliberate, documented narrowing
-   (ticket 38's Decisions), not an oversight - a dose with no regimen
-   covering it has nothing to say about that regimen's rail. */
+/* The one edge the drug-name scoping reads differently to the whole-log scan it replaced: a
+   dose logged before any episode covered it at all (nothing running yet, or an episode
+   later deleted from under it). The old, unfiltered read counted it regardless;
+   attributeDrug has nothing to attribute it to and drops it. A deliberate, documented
+   narrowing, not an oversight - a dose with no regimen covering it has nothing to say about
+   that regimen's rail. */
 test('a dose predating any episode does not count as that episode’s last one', () => {
   const solo = episode({ startEpochDay: TODAY - 10 });
   const facts = scheduleDoseFacts(solo, [solo], null, [dose(TODAY - 20)], [], TODAY);

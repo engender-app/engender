@@ -1,19 +1,18 @@
-/* Where the recovery wrap lives (ADR-0054, ticket sec-01): one JSON file
-   in the OPFS root, beside `keystore.json` whose journal it opens, and a
-   second while a new key waits to be confirmed (last-audit UI 42). The
-   pending file holds the new key's wrap until the person says they have it
-   written down; only then does it replace the active one, so an interrupted
-   replacement leaves the old key working.
+/* Where the recovery wrap lives (ADR-0054): one JSON file in the OPFS root, beside
+   `keystore.json` whose journal it opens, and a second while a new key waits to be
+   confirmed. The pending file holds the new key's wrap until the person says they have it
+   written down; only then does it replace the active one, so an interrupted replacement
+   leaves the old key working.
 
-   Everything in it survives disclosure without the key itself
-   (crypto/recoveryWrap.ts), so like the keystore it needs no protection of
-   its own - what it needs is to be readable before the database opens, and
-   to go when a reset empties the OPFS root. `data/reset.ts` removes this wrap
-   after the other journal files, preserving recovery if data deletion fails.
+   Everything in it survives disclosure without the key itself (crypto/recoveryWrap.ts), so
+   like the keystore it needs no protection of its own - what it needs is to be readable
+   before the database opens, and to go when a reset empties the OPFS root. `data/reset.ts`
+   removes this wrap after the other journal files, preserving recovery if data deletion
+   fails.
 
-   Same three functions as `keystore-file.ts`, and kept as small as that one
-   is for the same reason: Android keeps the identical serialized form, so
-   the difference between the platforms stays a storage difference. */
+   Same three functions as `keystore-file.ts`, and kept as small as that one is for the same
+   reason: Android keeps the identical serialized form, so the difference between the
+   platforms stays a storage difference. */
 
 import { parseRecoveryWrap, serializeRecoveryWrap, type RecoveryWrap } from '../crypto/recoveryWrap';
 

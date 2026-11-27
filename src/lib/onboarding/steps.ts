@@ -111,18 +111,16 @@ export function archiveAnswers(step: OnboardingStep): boolean {
   );
 }
 
-/** The flow for somebody who said on the welcome that they already have a
-    journal.
+/** The flow for somebody who said on the welcome that they already have a journal.
 
-    Everything the archive answers is dropped, because asking and then
-    overwriting the answer a moment later is the behaviour this ticket exists
-    to remove. What is left is the welcome, the restore itself, and the steps
-    that are about this device rather than about the journal: the access mode
-    above all, since an archive password is not an access mode (ADR-0041) and
-    the key has to be made here. The permissions step joined it when ticket
-    31 landed, on this same test and with no edit needed: it stores no
-    preference, so it can never qualify as carried. Disguise joined it the
-    same way when ticket 32 landed - device state is not journal state. */
+    Everything the archive answers is dropped, because asking and then overwriting the
+    answer a moment later is the behaviour exists to remove. What is left is the welcome,
+    the restore itself, and the steps that are about this device rather than about the
+    journal: the access mode above all, since an archive password is not an access mode
+    (ADR-0041) and the key has to be made here. The permissions step joined it when landed,
+    on this same test and with no edit needed: it stores no preference, so it can never
+    qualify as carried. Disguise joined it the same way when landed - device state is not
+    journal state. */
 export function restoreSteps(): readonly OnboardingStep[] {
   const rest = ALL_STEPS.filter((step) => step !== 'welcome' && !archiveAnswers(step));
   return ['welcome', 'restore', ...rest];
@@ -169,15 +167,14 @@ export function isSkippable(step: OnboardingStep): boolean {
 
 /** Where the flow hands over.
 
-    Home, not Settings: a new person has just been told what the app is for
-    and the next thing they should see is the thing itself (F16).
+    Home, not Settings: a new person has just been told what the app is for and the next
+    thing they should see is the thing itself (F16).
 
-    It used to have an exception. App lock was a choice made here and a pair
-    of four-digit entries made on a separate screen, so a toggle left on sent
-    the new user there instead of Home. Ticket 53 retired that gate - a PIN is
-    an access mode now, chosen in the security module - so there is nothing
-    left for this to route around, and ticket 54 puts the module itself into
-    the flow rather than after it. */
+    It used to have an exception. App lock was a choice made here and a pair of four-digit
+    entries made on a separate screen, so a toggle left on sent the new user there instead
+    of Home. retired that gate - a PIN is an access mode now, chosen in the security module
+    - so there is nothing left for this to route around, and puts the module itself into the
+    flow rather than after it. */
 export function onboardingDestination(): string {
   return '/';
 }

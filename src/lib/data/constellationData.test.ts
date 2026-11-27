@@ -129,11 +129,10 @@ describe('tracing the path up to a position', () => {
   });
 });
 
-/* Ticket AU-20: the each-block that draws these keys by `slot` now, not by
-   `id`, so a sliding window updates TRACE_WINDOW stable DOM nodes instead of
-   destroying and recreating most of them every frame. `slot` is a reading's
-   absolute index mod TRACE_WINDOW - a ring buffer position - which only
-   works because this window is dense and ordered: every index between
+/* The each-block that draws these keys by `slot` now, not by `id`, so a sliding window
+   updates TRACE_WINDOW stable DOM nodes instead of destroying and recreating most of them
+   every frame. `slot` is a reading's absolute index mod TRACE_WINDOW - a ring buffer
+   position - which only works because this window is dense and ordered: every index between
    `first` and `head` is a reading, and nothing is ever reordered. */
 describe('keying a stable window position', () => {
   const year = plotPoints(
@@ -171,13 +170,11 @@ describe('keying a stable window position', () => {
 });
 
 
-/* Ticket CARPET-07 put a day beside the points that had room for one, and
-   last-audit UI 49 (audit U41) made "room" mean room among the marks as
-   well as among the other labels: on the demo journal "21 Sept" and
-   "11 Oct" were struck through by dots and trail joins. Every case below
-   is worked by hand on a 284px plot inset by 8px, so the plane is 300px
-   square, with every label 40px wide, 12px above its baseline and 4px
-   below it. */
+/* Ticket put a day beside the points that had room for one, and last- made "room" mean room
+   among the marks as well as among the other labels: on the demo journal "21 Sept" and "11
+   Oct" were struck through by dots and trail joins. Every case below is worked by hand on a
+   284px plot inset by 8px, so the plane is 300px square, with every label 40px wide, 12px
+   above its baseline and 4px below it. */
 describe('placing the day labels among the marks', () => {
   const PLOT = 284;
   const PAD = 8;

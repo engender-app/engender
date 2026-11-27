@@ -46,7 +46,7 @@ async function recordBack(label, action) {
     const tick = t => {
       if (!window.__recordSetup) return;
       window.__setupFrames.push({ t, questions: [...document.querySelectorAll('[data-setup-question]')].map(n => {
-        // The question's keyed part carries its fade and travel since ticket 19 (the welcome prints the wordmark beside it).
+        // The question's keyed part carries its fade and travel (the welcome prints the wordmark beside it).
         const part = n.closest('.setup-ask-part') ?? n;
         const s = getComputedStyle(part), r = n.getBoundingClientRect();
         return { text: n.textContent.trim(), opacity: +s.opacity, transform: s.transform, x: r.x, y: r.y };

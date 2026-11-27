@@ -87,7 +87,7 @@ describe('the unprompted registry', () => {
   });
 });
 
-describe('the notifications view (ticket 04)', () => {
+describe('the notifications view', () => {
   it('lists four producers, the export failure notice included', () => {
     /* The ticket's own count. Before this the four below decided for
        themselves: reminders and the check-in through AlarmManager, the wear
@@ -156,9 +156,8 @@ describe('the notifications view (ticket 04)', () => {
     }
   });
 
-  /* Phase 8 features ticket 04: the cascade. An area that is hidden or
-     finished takes its tiles and its notifications with it, and this is the
-     list that says which are whose. */
+  /* The cascade. An area that is hidden or finished takes its tiles and its notifications
+     with it, and this is the list that says which are whose. */
 
   it('names an area for the two kinds that belong to one, and none for the rest', () => {
     const withArea = UNPROMPTED_ROWS.filter((row) => row.area !== null).map((row) => [row.key, row.area]);

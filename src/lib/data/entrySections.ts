@@ -1,14 +1,12 @@
-/* The editor's chip row: one chip per folded
-   section, under the note, each opening its section directly under the
-   row. Mode and Gender are not here: Alicja's note on the spike (17
-   September 2026) was that those two stay open on the page, so the chips
-   are the five that fold - the order the questions used to be asked in,
-   minus mood, which moved to the save bar; attachments are split by kind
-   because a person adding a photo does not want the recorder.
+/* The editor's chip row: one chip per folded section, under the note, each opening its
+   section directly under the row. Mode and Gender are not here: note on the spike (17
+   September 2026) was that those two stay open on the page, so the chips are the five that
+   fold - the order the questions used to be asked in, minus mood, which moved to the save
+   bar; attachments are split by kind because a person adding a photo does not want the
+   recorder.
 
-   Rune-free, so the value a chip states is tested under the Node tier the
-   way entryDraft.ts is. The names themselves are catalogue strings and
-   stay in the component. */
+   Rune-free, so the value a chip states is tested under the Node tier the way entryDraft.ts
+   is. The names themselves are catalogue strings and stay in the component. */
 
 import { BODY_REGION_MIDPOINT } from './bodyMap';
 import type { EntryDraft } from './entryDraft';

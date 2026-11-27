@@ -27,11 +27,10 @@ export function isLocked(mode: JournalAccessMode): boolean {
   return accessModeHasSecret(mode, isAndroid()) && !lockState.unlocked;
 }
 
-/* The same flag outside the rune, for a teardown to read. Svelte hands an
-   effect's teardown the value a piece of state had before the change that
-   is tearing it down, so an editor unmounted by a lock read `unlocked` as
-   still true and cleared the draft it was meant to keep (after-release
-   ticket 10, traced in the demo build). */
+/* The same flag outside the rune, for a teardown to read. Svelte hands an effect's teardown
+   the value a piece of state had before the change that is tearing it down, so an editor
+   unmounted by a lock read `unlocked` as still true and cleared the draft it was meant to
+   keep. */
 let unlockedNow = false;
 
 /** `isLocked` for a teardown: the same answer, read from the plain mirror. */
@@ -61,14 +60,12 @@ function lockNow(closeJournal: () => Promise<void>) {
   unlockedNow = false;
   lockEngaged = true;
   lockState.unlocked = false;
-  /* A locked app keeps none of the journal in the page: the reads' last
-     answers go with the lock, so the first visit after unlocking reads
-     fresh (lastResults.ts, ux-carpet 201). */
+  /* A locked app keeps none of the journal in the page: the reads' last answers go with the
+     lock, so the first visit after unlocking reads fresh (lastResults.ts). */
   forgetLastResults();
-  /* Quick add is a layout-level sibling of the gate chain, not below it.
-     The layout unmounts it while locked (security-scan ticket 08), and the
-     flag is closed too, so it comes back closed after the unlock rather
-     than open on whatever it was showing. */
+  /* Quick add is a layout-level sibling of the gate chain, not below it. The layout
+     unmounts it while locked, and the flag is closed too, so it comes back closed after the
+     unlock rather than open on whatever it was showing. */
   ui.chooserOpen = false;
   /* After the flag, so the gate is already drawn over the journal while the
      database waits for its last save and closes. A close that fails leaves

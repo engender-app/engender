@@ -102,8 +102,7 @@ export async function readDoseLog(journal: Pick<Journal, 'regimen' | 'doses'>, q
       attribution,
       drug,
       mayAutoLogAgain: day < today && schedule?.autoLogFromEpochDay != null && day >= schedule.autoLogFromEpochDay,
-      /* Whether the trailing text repeats the episode the title already
-         named (audit U8, ticket 17). */
+      /* Whether the trailing text repeats the episode the title already named. */
       showAttribution: showAttributionLabel(attribution, drug),
       /* The one-tap correction: an auto-logged dose not already corrected,
          inside its window. */

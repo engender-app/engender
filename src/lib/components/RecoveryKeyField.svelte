@@ -1,16 +1,14 @@
 <script lang="ts">
-  /* The field a recovery key is typed into, with its show/hide toggle: at a
-     gate (RecoveryKeyEntry) and on the recovery key screen, where an
-     interrupted replacement is finished by typing the new key (last-audit
-     UI 42). One component because both places are the same transcription
-     off the same paper.
+  /* The field a recovery key is typed into, with its show/hide toggle: at a gate
+     (RecoveryKeyEntry) and on the recovery key screen, where an interrupted replacement is
+     finished by typing the new key. One component because both places are the same
+     transcription off the same paper.
 
-     Hidden while typed unless the person asks to see it (release-blockers
-     ticket 12). This is the one secret that opens the journal past every
-     access mode, typed where somebody may be watching, and a password
-     field is also the one kind some Android keyboards promise not to learn
-     from. Showing stays a tap away because comparing the field against the
-     paper is how a mistyped key gets found. */
+     Hidden while typed unless the person asks to see it. This is the one secret that opens
+     the journal past every access mode, typed where somebody may be watching, and a
+     password field is also the one kind some Android keyboards promise not to learn from.
+     Showing stays a tap away because comparing the field against the paper is how a
+     mistyped key gets found. */
   import { tick } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { crossfadeDuration } from '$lib/motion/tokens';

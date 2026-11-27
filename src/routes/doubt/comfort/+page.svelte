@@ -1,19 +1,16 @@
 <script lang="ts">
   import { undoable } from '$lib/stores/deleteUndo';
   import { journalTextAutocomplete } from '$lib/platform';
-  /* The comfort list (phase 6 ticket 14, CONTEXT: "Comfort list"), lifted
-     out of Safe space by phase 10 redesign ticket 47.
+  /* The comfort list, lifted out of Safe space.
 
-     Who to text, which walk, which playlist, entirely the person's own
-     words. Nothing seeds it, nothing offers it, and nothing anywhere else
-     in the app triggers it - the only route in is Safe space's own row,
-     which is the same single tap it always was, now from a screen that
-     opens on the breath instead of scrolling past it.
+     Who to text, which walk, which playlist, entirely the person's own words. Nothing seeds
+     it, nothing offers it, and nothing anywhere else in the app triggers it - the only
+     route in is Safe space's own row, which is the same single tap it always was, now from
+     a screen that opens on the breath instead of scrolling past it.
 
-     This is the one surface Safe space holds that writes. ADR-0037 makes
-     the counterevidence check a read; the comfort list is the person's own
-     list and always could be edited, and moving it to its own screen
-     changes nothing about that. */
+     This is the one surface Safe space holds that writes. ADR-0037 makes the
+     counterevidence check a read; the comfort list is the person's own list and always
+     could be edited, and moving it to its own screen changes nothing about that. */
   import { tick } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { attempt } from '$lib/stores/attempt.svelte';

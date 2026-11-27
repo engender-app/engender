@@ -73,12 +73,11 @@ test('a roadmap goal key that resolves to nothing degrades to the shared honest 
 });
 
 test('a milestone whose custom goal has since been deleted falls to that same fallback', () => {
-  /* Phase 8 features ticket 69, ADR-0068: `deleteCustomGoal` leaves the
-     milestone's `roadmapGoalKey` alone rather than nulling it, so what a
-     delete leaves behind is exactly this row - a key that is still set and
-     a joined text that has gone null (roadmap.test.ts pins that the delete
-     produces it). The second way to reach a line written for a key
-     arriving from a stale archive, and it needs no second string. */
+  /* ADR-0068: `deleteCustomGoal` leaves the milestone's `roadmapGoalKey` alone rather than
+     nulling it, so what a delete leaves behind is exactly this row - a key that is still
+     set and a joined text that has gone null (roadmap.test.ts pins that the delete produces
+     it). The second way to reach a line written for a key arriving from a stale archive,
+     and it needs no second string. */
   const origin = resolveMilestoneOrigin(
     milestone({ roadmapGoalKey: 'custom-goal-uuid', customRoadmapGoalText: null })
   );
@@ -115,7 +114,7 @@ test('a stock-managed reminder names the drug, explains the handoff, and links t
   });
 });
 
-test('a schedule reminder says it follows the schedule and opens the episode it belongs to (functional audit 21)', () => {
+test('a schedule reminder says it follows the schedule and opens the episode it belongs to', () => {
   const origin = resolveReminderOrigin(reminder({ autoSource: 'dose:episode-1', drug: 'Progesterone' }));
   assert.deepEqual(origin, {
     text: 'Follows the dose schedule.',

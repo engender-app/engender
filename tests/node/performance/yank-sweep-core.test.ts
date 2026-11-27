@@ -201,7 +201,7 @@ describe('findYanks', () => {
     );
   });
 
-  describe('there-and-back shape (ticket 137)', () => {
+  describe('there-and-back shape', () => {
     it('reports a mark displaced by more than teleport floor for one frame and returned', () => {
       const frames = [
         ...still(6, { y: 20 }),
@@ -278,7 +278,7 @@ describe('findYanks', () => {
     });
   });
 
-  describe('arrival shape (ticket 137)', () => {
+  describe('arrival shape', () => {
     it('reports tree form: mark absent from start, present at >= VISIBLE in one frame, and holds', () => {
       const frames = [
         frame(null, 0),
@@ -404,7 +404,7 @@ describe('findYanks', () => {
     });
   });
 
-  describe('bloat - the field-blind shape (ticket 99 round 2, ticket 100)', () => {
+  describe('bloat - the field-blind shape', () => {
     it.each([
       ['transparent', { o: 0 }],
       ['clipped', { v: false, c: 0 }]
@@ -482,7 +482,7 @@ describe('findYanks', () => {
     });
   });
 
-  describe('colour shape (ticket 136)', () => {
+  describe('colour shape', () => {
     it('persistent abrupt change: reports a mark whose colour jumps between two still frames and stays', () => {
       /* Resting at #888, then jumps to #e00 and stays - the redesign-07 defect shape */
       const frames = [
@@ -593,7 +593,7 @@ describe('scenesFor', () => {
   });
 });
 
-describe('the hydration floor (ticket 108)', () => {
+describe('the hydration floor', () => {
   /* The same spike, read at both floors: what the gesture sweep catches
    * at 14px, the hydration sweep lets pass until the ticket's own 24px. */
   const jump = (d) => [...still(6), frame(mark({ y: 20 + d }), 96), ...still(4, { y: 20 + d })];
@@ -664,7 +664,7 @@ describe('findPixelYanks', () => {
   });
 });
 
-describe('isBlankGray (ticket 192 - cross-document blank frames)', () => {
+describe('isBlankGray (cross-document blank frames)', () => {
   const flat = (v, n = 400) => new Uint8Array(n).fill(v);
 
   it('reads a solid fill as blank, whatever its gray level', () => {
@@ -689,7 +689,7 @@ describe('isBlankGray (ticket 192 - cross-document blank frames)', () => {
   });
 });
 
-describe('hydrationScreensFor (ticket 108)', () => {
+describe('hydrationScreensFor', () => {
   it('adds the proof scene only when proving, and narrows to the named scenes', () => {
     const names = hydrationScreensFor().map((s) => s.name);
     expect(names).not.toContain('proof-injected-yanks');
@@ -723,7 +723,7 @@ describe('hydrationScreensFor (ticket 108)', () => {
   });
 });
 
-describe('colour distance arithmetic (ticket 136)', () => {
+describe('colour distance arithmetic', () => {
   it('oklab() versus rgb(): evaluates equivalence and distance between formats accurately', () => {
     // Exact red: rgb(255, 0, 0) in OKLab is oklab(0.627955 0.224863 0.125846)
     const rgbRed = parseCssColor('rgb(255, 0, 0)');
@@ -790,7 +790,7 @@ describe('colour distance arithmetic (ticket 136)', () => {
     expect(d).toBeGreaterThan(COLOR_DELTA);
   });
 
-  describe('missingProofYanks (ticket 137)', () => {
+  describe('missingProofYanks', () => {
     const allSix = [
       { mark: `${PROOF.teleport}foo`, kind: 'teleport' },
       { mark: `${PROOF.vanish}foo`, kind: 'vanish' },
@@ -831,12 +831,11 @@ describe('colour distance arithmetic (ticket 136)', () => {
   });
 });
 
-/* Ticket 140. The WebView's devtools socket closes the connection for any
-   reply of 4 MiB or more - measured on the Pixel 10a (Vanadium 153): a
-   3.9 MB string comes back, 4.0 MB drops the socket, every time. The
-   sampler's frame table passes that on the app's densest screens, so the
-   device harness stringifies it page-side and pulls it back in slices.
-   What can be tested away from a phone is the arithmetic that cuts them. */
+/* The WebView's devtools socket closes the connection for any reply of 4 MiB or more -
+   measured on the Pixel 10a (Vanadium 153): a 3.9 MB string comes back, 4.0 MB drops the
+   socket, every time. The sampler's frame table passes that on the app's densest screens,
+   so the device harness stringifies it page-side and pulls it back in slices. What can be
+   tested away from a phone is the arithmetic that cuts them. */
 describe('replySlices', () => {
   it('returns one slice when the reply is already under the cap', () => {
     expect(replySlices(500, 1000)).toEqual([[0, 500]]);
@@ -867,7 +866,7 @@ describe('replySlices', () => {
   });
 });
 
-describe('scraping a detail id off a list screen (ux-carpet 235)', () => {
+describe('scraping a detail id off a list screen', () => {
   /** Runs a page expression against a stand-in document, the way
    *  page.evaluate would: `hrefs` are its links, `cards` the elements a
    *  card selector can match, keyed by that selector. */
@@ -921,9 +920,9 @@ describe('scraping a detail id off a list screen (ux-carpet 235)', () => {
 });
 
 describe('deviceTargetFromArgs', () => {
-  /* The device runner installs, force-stops and launches whatever package
-     it is given, and dev.engender.app holds Alicja's journal. The check runs
-     before the runner's first adb call, so a refusal touches nothing. */
+  /* The device runner installs, force-stops and launches whatever package it is given, and
+     dev.engender.app holds journal data. The check runs before the runner's first
+     adb call, so a refusal touches nothing. */
   const ok = ['SERIAL', '--package', 'dev.engender.app.test.mr02'];
   it('takes the serial, the test package and its own forward port', () => {
     expect(deviceTargetFromArgs(ok)).toEqual({ serial: 'SERIAL', pkg: 'dev.engender.app.test.mr02', port: 9341, apk: undefined });

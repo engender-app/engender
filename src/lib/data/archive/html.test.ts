@@ -55,7 +55,7 @@ test('a script or style body is dropped rather than read as text', () => {
   assert.equal(htmlToText('before<style>p{color:red}</style>after'), 'beforeafter');
 });
 
-/* ---- time budget (security scan ticket 06) ---- */
+/* ---- time budget ---- */
 
 /** Best of three: one slow run on a busy machine must not read as growth. */
 function bestMs(input: string): number {

@@ -1,17 +1,15 @@
-/* Taken and Skip on a fired medication reminder (functional audit ticket 20,
-   CONTEXT: "Dose reminder").
+/* Taken and Skip on a fired medication reminder.
 
-   The notification's two buttons run while the journal may well be locked,
-   and a locked journal cannot be written: its key only exists once the
-   person unlocks. So the native side keeps each tap as a pending action in
-   the reminders store, encrypted under its own key (ReminderPayloadStore),
-   and this file applies them the next time the journal is open. The person
-   is told there, one toast per action.
+   The notification's two buttons run while the journal may well be locked, and a locked
+   journal cannot be written: its key only exists once the person unlocks. So the native
+   side keeps each tap as a pending action in the reminders store, encrypted under its own
+   key (ReminderPayloadStore), and this file applies them the next time the journal is open.
+   The person is told there, one toast per action.
 
-   Applying reads the journal as it is now, not as it was at the tap: a dose
-   logged by hand in between already fills the slot, and the action then
-   writes nothing. That is also what makes a replay harmless, if the app
-   dies between writing a dose and clearing the action that wrote it. */
+   Applying reads the journal as it is now, not as it was at the tap: a dose logged by hand
+   in between already fills the slot, and the action then writes nothing. That is also what
+   makes a replay harmless, if the app dies between writing a dose and clearing the action
+   that wrote it. */
 
 import { epochDayFromTimestamp, timestampAtLocalTime } from '../data/epochDay';
 import { matchDoseRoute, type RouteOption } from '../data/doseSchedule';

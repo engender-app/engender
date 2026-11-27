@@ -1,7 +1,5 @@
-/* The roadmap's country pack (phase 4 ticket 23, trimmed to the legal track
-   by functional audit ticket 34). What is under test here is the pack
-   structure, not the wording: a pack holds keys and a review date, and
-   roadmapLabels.ts turns a key into text. */
+/* The roadmap's country pack. What is under test here is the pack structure, not the
+   wording: a pack holds keys and a review date, and roadmapLabels.ts turns a key into text. */
 
 import { readFileSync } from 'node:fs';
 import { test, expect } from 'vitest';
@@ -31,10 +29,9 @@ import type { RoadmapGoalStatus } from './types.ts';
 
 const allGoals = ROADMAP_PACKS.flatMap((pack) => pack.goals);
 
-/* Functional audit ticket 34: the social, presentational and medical tracks
-   repeated other modules (milestones, voice, hair removal, tryouts) or were
-   the most clinical text outside Care, so only the court procedure and its
-   paperwork stay. */
+/* The social, presentational and medical tracks repeated other modules (milestones, voice,
+   hair removal, tryouts) or were the most clinical text outside Care, so only the court
+   procedure and its paperwork stay. */
 test('the Polish pack holds the legal steps and nothing else', () => {
   expect(POLISH_PACK.goals.length).toBe(17);
   for (const goal of POLISH_PACK.goals) expect(goal.key.startsWith('pl-legal-')).toBe(true);
@@ -168,9 +165,8 @@ test('a track cut before round two is a legacy category key, and nothing else is
   expect([...LEGACY_ROADMAP_TRACKS]).toEqual(['social', 'presentational', 'medical']);
 });
 
-/* Functional audit ticket 34 (decided by Alicja on 2026-10-22): the court
-   application attaches a psychologist's and a doctor's opinion, and with
-   the medical track gone no legal step named them. */
+/* The court application attaches a psychologist's and a doctor's opinion, and with the
+   medical track gone no legal step named them. */
 test("the legal steps name the psychologist's and doctor's opinions, just before the application", () => {
   const keys = POLISH_PACK.goals.map((goal) => goal.key) as string[];
   expect(keys).toContain('pl-legal-opinions');
@@ -187,18 +183,17 @@ test('the roadmap screen draws the legal group and the person\'s categories, gat
   expect(screen).toContain('roadmapList(pack, polishShown, customGoals, hiddenGoals, categories)');
   expect(screen).toContain('journal.roadmap.addCategory(');
   expect(screen).toContain('journal.roadmap.renameCategory(');
-  // Through the Undo window since functional audit ticket 48 (deleteUndo.ts).
+  // Through the Undo window (deleteUndo.ts).
   expect(screen).toContain('j.roadmap.deleteCategory(');
   expect(screen).not.toContain('<Segmented');
   expect(screen).not.toContain('data-track-toggle');
   expect(screen).toContain('prefs.roadmapMilestoneSyncEnabled = v');
 });
 
-/* Functional audit ticket 35: after the ruling every institution is
-   updated on its own, so the generic post-ruling steps became a list of
-   institutions, each moved through submitted, waiting and done with a date.
-   The six that were steps keep their keys, so paper filed against one
-   before stays filed against it. */
+/* After the ruling every institution is updated on its own, so the generic post-ruling
+   steps became a list of institutions, each moved through submitted, waiting and done with
+   a date. The six that were steps keep their keys, so paper filed against one before stays
+   filed against it. */
 test('the post-ruling goals are now institutions, and the legal steps keep the court procedure', () => {
   const steps = POLISH_PACK.goals.map((goal) => goal.key) as string[];
   const institutions = POLISH_INSTITUTIONS.map((one) => one.key) as string[];
@@ -275,10 +270,9 @@ test('the roadmap screen draws the institutions under the same switch, from the 
   expect(panel).toContain('<LinkedDocuments kind="goal" {id} />');
 });
 
-/* Pre-release human ticket 17: a built-in social and presentation group
-   beside the Polish legal one. It is not Polish content, so it is a pack of
-   its own: a tick names pack 'social', and nothing here carries a review
-   date because nothing in it is a legal claim. */
+/* Pre-release human a built-in social and presentation group beside the Polish legal one.
+   It is not Polish content, so it is a pack of its own: a tick names pack 'social', and
+   nothing here carries a review date because nothing in it is a legal claim. */
 test('the social group is eight plain steps in a pack of its own, named like no cut track', () => {
   expect(SOCIAL_PACK.key).toBe('social');
   expect(SOCIAL_PACK.goals.length).toBe(8);

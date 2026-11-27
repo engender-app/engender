@@ -1,15 +1,13 @@
-/* UI ticket 47 (audit U32): two toasts up at once each keep their action.
-   Every toast used to be drawn at the same place, so deleting a second
-   entry inside the first one's four seconds laid "Moved to trash" over
-   the first Restore. Toasts now stack away from the edge they rise from:
-   the newest goes above at the bottom and below at the top, so the one
-   already up never moves while somebody reaches for it.
+/* UI two toasts up at once each keep their action. Every toast used to be drawn at the same
+   place, so deleting a second entry inside the first one's four seconds laid "Moved to
+   trash" over the first Restore. Toasts now stack away from the edge they rise from: the
+   newest goes above at the bottom and below at the top, so the one already up never moves
+   while somebody reaches for it.
 
-   Deletes two entries through the real editor and its confirm sheet,
-   hit-tests both Restore buttons, restores the earlier entry and then the
-   later one, and samples every toast on every animation frame while the
-   second arrives and the first leaves. Then desktop centring, the raised
-   stack over an open sheet, reduced motion, and a lock clearing both. */
+   Deletes two entries through the real editor and its confirm sheet, hit-tests both Restore
+   buttons, restores the earlier entry and then the later one, and samples every toast on
+   every animation frame while the second arrives and the first leaves. Then desktop
+   centring, the raised stack over an open sheet, reduced motion, and a lock clearing both. */
 import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { createServer } from 'vite';

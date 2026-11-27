@@ -111,8 +111,8 @@
 
 {#snippet row(g: TagGroup)}
   {@const { families, rest } = arrange(g)}
-  <!-- Wrapped chips on every surface: a new entry's step had one sideways
-       row per group until bug session 18, item 90. -->
+  <!-- Wrapped chips on every surface: a new entry's step had one sideways row per group,
+       item 90. -->
   <div class="tag-row" role="group" aria-label={m.tags_group_aria({ group: g.name })}>
     {#each families as f (f.tag.id)}
       {@const inside = f.finer.filter((w) => selected.includes(w.id)).length}

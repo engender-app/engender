@@ -38,7 +38,7 @@ describe('choosing a tier-2 pattern', () => {
     expect(screenTransition(nav({ from: '/stats', to: '/care/doses' }))).toBe('fade-through');
   });
 
-  it('steps into the return moment and back out of it (ticket 35)', () => {
+  it('steps into the return moment and back out of it', () => {
     /* Chromeless is about the bar; it must not also mean "no movement".
        /coming-back lights the Today tab (active-tab.ts), so arriving from
        Home is going deeper inside one tab - which is what carries the
@@ -77,7 +77,7 @@ describe('choosing a tier-2 pattern', () => {
     );
   });
 
-  it('animates back within a tab as shared-axis-back, avoiding abrupt cuts (ticket 102)', () => {
+  it('animates back within a tab as shared-axis-back, avoiding abrupt cuts', () => {
     expect(
       screenTransition(
         nav({ from: '/day/20690', to: '/calendar', type: 'popstate', delta: -1 })
@@ -97,11 +97,9 @@ describe('choosing a tier-2 pattern', () => {
   });
 
   it('grows the tapped entry into the editor, and shrinks it back', () => {
-    /* The one container transform in the app: the
-       entry card really does become the editor. Ticket 18 wired the other
-       three patterns and left this one, because it is the only one that
-       needs the two surfaces to agree on a key rather than only the
-       navigation. */
+    /* The one container transform in the app: the entry card really does become the editor.
+       wired the other three patterns and left this one, because it is the only one that
+       needs the two surfaces to agree on a key rather than only the navigation. */
     expect(screenTransition(nav({ from: '/calendar', to: '/entry/41' }))).toBe('container');
     expect(screenTransition(nav({ from: '/day/20690', to: '/entry/41' }))).toBe('container');
     expect(screenTransition(nav({ from: '/search', to: '/entry/41' }))).toBe('container');
@@ -150,15 +148,14 @@ describe('choosing a tier-2 pattern', () => {
   });
 
   it('opens an entry from the counterevidence screen on the axis, both ways', () => {
-    /* The one screen carved out of the transform (Alicja, 2026-08-26). It
-       is a correct source by the rule - it draws entry cards and they link
-       into the editor - and she read the transform out of it as far too
-       big a movement for what it is: a list of past good days, where an
-       entry is evidence being cited rather than a thing being opened.
+    /* The one screen carved out of the transform. It is a correct source by the rule - it
+       draws entry cards and they link into the editor - and she read the transform out of
+       it as far too big a movement for what it is: a list of past good days, where an entry
+       is evidence being cited rather than a thing being opened.
 
-       Both legs, because a pattern that only carves out the way in leaves
-       the way back a slow crossfade over the transform's own duration,
-       which is the same complaint arriving late. */
+       Both legs, because a pattern that only carves out the way in leaves the way back a
+       slow crossfade over the transform's own duration, which is the same complaint
+       arriving late. */
     expect(screenTransition(nav({ from: '/doubt', to: '/entry/41' }))).toBe('shared-axis');
     expect(
       screenTransition(nav({ from: '/entry/41', to: '/doubt', type: 'popstate', delta: -1 }))
@@ -175,7 +172,7 @@ describe('choosing a tier-2 pattern', () => {
     );
   });
 
-  it('animates the container transform going back (ticket 102)', () => {
+  it('animates the container transform going back', () => {
     expect(
       screenTransition(
         nav({ from: '/entry/41', to: '/day/20690', type: 'popstate', delta: -1 })
@@ -191,9 +188,8 @@ describe('choosing a tier-2 pattern', () => {
 });
 
 describe('the blind runs on every animated navigation', () => {
-  /* The cut list is closed. Anything not on it moves, and a route having no
-     chrome is not on it - that conflation is what made ticket 35's arrival
-     a yank. */
+  /* The cut list is closed. Anything not on it moves, and a route having no chrome is not
+     on it - that conflation is what made arrival a yank. */
   it('cuts only with nothing to come from', () => {
     expect(screenTransition(nav({ from: null, to: '/' }))).toBe('none');
   });
@@ -230,7 +226,7 @@ describe('the blind runs on every animated navigation', () => {
   });
 });
 
-describe('leavesHomeForEntry scopes the short field-part hold (ticket 159)', () => {
+describe('leavesHomeForEntry scopes the short field-part hold', () => {
   it('is true only for Home departing straight to a new entry', () => {
     expect(leavesHomeForEntry('/', '/entry/new/today?seedMood=4')).toBe(true);
     expect(leavesHomeForEntry('/', '/entry/new/today?debriefFor=12')).toBe(true);

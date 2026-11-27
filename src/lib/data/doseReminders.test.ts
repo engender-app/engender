@@ -85,7 +85,7 @@ test('a schedule\'s times read back from its reminders once each, in order', () 
 
 test('an older hand-made reminder is about a drug when it names no drug and is titled with it', () => {
   assert.ok(isHandMadeReminderFor(reminder({ title: ' Progesterone ' }), 'Progesterone'));
-  // One that names its drug was made with ticket 20's picker, or taken over
+  // One that names its drug was made with picker, or taken over
   // from a schedule in the reminders editor: the person's own act either way.
   assert.ok(!isHandMadeReminderFor(reminder({ drug: 'Estradiol valerate', title: 'Shot' }), 'estradiol valerate'));
   assert.ok(!isHandMadeReminderFor(reminder({ drug: 'Progesterone', title: 'Progesterone' }), 'Progesterone'));

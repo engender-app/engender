@@ -1,7 +1,5 @@
-/* What a dose reminder says it is reminding about (functional audit ticket
-   21, Alicja's sign-off note of 2026-10-30: "make the reminders say what they
-   are reminding about"). One wording for the reminders list and the
-   notification. */
+/* What a dose reminder says it is reminding about. One wording for the reminders list and
+   the notification. */
 
 import assert from 'node:assert/strict';
 import { test, vi } from 'vitest';

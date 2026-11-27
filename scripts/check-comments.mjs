@@ -1,11 +1,10 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { extname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'svelte/compiler';
 import ts from 'typescript';
 
-const BASELINE = 'scripts/comment-baseline.json';
 const EXTENSIONS = new Set(['.css', '.html', '.java', '.js', '.mjs', '.svelte', '.ts', '.xml']);
 const INTERNAL_REFERENCE = /\b(?:tickets?[\s-]+#?(?:[a-z]+-)*\d+|phase[\s-]+\d+|(?:bug|interactive)[\s-]+session|(?:functional|final|last)[\s-]+audit|pre-release-human|ux-carpet|tester[\s-]+report|Alicja)\b|\.scratch\/|\b(?:CONTEXT|DIRECTION|PRODUCT|SCREENS)\.md\b|\bdocs\/(?:agents\/|internal\/|research\/|ui-copy\.md)/gi;
 
@@ -122,37 +121,22 @@ export function commentSourceFiles() {
     .split('\0').filter((file) => EXTENSIONS.has(extname(file)) && existsSync(file));
 }
 
-/** @param {Record<string, number>} counts @param {Record<string, number>} baseline */
-export function referenceGrowth(counts, baseline) {
-  return Object.entries(counts).flatMap(([file, count]) => {
-    const allowed = baseline[file] ?? 0;
-    return count > allowed ? [`${file} has ${count} internal references in comments, up from ${allowed}. Explain the behavior or link to a public source.`] : [];
-  });
-}
-
-/** @param {boolean} update */
-function main(update) {
-  if (!update && !existsSync(BASELINE)) throw new Error(`Missing ${BASELINE}`);
-  /** @type {Record<string, number>} */
-  const counts = {};
+function main() {
   for (const file of commentSourceFiles()) {
+    let count;
     try {
-      const count = countReferences(file, readFileSync(file, 'utf8'));
-      if (count) counts[file] = count;
+      count = countReferences(file, readFileSync(file, 'utf8'));
     } catch (error) {
       throw new Error(`Cannot scan comments in ${file}`, { cause: error });
     }
+    if (count) {
+      console.error(`FAIL ${file} has ${count} internal references in comments. Explain the behavior or link to a public source.`);
+      process.exitCode = 1;
+    }
   }
-  const problems = existsSync(BASELINE) ? referenceGrowth(counts, JSON.parse(readFileSync(BASELINE, 'utf8'))) : [];
-  if (problems.length) {
-    for (const problem of problems) console.error('FAIL', problem);
-    process.exitCode = 1;
-    return;
-  }
-  if (update) writeFileSync(BASELINE, `${JSON.stringify(counts, null, 2)}\n`);
-  console.log(`PASS comment references (${Object.values(counts).reduce((sum, count) => sum + count, 0)} across ${Object.keys(counts).length} files)`);
+  if (!process.exitCode) console.log('PASS comment references (0)');
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  main(process.argv.includes('--update'));
+  main();
 }

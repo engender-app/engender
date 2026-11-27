@@ -1,13 +1,10 @@
-/* What a medication reminder says it is reminding about (functional audit
-   ticket 21, from Alicja's sign-off note: "make the reminders say what they
-   are reminding about"). The reminders list and the notification both read
-   it here, so the two never word one reminder differently.
+/* What a medication reminder says it is reminding about. The reminders list and the
+   notification both read it here, so the two never word one reminder differently.
 
-   Worked out when shown, never stored. A reminder's stored title stays the
-   drug's name, because that is what the schedule sync compares and what a
-   schedule's first save matches a hand-made reminder by (doseReminders.ts);
-   and these words speak paraglide, so a stored copy would keep whichever
-   language it was written in. */
+   Worked out when shown, never stored. A reminder's stored title stays the drug's name,
+   because that is what the schedule sync compares and what a schedule's first save matches
+   a hand-made reminder by (doseReminders.ts); and these words speak paraglide, so a stored
+   copy would keep whichever language it was written in. */
 
 import { m } from '$lib/paraglide/messages';
 import { fmtNumber } from '$lib/data/dates';

@@ -14,9 +14,8 @@ async function journalWithFiles() {
   return { journal, files, db };
 }
 
-/* The benchmark area (phase 5 deepening ticket 15, CONTEXT: "Voice
-   benchmark"). A benchmark is a day's standardized take, not an entry's
-   memo, so nothing here goes through entries.ts. */
+/* The benchmark area. A benchmark is a day's standardized take, not an entry's memo, so
+   nothing here goes through entries.ts. */
 
 const metrics = {
   f0MedianHz: 180.4,
@@ -292,8 +291,8 @@ test('a benchmark saved without a track reads back with none', async () => {
   assert.equal(saved.pitchTrack, null);
 });
 
-/* Ticket 28: the row says what recorded it, so nothing downstream has to
-   guess whether two takes share a microphone. */
+/* The row says what recorded it, so nothing downstream has to guess whether two takes share
+   a microphone. */
 test('a benchmark stores the chain it was recorded through, and null when there was none to read', async () => {
   const { journal } = await journalWithFiles();
   const chain = 'Pixel 10a | Bottom microphone | ec=off ns=off agc=off';
@@ -325,8 +324,8 @@ test('a benchmark stores the chain it was recorded through, and null when there 
   assert.equal(without.captureChain, null);
 });
 
-/* Ticket 30: the row keeps the corner-vowel factor where it was fitted, and
-   null where fewer than two vowels cleared the gate. */
+/* The row keeps the corner-vowel factor where it was fitted, and null where fewer than two
+   vowels cleared the gate. */
 test('a benchmark stores its corner-vowel scale, and null when there was none to fit', async () => {
   const { journal } = await journalWithFiles();
 

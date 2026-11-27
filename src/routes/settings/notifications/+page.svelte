@@ -51,10 +51,9 @@
      permission, so one status/request pair covers the whole list. */
   let notifyStatus = $state<AndroidReminderStatus | 'unreadable'>({ notifications: 'not-required', exactAlarms: 'not-required' });
 
-  /* Re-read whenever the screen comes back to the front, because the way
-     out of a refusal is Android's settings screen (last-audit UI ticket 41,
-     U30). A read the bridge refuses says it could not check, rather than
-     calling notifications either on or off. */
+  /* Re-read whenever the screen comes back to the front, because the way out of a refusal
+     is Android's settings screen. A read the bridge refuses says it could not check, rather
+     than calling notifications either on or off. */
   let statusWatch: ReturnType<typeof watchStatus<AndroidReminderStatus | 'unreadable'>> | null = null;
 
   async function requestNotifications() {

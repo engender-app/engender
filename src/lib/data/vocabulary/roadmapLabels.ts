@@ -115,10 +115,9 @@ export const roadmapGoalNote = (goal: RoadmapGoalKey): string | null => GOAL_NOT
 export const roadmapGoalNoteSecondary = (goal: RoadmapGoalKey): string | null =>
   GOAL_NOTE_SECONDARY[goal]?.() ?? null;
 
-/* The names of the tracks functional audit ticket 34 cut, for the nameless
-   categories migration 111 made out of them (roadmap.ts,
-   LEGACY_ROADMAP_TRACKS). Said in the current language until somebody
-   renames the category. */
+/* The names of the cut, for the nameless categories migration 111 made out of them
+   (roadmap.ts, LEGACY_ROADMAP_TRACKS). Said in the current language until somebody renames
+   the category. */
 const LEGACY_CATEGORY_NAME: Record<(typeof LEGACY_ROADMAP_TRACKS)[number], Message> = {
   social: m.roadmap_category_social,
   presentational: m.roadmap_category_presentational,

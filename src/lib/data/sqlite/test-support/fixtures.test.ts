@@ -1,6 +1,5 @@
-/* Proves the fixture builder itself does what ticket 03 asks of it: makes
-   entries at given epoch days with given moods, dimension values and tags,
-   against the real migrated schema. */
+/* Proves the fixture builder itself does wh asks of it: makes entries at given epoch days
+   with given moods, dimension values and tags, against the real migrated schema. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

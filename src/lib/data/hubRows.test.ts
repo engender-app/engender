@@ -179,7 +179,7 @@ test('twelve rows can report a reading and seven never can', () => {
 
   // Version 124 folded hair progress into progress photos, leaving 12
   // reading rows. Seven written since
-  // bug session 18 item 70 gave voice memos back a Media row, `recordings`.
+  // item 70 gave voice memos back a Media row, `recordings`.
   assert.equal(reads.length, 12);
   assert.equal(HUB_ROWS.length - reads.length, 7);
 });
@@ -249,7 +249,7 @@ test('the quiet window is the one the finish offer already uses', () => {
   assert.equal(FINISH_SUGGESTION_QUIET_DAYS, 180);
 });
 
-test('the merged effects row reports whichever half was written last (ticket 13)', () => {
+test('the merged effects row reports whichever half was written last', () => {
   const line = rowLine(
     spec('effects'),
     reading({ lastWrites: { personalEffects: TODAY - 40, sideEffects: TODAY - 4 } })
@@ -267,7 +267,7 @@ test('a side effect logged alone does not drag the effects row backwards', () =>
   assert.deepEqual(line, { kind: 'last', epochDay: TODAY - 2, daysAgo: 2 });
 });
 
-test('voice-benchmark reports the later of a benchmark and a recording (ticket 17)', () => {
+test('voice-benchmark reports the later of a benchmark and a recording', () => {
   const line = rowLine(
     spec('voice-benchmark'),
     reading({ lastWrites: { voiceBenchmarks: TODAY - 40 }, voiceMemoLastWriteEpochDay: TODAY - 4 })
@@ -604,12 +604,12 @@ test('a fresh journal draws every row the hub owns, each saying what is behind i
   }
 });
 
-test('every group is in the order Alicja set in pre-release-human 12', () => {
+test('orders rows within each group', () => {
   const sections = hubSections(reading());
   const group = (key: string) =>
     sections.find((section) => section.key === key)?.rows.map((row) => row.spec.key) ?? [];
 
-  // Body came back in pre-release-human 12 to even out a seven-row Steps.
+  // Body came back to even out a seven-row Steps.
   assert.deepEqual(group('health'), ['care', 'cycle-events', 'appointments', 'surgery', 'dilation']);
   assert.deepEqual(group('body'), ['progress-photos', 'effects', 'hair-removal', 'wear', 'voice-benchmark']);
   assert.deepEqual(group('transition'), ['roadmap', 'milestones', 'tryouts']);
@@ -617,11 +617,10 @@ test('every group is in the order Alicja set in pre-release-human 12', () => {
   assert.deepEqual(group('media'), ['photos', 'recordings', 'documents']);
 });
 
-/* Ticket 15's search half. The words are paraglide's, so the matcher is
-   handed the titles to match against rather than resolving them - the shape
-   `tagIdsMatching` already uses for the same reason (searchQuery.ts). A
-   made-up title per key here, so these tests hold the matching rule and not
-   the catalogue. */
+/* Search half. The words are paraglide's, so the matcher is handed the titles to match
+   against rather than resolving them - the shape `tagIdsMatching` already uses for the same
+   reason (searchQuery.ts). A made-up title per key here, so these tests hold the matching
+   rule and not the catalogue. */
 const TITLES: Record<string, string> = {
   effects: 'Changes you noticed',
   'hair-removal': 'Usuwanie włosów',

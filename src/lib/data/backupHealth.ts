@@ -1,12 +1,10 @@
-/* How old the last backup is, and when that becomes worth saying (ticket
-   15, PRD F21). Three screens read this - Home for its notice, Settings
-   for the row, Export & import for the status line - so it lives here
-   rather than as the same two lines derived three times.
+/* How old the last backup is, and when that becomes worth saying. Three screens read this -
+   Home for its notice, Settings for the row, Export & import for the status line - so it
+   lives here rather than as the same two lines derived three times.
 
-   Apart from archive/backup.ts on purpose: this is arithmetic over one
-   number, and Home would otherwise import the export paths, and through
-   them the archive packer and Argon2id, to work out how many days ago
-   something happened. */
+   Apart from archive/backup.ts on purpose: this is arithmetic over one number, and Home
+   would otherwise import the export paths, and through them the archive packer and
+   Argon2id, to work out how many days ago something happened. */
 
 import { epochDayFromTimestamp, todayEpochDay } from './epochDay';
 
@@ -28,10 +26,9 @@ export function backupIsStale(lastBackupAt: number | null, today: number = today
   return age !== null && age > BACKUP_STALE_DAYS;
 }
 
-/** Which of three things Export & import's last-backup row says (last-audit
-    UI 54). Not stale is not the same as backed up: a journal never exported
-    is not stale either, and the row drew its success tick for it beside "No
-    export recorded on this device". */
+/** Which of three things Export & import's last-backup row says. Not stale is not the same
+    as backed up: a journal never exported is not stale either, and the row drew its success
+    tick for it beside "No export recorded on this device". */
 export function backupStanding(
   lastBackupAt: number | null,
   today: number = todayEpochDay()

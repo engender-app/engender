@@ -522,15 +522,14 @@ function buildersFor(input: HomeTilesInput): Record<LiveTileKind, TileBuilder> {
 
 /** The grid, in tier order, with every qualifying tile in it.
 
-    `LIVE_TILE_DRAW_ORDER` rather than a sort or a nested pair of loops: the
-    tier bands outside and `LIVE_TILE_ORDER` inside is one order, and since
-    ticket 04 the editor lists its switches in it too. Nothing is dropped
-    here - the cap is `splitHomeTiles` below, so the fold has the tiles it is
-    folding.
+    `LIVE_TILE_DRAW_ORDER` rather than a sort or a nested pair of loops: the tier bands
+    outside and `LIVE_TILE_ORDER` inside is one order, and the editor lists its switches in
+    it too. Nothing is dropped here - the cap is `splitHomeTiles` below, so the fold has the
+    tiles it is folding.
 
-    A tile whose area is hidden or finished never reaches its builder. Folded into `enabled` rather than added as a third
-    field on the gate, because the two say the same thing to a builder - do
-    not show - and the four builders with no predicate to pass a gate to would
+    A tile whose area is hidden or finished never reaches its builder. Folded into `enabled`
+    rather than added as a third field on the gate, because the two say the same thing to a
+    builder - do not show - and the four builders with no predicate to pass a gate to would
     otherwise each need a second check. */
 export function composeHomeTiles(input: HomeTilesInput): HomeTile[] {
   const builders = buildersFor(input);

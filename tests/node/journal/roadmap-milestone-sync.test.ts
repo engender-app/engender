@@ -9,7 +9,7 @@ import { OFFERS, answerOffer, milestoneMintedByGoal } from '../../../src/lib/dat
 const root = fileURLToPath(new URL('../../..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');
 
-describe('roadmap to milestone sync (ticket 10, ADR-0045)', () => {
+describe('roadmap to milestone sync (ADR-0045)', () => {
   it('defaults prefs.roadmapMilestoneSyncEnabled to true and is device-local', () => {
     expect(PREFERENCE_DEFAULTS.roadmapMilestoneSyncEnabled).toBe(true);
     expect(DEVICE_LOCAL_KEYS).toContain('roadmapMilestoneSyncEnabled');

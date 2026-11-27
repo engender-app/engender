@@ -1,9 +1,7 @@
-/* Factor-impact correlation cards: the area that
-   stitches stats' day averages and tag insights to the dose log
-   (correlationCards.ts owns the ranking math and is tested without a
-   driver). This is phase 4's deliberate reversal of phase 3's explicit
-   exclusion of correlation analysis - not scope drift slipping back in
-   unnoticed, a conscious re-decision the phase 4 spec records. */
+/* Factor-impact correlation cards: the area that stitches stats' day averages and tag
+   insights to the dose log (correlationCards.ts owns the ranking math and is tested without
+   a driver). This is deliberate reversal 's explicit exclusion of correlation analysis -
+   not scope drift slipping back in unnoticed, a conscious re-decision the spec records. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

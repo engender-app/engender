@@ -1,19 +1,16 @@
 <script lang="ts">
-  /* What the span cost: the Cost reading, as
-     its tile on the Look back door and as its screen at /stats/cost.
+  /* What the span cost: the Cost reading, as its tile on the Look back door and as its
+     screen at /stats/cost.
 
-     One read, ticket 30's `getCosts()`, and every figure made by
-     costReading.ts, which totals through costTotalsByCurrency. A currency is
-     the outer grouping everywhere on this surface: the screen draws one card
-     per currency and splits that card's total by area and by refunded or
-     not, and the tile states one currency's total and names the others.
-     Nothing here adds two currencies, and there is no rate to convert by
-     (ADR-0097).
+     One read, `getCosts`, and every figure made by costReading.ts, which totals through
+     costTotalsByCurrency. A currency is the outer grouping everywhere on this surface: the
+     screen draws one card per currency and splits that card's total by area and by refunded
+     or not, and the tile states one currency's total and names the others. Nothing here
+     adds two currencies, and there is no rate to convert by (ADR-0097).
 
-     Absent, never empty, like every tile on the door: a span with no amount
-     in it has no tile. Its screen, reached by an address, says the span
-     holds no costs inside the card, the way the other readings' cards say
-     theirs has nothing to read. */
+     Absent, never empty, like every tile on the door: a span with no amount in it has no
+     tile. Its screen, reached by an address, says the span holds no costs inside the card,
+     the way the other readings' cards say theirs has nothing to read. */
   import { m } from '$lib/paraglide/messages';
   import { intlLocale } from '$lib/data/dates';
   import { formatAmount } from '$lib/data/cost';
@@ -67,10 +64,9 @@
     }
   };
 
-  /* The tile's one line under the figure: the other currencies by code
-     when there are any, since the figure is only one of them; otherwise
-     how much of it was refunded. No count of costs (bug session 18,
-     item 88): it said nothing the figure needed. */
+  /* The tile's one line under the figure: the other currencies by code when there are any,
+     since the figure is only one of them; otherwise how much of it was refunded. No count
+     of costs: it said nothing the figure needed. */
   let tileNote = $derived.by(() => {
     if (!first) return undefined;
     const others = reading.currencies.slice(1).map((c) => c.currency);

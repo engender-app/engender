@@ -75,8 +75,7 @@
         see where the head sits. The readout is an <output>, so this is
         spoken again on every step of the scrub. */
     readingLabel: (point: ConstellationPoint) => string;
-    /** What a mouse hovering a point is told, one line each: the date and
-        both values (bug session 18, item 44). */
+    /** What a mouse hovering a point is told, one line each: the date and both values. */
     hoverLines: (point: ConstellationPoint) => string[];
     /** What the scrubber is, for a screen reader. */
     scrubLabel: string;
@@ -97,10 +96,9 @@
       end of either scale. */
   const PAD = 8;
   const DOT = 3;
-  /** No two labelled dots closer than this, in real pixels, so a cluster
-      carries a few days rather than one per dot (ticket CARPET-07). Each
-      label's box is kept clear of the others and of every mark on its own
-      (placeLabels); this is only how sparse the days are. */
+  /** No two labelled dots closer than this, in real pixels, so a cluster carries a few days
+      rather than one per dot. Each label's box is kept clear of the others and of every
+      mark on its own (placeLabels); this is only how sparse the days are. */
   const MIN_LABEL_GAP = 48;
   /** How far each mark's paint reaches from its centre line, which is what
       a label keeps clear of: a dot's radius and the outer pixel of its 2px
@@ -124,10 +122,9 @@
       is made of. */
   let head = $state(0);
 
-  /** Bumped by the play button to ask for the sweep again without a new
-      dataset arriving (ticket CARPET-07). The effect below reads it only to
-      be woken by it - the sweep itself always walks 0 to last, same as the
-      dataset-arrives sweep it shares its one mechanism with. */
+  /** Bumped by the play button to ask for the sweep again without a new dataset arriving.
+      The effect below reads it only to be woken by it - the sweep itself always walks 0 to
+      last, same as the dataset-arrives sweep it shares its one mechanism with. */
   let replay = $state(0);
 
   /** True while the sweep below draws the head across, which rewrites the
@@ -253,12 +250,10 @@
     };
   });
 
-  /* The days are written on a plot at rest. While the head moves - the
-     sweep, a drag, a held arrow key - the marks a day has to clear move
-     with it, and placing the days again on every frame had them flicking
-     on and off and across their dots (last-audit UI 49). So the days fade
-     out when the head moves and back in once it has stood still for
-     LABEL_REST_MS. */
+  /* The days are written on a plot at rest. While the head moves - the sweep, a drag, a
+     held arrow key - the marks a day has to clear move with it, and placing the days again
+     on every frame had them flicking on and off and across their dots. So the days fade out
+     when the head moves and back in once it has stood still for LABEL_REST_MS. */
   let restingAt = $state(-1);
   $effect(() => {
     const now = head;
@@ -304,13 +299,11 @@
     return { left, top: above ? py(hovered) - HOVER_GAP - hoverHeight : py(hovered) + HOVER_GAP };
   });
 
-  /** Which of the drawn points also get their day written beside them, and
-      where (ticket CARPET-07, last-audit UI 49). Off the same `traced`
-      window everything else on the plot draws from, so a label never names
-      a reading the plot itself has scrolled past, and clear of every mark
-      the plot paints: the dots, the head's ring, the trail's joins and the
-      readout laid over the corner. The head's own day is in the readout,
-      so it is not written a second time beside the ring. */
+  /** Which of the drawn points also get their day written beside them, and where. Off the
+      same `traced` window everything else on the plot draws from, so a label never names a
+      reading the plot itself has scrolled past, and clear of every mark the plot paints:
+      the dots, the head's ring, the trail's joins and the readout laid over the corner. The
+      head's own day is in the readout, so it is not written a second time beside the ring. */
   let labeled = $derived.by(() => {
     if (!measureDay || !at || sweeping || restingAt !== head) return [];
     const ink: Ink[] = [
@@ -396,18 +389,16 @@
           </g>
         {/each}
 
-        <!-- One day per point that earned a label clear of every mark and
-             every other label (placeLabels, ticket CARPET-07, last-audit UI
-             49), the head's own excepted: it already has its date in the
-             readout below, so writing it twice over the same mark would be
-             one fact said twice rather than two facts. Drawn at full
-             strength whatever its point's weight: a faded 12px day is a day
-             nobody reads (it fell to 1.8:1 on the card at the weight floor),
-             and the dot beside it already says how old it is. The day is what is written; the
-             `<title>` carries the whole reading - the same sentence the
-             head's own visually-hidden span speaks - as a native tooltip
-             for a pointer that lingers, so "a point's underlying data" is
-             not only its date for anyone who can hover one. -->
+        <!-- One day per point that earned a label clear of every mark and every other
+             label, the head's own excepted: it already has its date in the readout below,
+             so writing it twice over the same mark would be one fact said twice rather than
+             two facts. Drawn at full strength whatever its point's weight: a faded 12px day
+             is a day nobody reads (it fell to 1.8:1 on the card at the weight floor), and
+             the dot beside it already says how old it is. The day is what is written; the
+             `<title>` carries the whole reading - the same sentence the head's own
+             visually-hidden span speaks - as a native tooltip for a pointer that lingers,
+             so "a point's underlying data" is not only its date for anyone who can hover
+             one. -->
         <g class="cn-labels" aria-hidden="true">
           {#each labeled as { key, point, label } (key)}
             <text class="cn-point-label" x={label.x} y={label.y} text-anchor={label.anchor} transition:dayFade>
@@ -496,10 +487,9 @@
 
     {#if points.length > 1}
       <div class="cn-scrub">
-        <!-- Re-runs the same sweep the chart already plays once on arrival
-             (the $effect above) rather than a second animation of its own -
-             one mechanism for "walk the path", asked for twice (ticket
-             CARPET-07). -->
+        <!-- Re-runs the same sweep the chart already plays once on arrival (the $effect
+             above) rather than a second animation of its own - one mechanism for "walk the
+             path", asked for twice. -->
         <button
           type="button"
           class="icon-btn press cn-play"

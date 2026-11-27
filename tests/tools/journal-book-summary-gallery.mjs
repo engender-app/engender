@@ -1,18 +1,17 @@
-/* Sign-off render for phase 12 final-audit ticket 20: the journal book shows
-   a summary, not the whole book. Only the changed surface - the "What goes
-   in" block, the counts line this ticket puts under it and the fold that now
-   holds the pages - not the pages themselves, which are unchanged and which
-   tests/tools/journal-book-print-diff.mjs is what actually proves.
+/* Sign-off render for the journal book shows a summary, not the whole book. Only the
+   changed surface - the "What goes in" block, the counts line this ticket puts under it and
+   the fold that now holds the pages - not the pages themselves, which are unchanged and
+   which tests/tools/journal-book-print-diff.mjs is what actually proves.
 
    Default palette (trans), light and dark, before and after.
 
-   Run against a built tree in the current working directory:
-     node tests/tools/journal-book-summary-gallery.mjs --tag after --out /abs/dir
-   `--tag before` wants the other checkout's build, and `vite preview` serves
-   the cwd rather than any root it is handed, so run it with that checkout as
-   the cwd (photo-grid-batching-gallery.mjs's own note):
-     node -e "process.chdir('/path/to/before'); process.argv.push('--','--tag','before','--out','/abs/dir'); import('/abs/tests/tools/journal-book-summary-gallery.mjs')"
-*/
+   Run against a built tree in the current working directory: node
+   tests/tools/journal-book-summary-gallery.mjs --tag after --out /abs/dir `--tag before`
+   wants the other checkout's build, and `vite preview` serves the cwd rather than any root
+   it is handed, so run it with that checkout as the cwd (photo-grid-batching-gallery.mjs's
+   own note): node -e "process.chdir('/path/to/before');
+   process.argv.push('--','--tag','before','--out','/abs/dir');
+   import('/abs/tests/tools/journal-book-summary-gallery.mjs')" */
 import { preview } from 'vite';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';

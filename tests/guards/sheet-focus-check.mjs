@@ -1,10 +1,9 @@
-/* Real-browser proof for ticket 04's sheet focus contract. Drives actual
-   appointment, lab and dose screens because a component fixture cannot prove
-   the date picker, mounted outside the screen, cooperates with the app shell
-   and live routes.
+/* Real-browser proof for sheet focus contract. Drives actual appointment, lab and dose
+   screens because a component fixture cannot prove the date picker, mounted outside the
+   screen, cooperates with the app shell and live routes.
 
-   Pass an output directory to keep sign-off screenshots:
-     node tests/guards/sheet-focus-check.mjs .claude/ticket-04-shots */
+   Pass an output directory to keep sign-off screenshots: node
+   tests/guards/sheet-focus-check.mjs.claude/-shots */
 import { preview } from 'vite';
 import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';

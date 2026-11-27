@@ -21,25 +21,21 @@ import type { AppointmentDayRecord } from './journal/appointments';
 
 /** How many days the agenda covers, today counted as one of them.
 
-    Thirty as of phase 11 ticket 03, seven before it. Seven was chosen to
-    match Home's week strip, which left Home in phase 10's ticket 13, and it
-    cost the band the things a person most wants a month's notice of: on the
-    demo journal the endocrinologist twelve days out never reached this
-    screen although the app knew the date. What keeps a month from being a
-    wall is `AGENDA_CAP` and the fold under it, not the width of the window
-    - so the window widened and neither of those moved.
+    Thirty, seven before it. Seven was chosen to match Home's week strip, which left Home
+    's, and it cost the band the things a person most wants a month's notice of: on the demo
+    journal the endocrinologist twelve days out never reached this screen although the app
+    knew the date. What keeps a month from being a wall is `AGENDA_CAP` and the fold under
+    it, not the width of the window - so the window widened and neither of those moved.
 
-    Not a responsive count of cells a strip has room for: that is a width, not
-    a stretch of time. */
+    Not a responsive count of cells a strip has room for: that is a width, not a stretch of
+    time. */
 export const AGENDA_DAYS = 30;
 
-/** How many days behind today the passed slot is looked for in, its own
-    constant since phase 11 ticket 03 rather than `AGENDA_DAYS` read
-    backwards. The forward window is a stretch of things to know about in
-    advance and widens with the app's ambition for it; the passed slot is
-    one recent fact, and a slot that went by a month ago is not the same
-    kind of news as last Tuesday's. Seven is still the week a person can
-    hold in their head. */
+/** How many days behind today the passed slot is looked for in, its own constant rather
+    than `AGENDA_DAYS` read backwards. The forward window is a stretch of things to know
+    about in advance and widens with the app's ambition for it; the passed slot is one
+    recent fact, and a slot that went by a month ago is not the same kind of news as last
+    Tuesday's. Seven is still the week a person can hold in their head. */
 export const AGENDA_PASSED_DAYS = 7;
 
 /** The first `AGENDA_CAP` at their own weight, the rest folded. Three

@@ -36,16 +36,14 @@ export interface ConstellationPoint extends PlottedPoint {
   /** How strongly this reading is drawn, 0 to 1. See the overlap note
       above. */
   weight: number;
-  /** This reading's place in a ring buffer TRACE_WINDOW long: its absolute
-      index into the full reading list, mod TRACE_WINDOW (ticket AU-20). The
-      window is dense and ordered - every index is a reading, nothing is ever
-      reordered - so as the scrubber steps forward one reading at a time, a
-      slot's old occupant leaves exactly when the entering reading is
-      TRACE_WINDOW indices later, which lands it back on the same slot. Keyed
-      on this instead of on `id`, the each-block reuses one DOM node per slot
-      across a frame rather than destroying and recreating most of the
-      window. This would be wrong on a sparse or reorderable list, where nothing
-      guarantees the same slot's neighbour across frames is the same reading. */
+  /** This reading's place in a ring buffer TRACE_WINDOW long: its absolute index into the
+      full reading list, mod TRACE_WINDOW. The window is dense and ordered - every index is
+      a reading, nothing is ever reordered - so as the scrubber steps forward one reading at
+      a time, a slot's old occupant leaves exactly when the entering reading is TRACE_WINDOW
+      indices later, which lands it back on the same slot. Keyed on this instead of on `id`,
+      the each-block reuses one DOM node per slot across a frame rather than destroying and
+      recreating most of the window. This would be wrong on a sparse or reorderable list,
+      where nothing guarantees the same slot's neighbour across frames is the same reading. */
   slot: number;
 }
 
@@ -264,10 +262,9 @@ export interface ScalePair {
   count: number;
 }
 
-/** The scales the plane can put on an axis: with `x` null, every ticked
-    scale that some other ticked scale has points with; with `x` given, the
-    ticked scales that do with `x`. In `active` order, so the pickers keep
-    the order Settings gives the scales. Bug session 18, item 41: a picker
+/** The scales the plane can put on an axis: with `x` null, every ticked scale that some
+    other ticked scale has points with; with `x` given, the ticked scales that do with `x`.
+    In `active` order, so the pickers keep the order Settings gives the scales. a picker
     that offers a pair with no points makes people hunt for one that draws. */
 export function planePartners(pairs: readonly ScalePair[], active: readonly string[], x: string | null): string[] {
   const has = new Set<string>();

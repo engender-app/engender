@@ -16,9 +16,9 @@ import java.io.File;
 import java.io.FileOutputStream;
 
 /**
- * The reset's photo half (ux-carpet 214). On the Pixel a fill left 215
- * files in {@code files/photos}, and all 215 were still there after
- * "Delete everything and start over" and the next cold boot.
+ * The reset's photo half. On the Pixel a fill left 215 files in {@code
+ * files/photos}, and all 215 were still there after "Delete everything and
+ * start over" and the next cold boot.
  */
 @RunWith(AndroidJUnit4.class)
 public class PhotoDirectoryWipeTest {

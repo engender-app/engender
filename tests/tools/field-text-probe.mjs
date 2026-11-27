@@ -41,10 +41,9 @@ const opt = (name, fallback) => {
   const at = argv.indexOf(`--${name}`);
   return at >= 0 ? argv[at + 1] : fallback;
 };
-/* --device <serial>: drive the phone's WebView over its devtools socket
-   instead of a desktop Chromium (ticket 285, Android half). The scenes, the
-   samplers and the pixel rule are the same; the phone's own width stands in
-   for 390 and 1440, and the scenes that need a window or a fixture page
+/* --device <serial>: drive the phone's WebView over its devtools socket instead of a
+   desktop Chromium. The scenes, the samplers and the pixel rule are the same; the phone's
+   own width stands in for 390 and 1440, and the scenes that need a window or a fixture page
    (resize, the gate fixture, cold heights) are left to the desktop run. */
 const DEVICE = opt('device', '');
 const PORT = opt('port', '9341');

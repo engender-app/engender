@@ -5,19 +5,17 @@
   import { wipe } from '$lib/motion/reveal';
   import MediaTransport from './MediaTransport.svelte';
 
-  /* Plays a recording directly from the entry view/editor - no separate
-     screen. The transport is MediaTransport.svelte, the app's
-     own, which replaced a plain `<audio controls>` on ticket 46; the element
-     is still what plays the audio, with its own controls off.
+  /* Plays a recording directly from the entry view/editor - no separate screen. The
+     transport is MediaTransport.svelte, the app's own, which replaced a plain `<audio
+     controls>`; the element is still what plays the audio, with its own controls off.
 
-     What this adds over the transport is the waveform: a recording's bars,
-     decoded once per file and cached for the tab (media/peaks.ts). They
-     arrive after the row does, which is why the transport draws the plain
-     track until they land rather than a shape that is not this recording's.
+     What this adds over the transport is the waveform: a recording's bars, decoded once per
+     file and cached for the tab (media/peaks.ts). They arrive after the row does, which is
+     why the transport draws the plain track until they land rather than a shape that is not
+     this recording's.
 
-     The object-URL lifecycle mirrors PhotoThumb.svelte's: load once per
-     `fileName`/`bytes` change, revoke on cleanup so a long recordings list
-     does not leak one blob per tile. */
+     The object-URL lifecycle mirrors PhotoThumb.svelte's: load once per `fileName`/`bytes`
+     change, revoke on cleanup so a long recordings list does not leak one blob per tile. */
   let {
     fileName,
     bytes,

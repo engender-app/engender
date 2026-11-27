@@ -71,20 +71,18 @@ const PAUSE_REASON_LABELS: Record<PauseReason, () => string> = {
   accidental: m.pause_reason_accidental
 };
 
-/** None preferred over another (ticket 43, mirroring the rule just above). */
+/** None preferred over another. */
 const EPISODE_END_REASON_LABELS: Record<EpisodeEndReason, () => string> = {
   switchedDrugOrRoute: m.episode_end_reason_switched,
   pausedForNow: m.episode_end_reason_paused,
   decidedToStop: m.episode_end_reason_stopped
 };
 
-/* A regimen template's picker-row name, and the drug/ester text it pre-fills
-   (CONTEXT: "Regimen template", phase 5 ticket 42). Route is not repeated
-   here - it pre-fills from ROUTE_LABELS below, by the DoseRoute each
-   template names, so the word matches whatever the dose log already calls
-   that route rather than drifting into a second wording for the same
-   route. Ester is absent from a template with none, the same nullable
-   shape RegimenEpisode.ester itself has. */
+/* A regimen template's picker-row name, and the drug/ester text it pre-fills. Route is not
+   repeated here - it pre-fills from ROUTE_LABELS below, by the DoseRoute each template
+   names, so the word matches whatever the dose log already calls that route rather than
+   drifting into a second wording for the same route. Ester is absent from a template with
+   none, the same nullable shape RegimenEpisode.ester itself has. */
 const REGIMEN_TEMPLATE_NAME: Record<RegimenTemplateKey, () => string> = {
   estradiol_valerate_im: m.tpl_regimen_estradiol_valerate_im,
   estradiol_oral: m.tpl_regimen_estradiol_oral,
@@ -188,9 +186,8 @@ export const regimenPeriodLabel = (startEpochDay: number, endEpochDay: number | 
     : m.regimen_period_range({ from: month(startEpochDay), to: month(endEpochDay) });
 };
 
-/** Route options for a picker: the three taken by mouth or absorbed
-    through a mucosa, the two injections and the implant, then the two
-    topical ones (rectal and implant added by functional audit ticket 18). */
+/** Route options for a picker: the three taken by mouth or absorbed through a mucosa, the
+    two injections and the implant, then the two topical ones. */
 export const ROUTE_OPTIONS: RouteOption[] = (['oral', 'sublingual', 'rectal', 'im', 'sc', 'implant', 'patch', 'gel'] as const).map(
   (route) => ({ value: route, label: routeLabel(route) })
 );

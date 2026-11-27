@@ -1,7 +1,6 @@
-/* The agenda projection: the
-   window, the ordering, the fold, the absence rule, the passed slot. Every one of them is decided in `agenda.ts` and asserted
-   here, because ticket 13 draws what this returns and can only be as
-   truthful as the projection under it. */
+/* The agenda projection: the window, the ordering, the fold, the absence rule, the passed
+   slot. Every one of them is decided in `agenda.ts` and asserted here, because draws what
+   this returns and can only be as truthful as the projection under it. */
 
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -72,11 +71,10 @@ test('the window is thirty days, today counted as one of them', () => {
   assert.equal(toEpochDay - fromEpochDay + 1, AGENDA_DAYS);
 });
 
-/* Phase 11 ticket 03 widened the forward window and left this one alone.
-   The passed slot is the most recent one that went by, and a slot that went
-   by a month ago is not news the way last Tuesday's is - so the two windows
-   are two constants, and this test is what stops the forward one from
-   dragging the backward one along behind it. */
+/* Widened the forward window and left this one alone. The passed slot is the most recent
+   one that went by, and a slot that went by a month ago is not news the way last Tuesday's
+   is - so the two windows are two constants, and this test is what stops the forward one
+   from dragging the backward one along behind it. */
 test('the window behind is seven days, ending yesterday', () => {
   assert.equal(AGENDA_PASSED_DAYS, 7);
   const { fromEpochDay, toEpochDay } = agendaPassedWindow(TODAY);

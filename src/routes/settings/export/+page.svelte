@@ -66,10 +66,9 @@
   let expPass = $state('');
   let impPass = $state('');
   let impMode = $state<'merge' | 'replace'>('merge');
-  /* Replace asks first (phase 15 release-blockers ticket 05). It used to
-     run straight from the Import button with a muted note as its only
-     warning, the one action in the app that throws a whole journal away
-     on a single tap. Merge only adds, so it still runs at once. */
+  /* Replace asks first. It used to run straight from the Import button with a muted note as
+     its only warning, the one action in the app that throws a whole journal away on a
+     single tap. Merge only adds, so it still runs at once. */
   let replaceSheet = $state(false);
   /* Set by the sheet's "Make a backup first" row, and read once the sheet
      has gone: the screen is locked while it is up, so the scroll to the
@@ -159,12 +158,10 @@
     json: m.exp_done_json
   };
 
-  /* The floor lives in archive/password.ts and the wording lives here,
-     sharing the journal passphrase's too-short line (phase 5 security
-     ticket 02). An empty field is allowed (bug session 18, item 80): the
-     warning then says the file opens for anyone instead of asking to keep
-     a password. Its wording is fixed when the sheet opens, so typing behind
-     a closing sheet does not rewrite it. */
+  /* The floor lives in archive/password.ts and the wording lives here, sharing the journal
+     passphrase's too-short line. An empty field is allowed: the warning then says the file
+     opens for anyone instead of asking to keep a password. Its wording is fixed when the
+     sheet opens, so typing behind a closing sheet does not rewrite it. */
   let exportWithoutPassword = $state(false);
 
   function openExportWarning() {
@@ -912,9 +909,8 @@ The rows stand from the first frame and only their
         {:else if standing === 'recent'}
           <span class="backup-tick" data-backup-tick in:markFade out:markLeave><Icon name="check" size={20} /></span>
         {/if}
-        <!-- Never exported draws no mark: the tick stood beside "No export
-             recorded on this device" because that journal is not stale either
-             (last-audit UI 54). -->
+        <!-- Never exported draws no mark: the tick stood beside "No export recorded on this
+             device" because that journal is not stale either. -->
       </span>
     </div>
     <div class="hr" style="margin:var(--space-3) 0"></div>
@@ -1164,11 +1160,9 @@ The rows stand from the first frame and only their
   <!-- One bar for the two buttons above it: they are disabled by each
        other, so only one of them is ever running. -->
   <Progress run={importProgress} label={importLabel} handle="import" />
-  <!-- Two entries of one list: the hairlines the list card draws are what
-       separates them and what says where they begin and end, so the tonal
-       ground each row used to carry is gone (Alicja, 2026-09-09: "the list
-       entries have both the bg and the line separators - lose the bg"). The
-       `.hr` that used to sit above them was doing the list card's job. -->
+  <!-- Two entries of one list: the hairlines the list card draws are what separates them
+       and what says where they begin and end, so the tonal ground each row used to carry is
+       gone. The `.hr` that used to sit above them was doing the list card's job. -->
   <div data-import-rows>
     <ListCard>
       <ListRow
@@ -1271,9 +1265,8 @@ The rows stand from the first frame and only their
     {/if}
   </Sheet>
 
-  <!-- The erase sheet's shape (Settings, phase 14 pre-release 15): the loss
-       first, then the way to keep a copy with how old the last one is, then
-       the act in danger red and the way out. -->
+  <!-- The erase sheet's shape: the loss first, then the way to keep a copy with how old the
+       last one is, then the act in danger red and the way out. -->
   <Sheet bind:open={replaceSheet} title={m.imp_replace_sheet_title()} onClosed={afterReplaceSheet}>
     <h3>{m.imp_replace_sheet_title()}</h3>
     <div class="notice notice-danger" style="margin-bottom:var(--space-4)">

@@ -76,10 +76,9 @@
       style:--mood-mag={magnifier.moodScale[i]}
       onclick={() => choose(i)}
     >
-      <!-- 48, not 40 (Alicja, 2026-08-27: "a little bigger") - the same
-           number as --touch-target, so the circle itself now clears the row
-           item's own floor rather than the label beneath it being what gets
-           it there. -->
+      <!-- 48, not 40 - the same number as --touch-target, so the circle itself now clears
+           the row item's own floor rather than the label beneath it being what gets it
+           there. -->
       <MoodFace {step} size={48} alive gaze={magnifier.moodGaze[i]} />
       <span aria-hidden="true">{moodName(step)}</span>
     </button>

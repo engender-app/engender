@@ -19,9 +19,8 @@ export interface PersonalEffectsArea {
       in place, so this reads as "what someone said they first noticed
       today", never as a log of sightings. */
   getMarkersFirstNoticedOn(epochDay: number): Promise<PersonalEffect[]>;
-  /** The most recent "first noticed" day across every marked effect, at or
-      before `todayEpochDay`, or null if nothing is marked yet (phase 8
-      features ticket 03, lastWrite.ts). */
+  /** The most recent "first noticed" day across every marked effect, at or before
+      `todayEpochDay`, or null if nothing is marked yet (lastWrite.ts). */
   lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
   /** One row per effect (schema.ts): a second call for an effect
       already marked replaces its date rather than adding a row. Returns

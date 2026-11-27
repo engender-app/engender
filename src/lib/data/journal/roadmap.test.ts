@@ -1,9 +1,6 @@
-/* The roadmap area (phase 4 ticket 23, widened phase 5 ticket 20 for a
-   tri-state tick and custom goals; CONTEXT: "Roadmap goal", "Country
-   pack", "Custom"). The area stores ticks, custom goals and nothing else;
-   what the bundled goals are is roadmap.ts's business, and the tests here
-   never import a pack so that the seam stays honest - a stub pack key is
-   as valid here as 'pl'. */
+/* The roadmap area. The area stores ticks, custom goals and nothing else; what the bundled
+   goals are is roadmap.ts's business, and the tests here never import a pack so that the
+   seam stays honest - a stub pack key is as valid here as 'pl'. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
@@ -96,7 +93,7 @@ test('a custom goal gets a minted uuid id, starts unchecked, and is never transl
 
   const goal = await journal.roadmap.addCustomGoal('Tell my sister');
   assert.match(goal.id, UUID_PATTERN);
-  // Written as 'legal', the one track left since functional audit ticket 34.
+  // Written as 'legal', the one track left.
   assert.deepEqual(goal, { id: goal.id, track: 'legal', text: 'Tell my sister', status: 'unchecked' });
 });
 
@@ -219,12 +216,11 @@ test("rewording a custom goal reaches a minted milestone's provenance, never its
 });
 
 test('deleting a custom goal unfiles the paper filed against it and keeps the paper', async () => {
-  /* Ticket 56's link is a (kind, id) pair with no foreign key behind it
-     (documents.ts), so nothing cascades and this delete has to clear it
-     itself - the same UPDATE-before-DELETE deleteMilestone and
-     deleteProcedure run. What must not happen is the document going with
-     the goal: the paper is the person's, the filing was a note about where
-     it belonged. */
+  /* Link is a (kind, id) pair with no foreign key behind it (documents.ts), so nothing
+     cascades and this delete has to clear it itself - the same UPDATE-before-DELETE
+     deleteMilestone and deleteProcedure run. What must not happen is the document going
+     with the goal: the paper is the person's, the filing was a note about where it
+     belonged. */
   const { journal } = await journalWithBuiltIns();
   const goal = await journal.roadmap.addCustomGoal('Get the referral reissued');
   const other = await journal.roadmap.addCustomGoal('Book the follow-up');
@@ -264,7 +260,7 @@ test('deleting a custom goal leaves a built-in goal that happens to share the de
   assert.equal(kept.targetId, 'pl-legal-final-copy');
 });
 
-test('minting a milestone with a roadmapGoalKey links the goal key (ticket 10, ADR-0045)', async () => {
+test('minting a milestone with a roadmapGoalKey links the goal key (ADR-0045)', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.roadmap.setGoalStatus('pl', 'pl-legal-id-card', 'checked');
 
@@ -280,7 +276,7 @@ test('minting a milestone with a roadmapGoalKey links the goal key (ticket 10, A
   assert.equal(found.roadmapGoalKey, 'pl-legal-id-card');
 });
 
-test('deleting a linked milestone leaves the roadmap goal checked (graceful unlink, ticket 10)', async () => {
+test('deleting a linked milestone leaves the roadmap goal checked (graceful unlink)', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.roadmap.setGoalStatus('pl', 'pl-legal-name-usc', 'checked');
 
@@ -338,11 +334,9 @@ test('hidden unchecked goals survive status changes and restore to sparse storag
   assert.equal((await db.query<{ n: number }>('SELECT COUNT(*) AS n FROM roadmap_check'))[0].n, 0);
 });
 
-/* The person's own categories (functional audit ticket 34, round two:
-   "it should be possible to add your own goal/category"). A category is a
-   uuid row with a name; a custom goal names the category it sits in
-   through its `track`, which is 'legal' for the Polish legal steps and a
-   category's uuid otherwise. */
+/* The person's own categories. A category is a uuid row with a name; a custom goal names
+   the category it sits in through its `track`, which is 'legal' for the Polish legal steps
+   and a category's uuid otherwise. */
 
 test('a category gets a minted uuid, keeps its name, and comes back in the order added', async () => {
   const { journal } = await journalWithBuiltIns();

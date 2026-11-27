@@ -5,12 +5,11 @@ import { analysePassage, analyseVowel } from './benchmark.ts';
 
 /* Which questions get asked of which take. */
 
-/** How many words the synthesized read stands in for. The gate's floor
-    scales with the passage's word count (quality.ts), so a take four
-    seconds long has to be a passage somebody could have read in four
-    seconds: thirty English words ask for 2.49s of voice and this carries
-    four. Ninety-nine, which these tests used before redesign ticket 41, is
-    a passage this take is a fifth of. */
+/** How many words the synthesized read stands in for. The gate's floor scales with the
+    passage's word count (quality.ts), so a take four seconds long has to be a passage
+    somebody could have read in four seconds: thirty English words ask for 2.49s of voice
+    and this carries four. Ninety-nine, which these tests used, is a passage this take is a
+    fifth of. */
 const WORDS = 30;
 
 /** A read passage: pitch that moves, with pauses in it, over room tone. */

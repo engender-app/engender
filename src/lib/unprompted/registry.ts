@@ -62,15 +62,13 @@ export interface UnpromptedRow {
    * or notification switch (ADR-0039).
    */
   area: HideableArea | null;
-  /** Present when this kind shows something in the app of its own, carrying
-      a subtitle saying what it puts in front of you where the title does not
-      already say it, and whether it shows until the person says otherwise
-      (`defaultOn`). The switch is one entry in the `surfaceOverrides`
-      preference, keyed by this row's key, and
-      sits in Today's editor for a live tile and on
-      `/settings/notifications` for everything else. Absent is "shows
-      nothing in the app of its own": the four producers ticket 04 folded in
-      all fire and none surfaces. */
+  /** Present when this kind shows something in the app of its own, carrying a subtitle
+      saying what it puts in front of you where the title does not already say it, and
+      whether it shows until the person says otherwise (`defaultOn`). The switch is one
+      entry in the `surfaceOverrides` preference, keyed by this row's key, and sits in
+      Today's editor for a live tile and on `/settings/notifications` for everything else.
+      Absent is "shows nothing in the app of its own": the four producers folded in all fire
+      and none surfaces. */
   surface?: { subtitle?: () => string; defaultOn: boolean };
   /** Present when this kind may become a notification, and what firing
       means: the preference the notifications view's switch writes, the

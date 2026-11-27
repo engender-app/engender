@@ -44,11 +44,10 @@
      or the explicit opt-in, so it needs the episodes. Read with the others,
      so the row is not drawn and then taken back. */
   let episodesQuery = liveQuery((j) => j.regimen.getEpisodes());
-  /* The forward half (phase 11 all-four-doors ticket 02): what is running
-     and what is next, which is what nine of this door's rows were getting
-     wrong by reporting a gap over a screen full of dated plans. One
-     assembled call, `rowForwardReads.ts`, the shape the last-write read next
-     to it already has. */
+  /* The forward half: what is running and what is next, which is what nine of this door's
+     rows were getting wrong by reporting a gap over a screen full of dated plans. One
+     assembled call, `rowForwardReads.ts`, the shape the last-write read next to it already
+     has. */
   let forwardQuery = liveQuery((j) => readRowForward(j, today));
   /* voice-benchmark's own second read: a memo has no last write
      in the registry the other three rows draw on (ADR-0036), so this joins
@@ -113,12 +112,10 @@
       better finished on the search screen, and the row under the list goes
       there rather than reading twenty more here. */
   const PAGE = 20;
-  /** How long the record read waits after the last keystroke (the search
-      screen's own interval, phase 8 audit ticket 15): long enough that typing
-      at speed never fires a run per key, short enough that a pause reads as
-      instant. The area half is not waited out at all - it is a filter over
-      rows already on the screen, and making it lag behind the box would be
-      the screen feeling slower than it is. */
+  /** How long the record read waits after the last keystroke: long enough that typing at
+      speed never fires a run per key, short enough that a pause reads as instant. The area
+      half is not waited out at all - it is a filter over rows already on the screen, and
+      making it lag behind the box would be the screen feeling slower than it is. */
   const SEARCH_DEBOUNCE_MS = 250;
 
   let query = $state('');
@@ -267,13 +264,10 @@
        to be announced; empty it takes no room, and while a query is being
        answered it holds its line rather than letting the list jump (the two
        rules beside it in screens.css). -->
-  <!-- The line inside opens and closes its own height:
-       it used to reserve its line the moment typing began and drop it the
-       moment the box was cleared, and both moved the list under the finger
-       in one frame (Alicja, on the flipbooks: "the '0 results' simply
-       disappears and yanks the whole content underneath"). The region stays
-       the <p>, empty until both halves have answered, so the count is still
-       announced once. -->
+  <!-- The line inside opens and closes its own height: it used to reserve its line the
+       moment typing began and drop it the moment the box was cleared, and both moved the
+       list under the finger in one frame. The region stays the <p>, empty until both halves
+       have answered, so the count is still announced once. -->
   <p class="hub-count" data-hub-count aria-live="polite">
     {#if searching && settled}
       <span class="hub-count-line" transition:disclose={{ skip: leaving }}>{m.results_count({ count: resultCount })}</span>

@@ -102,10 +102,9 @@ test('cover crops the photo to the box centre instead of letterboxing it', () =>
   });
 });
 
-/* Ticket 27 puts "upscaling beyond what the already-normalized source photos
-   support" out of scope, and normalize.ts already refuses to upscale on the
-   way in, so a 640px import must not be blown up to fill a 1080px video frame
-   or a 360px collage cell on the way out. */
+/* Puts "upscaling beyond what the already-normalized source photos support" out of scope,
+   and normalize.ts already refuses to upscale on the way in, so a 640px import must not be
+   blown up to fill a 1080px video frame or a 360px collage cell on the way out. */
 test('neither fit ever draws a photo bigger than it is', () => {
   assert.deepEqual(fitContain(50, 50, 100, 100), { x: 25, y: 25, width: 50, height: 50 });
   // The demo persona's photos, and any modest import: 640px into a 1080 frame.

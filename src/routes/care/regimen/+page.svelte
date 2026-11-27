@@ -3,14 +3,12 @@
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   /* What you are taking, and since when, on the surface kit.
 
-     The dose log used to sit above the regimen alongside two other links -
-     the stock projection and the exposure counters - as a list-group
-     indistinguishable from the one holding the episodes. Ticket 09
-     (ADR-0084) moved medication records off Settings and onto Care: the
-     stock editor is a sheet off Care's own regimen block now, and the
-     exposure counters' one useful figure is that block's own dose-total
-     line, so this screen keeps only the one link still worth naming
-     here. */
+     The dose log used to sit above the regimen alongside two other links - the stock
+     projection and the exposure counters - as a list-group indistinguishable from the one
+     holding the episodes. (ADR-0084) moved medication records off Settings and onto Care:
+     the stock editor is a sheet off Care's own regimen block now, and the exposure
+     counters' one useful figure is that block's own dose-total line, so this screen keeps
+     only the one link still worth naming here. */
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { liveList } from '$lib/data/live/journal.svelte';
@@ -62,10 +60,8 @@
 
   const longDay = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
 
-  /* Where HRT began (functional audit ticket 18, CONTEXT: "HRT start"): the
-     date the person set, else the earliest HRT episode. Changes you've
-     noticed count from it, so it is said and set here,
-     beside the episodes it is read from. */
+  /* Where HRT began: the date the person set, else the earliest HRT episode. Changes you've
+     noticed count from it, so it is said and set here, beside the episodes it is read from. */
   let hrt = $derived(hrtAnchor(episodes, prefs.hrtStartEpochDay));
   let hrtStartSub = $derived(
     prefs.hrtStartEpochDay !== null
@@ -219,13 +215,12 @@
     </div>
   {/if}
 
-  <!-- No heading over this one. The catalogue's only wording for the area
-       was the name of its first row, which would be the row repeated at
-       heading size; a name for it is a copy ticket's to write. The gap and
-       the second stripe are what separate it from the regimen above -
-       ticket 09 (ADR-0084) took the other two rows this card used to hold:
-       stock is a sheet off Care's own regimen block now, and exposure's
-       one useful figure is that block's own dose-total line. -->
+  <!-- No heading over this one. The catalogue's only wording for the area was the name of
+       its first row, which would be the row repeated at heading size; a name for it is a
+       copy ticket's to write. The gap and the second stripe are what separate it from the
+       regimen above - (ADR-0084) took the other two rows this card used to hold: stock is a
+       sheet off Care's own regimen block now, and exposure's one useful figure is that
+       block's own dose-total line. -->
   <div class="regimen-elsewhere">
     <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.elsewhere)}>
       <ListRow key="doses" icon="pill" title={m.doses()} subtitle={m.doses_row_sub()} href="/care/doses" />

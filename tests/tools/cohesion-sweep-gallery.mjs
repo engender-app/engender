@@ -444,15 +444,13 @@ const read = () =>
       const field = !!blind && blind.getBoundingClientRect().width > root.clientWidth * 0.9;
       const back = !!root.querySelector('[data-screen-back]');
 
-      /* Coverage, so an unreached variant reads as a gap rather than as a
-         zero. Each audited base is counted by the whole class list of the
-         elements that matched it, drawn or not: `.card.spread` and
-         `.card.checkin-card` were the two ticket 20's walk never reached,
-         and a count nobody can see is what let ticket 21 size itself
-         against four variants when the source has six. Carpet 29 and 30
-         have since retired both, so the census should now read one base
-         and no variant but `.card.no-print`, which is a print utility
-         rather than a variant. */
+      /* Coverage, so an unreached variant reads as a gap rather than as a zero. Each
+         audited base is counted by the whole class list of the elements that matched it,
+         drawn or not: `.card.spread` and `.card.checkin-card` were the two walk never
+         reached, and a count nobody can see is what let size itself against four variants
+         when the source has six. and 30 have since retired both, so the census should now
+         read one base and no variant but `.card.no-print`, which is a print utility rather
+         than a variant. */
       const census = {};
       for (const base of AUDITED)
         for (const el of root.querySelectorAll(base)) {
@@ -783,18 +781,15 @@ const walkRoutes = async (list, extra = {}) => {
   }
 };
 
-/* The proof. Five marks go onto one real screen, the audit runs over them,
-   and the run fails unless the three checks carpet 28 added each catch
-   their own and the two that are meant to be ignored are ignored. A check nobody
-   has watched fail is a check that reports zero for the wrong reason, which
-   is what the 48px floor and the surface treatments had been doing all
-   along; and the fourth mark is the phantom ticket 20's triage found, where
-   `display: none` on a parent leaves `getComputedStyle` on its child still
-   answering `display: block`. The fifth is the other one: a round button
-   falls through to its ancestor at the four corners of its bounding box,
-   because hit testing respects `border-radius`, and reading that as a
-   clipped control filed eight findings against `.kit-notice-x` before this
-   mark existed. */
+/* The proof. Five marks go onto one real screen, the audit runs over them, and the run
+   fails unless the three checks added each catch their own and the two that are meant to be
+   ignored are ignored. A check nobody has watched fail is a check that reports zero for the
+   wrong reason, which is what the 48px floor and the surface treatments had been doing all
+   along; and the fourth mark is the phantom triage found, where `display: none` on a parent
+   leaves `getComputedStyle` on its child still answering `display: block`. The fifth is the
+   other one: a round button falls through to its ancestor at the four corners of its
+   bounding box, because hit testing respects `border-radius`, and reading that as a clipped
+   control filed eight findings against `.kit-notice-x` before this mark existed. */
 const proof = [];
 if (args.includes('--prove')) {
   await settle('/settings');
@@ -940,10 +935,10 @@ await page.close();
 await browser.close();
 await app.close();
 
-/* Coverage. A count of zero and a variant nobody drew read the same in a
-   table, and ticket 21 sized itself against four `.card` variants when the
-   source has six because of exactly that. So the source is counted too, and
-   anything the source has and the walk never drew is named a gap. */
+/* Coverage. A count of zero and a variant nobody drew read the same in a table, and sized
+   itself against four `.card` variants when the source has six because of exactly that. So
+   the source is counted too, and anything the source has and the walk never drew is named a
+   gap. */
 const sourceCensus = async () => {
   const files = [];
   const walkDir = async (dir) => {
@@ -1033,12 +1028,11 @@ for (const [bucket, items] of Object.entries(groups)) {
   for (const row of rows) lines.push(`- \`${row.where}\` - ${row.detail} - ${row.routes.length} reading(s): ${row.routes.join(', ')}`);
   lines.push('');
 }
-/* Rule 7, route by route (carpet 25). The other checks report the
-   divergences and say nothing about what passed, which is right for a rule
-   that reads a property off every element on the screen. This one is a
-   verdict per screen against what that screen *is*, so the whole list goes
-   in the report: a route missing from it is a route the walk never read,
-   and that is the reading ticket 20's own summary could not make. */
+/* Rule 7, route by route . The other checks report the divergences and say nothing about
+   what passed, which is right for a rule that reads a property off every element on the
+   screen. This one is a verdict per screen against what that screen *is*, so the whole list
+   goes in the report: a route missing from it is a route the walk never read, and that is
+   the reading own summary could not make. */
 const rule7Rows = new Map();
 for (const reading of audit) {
   if (!reading.rule7) continue;

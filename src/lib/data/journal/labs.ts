@@ -88,11 +88,10 @@ export interface LabsArea {
   getLatestResult(): Promise<LabResult | null>;
   /** Retrieve a lab result by its UUID, or null when not found. */
   getResultById(id: string): Promise<LabResult | null>;
-  /** The draw day of the most recent result at or before `todayEpochDay`, or
-      null if there is none (phase 8 features ticket 03, lastWrite.ts). Its
-      own bounded `MAX` rather than `getLatestResult` above: that one is
-      never asked to exclude a clock-skewed future draw, and returns the
-      whole row rather than the one field the registry wants. */
+  /** The draw day of the most recent result at or before `todayEpochDay`, or null if there
+      is none (lastWrite.ts). Its own bounded `MAX` rather than `getLatestResult` above:
+      that one is never asked to exclude a clock-skewed future draw, and returns the whole
+      row rather than the one field the registry wants. */
   lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
   /** The analyte's results split into one series per unit, oldest series
       first. A result logged in ng/dL and one logged in nmol/L differ by a
@@ -284,19 +283,16 @@ export function makeLabsArea(driver: SqliteDriver, regimen: RegimenArea): LabsAr
       return [...series.values()];
     },
 
-    /* Where the context is frozen. On insert it is derived from the dose log
-       as it stands; on update it is carried through untouched, unless the
-       draw itself moved.
+    /* Where the context is frozen. On insert it is derived from the dose log as it stands;
+       on update it is carried through untouched, unless the draw itself moved.
 
-       That is the whole of ticket 03's box 6: editing or correcting a dose
-       event months later cannot reach a context already saved, because no
-       edit to a dose passes through here. Correcting the draw's own day,
-       time or analyte does recompute, because moving the draw voids the
-       old figure outright rather than adjusting what it was measured from
-       (and an analyte can be timed from another drug's dose) - and
-       without that, a result saved with no draw time could never be given
-       one afterwards, since the hours figure that unlocks would never be
-       derived. */
+       That is the whole of box 6: editing or correcting a dose event months later cannot
+       reach a context already saved, because no edit to a dose passes through here.
+       Correcting the draw's own day, time or analyte does recompute, because moving the
+       draw voids the old figure outright rather than adjusting what it was measured from
+       (and an analyte can be timed from another drug's dose) - and without that, a result
+       saved with no draw time could never be given one afterwards, since the hours figure
+       that unlocks would never be derived. */
     async upsertResult(input) {
       const draw: LabDraw = { epochDay: input.epochDay, drawTime: input.drawTime ?? null };
       const fields = [input.analyte, input.value, input.unit ?? '', input.note ?? '', input.provider ?? ''];

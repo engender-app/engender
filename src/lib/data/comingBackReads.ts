@@ -30,16 +30,14 @@ export interface ComingBackAreas {
   doses: DosesArea;
 }
 
-/** The tables `readWhatIsWaiting` reads, for the live query that watches it
-    (`/coming-back`'s `waitingQuery`, phase 8 audit ticket 14). Its own five
-    calls are all made after the gap's own `await`, so a live query would
-    otherwise discover every one of them a re-run late; seeding with this
-    list is what a call site is never allowed to hand-write itself
-    (`liveQuery`'s own doc, and the risk `liveQueryWatchingOnly` warns about).
+/** The tables `readWhatIsWaiting` reads, for the live query that watches it. Its own five
+    calls are all made after the gap's own `await`, so a live query would otherwise discover
+    every one of them a re-run late; seeding with this list is what a call site is never
+    allowed to hand-write itself (`liveQuery`'s own doc, and the risk
+    `liveQueryWatchingOnly` warns about).
 
-    Built from `tablesReadBy` rather than copied by hand: a table added to
-    one of these five reads in writes.ts reaches this list, and so the seed,
-    without a second edit here. */
+    Built from `tablesReadBy` rather than copied by hand: a table added to one of these five
+    reads in writes.ts reaches this list, and so the seed, without a second edit here. */
 export const WAITING_TABLES: TableName[] = [
   ...new Set([
     ...tablesReadBy('letters', 'getLetters'),

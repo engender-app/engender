@@ -149,17 +149,15 @@ export async function seedCompleteArchiveJournal(
   // One mute, so the section is non-empty and a round trip has a row to
   // lose.
   await journal.eraMutes.setEraMuted(beforeIKnew, true);
-  // Two lines, so the fixture pins an order beyond "the only one" (phase 6
-  // ticket 14).
+  // Two lines, so the fixture pins an order beyond "the only one" (
+
   await journal.comfortItems.addItem('text a friend');
   await journal.comfortItems.addItem('walk by the river');
-  /* Six rows covering the four shapes an area's state comes in (phase 8
-     deepening ticket 13, phase 8 features ticket 51): hidden without a
-     finish day, finished without being hidden, one hub row's two sections
-     finished on the same day, and the same two-sections-in-one-gesture
-     shape for a suspended row. An area with a row saying nothing is not
-     among them because there is no such row - a state that says nothing
-     keeps no row. */
+  /* Six rows covering the four shapes an area's state comes in: hidden without a finish
+     day, finished without being hidden, one hub row's two sections finished on the same
+     day, and the same two-sections-in-one-gesture shape for a suspended row. An area with a
+     row saying nothing is not among them because there is no such row - a state that says
+     nothing keeps no row. */
   await journal.areaStates.setAreasFinished(['hairRemovalSessions'], 19250);
   await journal.areaStates.setAreasFinished(['personalEffects', 'sideEffects'], 19300);
   await journal.areaStates.setAreasSuspended(['voiceBenchmarks', 'voicePracticeTakes'], 19310);
@@ -253,8 +251,8 @@ export async function seedCompleteArchiveJournal(
   await journal.feltSense.add({ tryoutId: tryout }, { epochDay: 19910, mood: 4, note: 'felt right' });
   await journal.tryouts.addPhoto(tryout, 19905, { full: bytes('presenting'), thumb: bytes('pt') });
 
-  /* A real procedure now owns this checklist; it was a
-     placeholder owner pair until ticket 07 shipped the first owner. */
+  /* A real procedure now owns this checklist; it was a placeholder owner pair shipped the
+     first owner. */
   const procedure = await journal.procedures.upsertProcedure({
     name: 'top surgery',
     surgeryEpochDay: 20050,

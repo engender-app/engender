@@ -54,8 +54,8 @@ export interface HairRemovalArea {
   upsertSession(input: HairRemovalSessionInput): Promise<string>;
   /** Idempotent. Its photos go with it (ON DELETE CASCADE). */
   deleteSession(id: string): Promise<void>;
-  /** The day of the most recent session at or before `todayEpochDay`, or
-      null if there is none (phase 8 features ticket 03, lastWrite.ts). */
+  /** The day of the most recent session at or before `todayEpochDay`, or null if there is
+      none (lastWrite.ts). */
   lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
   /** A session's photos, oldest first. */
   getPhotos(sessionId: string): Promise<HairRemovalPhoto[]>;
@@ -78,9 +78,8 @@ export type HairRemovalSessionRow = CostRow & {
   note: string | null;
 };
 
-/* The old free-text `cost` column is neither read nor written: version 115
-   moved what it held into the cost columns or the note, and ticket 50 drops
-   it. */
+/* The old free-text `cost` column is neither read nor written: version 115 moved what it
+   held into the cost columns or the note, and drops it. */
 export const SESSION_COLUMNS =
   'uuid, epoch_day, area, method, pain_rating, minutes, cost_amount, cost_currency, cost_refunded, provider, note';
 type HairRemovalPhotoRow = { uuid: string; session_id: number; file_path: string };

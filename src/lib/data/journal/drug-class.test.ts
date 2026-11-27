@@ -8,7 +8,7 @@ import { migratedDb, noopFileOps } from '../sqlite/test-support/migrated-db.ts';
 import { makeNodeSqliteDb } from '../sqlite/test-support/node-sqlite-driver.ts';
 import { openJournal } from './journal.ts';
 
-/* Functional audit ticket 18: every episode carries a drug class. */
+/* Every episode carries a drug class. */
 
 test('upgrading from schema 92 classifies each existing episode from its drug', async () => {
   const db = makeNodeSqliteDb();

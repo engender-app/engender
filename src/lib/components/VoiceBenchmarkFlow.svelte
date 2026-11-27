@@ -58,11 +58,9 @@
       microphone left open, and the vowel step ends itself once it has what
       it needs anyway. */
   const VOWEL_CEILING_SECONDS = 10;
-  /** A passage is read once through; a person's own passage is a free
-      textarea with no length cap, so nothing bounds how long that read runs
-      without this (phase 8 audit issue 04). Two minutes stays comfortably
-      inside the poll's own period even before ticket 05 makes that poll
-      itself cheap. */
+  /** A passage is read once through; a person's own passage is a free textarea with no
+      length cap, so nothing bounds how long that read runs without this. Two minutes stays
+      comfortably inside the poll's own period even makes that poll itself cheap. */
   const PASSAGE_CEILING_SECONDS = 120;
   const READING_MS = 100;
   /** Two seconds of trace on screen, at the tracker's 10 ms frame. */
@@ -95,9 +93,8 @@
   let saving = $state(false);
 
   let session: TakeSession | null = null;
-  /** Live only across the microphone-opening await, so `onDestroy` can abort
-      it if the screen goes before `start()` returns (voiceBenchmark.ts's
-      `startTake`, ticket AU-03). */
+  /** Live only across the microphone-opening await, so `onDestroy` can abort it if the
+      screen goes before `start()` returns (voiceBenchmark.ts's `startTake`). */
   let opening = $state<AbortController | null>(null);
   let reading = $state<QualityReport | null>(null);
   let frames = $state<readonly PitchFrame[]>([]);
@@ -147,9 +144,9 @@
     guard.request(after);
   }
 
-  /** The corner-vowel scaling factor, fitted across whichever of the three
-      held vowels came back with a usable pair (audio/vowelScale.ts, ticket
-      30). Null the same way the function itself is: fewer than two. */
+  /** The corner-vowel scaling factor, fitted across whichever of the three held vowels came
+      back with a usable pair (audio/vowelScale.ts). Null the same way the function itself
+      is: fewer than two. */
   let resonanceScale = $derived.by(() => {
     const readings: VowelFormants[] = [];
     if (vowelTake?.formants) readings.push({ vowel: 'a', formants: vowelTake.formants });
@@ -248,7 +245,7 @@
         case 'tooShort':
           return m.vb_fail_short();
         // One length failure on the passage, so this keeps its wording and
-        // becomes true: after ticket 41 it fires only when somebody really
+        // becomes true: it fires only when somebody really
         // did read too little of it.
         case 'underRead':
           return m.vb_fail_short_passage();
@@ -472,7 +469,7 @@
     stopPolling();
     // Leaving mid-take closes the microphone rather than leaving it open
     // behind a screen nobody is on - and leaving mid-open, before `session`
-    // is even assigned, is the same thing one await earlier (ticket AU-03).
+    // is even assigned, is the same thing one await earlier.
     opening?.abort();
     void session?.discard();
     session = null;
@@ -482,10 +479,9 @@
 <div class="vbf">
   {#if refusal}
     <div class="screen-part">
-      <!-- The ask is a real button rather than a sentence about settings
-           (Alicja, 2026-08-31): a first refusal is usually the OS dialog
-           being dismissed, and asking again brings it straight back. Only
-           'denied' gets it - there is nothing to ask a device with no
+      <!-- The ask is a real button rather than a sentence about settings: a first refusal
+           is usually the OS dialog being dismissed, and asking again brings it straight
+           back. Only 'denied' gets it - there is nothing to ask a device with no
            microphone, or a browser that cannot record at all. -->
       <Notice
         icon="mic"
@@ -698,18 +694,16 @@
 </Sheet>
 
 <style>
-  /* The screen's own 20 under the panel, which sits a level too deep for
-     the .screen floor to reach. It held 96px here, a reserve for a foot that
-     floated over the content; the foot is the column's flex sibling now and
-     covers nothing (bug session 18, item 68). */
+  /* The screen's own 20 under the panel, which sits a level too deep for the.screen floor
+     to reach. It held 96px here, a reserve for a foot that floated over the content; the
+     foot is the column's flex sibling now and covers nothing. */
   .vb-body {
     padding-bottom: var(--space-5);
   }
 
-  /* The column's full width, justified, so the text and the hairlines
-     above and below it end where everything else on the screen does (bug
-     session 18, item 67; it was held to a 60ch measure). Hyphenated in the
-     page's language, so justified Polish does not open rivers. */
+  /* The column's full width, justified, so the text and the hairlines above and below it
+     end where everything else on the screen does. Hyphenated in the page's language, so
+     justified Polish does not open rivers. */
   .vb-passage {
     margin: 0;
     font-size: var(--text-lg);

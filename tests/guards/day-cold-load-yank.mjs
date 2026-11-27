@@ -137,15 +137,12 @@ for (const scene of SCENES) {
     await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
     await page.evaluate(() => sessionStorage.removeItem('day-probe'));
 
-    /* The gate's own skeleton-to-content reveal (ticket 144's mechanism, not
-       this ticket's) is a resize transition that a rAF sampler can catch
-       mid-flight or read one tick ahead of the ResizeObserver that starts
-       it - a known artifact (ticket 184's care mood card hit the same
-       thing). Settled = at least 350ms of wall clock past the card's first
-       frame, past the transition's own ~240ms. What this probe is actually
-       after is a step in the settled region: the day's records changing
-       shape once they are already on screen, which is what a chained read
-       landing late looks like. */
+    /* The gate's own skeleton-to-content reveal is a resize transition that a rAF sampler
+       can catch mid-flight or read one tick ahead of the ResizeObserver that starts it - a
+       known artifact. Settled = at least 350ms of wall clock past the card's first frame,
+       past the transition's own ~240ms. What this probe is actually after is a step in the
+       settled region: the day's records changing shape once they are already on screen,
+       which is what a chained read landing late looks like. */
     const cardFirstAt = frames.findIndex((f) => f.card);
     const settledFromMs = cardFirstAt >= 0 ? frames[cardFirstAt].at + 350 : Infinity;
     let worstAddStep = 0;

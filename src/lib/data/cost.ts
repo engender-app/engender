@@ -1,18 +1,14 @@
-/* What a record cost (functional audit ticket 30, CONTEXT: "Cost"): an
-   amount, the currency it was paid in and whether it was refunded. A field
-   on the records that cost money - hair-removal sessions, appointments,
-   procedures, lab results and the medication stock held now - rather than a
-   module of its own.
+/* What a record cost: an amount, the currency it was paid in and whether it was refunded. A
+   field on the records that cost money - hair-removal sessions, appointments, procedures,
+   lab results and the medication stock held now - rather than a module of its own.
 
-   The amount is stored in major units as typed (250.5, not 25050): every
-   reader formats it through Intl for its own currency, and a total is only
-   ever taken inside one currency (costTotalsByCurrency), so no conversion and
-   no minor-unit table is needed. Amounts in two currencies are never added
-   together anywhere in the app.
+   The amount is stored in major units as typed (250.5, not 25050): every reader formats it
+   through Intl for its own currency, and a total is only ever taken inside one currency
+   (costTotalsByCurrency), so no conversion and no minor-unit table is needed. Amounts in
+   two currencies are never added together anywhere in the app.
 
-   No CHECK constraints (the audit's CHECK policy): assertValidCost is the one
-   rule, used by every write path and, through archiveRowValidation.ts, by an
-   archive's rows. */
+   No CHECK constraints (the audit's CHECK policy): assertValidCost is the one rule, used by
+   every write path and, through archiveRowValidation.ts, by an archive's rows. */
 
 export interface Cost {
   /** In the currency's major unit; null when no amount was written. */
@@ -132,13 +128,12 @@ function currencyOfMark(mark: string): string | null {
   return CODE.test(code) && isKnownCode(code) ? code : null;
 }
 
-/** Hair removal's free-text cost before ticket 30, read by the recorded
-    rule (ADR "Cost on records"): one amount (parseAmount), with at most one
-    currency mark - a symbol (zł, €, £, $), or an ISO code - before or after
-    it. A bare amount takes `fallbackCurrency`, the default currency of the
-    device's locale. Anything else - words, a range, two amounts, an unknown
-    mark - is not a clean parse and returns null, and the caller moves the
-    text into the session's note unchanged. */
+/** Hair removal's free-text cost, read by the recorded rule (ADR "Cost on records"): one
+    amount (parseAmount), with at most one currency mark - a symbol (zł, €, £, $), or an ISO
+    code - before or after it. A bare amount takes `fallbackCurrency`, the default currency
+    of the device's locale. Anything else - words, a range, two amounts, an unknown mark -
+    is not a clean parse and returns null, and the caller moves the text into the session's
+    note unchanged. */
 export function parseLegacyCostText(text: string, fallbackCurrency: string): { amount: number; currency: string } | null {
   const match = /^([^\d]*)(\d[\d\s.,'-]*)([^\d]*)$/.exec(text.trim());
   if (!match) return null;

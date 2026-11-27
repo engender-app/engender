@@ -151,11 +151,10 @@
       : tickedModules.filter((key) => key !== row.key);
   }
 
-  /* The lock step's own answer once a mode is set up: when that mode's
-     secret is asked for again (lock-timing ticket 01). A minute is offered
-     rather than the catalogue's restart, which is only the default because
-     it is what an old journal's "off" meant. Null after a Skip, which writes
-     nothing and so leaves the restart. */
+  /* The lock step's own answer once a mode is set up: when that mode's secret is asked for
+     again. A minute is offered rather than the catalogue's restart, which is only the
+     default because it is what an old journal's "off" meant. Null after a Skip, which
+     writes nothing and so leaves the restart. */
   let lockAfter = $state<LockAfter | null>('one-minute');
 
   /* Setup's last answer (ADR-0079). Held like
@@ -168,11 +167,9 @@
      someone gives here is still the answer. complete() applies it, last. */
   let disguise = $state(false);
 
-  /* The access-mode module's own working state (ticket 53's four modes,
-     wired in at this one step by ticket 54). Local to this step rather than
-     read off the gate: on a brand new install this page is what renders
-     while `bootState` is still `needs-setup`, not JournalGate, so there is
-     no other screen's state to share. */
+  /* The access-mode module's own working state. Local to this step rather than read off the
+     gate: on a brand new install this page is what renders while `bootState` is still
+     `needs-setup`, not JournalGate, so there is no other screen's state to share. */
   let accessSetup: { back(): void } | undefined = $state();
   let accessChosen = $state<AccessSetupMode | null>(null);
   let accessBusy = $state(false);
@@ -226,12 +223,11 @@
   let setupError = $state('');
   const archiveProgress = createProgress();
 
-  /* One flow for everybody (ADR-0079): setup does not vary by disguise,
-     and steps.ts says why the shorter flow it used to offer went. It does
-     vary by whether a journal is being restored, which is a different axis
-     and the one thing an archive can actually answer for a person: the steps
-     whose answers it carries are dropped rather than asked and overwritten
-     (ticket 36, steps.ts). */
+  /* One flow for everybody (ADR-0079): setup does not vary by disguise, and steps.ts says
+     why the shorter flow it used to offer went. It does vary by whether a journal is being
+     restored, which is a different axis and the one thing an archive can actually answer
+     for a person: the steps whose answers it carries are dropped rather than asked and
+     overwritten (steps.ts). */
   let steps = $derived(restoring ? restoreSteps() : onboardingSteps());
   let index = $derived(stepIndex(steps, step));
   let growth = $derived(stepSun(step, steps));
@@ -389,12 +385,10 @@
     };
   });
 
-  /* Out of the welcome, the sun shrinks on the closing curve stepBlind
-     gives a shrinking field, so the two travel as one. On its own
-     transition's ease-out it was at 0.67 of its size while the edge had
-     travelled a third of the way, and the two read as two things
-     (pre-release-human ticket 19, frame samples). Every way out of the
-     welcome goes through here. */
+  /* Out of the welcome, the sun shrinks on the closing curve stepBlind gives a shrinking
+     field, so the two travel as one. On its own transition's ease-out it was at 0.67 of its
+     size while the edge had travelled a third of the way, and the two read as two things.
+     Every way out of the welcome goes through here. */
   let collapsing = $state(false);
   let collapseDone: ReturnType<typeof setTimeout> | undefined;
   /* The field's box drops to the first step's height in one layout while
@@ -436,19 +430,18 @@
     step = to;
   }
 
-  /* Each step's question takes focus as it arrives, so a screen reader
-     says the new step and a keyboard starts from it (audit A11Y-12). Focus
-     used to stay on Continue, which said nothing, and on the two steps
-     whose Continue is a different button it fell to the body.
+  /* Each step's question takes focus as it arrives, so a screen reader says the new step
+     and a keyboard starts from it (audit A11Y-12). Focus used to stay on Continue, which
+     said nothing, and on the two steps whose Continue is a different button it fell to the
+     body.
 
-     The first question is left to the layout, which focuses a screen's
-     heading when the screen arrives (navigation/arrivalFocus.ts). A frame
-     later rather than on mount, so the question's entrance has started
-     before focus asks for a layout (ticket 115's Android teleport).
+     The first question is left to the layout, which focuses a screen's heading when the
+     screen arrives (navigation/arrivalFocus.ts). A frame later rather than on mount, so the
+     question's entrance has started before focus asks for a layout.
 
-     The id is how the name field is named by its question. The question is
-     keyed, so for the length of a change two of them are in the document,
-     and the arriving one takes the id from the leaving one. */
+     The id is how the name field is named by its question. The question is keyed, so for
+     the length of a change two of them are in the document, and the arriving one takes the
+     id from the leaving one. */
   const QUESTION_ID = 'ob-question';
   let questionsArrived = 0;
   function questionArrives(node: HTMLElement) {
@@ -738,19 +731,16 @@
       bind:this={field}
       style:overflow-clip-margin={collapseMargin}
     >
-      <!-- The paint, split from the box that measures it (ticket 28's
-           mechanism, and the same reason): what draws the field's colour is
-           a block a window tall whose bottom edge is a clip, so the edge
-           can move without a frame ever deforming the two bottom corners.
-           The sun is inside the clip because it is painted on the field
-           too - at every step the sun's reach is under the field's own
-           edge, so the clip never cuts it. -->
-      <!-- `data-field-blind`, so this block is the blind on a navigation as
-           well as the paint on a step change (ticket 28's mechanism): the
-           name is handed to it for the outgoing capture and setup's edge
-           travels to Home's rather than fading out while another field
-           appears. The attribute is what $lib/motion/fieldBlind looks for;
-           the shape is this file's own. -->
+      <!-- The paint, split from the box that measures it: what draws the field's colour is
+           a block a window tall whose bottom edge is a clip, so the edge can move without a
+           frame ever deforming the two bottom corners. The sun is inside the clip because
+           it is painted on the field too - at every step the sun's reach is under the
+           field's own edge, so the clip never cuts it. -->
+      <!-- `data-field-blind`, so this block is the blind on a navigation as well as the
+           paint on a step change: the name is handed to it for the outgoing capture and
+           setup's edge travels to Home's rather than fading out while another field
+           appears. The attribute is what $lib/motion/fieldBlind looks for; the shape is
+           this file's own. -->
       <div class="setup-paint step-field-paint" data-field-blind>
         <!-- The flag being left, on top of the flag arriving and under the
              sun, wiping off towards the far corner: the new colour is
@@ -913,9 +903,8 @@
                  same slot with the dictionary line above it. -->
             {#if step === 'welcome'}
               {#if erasedOnEntry}<p class="setup-line is-result" role="status" data-erased-result use:erasedArrival>{m.reset_done()}</p>{/if}
-              <!-- What the app is, and only that: the privacy promise that
-                   stood under it made the screen too busy (Alicja,
-                   pre-release-human ticket 19 sign-off). -->
+              <!-- What the app is, and only that: the privacy promise that stood under it
+                   made the screen too busy. -->
               <p class="setup-line is-pitch" data-opening="line">{m.ob_welcome_what({ appName: appWordmark(prefs.disguise, m.app_name(), m.disguise_name()) })}</p>
             {:else if line && step !== 'features'}
               <p class="setup-line">{line}</p>
@@ -1161,9 +1150,8 @@
     <div class="setup-foot" data-setup-foot data-opening="foot">
       {#if setupError}<p class="setup-status" role="alert">{setupError}</p>{/if}
       {#if awaitingAccessMode}
-        <!-- The module above carries its own submit action, and there is no
-             other way past it (ticket 54, matching AccessModeSetup's own
-             "no Skip anywhere" rule). -->
+        <!-- The module above carries its own submit action, and there is no other way past
+             it. -->
       {:else if step === 'done'}
         <!-- On a restored first run this button is the restore: it fills
              left to right with the operation's own progress rather than
@@ -1212,11 +1200,10 @@
       {#if !awaitingAccessMode}
         <div class="setup-outs">
           {#if step === 'welcome'}
-            <!-- The second action, on the outs line where Skip and "straight
-                 to the app" already live, so it is quiet by being where the
-                 quiet controls are rather than by being a smaller version of
-                 the primary (ticket 36: it must not compete). A person with
-                 no archive reads one word of it and carries on. -->
+            <!-- The second action, on the outs line where Skip and "straight to the app"
+                 already live, so it is quiet by being where the quiet controls are rather
+                 than by being a smaller version of the primary. A person with no archive
+                 reads one word of it and carries on. -->
             <button class="btn btn-ghost" data-restore-start onclick={beginRestore}>
               <span>{m.ob_have_backup()}</span>
             </button>
@@ -1639,9 +1626,8 @@
   .setup-feature-line {
     margin-top: 0;
   }
-  /* A new group after the features, so it stands well clear of the last
-     feature row: 40 above, the section rhythm's own gap (bug session 18,
-     item 51 - it sat a few pixels under Documents and read as one more row). */
+  /* A new group after the features, so it stands well clear of the last feature row: 40
+     above, the section rhythm's own gap. */
   .setup-feature-heading {
     margin-top: var(--space-8);
     margin-bottom: 0;
@@ -1721,10 +1707,9 @@
      (rule 13). The person's name is the first thing in the app set in the
      app's own voice. A passphrase is the same shape with its characters
      hidden. */
-  /* The rule-shaped input, its label and the rule that draws itself in on
-     focus are `.typed`/`.rule-input` in components.css since redesign ticket
-     34: the gates ask for a passphrase on the same shape, and rule 13 says
-     they are one drawing. */
+  /* The rule-shaped input, its label and the rule that draws itself in on focus are
+     `.typed`/`.rule-input` in components.the gates ask for a passphrase on the same shape,
+     and rule 13 says they are one drawing. */
 
   /* ---------- the restore step ---------- */
 

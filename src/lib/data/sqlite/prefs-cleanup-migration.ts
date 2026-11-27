@@ -1,9 +1,8 @@
 import type { MigrationDb } from './migration-runner';
 
-/** The eight per-surface switches before functional audit ticket 44, and the
-    unprompted-registry kind each one belonged to. Written out here rather
-    than read from the registry: a migration is frozen, and the registry is
-    not. */
+/** The eight per-surface switches, and the unprompted-registry kind each one belonged to.
+    Written out here rather than read from the registry: a migration is frozen, and the
+    registry is not. */
 const SURFACE_SWITCHES: Record<string, string> = {
   wearTimerEnabled: 'wear-timer',
   dosePanelEnabled: 'dose-panel',

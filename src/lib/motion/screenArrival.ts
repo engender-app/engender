@@ -16,14 +16,12 @@ export function endTabArrival(): void {
   tabRevealBy = undefined;
 }
 
-/* A read answering during the field's travel shares what is left of it,
-   but never below --dur-fast. Look back's rail used to be squeezed into
-   whatever remained: answering about 40ms before the stop, it went from
-   skeleton to almost fully drawn in one frame, which Alicja rejected as a
-   yank. An answer with less than that left keeps
-   its placeholder until the field stops and then reveals at full length
-   (arrivalHold.svelte.ts); one with more is fitted into the travel, no
-   shorter than --dur-fast. */
+/* A read answering during the field's travel shares what is left of it, but never below
+   --dur-fast. Look back's rail used to be squeezed into whatever remained: answering about
+   40ms before the stop, it went from skeleton to almost fully drawn in one frame, which
+   rejected as a yank. An answer with less than that left keeps its placeholder until the
+   field stops and then reveals at full length (arrivalHold.svelte.ts); one with more is
+   fitted into the travel, no shorter than --dur-fast. */
 function revealFloor(): number {
   return motionDuration('--dur-fast');
 }

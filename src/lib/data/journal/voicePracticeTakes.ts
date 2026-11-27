@@ -1,17 +1,14 @@
-/* Practice takes (phase 8 features ticket 10, CONTEXT: "Pitch track" sits
-   beside this without covering it).
+/* Practice takes.
 
-   A benchmark is a fixed, comparable measurement; a practice take is what a
-   person does with their voice most other days, and it gets its own table
-   for the reason voiceBenchmarks.ts's own header gives for voice_benchmark
-   itself standing apart from entry: the two are different activities and
-   never compared (this ticket's Out of Scope).
+   A benchmark is a fixed, comparable measurement; a practice take is what a person does
+   with their voice most other days, and it gets its own table for the reason
+   voiceBenchmarks.ts's own header gives for voice_benchmark itself standing apart from
+   entry: the two are different activities and never compared (this ticket's Out of Scope).
 
-   Flat, so its three writes come from flatArea.ts and only the reads are its
-   own. No seal is stored: a take's own `epochDay + 1` is its unlock day and
-   nothing else ever is, which callers compute at the point of reading
-   (sealedUntil.ts) rather than a column repeating it - schema.ts
-   comment says why ADR-0010 asks for that. */
+   Flat, so its three writes come from flatArea.ts and only the reads are its own. No seal
+   is stored: a take's own `epochDay + 1` is its unlock day and nothing else ever is, which
+   callers compute at the point of reading (sealedUntil.ts) rather than a column repeating
+   it - schema.ts comment says why ADR-0010 asks for that. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { VoicePracticeTake } from '../types';
@@ -28,10 +25,10 @@ interface VoicePracticeTakeInput {
 export interface VoicePracticeTakesArea {
   /** Newest first. */
   getTakes(): Promise<VoicePracticeTake[]>;
-  /** One day's takes (phase 8 features ticket 10, day.ts). */
+  /** One day's takes (day.ts). */
   getTakesOnDay(epochDay: number): Promise<VoicePracticeTake[]>;
-  /** The day of the most recent take at or before `todayEpochDay`, or null
-      if there is none (phase 8 features ticket 03, lastWrite.ts). */
+  /** The day of the most recent take at or before `todayEpochDay`, or null if there is none
+      (lastWrite.ts). */
   lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
   /** Returns the take's id. Sealed until the day after `input.epochDay`
       (isSealedUntil, sealedUntil.ts), a fact the caller derives rather than

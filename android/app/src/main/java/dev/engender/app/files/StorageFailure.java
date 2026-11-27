@@ -8,16 +8,16 @@ import android.system.StructStatVfs;
 import java.io.IOException;
 
 /**
- * Which storage ran out when a native operation failed (last-audit ui 37). Capacitor
- * hands JavaScript a rejection's message and code and never its exception,
- * so a full disk has to become a code here or the screen can only say the
- * export failed.
+ * Which storage ran out when a native operation failed. Capacitor hands
+ * JavaScript a rejection's message and code and never its exception, so a
+ * full disk has to become a code here or the screen can only say the export
+ * failed.
  *
  * <p>{@link #DEVICE_FULL} is app-private storage on the phone, including
- * export staging and PIN attempt accounting;
- * {@link #DESTINATION_FULL} is the place picked in the save dialog, which
- * can be another volume or a cloud provider with no free space to measure.
- * Every other failure keeps no code, so it is never called a full disk.
+ * export staging and PIN attempt accounting; {@link #DESTINATION_FULL} is the
+ * place picked in the save dialog, which can be another volume or a cloud
+ * provider with no free space to measure. Every other failure keeps no code,
+ * so it is never called a full disk.
  */
 public final class StorageFailure {
     public static final String DEVICE_FULL = "storage-full";

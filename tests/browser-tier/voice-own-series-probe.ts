@@ -166,7 +166,7 @@ async function run() {
   await pick(unmeasured, 'room');
 
   return {
-    /* Phase 15 ticket 20: the area line sits on a casing in its role's edge. */
+    /* The area line sits on a casing in its role's edge. */
     casing: casingOf(series.querySelector('.kit-area-line:not(.is-overlay)'), roleAt(readFlagRoles(), 0)?.edge ?? null),
     offered,
     registered: OWN_SERIES_METRICS.map((metric) => metric.key),

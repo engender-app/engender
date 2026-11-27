@@ -1,17 +1,14 @@
-/* The entry editor, mounted over a real encrypted journal and read back out
-   of SQLite (phase 8 audit ticket 25, tester report 02).
+/* The entry editor, mounted over a real encrypted journal and read back out of SQLite.
 
-   Each case mounts the real editor, drives the real controls, saves, and
-   reads the entry back from SQLite. What is published is what the database
-   holds - not what the markup says. The draft is component-local `$state`
-   with no handle out, so the save is the only way to see it at all, and the
-   save is ADR-0044's nine-area transaction, so a break in *that* would
-   surface here as a case that saved nothing.
+   Each case mounts the real editor, drives the real controls, saves, and reads the entry
+   back from SQLite. What is published is what the database holds - not what the markup
+   says. The draft is component-local `$state` with no handle out, so the save is the only
+   way to see it at all, and the save is ADR-0044's nine-area transaction, so a break in
+   *that* would surface here as a case that saved nothing.
 
-   The editor's draft mirror uses this fixture's data key through the boot
-   stub. The fixture opens below the keystore, so the real boot store has
-   no session key to release. Waiting for draft restoration before enabling
-   Save needs that same key available to the editor. */
+   The editor's draft mirror uses this fixture's data key through the boot stub. The fixture
+   opens below the keystore, so the real boot store has no session key to release. Waiting
+   for draft restoration before enabling Save needs that same key available to the editor. */
 
 import { flushSync } from 'svelte';
 import { createEncryptedWebSqlite } from '../../src/lib/data/sqlite/mc-driver.ts';
@@ -81,7 +78,7 @@ async function toStepWith(root: ParentNode, selector: string): Promise<void> {
     const at = await until(() => settledStep(root), 'a settled step');
     if (root.querySelector(`[data-entry-step] ${selector}`)) return;
     if (at === 'writing') break;
-    // The way on from the first step waits for a face (ticket 09's sign-off).
+    // The way on from the first step waits for a face.
     if (at === 'today' && !root.querySelector('[data-entry-step="today"] [data-mood][aria-checked="true"]')) {
       root.querySelector<HTMLButtonElement>('[data-entry-step="today"] [data-mood="3"]')?.click();
     }
@@ -283,9 +280,8 @@ async function walkWithTheBodyStepEmpty(journal: Journal): Promise<{ steps: stri
   }
 }
 
-/** The mood comes first (Alicja, ticket 09's sign-off): the way on from the
-    first step, pressed with no face picked, stays on the step, takes the
-    focus to the faces and says why. */
+/** The mood comes first: the way on from the first step, pressed with no face picked, stays
+    on the step, takes the focus to the faces and says why. */
 async function wayOnWithoutAMood(): Promise<{ step: string | null; focusOnAFace: boolean; said: string }> {
   const target = document.createElement('div');
   document.querySelector('#editor')!.replaceChildren(target);
@@ -305,11 +301,10 @@ async function wayOnWithoutAMood(): Promise<{ step: string | null; focusOnAFace:
 
 type StepTwoShape = { steps: string[]; order: string[]; backKeptDraft: boolean; footOnStep2: number; finishSameNode: boolean };
 
-/** The later steps' parts in page order, step by step, and what going back
-    does to the draft: the order is the one Alicja chose on 2026-11-10 (mode,
-    tags, the body and the cards, the note, the attachments last), on steps of
-    one purpose each since ticket 09; back walks every step to the first with
-    the face and the note kept. */
+/** The later steps' parts in page order, step by step, and what going back does to the
+    draft: the order is (mode, tags, the body and the cards, the note, the attachments
+    last), on steps of one purpose each; back walks every step to the first with the face
+    and the note kept. */
 async function secondStepShape(): Promise<StepTwoShape> {
   const target = document.createElement('div');
   document.querySelector('#editor')!.replaceChildren(target);
@@ -381,11 +376,10 @@ type FirstStepNoScales = {
   viewport: [number, number];
 };
 
-/** A new entry's first step for a person who has hidden every scale (tester
-    report 02, ticket 03, "with every scale hidden, step 1 shows the faces
-    alone"). Reads what the step drew: the five faces, and no scale row, no
-    value, no "not ticked" hint, no heading for a block that is not there;
-    and that both ways on are on screen in the window the page was given. */
+/** A new entry's first step for a person who has hidden every scale. Reads what the step
+    drew: the five faces, and no scale row, no value, no "not ticked" hint, no heading for a
+    block that is not there; and that both ways on are on screen in the window the page was
+    given. */
 async function firstStepWithEveryScaleHidden(journal: Journal): Promise<FirstStepNoScales> {
   const target = document.createElement('div');
   document.querySelector('#editor')!.replaceChildren(target);

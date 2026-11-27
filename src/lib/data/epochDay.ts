@@ -93,15 +93,13 @@ export function epochDayFromDateInputValue(value: string): number | null {
 
 /** `<input type="date">` value → epoch day, falling back to today.
 
-    16 call sites each decided by hand what an unreadable value means - 15
-    answered "today", one (the surgery screen) answered null. This is the
-    app's one answer, for the 15: a blank date field means now, the same way
-    an unstarted record defaults to today everywhere else in the app. A
-    screen that means something else by "unreadable" (the surgery screen's
-    consult/photo dates, which are meaningless without a real date) keeps
-    calling `epochDayFromDateInputValue` directly and handles `null` itself,
-    which is the exception ticket 10 leaves written down rather than
-    silent. */
+    16 call sites each decided by hand what an unreadable value means - 15 answered "today",
+    one (the surgery screen) answered null. This is the app's one answer, for the 15: a
+    blank date field means now, the same way an unstarted record defaults to today
+    everywhere else in the app. A screen that means something else by "unreadable" (the
+    surgery screen's consult/photo dates, which are meaningless without a real date) keeps
+    calling `epochDayFromDateInputValue` directly and handles `null` itself, which is the
+    excepti leaves written down rather than silent. */
 export function epochDayFromDateInputValueOrToday(value: string): number {
   return epochDayFromDateInputValue(value) ?? todayEpochDay();
 }
@@ -148,20 +146,18 @@ export interface DurationPart {
   unit: DurationUnit;
 }
 
-/** The largest one or two units of a duration, as numbers beside their unit
-    names: 4 years 11 months, 2 years, 1 month, 12 days.
+/** The largest one or two units of a duration, as numbers beside their unit names: 4 years
+    11 months, 2 years, 1 month, 12 days.
 
-    The rule itself, with no words in it. `fmtDuration` renders these as a
-    sentence and a sealed letter's card draws the same parts as numbers on
-    blocks, so the two can never disagree about how long a gap
-    is. Always one part or two, days included at zero - "unlocks today" is a
-    different fact from "0 days" and the caller that has to tell them apart
-    compares the days themselves.
+    The rule itself, with no words in it. `fmtDuration` renders these as a sentence and a
+    sealed letter's card draws the same parts as numbers on blocks, so the two can never
+    disagree about how long a gap is. Always one part or two, days included at zero -
+    "unlocks today" is a different fact from "0 days" and the caller that has to tell them
+    apart compares the days themselves.
 
-    Months never carry a remainder in days, which is `fmtDuration`'s rule
-    from phase 5 kept rather than revisited: a card carries the exact date
-    beside the countdown, so the second unit would be precision the reader
-    already has. */
+    Months never carry a remainder in days, which is `fmtDuration`'s rule kept rather than
+    revisited: a card carries the exact date beside the countdown, so the second unit would
+    be precision the reader already has. */
 export function durationParts(d: CalendarDuration): DurationPart[] {
   if (d.years > 0) {
     const years: DurationPart = { n: d.years, unit: 'years' };
@@ -198,15 +194,13 @@ export function nextAnniversaryEpochDay(milestoneEpochDay: number, onOrAfterEpoc
   return thisYear >= onOrAfterEpochDay ? thisYear : anniversaryInYear(m, refYear + 1);
 }
 
-/** How many of a past milestone's anniversaries have arrived by
-    `onEpochDay`: the year difference, less one while this year's is still
-    ahead. Counted from the anniversary itself rather than from
-    `calendarDuration().years`, so the count follows `anniversaryInYear`'s
-    clamp by construction. The two agree since `calendarDuration` clamps
-    the same way (last-audit UI 32); before that the gap was a day short on
-    a 29 February milestone's 28 February anniversary, and a milestone
-    announced "0 years" while flagging itself as an anniversary. Only
-    meaningful for a milestone in the past. */
+/** How many of a past milestone's anniversaries have arrived by `onEpochDay`: the year
+    difference, less one while this year's is still ahead. Counted from the anniversary
+    itself rather than from `calendarDuration().years`, so the count follows
+    `anniversaryInYear`'s clamp by construction. The two agree since `calendarDuration`
+    clamps the same way; before that the gap was a day short on a 29 February milestone's 28
+    February anniversary, and a milestone announced "0 years" while flagging itself as an
+    anniversary. Only meaningful for a milestone in the past. */
 export function anniversaryYears(milestoneEpochDay: number, onEpochDay: number): number {
   const m = localDateFromEpochDay(milestoneEpochDay);
   const refYear = localDateFromEpochDay(onEpochDay).getFullYear();

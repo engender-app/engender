@@ -135,13 +135,11 @@
     <Icon name="plus" size={20} /><span>{m.tags_new_group()}</span>
   </button>
 
-  <!-- Held at last visit's height and faded in once the vocabulary mirror
-       answers (ux-carpet ticket 205; ticket 152 found the gap). Every
-       built-in group is reconciled on every boot (ADR-0004), so this is
-       never legitimately empty, but a cold navigation straight here reads
-       the mirror empty for a few frames. The outer box carries the first
-       heading's 16px while the placeholder stands: the button above is
-       inline-level, so that margin adds to the button's 20 rather than
+  <!-- Held at last visit's height and faded in once the vocabulary mirror answers. Every
+       built-in group is reconciled on every boot (ADR-0004), so this is never legitimately
+       empty, but a cold navigation straight here reads the mirror empty for a few frames.
+       The outer box carries the first heading's 16px while the placeholder stands: the
+       button above is inline-level, so that margin adds to the button's 20 rather than
        collapsing into it. -->
   <div style:margin-top={tagsRevealed ? null : 'var(--space-4)'}>
     <ReadReserve ready={tagsRevealed} estimate={tagsEstimate} onrest={tagsRemember}>

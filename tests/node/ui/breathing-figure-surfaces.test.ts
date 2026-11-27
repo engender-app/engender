@@ -1,9 +1,8 @@
-/* Surface tests for the breathing exercise's tide (phase 12 breathing
-   ticket 01). String-matching against the component source, the same shape
-   safe-space-contracts.ts uses for +page.svelte - the component itself
-   has no test tier a Svelte render can run under (no rune compilation
-   under vitest.config.ts). The motion is held where it lives: the curve in
-   breathClock.test.ts, the frames in tests/guards/breathing-frames.mjs. */
+/* Surface tests for the breathing exercise's tide. String-matching against the component
+   source, the same shape safe-space-contracts.ts uses for +page.svelte - the component
+   itself has no test tier a Svelte render can run under (no rune compilation under
+   vitest.config.ts). The motion is held where it lives: the curve in breathClock.test.ts,
+   the frames in tests/guards/breathing-frames.mjs. */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -44,12 +43,11 @@ describe('one clock', () => {
 });
 
 describe('the tide', () => {
-  /* Alicja's first look at the prototype: "those weird handles on the right
-     and below". Each tick was rotated with an SVG rotate(angle cx cy)
-     attribute while a blanket CSS transform-origin also put the pivot at the
-     centre, so the pivot was applied twice and three of the four ticks
-     landed off the ring - one beside it, one under the button, one on the
-     list below. Placed by coordinates now, with no transform to compound. */
+  /* "those weird handles on the right and below". Each tick was rotated with an SVG
+     rotate(angle cx cy) attribute while a blanket CSS transform-origin also put the pivot
+     at the centre, so the pivot was applied twice and three of the four ticks landed off
+     the ring - one beside it, one under the button, one on the list below. Placed by
+     coordinates now, with no transform to compound. */
   it('places the quarter ticks by coordinates, never by a transform', () => {
     const ticks = markup.match(/<line class="breathing-tick"[^>]*>/g) ?? [];
     expect(ticks.length).toBeGreaterThan(0);

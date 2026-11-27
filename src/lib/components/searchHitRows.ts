@@ -61,12 +61,11 @@ const AREA_ROWS: Record<
     // Its own screen (prh12), the way a tryout's hit opens that tryout.
     href: (hit) => `${hubRow('appointments').href}/${hit.id}`
   },
-  /* One area, two screens. A question written for an appointment belongs to
-     the prep list, which is a section of the visit screen since phase 11
-     all-four-doors ticket 12; a line of a procedure's recovery checklist
-     belongs to that journey, and the owner's id on the row is what tells
-     them apart and names the procedure to open (textSearch.ts). The prep list is the more common of the two,
-     so its screen is what the row's own icon names. */
+  /* One area, two screens. A question written for an appointment belongs to the prep list,
+     which is a section of the visit screen; a line of a procedure's recovery checklist
+     belongs to that journey, and the owner's id on the row is what tells them apart and
+     names the procedure to open (textSearch.ts). The prep list is the more common of the
+     two, so its screen is what the row's own icon names. */
   checklistItems: {
     ...iconOf('appointments'),
     label: () => m.appointment_prep_title(),

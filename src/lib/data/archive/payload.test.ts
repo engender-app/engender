@@ -39,10 +39,9 @@ test('the shipped ladder covers every version below the current one', () => {
   assert.equal(PAYLOAD_MIGRATIONS.length, ARCHIVE_FORMAT_VERSION - 1);
 });
 
-/* Ticket 35's step: an archive written when the active preset was a preset
-   key carries that key, and the preference it lands in is now a list of
-   dimension keys. The archive's own preset rows are what translate it, so a
-   custom preset restores as faithfully as a built-in one. */
+/* Step: an archive written when the active preset was a preset key carries that key, and
+   the preference it lands in is now a list of dimension keys. The archive's own preset rows
+   are what translate it, so a custom preset restores as faithfully as a built-in one. */
 
 const v1Archive = (activePreset: string, presets: { id: string; dims: string[] }[]): ArchivePayload =>
   ({

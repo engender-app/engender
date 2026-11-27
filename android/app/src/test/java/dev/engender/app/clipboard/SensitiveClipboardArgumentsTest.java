@@ -9,13 +9,12 @@ import org.json.JSONException;
 import org.junit.Test;
 
 /**
- * The copy call as the bridge hands it over (last-audit UI 34). The WebView
- * posts the call as JSON text and MessageHandler.postMessage parses it with
- * org.json, so a number arrives as whatever type the parser picked for it:
- * 60000, the interval the recovery key screen sends, is an Integer. Building
- * the PluginCall from that same text is the point - a test that put a Long
- * into the call by hand would pass against a reader that every real call
- * defeats.
+ * The copy call as the bridge hands it over. The WebView posts the call as
+ * JSON text and MessageHandler.postMessage parses it with org.json, so a
+ * number arrives as whatever type the parser picked for it: 60000, the
+ * interval the recovery key screen sends, is an Integer. Building the
+ * PluginCall from that same text is the point - a test that put a Long into
+ * the call by hand would pass against a reader that every real call defeats.
  */
 public class SensitiveClipboardArgumentsTest {
 

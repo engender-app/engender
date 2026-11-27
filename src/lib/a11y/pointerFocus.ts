@@ -1,16 +1,13 @@
-/* Which input the last focus came from, so a text field can drop its focus
-   ring for a finger or a mouse and keep it for a keyboard.
+/* Which input the last focus came from, so a text field can drop its focus ring for a
+   finger or a mouse and keep it for a keyboard.
 
-   Chromium's :focus-visible matches a text field on every focus, tap
-   included, so the global ring (components.css) drew a 2px frame around
-   each textbar the moment it was pressed (Alicja, 2026-11-04: "pls remove
-   those ugly borders around textbars on press"). The platform has no
-   signal for "this focus came from a pointer" that a field respects, so
-   this sets one: a press marks the document `data-input="pointer"`, and
-   Tab clears it. Typing does not clear it - a person who tapped a field
-   and is now typing is still not a keyboard navigator. Before any press
-   the attribute is absent, so a keyboard or screen-reader arrival keeps
-   its ring. */
+   Chromium's:focus-visible matches a text field on every focus, tap included, so the global
+   ring (components.css) drew a 2px frame around each textbar the moment it was pressed. The
+   platform has no signal for "this focus came from a pointer" that a field respects, so
+   this sets one: a press marks the document `data-input="pointer"`, and Tab clears it.
+   Typing does not clear it - a person who tapped a field and is now typing is still not a
+   keyboard navigator. Before any press the attribute is absent, so a keyboard or
+   screen-reader arrival keeps its ring. */
 
 export function trackPointerFocus(doc: Document = document): () => void {
   const root = doc.documentElement;

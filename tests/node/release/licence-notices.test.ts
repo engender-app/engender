@@ -1,6 +1,5 @@
-/* The licence notices the app carries (phase 15 release-blockers ticket
-   10). What ships is read off the build; these hold the two steps that turn
-   module ids into notices: which package a module came from, and what makes
+/* The licence notices the app carries. What ships is read off the build; these hold the two
+   steps that turn module ids into notices: which package a module came from, and what makes
    a shipped package's notice incomplete enough to fail the build. */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';

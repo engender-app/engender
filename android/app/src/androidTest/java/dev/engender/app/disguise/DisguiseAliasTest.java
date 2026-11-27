@@ -22,12 +22,12 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Ticket 15's first acceptance box and ticket 50's, on a device: the
- * launcher alias PackageManager actually reads, not a preference this app
- * merely believes it set. {@link DisguiseAlias#apply} is what MainActivity's
- * manifest split (an LAUNCHER-less MainActivity behind thirty-three aliases) turns
- * the disguise and the flag on and off through - proved here directly, with
- * {@code DONT_KILL_APP} so the test process survives its own assertions.
+ * Check the launcher alias PackageManager actually reads, not a preference
+ * this app merely believes it set. {@link DisguiseAlias#apply} is what
+ * MainActivity's manifest split (an LAUNCHER-less MainActivity behind
+ * thirty-three aliases) turns the disguise and the flag on and off through -
+ * proved here directly, with {@code DONT_KILL_APP} so the test process
+ * survives its own assertions.
  */
 @RunWith(AndroidJUnit4.class)
 public class DisguiseAliasTest {
@@ -84,9 +84,8 @@ public class DisguiseAliasTest {
         assertTrue(isEnabled(DisguiseAlias.DISGUISED));
     }
 
-    /** Ticket 50. The whole set, not a pair: thirty-three aliases, and the invariant
-        that matters is that the launcher can never show two of this app or
-        none of it. */
+    /** The whole set, not a pair: thirty-three aliases, and the invariant that matters is
+        that the launcher can never show two of this app or none of it. */
     @Test
     public void exactlyOneAliasIsEverEnabled() {
         List<String> aliases = DisguiseAlias.aliases(context);

@@ -126,15 +126,14 @@
     day != null && DAY_SECTION_KEYS.some((key) => (day![key] as unknown[]).length > 0)
   );
 
-  /* Whether a chained read's landed value actually answers for the ids the
-     screen is asking about right now, rather than an earlier (or the very
-     first, vacuous) set - the same keyed-answer idiom detailDraft.svelte.ts
-     uses for a route id, widened to a list. Needed because `LiveQuery.loading`
-     is one-way (readState.ts): `marginNotesRead`'s and `doseDrugsRead`'s very
-     first run answers for an empty id list (the day read hasn't landed yet),
-     which settles in a frame or two and never reports loading again, so a
-     gate that trusted `.loading` alone would open on that empty answer and
-     the real one would land a few frames later - ticket 174's bug. */
+  /* Whether a chained read's landed value actually answers for the ids the screen is asking
+     about right now, rather than an earlier (or the very first, vacuous) set - the same
+     keyed-answer idiom detailDraft.svelte.ts uses for a route id, widened to a list. Needed
+     because `LiveQuery.loading` is one-way (readState.ts): `marginNotesRead`'s and
+     `doseDrugsRead`'s very first run answers for an empty id list (the day read hasn't
+     landed yet), which settles in a frame or two and never reports loading again, so a gate
+     that trusted `.loading` alone would open on that empty answer and the real one would
+     land a few frames later - bug. */
   function sameIds<K>(a: readonly K[], b: readonly K[]): boolean {
     return a.length === b.length && a.every((id, i) => id === b[i]);
   }
@@ -206,13 +205,12 @@
     records ? DAY_SECTION_KEYS.flatMap((key) => records[key] as unknown[]) : []
   );
 
-  /* `everythingLogged` widened to also hold for the day's two chained reads,
-     the same "reveal once, when everything has answered" call ticket 146
-     made for Home's fold: the records draw once, already carrying their
-     margin notes and dose drug names, rather than gaining them a few frames
-     after the gate opens. A day with no records needs neither
-     chained read to have anything real to wait for - `entryIds`/`dayDoses`
-     are `[]` there, so both settle on the same frame the day read does. */
+  /* `everythingLogged` widened to also hold for the day's two chained reads, the same
+     "reveal once, when everything has answered" call made for Home's fold: the records draw
+     once, already carrying their margin notes and dose drug names, rather than gaining them
+     a few frames after the gate opens. A day with no records needs neither chained read to
+     have anything real to wait for - `entryIds`/`dayDoses` are `[]` there, so both settle
+     on the same frame the day read does. */
   let dayRecordsReady = $derived(!everythingLogged.loading && marginNotesReady && doseDrugsReady);
   let dayRecordsRead = {
     get rows() {
@@ -318,17 +316,15 @@
       {/snippet}
     </ReadGate>
 
-    <!-- "Start an era here": naming a stretch of your own
-         timeline is a thought that arrives while looking at the day it starts
-         on, so the action is offered where the thought is rather than only on
-         /settings/eras (redesign ticket 16: the era manager, moved). A link
-         and not a button, because it goes somewhere - the era editor opens
-         there with this day already in its start bound. At ghost weight,
-         under the entry button: adding an entry is what this screen is for,
-         and two soft buttons would put the rarer action beside it as a peer.
-         A milestone offers nothing of the kind: a milestone is a day and an
-         era is a span, and the bridge is one action on a milestone if it is
-         ever wanted, not a rule (ADR-0049). -->
+    <!-- "Start an era here": naming a stretch of your own timeline is a thought that
+         arrives while looking at the day it starts on, so the action is offered where the
+         thought is rather than only on /settings/eras. A link and not a button, because it
+         goes somewhere - the era editor opens there with this day already in its start
+         bound. At ghost weight, under the entry button: adding an entry is what this screen
+         is for, and two soft buttons would put the rarer action beside it as a peer. A
+         milestone offers nothing of the kind: a milestone is a day and an era is a span,
+         and the bridge is one action on a milestone if it is ever wanted, not a rule
+         (ADR-0049). -->
     <div class="day-add">
       <button class="btn btn-soft" data-add onclick={() => goto(withListReturn(`/entry/new/${epochDay}`, page.url))}>
         <Icon name="plus" size={20} /><span>{noEntryYet ? m.add_entry_for_day() : m.add_another_entry()}</span>

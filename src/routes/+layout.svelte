@@ -124,11 +124,10 @@
     return () => { stopSession(); stopLock(); };
   });
 
-  /* A side effect with nothing above it to order against, unlike startBoot():
-     the registration is not awaited and the worker precaches the shell in the
-     background, whenever it gets there - which is after boot has answered and
-     the browser is idle, so the precache does not compete with the first
-     screen for the connection (phase 14 pre-release ticket 13). */
+  /* A side effect with nothing above it to order against, unlike startBoot(): the
+     registration is not awaited and the worker precaches the shell in the background,
+     whenever it gets there - which is after boot has answered and the browser is idle, so
+     the precache does not compete with the first screen for the connection. */
   $effect(() => {
     registerServiceWorkerAfterBoot(bootState.status);
   });
@@ -159,21 +158,19 @@
 
   let needsDeviceRecovery = $derived(gate === 'device-recovery');
 
-  /* A recovery unlock owes the person a new access mode before the app shows
-     them anything (ADR-0054, ticket sec-02). Not a gate - the journal is
-     open behind this - so it sits with the lock in the chain below rather
-     than with the gates above, and for the lock's own reason: instead of the
-     route, not over it, so no screen mounts and no query runs behind a
+  /* A recovery unlock owes the person a new access mode before the app shows them anything
+     (ADR-0054). Not a gate - the journal is open behind this - so it sits with the lock in
+     the chain below rather than with the gates above, and for the lock's own reason:
+     instead of the route, not over it, so no screen mounts and no query runs behind a
      screen somebody has not finished. */
   let needsAccessModeAfterRecovery = $derived(isReadyState(bootState) && recoveryUnlock.used);
   /* Older code against a newer Journal. Its own screen rather
      than the boot-error notice: nothing is wrong with the Journal, and there
      is something the person can do. */
   let schemaTooNew = $derived(gate === 'schema-too-new');
-  /* A boot that failed has no journal behind it, so nothing a booted app
-     draws belongs on screen: the notice above <main> and its ways out are
-     the whole page. Until ux-carpet 213 no gate claimed this state and
-     Today mounted under the notice, greeting and mood row and all, which
+  /* A boot that failed has no journal behind it, so nothing a booted app draws belongs on
+     screen: the notice above <main> and its ways out are the whole page. no gate claimed
+     this state and Today mounted under the notice, greeting and mood row and all, which
      read as a boot to a person and to every walk keyed on the greeting. */
   let bootFailed = $derived(isErrorState(bootState));
 
@@ -375,11 +372,10 @@
     const chrome = documentChrome(
       prefs,
       { prefersDark: systemDark.current, prefersReducedMotion: systemReducedMotion.current },
-      /* Disguised, the person's flag waits for the journal (security-scan
-         ticket 08). The unlock flips this inside openApp's view transition,
-         so the gate is photographed in the neutral palette and the app in
-         its own, and the change happens under the opening rather than as a
-         frame of its own. */
+      /* Disguised, the person's flag waits for the journal. The unlock flips this inside
+         openApp's view transition, so the gate is photographed in the neutral palette and
+         the app in its own, and the change happens under the opening rather than as a frame
+         of its own. */
       journalShown
     );
     root.dataset.palette = chrome.palette;
@@ -527,10 +523,9 @@
     const checkInTime = prefs.checkInTime;
     const checkInPausedThrough = prefs.checkInPausedThrough;
     const hideNotificationTitles = prefs.hideNotificationTitles;
-    /* Read here rather than inside platform-sync.ts for the same reason every
-       preference above is: only a .svelte file has the reactivity that
-       re-runs this effect, and so re-syncs the schedule, when one of them
-       changes (phase 6 ticket 04's registry switches and quiet window). */
+    /* Read here rather than inside platform-sync.ts for the same reason every preference
+       above is: only a.svelte file has the reactivity that re-runs this effect, and so
+       re-syncs the schedule, when one of them changes. */
     const remindersEnabled = prefs.remindersEnabled;
     const wearElapsedEnabled = prefs.wearElapsedEnabled;
     const quietHoursEnabled = prefs.quietHoursEnabled;
@@ -765,12 +760,11 @@
     <div class="app-strip" aria-hidden="true"></div>
 
     <div inert={browserSession.recovering} style:display={browserSession.recovering ? 'none' : 'contents'}>
-    <!-- Not while locked (security-scan ticket 08, GD-040). The lock used to
-         close the fan and leave quick add mounted, so its cards stayed in
-         the document for their fade and a tap there in the lock's first
-         frame opened the backdate sheet over the gate or queued a tally for
-         the next session. Unmounted, what is still fading is inert and goes
-         with it, and its sheets go at once. -->
+    <!-- Not while locked. The lock used to close the fan and leave quick add mounted, so
+         its cards stayed in the document for their fade and a tap there in the lock's first
+         frame opened the backdate sheet over the gate or queued a tally for the next
+         session. Unmounted, what is still fading is inert and goes with it, and its sheets
+         go at once. -->
     {#if !locked}<QuickAdd />{/if}
     {#if managersRequested && !replacesApp}
       {#await import('$lib/components/VocabularyManagerSheets.svelte') then { default: VocabularyManagerSheets }}
