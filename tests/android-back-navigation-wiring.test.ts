@@ -49,14 +49,9 @@ describe('android back button routing', () => {
 
 describe('android predictive back', () => {
   it('opts the application in, so the system draws the gesture itself', () => {
-    /* The flag is the whole opt-in: without it the app stays on the legacy
-       path where nothing is drawn until the gesture has committed, and
-       DIRECTION.md's rule that back is driven by the gesture rather than
-       played as a fixed animation has nothing to be driven by.
-
-       Asserted on the manifest because that is where the decision lives.
-       What the app does with it - playing no back animation of its own on
-       Android - is screen-transition.ts's, and has its own tests. */
+    /* The manifest flag enables gesture-driven back. The legacy path draws
+       only after commit. screen-transition.ts handles the Android app
+       side and has its own tests. */
     const manifest = readFileSync(
       fileURLToPath(new URL('../android/app/src/main/AndroidManifest.xml', import.meta.url)),
       'utf8'

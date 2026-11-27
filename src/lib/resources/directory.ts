@@ -1,36 +1,15 @@
-/* The bundled resource directory (ticket 32): trans organisations, helplines
-   and reading, in the app rather than fetched from anywhere. Something a
-   person reaches for at three in the morning with no signal has to be there
-   with no signal, and this is the only screen in the app whose whole content
-   is other people's phone numbers and addresses.
+/* Bundle the resource directory so it opens offline. List trans
+   services first. Poland's general crisis lines extend coverage
+   outside limited hours and for minors. Their labels identify them
+   as general services.
 
-   Trans-specific first, and no 112 or 999: a person in Poland already knows
-   those numbers, and a directory that opens with them buries the entries
-   they came here for. The one exception is the general crisis lines under
-   Poland (functional audit ticket 40). Lambda answers three hours on
-   weekday evenings, so an adult in Poland at night or at a weekend had no
-   line on this screen that was open and local. 116 123 and 800 70 2222 are
-   the two free adult lines that answer at any hour, and 116 111 is the
-   same for under-18s. None of the three is a trans service, and their
-   descriptions say so rather than letting anyone find out on the call.
+   Keep names, phone numbers and addresses here. labels.ts owns
+   the translated description and hours. The const key list makes
+   label coverage a type check (ADR-0016).
 
-   Keys and language-neutral facts only. A name like "Fundacja Trans-Fuzja" is
-   a proper noun and reads the same in both catalogues, and a number is a
-   number, so those live here; what an entry offers and when it answers does
-   not survive translation, so labels.ts holds it (the same split as
-   vocabulary/builtins.ts, ADR-0016). This file takes nothing but types, so
-   the Node tier can check it without dragging in paraglide.
-
-   `as const`, so the key list also produces the union labels.ts has to cover
-   exhaustively: an entry added here without its wording is a typecheck
-   failure rather than a raw key in front of someone who needs the number.
-
-   RESOURCES_REVIEWED_ON is a claim, not a build stamp. It says a person
-   opened every site below and read the number and the hours off what the
-   organisation itself publishes. Hours are what rots: Mindline Trans+ went
-   from three evenings a week to one and Trans Lifeline stopped being a
-   24-hour line, both while their numbers stayed put. Do not bump the date
-   without doing the pass. */
+   Set RESOURCES_REVIEWED_ON only after checking numbers and opening
+   hours against each provider's own publications. Hours can change
+   while numbers stay the same. */
 
 export type ResourceRegion = 'pl' | 'int';
 

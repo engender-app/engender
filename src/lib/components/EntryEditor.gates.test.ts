@@ -1,5 +1,5 @@
 /* Which of the entry editor's contextual cards show, and on whose say-so
-   (phase 8 features ticket 04, ADR-0043, ADR-0052).
+   (ADR-0043, ADR-0052).
 
    Two claims, and both are about the editor asking a shared question rather
    than answering it for itself. The questions themselves are pure and tested
@@ -76,7 +76,7 @@ describe("the editor's effects card, and the cascade (ADR-0052)", () => {
       expect(editor).toContain(card);
     }
     /* Its declaration, its card's gate, and the body step's own question of
-       whether any card shows (ticket 09), which reads the same gate. */
+       whether any card shows, which reads the same gate. */
     expect(editor.match(/effectsQuiet/g)?.length).toBe(3);
     const offered = editor.slice(editor.indexOf('let cardsOffered'), editor.indexOf(');', editor.indexOf('let cardsOffered')));
     for (const gate of ['activeTryout', 'scheduleDose', 'recoveringProcedure', 'isHrtActive && !effectsQuiet', 'cycleTrackingActive']) {

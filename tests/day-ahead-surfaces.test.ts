@@ -100,8 +100,7 @@ describe('the day after today', () => {
   });
 
   it('draws what is coming under the heading the appointments screen already has, not a second string for it', () => {
-    // CONTEXT.md's "Coming up" is one concept, so the appointments screen and
-    // the day share coming_up_title.
+    // Both screens use coming_up_title for the same “Coming up” list.
     expect(day).toContain('m.coming_up_title()');
   });
 

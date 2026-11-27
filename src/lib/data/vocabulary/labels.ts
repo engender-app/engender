@@ -28,24 +28,9 @@ import type { HairRemovalAreaKey } from '../hairRemovalAreas';
 
 type Message = (inputs?: {}, options?: { locale?: 'en' | 'pl' }) => string;
 
-/* Two shapes of name, and which one a scale gets follows from its
-   endpoints rather than from taste:
-
-     poles      a scale running between two named ends is called "low <->
-                high" - "Dysphoria <-> euphoria", "Binary <-> nonbinary",
-                "Agender <-> gendered", "Unseen <-> recognised", "Steady
-                <-> shifting". The name is the two words a person is
-                choosing between, so the slider needs no gloss to be read.
-     an amount  a scale running "not at all" to "very" is called after the
-                thing being measured - "Femininity", "Masculinity". An
-                arrow name here would say "Not at all <-> very", which
-                names the ends and not the subject.
-
-   `euphoria_dysphoria` was "Gender feeling" until this rule was written
-   down. That name was the only one that said neither its poles nor its
-   subject, and once there were six scales it also over-claimed: all
-   six are gender feelings, so the vague one read as the general case.
-   The key keeps its original spelling; only the display name moved. */
+/* Name a scale with two named poles after its endpoints, such as Dysphoria
+   <-> euphoria. Name an amount scale after its subject, such as Femininity.
+   Changing the display name leaves the stored key intact. */
 const DIMENSION_NAME: Record<BuiltInDimensionKey, Message> = {
   euphoria_dysphoria: m.dim_euphoria_dysphoria,
   femininity: m.dim_femininity,
@@ -73,7 +58,7 @@ const DIMENSION_HIGH: Record<BuiltInDimensionKey, Message> = {
   gender_stability: m.dim_gender_stability_high
 };
 
-/* One line per built-in scale saying what it measures (phase 5 ticket 35),
+/* One line per built-in scale saying what it measures,
    for the checklist that replaced the eight presets. "Binary <-> nonbinary"
    is not self-explanatory to somebody twenty minutes into this app, and the
    list is the second screen they ever see.
@@ -193,8 +178,8 @@ const EFFECT_CATEGORY_NAME: Record<BuiltInEffectCategoryKey, Message> = {
   sexual: m.effect_category_sexual
 };
 
-/** Which side of the midpoint a body-region reading fell on, in words
-    (ADR-0081). One place, because the figure speaks it in a panel's
+/** Which side of the midpoint a body-region reading fell on, in words.
+    One place, because the figure speaks it in a panel's
     accessible name and the map screen writes it into the sentence beside
     the figure, and the two are the same word. */
 export const bodyRegionAxisName = (axis: BodyRegionAxis): string =>
@@ -206,11 +191,11 @@ export const bodyRegionAxisName = (axis: BodyRegionAxis): string =>
 const SEVERITY_NAME: Message[] = [m.severity_1, m.severity_2, m.severity_3, m.severity_4, m.severity_5];
 
 /** The name of a severity, 1 to 5, or null when none was given - the
-    caller's own business, not a word here (ticket 23). */
+    caller's own business, not a word here. */
 export const severityName = (value: number | null): string | null =>
   value === null ? null : (SEVERITY_NAME[value - 1]?.() ?? String(value));
 
-/* Hair-removal treatment areas (phase 5 ticket 08) are a fixed set, not a
+/* Hair-removal treatment areas are a fixed set, not a
    built-in row, with their
    own vocabulary, deliberately not BODY_REGION_NAME below. */
 const HAIR_REMOVAL_AREA_NAME: Record<HairRemovalAreaKey, Message> = {
@@ -273,7 +258,7 @@ const CYCLE_EVENT_KIND_NAME: Record<CycleEventKind, Message> = {
 export const cycleEventKindName = (kind: string): string =>
   (CYCLE_EVENT_KIND_NAME as Record<string, Message | undefined>)[kind]?.() ?? m.cycle_event_kind_other();
 
-/* A procedure's kind (phase 9 carpet ticket 17) is a fixed set, not a
+/* A procedure's kind is a fixed set, not a
    built-in row, the same reasoning TRYOUT_KIND_NAME gives - `custom` gets a
    name here too, since the picker lists it beside the compiled-in ones. */
 const PROCEDURE_KIND_NAME: Record<ProcedureKind, Message> = {
@@ -297,8 +282,7 @@ const PROCEDURE_KIND_NAME: Record<ProcedureKind, Message> = {
 /** The name of a procedure's kind, including `custom`. */
 export const procedureKindName = (kind: ProcedureKind): string => PROCEDURE_KIND_NAME[kind]();
 
-/** Every procedure kind, compiled-in set first and `custom` last (CONTEXT.md,
-    Surgery) - what the procedure editor's kind picker offers. */
+/** Procedure kind picker order: compiled-in kinds, then `custom`. */
 export const PROCEDURE_KINDS: ProcedureKind[] = [
   'vaginoplasty',
   'vulvoplasty',

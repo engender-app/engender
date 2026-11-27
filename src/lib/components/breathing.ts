@@ -1,4 +1,4 @@
-/* Box breathing cycle helper for the Safe Space dashboard (ticket 52, ADR-0040).
+/* Box breathing cycle helper for the Safe Space dashboard.
    Paced at 4-4-4-4 seconds (Inhale, Hold, Exhale, Hold), designed to ground
    and regulate during crisis or intense dysphoria. */
 

@@ -1,26 +1,8 @@
 <script lang="ts">
-  /* Everything the app can ask this device for, in one list (phase 10
-     redesign ticket 31).
-
-     One component, two hosts: the setup step and `/settings/permissions`.
-     That is the whole reason it exists as a component - the ticket's promise
-     is that "you can do this later" is true, and it is only true if the
-     screen somebody comes back to is the same list they skipped.
-
-     Neither host's title or intro line is here. A step's question is 48px on
-     the field and a screen's is a ScreenHeader, and DIRECTION.md rule 12 is
-     explicit that a step carries one heading; so the hosts own their heading
-     and this owns the list under it.
-
-     What a grantable row looks like is PermissionRow's; what this device
-     currently allows is this file's. The two are separated so every row
-     state can be rendered against the real tokens rather than only the two a
-     desktop browser is ever in.
-
-     Shape, from the fourth Mobbin sweep and rule 13: rows between hairlines,
-     a title at 17, one reason line under it, one control trailing. Not
-     taken: the card around each group, the per-permission paragraph, and the
-     pre-prompt screens that draw the OS dialog as an illustration. */
+  /* Setup and Settings share the same permission list. Each host
+     supplies its own heading. This component
+     reads device permission state. PermissionRow renders it with
+     the token-based layout, a reason line and trailing control. */
   import { m } from '$lib/paraglide/messages';
   import { attempt } from '$lib/stores/attempt.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
@@ -98,8 +80,7 @@
   /* The way out of a refusal is a system screen, so the answer can change
      while the app is not looking. Re-read on the way back rather than
      leaving a row claiming a permission that was granted a swipe ago; the
-     watcher is the one Reminders and Notifications use too (last-audit UI
-     ticket 41). readGrantStates already settles a failed read as denied. */
+     watcher is the one Reminders and Notifications use too. readGrantStates already settles a failed read as denied. */
   $effect(() => {
     const watch = watchStatus<GrantStates>({
       read: readGrantStates,

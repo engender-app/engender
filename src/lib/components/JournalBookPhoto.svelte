@@ -3,7 +3,7 @@
   import type { Photo } from '$lib/data/types';
   import { readPhoto } from '$lib/stores/photoFiles';
 
-  /* A stored photo as the journal book prints it (phase 5 ticket 17):
+  /* A stored photo as the journal book prints it:
      the full normalized file, not the thumbnail PhotoThumb draws. A 72px
      thumbnail is the right call for a scrolling grid and the wrong one for
      paper, where it lands as a smear.

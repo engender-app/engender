@@ -1,21 +1,9 @@
 <script lang="ts">
-  /* The app's foot: the one commitment a deep screen asks for, on the
-     window's bottom edge above the floating bar (carpet 26).
+  /* hostSaveBar moves this node beside the scroll region so layout
+     reserves its full height. app.css owns the frame styling.
 
-     Written where its buttons are and hosted by the frame. `hostSaveBar`
-     moves this node out of the scroll region into the app column, so the
-     column reserves its room by being its flex sibling and nothing on the
-     screen can end up under it at any scroll position - which is the whole
-     of the defect this replaces ($lib/stores/saveBar.svelte has the
-     measurements). The drawing lives in app.css with the frame's other
-     furniture; what is here is the arrangement, which is the one thing that
-     differs between the eight screens that have a foot.
-
-     Three arrangements, and no fourth without a reason: `one` control at
-     full width (six of the eight), `row` for two of equal weight side by
-     side (a take to discard or keep - neither is the primary), and `stack`
-     for a primary with a way past it under it, which is rule 12's foot in
-     setup and rule 15's on a gate. */
+     Use one for a full-width action, row for equal peers, and stack
+     for a primary action with a way past it. */
   import type { Snippet } from 'svelte';
   import { navigating } from '$app/state';
   import { hostSaveBar } from '$lib/stores/saveBar.svelte';
@@ -26,24 +14,14 @@
   }: { children: Snippet; arrange?: 'one' | 'row' | 'stack' } = $props();
 </script>
 
-<!-- The rise and the fall belong to the host rather than to `in:`/`out:`
-     here, and that is a measurement rather than a preference: a Svelte
-     outro holds the whole `{#if}` branch it sits in on screen until it
-     finishes, which made a tab keep its old content for 380ms and then cut
-     ($lib/motion/foot has the note and the flipbook frames). `cuts` is
-     asked at the moment each end runs, so a navigation gets a cut and an
-     in-screen change gets the travel.
+<!-- The host animates the foot because Svelte outros hold the
+     whole branch, which held old tab content for 380ms. Check cuts
+     when each motion starts. Navigation cuts and in-screen changes
+     travel.
 
-     The arrangement is written as three `class:` directives rather than
-     interpolated into the class attribute, so the class names are literals
-     in the source: carpet 28's coverage census counts the audited variants
-     in `src/` as well as in the walk, and an interpolated name reaches it
-     as `.app-savebar.savebar-` - one variant, never drawn. Literals let it
-     say which arrangement no render reached. `one` carries no class of its
-     own for the same reason: it is the resting rule, so a foot with one
-     control renders exactly the `.app-savebar` the source names, and the
-     only gap left in the census is `.savebar-row`, which needs a recorded
-     take and is measured by tests/savebar-clearance-gallery.mjs instead. -->
+     Keep variant classes literal so the source coverage census can
+     see them. one is the base case. savebar-clearance-gallery.mjs
+     covers savebar-row with a recorded take. -->
 <div
   class="app-savebar"
   class:savebar-row={arrange === 'row'}

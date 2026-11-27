@@ -1,25 +1,11 @@
-/* The reads behind the return surface (phase 8 features ticket 05,
-   ADR-0062).
+/* Fetch the return surface's inputs for both its gate and screen.
+   comingBack.ts applies the thresholds without a driver.
 
-   Split from `comingBack.ts` for the reason `liveTiles.svelte.ts` is split
-   from `liveTiles.ts`: the selection is where the thresholds are and wants
-   a Node test with no driver, so it takes rows. This file is what fetches
-   them, in one place, so the screen and the gate that opens it read exactly
-   the same thing - a screen deciding from one set of reads and a gate
-   deciding from another is two surfaces disagreeing about whether the
-   person came back.
-
-   Two calls, and they are separate on purpose rather than for tidiness.
-   `readReturnGap` asks for the bounded last writes. A gap reaching the
-   three-week floor also asks for distinct entry and dose days in the last
-   year, in one bounded query, to measure the journal's rhythm. `readWhatIsWaiting` then costs five reads and is
-   asked *about a gap it is handed*, so the caller decides which gap it is
-   asking about and can go on asking about the same one.
-
-   The screen depends on that. Backfilling a dose writes a row inside the
-   gap, so a screen that re-derived the gap on every write would have
-   answered "not a return any more" while somebody was still using it. It
-   reads the gap once and the items as often as the journal changes. */
+   readReturnGap checks recent writes. At the three-week floor, it also
+   reads distinct entry and dose days for the last year in one query.
+   readWhatIsWaiting makes five reads for the chosen gap. Hold the gap
+   fixed while refreshing its items: a backfilled dose should not take
+   someone off the return screen. */
 
 import { returnGap, whatIsWaiting, type ComingBack } from './comingBack';
 import type { DosesArea } from './journal/doses';

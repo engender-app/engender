@@ -1,21 +1,7 @@
-/* How coarse a chart draws, and why.
-
-   The area chart used to be a timeline you scrolled: every reading kept a
-   14px slot, so a year was 365 slots and you read it a week at a time by
-   dragging. On a phone that turned out to be the wrong trade. A chart in a
-   card is something you glance at, and a chart you have to drag has no
-   shape at all until you have dragged all of it - Alicja, 2026-08-25: "the
-   graph shouldn't be scrollable".
-
-   So the whole range fits the card, and what changes with the range is the
-   grain: a month is read day by day, a year is read week by week, several
-   years month by month. The choice is made from the number of positions the
-   card can hold rather than from the length of the range, so it is one rule
-   rather than a table of ranges.
-
-   This is calendar arithmetic, so it lives beside the other calendar
-   arithmetic and takes today's clock from nobody: a day arrives as an epoch
-   day and a bucket comes back as one. */
+/* Fit the whole chart into its card. Choose day, week or month grain
+   from the number of positions the card can hold. Keep the range
+   visible without horizontal scrolling. Calendar arithmetic takes and
+   returns epoch days without reading the clock. */
 
 import type { PatternPoint } from '../data/dayKeying';
 import { localDateFromEpochDay, epochDayFromLocalDate, weekdayOfEpochDay } from '../data/epochDay';

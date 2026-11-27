@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* Documents pointing at one target (phase 8 features ticket 56, ADR-0065):
+  /* Documents pointing at one target (ADR-0065):
      the target's own screen lists them by reading, since the target itself
      stores nothing about the link. Shared across the four kinds - milestone,
      procedure, regimen episode, roadmap goal - rather than written four

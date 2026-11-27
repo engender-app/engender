@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Mood step 3 on the check-in notification (tester report 02, ticket 05):
+<!-- Mood step 3 on the check-in notification:
      MoodFace.svelte's drawing from moodFace.ts, path for path, on its block.
      check-in-faces.test.ts holds the paths to that table and the colours
      (values/check_in_faces.xml and values-night) to palettes.css. -->

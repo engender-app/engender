@@ -1,35 +1,9 @@
-/* The one zip reader every archive importer uses (phase 8 audit ticket 11).
-
-   fflate reads a member's declared uncompressed size out of the central
-   directory and allocates the output buffer from that number before it
-   decompresses a single byte (`new u8(su)` inside `unzipSync`). Nothing
-   downstream of that line gets a say - the allocation already happened. So
-   a real bomb is not required: a roughly 200-byte zip whose central
-   directory claims 4 GiB asks for a 4 GiB array synchronously on the main
-   thread, and a truncated or corrupted zip produces the same declared size
-   by accident rather than by design.
-
-   `read` below is the one place that decision is made, in the filter
-   fflate itself calls before it allocates anything - `entry.originalSize`
-   is checked, and the running total across every read this reader has done
-   is checked with it, before the accept. A single member over the ceiling
-   and several members that add up past it both fail here, for the same
-   reason: it is the same number either way, the total this reader is about
-   to hold in memory at once.
-
-   Opening scans the central directory without decompressing anything, and
-   refuses a directory with too many entries or too many name bytes as it
-   walks it, before the name collections can grow (daylioInputBudget.ts).
-   Duplicate names are rejected before any member can be read; otherwise
-   two payloads could share one cache key and evade the running total.
-   `names()` returns the scanned names, regardless of their declared sizes.
-
-   `read` caches its result per name, and not only to avoid decompressing
-   twice: a caller that reads the same member more than once - a preview
-   sniffing a photo's bytes to pick its extension, then a commit reading
-   the same photo again to write it - must not pay for it twice against
-   the running total either, or the ceiling would refuse a backup for less
-   than it actually holds. */
+/* Read archive ZIP members within a shared memory budget. fflate's filter
+   checks each declared size and the reader's running total before allocating.
+   Opening scans names without decompressing and applies entry and name
+   limits from daylioInputBudget.ts. Reject duplicate names up front.
+   names() returns the scanned names. Cache each read by name so preview and
+   commit share its bytes and budget charge. */
 
 import { DAYLIO_BUDGET, ImportTooLargeError } from './daylioInputBudget';
 import { FlateErrorCode, UnzipInflate, unzipSync, type UnzipOptions } from 'fflate';

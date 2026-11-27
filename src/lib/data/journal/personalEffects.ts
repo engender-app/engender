@@ -1,19 +1,6 @@
-/* The personal effects timeline area (phase 4 ticket 07). One row per
-   effect (schema.ts, `effect` UNIQUE), matched exactly the way
-   medication_stock is matched by drug (stock.ts): a person is always
-   answering "when did I first notice this", never logging a series of
-   sightings, so a fresh date replaces the old one in place. No episode
-   reference: what a marker is read against - the HRT start - is resolved
-   above this seam (personalEffectWindow.ts's hrtAnchor), not stored here.
-
-   Phase 5 ticket 41 widens the effect a marker names from a closed
-   eight-key union to `personal_effect_type`, an open reference-data
-   vocabulary. This file bundles marker values with the vocabulary the
-   `effect` column is matched against. Nothing here validates a marker's
-   `effect` against that vocabulary - the same free-text-but-matched-by-key
-   treatment, so a marker logged under a type since hidden still
-   round-trips exactly as logged; only the picker
-   stops offering it. */
+/* Keep one first-noticed row per effect. Updating the date replaces it.
+   Resolve the regimen anchor on read. A hidden effect key still round-trips
+   in records. Only the picker removes it from offers. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { EffectDirection, PersonalEffect, PersonalEffectCatalogEntry, PersonalEffectType } from '../types';
@@ -28,8 +15,7 @@ export interface PersonalEffectsArea {
   /** Whatever effects have been marked so far, one row per effect. No row
       for an effect means it has not been marked yet. */
   getMarkers(): Promise<PersonalEffect[]>;
-  /** The markers whose "first noticed" day is this one (phase 5 deepening
-      ticket 21). A marker is one row per effect that a fresh date replaces
+  /** The markers whose "first noticed" day is this one. A marker is one row per effect that a fresh date replaces
       in place, so this reads as "what someone said they first noticed
       today", never as a log of sightings. */
   getMarkersFirstNoticedOn(epochDay: number): Promise<PersonalEffect[]>;

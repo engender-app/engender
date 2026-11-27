@@ -4,7 +4,7 @@
    root the platform picks (OPFS on web, the app-private directory on
    Android). Nothing above the file store ever sees an absolute path,
    because an absolute OPFS path cannot round-trip to Android and an
-   archive has to import on either one (ticket 11).
+   archive has to import on either one.
 
    The thumbnail's name is derived from the full photo's rather than
    stored: it is mechanically implied by it, and ADR-0010 keeps derived

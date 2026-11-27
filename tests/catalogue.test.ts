@@ -1,4 +1,4 @@
-/* The catalogue serializer (phase 12 copy-tooling ticket 01): sorted keys so
+/* The catalogue serializer: sorted keys so
    parallel branches stop colliding, `$schema` first, and the formatting the
    files already use. */
 import { describe, expect, it } from 'vitest';

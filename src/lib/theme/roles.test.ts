@@ -63,8 +63,7 @@ describe("Home's area colours", () => {
 
   it('gives the log strip the same guaranteed colour as the week strip', () => {
     /* Its write shapes are icon squares, a block of the stripe; on trans
-       the white band would make a white square on a white page (redesign
-       ticket 13). */
+       the white band would make a white square on a white page. */
     expect(HOME_AREA_ROLE.log).toBe(0);
   });
 

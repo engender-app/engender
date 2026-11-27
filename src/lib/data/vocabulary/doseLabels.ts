@@ -1,5 +1,4 @@
-/* Display wording for the dose log's closed vocabularies (phase 4 ticket
-   02), alongside reminderLabel.ts for the same reason it is there: the
+/* Display wording for the dose log's closed vocabularies, alongside reminderLabel.ts for the same reason it is there: the
    wording speaks paraglide, and nothing the Node tier touches may import
    that (ADR-0016). doseSchedule.ts holds the vocabularies themselves and
    stays free of it; this is where they get their words.
@@ -202,7 +201,7 @@ export const STATUS_OPTIONS: { value: DoseStatus; label: string }[] = (['taken',
 
 /** A dose row's title: the drug it carries leading, where one resolved, so
     concurrent regimens at the same amount and route are two records before
-    either is opened (phase 11 ticket 19). One wording rule for every
+    either is opened. One wording rule for every
     surface that shows a dose as a row; `separator` keeps each surface's
     own way of joining amount and route - the day row's comma, the log's
     middot. */
@@ -213,8 +212,7 @@ export const doseRowTitle = (
 ): string => `${drug ? `${drug} ` : ''}${dose.dose} ${dose.doseUnit}${separator}${routeLabel(dose.route)}`;
 
 /** Which episode a dose row is attributed to, in the wording the row's
-    trailing edge and an auto-logged row's second line both use (phase 5
-    ticket 11) - the two must not word it differently, so this is the one
+    trailing edge and an auto-logged row's second line both use - the two must not word it differently, so this is the one
     place either asks. */
 export const attributionLabel = (attribution: DoseAttribution): string =>
   attribution.episode

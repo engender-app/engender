@@ -1,5 +1,4 @@
-/* Trash Restore under a held, a failed and a landed write (last-audit UI
-   ticket 46). The real Trash screen over an encrypted journal, with the
+/* Trash Restore under a held, a failed and a landed write. The real Trash screen over an encrypted journal, with the
    journal's restoreEntry wrapped so the driving script can hold a write
    open, make it reject, or let it through. trash-restore.mjs drives it. */
 import { flushSync } from 'svelte';

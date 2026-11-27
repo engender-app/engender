@@ -1,21 +1,10 @@
-/* The entries area (PRD F1). Two rules carry this module:
+/* Apply the entry content check here so every write path agrees.
+   Patch dimension values individually, preserving values outside the
+   selected preset. Replace tags and body regions from the full set
+   the picker supplied.
 
-   An entry holds at least one of mood, a dimension value, a tag, a
-   non-blank note, a photo, a body-region intensity - or it does not exist
-   (CONTEXT: "Entry"). Enforced here so no path bypasses it.
-
-   Dimension values write per dimension, never as a whole object: a value
-   belongs to the entry, not to the preset that happened to be active when
-   it was logged, so editing under a narrower preset must leave the other
-   dimensions' rows alone. Tags and body regions (ticket 09), by contrast,
-   arrive as the whole set the editor showed, and replace - each picker
-   shows every option every time, so an id or region key missing from a
-   save is the user deselecting it.
-
-   Photos become writable in ticket 11; their rows travel with the entry
-   into trash and back (phase 5 ticket 19) rather than being cleaned up on
-   delete - purgeExpiredTrash is what eventually takes them and their files
-   with it, via the injected store. */
+   Keep photo rows when moving an entry to or from trash.
+   purgeExpiredTrash removes both rows and files through the injected store. */
 
 import { BODY_REGION_MIDPOINT } from '../bodyMap';
 import {
@@ -73,8 +62,8 @@ import { startOfDayTimestamp } from '../epochDay';
 import type { CycleEventKind, DoseRoute, DoseStatus, InjectionVehicle, PersonalEffectType } from '../types';
 import type { ApplicationSiteKey, InjectionSiteKey } from '../doseSchedule';
 
-/** How long a trashed entry survives before purgeExpiredTrash reclaims it
-    (phase 5 ticket 19). Fixed - no per-user setting. */
+/** How long a trashed entry survives before purgeExpiredTrash reclaims it.
+    Fixed - no per-user setting. */
 export const TRASH_WINDOW_DAYS = 30;
 const TRASH_WINDOW_MS = TRASH_WINDOW_DAYS * 24 * 60 * 60 * 1000;
 
@@ -167,8 +156,7 @@ export interface EntryInput {
   effectMarkers?: EntryEffectMarkerInput[];
   /** Contextual cycle event (ADR-0044). */
   cycleEvent?: EntryCycleEventInput;
-  /** The presentation this entry is filed under (phase 5 deepening ticket
-      17, ADR-0048), a domain id or null to clear it. Undefined leaves the
+  /** The presentation this entry is filed under (ADR-0048), a domain id or null to clear it. Undefined leaves the
       entry's current presentation alone, the same `undefined` vs. explicit
       `null` rule `mood` and `note` already answer to - a save that never
       touched the chip must not silently unset it. Commits with the rest of
@@ -187,7 +175,7 @@ export interface EntrySearchFilters {
       query, reached from search. */
   starred?: boolean;
   /** Entries logged under any of these modes (CONTEXT: "Presentation"),
-      by presentation id (functional audit ticket 10). */
+      by presentation id. */
   presentationIds?: string[];
   /** Entries with a reading on any of these body regions, by domain id. */
   bodyRegions?: string[];
@@ -214,7 +202,7 @@ export interface EntriesArea {
       insight sheet, is standing behind a row computed over a range
       (`stats.tagInsights`) - an unranged read opened whatever the twenty
       most recent carriers of the tag were across the whole journal, which
-      is not what the row's count described (carpet ticket 19). */
+      is not what the row's count described. */
   entriesWithTag(tagId: string, fromEpochDay: number, toEpochDay: number, limit: number): Promise<Entry[]>;
   /** Entries carrying any of `tagIds` or starred (CONTEXT: "Starred"),
       newest first, at most `limit` of them - the doubt journal's
@@ -227,15 +215,15 @@ export interface EntriesArea {
       tag, and starred entries have no business surfacing there. */
   counterevidencePool(tagIds: readonly string[], limit: number): Promise<Entry[]>;
   /** The most recent entry qualifying as a bad moment (lowest mood, dysphoria tag,
-      or body-region dysphoria intensity >= 50), newest first
-      (ticket 50, ADR-0040). Returns undefined when no such entry exists. */
+      or body-region dysphoria intensity >= 50), newest first.
+      Returns undefined when no such entry exists. */
   latestBadMomentEntry(dysphoriaTagIds?: readonly string[]): Promise<Entry | undefined>;
   /** The same entry's id alone, `undefined` when there is none. Its own read
       rather than a field off the one above, because hydrating an entry costs
       six more statements pulling dimension values, tag links, photos,
       recordings, video notes and body regions - and a surface offering to
-      return to a bad moment needs the id it would link to and nothing else
-      (phase 8 audit ticket 13). */
+      return to a bad moment needs the id it would link to and nothing else.
+      */
   latestBadMomentEntryId(dysphoriaTagIds?: readonly string[]): Promise<number | undefined>;
   /** The day of the most recent untrashed entry at or before `todayEpochDay`,
       or null if there is none (phase 8 features ticket 03, lastWrite.ts). One
@@ -261,8 +249,8 @@ export interface EntriesArea {
       query with fifty. An aggregate, so it transfers one row however many
       match. */
   countSearchMatches(query: string, matchingTagIds: string[], filters?: EntrySearchFilters): Promise<number>;
-  /** How many untrashed entries the journal holds, over all of its history
-      (phase 8 UX ticket 01). Home's count line, and Safe Space's body of
+  /** How many untrashed entries the journal holds, over all of its history.
+      Home's count line, and Safe Space's body of
       work.
 
       Its own narrow read rather than a field on the recap: a recap pays for
@@ -271,7 +259,7 @@ export interface EntriesArea {
       days they fall on - a day carrying three of them is three. */
   countAll(): Promise<number>;
   /** How many distinct days hold an untrashed entry, over all of the
-      journal's history (ticket 18). What `recentDays` grows against: the
+      journal's history. What `recentDays` grows against: the
       door reads that a `recentDays(limit)` returned fewer days than asked
       for, and this is the exact count that a "N more days" control needs
       instead - the difference between the two is never a guess. */
@@ -279,8 +267,7 @@ export interface EntriesArea {
   /** Returns the entry's id. Inserting needs an epochDay; updating an
       unknown id throws. */
   upsertEntry(input: EntryInput): Promise<number>;
-  /** Idempotent. Moves the entry to trash for TRASH_WINDOW_DAYS (phase 5
-      ticket 19): its dimension values, tag links and body regions stay as
+  /** Idempotent. Moves the entry to trash for TRASH_WINDOW_DAYS: its dimension values, tag links and body regions stay as
       they are, its photos and recordings are left untouched, and it drops
       out of every other read this area offers until it is restored or
       purgeExpiredTrash reclaims it for good. */
@@ -288,7 +275,7 @@ export interface EntriesArea {
   /** Brings a trashed entry back, photos and recordings included. A no-op
       on an unknown id or one that is not trashed. */
   restoreEntry(id: number): Promise<void>;
-  /** Delete forever (functional audit ticket 46): purges a trashed entry
+  /** Delete forever: purges a trashed entry
       now instead of after TRASH_WINDOW_DAYS, every row and file of it, the
       way purgeExpiredTrash does. A no-op on an entry that is not in Trash,
       checked inside the purge's own transaction so a restore that lands
@@ -863,7 +850,7 @@ export function makeEntriesArea(
 
   /* The newest bad moment, at whatever width the caller needs it: the two
      reads below differ only in their SELECT list, and the rule for what
-     counts as a bad moment (ticket 50, ADR-0040) has no business being
+     counts as a bad moment has no business being
      written twice. */
   const latestBadMomentRow = <Row extends Record<string, unknown> = EntryRow,>(
     columns: string,
@@ -935,7 +922,7 @@ export function makeEntriesArea(
       // matching COALESCE(key, uuid) = ? inline left the planner no usable
       // index on tag, so it reversed the join and scanned entry through
       // idx_entry_trashed_at instead - visiting every untrashed entry on
-      // the stats screen's tag-insight query (phase 8 audit ticket 18).
+      // the stats screen's tag-insight query.
       // Not rowidWhere (support.ts): an unknown tag has to mean "no
       // entries" here, not a thrown error - this is a read.
       const tagRows = await driver.query<{ id: number }>('SELECT id FROM tag WHERE key = ? OR uuid = ?', [
@@ -957,31 +944,14 @@ export function makeEntriesArea(
     },
 
     async counterevidencePool(tagIds, limit) {
-      // EXISTS rather than a JOIN: a starred entry carrying several other
-      // tags would otherwise arrive once per tag row, since the tag match
-      // itself has to live in the WHERE clause (an entry need not carry
-      // any of `tagIds` at all to qualify here) rather than the JOIN
-      // condition. Trashed entries are excluded the same way every other
-      // read here is (phase 5 ticket 19) - a trashed entry is not
-      // counterevidence for anything until it is restored.
+      // EXISTS keeps starred entries with multiple tags from appearing once
+      // per tag. The tag match belongs in WHERE because an untagged entry can
+      // qualify. Exclude trashed entries.
       //
-      // The body-region clause (phase 5 ticket 44) needs no day-level
-      // aggregation the way isGoodDay's does: this is already a per-entry
-      // check, so any one of an entry's logged regions clearing the floor
-      // is enough, the same inclusive floor and the same constant isGoodDay
-      // reads.
-      //
-      // Phase 11 ticket 15 makes that arm the weakest of the three rather
-      // than an equal of them. A region is a magnitude somebody can mark on
-      // a day that went badly in every other way, and on the demo journal
-      // one high chest reading was admitting "Tired. Work ran long and I
-      // skipped voice practice again." as evidence the bad day was not the
-      // whole story - which is the one thing this screen must never do. So
-      // a region admits an entry only when nothing else on the entry
-      // contradicts it: no dysphoria tag, and no second region marked below
-      // the midpoint. The other two arms are untouched. Starring is a
-      // person choosing the day themselves, and a good tag is them naming
-      // it, so both still qualify whatever else the entry carries.
+      // A logged region at or above isGoodDay's floor can qualify per entry,
+      // without day aggregation. The region arm requires no dysphoria tag and
+      // no other region below the midpoint. Starring and a good tag still
+      // qualify regardless of other fields.
       const placeholders = tagIds.map(() => '?').join(', ');
       const dysphoriaPlaceholders = DYSPHORIA_TAG_KEYS.map(() => '?').join(', ');
       const rows = await driver.query<EntryRow>(
@@ -1249,7 +1219,7 @@ export function makeEntriesArea(
     },
 
     async deleteEntry(id) {
-      // Marks the row rather than removing it (phase 5 ticket 19): the
+      // Marks the row rather than removing it: the
       // dimension values, tag links, body regions, photo rows and
       // recording rows all stay exactly as they are, so restoreEntry has
       // them to bring back. Only the search index drops the entry now -
@@ -1328,7 +1298,7 @@ export function makeEntriesArea(
     after migrations (boot.ts), mirroring sweepOrphanPhotos's shape.
 
     Returns how many entries it took. The caller announces the write when that
-    is not zero (phase 5 audit ticket 02): this runs after the screens are live
+    is not zero: this runs after the screens are live
     now, so a Trash list already on screen would otherwise keep showing rows
     that are gone. */
 export async function purgeExpiredTrash(driver: SqliteDriver, files: PhotoFileStore): Promise<number> {

@@ -1,22 +1,11 @@
-/* What a chart's tick says under a pointer (phase 11 UI/UX ticket 49).
+/* Check real AreaChart ticks across three grains, two languages and
+   themes, three widths and disguise on/off. The wrapping readout fits
+   within half the plot. Mouse hover shows a mark label and suppresses
+   plot annotations. Touch scrubs the plot and fills the corner plate.
+   Dispatch touch to avoid the 18px mark hit rect.
 
-   Drives the real AreaChart on tests/browser-tier/chart-tick.html across the
-   three grains, both catalogues, both themes, three widths and disguise both
-   ways, and reads the rendered readout rather than the props behind it. The
-   plate is a live layout question - it wraps now, and it may not grow past
-   half the plot - so every claim here is measured off the DOM.
-
-   Two pointers, because the app has two. A mouse over a mark opens the label
-   beside it (the hit rects are live only under `hover: hover`), and a held
-   finger scrubs the plot and fills the corner plate; the readout's own
-   annotations go quiet while a mark is hovered, so the two never answer at
-   once. The touch path is dispatched rather than moved, since an 18px hit
-   rect would otherwise swallow the pointer that is meant to be scrubbing.
-
-   Run: node tests/chart-tick-readout.mjs [--gallery]
-   --gallery also writes crops to .claude/chart-tick-shots, which is
-   gitignored and durable. Shots are the default palette in both themes, and
-   crop to the chart card: nothing else on the page changed. */
+   node tests/chart-tick-readout.mjs [--gallery]
+   --gallery saves default-palette chart crops in both themes. */
 import { createServer } from 'vite';
 import { mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';

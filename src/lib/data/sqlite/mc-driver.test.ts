@@ -1,4 +1,4 @@
-/* The database worker started ahead of the key (ux-carpet ticket 209), over
+/* The database worker started ahead of the key, over
    a stand-in Worker: what reaches the worker and when, not what SQLite does
    with it (the browser tier opens real databases). */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';

@@ -33,7 +33,7 @@
 
 {#snippet row(g: TagGroup)}
   <!-- Wrapped chips on every surface: a new entry's step had one sideways
-       row per group (ticket 09) until bug session 18, item 90. -->
+       row per group until bug session 18, item 90. -->
   <div class="tag-row" role="group" aria-label={m.tags_group_aria({ group: g.name })}>
     {#each g.tags as t (t.id)}
       {#if t.description}

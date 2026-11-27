@@ -1,4 +1,4 @@
-/* How a tapped write ends (after-release ticket 06). A write that rejects
+/* How a tapped write ends. A write that rejects
    has to say so, because nothing else will: there is no unhandledrejection
    handler, and a promise nobody awaits fails where no one is looking.
    Framework-free so the node tier can drive it; attempt.svelte.ts binds it to

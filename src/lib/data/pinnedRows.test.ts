@@ -186,7 +186,7 @@ test('the default set answers to a hidden area the same way any other pin does',
   assert.ok(!keysOf(rows).includes('milestones'));
 });
 
-// --- the editing surface's own rules (ticket 14) ----------------------------
+// --- the editing surface's own rules ----------------------------
 
 test('a person who has never arranged anything starts editing from the default set', () => {
   /* The default arrangement is resolved and never stored (ADR-0073), so the first edit
@@ -373,7 +373,7 @@ test('the add list carries the forward line too', () => {
   assert.deepEqual(letters?.line, forward.letters);
 });
 
-// --- fallback reading for hydration (ticket 106) ----------------------------
+// --- fallback reading for hydration ----------------------------
 
 test('fallbackReading supplies an empty reading for synchronous initial render', () => {
   assert.deepEqual(fallbackReading(TODAY).lastWrites, {});

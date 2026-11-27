@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* The body map's tile on the Look back door (phase 11 ticket 07). The
+  /* The body map's tile on the Look back door. The
      screen is `/body-map`, which took the span in redesign ticket 05; this
      is only the way in, with the region marked most often in the span as
      its figure and where that region's reading mostly sat under it. A
@@ -28,7 +28,7 @@
   );
   /* Which way the region mostly sat, and how strongly: the figure's own
      line. A region that went both ways evenly has no side, and has no
-     line: a count of entries said nothing the name needed (item 88). */
+     line: a count of entries said nothing the name needed. */
   let note = $derived.by(() => {
     if (!region || region.side === null || region.value === null) return undefined;
     const axis = region.side === 'dysphoria' ? m.body_region_axis_dysphoria() : m.body_region_axis_euphoria();

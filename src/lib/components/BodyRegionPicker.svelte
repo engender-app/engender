@@ -16,9 +16,9 @@
     onFeeling: (id: string, value: number) => void;
   } = $props();
 
-  /* One bipolar scale per picked region (ticket 99): dysphoria at the low
+  /* One bipolar scale per picked region: dysphoria at the low
      end, euphoria at the high end, the same shape the day-level dimension
-     takes. Storage is that same slider position now (ticket 39), so there
+     takes. Storage is that same slider position now, so there
      is no projection left to own. */
 </script>
 

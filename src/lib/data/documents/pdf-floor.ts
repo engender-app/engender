@@ -1,25 +1,9 @@
-/* `.at()` for the WebView the app promises to run on (phase 8 features
-   ticket 55, ADR-0023).
+/* Provide `.at()` for browser targets below Chrome 92 (ADR-0023).
+   Android's current WebView 104 floor already provides it. The
+   pdf.js legacy build still uses it inside the worker.
 
-   The former Android floor was Chrome 87; `Array.prototype.at` arrived
-   in 92. Android now requires WebView 104, while the other browser targets
-   still need this compatibility patch. pdf.js's legacy build compiles its
-   own syntax down and carries core-js for
-   `Promise.withResolvers` and `Object.hasOwn`, but not for this one - a
-   `pattern.at(-1)` sits in the worker's operator-list machinery, so a
-   WebView between 87 and 92 would fail on the first page of the first
-   document rather than anywhere a person could act on.
-
-   Rewriting the app's own `.at(-1)` calls was the alternative and is what
-   happened to them; this exists because a dependency's calls are not ours
-   to rewrite. It is imported by both halves of the renderer, since a
-   worker is its own realm and gets none of the main thread's patching.
-
-   All three prototypes at once, because they shipped together: a browser
-   without one has none of them, and pdf.js reads bytes as well as arrays.
-   Written with defineProperty rather than assignment so the method stays
-   non-enumerable, which is what keeps a `for...in` over an array from
-   finding it. */
+   Patch both main and worker realms. Define the methods on all three
+   prototypes as non-enumerable so `for...in` sees the same keys. */
 
 function at(this: { length: number; [index: number]: unknown }, index: number): unknown {
   const length = this.length;

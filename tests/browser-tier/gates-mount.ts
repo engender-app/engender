@@ -1,4 +1,4 @@
-/* Mounts the gate gallery (phase 5 ticket 26) with the app's own
+/* Mounts the gate gallery with the app's own
    stylesheets, in the same order +layout.svelte imports them, so the gates
    are judged against the real cascade rather than against a subset of it.
    Unlike the kit gallery this does load components.css and screens.css:

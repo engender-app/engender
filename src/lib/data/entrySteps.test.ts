@@ -1,4 +1,4 @@
-/* A new entry's steps (tester report 02, ticket 09): which steps a person
+/* A new entry's steps: which steps a person
    walks, in which order, and where an address that names a section lands.
    A step with nothing to show is not drawn, so the walk and the progress
    count only the steps this person will see. */

@@ -1,36 +1,14 @@
-/* The feature manifest (functional audit ticket 54).
+/* Each feature entry names its Archive sections, tables, journal members,
+   More rows, area groups, unprompted kinds, Today tiles, routes and string
+   prefixes. Remove the listed keys before dropping a feature.
 
-   One feature is named in up to nine key spaces: its archive sections, its
-   tables, its members on the journal handle, its More hub rows, its area
-   groups, its unprompted kinds, its Today tile kinds, its routes and the
-   prefixes of its strings. Each of those has its own registry, and nothing
-   tied them together, so removing a feature meant finding its keys by grep
-   and the audit kept finding counts and lists in the docs that had drifted.
-
-   This file is the list per feature, so a removal is a checklist: delete
-   what the entry names, then delete the entry. It is held to the code from
-   both sides.
-
-     typecheck  every key is typed by its own registry, so a key the code no
-                longer has is a compile error here. Tables are typed by
-                sqlite/tableNames.ts, which is generated from the migrated
-                schema (`npm run features:tables`) and checked against it.
-                The Every*Claimed lines at the bottom refuse a section,
-                table, journal member, hub row, area group, unprompted kind
-                or tile kind that no feature claims.
-     tests      features.test.ts does what a type cannot: routes against the
-                `+page.svelte` files, string prefixes against
-                messages/en.json, every key claimed once, and a feature's
-                hub rows, groups and tiles agreeing with its own sections
-                and routes.
-
-   The docs read this file too: the route table in SCREENS.md names each
-   route's feature from here (tests/doc-blocks.test.ts, `npm run
-   docs:blocks`).
-
-   `app` is not a feature anyone could remove. It holds what every feature
-   leans on: the journal's own housekeeping members, the preference table
-   and the media view. */
+   Typechecks compare registry keys and require a claim for every section,
+   table, journal member, row, group and kind. npm run features:tables
+   generates table names from migrated SQLite. features.test.ts verifies
+   route and message files, unique claims, and agreement between rows, groups,
+   tiles, sections and routes. npm run docs:blocks uses the same manifest for
+   the maintainer route index. The app entry owns shared housekeeping,
+   preferences and the media view. */
 
 import type { RouteId } from '$app/types';
 import type { AreaGroupKey } from './data/areaGroups';

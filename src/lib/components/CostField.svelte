@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* The cost on a record that costs money (functional audit ticket 30):
+  /* The cost on a record that costs money:
      one amount box beside its currency, and a Refunded switch. The same
      three controls on every editor that has a cost, so a session, a visit,
      a draw, a procedure and the stock sheet ask it the same way.

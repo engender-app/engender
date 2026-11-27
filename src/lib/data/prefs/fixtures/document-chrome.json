@@ -26,7 +26,7 @@
   },
   {
     "name": "a palette and a mood preset that are not the defaults",
-    "why": "Mood keeps its own scale (ADR-0025), so the two travel separately and a case that moves only one would not notice them being crossed.",
+    "why": "Palette and mood preset are independent. Set both to catch an exchange between them.",
     "prefs": { "palette": "nonbinary", "moodPreset": "plum", "theme": "dark", "a11yTextSizeBoost": false, "a11yLegibilityBoost": false, "a11yMotionReduce": false, "disguise": false },
     "system": { "prefersDark": false, "prefersReducedMotion": false },
     "expected": { "palette": "nonbinary", "moodPreset": "plum", "theme": "dark", "a11yTextSize": "normal", "a11yLegibility": "normal", "a11yMotion": "normal", "icon": "favicon-nonbinary.svg", "manifest": "manifest.webmanifest" }

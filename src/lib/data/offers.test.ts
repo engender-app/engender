@@ -1,22 +1,8 @@
-/* Every in-flow offer, and the one rule they all answer to (phase 8
-   features ticket 22, ADR-0045).
-
-   Two things worth saying about how this is written. Each entry's own
-   `write` is driven here against a recording stub rather than a real
-   journal, because what the ticket asks to be asserted per entry is that
-   confirming writes exactly one record and declining writes none - which is
-   a claim about the entry, not about `answerOffer`. Driving `answerOffer`
-   with a fake write for all five would have restated the function and
-   passed for an entry that writes on decline.
-
-   And there is no completeness test here on purpose. `OFFERS` is a total
-   `Record` over `OfferKey`, so an unregistered offer is a missing property
-   refused at the `satisfies` line - shown to fail by deleting the surgery
-   entry and watching svelte-check refuse it. A runtime mirror derived from
-   `OFFERS` could only fail on a copy a test shortened by hand, which is a
-   check of `filter` wearing the registry's name; offers.ts's own header
-   sets that against `unprompted/registry.ts`, where the array shape makes
-   the runtime half worth having. */
+/* Drive each offer's write against a recording stub to check one
+   record on confirm and none on decline (ADR-0045). Faking the
+   write inside answerOffer would miss an entry that writes on
+   decline. OFFERS is a total Record over OfferKey, so the
+   compiler already checks registration completeness. */
 
 import { describe, expect, it } from 'vitest';
 import {

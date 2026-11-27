@@ -112,7 +112,7 @@ describe('skipping', () => {
   });
 
   /* The permissions step sets nothing of the app's own, so its Skip has
-     nothing to protect - and it carries one anyway (ticket 31). Skipping it
+     nothing to protect - and it carries one anyway. Skipping it
      grants nothing and blocks nothing, which is the only honest reading of
      a step whose answers all live in the OS. */
   it('lets the permissions step be skipped like any other', () => {
@@ -198,7 +198,7 @@ describe("the welcome's sun", () => {
 
 describe('a first run that restores an archive', () => {
   /* The failure directions first, because this is the ticket where a wrong
-     answer loses somebody's journal (ticket 36).
+     answer loses somebody's journal.
 
      Two ways to be wrong, and they are not symmetrical. Asking again for
      something the archive carries is the annoyance this ticket exists to

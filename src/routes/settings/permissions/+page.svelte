@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* The permanent home of the permissions list (phase 10 redesign ticket 31).
+  /* The permanent home of the permissions list.
 
      Setup's permissions step says every one of these can be granted later,
      and this screen is what makes that sentence true. It draws the same list

@@ -1,4 +1,4 @@
-/* The rules behind photoSection.svelte.ts (phase 5 audit ticket 11): what
+/* The rules behind photoSection.svelte.ts: what
    every photo-owning screen decided for itself before wiring a
    recordEditor(), a photoReview() and a pickPhotos() call around its own
    list. Framework-free and node-tested for the reason recordEditor.ts is -

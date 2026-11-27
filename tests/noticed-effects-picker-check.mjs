@@ -1,21 +1,7 @@
-/* Real-browser check for ux-carpet ticket 289: the entry editor's noticed-
-   effects sheet follows the regimen, searches, and takes several effects.
-
-   What it holds:
-   - testosterone alone offers masculinizing and own effects, estradiol alone
-     feminizing and own, both the union, a drug that is neither (progesterone)
-     everything with no "show all" row; "show all" lifts the filter and the
-     next opening is filtered again;
-   - rows tick and untick, the sheet stays open, each chosen effect is a chip
-     with its own remove button, and an effect already on the record shows
-     ticked, dated and disabled;
-   - sampling every animation frame, no row or heading is painted at its
-     destination before it travelled there, and none leaves from full
-     opacity in one frame - typing in the box, clearing it, and lifting the
-     filter included.
-
-   Run against a dev server (no build needed):
-     node tests/noticed-effects-picker-check.mjs */
+/* Check how regimens filter noticed effects, including Show all and reopening.
+   Exercise toggling, chip removal and disabled recorded effects. Sample
+   search, clearing and filter changes for one-frame jumps or dropouts.
+   Run node tests/noticed-effects-picker-check.mjs on a dev server. */
 import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { createServer } from 'vite';

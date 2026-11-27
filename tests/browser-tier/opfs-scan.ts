@@ -1,4 +1,4 @@
-/* The closed-app inspection the spec's release gate describes (ticket 09):
+/* The closed-app inspection the spec's release gate describes:
    read every file OPFS holds - SAHPool pool files, the keystore, photos,
    everything - and report which sentinel byte patterns appear where. If a
    sentinel planted through the app's own write paths is readable in any

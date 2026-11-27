@@ -1,4 +1,4 @@
-/* The Android tier's probe (ticket 11): boots the native driver through the
+/* The Android tier's probe: boots the native driver through the
   Capacitor bridge and runs the shared contract suite over it - the same
   suite src/lib/data/journal/contract-suite.test.ts runs over node:sqlite.
 

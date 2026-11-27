@@ -13,6 +13,7 @@ export const CI_CHECKS = {
     { id: 'node', name: 'Node tier (UTC)', command: 'npm', args: ['test', '--', '--maxWorkers=2'], env: { TZ: 'UTC' }, requires: ['build'] },
     { id: 'node-warsaw', name: 'Node tier (Europe/Warsaw)', command: 'npm', args: ['test', '--', '--maxWorkers=2'], env: { TZ: 'Europe/Warsaw' }, requires: ['build'] },
     { id: 'copy', name: 'Message catalogues and user-facing literals', command: 'npm', args: ['run', 'check:copy'] },
+    { id: 'comments', name: 'Internal references in source comments', command: 'npm', args: ['run', 'check:comments'] },
     { id: 'licences', name: 'Dependency licences', command: 'npm', args: ['run', 'check:licences'] },
     { id: 'classes', name: 'screens.css single-consumer classes', command: 'npm', args: ['run', 'check:screens-classes'] },
     { id: 'progressive-release', name: 'Progressive release evidence', command: 'npm', args: ['run', 'check:progressive-release'] },

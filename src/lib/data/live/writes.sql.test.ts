@@ -1,87 +1,9 @@
-/* The sweep: every classified write driven against real SQL through the
-   recording driver (ticket 01), checked against the coarse-name-to-table
-   declaration (sqlTables.ts, ticket 02) rather than trusting the comments
-   next to TABLE_NAMES that used to be the only account of it.
-
-   Two checks, not one, because a coarse name commonly covers several real
-   tables that no single operation touches at once - 'dose' covers a dose
-   event, a schedule and a pause, and upsertDose's own SQL only ever reaches
-   dose_event. Treating "the announcement's tables" and "what this one
-   statement touched" as sets that must be equal would fail every multi-table
-   coarse name on sight, which is not the bug this ticket is about.
-
-   1. Per operation, what its SQL touched must be a *subset* of its declared
-      tables, mapped through SQL_TABLES. This is the safety-critical
-      direction ticket 01's own header names: a write reaching a table
-      nobody declared is exactly the class of bug that shows up as a Svelte
-      screen quietly holding stale data.
-   2. Per coarse name, the union - across every operation that declares it -
-      of what its SQL actually touched, intersected with that name's
-      declared tables, must equal the declared tables exactly. A table
-      SQL_TABLES lists that no operation declaring that name ever writes
-      fails here, which is the other direction: a mapping entry nothing
-      backs is a claim about the schema this suite cannot verify any other
-      way.
-
-   Together they reproduce both halves of the ticket's own acceptance
-   criterion: removing a table from a declaration a write's SQL genuinely
-   reaches fails check 1, and adding one nothing writes fails check 2 - both
-   demonstrated directly, at the bottom, against a small fixture rather than
-   by mutating the real declaration.
-
-   What check 2 still cannot catch: an operation that spuriously declares a
-   coarse name it never touches, where some *other* legitimate operation
-   also declares that name and genuinely writes it. The union only asks
-   whether every declared table is hit by *someone* - it never asks whether
-   *this* operation was the one that needed to declare it. `archive.replace`
-   and `discardEverything` are the extreme case of the same gap: driven for
-   real, their SQL wipes nearly every content table, so either one alone
-   would "satisfy" check 2 for almost any coarse name regardless of whether
-   its own mapping is right. WIPES_THE_JOURNAL excludes both from check 2's
-   owners for exactly that reason - a proof that touches everything proves
-   nothing about one thing - while they still count fully for check 1 and
-   for write coverage. Closing that broader gap would mean equality per
-   operation, which is exactly the check this file
-   deliberately does not make, for the coarse-name reason above. It is a
-   real, narrower blind spot than "exactly", left open on purpose rather
-   than left unmentioned.
-
-   Reads are driven the same way and must write nothing, and then get the
-   same two checks in the read direction (final audit ticket 26). Per read,
-   the tables its SQL read must be a subset of its declared tables mapped
-   through SQL_TABLES - the direction writes.ts's header calls the worst
-   one, since a read missing a table it joins never re-runs when that table
-   is written and shows stale data that looks like a Svelte bug. Per coarse
-   name, the union of what every read declaring it actually read must cover
-   that name's tables. READS_THE_JOURNAL is WIPES_THE_JOURNAL's twin: the
-   archive snapshot and the three import previews that start from one read
-   every table there is, so they stay out of the union. Reads sit under
-   READ_OPT_OUTS the same way writes do, and a coverage check below holds
-   the read half to the same standard the write half's coverage check does.
-
-   The read half's own blind spots, named rather than closed. First, the
-   same one check 2 has: a read declaring a coarse name its SQL never
-   touches passes as long as some other read declaring that name does touch
-   it. For a read that over-declaration costs a needless re-query, not stale
-   data, which is why it is the half left open. Second, a read only proves
-   what this fixture makes it run: getSchedules reads dose_schedule_weekday
-   only for a weekday schedule, so the scenario above leaves one
-   standing, and a branch no fixture row reaches is not checked. Third, a
-   composing read's narrowing (test-support/composing-reads.ts) is let
-   through: chartAnnotations and dayAhead read photos and linked names
-   through getMilestones and never hand them on, so a photo write has no
-   reason to re-run them, and writes.test.ts holds each narrowing to being
-   true. Fourth, the recording driver's own: triggers and a view's
-   underlying tables are invisible to it.
-
-   Not every classified write is driven. `reconcile.ts`'s own comment says
-   reconciling "usually finds nothing to do, and announcing these tables for
-   a no-op is cheaper than asking it to report what it actually changed" -
-   so reconcileBuiltIns is driven on a database nothing has reconciled yet,
-   the one state where its SQL does touch everything it declares, rather
-   than opted out. `archive.replace`, `archive.merge`,
-   `discardEverything` and the Daylio CSV import are driven here. The
-   Daylio backup needs a real zip and has a dedicated import test. */
+/* Record SQL for declared operations. Each operation may touch only tables
+   covered by its declaration. Each coarse mapping must also cover the union
+   of observed tables for that name. Exclude whole-journal reads and wipes from
+   the union and check their own operation limits separately. Reads write nothing.
+   Fixtures cover exercised branches only. The driver sees neither trigger bodies
+   nor the tables behind views. See writes.test.ts for composition checks. */
 
 import assert from 'node:assert/strict';
 import { beforeAll, describe, test } from 'vitest';
@@ -510,7 +432,7 @@ beforeAll(async () => {
     journal.doses.upsertPause({ episodeId, startEpochDay: 19100, endEpochDay: null, reason: 'planned' })
   )) as string;
   await drive('doses', 'deletePause', () => journal.doses.deletePause(dosePauseId));
-  /* Auto-logging on, then the pass itself (ticket 11): the schedule is every
+  /* Auto-logging on, then the pass itself: the schedule is every
      14 days on an episode anchored at 19000 and the route is `im`, so
      asking on 19015 leaves exactly one passed slot to write. */
   await drive('doses', 'upsertSchedule', () =>
@@ -538,7 +460,7 @@ beforeAll(async () => {
       autoLogFromEpochDay: null
     })
   );
-  /* A schedule's reminders (functional audit ticket 21), on an episode whose
+  /* A schedule's reminders, on an episode whose
      end day lies far ahead, so the boot pass has one to remove once asked
      on that day. */
   const endingEpisodeId = await journal.regimen.upsertEpisode({
@@ -781,7 +703,7 @@ beforeAll(async () => {
     journal.appointments.upsertAppointment({ epochDay: 20042, procedureId: null, kind: null, place: null, note: null })
   )) as string;
   await drive('appointments', 'deleteAppointment', () => journal.appointments.deleteAppointment(secondAppointmentId));
-  // A wait and its updates (ticket 26): one kept, one deleted.
+  // A wait and its updates: one kept, one deleted.
   const waitingId = (await drive('appointments', 'upsertAppointment', () =>
     journal.appointments.upsertAppointment({ epochDay: null, referredEpochDay: 19900, procedureId: null, kind: 'Gender clinic', place: null, note: null })
   )) as string;
@@ -792,7 +714,7 @@ beforeAll(async () => {
     journal.appointments.addStatusUpdate({ appointmentId: waitingId, epochDay: 19960, status: 'typo' })
   )) as string;
   await drive('appointments', 'deleteStatusUpdate', () => journal.appointments.deleteStatusUpdate(droppedStatusId));
-  // A provider (ticket 27): one kept and named on a visit, one deleted.
+  // A provider: one kept and named on a visit, one deleted.
   const providerId = (await drive('appointments', 'upsertProvider', () =>
     journal.appointments.upsertProvider({ name: 'Dr Nowak', contact: null, competence: 'good', impressions: null })
   )) as string;

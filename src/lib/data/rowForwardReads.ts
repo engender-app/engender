@@ -1,31 +1,10 @@
-/* The reads behind a row's forward fact (phase 11 all-four-doors ticket 02).
+/* Fetch the facts that rowForward.ts projects. Today, Transition and Care
+   share the same reads. The dose owner supplies the next uncovered slot;
+   raw calendar expectations cannot tell if an early dose covered it.
 
-   Split from `rowForward.ts` the way `agendaReads.ts` is split from
-   `agenda.ts` and `comingBackReads.ts` from `comingBack.ts`: the projection
-   is where the rules are and it wants a Node test with no driver, so it
-   takes rows. This is what fetches them, in one place, so the two surfaces
-   that draw rows ask the same eight questions rather than each assembling
-   its own idea of what is coming.
-
-   **Eight reads, none of them new as a question.** Every one is a method a
-   screen already calls - the milestone list the milestones screen draws,
-   the seals the letters tile reads, the running session the wear tile
-   reads, the tryouts the tryout tile reads, the appointments Today already
-   holds for its debrief offer, the procedures the surgery tile reads, the
-   agenda's own forward read, the stock projections the Care screen draws,
-   The ticket's own line: no new data, no new read, no new screen.
-
-   The dose owner supplies the next uncovered slot. Calendar marks remain
-   raw expectations, so they cannot answer whether an early dose already
-   covers today's slot. Today, Transition and Care share the same pairing.
-
-   Every read is issued inside one `Promise.all`, before this function's
-   first `await`, so a `liveQuery` wrapping it discovers all nine
-   dependencies on its first run - the problem `WAITING_TABLES` exists for
-   is not this one's (`agendaReads.ts` says the same about its two).
-
-   Nothing here reads a clock: `todayEpochDay` arrives as an argument, the
-   same as everywhere above the journal seam. */
+   Start all reads in one Promise.all before the first await so liveQuery
+   discovers every dependency on its first run. The caller supplies
+   todayEpochDay. rowForward.ts stays driver-free for Node tests. */
 
 import { rowForward, type RowForwardFacts, type RowForwardMap, type RowForwardKey } from './rowForward';
 import { SPINE_FORWARD_DAYS } from './careSpine';

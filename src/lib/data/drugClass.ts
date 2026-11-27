@@ -1,31 +1,11 @@
-/* Whether a regimen episode is HRT or some other drug (functional audit
-   ticket 18, CONTEXT: "Drug class"). Pure and free of paraglide (ADR-0016):
-   the migration, archive restore and the regimen screen all ask it, and the
-   first two run where no catalogue is loaded.
+/* Guess a new or legacy episode's drug class using the same pure rule
+   in setup, migrations and Archive restore (ADR-0016). Store the class
+   on the episode so the person can change it.
 
-   The class is stored on the episode and the person can change it. This
-   file only answers the first guess: what a new episode starts as, what an
-   episode written before the column existed is given by the migration, and
-   what an archive row from an older build is read as. All three use this
-   one rule so a journal and its own backup always agree.
-
-   The rule: an episode is HRT when its drug names a hormone or a blocker
-   used in gender-affirming hormone therapy, matched as a substring of the
-   lowercased name with diacritics removed. Everything else is "other".
-
-   - Hormones: estradiol (and oestradiol, estrogen, oestrogen),
-     testosterone, progesterone.
-   - Antiandrogens: spironolactone, cyproterone, bicalutamide.
-   - GnRH agonists and antagonists: the "-relin" generics (leuprorelin,
-     triptorelin, goserelin, histrelin, buserelin, nafarelin), leuprolide,
-     degarelix, and "gnrh" itself.
-   - A short list of brand names common in Poland and the UK, so an episode
-     typed as "Androcur" or "Utrogestan" is not filed as other.
-
-   Finasteride and dutasteride stay "other" on purpose. Both are as often
-   taken for scalp hair as for HRT, and a guess of HRT would move the
-   effects timeline for someone treating hair loss. A person who takes one
-   as part of HRT changes the class on the episode. */
+   Case-fold the name, remove diacritics and look for a substring from the
+   hormone, antiandrogen, GnRH and common Polish/UK brand lists. Leave
+   finasteride and dutasteride as other by default. Otherwise treatment
+   for scalp hair could change the HRT timeline. */
 
 import type { DrugClass } from './types';
 

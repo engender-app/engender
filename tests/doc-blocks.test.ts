@@ -1,5 +1,5 @@
-/* The generated blocks in SCREENS.md and CONTEXT.md against the code
-   (functional audit ticket 54). Dev tier, like the ADR citation guard: the
+/* The generated blocks in SCREENS.md and CONTEXT.md against the code.
+Dev tier, like the ADR citation guard: the
    docs live in the private docs repo, so where they are not linked (CI) the
    doc comparison skips with a notice and the marker tests still run.
 

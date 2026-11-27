@@ -1,38 +1,11 @@
-/* Remaining medication stock and its run-out projection (phase 4 ticket 04,
-   CONTEXT: "Medication stock", "Run-out projection", "Regimen episode",
-   "Dose event", "Dose pause"). Pure, kept above the journal seam beside
-   doseSchedule.ts and labTiming.ts: nothing here reads a clock or a
-   database, and both figures are derived on read rather than stored
-   (ADR-0046, generalizing ADR-0010's rule against stored derived state) -
-   the schema comment at medication_stock's own migration (v7) argues why a
-   decremented number would drift the way `reminder.trigger_time` did, and
-   why that is not ticket 03's stored-context exception: every dose this
-   projects over is still sitting in `dose_event`, unlike the dose log a lab
-   draw's context was measured against.
+/* Derive remaining medication stock and run-out from stored dose events
+   (ADR-0046). A stored balance could drift. Match stock by drug rather than
+   episode so a dose or route change preserves the count.
 
-   Scoped by drug (free text on RegimenEpisode.drug), matched exactly the
-   way an analyte's unit or a lab provider is (CONTEXT: "Analyte", "Lab
-   provider") - not by regimen episode, because a dose or route change on
-   the same drug starts a new episode, and an episode-scoped count would go
-   stale on the very next adjustment.
-
-   The trailing consumption rate deliberately does not reach for
-   dose_schedule or dose_pause, the way labTiming.ts's day-of-interval does
-   not reach for dose_schedule: a schedule is optional and one per episode,
-   so a figure that depended on one would silently go missing for someone
-   who has never set one (labTiming.ts's own reasoning). Working the pause
-   case through shows a second reason, in the opposite direction from the
-   one that reasoning might suggest: excluding a pause's days from the
-   trailing window - mirroring how adherence() excludes them from the
-   expected-slot count - raises the rate back to the non-paused pace and
-   projects an EARLIER run-out, which is backwards. Nothing is being
-   consumed while a pause runs, so the stock lasts longer in calendar time,
-   not less. Leaving every calendar day in the denominator - counting a
-   pause exactly like a run of skipped doses, both zero-consumption days
-   that pull the average down - is what pushes the date later, which is
-   the direction box 3 asks for. The decision behind this paragraph is
-   ADR-0055, which restates it from ADR-0032; the streak half of that older
-   one is gone. */
+   Average consumption over every calendar day in the trailing window.
+   Paused and skipped days count as zero, so a pause extends projected
+   supply (ADR-0055). The calculation also works without a dose schedule
+   or a pause record. The caller supplies dates and storage. */
 
 import { epochDayFromTimestamp } from './epochDay';
 import { attributeDrug, drugSpans, drugNameKey, sameDrug } from './regimenEpisode';
@@ -64,7 +37,7 @@ export interface StockEntry {
   quantity: number;
   unit: string;
   recordedEpochDay: number;
-  /** How many doses one unit holds (after-release ticket 01): five doses to
+  /** How many doses one unit holds: five doses to
       a vial, 28 to a blister. Null or missing means one dose per unit, the
       only reading there was before. */
   dosesPerUnit?: number | null;
@@ -93,8 +66,7 @@ export interface StockProjection {
   runOutEpochDay: number | null;
   /** Doses in `[stock.recordedEpochDay, asOfEpochDay]` left out of every
       stock's count because more than one concurrent regimen episode was
-      active and the dose named no drug of its own to break the tie (phase
-      5 ticket 38). Whole-window rather than this drug's own, since an
+      active and the dose named no drug of its own to break the tie. Whole-window rather than this drug's own, since an
       ambiguous dose cannot be told apart for any drug, not just this one -
       the same figure appears on every entry's projection for the window it
       shares. */

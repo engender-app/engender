@@ -13,7 +13,7 @@ import dev.engender.app.disguise.DisguiseAlias;
 import dev.engender.app.launch.AppLaunch;
 
 /**
- * What every quick-log and doubt-entry widget (tickets 26, 34)
+ * What every quick-log and doubt-entry widget
  * shares: a single-view RemoteViews rebuilt whole on every update, and the
  * disguise invariant - a screen reader is as much an at-rest surface as the
  * visible glyph, so while disguise mode is on the header that names what the

@@ -1,37 +1,11 @@
 <script lang="ts" generics="TPhoto extends { id: string; epochDay: number; fileName: string | null }">
-  /* Two photographs of the same body months apart, in one frame, with one
-     draggable divider between them (phase 10 redesign ticket 55).
+  /* The hard divider keeps each photo at full frame width without blending
+     pixels. The divider uses a flat stripe handle. Dates pinned
+     to opposite corners stay readable as the divider moves. Neither photo
+     gets a visual verdict (ADR-0012).
 
-     What this replaces on both of its callers is a two-up grid: two
-     half-width thumbnails side by side, which at 390px is about 170px of
-     picture each and is the hardest possible way to see what changed. A
-     wipe puts both photographs at full width in the same frame, so the eye
-     compares the same pixels in the same place instead of travelling
-     between two small pictures and holding one of them in memory.
-
-     The reference is Photoroom's before/after (Mobbin, iOS,
-     https://mobbin.com/screens/c81968f1-67c1-4652-bd13-bf8595e8605c): one
-     frame, a hard divider, no crossfade and no verdict. Taken from it: the
-     divider is a line rather than a soft blend, because a blend invents
-     pixels that are in neither photograph. Not taken: its round white
-     handle with a shadow, which is the iOS material DIRECTION.md's rule 10
-     refuses - the handle here is a flat block of the area's own stripe.
-     The two dates pinned to the frame's top corners are Hers'
-     (https://mobbin.com/screens/dc7b6682-eff4-4591-be82-a6d5d9fd6f62),
-     where "Month 0" and "Month 6" sit on the pictures rather than under
-     them, which is what keeps both of them readable at every divider
-     position.
-
-     Colour never judges here and nothing about the drawing says which of
-     the two photographs is better (ADR-0012). The wipe shows two
-     photographs; the person reads them.
-
-     Full bytes, not thumbnails: a stored thumbnail is 320px on its long
-     edge (normalize.ts), and this frame is 358px wide on a phone at 1x and
-     more than a thousand device pixels at 3x. The whole point of the screen
-     is that the two pictures are the same pixels, so a blurred pair would
-     miss it. Two deliberate reads of two photographs, which is what
-     readPhoto is for (photoFiles.ts). */
+     Read the full photos with readPhoto. A thumbnail's 320px long edge
+     undersamples this 358px phone frame even at 1x. */
   import { m } from '$lib/paraglide/messages';
   import type { ComparePair, CompareSide } from '$lib/data/photos/compare-state';
   import { stepPair } from '$lib/data/photos/compare-state';
@@ -270,8 +244,8 @@
            divider's alone. Without it the sheet's drag-to-dismiss saw the
            same pointer bubble up, took its capture away from the handle
            once the finger had gone 4px down, and carried the whole sheet
-           off with a diagonal drag while the divider stood still
-           (pre-release-human 12). -->
+           off with a diagonal drag while the divider stood still.
+           -->
       <div
         class="wipe-handle"
         data-wipe-handle

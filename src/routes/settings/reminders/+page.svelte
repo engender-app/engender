@@ -27,11 +27,11 @@
 
   let reminders = liveList((j) => j.reminders.getReminders());
   /* What a medication reminder reminds about comes from its regimen and
-     schedule (functional audit ticket 21), so the rows wait for those too
+     schedule, so the rows wait for those too
      rather than renaming themselves after they have painted. */
   let episodes = liveList((j) => j.regimen.getEpisodes());
   let schedules = liveList((j) => j.doses.getSchedules());
-  /* 'unreadable' is a read the bridge refused (ticket 41): neither a grant
+  /* 'unreadable' is a read the bridge refused: neither a grant
      nor a refusal, so the screen says it could not check rather than
      claiming either. */
   let status = $state<AndroidReminderStatus | 'unreadable'>({ notifications: 'not-required', exactAlarms: 'not-required' });
@@ -107,7 +107,7 @@
     };
   });
 
-  /* The check-in's pause (functional audit ticket 08): one date, the last
+  /* The check-in's pause: one date, the last
      silent day. A date that has gone by is no pause, so the field reads
      empty again the day after without anything having to clear it. */
   let today = $derived(currentDay());
@@ -131,7 +131,7 @@
   const words = (r: Reminder) =>
     describeReminder(r, { reminders: reminders.rows, episodes: episodes.rows, schedules: schedules.rows, todayEpochDay: today });
 
-  /* Latched: a reserve must not put its placeholder back (ticket 211). */
+  /* Latched: a reserve must not put its placeholder back. */
   let remindersRevealed = $state(false);
   $effect.pre(() => {
     if (!reminders.loading && !episodes.loading && !schedules.loading) remindersRevealed = true;
@@ -194,7 +194,7 @@
             {/snippet}
           </Field>
           <!-- The pause sits on the check-in itself rather than on a screen
-               of its own (functional audit ticket 08): an empty field is no
+               of its own: an empty field is no
                pause, a date is the last quiet day, and the picker's own
                Clear is how it resumes. -->
           <Field label={m.checkin_pause_label()} id="checkin-pause" spread>
@@ -222,7 +222,7 @@
     </div>
   </ReadReserve>
 
-  <!-- One kit Notice per refusal (ticket 41), so each says only what its
+  <!-- One kit Notice per refusal, so each says only what its
        own permission costs and carries its one way out, and a grant made
        in Android's settings takes its notice away by the collapse Notice
        owns rather than in one frame. The inexact one states the accepted
@@ -280,8 +280,8 @@
     <!-- The notifications screen's Reminders switch gates every row below
          (platform-sync.ts's schedulableReminders), and each row keeps its
          own switch on while it is off - so the list says so rather than
-         showing a column of switched-on reminders that will not ring
-         (functional audit ticket 08). -->
+         showing a column of switched-on reminders that will not ring.
+-->
     {#if !prefs.remindersEnabled && reminders.rows.length > 0}
       <Notice
         icon="bell"
@@ -296,7 +296,7 @@
         <!-- A navigable title beside an independent Switch, and ListRow has
              no shape for that: `href` makes the whole row the link, which
              would toggle the switch by navigating past it; `action` renders
-             one icon button, not a Switch (ticket 18). -->
+             one icon button, not a Switch. -->
         {@const origin = resolveReminderOrigin(r)}
         {@const said = words(r)}
         <div transition:collapse class="kit-row" data-list-row={r.id}>

@@ -36,7 +36,7 @@
       "id": "backup",
       "kind": "noun",
       "confirmed": true,
-      "note": "docs/ui-copy.md: on screen \"backup\", never \"archive\" for the file. Polish says \"archiwum\" in about 30 keys and often \"kopia\" alone.",
+      "note": "Use “backup” for the file. Polish currently uses “archiwum” and “kopia”.",
       "en": {
         "forms": {
           "sg": "backup",
@@ -817,7 +817,7 @@
       "id": "drug",
       "kind": "noun",
       "confirmed": true,
-      "note": "English mixes \"drug\" (42 keys), \"medication\" (15) and \"med\". docs/ui-copy.md fixed \"med\" to \"Lek\".",
+      "note": "English uses “drug”, “medication” and “med”. Use “lek” in Polish.",
       "en": {
         "forms": {
           "sg": "drug",
@@ -881,7 +881,7 @@
       "id": "entry",
       "kind": "noun",
       "confirmed": true,
-      "note": "On screen \"entry\", never log or record (docs/ui-copy.md). Neither is listed as avoided: both are common verbs here (\"Logged today\", \"Record\").",
+      "note": "Use “entry” for the noun. “Log” and “record” still work as verbs.",
       "en": {
         "forms": {
           "sg": "entry",
@@ -1117,7 +1117,7 @@
       "id": "journal",
       "kind": "noun",
       "confirmed": true,
-      "note": "docs/ui-copy.md: the person has a journal, never a database.",
+      "note": "Call the person’s data a journal.",
       "en": {
         "forms": {
           "sg": "journal",
@@ -1263,7 +1263,7 @@
       "id": "milestone",
       "kind": "noun",
       "confirmed": true,
-      "note": "Binding in docs/ui-copy.md: stays even though humanizer-pl lists it; the landing site uses it too. docs/ui-copy.md: never event or occasion on screen (\"event\" is not listed as avoided because cycle events use it).",
+      "note": "Use “milestone”, including on the site. Keep “event” for cycle events.",
       "en": {
         "forms": {
           "sg": "milestone",
@@ -1400,7 +1400,7 @@
       "id": "module-effects",
       "kind": "phrase",
       "confirmed": true,
-      "note": "docs/ui-copy.md: never \"personal effect\" or \"effect\" alone.",
+      "note": "Call the module “Changes you’ve noticed”. Qualify “effect” when a specific effect needs naming.",
       "en": {
         "forms": {
           "base": "Changes you've noticed"
@@ -1767,7 +1767,7 @@
       "id": "passphrase",
       "kind": "noun",
       "confirmed": true,
-      "note": "The journal passphrase. docs/ui-copy.md: never \"password\" in English. Polish \"hasło\" also names the phone's own password in a few keys.",
+      "note": "Use “passphrase” for the journal in English. Polish “hasło” can also name the phone credential.",
       "en": {
         "forms": {
           "sg": "passphrase",
@@ -1835,7 +1835,7 @@
       "id": "photo",
       "kind": "noun",
       "confirmed": true,
-      "note": "docs/ui-copy.md: never image or asset on screen.",
+      "note": "Use “photo” in the interface.",
       "en": {
         "forms": {
           "sg": "photo",
@@ -2114,7 +2114,7 @@
       "id": "scale",
       "kind": "noun",
       "confirmed": true,
-      "note": "docs/ui-copy.md: never gender dimension, axis or metric on screen.",
+      "note": "Use “scale” in the interface.",
       "en": {
         "forms": {
           "sg": "scale",
@@ -2272,7 +2272,7 @@
       "id": "side-effect",
       "kind": "noun",
       "confirmed": true,
-      "note": "Kept apart from \"changes you've noticed\" (docs/ui-copy.md).",
+      "note": "Keep side effects distinct from “changes you’ve noticed”.",
       "en": {
         "forms": {
           "sg": "side effect",
@@ -2338,7 +2338,7 @@
       "id": "surgery",
       "kind": "noun",
       "confirmed": true,
-      "note": "Polish also uses \"operacja\" for English \"procedure\" (5 keys); decide whether procedure gets its own word. docs/ui-copy.md: on screen \"surgery journey\" and \"procedure\", never case or patient (\"case\" is not listed: too common a word).",
+      "note": "Use “surgery journey” and “procedure” in the interface. Polish also uses “operacja” for some procedure keys.",
       "en": {
         "forms": {
           "sg": "surgery",

@@ -1,26 +1,12 @@
-/* The yearly grid's days, for somebody who cannot see the cells (phase 14
-   pre-release ticket 30, accessibility audit A06).
+/* Check YearRows on the seeded mood-year.html fixture using the
+   accessibility tree. Hide the painted grid from the tree and tab order.
+   Open the list by keyboard and touch. Each day names its date and value
+   or missing entry. Two month buttons give three tab stops including the
+   opener and report year bounds. Expose one month through the crossfade.
+   Opening grows the list smoothly and month changes keep its height.
 
-   The grid on /wrapped/year is 365 painted spans, and a day's date and
-   value lived only in a `title`, which a screen reader does not reach and a
-   finger or a keyboard cannot raise. This drives YearRows on its fixture
-   page (tests/browser-tier/mood-year.html, a seeded year) and holds what the
-   audit asked for, read off the accessibility tree rather than the DOM:
-
-   - the painted grid is out of the tree, and none of its cells is a tab stop;
-   - one button under it opens the days as a list, by keyboard and by touch;
-   - every day of the year can be read there, its date and its value, and a
-     day nothing was logged on says so, checked against the fixture's own
-     series rather than against the cells;
-   - the month is changed by two buttons, so the whole card is three tab
-     stops, and the ends of the year say they go no further;
-   - the tree names one month at a time, also in the middle of the
-     crossfade that paints two;
-   - nothing yanks: the list opens by its height growing frame by frame, and
-     a month change keeps the panel's height on every frame.
-
-   Run on its own with `node tests/year-days-list.mjs`; part of
-   `npm run test:guards`. */
+   node tests/year-days-list.mjs
+   Included in npm run test:guards. */
 import { createServer } from 'vite';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';

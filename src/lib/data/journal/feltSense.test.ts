@@ -60,7 +60,7 @@ test('deleting a felt-sense entry is idempotent and leaves its owner and its oth
   assert.equal((await journal.tryouts.getTryouts()).length, 1);
 });
 
-/* One query for a screen drawing several tryouts at once (ticket 53). */
+/* One query for a screen drawing several tryouts at once. */
 test('every tryout\'s readings come back grouped and oldest first, and a tryout with none is absent', async () => {
   const { journal } = await journalWithBuiltIns();
   const alex = await journal.tryouts.upsertTryout({

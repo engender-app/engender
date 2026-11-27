@@ -1,23 +1,8 @@
-/* The photos area (PRD F5/F27, ADR-0008). One table and one code path for
-   both owners: an entry's photos and a milestone's photo differ only in
-   which column the row hangs off, so there is no second implementation for
-   milestones to drift from this one.
-
-   Order is the rule that carries this module. Files land before the row
-   that names them, and the row goes before the files are forgotten:
-
-     attach  - write both files, then insert the row.
-     remove  - delete the row, then delete the files.
-
-   Either way a crash in the gap leaves a file no row references, never a
-   row pointing at a file that is not there. The first is reclaimed by
-   sweepOrphanPhotos() below; the second would be a photo the user can see
-   in the list and never open. That asymmetry is ADR-0011's rule - import
-   writes files first and never deletes - applied to the ordinary path.
-
-   deleteEntry and deleteMilestone follow the same order for the rows they
-   own, and hand their file paths to removeFilesOf() here so the rule about
-   what a photo's files are lives in one place. */
+/* Use one table and path for entry and milestone photos (ADR-0008).
+   On attach write both files, then insert the row. On removal delete
+   the row, then its files. A crash can leave an orphan that
+   sweepOrphanPhotos() reclaims, while referenced files remain available
+   (ADR-0011). Entry and milestone deletion share removeFilesOf(). */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import { unownedNames } from './fileOwnership';
@@ -158,7 +143,7 @@ export async function photosByEntry(
 
     `milestoneIds` narrows it to the rows a caller actually holds, the same
     shape `photosByEntry` above already takes and for a reason that only
-    appeared with a second caller (phase 5 deepening ticket 21): the day view
+    appeared with a second caller: the day view
     reads the milestones dated to one day, and the whole-table read would
     grow with the journal on every day anyone opened. Omitted, it is every
     milestone, which is what the milestones screen wants. */
@@ -180,38 +165,14 @@ export async function photosByMilestone(
   return byMilestone;
 }
 
-/* Deletes every file in the store that no media_file row references, after
-   restore or a due housekeeping pass (ADR-0008). This is the other half of the
-   ordering rule at the top of this file: attach, remove, deleteEntry and
-   ticket 14's import are all free to leave a loose file behind, because
-   this reclaims it after restore, a failed delete, or at the weekly pass.
-   It is the only code that deletes a file nobody asked to delete, which is
-   why it reads the rows itself
-   rather than trusting a caller's list.
+/* Reclaim media files that no owner references after restore or a due
+   housekeeping pass (ADR-0008). Read live ownership, including derived
+   thumbnails and optional benchmark recordings. Limit the scan to the
+   media directory, since the database also lives in OPFS.
 
-   A row names only its full photo; the thumbnail's name is derived
-   (names.ts), so both sides of the comparison have to be expanded or
-   every thumbnail would look like an orphan.
-
-   It is also why the store's root is a directory of its own and never the
-   OPFS root: the database file lives in OPFS too, and no row references
-   it.
-
-   media_file supplies every owner's stored names; fileOwnership.ts adds
-   derived thumbnails. Optional benchmark recordings have their own view arm.
-
-   Precondition: nothing may attach a photo while this runs. It reads the
-   rows and then lists the files, so a photo whose files landed after the
-   read but whose row landed before the list would look like an orphan.
-
-   Enforced rather than assumed since phase 5 audit ticket 02 took this off
-   boot's critical path: the pass can run after a screen is live, so the
-   guard every journal write raises is what the precondition rests on now
-   (watchJournalWrites, journal-busy.ts). A write
-   in flight at any point means this stops where it is and leaves the rest to
-   a later pass, the same outcome its failure path has always had, and the
-   right way round: losing a photo's bytes is not a price worth paying to
-   reclaim a file nothing was reading. */
+   A concurrent write could put bytes in the store before this scan sees
+   their row. watchJournalWrites stops the pass when a write begins. Defer
+   remaining files until the next pass. */
 export async function sweepOrphanPhotos(driver: SqliteDriver, files: PhotoFileStore): Promise<void> {
   const writes = watchJournalWrites();
   const startedAt = orphanSweepRequestVersion();
@@ -333,8 +294,8 @@ export function makePhotosArea(driver: SqliteDriver, files: PhotoFileStore): Pho
       /* Two left joins rather than two queries: exactly one of the owner
          columns is set (the table's CHECK), so COALESCE picks whichever day
          applies and the other side contributes nothing. A trashed entry's
-         photo is excluded the same way every other entry-owned read is
-         (phase 5 ticket 19); a milestone's has no such state to check. */
+         photo is excluded the same way every other entry-owned read is;
+         a milestone's has no such state to check. */
       const rows = await driver.query<PhotoRow & { epoch_day: number; milestone_name: string | null }>(
         `SELECT p.uuid, p.file_path, p.starred,
                 COALESCE(p.epoch_day_override, e.epoch_day, m.epoch_day) AS epoch_day,

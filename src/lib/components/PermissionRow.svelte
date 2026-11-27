@@ -1,22 +1,8 @@
 <script lang="ts">
-  /* One row of the permissions list: an icon, what the capability is, one
-     line saying what the app does with it, and one control at the trailing
-     edge (phase 10 redesign ticket 31, DIRECTION.md rule 13).
-
-     Split from PermissionList because what a row looks like and what the
-     device currently allows are two different questions. The list owns the
-     second - two Capacitor plugins and, on the web, navigator.permissions -
-     and this owns the first, taking a resolved `GrantRow` and nothing else.
-     That is what lets every state be rendered side by side against the real
-     tokens (tests/browser-tier/permissions.html) instead of only the two a
-     desktop browser happens to be in.
-
-     The trailing control, from the fourth Mobbin sweep: Squarespace's
-     permissions screen for the Allow that sits on the row rather than at the
-     foot of the screen, Dot's for a granted row going quiet - a word in
-     --text-2 where the button was, so the row keeps its explanation instead
-     of disappearing with it - and Truecaller's for a refusal turning into a
-     way into system settings on the row itself. */
+  /* Render a resolved GrantRow. PermissionList reads device status,
+     and permissions.html can show this component's states together.
+     Put Allow on the row, replace it with status after grant, and
+     link to system settings after refusal. */
   import { m } from '$lib/paraglide/messages';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import type { GrantRow } from '$lib/permissions/catalogue';
@@ -103,16 +89,13 @@
     animation: perm-swap var(--dur-med) var(--ease-out) both;
   }
 
-  /* The app's secondary button, an outline block of the page (ADR-0093).
+  /* The app's secondary button, an outline block of the page.
      It was a filled block of the area's stripe, a button drawn nowhere
      else in the app (after-release 28, audit UI-08). Narrower than the
      standing button, which spends var(--space-6) either side and would
      leave a two-word label no room beside a reason. */
   .perm-grant {
-    /* Android's 48dp floor, which PRODUCT.md takes as the app's own because
-       it is the stricter of the two platforms. The row is the only thing
-       around it and the row is not itself a target, so this button is the
-       whole of what a finger has to find. */
+    /* This button is the only target in the row. Keep it at least 48dp. */
     min-height: var(--touch-target);
     padding: 0 var(--space-3);
     font-size: 15px;

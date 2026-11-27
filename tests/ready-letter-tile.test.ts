@@ -1,4 +1,4 @@
-/* Contract and behavioral tests for ready-letter live tile (ticket 01).
+/* Contract and behavioral tests for ready-letter live tile.
    Verifies:
    - Tile appearance criteria on Home for unlocked, unread time-capsule letters.
    - Oldest unlocked letter prioritization and multi-letter remaining count.
@@ -104,8 +104,7 @@ describe('Ready letter status logic (ticket 01)', () => {
 });
 
 describe('Home ready-letter live tile rendering and behavior', () => {
-  /* The tile itself moved into the grid module (phase 8 deepening ticket
-     07), so its content, its route and its dismiss are asserted through
+  /* The tile itself moved into the grid module, so its content, its route and its dismiss are asserted through
      `composeHomeTiles` in liveTiles.grid.test.ts. What stays here is the
      half that is still Home's: the sheet the dismiss opens, which is a
      surface on the route rather than a control on the tile. */
@@ -117,8 +116,7 @@ describe('Home ready-letter live tile rendering and behavior', () => {
     expect(home).not.toContain('getLetters(');
   });
 
-  /* The transition moved off Home and onto the kit (phase 9 carpet ticket
-     04): every tile in every grid leaves through `collapse`, which reads its
+  /* The transition moved off Home and onto the kit: every tile in every grid leaves through `collapse`, which reads its
      axis off the layout, rather than through a slide this screen declared on
      the x axis whatever the layout was doing. */
   it('renders ready-letter tile inside TileGrid, which collapses through the kit', () => {
@@ -154,7 +152,7 @@ describe('Settings and letter route integration', () => {
   it('marks letter as read on opening /transition/letters or [id]', () => {
     expect(lettersPage).toContain('markLetterRead(letter.id, acknowledgementStore)');
     expect(lettersPage).toContain("page.url.searchParams.get('read')");
-    // The [id] route (phase 5 deepening ticket 13) renders the letter's own
+    // The [id] route renders the letter's own
     // text in place rather than bouncing back to the list; it marks read
     // once that text has actually been shown.
     expect(letterIdPage).toContain('markLetterRead(id, acknowledgementStore)');

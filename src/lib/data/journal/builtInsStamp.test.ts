@@ -1,4 +1,4 @@
-/* The built-in catalogue's fingerprint (ux-carpet ticket 208) and the boot
+/* The built-in catalogue's fingerprint and the boot
    path that trusts it. */
 
 import { test } from 'vitest';

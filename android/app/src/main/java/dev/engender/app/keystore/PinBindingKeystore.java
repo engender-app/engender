@@ -11,46 +11,16 @@ import javax.crypto.KeyGenerator;
 import javax.crypto.Mac;
 import javax.crypto.SecretKey;
 
-/**
- * The device half of a PIN, held by the phone rather than by the WebView
- * (audit finding G-03).
+/** Binds the PIN wrap to a non-exportable Android Keystore key.
  *
- * <p>PIN mode wraps the journal under the four digits joined with a secret
- * only this device can produce ({@code src/lib/data/device-secret.ts}). That
- * secret is an HMAC signature over one fixed, versioned label, and the whole
- * question this class answers is where the key doing the signing lives. In
- * the WebView's own key store it is app-private but on disk, in files sitting
- * beside {@code keystore.json} - so one copy of the app's directory takes
- * both halves of the secret and lands the copier in the 10,000-candidate
- * bucket the setup copy prices at about five seconds. Under a Keystore alias
- * the key material is not in that directory at all, and the platform will not
- * hand it out to anything, this app included. The same copy then yields
- * neither half.
+ * <p>The WebView combines the PIN with an HMAC signature over a fixed,
+ * versioned label. Keystore keeps the signing key outside app files and
+ * backups. HMAC makes the device value repeatable without a nonce. The PIN
+ * is the prompt, so the device key can sign without a second prompt.
  *
- * <p><b>No authentication, deliberately.</b> {@code
- * setUserAuthenticationRequired(false)}: the PIN is what the person is
- * typing, and a biometric or lock-screen prompt in front of it would be a
- * second gate nobody asked for - which is the whole reason a four-digit mode
- * exists. What the alias buys is not a second check on who is present; it is
- * that the key cannot be copied off the device. {@code ReminderPayloadStore}
- * makes the same trade for the same kind of reason.
- *
- * <p><b>HMAC rather than AES</b>, following the web module this mirrors: a
- * deterministic value out of a non-extractable AES key means encrypting a
- * fixed plaintext under a fixed nonce, which is safe with one plaintext and
- * one nonce but is exactly the shape a reader has to stop and check. A
- * signature over a label has no nonce and no reuse question.
- *
- * <p><b>Hardware-backed where the device offers it.</b> Keystore puts an HMAC
- * key in the TEE on devices whose keymaster implements it and in software
- * keymaster otherwise; either way the key material is outside this app's
- * files and outside a backup of them, which is the property the ticket needs.
- * {@code PinBindingKeystoreTest} logs what the device it runs on actually
- * says rather than asserting a level the platform does not promise.
- *
- * <p>Nothing is persisted beside the alias. The signature is a function of
- * the key and the label, so there is no blob to keep in step with it and
- * nothing for a reset to miss - {@link #erase()} is the whole of it.
+ * <p>Keystore uses hardware where supported. {@code PinBindingKeystoreTest}
+ * records the device's backing level. No signature is persisted and
+ * {@link #erase()} deletes the alias.
  */
 public final class PinBindingKeystore {
 

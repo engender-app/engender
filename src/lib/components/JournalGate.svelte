@@ -259,8 +259,8 @@
       {/if}
       <!-- The gate's own notes, not the mid-session ones: those send
            somebody to reopen the app for the recovery key, and this gate
-           already offers it beside the button that opened this sheet
-           (after-release ticket 09). -->
+           already offers it beside the button that opened this sheet.
+-->
       {unlockingPin
         ? m.pin_forgot_gate_note()
         : unlockingBiometric
@@ -272,7 +272,7 @@
   {#if resetError}
     <!-- In the sheet, which stays open: the sheet is where the button was
          pressed, and closing it on a failure left the gate looking as if
-         nothing had happened (after-release ticket 09). -->
+         nothing had happened. -->
     <p class="reset-failed small" role="alert" data-reset-failed transition:disclose>{resetError}</p>
   {/if}
   <div class="stack-3" style="margin-top:var(--space-4)">

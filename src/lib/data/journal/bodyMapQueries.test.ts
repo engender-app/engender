@@ -1,4 +1,4 @@
-/* Somatic breakdown per body region queries (phase 5 deepening ticket 08).
+/* Somatic breakdown per body region queries.
    Combines feelings trajectory, progress photos, and
    hair removal records for an anatomical region. */
 
@@ -37,7 +37,7 @@ test('empty somatic breakdown when nothing is logged for a region', async () => 
 test('feelings trajectory aggregates for a region and excludes trashed entries', async () => {
   const { journal, db } = await journalWithBuiltIns();
 
-  // A region is one value on the shared scale now (ticket 39, ADR-0081), so
+  // A region is one value on the shared scale now, so
   // one entry is dysphoria-only and the other euphoria-only rather than
   // both at once.
   await journal.entries.upsertEntry({

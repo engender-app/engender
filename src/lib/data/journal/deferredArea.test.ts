@@ -1,4 +1,4 @@
-/* The deferred-area seam itself (phase 9 audit ticket 03): that a facade
+/* The deferred-area seam itself: that a facade
    built from a list of names answers to all of them, loads nothing until one
    is called, and builds the area exactly once however many calls arrive.
 

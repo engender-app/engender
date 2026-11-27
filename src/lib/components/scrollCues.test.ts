@@ -1,5 +1,5 @@
-/* A scroller's cue says "more" only at an end that has more behind it
-   (tester report 02, ticket 09). */
+/* A scroller's cue says "more" only at an end that has more behind it.
+*/
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

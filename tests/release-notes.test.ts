@@ -1,4 +1,4 @@
-/* What a release is allowed to say about itself (phase 2 ticket 06). The four
+/* What a release is allowed to say about itself. The four
    call-outs are the ones a person needs before installing: whether the
    database schema moved, whether the Archive format moved, whether anything
    about encryption has to migrate, and how old a version this release can

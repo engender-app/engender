@@ -1,57 +1,16 @@
-/* Five checks over the app's copy, run on every pull request (phase 2 ticket
-   06, which wires up what ticket 19 then relies on; the third check added by
-   phase 5 ticket 05; the fourth by phase 8 deepening ticket 05; the fifth by
-   phase 12 copy-tooling ticket 01):
+/* Check catalogue order, translated keys, unlocalized copy, Polish
+   reader forms and caller coverage. Paraglide falls back to the base
+   language for a missing Polish translation. A missing generated
+   accessor is already a type error.
 
-   1. The two catalogues hold the same keys. A key present in English and
-      missing in Polish is not an error anywhere else - paraglide falls back to
-      the base locale - so it ships as English text shown to a Polish reader.
-      A key the source actually calls and no catalogue has is already a type
-      error, since paraglide generates one function per key; `npm run check`
-      catches that one and this does not repeat it.
+   Message calls use named accessors in shipped source, including
+   vocabulary labels (ADR-0024). DEAD_ALLOW lists callers the source
+   scan cannot see. The Polish check catches second-person gendered
+   verb endings and a short list of known predicate adjectives.
 
-   2. No screen grows new user-facing text that never reaches the catalogues.
-      There are hundreds of such literals today, from the phase 0 and phase 1
-      screens, so the check is a ratchet against a recorded count per file
-      rather than a rule that could pass now: nothing may go up, and anything
-      that goes down is recorded. messages/untranslated-literals.txt is that
-      record, and it is the number tickets 19 and 23 work down.
-
-   3. No Polish string genders the reader (docs/ui-copy.md, "The reader has no
-      gender here"). Polish inflects second-person past tense for gender, so a
-      word ending in "-łaś" always addresses the reader as a woman - that
-      ending is specific enough to flag anywhere it appears. A predicate
-      adjective aimed at the reader genders just as surely ("jesteś dumna"),
-      but a general pattern for that catches adjectives that agree with an
-      ordinary feminine noun instead ("niepewna ... krzywa", "wersja ...
-      gotowa"), so this check only flags a short, named list of forms already
-      found addressing the reader rather than every feminine adjective ending.
-
-   4. No catalogue key sits with no shipped caller. The other direction - a key the
-      source calls and no catalogue has - is already a type error, since
-      paraglide generates one function per key; `npm run check` catches that
-      one. A key the catalogue has and nothing calls is invisible to every
-      other check here and to the typechecker both, and it happens in
-      clusters: ticket 16's kit contract orphaned twelve `*_row_aria` keys at
-      once when `ListRow`/`RecordSheet` started deriving a row's accessible
-      name from `title` instead. There is no dynamic `m[...]` or
-      `messages[...]` access in `src/`, so reading `m.<key>`/`messages.<key>`
-      as plain text out of shipped `.svelte`/`.ts`/`.js` files is a sound
-      scan - not an approximation of one - and needs no new parser: a
-      built-in's wording can be reached only through
-      `src/lib/data/vocabulary/vocabulary.ts` (ADR-0024) and still read as
-      `m.<key>` by name one layer down, in `labels.ts`, where the text scan
-      finds it same as anywhere else. DEAD_ALLOW exists for the rarer case a
-      plain-text scan genuinely cannot see - each entry carries its reason.
-
-   5. Both catalogues are in the order scripts/catalogue.mjs writes: `$schema`
-      first, keys sorted. Branches that each append a key at the end of an
-      unsorted file collide on merge; sorted keys scatter the insertions.
-
-   Run `node scripts/check-copy.mjs` to see where it stands, and
-   `node scripts/check-copy.mjs --update` after moving copy into the
-   catalogues, which rewrites the record. `--fix` rewrites a catalogue that
-   is out of serializer order (scripts/catalogue.mjs) in place. */
+   The literal count is kept per file in messages/untranslated-literals.txt.
+   Run npm run check:copy -- --update after localizing a literal, and
+   npm run check:copy -- --fix to restore catalogue order. */
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';

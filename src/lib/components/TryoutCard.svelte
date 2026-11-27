@@ -1,41 +1,11 @@
 <script lang="ts">
-  /* A tryout that is still running, on the tryouts index (phase 10 redesign
-     ticket 53, DIRECTION.md rule 16).
+  /* The running card leads with the tryout's name and kind on the role
+     colour. Put the start date and elapsed time below it, away from any
+     streak-like emphasis. The felt-sense drawing uses the recorded days
+     and its count and latest date also appear in text.
 
-     It was a list row: a name, and under it the kind and a date range run
-     together in secondary grey. The screen's own subtitle promises "a name,
-     pronouns, a style, or anything else you're trying, and how it's felt so
-     far", and the second half of that sentence was answered nowhere on the
-     screen - the felt-sense readings were in the database, reachable, and
-     only visible once a tryout was opened.
-
-     So a running tryout says what is true now in the two ways rule 16's
-     worked examples do. The block of the area's stripe is what the card
-     reports, and the drawing under it (TryoutFeltSenseArc) is how it has
-     felt, with what the drawing holds written out beside it in words.
-
-     What is on that block changed in phase 11 pre-production ticket 43.
-     It used to be the day count, 40px on the stripe, with the name in
-     17px above it - so the loudest thing on a card about an experiment
-     was how many days it had been going, which is the shape of a streak
-     counter and reads as a target (the ticket's reference sweep rejected
-     exactly that: a 30-day challenge ring with a completion count). The
-     name is on the block now, at the size a row-weight tile with no
-     value gives its title, with the kind under it as the plate's second
-     line; the length is a secondary line below, where the date it counts
-     from already was. Nothing was removed - the same three facts are on
-     the card - and the one a person reads first is which tryout this is.
-
-     An ended tryout is not this. It stays the row it was and gains its
-     length, because there is no live reading left to draw: the days have
-     stopped counting and the shape is complete. That density difference is
-     what lets several running tryouts fit on the screen at once, which is
-     the arrangement the ticket is named for.
-
-     Nothing on it is a verdict. Day N is a fact about time, the readings
-     are drawn where they were written and never reduced to one number, and
-     the app does not decide whether a name suited somebody (ADR-0012, and
-     the ticket's own Out of scope). */
+     An ended tryout is a compact row with its length. The card's time and
+     readings describe the tryout without rating it (ADR-0012). */
   import { m } from '$lib/paraglide/messages';
   import Icon from './Icon.svelte';
   import TryoutFeltSenseArc from './TryoutFeltSenseArc.svelte';
@@ -85,8 +55,7 @@
   <div class="tc-top">
     <!-- A row the width of the card answers a press with a wash rather
          than a scale: 0.94 on a 330px card walks its edges 10px inward
-         while the list holds still, which reads as a yank (DIRECTION.md
-         tier 1). data-no-press is how that is said. -->
+         while the list holds still, which reads as a yank. data-no-press is how that is said. -->
     <!-- No aria-label. One would replace the link's own content for a
          screen reader, and the name, the kind, the last reading and how
          long it has run are all inside it. -->
@@ -209,8 +178,7 @@
      written on the stripe itself. Not large text by WCAG's measure, so it
      owes 4.5:1 and gets it: --role-fill-ink is the heat ramp's deepest
      step, held to 4.5:1 against its own fill by tests/kit-roles.test.ts.
-     No uppercase, no tracking - DIRECTION.md's own census names an
-     uppercase tracked label as the craft floor's tell and declines it. */
+     Keep the label in normal case with default letter spacing. */
   .tc-kind {
     font-size: var(--text-block);
     font-weight: var(--weight-medium);

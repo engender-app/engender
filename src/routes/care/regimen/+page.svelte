@@ -1,8 +1,7 @@
 <script lang="ts">
   import { page } from '$app/state';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
-  /* What you are taking, and since when, on the surface kit (phase 5 UX
-     ticket 25).
+  /* What you are taking, and since when, on the surface kit.
 
      The dose log used to sit above the regimen alongside two other links -
      the stock projection and the exposure counters - as a list-group
@@ -56,7 +55,7 @@
      `deepLinkedEpisodeIndex` below resolves a hash's id against, since
      BatchedList's `focusIndex` names a position in this exact array. */
   let orderedEpisodes = $derived([...episodes].reverse());
-  /* A set, not one episode (phase 5 ticket 38): more than one can be
+  /* A set, not one episode: more than one can be
      active at once for different drugs, and every one of them still gets
      the "current" badge below. */
   let activeIds = $derived(new Set(activeEpisodesAt(episodes, Date.now()).map((e) => e.id)));
@@ -100,8 +99,7 @@
     toast(m.saved(), { kind: 'record-saved' });
   }
 
-  /* The clinician summary links an episode across a hash (phase 8 features
-     ticket 67) - read once, the same "one visit to one screen" rule
+  /* The clinician summary links an episode across a hash - read once, the same "one visit to one screen" rule
      BatchedList's own `path` follows. */
   let sourceId = $derived(page.url.searchParams.get('episode'));
   let sourceEpisode = $derived(episodes.find((episode) => episode.id === sourceId));

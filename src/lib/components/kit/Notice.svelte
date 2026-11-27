@@ -1,48 +1,14 @@
 <script lang="ts">
-  /* A notice: one outline, an icon, a line or two, and at most one action.
+  /* A notice sits between hairlines with a 40px icon square. The separate
+     action row keeps the icon aligned with the text, even when the action
+     is a 48px button. Render a link for a destination and a button for
+     an action. Use the text action for ordinary notices and the primary
+     button when the notice is the screen's empty state.
 
-     No coloured bar down its side. A 4px accent border-left is named
-     outright in the craft floor as the most recognisable AI-UI tell there
-     is, and the slop audit took it off the backup notice this replaces. It
-     is flush on the page between two hairlines (phase 10, rule 4), with a
-     40px square of ink as its mark; kit.css draws it.
-
-     The dismiss is a drawn icon, not a multiplication sign standing in for
-     one - the same audit, the same list.
-
-     The action sits on its own row under the text rather than inside the
-     column beside the icon. With it in the column, the icon centred against
-     the text plus a 48px button and so sat visibly below the line it
-     belongs to.
-
-     It is a link where it goes somewhere and a button where it acts, the
-     same split ListRow.svelte makes and for the same reasons: the two carry
-     different keyboard behaviour and different announcements, and "back up
-     now" is a destination however it is drawn.
-
-     And it can be the app's own primary button rather than a text action,
-     because a notice and an empty state are the same surface at two
-     different weights. A notice remarks - the backup is old, here is the way
-     to fix it - and a text action is the right size for a remark. An empty
-     state asks: it is the whole of what a first-run Home has to say, and the
-     one thing to do about it is the screen's only call to action. That is
-     what `.btn .btn-primary` is (phase 5 ticket 30's control inventory), and
-     without this Home shipped no instance of the app's primary control at
-     all. One flag rather than a second component, because everything else
-     about the two is identical.
-
-     Title and text are both optional, and a notice with only a title is the
-     shape a one-line statement wants: the text is --text-2 by design,
-     because a notice usually has a bold thing to say and a quieter
-     explanation under it, and an anniversary that reads "that day matters"
-     in the quiet half is the wrong emphasis. At least one of the two, which
-     the types below say by making the pair a union rather than by asking a
-     caller to remember.
-
-     Anything else the caller puts on the notice lands on its root, which is
-     how a screen stamps its own walkthrough handle without the kit learning
-     what a backup is - `data-notice` names the surface and the handle beside
-     it names the thing being said (ADR-0029). */
+     The props require a title or body. A title-only notice keeps the
+     main text weight. Body text uses --text-2. Forward attributes to
+     the root so a caller can add its walkthrough handle beside
+     data-notice (ADR-0029). */
   import { focusAfterRemoval } from '$lib/navigation/arrivalFocus';
   import { navigating } from '$app/state';
   import Icon from '../Icon.svelte';
@@ -86,44 +52,13 @@
   } = $props();
 </script>
 
-<!-- Leaving: whatever unmounts this - the dismiss button, or a caller's own
-     condition going false, the same shape a dismiss produces - used to drop
-     the space it held in one frame and throw the content below up to meet it
-     (phase 5 ticket 32.17, "clicking 'x' on a panel should close it with a
-     nice animation, the content below shouldnt just jump up immediately").
-     `collapse` shrinks a box to nothing by measuring its own box rather than
-     guessing at one; it runs the same way backwards for a leaving node as it
-     does forwards for an arriving one.
+<!-- Use collapse for mount and unmount. It measures the box and moves the
+     rows below it. Its arrival window keeps initial screen assembly still.
+     The global modifier lets the transition run when a caller's condition
+     unmounts the notice. skip suppresses it when the page itself leaves.
 
-     Arriving is `collapse`'s own arrival window rather than the flat "no
-     entrance animation" this carried until phase 9 carpet ticket 04. Tier
-     4's "content is simply there" is about a screen assembling itself, and
-     that is exactly what the window suppresses; a notice that appears while
-     somebody is already looking at a settled screen is a change within it,
-     and opening its own height is what stops it shoving the rows below in
-     one frame - the same defect on the way in that the paragraph above
-     names on the way out.
-
-     `|global`: a transition is local by default and only plays when its own
-     block is created or destroyed. A notice is wrapped in its caller's
-     `{#if}`, so a local transition was skipped when unmounted from the outside,
-     teleporting the rows below in a single frame (ticket 104). `|global` makes
-     the collapse run whenever its parent block unmounts.
-
-     `skip`: with `|global`, this shrink would replay whenever the *page*
-     unmounts the notice - navigating away from a screen that never sets
-     `dismiss` at all (the roadmap's provenance notice, phase 5 ticket 99
-     item 16) would collapse it over the outgoing screen's transition. `skip`
-     (see `disclose`'s own comment in reveal.ts) reads `navigating` and cuts
-     the animation when it is the page leaving rather than the notice itself.
-
-     `use:resize` on the body below, not here, for the other half of the
-     same finding: a notice that stays mounted and changes size under its
-     own title/text (a notice switched with
-     the segmented control) used to jump the same way on the way in. One
-     primitive per shape - `resize` cannot see a node arriving or leaving,
-     which is `collapse`'s job, and `collapse` cannot see a node's own
-     content changing size while it stays put, which is `resize`'s. -->
+     use:resize on the body covers changes to a notice that stays mounted,
+     such as switching its text with a segmented control. -->
 <div
   class="kit-notice"
   data-kit-surface

@@ -1,51 +1,14 @@
-/* Every kind the app may show or fire unprompted (phase 6 tickets 02 and
-   04): a live tile (CONTEXT.md), the stock notice, wrapped and on-this-day,
-   and - since ticket 04 - the four producers that used to answer to nobody
-   in common, namely reminders, the daily check-in, a wear session's elapsed
-   prompt and the auto-export failure notice. Era mutes fold in at ticket
-   05; insight rows at 06 - each of those becomes one array entry below
-   rather than a fifth place deciding for itself.
+/* Register everything the app can show or send unprompted. Today
+   edits live tiles, and Settings handles other surface switches and
+   notifications. Each switch applies to the whole kind. A running
+   session keeps its real-time surface (ADR-0039).
 
-   The list is the point: each of the two views draws one row per entry and
-   nothing else, so a later ticket adds its kind here - one array entry, no
-   new markup - the same way archiveSections.ts is a registry rather than a
-   hand-maintained list. Titles and subtitles are keyless functions over the
-   message catalogue for the same reason the More hub's HubRow is: the
-   swatch names translate with everything else.
+   Only a scheduled time or a failure can prompt a notification.
+   Reminders, check-in and wear-elapsed are scheduled. Export failure
+   reports an error. Insights and offers wait inside the app.
 
-   One list, read by the surfaces that arrange what is on it. Deepening
-   ticket 09 merged the two views this list was written for into
-   `/settings/notifications`, and phase 11 ticket 04 took the thirteen live
-   tiles off that screen again and onto Today's own editor, which is the
-   page they draw on: a front page curated in two places is two curation
-   surfaces for one screen. So a `surface` row is switched either in the
-   editor (`isLiveTileKind`) or on that screen, and every `notify` row is
-   switched on that screen. Someone asking "stop buzzing my phone" and
-   someone asking "stop showing me this" are still different people in
-   different moments; what changed is where the second one is standing.
-
-   A row switches its kind off for good, never one true instance (a running
-   session cannot be hidden while it runs) - ADR-0039's amendment holds the
-   line, and the tile tickets read these keys as one gate on top of their
-   own data trigger.
-
-   ## The admission rule (phase 6 ticket 04)
-
-   **A notification requires that the person scheduled this specific thing
-   for a specific time, or that something failed. Everything else surfaces
-   in the app and waits.**
-
-   Current firing rows pass that rule: reminders, check-in and wear-elapsed
-   are scheduled by the person; export-failure reports a failed backup.
-
-   Applied honestly to what phase 6 adds, the rule admits nothing new: the
-   appointment debrief offer, insights and the flourish are all in-app. That
-   is the expected outcome rather than a sign a ticket is incomplete.
-
-   Quiet hours is the one cross-class rule (quietHours.ts), not a field per
-   row: a notification due inside the window is held until the window ends,
-   never dropped. Disguise is the other - `hideNotificationTitles` covers
-   every row that has a `notify`, which `disguised: true` makes a type rule. */
+   Quiet hours delay notifications until the window ends. Disguise
+   hides titles for every notification kind, enforced by its type. */
 /* Relative rather than $lib: registry.test.ts imports this file on the node
    tier, where no $lib alias exists - the one svelte-kit-ism the tests can't
    follow (see vitest.config.ts). */
@@ -88,48 +51,24 @@ export interface UnpromptedRow {
       on the other are the same kind, and calling it two things would be the
       "two registries" this file exists not to be. */
   title: () => string;
-  /** Which area this kind talks about, or null where it talks about none
-      (phase 8 features ticket 04, ADR-0052).
-
-      An area that is hidden or finished goes quiet, and this is the field
-      that says what "for that area" means - one declaration per kind, on the
-      list that already holds every kind, rather than a second list of tiles
-      and notifications kept somewhere else and silently missing the next one.
-      `unpromptedQuiet` below is what reads it.
-
-      Required, and nullable rather than optional, so a kind added here has to
-      decide. Null is a real answer for most of them: a letter unlocking,
-      an export failure and the two retrospectives concern the journal as
-      a whole, and `entries` is not finishable.
-
-      A row's switch (its `surfaceOverrides` entry, or a notification's
-      `prefKey`) is untouched by any of this. Whether a kind of prompt
-      talks is a different question from whether an area is on, and this is a
-      switch above the preferences rather than a replacement for them.
-
-      Checked 2026-09-05 (features ticket 35) against the worry that
-      the kind switches (then `*Enabled` booleans, now `surfaceOverrides`
-      entries and the notification booleans) are a second, boolean-shaped
-      answer to what this field already answers: they are not. Two rows
-      carry a non-null area today, `wear-timer` and `wear-elapsed`, both
-      naming `wearSessions`, and every other switch fronts a record that
-      cannot be an area at all (its own reason lives on its row above).
-      ADR-0039's amendment is why the switch survives alongside the cascade
-      rather than being replaced by it: a kind's toggle means "never show me this kind,"
-      not "hide the one instance that's currently true," and folding it into
-      `unpromptedQuiet` would delete that distinction. This field being
-      required rather than optional already forces the next kind to answer
-      the same question, so no separate exhaustiveness guard is needed for
-      it either. Nothing changed as a result of this check - see ticket 35's
-      Outcome. */
+  /**
+   * Name the area whose hidden or finished state quiets this kind
+   * (ADR-0052). Use null for kinds that concern the journal as a whole,
+   * such as export failure or the retrospectives. The field is required
+   * so every new kind makes that choice.
+   *
+   * unpromptedQuiet applies the area rule on top of each kind's own
+   * preference. Hiding an area does not change its surfaceOverrides
+   * or notification switch (ADR-0039).
+   */
   area: HideableArea | null;
   /** Present when this kind shows something in the app of its own, carrying
       a subtitle saying what it puts in front of you where the title does not
       already say it, and whether it shows until the person says otherwise
       (`defaultOn`). The switch is one entry in the `surfaceOverrides`
-      preference, keyed by this row's key (functional audit ticket 44), and
+      preference, keyed by this row's key, and
       sits in Today's editor for a live tile and on
-      `/settings/notifications` for everything else (ticket 04). Absent is "shows
+      `/settings/notifications` for everything else. Absent is "shows
       nothing in the app of its own": the four producers ticket 04 folded in
       all fire and none surfaces. */
   surface?: { subtitle?: () => string; defaultOn: boolean };
@@ -319,7 +258,7 @@ export function withSurface(
 }
 
 /** Whether a kind should stay silent because the area it talks about is
-    hidden or finished (phase 8 features ticket 04, ADR-0052).
+    hidden or finished (ADR-0052).
 
     The cascade, in one line and read from the registry itself. A tile, a
     notification and anything else that grows a row here all pass through this

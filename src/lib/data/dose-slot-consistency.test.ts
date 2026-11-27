@@ -16,7 +16,7 @@ const NOW = startOfDayTimestamp(TODAY) + 12 * 3600000;
 
 /** What Today states about doses for a journal: its tiles, and the agenda
     projected the way the route projects it - the `doseSlot` rows withheld
-    while the dose panel is drawn (functional-audit ticket 15). Formats are
+    while the dose panel is drawn. Formats are
     stand-ins so the assertions read which day and route were asked for. */
 async function todayOf(journal: Journal): Promise<{ tiles: HomeTile[]; doseRows: number }> {
   const [episodes, schedules, dosePauses, scheduleDoses, yesterdayDoses] = await Promise.all([

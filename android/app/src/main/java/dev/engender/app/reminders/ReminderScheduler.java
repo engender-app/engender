@@ -51,8 +51,8 @@ public final class ReminderScheduler {
     static final String EXTRA_RULE = "rule";
     static final String EXTRA_SLOT_DAY = "slotDay";
 
-    /** Taken and Skip taps on a medication reminder's notification
-        (functional audit ticket 20), kept in the encrypted payload until
+    /** Taken and Skip taps on a medication reminder's notification,
+        kept in the encrypted payload until
         the app has written them into the journal. The journal may be locked
         when the button is pressed, and its key only exists after unlock, so
         this store is where a tap waits. */
@@ -541,29 +541,14 @@ public final class ReminderScheduler {
     }
 
     /**
-     * The reset path. Cancellation lives here, beside the
-     * {@link #cancelAll} that {@code saveAndSchedule} already calls, rather
-     * than in a second mechanism that would have to know the same request
-     * codes and intent shapes to reach the same alarms.
+     * Read the payload, cancel its alarms with {@link #cancelAll},
+     * then delete the payload synchronously with {@code commit}.
+     * Keep request codes and intents shared with normal scheduling.
      *
-     * <p>Order matters: the payload is what names the alarms, so it is read
-     * and used before the file holding it goes. Left the other way round, a
-     * reset would drop the titles and leave the alarms, and
-     * {@link ReminderAlarmReceiver} would keep waking on schedule to find
-     * nothing to post - quiet, but still an alarm nobody can cancel from
-     * inside the app.
-     *
-     * <p>{@code commit} rather than {@code apply}: the reset tells the
-     * person it is done, and it should be done rather than queued.
-     *
-     * <p>One residual, bounded rather than fixed: a reminder alarm can only
-     * be cancelled by name, so a payload that will not parse leaves its
-     * reminder alarms scheduled. What they wake into is
-     * {@link ReminderAlarmReceiver#onReceive}, which returns on a missing
-     * payload without posting and without rescheduling - so each fires once
-     * more, silently, and is then gone. The check-in alarm has no such
-     * limit: it is cancelled by its fixed request code whatever the payload
-     * says.
+     * <p>An unreadable payload prevents cancelling its named alarms.
+     * They each wake once more and the receiver returns without
+     * posting or rescheduling. Always cancel check-in by its fixed
+     * request code.
      */
     public static synchronized void wipe(Context context) throws Exception {
         cancelAll(context, loadPayload(context));
@@ -662,7 +647,7 @@ public final class ReminderScheduler {
     static String sanitizeLaunchRoute(String route) {
         if (route == null || route.isBlank() || route.charAt(0) != '/') return null;
         if (route.startsWith("//")) return null;
-        // A medication reminder's notification (functional audit ticket 20):
+        // A medication reminder's notification:
         // the reminder's id only, which the app resolves to its drug.
         if (route.startsWith("/care/doses?add=1&reminder=")) {
             String reminderId = route.substring("/care/doses?add=1&reminder=".length());

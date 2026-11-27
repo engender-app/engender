@@ -1,5 +1,4 @@
-/* pdf.js's worker, with the app's own floor patch ahead of it (phase 8
-   features ticket 55).
+/* pdf.js's worker, with the app's own floor patch ahead of it.
 
    The worker is here rather than taken from the package as a URL for one
    reason: a worker is its own realm, so nothing the main thread polyfills

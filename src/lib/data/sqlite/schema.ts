@@ -1,35 +1,12 @@
-/* The whole schema in one statement, registered as version 88.
+/* Frozen schema 88 baseline (ADR-0006). Development journals below 88 are
+   refused by migrations.ts. Retired chains remain in Git at 4c38403a
+   (1 to 78) and c0656984 (78 to 88). schema.test.ts compares this SQL and
+   its rows to the frozen reference dumps in test-support/.
 
-   It has been squashed twice, both times before the 1.0.0 cutoff. Ticket 34
-   folded the first 78 forward-only migrations (ADR-0006) into a baseline
-   numbered 78. After-release ticket 42 folded that baseline and the ten steps
-   after it, 79 through 88, into this one, numbered 88. Each squash kept the
-   number the chain had reached, so a journal already on it opens with nothing
-   run against it. A development journal anywhere below 88 cannot be opened by
-   this build and is refused by name (migrations.ts says how).
-
-   Both retired chains are in git history: v1 to v78 at 4c38403a, and the v78
-   baseline with 79 to 88 at c0656984. That is where to look for how a column
-   came to be there. What each step still means is below, next to the column.
-   v85 and v86's UPDATE were repairs to rows that already existed, so nothing
-   of them is left here except the Weekly trigger on reminder. The dump the
-   second chain built is frozen in `test-support/schema-v88-reference.txt`
-   (with its rows in `schema-v88-reference-rows.txt`), and schema.test.ts
-   holds this file to it: the two must build the same tables, columns, types,
-   defaults, constraints, indexes, triggers and FTS objects, and nothing about
-   that is allowed to drift.
-
-   This is the last squash. From 1.0.0 on, every released migration stays in
-   the chain and cannot be edited or squashed, because a released journal can
-   sit at any version a release shipped. Adding a migration from here on is the
-   ordinary ADR-0006 thing: a new entry in migrations.ts numbered above 88,
-   never an edit to the SQL below. Editing this string changes what a fresh
-   install gets and not what an existing one already has, which are then two
-   different schemas wearing the same version number.
-
-   The stock comments below describe released schema 88. Forward schema 91
-   derives the Unicode drug key and replaces exact-spelling stock ownership
-   with the same trimmed, case-insensitive identity as dose attribution. */
+   Add schema changes as new entries in migrations.ts. Fresh and existing
+   installs must reach the same schema, so released migrations stay intact.
+   The stock definitions here describe 88. Migration 91 introduces the
+   trimmed, case-insensitive Unicode drug key used for dose attribution. */
 
 export const BASELINE_SCHEMA = `
 -- ENTRY AND ITS CONTENT ------------------------------------------------------
@@ -185,7 +162,7 @@ CREATE INDEX idx_margin_note_entry_id ON margin_note(entry_id);
 -- A region key is plain TEXT validated against \`body_region\` below, not a
 -- CHECK and not a rowid join.
 --
--- One value on the shared 0-100 scale (ticket 39, ADR-0081), the shape
+-- One value on the shared 0-100 scale, the same shape
 -- entry_dimension_value.value has: below 50 leans dysphoric, above it
 -- euphoric. It replaced two independent nullable intensities. The CHECK
 -- excludes 50, unlike entry_dimension_value's: for a region the midpoint means
@@ -473,7 +450,7 @@ CREATE INDEX idx_side_effect_epoch_day ON side_effect(epoch_day);
 -- duration are both known at save time.
 --
 -- \`kind\` is NOT NULL because every user-facing string on that screen is
--- picked by it (ADR-0064), and the default is what rows written before the
+-- picked by it. The default is what rows written before the
 -- column existed became. No CHECK: wearSessions.ts is the one writer, and a
 -- CHECK would refuse to even read back a row arriving from an older archive.
 CREATE TABLE wear_session (

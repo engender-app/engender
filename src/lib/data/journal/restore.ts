@@ -1,69 +1,12 @@
-/* Reading an archive back into the journal: Replace and Merge (ticket 14,
-   ADR-0011, PRD F14). The inverse of archive.ts's snapshot, and part of the
-   same area - one journal operation each, so no caller holds a transaction
-   and no caller sequences the areas itself (ADR-0017). It sits in its own
-   file because the two halves share nothing but the wire format and the
-   section registry: one reads every table out by travelling identity, this
-   one writes every table back. Which sections there are, and which of them
-   have to be written before which, is archiveSections.ts's (ADR-0027); the
-   per-section writes are in archiveApply.ts.
-
-   The order of operations is the whole ticket:
-
-     1. Write every file the archive carries. Existing names get fresh
-        replacements, including their derived thumbnails, so re-importing
-        an archive cannot overwrite bytes the current journal still owns.
-     2. In one transaction: reconcile the built-in vocabulary,
-        unconditionally and first, then swap the journal and its portable
-        preferences for Replace. Key identity makes
-        the reconcile idempotent, and it runs before either mode applies
-        because a Replace must not be able to leave the journal short of a
-        built-in the archive's own rows reference. It is inside the same
-        transaction so that a failure leaves the database exactly as it was,
-        rather than as the next boot would have made it.
-
-   An import from another app (`commitImport` below) adds two things to that
-   same transaction rather than after it: the counts it will report, measured
-   either side of the apply, and the import_log row that records them. That
-   is the whole of pre-production audit A1. Taking either afterwards meant a
-   failure there rejected an import whose rows were already committed, so the
-   person saw a failure message over data that was really on disk, the
-   history had no record of it, and nothing invalidated the live reads still
-   showing the old journal - with "import the file again" as the obvious and
-   duplicating next move. Nothing fallible may run between the commit and the
-   resolved promise, because that promise is what the write registry treats
-   as permission to announce the tables (live/writes.ts).
-
-   Nothing here deletes an existing file before the row transaction (ADR-0011).
-   Unpublished replacements are removed when proven unowned; an uncertain
-   transaction or interrupted cleanup leaves them for the orphan sweep. The
-   sweep runs after the transaction and keeps every name still owned by a row.
-   Deleting existing files up front would mean a failure part way leaves the
-   user with neither their old photos nor the new ones, on a device that by
-   design has no other copy.
-
-   Merge matches rows by uuid for the user's own rows and by key for
-   built-ins (ADR-0002), and takes whichever copy of a matched row was
-   written last; deletions travel too (functional audit ticket 48,
-   archiveMerge.ts has the rule). A tie keeps this device's row, so
-   re-importing the same archive changes nothing. This replaced
-   skip-existing, which never carried an edit or a deletion between
-   devices; the clocks it trusts, and the rest of the argument, are in
-   ADR-0098.
-
-   Replace discards this device's journal rows and installs the archive's,
-   then writes the archive's state onto the built-in rows it kept. Which rows
-   it discards is the registry's too, in the reverse of the order the inserts
-   run in (ADR-0027): until phase 5 ticket 13 that was 51 statements
-   hand-ordered in this file, the one list around here the registry did not
-   derive. Full Archive Replace also writes validated portable preferences
-   in that transaction (ADR-0003). Device-local settings stay untouched,
-   including the PIN, app-lock flags and disguise. Row-only imports omit
-   preferences, and Merge keeps the destination's preferences.
-
-   Row identities, scalar types, references and stored values are checked before
-   the file stream or transaction starts. SQLite still enforces its constraints
-   inside the transaction as a second line of defense. */
+/* Restore validated rows through the journal facade (ADR-0011, ADR-0017).
+   Stage files under fresh names before the transaction. Reconcile built-ins
+   first and order writes through archiveSections.ts (ADR-0027). Replace deletes
+   in reverse order and applies portable prefs only on full restore (ADR-0003).
+   Merge matches UUIDs or built-in keys. Latest edit or deletion wins. Keep
+   timestamp ties and preferences on the destination (ADR-0098).
+   Record external import counts in the transaction. Return success without
+   further database work. Remove only proven-unowned staged files, and leave
+   interrupted cleanup to the orphan sweep. */
 
 import { CorruptArchiveError, UnsupportedArchiveError } from '../archive/container';
 import { openArchive } from '../archive/pack';
@@ -103,14 +46,13 @@ export interface RestoreContents {
   files: AsyncIterable<{ name: string; bytes: Uint8Array }>;
   /** How many files that stream will deliver, when the caller knows - the
       manifest inside the payload says so, and an importer that has opened
-      the archive is holding it (phase 9 audit ticket 11). Left out by a
+      the archive is holding it. Left out by a
       caller that is synthesising files rather than replaying an archive's,
       which only costs the progress report its denominator. */
   fileCount?: number;
 }
 
-/** Which half of a restore is running and how far through it is (phase 9
-    audit ticket 11, ADR-0070).
+/** Which half of a restore is running and how far through it is.
 
     Two stages rather than one number, because they are separately long and
     separately countable: the photos arrive one at a time off the archive's
@@ -418,7 +360,7 @@ async function countRows(
   return counted;
 }
 
-/** The backup health drill (ticket 28): proves a chosen archive still
+/** The backup health drill: proves a chosen archive still
     decrypts and parses, without a driver or a file store to write into -
     the signature is the guarantee that the live journal cannot be touched.
     Draining `files` to the end is not incidental: it is what forces every
@@ -463,7 +405,7 @@ function restorableJournal(journal: ArchiveJournal, externalImport = false): Arc
   for (const section of ARCHIVE_SECTION_NAMES) (complete as unknown as Record<string, unknown[]>)[section] = journal[section] ?? [];
   complete.areaStates = complete.areaStates.filter((row) => !DROPPED_ARCHIVE_SECTION_NAMES.includes(row?.area));
   // A felt-sense reading an older archive hung off a milestone, which no
-  // longer holds any (functional audit ticket 32): dropped, not converted.
+  // longer holds any: dropped, not converted.
   complete.feltSenseEntries = complete.feltSenseEntries.filter((row) => {
     const legacy = row as unknown as { tryoutId?: unknown; milestoneId?: unknown } | null;
     return !(legacy && legacy.tryoutId == null && legacy.milestoneId != null);

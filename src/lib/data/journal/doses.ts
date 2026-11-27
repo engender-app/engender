@@ -1,20 +1,10 @@
-/* The dose log area (phase 4 ticket 02, CONTEXT: "Dose event"). Three row
-   types that are always read together: the doses themselves, the schedule an
-   episode expects them on, and the pauses during which it expects none.
+/* The dose log owns doses, episode schedules and pauses. Manual
+   doses carry no stored episode, so moving a dose re-runs attribution
+   rather than keeping a stale link. An explicit drug can resolve
+   ties. Automatic rows record their schedule slot provenance.
 
-   A person-logged dose stores no regimen episode. Automatic-slot provenance
-   records which standing instruction wrote a new automatic row. Attribution
-   is attributeDose(episodes, dose) above this seam (regimenEpisode.ts), so
-   backdating a person-logged dose re-resolves rather than carrying a stale
-   link. `drug` (phase 5 ticket 38) only ever breaks a tie that attribution could not resolve on its own.
-
-   Nothing here judges adherence, and getComparison below does not either:
-   the verdict-free comparison itself is expectedSlots and adherence
-   (doseSchedule.ts), which stay pure above this seam. What this area owns is
-   the assembly around them - which episode is in effect, its schedule, its
-   pauses, and which doses are attributed to it - because that assembly is
-   what the dose log screen and the long-journal benchmark each used to do
-   their own way (phase 5 audit-deepening ticket 17). */
+   Supply the episode, schedule, pauses and attributed doses to
+   `doseSchedule.ts` for the comparison. Keep that calculation pure. */
 
 import { assertSpanOrdered } from '../span';
 import type { SqliteDriver } from '../sqlite/driver';
@@ -71,7 +61,7 @@ interface DoseInputFields {
   autoLogSlot?: DoseEvent['autoLogSlot'];
   /** `changed` doses only. */
   scheduled?: ScheduledDose | null;
-  /** Which drug this dose was, in its own words (phase 5 ticket 38).
+  /** Which drug this dose was, in its own words.
       Defaults to null - needed only to break an attribution tie between
       concurrent episodes for different drugs. */
   drug?: string | null;
@@ -90,8 +80,8 @@ export type DoseEventInput =
   | (DoseInputFields & { route: 'oral' | 'sublingual' | 'rectal' | 'implant' })
   | (DoseInputFields & { route: 'im' | 'sc'; injectionSite: InjectionSiteKey; vehicle: InjectionVehicle })
   | (DoseInputFields & { route: 'patch' | 'gel'; applicationSite: ApplicationSiteKey })
-  /* A fourth arm for the dose a schedule writes on the person's behalf
-     (ticket 11), discriminated by `source` rather than by route. It carries
+  /* A fourth arm for the dose a schedule writes on the person's behalf,
+     discriminated by `source` rather than by route. It carries
      no site and no vehicle for any route: where an injection went is a
      choice made at the time and nothing the app can infer, so the row says
      the dose happened and leaves the site unknown - exactly the state
@@ -103,7 +93,7 @@ export type DoseEventInput =
      site picker. Unknown sites stay unknown; this is still their own log,
      not a schedule's standing instruction. The context is input-only and
      leaves the detailed dose editor's required sites unchanged. A Taken or
-     Skip tap on a dose reminder's notification (functional audit ticket 20)
+     Skip tap on a dose reminder's notification
      is the same kind of confirmation, made where no picker can be shown. */
   | (DoseInputFields & {
       route: DoseRoute;
@@ -135,23 +125,13 @@ interface DoseScheduleInput {
 
 type DosePauseInput = Omit<DosePause, 'id'> & { id?: string };
 
-/** How the dose log sits against what the schedule expected over a range,
-    or why there is nothing to compare - one value for what the dose log
-    screen used to decide across five reads and four branches of markup
-    (phase 5 audit-deepening ticket 17).
+/** Describe the scheduled-dose comparison or why it is unavailable.
+    Only the comparison carries a schedule. The no-schedule case
+    names the drug.
 
-    A union rather than a record of nullable fields, so each answer carries
-    exactly the rows that answer has: the "no schedule" notice names the
-    drug it is about, and only the comparison itself carries a schedule. The
-    reason is what a screen decides on, and it cannot forget a case.
-
-    `multipleEpisodes` and `noEpisode` are kept apart because they read
-    differently to someone holding the screen - one is an ambiguity to
-    resolve, the other is nothing to compare against yet - which is the same
-    distinction attributeDose draws for a single dose. One arm each rather
-    than one arm holding both reasons: a caller narrowing on a single literal
-    is left with `never` at the end of the chain, which is what makes
-    forgetting a case a typecheck failure. */
+    Separate no episode from multiple episodes so the screen can
+    distinguish absence from ambiguity. One discriminant per case
+    lets TypeScript check exhaustive handling. */
 export type DoseScheduleComparison =
   | { reason: 'multipleEpisodes' }
   | { reason: 'noEpisode' }
@@ -202,7 +182,7 @@ export function pairDoseSchedule(
 
 /** getComparison's answer over reads a caller already holds: the dose
     log screen reads these four lists for itself and asks the same
-    question of them without a second round trip (final-audit ticket 31).
+    question of them without a second round trip.
     `doses` is the log over `[fromEpochDay, toEpochDay]`. */
 export function compareDoseSchedule(
   episodes: readonly RegimenEpisode[],
@@ -211,11 +191,10 @@ export function compareDoseSchedule(
   pauses: readonly DosePause[],
   { fromEpochDay, toEpochDay, drug }: { fromEpochDay: number; toEpochDay: number; drug?: string }
 ): DoseScheduleComparison {
-  /* Concurrent episodes for different drugs make this two (phase 5
-     ticket 38), and then there is no single schedule to compare
+  /* Concurrent episodes for different drugs make this two, and then there is no single schedule to compare
      against - the same answer as none at all as far as the comparison
      goes, worded apart because the two read differently on screen.
-     `drug` (phase 9 UX carpet ticket 15) narrows to the episode a
+     `drug` narrows to the episode a
      screen's own picker chose; a `drug` naming none of the active
      episodes falls back to the full list rather than reporting nothing
      active, since a stale pick is not the same fact as no episode. */
@@ -254,14 +233,14 @@ export interface DosesArea {
   getDosesForSlots(fromEpochDay: number, toEpochDay: number): Promise<DoseEvent[]>;
   /** Soonest uncovered slot of an episode active today, over this reach. */
   getNextUncoveredSlot(todayEpochDay: number, toEpochDay: number): Promise<DoseSlot | null>;
-  /** A single dose by its travelling uuid, or null if none exists
-      (phase 11 ticket 18). The dose log screen uses this to resolve a
+  /** A single dose by its travelling uuid, or null if none exists.
+      The dose log screen uses this to resolve a
       deep link that lands outside the initial 90-day window: the
       timestamp tells it how far back to extend the range, without
       loading the whole history to find out. */
   getDoseById(id: string): Promise<DoseEvent | null>;
   /** Whether any dose exists with a timestamp earlier than
-      `fromEpochDay`'s start of day (phase 11 ticket 18). Used by the
+      `fromEpochDay`'s start of day. Used by the
       dose log to decide whether to offer the Earlier control. */
   hasDosesBefore(fromEpochDay: number): Promise<boolean>;
   /** Returns the dose's id. Updating an unknown id throws. */
@@ -276,8 +255,8 @@ export interface DosesArea {
       Refuses an unknown episode. No delete: an episode's rhythm is edited,
       and an episode that should expect nothing gets a pause instead. */
   upsertSchedule(input: DoseScheduleInput): Promise<string>;
-  /** Brings every schedule's reminders in line with it as of `todayEpochDay`
-      (functional audit ticket 21): an episode whose end day has come loses
+  /** Brings every schedule's reminders in line with it as of `todayEpochDay`:
+      an episode whose end day has come loses
       them. Every write that changes a schedule or its episode already does
       this; the boot pass is for an end day that arrived while the app was
       closed. Never creates a reminder that was not there. */
@@ -288,48 +267,19 @@ export interface DosesArea {
   /** A pause is a plain row: nothing is attributed to one, and adherence
       reads it rather than storing anything derived from it (ADR-0032). */
   deletePause(id: string): Promise<void>;
-  /** The dose log over `[fromEpochDay, toEpochDay]` against what the
-      schedule expected of it, assembled here rather than at the caller: the
-      episode in effect, its schedule, its pauses, the doses attributed to it,
-      and expectedSlots/adherence over those.
-
-      Which episode counts as the one in effect is the last day of the range,
-      because that is the day a reader is asking about - and since an episode
-      is in effect for whole days (regimenEpisode.ts), asking on `toEpochDay`
-      is the same question the screen asked with `Date.now()` while its range
-      ended today.
-
-      The slots are anchored on the episode's own start day, so an
-      every-N-days rhythm belongs to the episode rather than shifting with
-      the range.
-
-      `drug` narrows which of several concurrently active episodes counts as
-      the one in effect (phase 9 UX carpet ticket 15) - omitted or matching
-      none of them, the comparison falls back to its original rule: the sole
-      active episode, or `multipleEpisodes` when more than one qualifies. */
+  /** Compare recorded doses with schedule slots for the inclusive range. Pick
+      the episode active on toEpochDay and anchor its schedule to its start day.
+      An optional drug narrows concurrent episodes. If it matches none, fall
+      back to the sole active episode or return multipleEpisodes. */
   getComparison(params: { fromEpochDay: number; toEpochDay: number; drug?: string }): Promise<DoseScheduleComparison>;
-  /** Writes one `taken` dose per slot every auto-logging schedule still
-      owes, oldest first, and answers how many it wrote (phase 11 ticket 11,
-      ADR-0086).
+  /** Write one `taken` dose per outstanding auto-log slot, oldest first
+      (ADR-0086). Skip disabled schedules, dates before opt-in, today,
+      paused days, dates past the episode and occupied slots. Return the
+      number written. Tag rows with `source: 'schedule'` for provenance.
 
-      The standing instruction, not an inference: nothing is written unless
-      the person switched the schedule on, nothing before the day they did,
-      nothing for today (that day is still theirs to log), nothing a pause
-      covers, nothing past the day the episode ended, and nothing into a slot
-      that already holds a dose - which is also what makes running this twice
-      write once. Every row it writes carries `source: 'schedule'`, so the
-      log, the dossier and the archive can all say where it came from and the
-      person can correct any of them.
-
-      Idempotent and safe to call whenever: boot runs it, and it is cheap on
-      a journal with no auto-logging schedule at all, which is every journal
-      until somebody asks for one.
-
-      `routeWords` is `ROUTE_OPTIONS` (doseLabels.ts), because a regimen
-      episode's route is free text and a dose's is one of six keys - the same
-      list the schedule editor gates its switch on, so this never declines to
-      read a route the switch was offered for (ADR-0016 is why it is handed
-      in rather than imported). */
+      Inject `ROUTE_OPTIONS` to resolve free-text episode routes with the
+      editor's same six keys while keeping labels out of the Node tier
+      (ADR-0016). Boot can rerun this safely. */
   autoLogDueDoses(todayEpochDay: number, routeWords: readonly RouteOption[]): Promise<number>;
   /** The day of the most recent dose at or before `todayEpochDay`, or null
       if there is none (phase 8 features ticket 03, lastWrite.ts). The table

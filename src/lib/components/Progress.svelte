@@ -1,27 +1,11 @@
 <script lang="ts">
-  /* The app's one progress bar (phase 9 audit ticket 11, ADR-0070).
+  /* The shared progress rail uses progress.svelte.ts for its timing.
+     timing. Sweep for unknown totals and expose known percentages
+     through aria-valuenow.
 
-     Before this there were three idioms and eight operations with none:
-     `.rail` hand-wired at three call sites, conversion's callback through
-     the boot state machine, and photo-journey's (done, total) shown as
-     button-label text, against archive export, archive import and verify,
-     the two Daylio imports, auto-export, OCR and the pre-migration restore,
-     all of which showed a disabled button and a static word for operations
-     measured in minutes.
-
-     The shape is `.rail`'s (components.css), which is the point: this
-     wraps that primitive rather than drawing a fourth one. What it adds is
-     the timing - progress.svelte.ts holds the run - and the two states
-     `.rail` alone cannot say: a sweep for an operation that does not know
-     how much is left, and a number for one that does.
-
-     Announcement is split on purpose. The sentence is spoken, so a stage
-     change ("Copying photos" to "Writing your journal") is heard; the
-     percent sits in the bar's own aria-valuenow instead, where it is
-     available without being read out four times a second. The sentence
-     goes through the app's standing live region (announcer.ts) rather than
-     being one: this whole block is inserted with its words already in it,
-     which a screen reader often does not read (after-release 21). */
+     Announce stage changes via the standing live region in announcer.ts.
+     A live region inserted with existing text may go unread. Keep
+     rapid percentage changes out of the live announcements. */
   import { m } from '$lib/paraglide/messages';
   import { announce } from '$lib/stores/announcer.svelte';
   import { progressPercent } from './progress';
@@ -137,10 +121,9 @@
     font-size: var(--text-sm);
   }
 
-  /* The mark moves, not its container (DIRECTION.md, tier 3): a segment
+  /* The mark moves, not its container: a segment
      travelling the track, not a track that fills. Its own keyframe rather
-     than `breathe` - that 7s pulse is Home's sun and belongs to Home alone
-     (ADR-0050/0051, ADR-0070).
+     than `breathe`, the 7s pulse reserved for the flag sun.
 
      Written as one transform with `linear` timing rather than an eased
      one, because the pass has to loop: an ease-out per cycle would land

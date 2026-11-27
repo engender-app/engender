@@ -1,22 +1,7 @@
-/* Factor-impact correlation cards (phase 4 ticket 21, CONTEXT: "Dose
-   event"). Phase 3's spec ruled out "scale-relationship or correlation
-   analysis" outright; phase 4's spec revisits that call on purpose - a
-   deliberate reversal, not scope drift the phase 3 decision missed.
-
-   Two roles, not four independent factor kinds. The ticket names four
-   factors a card can be built from - a tag, a dimension, a dose-log day,
-   a mood value - but every one of its own examples ("dose day against
-   mood", "a tag against a gender dimension") pairs an occurrence (a tag
-   or a dose was logged that day) against a value (mood's or a
-   dimension's day average). Modelling it as those two roles covers all
-   four named factors as two of each, rather than needing a case for
-   every pair among four.
-
-   Ranked by normalized span (metricRange.ts's normalize(), the same rule
-   stats.ts's recap() uses to pick its biggest dimension change) so a
-   3-point move on a 0-10 dimension can outrank a 20-point move on a
-   0-100 one - but every average a card carries stays native (ADR-0012);
-   normalize() here only orders cards; it is never what's shown on one. */
+/* Each correlation pairs a day's occurrence (tag or dose logged)
+   with its day-average mood or dimension. Order cards by normalized
+   change across metric ranges. Display each average in its native
+   units (ADR-0012). */
 
 import { normalize, type MetricRange } from './metricRange';
 import { epochDayFromTimestamp } from './epochDay';

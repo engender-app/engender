@@ -1,7 +1,7 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { rovingRadio } from '$lib/components/rovingRadio';
-  /* Settings, on the surface kit (phase 5 ticket 24), in five open areas
+  /* Settings, on the surface kit, in five open areas
      since ticket 277.
 
      The rows that carry a Switch or a Segmented instead of a chevron stay
@@ -45,8 +45,7 @@
 
   import { PALETTES } from '$lib/theme/paletteChoices';
 
-  /* COL-001: mood's own fixed 5-step scale, picked independently of the
-     gender palette above - see ADR-0025. */
+  /* Mood has its own fixed five-step scale, independent of the flag palette. */
   const MOOD_PRESETS: [string, () => string][] = [
     ['amber', m.mood_preset_amber], ['teal', m.mood_preset_teal],
     ['plum', m.mood_preset_plum], ['moss', m.mood_preset_moss],
@@ -119,7 +118,7 @@
   /* Manage tags is a screen behind the Tag groups sheet. Going there with
      the sheet still up ran two exits at once: the scrim vanished in one
      frame and the sheet's group list faded over the new screen's identical
-     list (pre-release-human 18). The sheet closes first, the way it always
+     list. The sheet closes first, the way it always
      closes, and the screen changes once its exit is over. */
   let afterTagGroups: string | null = null;
   function leaveTagGroupsFor(event: MouseEvent, href: string) {
@@ -140,8 +139,7 @@
      and new share one grid cell and crossfade, so neither is cut. */
   const swapFade = (_node: Element) => fadeOnly(crossfadeDuration());
 
-  /* The gates' reset (ADR-0014), reached from here too (phase 14 ticket
-     15): a journal in a mode with no gate - device-bound on the web,
+  /* The gates' reset (ADR-0014), reached from here too: a journal in a mode with no gate - device-bound on the web,
      Unlocked on Android - had no way to be erased inside the app at all.
      resetApp reloads into setup, which states the result; it only returns
      here if the wipe failed. */
@@ -157,7 +155,7 @@
     }
   }
 
-  /* The readings on the rows that open a sheet (ticket 277): what each is
+  /* The readings on the rows that open a sheet: what each is
      set to, so the hub says it without the sheet being opened. */
   let moodName = $derived(MOOD_PRESETS.find(([key]) => key === prefs.moodPreset)?.[1]());
   let a11yOn = $derived(
@@ -217,7 +215,7 @@
     {/snippet}
   </ScreenHeader>
 
-  <!-- Five named areas, every one open (ticket 277). They were three
+  <!-- Five named areas, every one open. They were three
        accordions, which hid most of the screen behind a tap and still ran
        to 3735px open at 390. Rows now carry a second line only where it is
        a reading - a value, a count, a state - and anything that is more
@@ -393,7 +391,7 @@
       subtitle={backupLine}
       href="/settings/export"
     />
-    <!-- Beside the lock (phase 10 redesign ticket 31): the list is the
+    <!-- Beside the lock: the list is the
          no-network claim made concrete, and setup's step promises this row
          is here. -->
     <ListRow key="permissions" icon="toggle" title={m.perms_screen_title()} href="/settings/permissions" />
@@ -622,7 +620,7 @@
   <Sheet bind:open={aboutSheet} title={m.about()}>
     <div class="about-content">
       <header class="about-identity">
-        <!-- The logotype, in the flag this person picked (ticket 37): the
+        <!-- The logotype, in the flag this person picked: the
              white tile and its black edge beside the name, in the
              proportions app.css's .lockup sets, scaled to 32px. The tile's
              edge is not optional anywhere the drawing has an outside

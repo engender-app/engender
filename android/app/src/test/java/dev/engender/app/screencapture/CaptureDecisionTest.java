@@ -7,7 +7,7 @@ import org.junit.Test;
 
 /** What the window carries for each capture choice and disguise state. Disguise
  * hides only the Recents card; screenshots follow the capture choice alone
- * (tester report 02, ticket 01). Android 13 is where the two separate. */
+ *. Android 13 is where the two separate. */
 public class CaptureDecisionTest {
     private static final int ANDROID_13 = 33;
     private static final int ANDROID_12 = 32;

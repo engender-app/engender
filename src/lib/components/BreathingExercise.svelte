@@ -1,25 +1,11 @@
 <script lang="ts">
-  /* Calming tool for Safe Space (ticket 52, ADR-0040): 4-4-4-4 box breathing,
-     drawn as a tide (phase 12 breathing ticket 01, picked by Alicja from
-     three live prototypes on 2026-10-01). The flag's colour rises inside a
-     vessel on the inhale, stands still through the hold, drains on the
-     exhale and stands still again. A dot travels the track around it, one
-     lap per 16s cycle, past a tick at each quarter.
+  /* Safe Space guides a 4-4-4-4 breath. The tide rises on
+     inhale, drains on exhale and holds in between. The dot completes
+     a lap every 16s and wraps without a reset jump.
 
-     One clock (breathing.ts) drives all of it. Each frame reads one elapsed
-     time and writes the water level and the dot's position as custom
-     properties straight onto the drawing, so nothing re-renders per frame
-     and nothing can disagree. The version this replaced ran its ring, its
-     halo and its count off a one-second interval through three separate
-     CSS transitions: they drifted apart, the ring dropped from full to
-     empty in one frame at every phase boundary, the first breath was
-     shorter than the rest, and resuming mid-phase ran a 4s transition over
-     what was left of it.
-
-     The lap is a travelling dot and not a stroke that fills, because a
-     fill has to drop from full back to empty when the cycle wraps - the
-     same single-frame drop, moved from every phase to every cycle. A dot's
-     last position is its first. */
+     breathing.ts drives both from one elapsed time, writing custom
+     properties per frame without rerendering. Shared time keeps phase
+     changes and resume aligned. */
   import { onDestroy } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import Icon from '$lib/components/Icon.svelte';
@@ -204,7 +190,7 @@
 
   const phase = $derived(BOX_BREATHING_PHASES[phaseIndex]);
   /* The pattern, and not a title a second time, sits where the phase word
-     will be (redesign ticket 47), so starting changes what the vessel says
+     will be, so starting changes what the vessel says
      rather than where it says it. */
   const word = $derived(started ? phaseLabel(phase) : '4 · 4 · 4 · 4');
 </script>

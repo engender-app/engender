@@ -1,4 +1,4 @@
-/* Multi-page clinical dossier stylesheet (phase 5 ticket 09).
+/* Multi-page clinical dossier stylesheet.
    Formats structured clinical summaries for A4/Letter print preview and PDF export.
    High-contrast, monochrome-friendly, preventing orphaned headers and broken table rows. */
 
@@ -118,21 +118,11 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* A regimen or dose row's link back to its own record (phase 8 features
-   ticket 67). Underlined rather than colour-only, since the table is
-   monochrome-friendly by design and a link that reads only as a colour
-   would fail that on its own page.
-
-   The target is the touch floor, from the row's top edge to its bottom:
-   the negative margin takes the cell's own vertical padding back, so a
-   row holding a link is 48px tall and its text keeps the line the other
-   cells' text sits on. It used to reach 12px past a 39px row instead, and
-   the next row's link covered it, which left 35px of each one pressable
-   (after-release 18). Rows without a link keep their height. Aligned to
-   the top of the line, or the cell's baseline pushed it below its own row
-   into the next one's link. Raised over the cell's own text, because a
-   drug name after the dose wraps onto the line the target reaches into,
-   and a later inline box paints, and takes the press, over an earlier one. */
+/* Underline record links so they work in monochrome. Reclaim
+   cell padding with negative margins to make each linked row
+   a 48px target without crossing into the next row. Top-align
+   the link and raise it above wrapped cell text so neither
+   baseline positioning nor overlapping text steals touches. */
 .dossier-row-link {
   position: relative;
   z-index: 1;
@@ -306,7 +296,7 @@
   margin: var(--space-2) 0 0;
 }
 
-/* A footnote against a table, and the mark that points at it (ticket 11).
+/* A footnote against a table, and the mark that points at it.
    Unlike `.dossier-truncate-note` this one prints: what it says is a fact
    about the rows a clinician is reading, not a note about what the screen
    is hiding from them. */

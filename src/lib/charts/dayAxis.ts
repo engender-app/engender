@@ -1,20 +1,6 @@
-/* Which axis a day chart can be read on, and the keying each one names.
-
-   Two screens draw a day series and both can now re-key it, so the rule
-   for what is on offer lives here rather than twice in markup. It is the
-   ordinary data gating the app does everywhere else: an axis appears
-   because the journal can answer it, never because a preference was
-   flipped. Someone who has never logged an injection is not shown a day of
-   interval, and someone with no dated procedure is not shown a day since
-   one.
-
-   The anchored axes are named per procedure rather than as one "since
-   surgery" with a picker beside it. Nothing in the app treats exactly one
-   procedure as the current one (CONTEXT.md: Procedure), so with two dated
-   procedures a single anchored option would have to choose silently, and
-   the axis label would then say "since surgery" and mean a different
-   surgery than the reader assumes. "Day since <name>" cannot be misread,
-   and it costs no second control. */
+/* Offer axes the journal can answer. Day of interval requires an
+   injection. Offer one named day-since axis per dated procedure
+   so each chart identifies its anchor without a second picker. */
 
 import { rekeyDaySeries, type CompletedInterval, type Keying } from '../data/dayKeying';
 import type { DayAverage } from '../data/journal/stats';

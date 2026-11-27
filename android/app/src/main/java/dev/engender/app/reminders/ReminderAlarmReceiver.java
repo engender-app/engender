@@ -86,8 +86,8 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
     }
 
     /** Where tapping the notification lands, once the app is unlocked. A
-        medication reminder opens its drug's dose log with the add form open
-        (functional audit ticket 20); the route carries the reminder's id
+        medication reminder opens its drug's dose log with the add form open;
+the route carries the reminder's id
         only, and the app looks the drug up. Any other reminder opens its
         editor. */
     static String routeFor(JSONObject reminder) {
@@ -227,7 +227,7 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setContentIntent(AppLaunch.openAppIntent(context, "/entry/new/" + epochDay, "check-in", 13));
 
-        /* The five faces (tester report 02, ticket 05): the question
+        /* The five faces: the question
            moves into the header beside the app's name, and the faces take
            the body. setContentTitle and setContentText above stay, for
            whatever reads the notification rather than draws it. */
@@ -251,8 +251,8 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
         return reminder.optString("title", fallbackTitle);
     }
 
-    /** The line under the title: what the app wrote for this reminder
-        (functional audit ticket 21), or the time alone. Hiding sensitive
+    /** The line under the title: what the app wrote for this reminder,
+or the time alone. Hiding sensitive
         titles keeps only the time, since the app's line names the drug. */
     static String resolveNotificationText(JSONObject payload, JSONObject reminder) {
         String time = reminder.optString("time", "");

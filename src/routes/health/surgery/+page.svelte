@@ -39,7 +39,7 @@
 
   let proceduresQuery = liveList((j) => j.procedures.getProcedures());
   let procedures = $derived(proceduresQuery.rows);
-  /* Archived only by the person's own switch (functional-audit ticket 24):
+  /* Archived only by the person's own switch:
      a surgery date never moves a procedure here on its own. */
   let ongoingProcedures = $derived(procedures.filter((procedure) => !procedure.archived));
   let archivedProcedures = $derived(procedures.filter((procedure) => procedure.archived));
@@ -63,7 +63,7 @@
     () => procedureRows
   );
 
-  /* Every procedure's recovery photos, in one read (ticket 52): each card
+  /* Every procedure's recovery photos, in one read: each card
      draws its own strip from them. */
   let allPhotosQuery = liveQuery((j) => j.procedures.photosByProcedure());
   let photosByProcedure = $derived(allPhotosQuery.value ?? new Map<string, ProcedurePhoto[]>());
@@ -132,7 +132,7 @@
     {/snippet}
   </ReadGate>
 
-  <!-- Dilation, hosted here (phase 9 carpet ticket 16). It was a top-level
+  <!-- Dilation, hosted here. It was a top-level
        Health row, which put a dilation log in front of everyone who opened
        More whatever their surgery was or was not. The gate is ticket 17's:
        a vaginoplasty, or a custom procedure whose own dilation toggle is

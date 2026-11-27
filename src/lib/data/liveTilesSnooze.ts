@@ -4,8 +4,8 @@
    Allows dismissing any state-dependent live tile for a temporary duration (default 24h)
    without flipping its global kind toggle in Settings.
 
-   The deadlines live in the encrypted `acknowledgements` preference
-   (functional audit ticket 45), reached through an AcknowledgementStore the
+   The deadlines live in the encrypted `acknowledgements` preference,
+reached through an AcknowledgementStore the
    caller passes, so a test hands in a memory one and the screens hand in the
    preference-backed one. */
 

@@ -31,7 +31,7 @@ test('imports alpha producer output through the current public Archive boundary'
         const restored = actual.journal[section].find((candidate) => (candidate as unknown as Record<string, unknown>)[key] === identity[key]) as unknown as Record<string, unknown>;
         assert.ok(restored, `${section} ${identity[key]}`);
         for (const [key, value] of Object.entries(row)) {
-          // A reminder's type was removed (functional audit ticket 08): the alpha
+          // A reminder's type was removed: the alpha
           // archive still carries one, and restore ignores it.
           if (section === 'reminders' && key === 'type') continue;
           if (key === 'photos') {
@@ -40,7 +40,7 @@ test('imports alpha producer output through the current public Archive boundary'
             const photo = restored.photo as { id: string; fileName: string };
             assert.deepEqual({ id: photo.id, fileName: photo.fileName }, value);
           } else if (key === 'tags' && section === 'tagGroups') {
-            // Each tag carries this device's edit stamp too (functional audit ticket 48).
+            // Each tag carries this device's edit stamp too.
             for (const tag of value as { id: string }[]) {
               const found = (restored.tags as { id: string; updatedAt?: number }[]).find((candidate) => candidate.id === tag.id);
               const { updatedAt: _stamp, ...content } = found ?? {};

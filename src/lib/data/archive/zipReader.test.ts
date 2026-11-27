@@ -1,4 +1,4 @@
-/* zipReader.ts's own tests (phase 8 audit ticket 11).
+/* zipReader.ts's own tests.
 
    fflate allocates its output buffer from the central directory's declared
    uncompressed size before it decompresses anything (`new u8(su)` in

@@ -17,28 +17,12 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 /**
- * Ticket 09: the two authenticator sets {@link KeystorePlugin} actually asks
- * {@link BiometricManager} about, proved on a device rather than assumed
- * from the SDK bump - androidx.biometric stayed pinned at 1.1.0 here because
- * nothing newer than that has shipped stable since 2021, so what needs
- * proving is that the pin still resolves both authenticator paths correctly
- * on a current OS.
- *
- * <p>What this deliberately does not do is drive {@code BiometricPrompt}
- * itself: {@link JournalKeystoreTest}'s header explains why an emulator
- * cannot be made to present a finger. {@link BiometricManager#canAuthenticate}
- * is the half that runs before any prompt, and it is the seam where "does
- * this authenticator path still work" has an answer a test rig can read.
- *
- * <p>Neither AVD {@code tests/android-tier/run.mjs} boots enrolls a
- * fingerprint, so the biometric-alone path is asserted only as "not a
- * success" rather than pinned to one specific error code - {@code
- * NO_HARDWARE} and {@code NONE_ENROLLED} both mean the app falls back to
- * offering the device credential, and which one a given emulator image
- * reports is not this ticket's claim. The device-credential path is the
- * deterministic half: with a lock screen set, it is always {@code SUCCESS},
- * on both the API 26 floor and current Android, which is the same reason
- * the ticket gives for keeping this library on the floor at all.
+ * Exercise both authenticator sets from {@link KeystorePlugin} through
+ * {@link BiometricManager#canAuthenticate} with androidx.biometric 1.1.0.
+ * The AVDs have no enrolled fingerprint, so expect any non-success for
+ * biometrics alone. Device credentials with a lock screen must report
+ * {@code SUCCESS} at API 26 and on current Android. The emulator cannot
+ * present a fingerprint to {@code BiometricPrompt}.
  */
 @RunWith(AndroidJUnit4.class)
 public class BiometricAuthenticatorAvailabilityTest {

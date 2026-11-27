@@ -21,7 +21,7 @@ import { assertChanged, bool, mintUuid, now } from './support';
 import { syncDoseReminders } from './doseReminders';
 import { todayEpochDay } from '../epochDay';
 
-/** `drugClass` is optional on the way in (functional audit ticket 18): a new
+/** `drugClass` is optional on the way in: a new
     episode without one starts as whatever its drug infers to, and an update
     without one keeps the class already stored, so no writer that predates
     the field can reset a class the person chose. */
@@ -43,14 +43,14 @@ export interface RegimenArea {
       `endEpochDay` through like any other field - a straight edit of an
       episode's dated range, not the "end this episode" action below - and
       `endReason` the same way, except that a null `endEpochDay` forces it
-      back to null regardless of what is passed (ticket 43): a reason with
+      back to null regardless of what is passed: a reason with
       no end day is meaningless, so reopening an episode this way drops
       whatever reason it carried. */
   upsertEpisode(input: RegimenEpisodeInput): Promise<string>;
-  /** Sets an episode's explicit end day (phase 5 ticket 38) - the "end this
+  /** Sets an episode's explicit end day - the "end this
       episode" action, independent of any other episode starting. Updating
-      an unknown id throws. `endReason` is optional and defaults to null
-      (ticket 43): ending an episode with no reason chosen stays valid. */
+      an unknown id throws. `endReason` is optional and defaults to null:
+ending an episode with no reason chosen stays valid. */
   endEpisode(id: string, endEpochDay: number, endReason?: EpisodeEndReason | null): Promise<void>;
   /** Puts an episode away, or brings it back. Hiding an unknown id throws. */
   setEpisodeHidden(id: string, hidden: boolean): Promise<void>;
@@ -108,14 +108,14 @@ export function makeRegimenArea(driver: SqliteDriver): RegimenArea {
 
     async upsertEpisode(input) {
       assertSpanOrdered(input);
-      // A reason with no end day is meaningless (ticket 43), so this is
+      // A reason with no end day is meaningless, so this is
       // the one place the invariant is enforced regardless of what a
       // caller passes - the same reason endEpisode below never trusts a
       // caller to have cleared it either.
       const endReason = input.endEpochDay === null ? null : input.endReason;
       /* The episode and its schedule's reminders in one transaction: a drug
          renamed, a start moved or an end day typed in all change what those
-         reminders say (functional audit ticket 21). */
+         reminders say. */
       return driver.transaction(async (driver) => {
         if (input.id) {
           const result = await driver.run(
@@ -181,7 +181,7 @@ export function makeRegimenArea(driver: SqliteDriver): RegimenArea {
       });
     },
 
-    /* Hiding takes the schedule's reminders with it (ticket 21). Showing
+    /* Hiding takes the schedule's reminders with it. Showing
        the episode again does not bring them back: their times went with
        them, and the schedule's own switch is the way back. */
     async setEpisodeHidden(id, hidden) {

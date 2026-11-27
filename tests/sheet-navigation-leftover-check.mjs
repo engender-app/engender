@@ -1,40 +1,12 @@
-/* Ticket 242: a sheet's `|global` transitions used to apply to all ~36
-   Sheet call sites, so navigating away while one was open played its
-   380ms outro over the *new* screen instead of being removed with the
-   page it belonged to - the scrim and the sheet held the top of the DOM
-   for `--dur-slow`, and stayed `topOwner()` in overlayLock.ts for exactly
-   as long, so Escape pressed in that window closed the departed sheet
-   instead of doing nothing.
+/* Check that navigating away from an open sheet clears its scrim and
+   overlay ownership. A global Svelte outro can hold the departing sheet
+   for 380ms and leave it intercepting Escape.
 
-   Reproduces without the View Transitions API rather than with it: this
-   app only calls `document.startViewTransition` for a handful of route
-   pairs (screen-transition.ts), and inside that callback the sheet clears
-   quickly regardless of `|global` (`dropOutgoingScreens()` force-removes
-   `.screen`, and by the time the "new" side is captured Svelte has already
-   torn the old page down). Every other navigation - most tab crossings and
-   a link to a route within the same section among them - takes
-   `navigateWithTransition`'s early return (`!document.startViewTransition
-   || pattern === 'none'`) straight to SvelteKit's own outro-aware unmount,
-   which is where a held `|global` outro actually blocks removal for the
-   full `--dur-slow`. That is also every navigation in Firefox and
-   LibreWolf (no View Transitions support at all) - Alicja's own browser -
-   so this probe disables `document.startViewTransition` to match the
-   reproducing path rather than the one Chromium happens to prefer.
-
-   Sampled with a page-side rAF loop (per
-   svelte-transitions-are-local-by-default.md: a recorder, not a
-   screenshot) rather than a single screenshot, because a single frame
-   that happens to land after the outro finished would pass on the old
-   code too. The assertion is a clear-by deadline rather than "the new
-   screen's marker never overlaps it": on the unfixed code the new page's
-   own mount is serialized behind the held sheet's outro (SvelteKit does
-   not mount the incoming page until the outgoing one, sheet included,
-   finishes tearing down), so which one a sample catches "on top of" the
-   other is a race - sometimes the marker paints first and sits under the
-   stuck sheet, sometimes the stuck sheet finishes a frame before the
-   marker's own query resolves. Both are the same bug (the sheet is still
-   there ~400ms after the tap that should have removed it); a deadline
-   catches it either way. */
+   Disable the View Transitions API to exercise SvelteKit's outro-aware
+   unmount. Transitions that drop the outgoing screen can hide the bug.
+   Sample every frame and require the sheet and scrim to clear by 200ms.
+   The incoming screen can mount after the held outro, so checking for
+   overlap alone would miss the failure. */
 import { preview } from 'vite';
 import { createReporter, launchChromium } from './browser-harness.mjs';
 

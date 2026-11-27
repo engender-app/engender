@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* Home's link into on-this-day (phase 4 features ticket 03).
+  /* Home's link into on-this-day.
 
      One card for however many lookbacks qualify today - the
      ticket does not ask for exactly one, and ranking them the way wrapped
@@ -25,8 +25,8 @@
   import Tile from './kit/Tile.svelte';
   import { joinReadGroup } from './kit/readGroup.svelte';
 
-  /* On the Look back door the tile opens the day in place under the pair
-     (phase 11 ticket 07): the door hands in `onOpen` and prevents the
+  /* On the Look back door the tile opens the day in place under the pair:
+the door hands in `onOpen` and prevents the
      navigation, and `open` marks the tile as the disclosure's control.
      The href stays, since the route stays for the notification deep link
      and a middle-click or a reader following the link still lands there. */
@@ -41,8 +41,7 @@
   const today = $derived(currentDay());
 
   /* Invalidated on entry or tag writes (the good-day rule's own two
-     dependencies), and on either half of the mute layer (phase 6 ticket
-     05): eras and era mutes.
+     dependencies), and on either half of the mute layer: eras and era mutes.
 
      Seeded with the good-day read's tables. It is called after the first
      await, so without the seed the first run discovered them late and the

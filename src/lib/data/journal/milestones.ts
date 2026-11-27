@@ -32,7 +32,7 @@ export interface MilestoneInput {
   roadmapGoalKey?: string | null;
   procedureId?: string | null;
   tryoutId?: string | null;
-  /** Whether Home celebrates it (functional audit ticket 32). Omitted
+  /** Whether Home celebrates it. Omitted
       keeps what is stored, so a caller that does not know about it, such
       as a procedure resync, never turns a celebration back on. A new
       milestone with it omitted is celebrated. */
@@ -46,7 +46,7 @@ export interface MilestonesArea {
   getMilestones(): Promise<Milestone[]>;
   getNonProcedureDaysInRange(fromEpochDay: number, toEpochDay: number): Promise<number[]>;
   /** The milestones dated to one day, in the same shape and order
-      `getMilestones` reads them (phase 5 ticket 21). Its own query rather
+      `getMilestones` reads them. Its own query rather
       than a filter over that one, so the day view pays for the day it is
       showing and not for every milestone ever recorded. */
   getMilestonesOnDay(epochDay: number): Promise<Milestone[]>;
@@ -78,8 +78,7 @@ type MilestoneRow = {
 
 /* The three joins resolve a linked procedure's or tryout's own name, and a
    custom roadmap goal's own text, in the same query rather than a lookup
-   per row on every screen a milestone renders on (phase 5 deepening ticket
-   22): the provenance line these feed (provenance.ts) needs a name to show,
+   per row on every screen a milestone renders on: the provenance line these feed (provenance.ts) needs a name to show,
    not just the id the milestone already carried. A built-in roadmap goal's
    title isn't joined - it's a compiled string, resolved by key in code
    instead, so roadmap_goal only ever matches a custom one. */
@@ -96,8 +95,7 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
   /* One query for every milestone's photo rather than one per row: both
      readers below render whole lists at once.
 
-     `scoped` is which query that is. Reading a day's milestones (phase 5
-     deepening ticket 21) narrows to the rows in hand, or opening any day
+     `scoped` is which query that is. Reading a day's milestones narrows to the rows in hand, or opening any day
      would pay for every milestone photo in the journal; reading all of them
      does not, because an IN clause naming every rowid is the worse half of
      that trade. */

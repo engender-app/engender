@@ -392,8 +392,7 @@ test('the snooze is the stock-notice tile in the acknowledgements, not a key of 
   assert.deepEqual(store.read().snoozes, { 'stock-notice': 1700000000000 + 24 * 3600_000 });
 });
 
-/* projectEveryStock, the path the stock area takes (phase 8 audit ticket
-   26). Driven with a counter that answers from an in-memory dose list, so
+/* projectEveryStock, the path the stock area takes. Driven with a counter that answers from an in-memory dose list, so
    the windowing and the summing get tested without a database, and the
    figures can be held against projectStock, which counts the same doses the
    old way. */

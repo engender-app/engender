@@ -1,4 +1,4 @@
-/* The platform side of a boot (phase 5 audit ticket 14): what each step the
+/* The platform side of a boot: what each step the
    reducer asks for actually asks of the disk, the keystore and the browser,
    and what it says back.
 
@@ -77,7 +77,7 @@ export async function performPlatformEffect(effect: PlatformEffect, dispatch: Bo
       return;
     }
 
-    /* Android takes none of the web's survey (ticket 11): OPFS and the
+    /* Android takes none of the web's survey: OPFS and the
        conversion marker are about a web install that predated the keystore,
        and a phone has neither - this is the first build that runs on one. */
     case 'survey-android': {
@@ -138,8 +138,7 @@ export async function performPlatformEffect(effect: PlatformEffect, dispatch: Bo
     setup wall.
 
     `__DEMO__` is a compile-time constant, so the guard makes everything below
-    it dead code a production build drops, fixed passphrase included (ticket
-    05). The reducer emits none of these effects outside a demo build either;
+    it dead code a production build drops, fixed passphrase included. The reducer emits none of these effects outside a demo build either;
     the guard is what keeps them out of the bundle. */
 async function performDemoEffect(
   effect: Extract<PlatformEffect, { type: 'demo-setup' | 'demo-unlock' }>,

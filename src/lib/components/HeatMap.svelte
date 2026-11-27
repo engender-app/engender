@@ -1,78 +1,9 @@
 <script lang="ts">
-  /* The month, as a grid of shaded days, plus the key that says what the
-     shading is (phase 5 ticket 22).
-
-     **The hue is the flag's, not the accent's.** Ticket 20's review moved
-     Home's week strip off the accent and onto the active flag's stripe, and
-     said why in one line: "so a cell here and a calendar cell are the same
-     scale in the flag's hue". A week cell and a calendar cell are the same
-     reading of the same day, and two hues for one reading is the drift this
-     phase is undoing. Both now shade on the same five steps
-     ($lib/theme/roles.ts, HEAT_STEPS) and differ only in size.
-
-     **The cell carries no writing.** It used to hold the date, and a ramp
-     from the page's own surface up to a saturated stripe crosses the band
-     where neither --text nor its opposite clears 4.5:1, so the ink had to be
-     computed per step (roles.ts, held to the floor by tests/kit-roles.test.ts).
-     Since ticket 11 a cell can carry two fills at once and the date sits
-     under it instead - see below - so this file reads the ramp's fills and
-     never its inks.
-
-     Before the flag has landed, the fills fall back to the accent ramp's
-     own tokens - which is what this screen looked like before roles existed.
-
-     **A day that covered ground is drawn as two, not averaged into one**
-     (phase 6 unprompted ticket 11). Averaging is the app quietly
-     overwriting a day that held a hard morning and a good evening, and the
-     day that most needed to be legible is the one it flattened. So a day
-     whose first and last readings landed on different steps is split down
-     the middle, first on the left, and anything else stays whole. How many
-     readings a day held is a pip under the date (ticket 280, which retired
-     the stack that used to peek out to the left). The rule is
-     ../data/statsCharts.ts's, and it has a test; this file only draws it.
-
-     **Only a day with readings gets a surface** (ticket 280). No cell has an
-     outline: an empty past day is its numeral and nothing else, a future day
-     is its numeral in --text-2, and today keeps its ring. A grid of outlined
-     boxes read as a form to fill in; a month of bare numbers with the logged
-     days standing out of it reads as a month.
-
-     **On mood, the cell is the face a person chose.** Mood already owns
-     five drawn faces and a colour ramp of its own (ADR-0025, MoodFace),
-     and kit/YearRows.svelte drew a year of days as those faces -
-     with the size they stay legible at settled by tests/mood-faces.test.ts
-     and by Alicja twice on 2026-08-25. A calendar cell is bigger than any
-     of those, so this is that same drawing on a bigger grid, and the fill
-     is mood's own hex rather than the flag's stripe because those two
-     quantities looking alike is the beta report ADR-0025 came out of.
-
-     A gender dimension gets no face, and that is a rule rather than an
-     omission: neither end of binary <-> nonbinary is the better one, and a
-     mouth is the most direct way there is to say otherwise (ADR-0012, F15).
-     So a dimension keeps the flag-hued square and its legend, and mood is
-     round, faced, and has no scale legend at all - the faces are the
-     picker's own five, and naming them under the grid is the app explaining
-     itself to its reader (the year grid's own note, Alicja, 2026-08-25).
-
-     The form is Daylio's, which Alicja asked for by name on 2026-09-02
-     against a screenshot of its month. Its calendar is the reason the date
-     moved out from under the fill: a split cell has two fills under one
-     number, and the computed per-step ink that keeps a date legible
-     (roles.ts) can only answer to one of them. Two steps far enough apart
-     leave no ink that clears 4.5:1 on both, so the number sits below the
-     swatch on the page's own ground and the swatch carries no text at all.
-
-     **The grid is one object, and a month is content on it** (ticket 280).
-     A month change does not slide the grid or rebuild it in one frame: each
-     month is its own block, and the block leaving fades out cell by cell
-     while the one arriving fades in over the same slots, in a diagonal wave
-     that runs the way the month went. A metric switch is the same month, so
-     it is the same elements, and every cell changes at once on one curve.
-     See `waveIn`/`waveOut` below and the transitions in the stylesheet.
-
-     The key under the grid lives here rather than on the screen because it
-     names the same cells: two things reading one grid is how a key ends up
-     describing a picture it no longer matches. */
+  /* The month shares HEAT_STEPS with Home. Dimensions use flag hues and their
+     own endpoints (ADR-0012). Mood uses its own ramp and faces.
+     Split cells show the first rating on the left. Put dates below the fills
+     for contrast and use a pip for multiple ratings. Empty days show dates alone.
+     Month changes wave across the grid. Metric changes update the current month together. */
   import { m } from '$lib/paraglide/messages';
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import { ui } from '$lib/stores/ui.svelte';
@@ -104,22 +35,21 @@
     /** The flag stripe the shading is drawn in. Before the flag has landed,
         the accent ramp's own tokens stand in. */
     role?: Role;
-    /** Which era each day belongs to (phase 6 ticket 03), each already
+    /** Which era each day belongs to, each already
         carrying the role it draws in. Resolved by the caller, the same
         division of labour `role` above keeps: an era stores no colour of
         its own (ADR-0049). The caller resolves the role rather than this
         component reaching for `activeFlag` itself. Named in the key under the grid,
         never on a cell (ticket 280: a cell has no outline to carry it). */
     eras?: { era: Era; role: Role }[];
-    /** The chosen presentation (phase 8 features ticket 17, ADR-0048) and
+    /** The chosen presentation (ADR-0048) and
         its resolved role - which days it covers is this component's own
         read, bounded to the month on screen the same way the reads below
         are. A dot in the cell's corner rather than anything on its fill, so
         a day can be shaded, ringed as today and marked for its mode all at
         once without any of the three reusing another's channel. */
     highlight?: { presentationId: string; role: Role };
-    /** The month as one row of bars instead of a grid of days (phase 10
-        redesign ticket 10). The Journal door opens on it: somebody arriving
+    /** The month as one row of bars instead of a grid of days. The Journal door opens on it: somebody arriving
         is looking for something they wrote, so the month is the shape of the
         month until they ask for the days. Same read, same ramp, same order,
         and the same elements - a bar is a cell laid out in a row with
@@ -129,7 +59,7 @@
         carry `data-cal-cell` for the screen to measure (motion/regroup.ts). */
     compact?: boolean;
     /** Which way the last month change went, 1 forward and -1 back, which
-        is the way the wave runs across the grid (ticket 280). */
+        is the way the wave runs across the grid. */
     direction?: number;
   } = $props();
 
@@ -151,20 +81,9 @@
     last: epochDayFromLocalDate(new Date(year, month + 1, 0))
   });
 
-  /* Four reads for the whole month rather than four per day. They ask
-     different questions: the fill comes from the metric's average, the
-     split from that day's two ends, whether a day is a link from whether
-     anything was logged at all - a day of entries carrying no mood is still
-     a day with entries - and the coming-up dot from dayAhead.
-
-     Each answer carries the month and metric it was asked about. A re-run
-     keeps showing its previous answer until the new one lands (LiveQuery),
-     so right after a month change or a metric switch every read still holds
-     the last month's or the last metric's rows. Drawn as they stand, that is
-     a grid of blanks for a round trip, or mood's values shaded on a
-     dimension's ramp - one wrong frame each, and both are yanks. So the
-     grid goes on showing the picture it has until all four have answered
-     the new question, and only then changes (`view` below). */
+  /* Read fill, split, day presence and upcoming events once per month. Each
+     result carries its month and metric. Keep the previous grid until all four
+     match the new request so stale values never use the new ramp. */
   const tagged = <T,>(metric: string, rows: Promise<T[]>) =>
     rows.then((list) => ({ first: bounds.first, metric, rows: list }));
   let averages = liveQuery((j) => {
@@ -178,7 +97,7 @@
     const metric = vocabulary.activeMetric;
     return tagged(metric, j.stats.daySpread(metric, first, last));
   });
-  /* What is coming up this month (phase 8 features ticket 61, ADR-0067): an
+  /* What is coming up this month (ADR-0067): an
      appointment, a surgery date, a milestone still ahead, a letter's unlock
      day, or a dose slot only where the schedule is not daily. A read of its
      own rather than folded into the three above - it asks a different
@@ -190,7 +109,7 @@
   let dayAheadQuery = liveQuery((j) =>
     tagged('', j.dayAhead.getDayAhead(bounds.first, bounds.last, currentDay()))
   );
-  /* The presentation chip (ticket 17, ADR-0048), bounded to the same month
+  /* The presentation chip (ADR-0048), bounded to the same month
      as the reads above rather than resolved by the caller the way `eras`
      is: an era is a handful of rows for the whole journal, and a
      presentation's days are exactly the kind of per-month read this
@@ -239,10 +158,9 @@
     isToday: boolean;
     label: string;
     /** The chosen presentation's own colour, or none for a day it was not
-        logged under - absence, not a category (ticket 17, ADR-0048). */
+        logged under - absence, not a category (ADR-0048). */
     highlightMark: string | null;
-    /** Something is coming up on this day (phase 8 features ticket 61,
-        ADR-0067) - always false for today or earlier, since heat already
+    /** Something is coming up on this day (ADR-0067) - always false for today or earlier, since heat already
         owns those and the two may never collide. */
     hasMark: boolean;
     /** Whether an empty cell opens a new entry for the day (ticket 99 item
@@ -264,7 +182,7 @@
 
   function build(loading: boolean): MonthView {
     const metric = vocabulary.activeMetric;
-    /** Mood is the one metric with faces and a ramp of its own (ADR-0025). */
+    /** Mood is the one metric with faces and a ramp of its own. */
     const isMood = metric === 'mood';
     // The day's value stays native; only the step it picks is normalized,
     // so a 0-10 dimension and mood shade comparably (ADR-0012).
@@ -344,7 +262,7 @@
   });
 
   /* One lookup for a cell, a half and a legend swatch, so none of them can
-     disagree. On mood it is mood's own hex (ADR-0025); otherwise it is the
+     disagree. On mood it is mood's own hex; otherwise it is the
      role's computed ramp, falling back to the stylesheet's hand-tuned tokens
      where there is no flag to shade with. */
   const fillAt = (step: number, isMood: boolean) =>
@@ -362,20 +280,9 @@
     return [...seen.entries()].map(([name, mark]) => ({ name, mark }));
   });
 
-  /* ---------- The month change ----------
-
-     Each cell takes --dur-fast and the whole wave fits inside --dur-med, so
-     the last cell starts the difference between the two later, spread
-     evenly over the grid's diagonals (the strip's single row over its
-     days).
-     Forward, the wave starts at the first of the month and runs to the
-     last; back, it starts at the last. Both halves read the direction when
-     they start, so the leaving month and the arriving one run the same way.
-
-     Reduced motion is a substitute, not a deletion: one crossfade of the
-     whole block over --dur-crossfade, no wave. These are Web Animations
-     rather than CSS, so base.css's reduced-motion clamp does not flatten
-     that crossfade into a cut. */
+  /* Stagger cells over --dur-med, with each running for --dur-fast. Both
+     months use the same direction. Reduced motion crossfades the whole block
+     with Web Animations so the CSS clamp leaves --dur-crossfade intact. */
   function waveCells(node: HTMLElement, arriving: boolean) {
     // The tab already carries the incoming month as one moving block.
     if (arriving && ui.tabMoving) return 0;
@@ -492,27 +399,13 @@
   });
 </script>
 
-<!-- The days are one set of elements in two layouts, and never two sets
-     (phase 10 ticket 10). Compact, the grid is one row: a bar per day in the
-     order they run, on the same five steps, and everything a bar has no room
-     for - the date, the pip, the split, the face, the mark - fades out
-     where it stands rather than being swapped away. That is the whole reason
-     this is a class on the grid and not a second block of markup: an element
-     that survives the change can be animated across it, and one that is
-     replaced can only cut. The travel itself is the screen's
-     (motion/regroup.ts).
+<!-- One set of day cells changes layout through motion/regroup.ts.
+     Compact keeps the five-step bars and fades extra marks in place,
+     so the same nodes can travel. The weekday header leaves flow before
+     the new layout is measured and fades where it stood.
 
-     Compact, none of it is reachable either: 7px of width is not a tap
-     target and thirty of them are not a reading. The strip is hidden from a
-     screen reader, its cells are out of the tab order, and the control that
-     opens the grid carries the name; every day's own words are in the grid
-     one tap away.
-
-     The day-of-week header is the one thing that cannot be laid out both
-     ways - seven letters cannot align to thirty-one columns - so it is a
-     block of its own - and compact it goes out of flow and fades where it
-     stands rather than being switched off, so the cells' own travel is
-     measured against a layout that has already given the row back. -->
+     Compact cells are about 7px wide. Hide them from assistive tech and
+     remove their tab stops. The named control opens the accessible grid. -->
 <div class="cal-dows" class:is-compact={compact} aria-hidden="true" data-cal-sits-out>
   {#each DOWS as d, i (i)}<span class="cal-dow">{d}</span>{/each}
 </div>
@@ -557,7 +450,7 @@
           {:else if c.hasMark}
             <!-- A future day with something coming up (ADR-0067): a link, the
                  same as a logged day, to the same route - `/day/[day]` reads
-                 `dayAhead` for what to show there (ticket 62); this cell only
+                 `dayAhead` for what to show there; this cell only
                  says that there is something. -->
             <a class="cal-day has-mark press" tabindex={compact ? -1 : undefined}
               data-cal-wave={c.diagonal} data-cal-day={c.day - 1}
@@ -591,22 +484,9 @@
 </div>
 
 {#if !compact}
-  <!-- The ends are the metric's own words, never "worst" and "best": neither
-       end of binary <-> nonbinary is the better one, and colour that judges is
-       the one thing this app cannot do (ADR-0012, F15).
-
-       Mood has none. Its five faces are the same five a person picks a mood
-       from every day, so a scale under them is the app explaining itself to
-       its reader - which is the call the year grid already made, and
-       Alicja's on 2026-08-25. No "no entry" swatch either, since ticket 280:
-       a day with nothing logged has no box to show a swatch of.
-
-       Disclosed rather than inserted, because it is the one thing a metric
-       switch adds to or takes from the height of the screen: mounted in one
-       frame, the key and the chips under it jumped a row.
-
-       An image to a screen reader, named by the sentence: an aria-label on
-       a plain div is not read (after-release 21, audit L04-14). -->
+  <!-- Use the metric's endpoint labels (ADR-0012). Mood's familiar faces need no
+       legend. Disclose the height when the legend changes so the chips stay in flow.
+       Give the labelled legend an image role so assistive tech reads its name. -->
   {#if !view.isMood}
     <div
       class="cal-legend"
@@ -625,7 +505,7 @@
   {/if}
 
   <!-- One line of caption under the grid: which era the month sits in, and
-       what a split and the dots mean (ticket 280). The same words on every
+       what a split and the dots mean. The same words on every
        metric: what deeper colour means is the scale's to say above, and on
        mood the faces say it, so a sentence naming the metric only made the
        line rewrap, and the chips under it jump, on every switch. The eras were a hollow
@@ -679,7 +559,7 @@
          else ever draws (ADR-0067: heat and a mark are mutually exclusive by
          construction). -->
     <span class="cal-mark" class:is-on={c.hasMark} data-cal-sits-out data-hm-cell-mark-dot={c.hasMark ? '' : undefined}></span>
-    <!-- The presentation chip's mark (ticket 17, ADR-0048): a corner dot of
+    <!-- The presentation chip's mark (ADR-0048): a corner dot of
          its own, because the outline already carries today. -->
     <span class="cal-highlight" class:is-on={!!c.highlightMark} data-cal-sits-out data-hm-cell-highlight={c.highlightMark ? '' : undefined}
       style={c.highlightMark ? `background:${c.highlightMark}` : undefined}></span>
@@ -777,20 +657,10 @@
   /* No lead-in element: the first of the month starts in its own column. */
   .cal-grid > :first-child { grid-column-start: var(--lead); }
 
-  /* The same days as one row (phase 10 ticket 10). A bar rather than a small
-     square because the row holds 31 of them inside 280px at the narrowest -
-     7px of width is all a day gets, and 7px tall as well would be a speck.
-     Tall and thin it reads as a month the way a barcode reads as a barcode.
-     Unlike the grid, every day in the strip is a bar, logged or not - the
-     empty end of the ramp - so a quiet month is still thirty days and not a
-     blank line. 2px corners, which is what DIRECTION.md rule 9 gives a
-     bar's ends (`.kit-bar-mark`).
-
-     Everything a bar has no room for goes to opacity 0 rather than out of
-     the markup - the date, the pip, the split's two halves, the face, the
-     mark, the highlight dot. They are the same elements in both layouts, so
-     each of them fades as its cell travels instead of being gone in the
-     frame the tap landed. */
+  /* At 280px the compact month fits about 7px per day. Draw tall bars
+     with 2px corners and use the empty ramp step for unlogged days.
+     Keep both layouts' same cell nodes so dates and extra marks
+     fade while their bars travel. */
   .cal-grid.is-compact {
     grid-template-columns: repeat(var(--days), minmax(0, 1fr));
     gap: 2px;
@@ -871,7 +741,7 @@
     inset: 0;
     border-radius: var(--r);
     background: transparent;
-    /* The metric switch is one curve for every cell (ticket 280): the
+    /* The metric switch is one curve for every cell: the
        corner, the fill and the face all change together over --dur-med.
        The fill and the halves carry the only thing that differs between two
        metrics over the same month - the grid, the dates and the marks all
@@ -970,7 +840,7 @@
     transition: opacity var(--dur-med) var(--ease-out);
   }
 
-  /* The presentation chip's mark (ticket 17, ADR-0048), in the cell's
+  /* The presentation chip's mark (ADR-0048), in the cell's
      corner, rimmed in the page's ground so it cuts cleanly out of a fill. */
   .cal-highlight {
     position: absolute;
@@ -983,7 +853,7 @@
     z-index: 2;
   }
 
-  /* What is coming up (phase 8 features ticket 61, ADR-0067): drawn in the
+  /* What is coming up (ADR-0067): drawn in the
      accent, the colour the app already uses to say "this is where you are,
      or where you are headed" (today's own ring above), and never a count or
      a shape: a mark is a day and a kind, never a verdict. */

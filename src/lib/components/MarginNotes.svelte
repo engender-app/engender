@@ -3,22 +3,9 @@
   import { offerUndo, undoable } from '$lib/stores/deleteUndo';
   import type { UndoableDelete } from '$lib/data/journal/undoableDelete';
   import { journalTextAutocomplete } from '$lib/platform';
-  /* A margin note: a visibly later layer under the entry it annotates
-     (phase 8 features ticket 07, CONTEXT: "Margin note").
-
-     Journal-aware, unlike DayEntry.svelte around it: this is the caller
-     that knows, the way EntryDays.svelte already is for tags and marks.
-     `notes` still arrives pre-fetched rather than read here - the caller
-     batches `journal.marginNotes.forEntries` once for a whole page
-     (marginNotes.ts's own reasoning: one query, not one per row) and hands
-     this component only the entry it belongs to.
-
-     The rendering is the feature (the ticket's own words): its own date on
-     every note, its own indentation, its own type - nothing here may read
-     like a second paragraph of the entry above it. `edit`/`add` write
-     straight through the journal (ADR-0044: validated by `marginNotes.add`
-     before anything is written, and there is only ever the one insert to
-     make - no second write for a transaction to wrap). */
+  /* Render a dated, indented margin note below its entry. The caller reads
+     notes for a page in one batch. The component writes through the journal,
+     where marginNotes.add validates its insert (ADR-0044). */
   import { m } from '$lib/paraglide/messages';
   import { deleter, writer } from '$lib/stores/attempt.svelte';
   import { toast } from '$lib/stores/toasts.svelte';

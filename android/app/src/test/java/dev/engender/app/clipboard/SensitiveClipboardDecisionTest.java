@@ -6,8 +6,7 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 /**
- * The one decision the self-clearing copy has to get right (phase 8 audit
- * ticket 09): a clipboard the person has since used for something of their
+ * The one decision the self-clearing copy has to get right: a clipboard the person has since used for something of their
  * own is not ours to wipe. Everything else about the clear needs a real
  * ClipboardManager and lives in the instrumentation test; this is the part
  * that holds no Android type, so it can be exercised here.

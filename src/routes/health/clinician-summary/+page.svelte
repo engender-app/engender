@@ -1,6 +1,6 @@
 <script lang="ts">
   import { journalTextAutocomplete } from '$lib/platform';
-  /* The clinician summary (phase 5 ticket 09): a range, the registered
+  /* The clinician summary: a range, the registered
      sections (clinicianSummary.ts, ADR-0031) and the drugs to print, set in
      the sheet, over a preview that is the printed page. Each section has a
      switch, so a part can be left off before printing or saving to PDF. */
@@ -65,7 +65,7 @@
      preview is the only thing that opens it. */
   let controlsOpen = $state(false);
 
-  /* "Since last appointment" (ticket 19): the most recent past appointment
+  /* "Since last appointment": the most recent past appointment
      (appointments.ts's own pure selector, ticket 58), the same one the
      debrief offer is about. Absent rather than defaulted when none is on
      record - the button below does not render, instead of falling back to
@@ -74,10 +74,9 @@
   let lastAppointment = $derived(mostRecentPastAppointment(appointmentsQuery.rows, today));
   let appointmentDate = $derived(lastAppointment?.epochDay ?? null);
 
-  /* Every drug the person has ever logged a regimen episode for (ticket
-     39), unbounded - not scoped to the range below, since the toggle is a
+  /* Every drug the person has ever logged a regimen episode for, unbounded - not scoped to the range below, since the toggle is a
      device preference set once rather than a per-print control. A drug
-     that is not HRT starts switched off (functional audit ticket 39). */
+     that is not HRT starts switched off. */
   let regimenEpisodesQuery = liveQuery((j) => j.regimen.getEpisodes());
   let drugNames = $derived(regimenDrugNames(regimenEpisodesQuery.value ?? []));
   const rowEstimate = readReserve('clinician-summary-row');
@@ -182,7 +181,7 @@
   <!-- The settings row shows the included items and opens their controls. -->
   <!-- Held until the regimen read answers: the row names the drugs, and
        drawn before it knew them it grew a line in one frame on every cold
-       open, pushing the preview 21px (ux-carpet ticket 193). -->
+       open, pushing the preview 21px. -->
   <div class="no-print settings-row-wrap">
     <ReadReserve ready={!regimenEpisodesQuery.loading} estimate={rowEstimate} onrest={rememberRow}>
       <ListRow
@@ -226,7 +225,7 @@
            many sections, and an action at its end is one every scroll has
            to finish before it can be reached. The foot is the column's flex
            sibling rather than a bar floating over it (carpet 26), so the
-           one verb this screen has (ticket 08) stays reachable at every
+           one verb this screen has stays reachable at every
            scroll position and covers nothing - and its scope line includes the
            range alongside the same item choices the settings row reads. -->
       <SaveBar arrange="stack">
@@ -240,7 +239,7 @@
   {/if}
 </div>
 
-<!-- The controls sheet (ticket 08): every field the form on this screen
+<!-- The controls sheet: every field the form on this screen
      used to hold, unchanged in what it reads and what it defaults to -
      only where it lives moved. The intro paragraph comes with it, since
      the choices it explains are what's in here now, not what's on the
@@ -388,11 +387,11 @@
     margin-top: var(--space-2);
   }
 
-  /* Flush (DIRECTION.md rule 4): no `--surface` ground and no `--r-block`
+  /* Flush: no `--surface` ground and no `--r-block`
       corner - those are `.card`'s (components.css), the box rule 4 spends
       its own carpet tickets retiring screen by screen. Just the foot gets a
       hairline, marking where the dossier ends - the print action moved
-      below that edge into the frame's own foot (ticket 34); the top is
+      below that edge into the frame's own foot; the top is
       named instead, by the SectionHeading above, which is what
       actually reads (see the comment on the markup). */
   .summary-page {

@@ -1,34 +1,11 @@
-/* The transition roadmap's country pack (phase 4 ticket 23; CONTEXT:
-   "Roadmap goal", "Country pack"). Trimmed to the legal track by functional
-   audit ticket 34: the social and presentational tracks repeated
-   milestones, voice, hair removal and tryouts, and the medical track was
-   the most clinical text outside Care. What is left is the Polish court
-   procedure and the paperwork around it, shown behind the "Polish legal
-   steps" switch (`polishLegalStepsShown` below).
+/* The roadmap ships two independent packs: Polish legal and paperwork steps,
+   and social and presentation steps. Each has its own visibility switch.
+   Packs are synchronous bundled content with no network dependency or seeded
+   rows. journal/roadmap.ts stores personal status and visibility.
 
-   Pre-release human ticket 17 reversed the cut in part: the roadmap gained
-   a second built-in group, the social and presentation steps (coming out,
-   name and pronouns, clothes, voice, hair). Alicja asked why transition's
-   social side was missing and chose a built-in group over the cut tracks
-   or starter goals in a category of her own. It is not Polish content, so
-   it is a pack of its own (`SOCIAL_PACK`) with its own switch.
-
-   A country pack is bundled content, not reference data (CONTEXT:
-   "Reference data"): nothing about it is per-install, so there is no row
-   to seed and no table to migrate when a pack gains an item. It is
-   compiled into the bundle and read synchronously, which is also the whole
-   of what "fully offline" means here - a pack is inert data, so a screen
-   showing one cannot reach for the network. Only personal status and visibility are stored, and
-   journal/roadmap.ts owns those.
-
-   Keys only, no text, the same rule builtins.ts follows and for the same
-   reason (ADR-0002): wording lives in vocabulary/roadmapLabels.ts and
-   changes with the language, and this file stays Node-tier safe by
-   importing no paraglide (ADR-0016).
-
-   Nothing here models one goal blocking another: each is independently
-   checkable. Order is the order the procedure usually runs in, and it is a
-   suggestion the screen renders rather than a rule anything enforces. */
+   This file holds stable keys; vocabulary/roadmapLabels.ts supplies localized
+   wording (ADR-0002, ADR-0016). Goals can be checked independently, and their
+   order follows the usual procedure for display. */
 
 import type { InstitutionChange, RoadmapGoalStatus } from './types';
 
@@ -149,11 +126,11 @@ export function socialGoalsInView(shown: boolean, hiddenGoals: readonly string[]
     that a pack renamed earlier stays exactly as it was. */
 export const isCutTrackGoal = (goalKey: string): boolean => /^pl-(social|presentational|medical)-/.test(goalKey);
 
-/** Whether the Polish legal steps show (functional audit ticket 34).
+/** Whether the Polish legal steps show.
     `choice` is the person's answer to the switch, null until they give
     one, and until then the steps stay closed in every language. They used
     to open for Polish, which put 721 words of court procedure on a screen
-    of 754 before anybody asked for them (tester report 02, ticket 08). */
+    of 754 before anybody asked for them. */
 export function polishLegalStepsShown(choice: boolean | null): boolean {
   return choice ?? false;
 }
@@ -208,7 +185,7 @@ export function roadmapList<K extends string, C extends OwnGoal, Cat extends { r
 }
 
 /** Remaining work in the legal group, as a plain count rather than a
-    fraction of the whole pack (DIRECTION.md rule 16). `not-my-path` counts
+    fraction of the whole pack. `not-my-path` counts
     as resolved the same way `checked` does: a step somebody has ruled out
     is not one they are still on. */
 export function roadmapStepsLeft<K extends string, C extends OwnGoal, Cat>(
@@ -223,7 +200,7 @@ export function ownStepsLeft(goals: readonly { readonly status: RoadmapGoalStatu
   return goals.filter((goal) => goal.status === 'unchecked').length;
 }
 
-/* Name and document changes, per institution (functional audit ticket 35).
+/* Name and document changes, per institution.
    After the ruling every institution is updated on its own, and one of
    them can take months: the Ombudsman documents a diploma from a closed
    university that was passed from the kuratorium to the ministry to the
@@ -252,7 +229,7 @@ export const POLISH_INSTITUTIONS = [
 /** The day the institution notes were last checked against their sources,
     as an ISO day. Its own date rather than the pack's: the court steps were
     checked on POLISH_PACK.reviewedOn and the institutions later, and the
-    reviewed-on guard (functional audit ticket 40) warns on each by its own
+    reviewed-on guard warns on each by its own
     age. */
 export const INSTITUTIONS_REVIEWED_ON = '2026-10-30';
 
@@ -277,7 +254,7 @@ interface StoredTick {
 
 /** What is left of a stored tick once ticket 35 has run: the same rule
     migration 114 applies to the journal and a restore applies to an older
-    archive. A tick on a cut track goes (ticket 34), and so does one on the
+    archive. A tick on a cut track goes, and so does one on the
     retired "bank, insurers, clinic" step. A tick on a step that became an
     institution goes too, since an institution moves by dated changes and a
     tick has no date to give one; only its hidden flag stays, because the

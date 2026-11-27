@@ -1,27 +1,8 @@
-/* The WebView floor, as a rule about the app's own source rather than a
-   number in two config files (phase 8 features ticket 55, ADR-0023).
-
-   `minWebViewVersion` says which WebViews refuse to load the app, and
-   `build.target` in vite.config.ts now says what the bundle is compiled
-   to - derived from the first, so the syntax half cannot drift. What
-   neither can catch is a runtime feature: esbuild compiles syntax down
-   and leaves `Array.prototype.toReversed` exactly where it found it. A call
-   that arrived in Chrome 110 still ships and throws on the phone the
-   floor promised to run on. Computed CSS properties and selectors passed
-   to DOM methods also retain their runtime requirements.
-
-   That is not hypothetical. Ticket 55 measured it: four `.at(-1)` calls
-   and one `.toReversed()` were in shipped screens, putting the app's real
-   floor at Chrome 110 while both config files said 87. All five were
-   rewritten, and this is what keeps them rewritten.
-
-   The list is deliberately short - the APIs a modern habit reaches for,
-   not every method Chrome has added since 2020. Anything above the floor
-   that this does not name is a gap in this list, and the answer is to add
-   it here rather than to widen the rule. A dependency's own calls are not
-   ours to rewrite: pdf.js needs `.at` and gets a polyfill instead
-   (src/lib/data/documents/pdf-floor.ts), which is why that file is
-   allowed to name it. */
+/* The Vite build target follows minWebViewVersion (ADR-0023). Syntax
+   transpilation leaves runtime APIs, computed CSS and DOM selectors
+   untouched, so guard common usages above Chrome 87. Add missing
+   patterns here. src/lib/data/documents/pdf-floor.ts can mention .at
+   because it provides pdf.js's polyfill. */
 
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';

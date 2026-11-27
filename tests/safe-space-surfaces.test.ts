@@ -1,31 +1,9 @@
-/* Surface and contract tests for Safe space (ticket 52, ADR-0040).
-
-   Phase 10 redesign ticket 47 split the screen these were written against.
-   `/doubt` offers personal support before the breathing exercise; the statistics,
-   the charts, the counterevidence pool, the snapshots, the letters, the
-   photos and the comfort list were each one tap down, on their own route.
-
-   So every assertion below still asks the same question and asks it of
-   whichever file now holds the answer - which is the point of keeping them
-   rather than rewriting them. What this file is for is that nothing was cut
-   in the move, and a test that only knew where things used to be could not
-   tell a section that moved from a section that went.
-
-   Phase 11 ticket 15 moves two of them again, and one of them out of Safe
-   space entirely. The letters moved to `/transition/letters`, which already
-   showed the same unlocked letters in its Open section. Starred photographs
-   now sit behind the photo library's Starred chip. The readings were a Look back page
-   on this door and ticket 07 gives them a reading of their own, so the
-   assertions about a tile grid and two charts are gone rather than
-   repointed: that is a section that went from here, and this file's job is
-   to say which. Both addresses still answer, as redirect stubs, and
-   tests/settings-route-redirects.test.ts is what holds them.
-
-   Functional audit ticket 09 is a cut, and says so here: the snapshots
-   went (their copy of an entry's note outlived the entry), and so did the
-   rows to the letters and to Look back, which switched the lit tab
-   mid-crisis. Safe space is the breath, good moments, the comfort list and
-   the resources. */
+/* Safe space surface and contract tests. /doubt offers
+   personal support before the breath, with good moments, comfort and
+   resources on their own routes. Letters and starred photos live on
+   their own screens. tests/settings-route-redirects.test.ts covers
+   legacy addresses. Snapshots were removed because copied notes
+   outlived their entries. */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -127,11 +105,11 @@ describe('what Safe Space is built from', () => {
     expect(evidenceMarkup).toContain('data-evidence-see-all');
     expect(evidenceMarkup).not.toMatch(/data-evidence-see-all[^>]*href=/);
     expect(evidence).toContain('m.safe_space_evidence_see_all({ count: counterevidence.length })');
-    /* ADR-0078: the control discloses by moving. The rows it reveals clip
+    /* The rows it reveals clip
        open from their own left edge and the control itself collapses,
        rather than either cutting into place. */
     expect(evidence).toContain('out:disclose');
-    // The held days arrive through EntryDays' own `arrive` (phase 14 ticket 18).
+    // The held days arrive through EntryDays' own `arrive`.
     expect(evidence).toContain('<EntryDays groups={held} arrive level={2} />');
     expect(read('src/lib/components/EntryDays.svelte')).toContain('animation: kit-block-in');
   });
@@ -199,7 +177,7 @@ describe('the support directory panel', () => {
   it('renders as its own ListCard/ListRow panel, not a heading action link, pointing at the existing directory', () => {
     expect(doubt).toContain("from '$lib/components/kit/ListRow.svelte'");
     expect(markup).not.toContain('kit-heading-action');
-    /* Its own row in the run of ways down now (ticket 47), rather than a
+    /* Its own row in the run of ways down now, rather than a
        panel of its own above the rest of a dashboard - and still the first
        of them, which is where it already sat and which ticket 63 is the
        ticket that gets to move. */
@@ -221,8 +199,7 @@ describe('More hub row for Safe Space', () => {
 });
 
 describe('Home live tile for Safe Space nudge (ticket 50)', () => {
-  /* The tile left the route with the rest of the grid (phase 8 deepening
-     ticket 07). What it says, where it goes and what its dismiss does are
+  /* The tile left the route with the rest of the grid. What it says, where it goes and what its dismiss does are
      `liveTiles.grid.test.ts`'s now, through `composeHomeTiles`; what is
      still a grep is which module holds the read, and that Home does not
      hold it twice. */

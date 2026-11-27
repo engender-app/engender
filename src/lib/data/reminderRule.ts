@@ -1,19 +1,7 @@
-/* The reminder rule (ADR-0010, CONTEXT: "Reminder"): a local wall-clock
-   time plus either a recurrence (DAILY needs nothing else,
-   EVERY_N_DAYS carries its interval and an anchor day) or a concrete epoch
-   day for a one-off. Never a stored next-fire instant - that would need
-   rewriting after every fire, reboot and timezone change, and would shift
-   a 20:00 reminder by an hour across a DST boundary.
-
-   nextOccurrence() answers one question - when does this rule fire next,
-   strictly after now - and the editor's "Next: ..." preview is its only
-   caller. What decides when a notification actually fires is
-   ReminderPlanner.nextReminder in Java, which cannot import this file and
-   reimplements the same arithmetic. The two are held to the same answers by
-   src/lib/android/fixtures/reminder-rule.json, which both suites iterate
-   (ADR-0028's shape). Editing the rule here without adding the case there
-   leaves the two free to drift, which is how they came to disagree about an
-   elapsed one-off with both suites green. */
+/* Keep reminders as local wall time plus a recurrence or one-off day
+   (ADR-0010). nextOccurrence previews the first fire strictly after now.
+   ReminderPlanner supplies Android scheduling. Add cases to the shared
+   reminder-rule.json fixture so both implementations stay aligned (ADR-0028). */
 
 import { epochDayFromLocalDate, timestampAtLocalTime } from './epochDay';
 
@@ -83,8 +71,7 @@ export function nextOccurrence(rule: ReminderRule, now: Date): Date | null {
 }
 
 /** The latest moment the rule fired at or before `at`, or null when it had
-    not fired yet. Which firing a Taken or Skip tap answers (functional
-    audit ticket 20): the tap can land after midnight, after quiet hours
+    not fired yet. Which firing a Taken or Skip tap answers: the tap can land after midnight, after quiet hours
     held the alarm, or days later, and the dose belongs to the occurrence's
     own day. JavaScript only - the alarm side never needs to look back. */
 export function previousOccurrence(rule: ReminderRule, at: Date): Date | null {

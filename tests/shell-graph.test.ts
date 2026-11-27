@@ -1,4 +1,4 @@
-/* What the shell may carry (after-release ticket 40).
+/* What the shell may carry.
 
    The root layout is in every first load whatever the address, and in front
    of a locked journal it is the only thing on screen. The screens' wording

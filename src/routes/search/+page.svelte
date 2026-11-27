@@ -1,97 +1,18 @@
 <script lang="ts">
   import { withEntryListReturn } from '$lib/navigation/sourceRecord';
-  /* Search (phase 5 ticket 22), rebuilt on the kit.
+  /* Search runs two bounded reads (ADR-0004). Entry results use the FTS index
+     and render as day cards without counts. A filtered count could be mistaken
+     for the day's total. Other results use textSearch.ts's area registry and
+     share one newest-first list with area labels. The requested limit grows
+     by 30 so results already on screen keep their positions.
 
-     Three things were wrong with it as a screen, none of them about what it
-     could find.
+     A text query is required for other areas. The date range narrows records
+     that carry a day. All other filters apply to entries. The filter sheet
+     keeps the results in place and the chips show active filters. Turning on
+     Starred also shows the starred photo grid.
 
-     **The filters pushed the results off the phone.** They were a `.card`
-     that opened above the hits and held a whole tag picker, five mood chips,
-     two date fields and two toggles - taller than a 390px screen on its own,
-     so turning a filter on scrolled away the thing it was filtering. They
-     are a sheet now, which is what the app uses for a chooser everywhere
-     else, and the active-filter chips stay on the screen as the visible
-     record of what is on.
-
-     **Thirty hits were the end of the list.** SCREENS.md says paginated
-     thirty at a time and the screen asked for thirty and stopped: a query
-     matching fifty said "50 entries" and showed thirty, with nothing to tap.
-     There is a page size and a control that asks for another page. Not
-     infinite scroll, which SCREENS.md rules out and which a journal is a bad
-     fit for anyway - a person searching their own history is looking for one
-     day, not grazing.
-
-     The limit grows rather than an offset moving, so the hits already read
-     stay where they are and nothing is re-paginated under a finger. It is
-     still one bounded read per render (ADR-0004); it is just a larger bound
-     each time somebody asks.
-
-     **A hit had no date on it.** The results were a flat run of entry cards
-     and the date lived inside each one, so ten hits repeated the same date
-     ten times or changed it silently halfway down. They are day cards now,
-     the same as Home and the same as a day, which puts the date in the bar
-     and the timeline back under it.
-
-     One thing deliberately *not* changed: the day bars carry no count.
-     Everywhere else a bar can say how many entries a day holds; here it
-     could only say how many matched, and "3 that day" over three of five
-     would be the filter describing itself (recentEntries.ts).
-
-     **What it searches (phase 5 deepening ticket 24).** Entries, and every
-     other area of the journal that holds text: letters, milestone names,
-     procedure notes, appointment questions, felt-sense reflections, custom
-     roadmap goals, lab notes, fit notes, wear notes, provider
-     names, drug names, reminder titles. Which those are is textSearch.ts's
-     registry, not a list here - this screen names no area, and an area
-     registered there reaches this screen without it being edited.
-
-     Two reads rather than one, and they are different questions. Entries go
-     through the FTS index with the filters and the paging they have always
-     had (entries.ts); everything else is one scan across the registry
-     (textSearch.ts). Keeping them apart is what lets the entries keep their
-     day cards - a hit in a letter is a line of text, and an entry is a day
-     with a mood and tags on it.
-
-     A hit outside entries is a row in one list rather than a section per
-     area: it carries the area's name as its subtitle, and the list keeps the
-     order the read returned, which is newest first across every area. The
-     first build grouped by area and it was wrong - eighteen areas can answer
-     a query, and a display-size heading over a card holding one row makes
-     three hits look like a screen of scaffolding (searchHitRows.ts).
-
-     Three rules the screen holds to, and the sheet says the third out loud
-     because it is the one somebody could otherwise be surprised by:
-
-     *Nothing outside entries is searched without a word.* Those areas have
-     no criteria of their own to be listed by - a date range alone would
-     print every letter in the range, which is the archive's job.
-
-     *The date range narrows everything it can reach.* An area whose records
-     carry a day is narrowed by it; a roadmap goal and a checklist belong
-     to no day and are not.
-
-     *Tags, moods, has-note and has-photo are entry-only.* They are entry
-     fields, and no other area has them. The filter sheet states it rather
-     than leaving somebody to infer it from a letter that ignored the mood
-     they picked.
-
-     **Ticket 18: one front door, and something before a keystroke.** The
-     starred shelf was its own route, `/search/starred`, reachable from an
-     icon in this screen's own header. Starred is a filter now
-     (`EntrySearchFilters` already carried it, "reached from search"), so it
-     is a toggle in the sheet below rather than a screen elsewhere, and the
-     starred photo grid that page also drew moves in beside it, shown
-     whenever the toggle is on. Old list addresses now show the
-     unknown-address screen. Saved questions and the random draw were cut by
-     the functional audit (ticket 10).
-
-     And that opening state is the other half: before this ticket, an empty
-     box and two sentences was what a 268-entry journal offered before a
-     single character. The tag registry and this device's own recent
-     searches were already there to offer instead - `searchQuery.ts`'s tag
-     matching and `journal.stats.tagShare` for what "most-used" means, and
-     `recentSearches.ts` for what "recent" means, since a search's own
-     history is a device's memory of its own typing, not the journal's. */
+     Before typing, the most-used tag chips come from journal.stats.tagShare.
+     Recent searches come from recentSearches.ts and stay on this device. */
   import { m } from '$lib/paraglide/messages';
   import { afterNavigate, beforeNavigate } from '$app/navigation';
   import { EMPTY_SEARCH, holdSearch, takeHandedQuery, takeHeldSearch, type SearchSnapshot } from '$lib/navigation/searchReturn';
@@ -135,7 +56,7 @@
 
   let query = $state('');
   /** How long the search waits after the last keystroke before it asks
-      (phase 8 audit ticket 15) - long enough that typing at speed never
+       - long enough that typing at speed never
       fires a run per key, short enough that a pause reads as instant. */
   const SEARCH_DEBOUNCE_MS = 250;
   let filtersOpen = $state(false);
@@ -147,7 +68,7 @@
   let hasPhoto = $state(false);
   /* On when the current address asks for the starred filter. */
   let starredOnly = $state(page.url.searchParams.has('starred'));
-  /* The transition fields (functional audit ticket 10): mode, body region
+  /* The transition fields: mode, body region
      and one scale's range, entry-only like the filters above them. */
   let selectedPresentationIds = $state<string[]>([]);
   let selectedRegions = $state<string[]>([]);
@@ -155,10 +76,10 @@
   /* What the address asks for, which is also what a stale held search
      falls back to: `?starred=1` above, and `?q=` from the Transition door's
      "finish this search" row, which linked here with the query and landed
-     on an empty box (ticket 16). */
+     on an empty box. */
   /* More's search hands its query over in memory rather than in the
-     address, so what was typed stays out of the browser's history
-     (after-release ticket 10). `?q=` still works for an address typed or
+     address, so what was typed stays out of the browser's history.
+     `?q=` still works for an address typed or
      bookmarked by hand: it is taken out of the address as it arrives and
      handed over the same way (journalTextParams.ts). */
   const handedQuery = takeHandedQuery() ?? takeLegacyQuery();
@@ -253,7 +174,7 @@
       selectedRegions.length > 0 ||
       scale !== null
   );
-  /* The typed query, waited out (phase 8 audit ticket 15). The two
+  /* The typed query, waited out. The two
      liveQuery closures below read `debouncedQuery`, never `query` itself:
      `query` changes once a keystroke, and the reactivity contract
      (journal.svelte.ts: a closure's dependency is whatever it reads before
@@ -302,7 +223,7 @@
 
   /* Off the debounced query, not the box: the idle/results switch below
      describes an answer, and the box can hold a character or two nothing
-     has answered for yet (ticket 15). */
+     has answered for yet. */
   let hasCriteria = $derived(!!debouncedQuery || hasStructuredCriteria);
 
   /* Back to the first page whenever the question changes. An effect rather
@@ -332,7 +253,7 @@
      were not from the same read. */
   const NOTHING_ASKED = { key: '', hits: [], total: 0 };
 
-  /* Each answer carries the question it answers (ticket 16). A read keeps
+  /* Each answer carries the question it answers. A read keeps
      its last value while the next run is out, so between a pause in the
      typing and the answer the screen still holds the previous answer - or,
      for the first question after an empty box, nothing at all - and drawing
@@ -378,7 +299,7 @@
      agree on the question (`settled`, below). The two reads land a frame or
      more apart, and drawing each as it landed showed a records-only answer
      for a frame, then opened the entries above it - half an answer moving
-     under the other half (ticket 16). A later page of the same question
+     under the other half. A later page of the same question
      keeps the keys, so "show more" still lands at once. */
   let shown = $state<{ entries: NonNullable<typeof search.value>; elsewhere: NonNullable<typeof elsewhere.value> }>({
     entries: NOTHING_ASKED,
@@ -390,8 +311,7 @@
   let groups = $derived(entryDayGroups(hits));
 
   /* Batched over every entry the page currently shows, the one read
-     marginNotes.ts's own reasoning asks for rather than one per row (phase
-     8 features ticket 07). Reads `hits` before its first await, the same
+     marginNotes.ts's own reasoning asks for rather than one per row. Reads `hits` before its first await, the same
      reactivity contract every liveQuery here follows, so paging in more
      results re-runs it. */
   let entryIds = $derived(hits.map((entry) => entry.id));
@@ -539,7 +459,7 @@
   ]);
   let todayInput = $derived(dateInputValueFromEpochDay(currentDay()));
 
-  /* What the opening state offers before a character is typed (ticket 18):
+  /* What the opening state offers before a character is typed:
      the eight most-used tags and this device's own last five searches. Both
      are read regardless of
      `hasCriteria` - cheap, bounded reads a person is about to want the
@@ -556,7 +476,7 @@
   let recentSearchList = $state<string[]>(listRecentSearches());
   /* Read again when the opening state comes back rather than the moment a
      search is recorded: the opening state is still up then, waiting on the
-     answer, and the new row grew it 96px in one frame (ticket 16). */
+     answer, and the new row grew it 96px in one frame. */
   $effect.pre(() => {
     if (!hasCriteria) recentSearchList = listRecentSearches();
   });
@@ -650,8 +570,8 @@
     {#if !hasCriteria || (!answered && !loading)}
       <div data-search-idle in:fadeUp out:crossfade>
         <!-- One plain line about what is searched. What each filter covers
-             is said once, in the Filters sheet, where the filters are
-             (ticket 16). -->
+             is said once, in the Filters sheet, where the filters are.
+             -->
         <p class="search-hint">{m.search_hint()}</p>
 
         {#if popularTags.length}
@@ -693,7 +613,7 @@
            as a refined question adds or drops one. -->
       <div in:fadeUp out:crossfade>
         {#if starredOnly && starredPhotos.length}
-          <!-- Ported from the old /search/starred (ticket 18): the same grid,
+          <!-- Ported from the old /search/starred: the same grid,
                the same unstar affordance, shown now under this screen's own
                Starred toggle instead of behind a second door. -->
           <div transition:disclose={whileStaying}>
@@ -750,7 +670,7 @@
           </div>
         {/if}
 
-        <!-- One count, the total (ticket 16). Under the results rather than over them: a
+        <!-- One count, the total. Under the results rather than over them: a
              line of its own above the first day put the first entry at
              y 316 of 844, past the first third, where the results are
              meant to start. The screen reader hears it first anyway, from
@@ -773,7 +693,7 @@
       <p class="search-count" data-filter-count>{m.results_count({ count: foundTotal })}</p>
     {/if}
 
-    <!-- What the filters cover, said here and only here (ticket 16): these
+    <!-- What the filters cover, said here and only here: these
          are entry fields, so a letter or a consult question ignores them,
          and the dates are the one filter that reaches further. -->
     <p class="search-hint" data-search-scope>{m.search_filters_entries_only()}</p>
@@ -934,7 +854,7 @@
   }
   /* 8 under the controls rather than the screen's 24, and a tight day card
      (EntryDays), so the first entry row starts inside the first third of a
-     390x844 phone (ticket 16): 316 with a count line over the results,
+     390x844 phone: 316 with a count line over the results,
      289 without one, 277 with both. */
   .search-controls {
     margin-bottom: var(--space-2);

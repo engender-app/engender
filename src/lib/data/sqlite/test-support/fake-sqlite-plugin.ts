@@ -1,33 +1,14 @@
-/* A Node stand-in for the Android Sqlite plugin (SqlitePlugin.java), for
-   tests that drive createAndroidSqlite() through a real failure rather than
-   a scripted one (last-audit ui 33).
+/* Node stand-in for SqlitePlugin.java. Preserve CallSequencer ordering,
+   early calls and closed-session refusal. Keep the connection across
+   sessions and use real node:sqlite files for copies, restores and reopens.
 
-   What it keeps from the plugin is the part a scripted bridge cannot fake:
-   CallSequencer's rules (one ordered stream per session, early calls held,
-   a closed session refusing everything after its close) and
-   SqliteConnection's files - the journal, its pre-migration copy beside it,
-   and a connection object that outlives any one session, the way the
-   plugin's single connection does. SQL runs on node:sqlite over real files
-   in `dir`, so a copy, a restore and a reopen are file operations here too.
+   Mock registerPlugin with a forwarding object before importing
+   android-driver.ts, which registers once. Route calls to the current
+   fake as android-failed-migration.test.ts does.
 
-   Use it behind a mocked registerPlugin. android-driver.ts registers its
-   plugin once, when it loads, so the mock returns a forwarder to whichever
-   fake the test made last (android-failed-migration.test.ts does this):
-
-     const plugin = vi.hoisted(() => ({ current: null as unknown as Record<string, (options: unknown) => unknown> }));
-     vi.mock('@capacitor/core', () => ({
-       registerPlugin: () => new Proxy({}, { get: (_target, method: string) => (options: unknown) => plugin.current[method](options) })
-     }));
-     const { createAndroidSqlite } = await import('../android-driver.ts');
-     plugin.current = createFakeSqlitePlugin(dir) as never;
-
-   Where it is looser than the device: the hex key is accepted and ignored,
-   because node:sqlite has no SQLCipher, so a copy written under another key
-   still reads as usable here where SqliteConnection.java says no; open
-   always reopens, where the plugin keeps a connection whose file and key
-   have not changed; and the closed-session set is not bounded at 64. None
-   of these bears on a closed session refusing calls, which is what it was
-   written for. */
+   The fake ignores the hex key because Node has no SQLCipher, always
+   reopens, and keeps more than 64 closed sessions. These differences leave
+   the closed-session assertions intact. */
 
 import { copyFileSync, existsSync, rmSync, statSync } from 'node:fs';
 import { join } from 'node:path';

@@ -21,7 +21,7 @@ import type { DoseEvent, DoseSchedule, DosePause, DoseScheduleAmount, RegimenEpi
 
 /** Whether `episode` is in effect on `day`: started on or before it, and
     either still open (`endEpochDay` null) or ends on or after it. Delegates
-    to span.ts's spanCoversDay (phase 8 deepening ticket 11); the arithmetic
+    to span.ts's spanCoversDay; the arithmetic
     lives once. */
 function isActiveOn(episode: RegimenEpisode, day: number): boolean {
   return spanCoversDay(episode, day);
@@ -108,23 +108,12 @@ export function attributeDose(
   return { episode: null, ambiguous: active.length > 1 };
 }
 
-/** How a dose's drug name came out, for callers that only need the name -
-    exposure totals and stock projection - and not an episode's ester or
-    route (attributeDose above is for that). `ambiguous` is the only new
-    way this can fail after ticket 38: a dose with no episode covering it
-    at all resolves to `{ drug: null, ambiguous: false }`, the
-    pre-existing, silent "nothing to attribute" case, and so does more
-    than one active episode agreeing on the same drug (a dose change
-    recorded as a new episode before the old one was ended, say - not an
-    attribution problem this question has, unlike attributeDose, which
-    also needs a single episode's ester and route and can't treat two
-    same-drug episodes as interchangeable). Only when the active episodes
-    actually name different drugs is there nothing honest to answer, and
-    `ambiguous` comes back true so exposure totals and stock projection can
-    count what they had to leave out. A dose's own `drug` (types.ts) is
-    taken as-is when set, even without a backing episode (a person can
-    name a drug stock or exposure should track without ever having logged
-    an episode for it), and is never ambiguous. */
+/** Resolve the drug name for exposure and stock, without selecting
+    an episode, ester or route. An explicit dose drug wins. With no
+    active episode, return `{ drug: null, ambiguous: false }`.
+    Episodes that agree give their shared drug. Conflicting active
+    episodes return null with `ambiguous: true` so callers can report
+    the exclusions. */
 export function attributeDrug(
   episodes: readonly RegimenEpisode[],
   dose: Pick<DoseEvent, 'drug' | 'timestamp'>
@@ -138,8 +127,7 @@ export function attributeDrug(
 /** The last day of `from`..`to` on which `episode` can expect a dose: `to`
     itself, or the episode's own planned end when that comes first. Null
     when the episode misses the range, starting after it or ending before
-    it. The day-ahead marks read every episode through this (after-release
-    ticket 01), so a course that ends on Friday expects nothing the week
+    it. The day-ahead marks read every episode through this, so a course that ends on Friday expects nothing the week
     after and one that starts next week still has its first dose there. */
 export function lastDayWithin(
   episode: Pick<RegimenEpisode, 'startEpochDay' | 'endEpochDay'>,
@@ -194,24 +182,14 @@ export function drugSpans(
   }));
 }
 
-/** Which of `active`'s episodes a new dose without a drug of its own should
-    default to (phase 8 ticket 40): the sole one if there is only one, or -
-    with several active at once - whichever schedule's nearest still-open
-    slot (doseSchedule.ts's nearestOpenSlotDistance) sits closest to
-    `todayEpochDay`. Null when that does not pick out exactly one: two (or
-    more) schedules tied for nearest, or none of the active episodes has a
-    schedule with an open slot to offer at all - an as-needed drug never
-    wins the comparison, it only leaves the tie unresolved. That is exactly
-    the case the picker still has to ask about.
+/** Default a drug-less dose to its only active episode, or to the
+    unique schedule with the nearest open slot to `todayEpochDay`.
+    Ties, no eligible schedule and as-needed episodes leave the picker
+    to ask.
 
-    `episodes` is the full list, needed only so a dose can be attributed to
-    the one active episode it names (attributeDose above) - each episode's
-    own doses and pauses are picked out here rather than by the caller, the
-    same split getComparison already makes before calling adherence: a
-    `DosePause` is scoped to one episode (`episodeId`), and adherence's own
-    pause check carries no episode filter, so handing it every episode's
-    pauses at once would let one episode's break blank out another's slot
-    on the same day. */
+    Use the full episode list to attribute existing doses first.
+    Scope pauses to the episode before matching; otherwise one
+    episode's pause can blank another's slot. */
 export function nearestActiveEpisode(
   episodes: readonly RegimenEpisode[],
   active: readonly RegimenEpisode[],

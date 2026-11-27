@@ -1,31 +1,12 @@
 <script lang="ts">
-  /* A schedule read a week at a time (phase 10 redesign ticket 44), for the
-     two screens that used to draw a row per day: dilation, where
-     `expectedSessionDays` puts a session on nearly every day of a taper
-     that runs months, and wear.
+  /* markOf supplies one of dayStrip.ts's three schedule marks. stripCellOf
+     gives dilation and wear the same paint, with an outline distinguishing
+     an expected empty day from an unscheduled one. Leave out counts and
+     heat ramps (ADR-0012).
 
-     This is the journal-connected caller `BareStrip.svelte` names. It is not
-     reading a metric, so it brings no heat ramp with it. What a day is
-     comes back from `markOf` as one of `dayStrip.ts`'s three marks and
-     turns into paint in exactly one place (`stripCellOf`), which is how
-     both screens are held to drawing an expected-and-empty day and a
-     not-expected one the same apart from the outline (ADR-0012: nothing
-     here grades a day, so no colour ramp and no count).
-
-     The page is seven days ending on today, stepped a week at a time, and
-     the pager stops where the screen runs out of record rather than
-     scrolling on into blank weeks. Paging rather than a horizontally
-     scrolling rail: a taper runs for months, so a scroll would be long
-     enough to lose your place in and has no landmark to find it by, while
-     the log under this strip is where an old record is actually reached.
-     Apple Health's medication strip and Bevel's day row are the two the
-     Mobbin pass settled this against - both compress a schedule into cells
-     that say logged or not and nothing more, and neither counts.
-
-     Nothing moves when the page changes: the seven columns stay where they
-     are and their fill and hairline transition in place (kit.css), so no
-     cell is ever painted at a destination it did not travel to. The week's
-     own words are the one thing that swaps, and they crossfade. */
+     Page by seven days from the week ending today, stopping at the
+     record's edge. Older records remain in the log. On paging, cells stay
+     in place and change fill and outline while the week label crossfades. */
   import { m } from '$lib/paraglide/messages';
   import Icon from '$lib/components/Icon.svelte';
   import BareStrip from '$lib/components/kit/BareStrip.svelte';

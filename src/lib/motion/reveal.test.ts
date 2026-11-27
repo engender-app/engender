@@ -32,7 +32,7 @@ function stubDocument(reduced = false, clipPath = true, box?: Record<string, str
 }
 
 /* The screen settled long ago, unless a test says otherwise: the arrival
-   window now gates leaving as well as arriving (redesign ticket 19), and the
+   window now gates leaving as well as arriving, and the
    module marks its own load as an arrival, which this file runs inside. */
 beforeEach(() => markScreenArrival(performance.now() - 1000));
 
@@ -124,7 +124,7 @@ describe('tier 3, the wipe', () => {
 
 
 describe('tier 3, a group opening its own height', () => {
-  /* DIRECTION.md names this case by itself: a list insertion opens its own
+  /* A list insertion opens its own
      height rather than making everything below it jump. It is the one place
      tier 3 spends a layout property, so what the test holds is that it lands
      exactly on the element's resting box - the invariant the reduced-motion
@@ -916,7 +916,7 @@ describe('tier 3, a skeleton uncovering the content under it', () => {
      holds its height and everything under it drops when it finally goes.
      `.screen` is position:relative, which is what this resolves against.
 
-     Written to the node directly rather than through `css()` (ticket 153):
+     Written to the node directly rather than through `css()`:
      `css()` becomes a native CSS animation that only starts painting a
      frame after it is assigned, so a skeleton whose `position: absolute`
      lived there was still in flow - at full height, next to content already
@@ -967,7 +967,7 @@ describe('tier 3, a skeleton uncovering the content under it', () => {
 
   /* Out of flow, but still a DOM sibling for the length of its fade, so it
      still counts for `:first-child`: a heading after it lost 24px of top
-     margin in one frame when it was finally removed (ux-carpet ticket 191).
+     margin in one frame when it was finally removed.
      The mark is what kit.css reads through. */
   it('marks the placeholder as leaving, for the stylesheet', () => {
     stubDocument(false, true, {});
@@ -1026,26 +1026,11 @@ describe('tier 3, a skeleton uncovering the content under it', () => {
   });
 });
 
-/* `resize` (phase 5 ticket 32.17) is an action, not a transition config
-   function - it does its own ongoing watching via ResizeObserver and
-   node.animate() rather than returning a css(t) Svelte calls on a fixed
-   schedule, which is the whole reason it exists next to `disclose` instead
-   of being a mode on it. Neither browser API has a meaningful Node-tier
-   stub: mocking ResizeObserver's callback timing and node.animate()'s
-   compositing would test the mock, not the primitive, which is why
-   AppNav.svelte's own ResizeObserver-driven pill has no unit test for its
-   resize-triggered behaviour either. What is tested here is what a stub
-   safely can: the two guards that skip the browser work entirely, and -
-   the same way `maskHeight`'s tests below fake `node.animate` to check
-   what travels rather than how it composites - the *decision* a mid-flight
-   resize takes: chased as a second animation once the first finishes,
-   rather than snapped to silently (ticket 186, stats' reading and
-   resurfacing grids). A fake `ResizeObserver` whose callback the test
-   drives by hand, and a fake `animate` that records its keyframes and
-   hands back a controllable `finished`, exercise that decision without
-   touching real callback timing or real compositing. The travel itself -
-   old height to new, smoothly, once - is still a real-browser frame
-   capture, not a unit test. */
+/* `resize` observes live changes with ResizeObserver and `node.animate`.
+   Node tests cover skip guards and queue behavior. A fake observer and
+   controllable `finished` promise verify that a mid-flight resize
+   starts a second animation instead of snapping. Browser frame captures
+   verify the smooth height travel itself. */
 describe('tier 3, a box resizing under its own content', () => {
   it('does nothing under reduced motion - the box still resizes, in the one frame it always could', () => {
     stubDocument(true);
@@ -1378,7 +1363,7 @@ describe('tier 3, a box resizing under its own content', () => {
   /* `clip`, not `hidden`: `hidden` makes the box a formatting context, so a
      first child's top margin that collapses through it at rest landed
      inside it for the travel, and the content stepped by that margin in the
-     frame the overflow came off (ux-carpet ticket 191). */
+     frame the overflow came off. */
   it('clips its content for the travel without becoming a formatting context', () => {
     stubDocument(false);
     const { node, setHeight, trigger, restore } = resizingNode(100);

@@ -1,27 +1,12 @@
 <script lang="ts">
-  /* Tags, and how a scale moved: the merged tag card (redesign ticket 05),
-     a reading of its own since phase 11 ticket 07. One section per scale
-     (tagScaleGroups.ts, ticket 20), each tag - and the dose day - a bar out
-     of a zero line: left where the days with it averaged lower, right where
-     they averaged higher, sized against the largest gap on that scale only.
-     Scales of different ranges used to share one list, which put the same
-     tag in it twice and made no two gaps comparable. A tag row opens the
-     entries carrying that tag, over the span.
+  /* Group tag and dose-day bars by scale. The zero line separates lower
+     and higher averages, and each section measures gaps against its own
+     largest gap. Tag rows open their matching entries. The tile names the
+     top tag and reports both averages in the scale's units.
 
-     The tile's figure is the top tag, with the scale it moved and both
-     averages under it, in that scale's own units. No metric picker: every
-     scale with something to say has a section, so a picker here changed
-     nothing on the card and only rewrote the day-by-day chart's stored
-     metric (after-release 27, audit L06-06).
-
-     Under it, the share by tag - "What you write about" - with one
-     control: every day, or only the good days (functional audit ticket
-     12). The ring was the days reading's second card and the good-days
-     view was the affirming themes reading; both counted tags over the span,
-     so they are one card here beside the other tag reading rather than two
-     more tiles on the door. A good day is the bar on-this-day holds a day
-     to (CONTEXT: Good day), read by the same SQL. The dose-day row stays in
-     its scale's section above. */
+     The tag-share card switches between all days and good days. Use the
+     same good-day SQL as On this day. Dose-day rows stay in their scale
+     sections. */
   import { m } from '$lib/paraglide/messages';
   import { liveList, liveListIn, liveQuery } from '$lib/data/live/journal.svelte';
   import { nativeValue } from '$lib/data/wrappedDisplay';
@@ -139,7 +124,7 @@
     }
   };
 
-  /* Ranged to the span (carpet ticket 19), fetched one past the cap so a
+  /* Ranged to the span, fetched one past the cap so a
      full page can say it is one. */
   let insightEntriesQuery = liveList((j) => {
     const sheet = insightSheet;
@@ -149,7 +134,7 @@
   let insightEntriesCapped = $derived(insightEntriesQuery.rows.length > INSIGHT_ENTRIES);
   let insightEntries = $derived(insightEntriesQuery.rows.slice(0, INSIGHT_ENTRIES));
 
-  /* Share by tag (ADR-0058). `tagShare` and not the recap's `topTags`: a
+  /* Share by tag. `tagShare` and not the recap's `topTags`: a
      parts-of-a-whole form computes each share against the sum of what it
      is handed, and a LIMIT 3 read drew three tags as a full circle. The
      answer carries which days it counted, so the ring swaps on the answer

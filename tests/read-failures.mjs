@@ -179,7 +179,7 @@ export async function verifyReadFailures({ gallery = false } = {}) {
     await retry.waitFor({ state: 'detached' });
     await page.getByText('Dependent entry proof', { exact: true }).waitFor();
 
-    // A query's first-ever attempt heals silently rather than flashing failed (ticket 161).
+    // A query's first-ever attempt heals silently rather than flashing failed.
     await page.evaluate(() => {
       window.readFault.mode = 'reject-once';
       window.readFault.calls = 0;

@@ -1,5 +1,5 @@
 /* The preceding window a tryout or a procedure's own stretch is compared
-   against (phase 8 features ticket 18). Pure arithmetic over epoch days,
+   against. Pure arithmetic over epoch days,
    kept apart from journal/stats.ts the same reason epochDay.ts's other
    range functions are: today and the journal's own edges arrive as
    arguments, and nothing here reads the clock or the database.

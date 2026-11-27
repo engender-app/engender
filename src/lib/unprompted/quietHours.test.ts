@@ -1,4 +1,4 @@
-/* The one cross-class rule in the registry (phase 6 ticket 04). Two halves
+/* The one cross-class rule in the registry. Two halves
    are tested here and both matter: the window arithmetic itself, and its
    agreement with the Java side, which schedules reminder and check-in alarms
    before any WebView exists and so cannot import this file (ADR-0028's

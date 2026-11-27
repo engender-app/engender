@@ -6,7 +6,7 @@ import static org.junit.Assert.assertNull;
 import org.junit.Test;
 
 /**
- * The quick-log widget's two pure decisions (ticket 26): which route each
+ * The quick-log widget's two pure decisions: which route each
  * mood button points at, and what its accessible label reads as under
  * disguise mode. Everything else about the widget (RemoteViews, disguise's
  * live PackageManager read) needs a real Android runtime; these two do not.

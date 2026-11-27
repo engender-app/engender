@@ -9,7 +9,7 @@
   --font-body: 'Nunito', system-ui, sans-serif;
   --font-display: 'Outfit', 'Nunito', system-ui, sans-serif;
 
-  /* The phase 10 scale (DIRECTION.md rule 2): 48 / 28 / 17 / 15, set from
+  /* The phase 10 scale: 48 / 28 / 17 / 15, set from
      the top down. Secondary text is 15 at weight 600 rather than 14 at 450,
      because a flashy screen with grey 14px whispers under it is two apps;
      a content title is 17 in the body face; the section heading is 28 and a
@@ -33,7 +33,7 @@
 
   /* Outfit sets wide by default and needs pulling in at display sizes; Baloo
      2 did not, and wanted 0. Every rule that reaches for --font-display
-     wants this with it. -0.04em at 28 and above (phase 10); a door's title
+     wants this with it. -0.04em at 28 and above; a door's title
      at 48 tightens one step further, to -0.045em, in its own rule. */
   --display-track: -0.04em;
 
@@ -56,13 +56,13 @@
   --space-9: 48px;
   --space-10: 64px;
 
-  /* --- Shape: one radius, and the disc (phase 10, DIRECTION.md rule 5) ---
+  /* --- Shape: one radius, and the disc ---
      Every block, every control track, every input, the sheet, the floating
      bar and its add button take --r-block. A disc - an icon that is a face, a
      heat cell that is a day - is 50%, written where it is drawn. A mood face
      is neither: it sits on a block of its own drawn inside a 24-unit viewBox,
      so its corner is 6.4 of those units and scales with the face
-     (moodFace.ts's MOOD_BLOCK, ADR-0077) - the one proportional corner in the
+     (moodFace.ts’s MOOD_BLOCK), the one proportional corner in the
      app, and the one exception direction-contracts.ts carries. The pill survives on
      the one shape that is a capsule, a tag, and nowhere else. The ramp this
      replaces (--radius-xs..xl, --r-card 20, --r-add 18) counted twenty-three
@@ -72,8 +72,7 @@
   --radius-pill: 999px;  /* a tag, which is a pill because it is one word */
 
   /* --- Elevation: soft ambient, never harsh --- */
-  /* The three-step elevation ramp retired with the cohesion sweep (redesign
-     ticket 20). Rule 4 gives the app one shadow and it belongs to the
+  /* The three-step elevation ramp retired with the cohesion sweep. Rule 4 gives the app one shadow and it belongs to the
      floating bar, which has --shadow-float below; the ramp survived ticket
      07 only because fifteen rules outside the kit still read it, and once
      those became a hairline apiece nothing read it at all. Deliberately not
@@ -99,23 +98,10 @@
      Svelte-driven ones included - see $lib/motion/tokens.ts) --- */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 
-  /* Two curves for the two edges of a shape that travels in stages
-     (redesign ticket 26), and what separates them is only how much of a
-     gather each one starts with.
-
-     --ease-out-soft is --ease-out with the instant off the front. --ease-out
-     leaves at four times its average speed, which is right for something
-     appearing and wrong for a long edge setting off: at 16ms it was already
-     29% of the way there, so the leading edge read as a jump followed by a
-     drift (Alicja, on the first flipbook: "the lead must be a little bit
-     ease-in too").
-
-     --ease-in-out is the edge left behind. It starts from a stop after the
-     edge ahead of it has gone, so it gathers before it sheds - but only
-     just: a full ease-in held it still for another 80ms after its delay had
-     already passed, which read as a snap rather than a catch-up. Its own
-     initial slope is 0.4 against the leading curve's 0.84, so the two are
-     the same gesture at two weights rather than two different ideas. */
+  /* --ease-out-soft slows the leading edge's start. The plain
+     --ease-out reached 29% in 16ms. --ease-in-out lets the trailing
+     edge catch up after its wait. Initial slopes are 0.84 and 0.4.
+     A full ease-in left the trailing edge still another 80ms. */
   --ease-out-soft: cubic-bezier(0.38, 0.32, 0.2, 1);
   --ease-in-out: cubic-bezier(0.45, 0.18, 0.3, 1);
 
@@ -124,27 +110,11 @@
      from nothing. */
   --nil-opacity: 0.004;
 
-  /* Phase 5 ticket 29 removed an --ease-spring from beside this. Its
-     numbers are deliberately not repeated here: the detector scans
-     comments too, and quoting them keeps it flagging a curve nothing uses.
-
-     A press has to overshoot and settle, which is what linear() is for - it
-     samples a real spring, so a control let go of springs past its resting
-     size and comes back.
-
-     What a WebView too old to parse linear() does with it was written here
-     as "the transition falls back to `ease`". It does not. var() defers to
-     computed-value time, and an unparseable value there takes the whole
-     declaration to `unset`, not just its own segment: on the API 26
-     emulator's Chrome 69 WebView a `transition:` shorthand naming
-     --ease-press computes to `all 0s ease`, so the control gets no
-     transition at all and every other property in that shorthand loses its
-     transition too. Rules that transition something besides the press
-     therefore write transition-property/-duration/-timing-function as
-     longhands, where only the timing function is lost and it really does
-     fall back to `ease`. Rules whose whole transition is the press keep the
-     shorthand: there is nothing else in it to strand, and an instant press
-     is a fair thing for a nine-year-old WebView to get. */
+  /* --ease-press samples a spring with overshoot. Old WebViews that
+     cannot parse linear() unset an entire transition shorthand when
+     var() resolves to this curve. Chrome 69 computes it as all 0s ease.
+     Use transition longhands when other properties must still animate,
+     so only timing falls back to ease. A press-only rule may snap. */
   --ease-press: linear(0, 0.009, 0.035 2.1%, 0.141, 0.281 6.7%, 0.723 12.9%,
     0.938 16.7%, 1.017, 1.077, 1.121, 1.149 24.3%, 1.159, 1.163, 1.161,
     1.154 29.9%, 1.129 32.8%, 1.051 39.6%, 1.017 43.1%, 0.991, 0.977 51%,
@@ -167,7 +137,7 @@
      ring to --sun-breathe-scale at the cycle's midpoint (components.css).
      Named rather than left inline there because .home-header's reserve
      (screens.css) has to hold room for the sun at that scale, not at its
-     resting size (phase 5 ticket 32.12) - one token instead of the same
+     resting size - one token instead of the same
      number copied into a second file with nothing tying them together. */
   --dur-authored: 700ms;
   --dur-breathe: 7s;
@@ -188,14 +158,9 @@
      it. */
   --dur-bloom: 800ms;
 
-  /* One pass of the progress bar's indeterminate sweep (Progress.svelte,
-     ADR-0070). Its own token rather than a tier duration, because it is
-     the only loop in the app besides the sun and it is not tier 0's: it
-     exists only while a person-initiated operation is running and it
-     always terminates. Left out of the clamp blocks below for the same
-     reason --dur-breathe is - a 1ms infinite loop is a strobe, not
-     stillness (MO-001) - and Progress.svelte stops it with
-     `animation: none` under both reduce selectors instead. */
+  /* Duration of Progress.svelte's indeterminate sweep. It lasts only
+     while work runs. Keep it out of the duration clamp. Reduced motion
+     uses animation: none because a 1ms loop would strobe. */
   --dur-sweep: 1400ms;
 
   /* The reduced-motion contract substitutes rather than deletes, and tier
@@ -210,7 +175,7 @@
   --motion-distance-md: 24px;  /* shared axis, between a list and its detail */
   --stagger-step: 50ms;
   /* The sun's rings, closing and opening one after another inside a door
-     change (redesign ticket 28). Its own step rather than --stagger-step,
+     change. Its own step rather than --stagger-step,
      which is the beat a grid of tiles arrives on: the sun has seven rings
      at its widest and the whole movement has to fit inside --dur-slow, so
      the last ring starts at 180ms and lands at 330. The entrance on a cold
@@ -218,31 +183,9 @@
      (components.css). */
   --stagger-ring: 30ms;
 
-  /* --- Materials beyond transform and opacity (phase 5 ticket 28) ---
-
-     The withdrawal: the scrim behind a sheet blurs what it covers, so the
-     screen underneath is plainly still there and plainly not what is being
-     read. This app has a reason to own that gesture rather than borrow it -
-     disguise mode and the app lock exist because being seen with it can be
-     unsafe, so withdrawing legibility is already part of its vocabulary
-     rather than a glass effect.
-
-     The radius is a constant and never animates. A radius that changes
-     re-blurs the whole region every frame; a radius that is fixed rasterises
-     once and the scrim crossfades over it, which is the same opacity
-     animation tier 2 already runs. What that actually costs on the target
-     phone is ticket 27's measurement, taken over real screens. This value is
-     what the material is designed at, not a number anyone has yet proved.
-
-     This used to sit next to a second blur - the nav bar was a translucent
-     surface over a 12px backdrop-filter, the same number doing a different
-     job. Phase 5 ticket 18 made the bar an opaque floating plane, so blur
-     is now the app's one material and means one thing: the screen behind a
-     sheet is still there and is not what is being read.
-
-     Retuned from 12px to 6px against register finding 32.15 ("the blur
-     effect looks like shit"): Alicja picked the number with the Withdrawal
-     Blur Tuner artifact, 2026-08-27. */
+  /* The sheet scrim withdraws legibility from the screen beneath.
+     Keep its 6px blur radius fixed and crossfade the scrim's opacity.
+     Animating the radius would re-blur the whole region every frame. */
   --blur-withdraw: 6px;
 
   /* The tint that rides with the blur. Thinner than --scrim on purpose: the
@@ -261,8 +204,8 @@
   --scrim-withdraw: rgb(15 15 15 / 0.31);
 
   /* --- Layout --- */
-  /* The window insets, read from the platform once and consumed from here
-     (phase 5 ticket 18). Named as tokens rather than written as env() at
+  /* The window insets, read from the platform once and consumed from here.
+     Named as tokens rather than written as env() at
      each use site for two reasons. env() cannot be overridden, so a token
      is the only way the demo bar can simulate a cutout in a desktop
      browser, where every inset is genuinely 0 and the defect is therefore
@@ -277,25 +220,10 @@
   --inset-bottom: env(safe-area-inset-bottom, 0px);
   --inset-left: env(safe-area-inset-left, 0px);
 
-  /* How far a field may pull up into the top inset (carpet ticket 154).
-
-     No field crosses the whole of it any more: the status bar's icons are
-     drawn by the system over whatever the app painted, and behind Home and
-     setup that was the flag. But the bar does not fill its own reserve.
-     On the Pixel 10a the inset is the display cutout's 152 physical px,
-     58 CSS, and the icons sit inside that with room under them, so leaving
-     the full 58 of page colour above the field reads as a gap (Alicja, on
-     the device: "too much space between the icons and the beginning of
-     field").
-
-     9 is what comes off, and it is a measured number rather than a step on
-     the spacing scale: --space-3's 12 was the first try, and Alicja asked
-     for three more band against the device. The floor is what makes the
-     subtraction safe to state on a phone that is not this one. A device
-     with a short bar has no slack to give, so it is capped at whatever is
-     left above 20: 58 gives back 9 and keeps 49; a 24px bar gives back 4
-     and keeps 20; a browser, where the inset is 0, gives back nothing and
-     the fields sit where they always did. */
+  /* --field-bleed-top reclaims up to 9px of safe-area inset while
+     leaving at least 20px when the device provides it. Keep the flag
+     below system icons. A 58px Pixel inset gives back 9px, a 24px
+     inset gives back 4px, and a browser's zero gives back nothing. */
   --field-bleed-top: min(9px, max(0px, var(--inset-top) - var(--space-5)));
   /* A screen's side inset: the content's distance from the field's edges.
      20 on the phone, where the field meets the window and text needs room
@@ -339,7 +267,7 @@ html[data-palette][data-theme][data-a11y-legibility='boost'] {
   --leading-body: 1.65;
   /* Sized to floors rather than to steps, because one alpha step darker
      (76%, 28%, 22%) measured 6.47:1 and 1.53:1 at worst and read on a
-     phone as the switch doing nothing (pre-release-human 18). Secondary
+     phone as the switch doing nothing. Secondary
      text clears WCAG's enhanced 7:1, an outline the 3:1 a non-text edge
      needs, a hairline 2:1, on bg, surface and surface-2 in all 16
      palettes x 2 themes; tests/palette-contrast.test.ts holds the three.

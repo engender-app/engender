@@ -1,24 +1,10 @@
-/* Which chart positions fall on a day logged under a chosen presentation -
-   the chip row's whole mechanism. It only ever adds a mark to a chart
-   already drawn: the app's rule of rank or highlight and never gate applies
-   here as "highlight and never filter".
+/* Highlight days logged under the chosen presentation without
+   filtering the chart. Calendar buckets match if any covered day
+   qualifies. Anchored and repeating axes map days with the same
+   subtraction or interval rules as the plotted series.
 
-   Two coordinate spaces call this, because a day chart draws in one of two
-   ($lib/charts/dayAxis.ts). On the calendar axis a position is a bucket's
-   own epoch day (grain.ts's bucketStart), so a bucket is hit when any day
-   it covers carries the presentation. On a re-keyed axis (dayKeying.ts) a
-   position is not a calendar day at all, so a highlighted day has to be
-   carried through the same day-to-position rule the series itself was
-   folded by - the anchored axis subtracts the anchor day and the repeating
-   axis walks the same completed intervals.
-
-   Deliberately not `rekeyDaySeries` itself: that function's evidence floor
-   (three days for a repeating position) answers "is this bucket attested
-   enough to plot a value", and a highlight answers a different
-   question, "did this happen here at all" - one day is enough to say yes.
-   Restating the two mapping rules here, with no floor, is what keeps a
-   highlighted set of one day from being folded away as insufficient
-   evidence for a claim it never made. */
+   A single day can earn a highlight. `rekeyDaySeries`'s three-day
+   evidence floor applies to plotting a value, so skip it here. */
 
 import type { Keying } from '../data/dayKeying';
 import { bucketStart, positionBucket, type Grain } from './grain';

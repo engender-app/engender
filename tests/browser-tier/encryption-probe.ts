@@ -95,7 +95,7 @@ async function run() {
   await freshOrigin();
 
   // --- F-08: a journal written under sqlite3mc's implicit cipher default
-  // still opens now that the cipher is pinned explicitly (ticket 04) -------
+  // still opens now that the cipher is pinned explicitly -------
   result.cipherCompat = await checkCipherCompat();
 
   // --- setup: the production first-run path --------------------------------

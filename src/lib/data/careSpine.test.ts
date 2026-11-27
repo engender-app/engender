@@ -355,7 +355,7 @@ test('every row from 0 up is used, so a lane is never taller than it needs', () 
 });
 
 /* Three running drugs: three lanes of their own marks, one set of shared
-   ones (phase 11 ticket 10) */
+   ones */
 
 test('three running episodes draw three lanes with their own last, next and run-out', () => {
   const spine = careSpine(
@@ -423,7 +423,7 @@ test('one episode yields one lane, over the same span and positions as three wou
   );
 });
 
-/* Which order the lanes are drawn in (phase 11 ticket 10) */
+/* Which order the lanes are drawn in */
 
 test('every running episode gets a lane, oldest first', () => {
   const curve = episode({ id: 'ep-curve', drug: 'estradiol', startEpochDay: TODAY - 10 });

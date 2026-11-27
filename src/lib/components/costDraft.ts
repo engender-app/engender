@@ -1,4 +1,4 @@
-/* A cost as an editor holds it (functional audit ticket 30): the amount as
+/* A cost as an editor holds it: the amount as
    the person types it, so "250,50" survives a keystroke that does not yet
    parse, and the currency the select shows even while the amount is blank.
    CostField.svelte binds to this; costFromDraft is what an editor saves. */

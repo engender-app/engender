@@ -1,27 +1,12 @@
-/* Selecting a fact on a timeline without precision tapping (phase 11 UI/UX
-   ticket 25, first audit U4).
+/* Hit-test a crowded journal at 390px and 195px (200% zoom). Care
+   captions have 48px targets without overlap. Lane labels open and
+   focus the drug block by pointer and keyboard. Look back targets
+   match the marks, with no milestone covering a band or another
+   milestone. The list gives exact dates, selects and marks the same
+   span, and stays bounded at forty milestones. Range handles still move.
 
-   The two surfaces the audit measured, checked the way it asked for: hit
-   testing rather than bounding boxes alone, at 390px and at the 195px that
-   200% zoom leaves of it, with a crowded history rather than a tidy one.
-
-   What it holds:
-
-   - every caption on the Care rail is a target at the product's 48px floor,
-     and no two of them lie over each other;
-   - a lane's name opens that drug's own block, by pointer and by keyboard,
-     and lands the focus on it;
-   - nothing on the Look back rail owns a point it does not draw - a
-     milestone's target no longer covers the regimen band under it, and two
-     milestones a few pixels apart no longer cover each other;
-   - the list under the rail holds every fact with its exact dates, selects
-     the same span the band on the rail selects, keeps the selection marked,
-     and stays bounded on a journal with forty milestones;
-   - the range handles still move the span, which the audit asked to be left
-     alone.
-
-   Run on its own with `node tests/timeline-fact-selection.mjs`; part of the
-   browser tier's own run. */
+   node tests/timeline-fact-selection.mjs
+   Included in the browser tier. */
 import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { createServer } from 'vite';

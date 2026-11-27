@@ -1,30 +1,11 @@
-/* Home's live-tile grid, as one read (phase 8 deepening ticket 07).
+/* Collect Home tile queries, preferences, snoozes and writes here.
+   liveTiles.ts owns the pure composition, ordering and contents
+   (ADR-0016, ADR-0017). Call homeTiles() once while Home initializes to
+   create the liveQuery and liveList effects.
 
-   The queries behind the tiles, the preference each tile answers to, its
-   snooze, and the writes its controls make. What comes out is the ordered
-   list Home draws and nothing else - the composition, the order and the
-   tiles' own content are liveTiles.ts's, which is a plain module so the
-   Node tier can test them (ADR-0016, ADR-0017).
-
-   A `.svelte.ts` because the reads are runes: `liveQuery`/`liveList` are
-   effects, and an effect has to be created while a component is
-   initialising. `homeTiles()` is therefore called once from Home's script
-   block, like activeFlag.svelte.ts and recordEditor.svelte.ts before it.
-
-   Eight of these reads render nothing themselves. They existed on the route
-   only to be arguments to a `shouldShow*` predicate whose answer the markup
-   read, which is what kept the query and the rule from ever meeting.
-
-   Every read here asks for the fact its tile draws (phase 8 audit ticket
-   13). Six of them used to ask for a list and reduce it: every voice
-   benchmark with its pitch track for one `MAX(epoch_day)`, every
-   measurement ever stored for a count and a day, every letter with its body
-   for three ids, the whole hair-removal table for its newest row, a
-   hydrated bad-moment entry for its id, and one felt-sense query per active
-   tryout. More subscriptions than that shape, and a small fraction of the
-   bytes: eighteen narrow reads cost less to cross the worker boundary than
-   sixteen wide ones, which is what this architecture actually pays for
-   (tests/long-journal, `mount-home`). */
+   Read only the fact each tile displays. Eighteen narrow reads cross
+   the worker boundary with fewer bytes than the previous sixteen wide
+   reads (tests/long-journal, mount-home). */
 
 import { liveList, liveQuery, liveQueryWhen, journal } from './live/journal.svelte';
 import { AREA_STATES_BEFORE_READ } from './areaState';
@@ -50,13 +31,13 @@ interface HomeTileGrid {
   /** Whether every read behind the grid has answered, so `tiles` is the
       composition rather than the empty list it holds until then. One-way,
       like the `loading` it is made of. Home holds its reserve until this
-      and its own reads agree (ticket 183). */
+      and its own reads agree. */
   readonly ready: boolean;
   /** The grid's own second hand, so a surface next to it that also counts
       up reads the same tick rather than starting a loop of its own. */
   readonly nowMs: number;
   /** Whether the dose panel is drawn, which is what Today withholds the
-      agenda's `doseSlot` kind on (phase 11 ticket 03). Drawn is enough since
+      agenda's `doseSlot` kind on. Drawn is enough since
       functional-audit ticket 15: the panel names every regimen the agenda
       would have drawn a row for (`liveTiles.ts`, `panelDoses`). */
   readonly dosePanelDrawn: boolean;
@@ -91,7 +72,7 @@ export function homeTiles(
   active: () => boolean = () => true,
   /** Whether something else on the screen counts seconds and needs the
       clock to tick every second even when the wear tile reads nothing -
-      Home's pinned wear row, which rides this clock (ADR-0051). */
+      Home's pinned wear row, which rides this clock. */
   secondHand: () => boolean = () => false
 ): HomeTileGrid {
   const todayEpochDay = $derived(today());
@@ -99,27 +80,18 @@ export function homeTiles(
   let snoozeRevision = $state(0);
   const snoozeMinute = $derived(Math.floor(nowTick / 60_000));
 
-  /* Which areas are hidden or finished (phase 8 features ticket 04). One
+  /* Which areas are hidden or finished. One
      query for the whole grid rather than one per tile: the cascade is a
      property of the grid, and `unpromptedQuiet` is what spends this. */
   const areaStates = liveQuery((j) => j.areaStates.getAreaStates());
 
-  /* A tile whose kind is switched off, or whose area is hidden or
-     finished, issues no read at all (functional-audit ticket 14, the
-     audit's architecture item 9). Each read below asks whether any tile it
-     feeds is wanted before it touches the journal, and answers an empty
-     value otherwise. The question is asked synchronously, before the
-     read's first await, so switching a tile back on or unhiding its area
-     re-runs the read (journal.svelte.ts: what a run reads before its first
-     await is a dependency).
+  /* Skip journal reads when every tile they feed is disabled, hidden or
+     finished. Check preferences and area state before the first await so
+     the live query sees those dependencies and reruns when needed.
 
-     A kind with an area waits for the area states to answer before its
-     first run (`liveQueryWhen`): run early it would read a hidden area once
-     and then go quiet, and run as "not wanted" it would answer empty and
-     then arrive a round trip after the rest of the grid - a tile painting
-     late on a cold open, which is what ticket 146's `composable` exists to
-     prevent. Kinds with no area never read the states, so an area being
-     hidden does not re-run them. */
+     Use liveQueryWhen to wait for area state before the first query.
+     This avoids reading hidden data or painting a late tile after an
+     initial empty result. Tiles with no area do not depend on area state. */
   const AREA_OF = new Map(UNPROMPTED_ROWS.map((row) => [row.key, row.area]));
   const areaStatesAnswered = () => !areaStates.loading;
   function wanted(...kinds: LiveTileKind[]): boolean {
@@ -194,7 +166,7 @@ export function homeTiles(
     yesterdayDoses,
     areaStates
   ];
-  /* Whether the grid may be composed yet (phase 11 ticket 146). Composed
+  /* Whether the grid may be composed yet. Composed
      while the reads are still landing, it states an arrangement it does not
      mean: on a cold boot letters and tryouts answer before procedures, so the
      ready letter and the safe-space nudge take the top slots and the fold's
@@ -269,7 +241,7 @@ export function homeTiles(
       return composable;
     },
     /* The grid's own clock, handed out so Home's pinned rows ride it rather
-       than opening a second one (ADR-0051). The wear row counts up beside
+       than opening a second one. The wear row counts up beside
        the wear tile and the two may not disagree by a second, which is only
        true while both read the same tick (phase 11 all-four-doors ticket
        02). */

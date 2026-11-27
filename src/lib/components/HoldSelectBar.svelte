@@ -1,22 +1,11 @@
 <script lang="ts">
-  /* The bar a held photograph raises (pre-release-human 12): Cancel, how
-     many are picked, and Delete. Delete asks first, then deletes every
-     picked photograph in one deletion with the app's 10-second undo for
-     the batch (deleteUndo.ts).
+  /* Confirm bulk deletion once and give the batch a 10-second
+     undo. Put the selection bar over the nav's already reserved
+     space. A SaveBar would resize the scroll region and move the
+     grid under the held finger.
 
-     It takes the floating bar's place, over it, rather than being the
-     app's foot (SaveBar). The foot changes the scroll region's room as it
-     arrives, and on a grid scrolled to its end that moved every tile 92px
-     in the frame the hold fired - measured, under the held finger. The
-     floating bar's room is reserved already (--nav-clearance), so a bar
-     drawn where it stands covers nothing new and moves nothing. The tabs
-     under it are not wanted while picking; Cancel and Back leave first,
-     the way a photo app's selection bar does.
-
-     While picking, Back and Escape leave picking rather than the screen:
-     the screen registers as the surface on top (overlayLock.ts), with the
-     bar as part of it, since the bar is hosted in the frame outside the
-     screen's own node. */
+     Register both the screen and hosted bar with overlayLock so
+     Back or Escape clears selection before leaving the screen. */
   import { m } from '$lib/paraglide/messages';
   import type { Journal } from '$lib/data/journal/journal';
   import { offerUndo, undoable } from '$lib/stores/deleteUndo';

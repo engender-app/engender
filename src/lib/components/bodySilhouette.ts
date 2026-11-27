@@ -1,44 +1,15 @@
-/* The body every screen that draws one draws (ADR-0087).
+/* Build one shared body outline and expose its proportions.
+   Each edge is a chain of cubics with increasing y. Two edges and their
+   chords define a part. The same curves emit the path and let spansAt
+   measure width without parsing SVG.
 
-   One path, the proportion canon it was built on, and the neutrality
-   measurements as functions its test can call. Nothing about regions,
-   readings or hit boxes lives here: `bodyRegionFigure.ts` owns the body
-   map's panels and zones, and the injection rotation map owns its dots.
+   Overlap arms with the torso and legs at the hip so the painted
+   union has a continuous contour. BodyRegionMap paints stroke,
+   then fill, to hide the joints. BodyRegionFigure owns regions.
 
-   **Why a drawn contour replaces a stack of rounded rectangles.** The
-   figure this supersedes was nine `{ left, top, width, height, r }` blocks,
-   because the old neutrality rule banned shape outright - "no waist, no
-   bust, no hips, so every piece is one constant width". That was the
-   cheapest way to be neutral and it is what made the figure read as
-   furniture rather than as a person (Alicja, 2026-09-21: "it looks really
-   bad, blocky, amateurish"). What is worth banning is *sexed* shape, so the
-   rule is now three measurements rather than one equality, and inside that
-   budget the drawing gets a shoulder slope, a neck that meets the
-   trapezius, limbs that are not bars and feet that are not tabs.
-
-   **How the geometry is stated.** Every edge of the body is a chain of
-   cubic segments whose `y` increases along the chain, so one structure
-   answers both questions the figure asks: it emits as a path (`d`), and it
-   evaluates at a height (`xAtY`). A part is two such edges - an outer and
-   an inner - joined by a straight chord at the top and another at the
-   bottom, which is what lets `spansAt` say exactly how wide the body is at
-   any height without parsing the path back. The panels of the body map are
-   cut out of this by clipping, and their geometry is measured through
-   `spansAt`, so what a test measures and what a browser paints come from
-   the same numbers.
-
-   **The parts overlap on purpose.** An arm's top chord sits inside the
-   torso's shoulder and a leg's top chord is the torso's own hip line, so
-   the union has no internal joint to hide. `BodyRegionMap.svelte` paints it
-   in two passes, a stroked layer and then a filled one, so only the outer
-   contour keeps a line.
-
-   **The proportion canon**, which is the part of the last redraw that
-   worked and is kept unchanged: seven heads of 24 units, the crown at y=8,
-   the crotch at y=96, the knee at 5.2 heads and the fingertips at
-   mid-thigh. The box is 100 x 176, which is 300 x 528 at the smallest stage
-   the body map allows - the ratio that puts a 16-unit band on exactly
-   48px. */
+   Keep seven 24-unit heads, crown y=8, crotch y=96, knees at 5.2
+   heads and fingertips at mid-thigh. A 100 x 176 box scales to
+   300 x 528 at the minimum, giving a 16-unit band a 48px target. */
 
 export const FIGURE_BOX = { width: 100, height: 176 } as const;
 
@@ -229,20 +200,9 @@ const BODY_OUTER: Edge = edge(p(MIDLINE, CANON.crown), [
   ...splitFrom(TRUNK_SIDE, ARMPIT).segs // the torso's side to the hip
 ]);
 
-/* An arm, from a top chord inside the shoulder to a blunt fingertip at
-   mid-thigh. Not one width the whole way down - the shoulder is wider than
-   the elbow, the wrist is the narrowest thing on it and the hand is wider
-   than the wrist again - and none of those say which body this is. The
-   ankle turns into the foot over a gentle tangent rather than a corner (the
-   two segments used to meet at opposite angles and each ankle came out as a
-   visible kink), and the foot flares on its outer edge only, its instep
-   running straight down from the ankle - a foot that widened both ways read
-   as a bell rather than as a foot. The arm starts at the shoulder point itself rather than at a
-   chord of its own,
-   which is what keeps the union's shoulder one corner: its outer edge
-   continues the trapezius outward and its inner edge turns inward faster
-   than the torso's own shoulder line, so the armpit opens as a notch
-   between the two a couple of units below. */
+/* The arm starts at the shoulder point. Its outer edge follows the trapezius and its inner edge turns in faster than the torso to open the armpit notch. The shoulder is wider than the elbow, the wrist is narrowest, and the hand widens again.
+
+   A smooth ankle tangent avoids a visible kink. The foot widens only along its outer edge so the instep stays straight. */
 const ARM_OUTER: Edge = edge(SHOULDER_POINT, [
   seg(p(77.5, 46), p(78.7, 50.5), p(78.7, 55)), // the deltoid
   seg(p(78.7, 63), p(78.1, 72), p(77.7, 80)), // the upper arm to the elbow

@@ -1,20 +1,8 @@
-/* A screen that walks through steps of its own owns the system's Back while
-   it is past its first step: Back goes one step back rather than off the
-   screen (tester report 02: a new entry's steps). Setup has its own owner
-   ($lib/onboarding/back) because it is entered instead of the app; this one
-   is for a step machine inside it.
-
-   The owner answers false on its first step, which hands Back to the
-   ordinary rule (back-navigation.ts) - so leaving the first step is exactly
-   leaving the screen, discard guard included.
-
-   An owner can also draw its step back under Android's back gesture
-   (ticket 04, box 5): `preview` begins, follows and cancels the drawing,
-   and the commit arrives as the ordinary Back, which the owner then takes
-   from wherever the gesture left the drawing. The owner says when that is
-   possible (`armStepPreview`), and this module is the one place that says
-   so to the native side: the web is the source of truth, and an owner that
-   unmounts disarms with it. */
+/* A step machine inside the app owns Back after its first step.
+   At step one, fall through to ordinary Back and its discard guard.
+   Setup uses its own owner. On Android the owner arms preview,
+   draws progress or cancellation, and commits via ordinary Back.
+   Unmounting disarms the native preview. */
 
 export type StepBackPreview = {
   /** Starts drawing the step back; false when it cannot right now. */

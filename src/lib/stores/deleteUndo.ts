@@ -1,5 +1,4 @@
-/* The one way a screen deletes something other than an entry (functional
-   audit ticket 46): the deletion runs undoably (undoableDelete.ts), and a
+/* The one way a screen deletes something other than an entry: the deletion runs undoably (undoableDelete.ts), and a
    toast says it worked and offers Undo for UNDO_WINDOW_MS (undoWindow.ts).
    Floating, announced, and it never takes focus, like every toast. */
 

@@ -1,5 +1,4 @@
-/* The gates say what happened, in the person's words (after-release ticket
-   09), checked on the real components in the gates fixture.
+/* The gates say what happened, in the person's words, checked on the real components in the gates fixture.
 
    1. The boot-failure notice, once per failure the boot can name: a
       sentence, never the driver's text, and the doors that failure leaves.

@@ -24,7 +24,7 @@ type RecordingRow = { uuid: string; file_path: string };
 
 export type StagedRecording = { id: string; fileName: string };
 
-/** A recording placed in time, for the memo browser (ticket 11). Entry-only
+/** A recording placed in time, for the memo browser. Entry-only
     (CONTEXT: "Voice recording"), so unlike DatedPhoto there is no owner name
     to carry - a recording's date is always its entry's epoch day, no
     COALESCE needed. `entryId` is the way through to it (a memo is entry
@@ -37,11 +37,11 @@ interface DatedRecording extends VoiceRecording {
 export interface VoiceArea {
   /** Every recording in the journal, newest first, with the entry each one
       belongs to (ticket 11's memo browser). Built for ticket 25's voice
-      compare picker, which was cut before shipping (ticket 09) - this is
+      compare picker, which was cut before shipping - this is
       its first caller. */
   inJournal(): Promise<DatedRecording[]>;
   /** The day of the most recent memo, at or before `todayEpochDay`, or null
-      where there is none (phase 11 ticket 17). Its own method rather than a
+      where there is none. Its own method rather than a
       `journal/lastWrite.ts` entry: a memo is entry content with no archive
       section of its own (ADR-0036), so it has no `ArchiveSectionName` to be
       registered under there - `hubRows.ts`'s `voice-benchmark` row is this
@@ -143,7 +143,7 @@ export function makeVoiceArea(driver: SqliteDriver): VoiceArea {
   return {
     async inJournal() {
       // Excludes a trashed entry's recordings the same way every other
-      // entry-owned read does (phase 5 ticket 19). Newest entry first;
+      // entry-owned read does. Newest entry first;
       // several recordings on one entry keep their own attach order.
       const rows = await driver.query<RecordingRow & { epoch_day: number; entry_id: number }>(
         `SELECT v.uuid, v.file_path, v.entry_id AS entry_id, e.epoch_day AS epoch_day

@@ -20,8 +20,7 @@ interface DebriefListItem {
   text: string;
 }
 
-/** One prep question and what got jotted under it in the room (phase 8
-    features ticket 60). Not a record: it exists between the in-the-room
+/** One prep question and what got jotted under it in the room. Not a record: it exists between the in-the-room
     screen and the debrief's pre-fill and nowhere else. */
 export interface DebriefAnswer {
   question: string;
@@ -44,7 +43,7 @@ export function debriefListItems(labs: LabResult[], sideEffects: SideEffect[]): 
 }
 
 /** The questions that got an answer, in the prep list's own order rather
-    than the order somebody moved through them (ticket 60).
+    than the order somebody moved through them.
 
     Blank is not an answer. Advancing past a question without typing has to
     leave nothing behind - the screen exists to be readable while somebody

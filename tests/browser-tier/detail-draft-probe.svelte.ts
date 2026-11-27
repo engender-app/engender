@@ -1,25 +1,8 @@
-/* Browser-tier check for the phase 5 audit's deepening ticket 09: a read
-   that hangs off a record does not render its empty state before the record
-   has arrived.
-
-   The tryout detail screen makes two reads. One finds the tryout the route
-   names; the other searches the entries inside that tryout's date range,
-   and it needs the first one's answer to know what range to search. On a
-   cold navigation the second one runs while the record is still undefined,
-   has nothing to look up, and answers immediately with nothing - so the
-   screen said "no entries in this range" over a tryout that has ninety of
-   them. The walkthrough carried a reload-and-recheck around it, and
-   tests/walkthrough.test.mjs's comment named it a pre-existing gap.
-
-   Here rather than in the Node tier because what has to be shown is the
-   ordering of two real round trips under a real scheduler (ADR-0017), the
-   same reason live-reads-probe.svelte.ts is here. The rules themselves -
-   `answersFor`, and the fill decision beside it - are node-tested in
-   src/lib/components/kit/detailDraft.test.ts.
-
-   Both readings are reported, not just the fixed one: `rawEmptyBeforeRecord`
-   is what the screen did before this ticket and has to stay true, or the
-   check below is asserting something that was never broken. */
+/* A tryout's entry read depends on the record's date range. Exercise
+   real query round trips (ADR-0017) to hold the empty state until the
+   record arrives. Assert rawEmptyBeforeRecord as the control case so
+   the test exercises the original race. detailDraft.test.ts covers
+   answersFor and the fill decision in Node. */
 
 import { flushSync } from 'svelte';
 import { createEncryptedWebSqlite } from '../../src/lib/data/sqlite/mc-driver.ts';

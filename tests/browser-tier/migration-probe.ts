@@ -1,26 +1,10 @@
-/* Ticket 04's schema half, on the real platform: sqlite3mc over the OPFS
-   SAHPool, the real migration runner, and the pre-migration copy as an
-   actual file in the pool rather than a spy counting calls.
-
-   The Node tier proves the runner's decisions against node:sqlite
-   (migration-runner.test.ts). Three of this ticket's acceptance boxes are
-   claims about files, and a fake file-ops object cannot be asked to keep one:
-
-     - newer code migrates an older Journal forward and the data survives;
-     - older code refuses a Journal a newer schema already touched, and leaves
-       it exactly as it was;
-     - a migration that fails leaves a copy that verifies, a retry does not
-       spend it, and putting it back gets the previous visible Journal.
-
-   "Newer code" and "older code" are migration arrays here rather than two
-   builds: the runner takes the list it is given, so a list with one more step
-   in it is precisely what a later release is, as far as a database is
-   concerned. The extra steps are this probe's own - a column nothing reads,
-   and one deliberately broken statement - so the real migrations stay the
-   only thing that ever runs against a real Journal.
-
-   Every driver is closed before the next opens: the pool's synchronous access
-   handles belong to one worker at a time (ADR-0020). */
+/* Exercise sqlite3mc in OPFS SAHPool with real migration copies.
+   Check forward migration preserves data, older code declines newer
+   schemas without altering them, and failure leaves a valid copy
+   that survives retry and restores the journal. Extra migration
+   steps simulate another release and a failing statement. Close each
+   driver before reopening because access handles belong to one
+   worker (ADR-0020). migration-runner.test.ts covers decisions in Node. */
 
 import { runMigrations, SchemaTooNewError, InterruptedRestoreError } from '../../src/lib/data/sqlite/migration-runner.ts';
 import { migrations } from '../../src/lib/data/sqlite/migrations.ts';

@@ -14,7 +14,7 @@
 /** Entries the pool offers back, newest first. */
 export const COUNTEREVIDENCE_LIMIT = 20;
 
-/** How many of them the screen opens on (phase 11 ticket 15). Six, because
+/** How many of them the screen opens on. Six, because
     the save control has to sit under them and still be inside a 390x844
     viewport: twenty cards ran the screen to 3990px and put the one thing a
     person came here to do at the bottom of it. The rest are a control away

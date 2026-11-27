@@ -1,4 +1,4 @@
-/* What a video note is allowed to be (ticket 22).
+/* What a video note is allowed to be.
 
    Pure arithmetic, no browser: the caps are what videoRecording.ts asks
    getUserMedia and MediaRecorder for, and reencode.ts's target is worked

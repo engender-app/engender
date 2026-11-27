@@ -1,22 +1,11 @@
-/* An unlock's sun, checked on the real gates (tester-report-02 ticket 07).
+/* Drive the real gate fixture across palettes, themes and disguise.
+   Disguised unlocks use a neutral title field without sun or stripe
+   pixels. Other unlocks show a still, unclipped sun. Non-unlock gates
+   keep painted titles. Check the named h1, focus order and no scroll
+   at 360x568.
 
-   The gates fixture (tests/browser-tier/gates.html) mounts the real gate
-   components against the app's own stylesheets and moves `bootState` the
-   way boot does; this drives it across every palette in both themes, with
-   disguise on and off, and holds:
-
-   - Disguise: no unlock draws any of the flag. No sun is in the tree, the
-     field is the title's height, and no pixel of the field is a stripe
-     colour the neutral field does not itself contain.
-   - Without disguise every unlock draws Today's sun, still, on a field the
-     tall enough that its edge cuts no ring, and only an unlock does: the
-     gates that are not unlocks keep their painted titles.
-   - The screen's accessible name is unchanged: a level-one heading named
-     with the wordmark, or the decoy's name under disguise.
-   - Focus order is the same with the sun as without it, and no unlock
-     scrolls at 360x568, where the field gives the PIN pad what it needs.
-
-   Run: node tests/gate-flag-check.mjs   (no build needed) */
+   node tests/gate-flag-check.mjs
+   Uses the dev server. */
 import { createServer } from 'vite';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';

@@ -16,8 +16,7 @@
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
   import type { OfferCopy, RoadmapGoalMilestone } from '$lib/data/offers';
 
-  /* What the sheet says arrives as one `copy` object (phase 8 features
-     ticket 22): this is one entry in the offer registry, and an offer's
+  /* What the sheet says arrives as one `copy` object: this is one entry in the offer registry, and an offer's
      words live beside what it writes rather than here. */
 
   let {

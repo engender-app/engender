@@ -1,4 +1,4 @@
-/* How the documents index groups its rows (phase 10 redesign ticket 58):
+/* How the documents index groups its rows:
    by what a document is filed under, four kinds in the order the target
    picker's own sections use (documentTargets.svelte.ts), with everything
    unfiled gathered last under its own bucket rather than first or

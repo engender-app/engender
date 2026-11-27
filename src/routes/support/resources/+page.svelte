@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* The bundled directory, on the surface kit (phase 5 UX ticket 25).
+  /* The bundled directory, on the surface kit.
 
      Reference data, not the journal's: the list is compiled in, so there is
      nothing to wait for and nothing that can be empty. What changes here is
@@ -9,7 +9,7 @@
      one long column.
 
      The rows stay presentational and keep growing to fit four stacked
-     things. They are written out rather than `<ListRow static>` (ticket 40)
+     things. They are written out rather than `<ListRow static>`
      because the row and its text each carry a class of this screen's own -
      scoped styles that a component boundary would not reach - and because
      the third thing in the text is a pair of links, not a subtitle. */

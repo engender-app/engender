@@ -1,92 +1,11 @@
-/* The cohesion sweep (redesign ticket 20): every route rendered against
-   DIRECTION.md, and audited from the rendered tree rather than by eye.
+/* Audit route layout and hit targets. Consult direction-contracts.ts for shared component rules.
+   Check the token sets below, field and back controls, and the 64px Wrapped year exception.
+   Use elementFromPoint to measure 48px targets under scrolling, clipping and overlays.
 
-   Why a reading and not just a gallery. `tests/browser-tier/direction-contracts.ts`
-   already greps the shared sheets for every rule ticket 07 landed, so a
-   divergence that survives is one a grep cannot see: an old-world class on
-   one screen, a literal inside a route's own <style> block, a header a
-   screen draws itself instead of asking ScreenHeader for. Those only exist
-   in the computed tree of a real route, which is what this walks. 78 routes
-   by eye across two themes is 156 screens and no reconciled count; 78 routes
-   audited is a table.
-
-   What it reads per route, each keyed to the rule it answers to:
-     elevation  rule 4  - any box-shadow outside the floating bar's one
-     radius     rule 5  - any corner outside 0/1/2/4/6/8/50%/100%/999px
-     type       rule 2  - any font-size outside 15/16/17/19/21/28/40/48,
-                          except .wrapped-cover-year's named 64px (carpet 23)
-     field      rule 7  - a screen that shows the wrong one of a field and a
-                          back control for what it is: a door, a deep
-                          screen, or chrome (carpet 25)
-     tint       rule 3  - --role-tint or --role-wash as a background
-     ink        rule 9  - a stroke-width outside 1/2/12/14 and the bar ends
-     target     PRODUCT  - an interactive box rendered under 48x48
-     occlusion  PRODUCT  - anything covering an interactive box, measured
-     ground     rule 4  - --surface or --surface-2 as a ground, a fourth
-                          treatment beside flush, block and ink
-
-   The last three are carpet 28's, and each closes a hole this instrument
-   had. It read nothing about geometry, so the save bar covering the bottom
-   19px of a 48px slider on /settings/dimension was invisible to it across
-   all 75 routes (carpet 26) - Alicja found that by eye on a render the
-   sweep had already passed. And the 48px floor and the three surface
-   treatments were in the same state `box-shadow` was in before ticket 20:
-   a rule declared in one place - `accessibility-audit.test.ts` reads the
-   `--touch-target` token, `kit-surfaces.test.ts` reads the kit's sheets -
-   and holding nowhere else, because nothing had ever measured a rendered
-   box or a resolved ground.
-
-   Occlusion is answered by hit-testing rather than by comparing z-index,
-   because the ticket asks for the *effective* stacking and a declared 20
-   means nothing on its own inside a stacking context. `elementFromPoint`
-   is what the browser itself would do with a finger, so it also catches
-   the two neighbours of occlusion for free: a control clipped out of an
-   ancestor's overflow, and one under a `pointer-events` trap. It reads
-   the viewport, so the geometry pass steps the scroll region a screen at
-   a time instead of reading only what is above the fold.
-
-   Every finding carries the selector chain that produced it, so triage
-   groups by shared component instead of by screen.
-
-   A route is shot only where it names a `shoot` selector, which today is
-   the gated leg's one surface: 156 PNGs nobody opens is not evidence, and
-   a finding carries its selector chain and its measurement, which is what
-   triage reads. The crops a review page needs are cut separately, against
-   the addresses the findings name.
-
-   Run against a demo build:
-     VITE_DEMO=1 npm run build
-     node tests/cohesion-sweep-gallery.mjs
-   `--out <dir>` names where the audit lands. To sweep another checkout -
-   main's tip, for a before column - hand its path as --root.
-
-   `--prove` runs one extra route first with seven marks - an undersized
-   button, a covered button and a tonal ground, which have to be found, and
-   four that have to be left alone: a big heading inside a `display: none`
-   parent, a round button, a small button inside an `inert` subtree, and a
-   control that runs past the region's own fold with something painted
-   beyond it (carpet 26). It exits non-zero if any of the seven misbehaves.
-   A sweep that reports nothing is worth nothing until it has been seen to
-   find something, and all four negative marks are phantoms this instrument
-   has actually produced -
-   `display` is not inherited, so `getComputedStyle` on a hidden element's
-   child still answers `display: block`; hit testing respects
-   `border-radius`, so a circle falls through to its ancestor at the four
-   corners of its box; a control past the fold is one scroll away rather
-   than lost, which had every long column filing its last control as
-   covered by the app's foot; and an inert control is not a control, which
-   is how the floating bar came to report itself as covered by the screen
-   while a sheet held it out.
-
-   `--pin-android` adds the states no web build can reach. The reminders
-   list is `isAndroid()`-gated with no demo bypass, so nothing on it counts
-   in a plain walk - which is how the check-in group reached carpet 30
-   undecided, and why that leg is what finally rendered it. This pins that
-   screen's own `isWeb` to false, rebuilds, walks the gated routes and puts
-   the file back, which is `tests/unprompted-gallery.mjs`'s pattern:
-   forcing `isAndroid()` itself sends boot at the Android SQLite driver and
-   the app never becomes ready, and a query parameter that forced the branch
-   would be a backdoor shipped to production for the sake of a reading. */
+   Run VITE_DEMO=1 npm run build, then node tests/cohesion-sweep-gallery.mjs.
+   --out sets the report folder and --root selects a checkout.
+   --prove checks that seeded defects fail and valid controls pass.
+   --pin-android temporarily changes the reminder route's isWeb flag. The global flag would switch boot to Android SQLite. */
 import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { writeFileSync } from 'node:fs';
 import { execFileSync, spawn } from 'node:child_process';
@@ -127,28 +46,15 @@ const ROUTES = [
   { path: '/body/hair-removal' },
   { path: '/body-map' },
   { path: '/care' },
-  { path: '/coming-back', exception: 'chromeless by decision (redesign ticket 35, ADR-0080)' },
+  { path: '/coming-back', exception: 'the return step hides navigation' },
   {
     path: '/onboarding',
     name: 'setup',
-    /* Filed as a deep screen by ticket 20's table, which is what a route
-       with nothing said about it is. Setup is a step machine, and its
-       header is rules 12 to 15's rather than rule 7's: the field carries
-       the question and the sun is the meter, and the back control is the
-       step's own `data-back` in the field's ink, which rule 12 drops on
-       the welcome step and wherever a step has no way back. So rule 7 does
-       not reach this screen, and reading it as a deep screen with no back
-       control was the instrument judging it by a rule it does not answer
-       to (carpet 25).
-
-       The exception is the route's because the reading is: the walk loads
-       the address and reads the welcome step, which is the one step rule 12
-       says has nothing to go back to. It excuses no step this walk has ever
-       looked at except that one, so a back control going missing deeper in
-       setup is not something this line can swallow - it is
-       tests/setup-review.mjs and the walkthrough's own setup flows that
-       read those. */
-    exception: "a step machine: DIRECTION.md rules 12 to 15 own its header, and rule 12 drops the step's own back control on the welcome step, which is the step this walk reads"
+    /* Setup follows its own header rules. The welcome step has no Back,
+       so exclude it from the deep-screen rule in this route sweep.
+       tests/setup-review.mjs and the walkthrough check later steps'
+       Back controls. */
+    exception: "setup keeps a fixed field and footer and hides Back on the first step"
   },
   { path: '/care/doses' },
   { path: '/care/regimen' },
@@ -218,7 +124,7 @@ const RESOLVED = [
 ];
 
 /* Rule 5's allow-list, as the radius contract test resolves it, plus the
-   proportional corner ADR-0077 gave the mood face. */
+   mood face’s proportional corner. */
 const RADII = new Set(['0px', '1px', '2px', '4px', '6px', '8px', '50%', '100%', '999px']);
 /* Rule 2's scale: 15 secondary, 16 body, 17 content title, 19 a tile's
    title, 21 a sheet heading, 28 section, 40 a number on a block, 48 a door
@@ -229,9 +135,8 @@ const SIZES = new Set([12, 13, 14, 15, 16, 17, 19, 21, 24, 28, 40, 48]);
    the inline bar at 36, and the hairline a box draws at 1. 4 is the rail the
    rule names beside the donut, which the breathing ring also draws. */
 const STROKES = new Set([0, 0.8, 1, 1.5, 2, 2.5, 3, 4, 12, 14, 36]);
-/* `PRODUCT.md`: "touch targets >= 48px (Android's floor, which is the
-   stricter of the two platforms)". `--touch-target` is 48px and
-   `accessibility-audit.test.ts` asserts the token; this asserts the box. */
+/* accessibility-audit.test.ts pins --touch-target to 48px. This checks
+   the rendered hit area against the same floor. */
 const TOUCH_FLOOR = 48;
 /* The ticket's list, plus `textarea`, which is an input by every name but
    its tag. `[tabindex]` is filtered to non-negative below: -1 is
@@ -243,23 +148,11 @@ const INTERACTIVE = 'button, a, input, select, textarea, [role="slider"], [tabin
    when the source has six. */
 const AUDITED = ['.card', '.app-savebar'];
 
-/* The gated leg, which is its own run of this script rather than a second
-   act inside the main one. `/settings/reminders` draws its Android branch -
-   the check-in group, the switch rows, the battery notice - only where
-   `isAndroid()` is true, so on the web it has always counted 0, which is
-   what carpet 30 needed a render of. Pinning that screen's own
-   `isWeb` is `tests/unprompted-gallery.mjs`'s pattern, and the reason for
-   it holds here too: forcing `isAndroid()` sends boot at the Android SQLite
-   driver and the app never becomes ready, and a query parameter that forced
-   the branch would be a backdoor shipped to production for the sake of a
-   reading.
-
-   A second process rather than a rebuild mid-run, because a rebuild means a
-   new preview server on a new port, a new origin and an empty journal - and
-   when that leg failed to boot it took the whole main walk's audit down
-   with it, unwritten. A process that pins before it serves anything has one
-   build for its whole life, and its findings merge into the report the main
-   run already wrote. */
+/* Run the Android reminders render separately, overriding only
+   the screen's isWeb for this test build. Stub the branch locally so
+   boot still uses web SQLite. A second preview origin has an empty
+   journal. Keep its findings separate until the main run writes its
+   report, then merge them in. */
 const PIN_ANDROID = args.includes('--pin-android');
 /* `[data-checkin]` rather than a `.card` variant: carpet 30 took the box off
    the check-in group, and the group is what this leg exists to photograph. */
@@ -416,27 +309,11 @@ const read = () =>
       const groundOf = new Map(GROUNDS.map(([name, value]) => [asColour(value), name]));
       swatch.remove();
 
-      /* The floor's documented exceptions, each by shape rather than by
-         class name, so none of them can be used to smuggle a small control
-         in under a new selector.
-
-         1. A link inside a sentence. It is `display: inline`, it takes the
-            line box's height, and growing it to 48px would open a hole in
-            the paragraph. Rule 4's notice draws its action this way.
-         2. Something nothing can hit: `pointer-events: none`, or disabled,
-            or inside an `inert` subtree. Not a target, so not a target
-            failure, and not something worth reporting as covered either.
-            `inert` is how a sheet holds the background out - `Sheet.svelte`
-            sets it on the shell's other children - and `components.css`
-            then puts an inert child of the shell at `z-index: -1` on
-            purpose, so the floating bar recedes *behind* the screen while a
-            sheet is up. Read as a divergence that was the withdrawal
-            working: the whole bar reported its active tab as covered by
-            `.app-main` on the one route the walk opens a sheet on. Neither
-            `disabled` nor a computed `pointer-events` reflects inertness,
-            so it is asked for by attribute.
-         3. A negative tabindex, which is a scroll region or a focus sink
-            asking to be reachable from script, not a control. */
+      /* Exclude inline sentence links, disabled or pointer-events:none
+         elements, inert subtrees and negative-tabindex focus sinks
+         from the target floor and coverage reports. Check inert by
+         attribute. Sheet.svelte sets it on the shell siblings, and
+         components.css moves the inert bar behind the screen. */
       const exemptTarget = (el, cs) => {
         if (cs.pointerEvents === 'none') return true;
         if (el.disabled) return true;
@@ -495,14 +372,8 @@ const read = () =>
           shown *= Number(getComputedStyle(up).opacity);
         if (!shown) continue;
 
-        /* And no box at all, which `display` alone does not catch: the check
-           above skips a hidden element but `getComputedStyle` on its
-           *children* still answers `display: block`, because display is not
-           inherited and is never recomputed to none for a descendant. So a
-           paper-only heading - `.print-heading` is `display: none` until
-           `@media print` turns it on - reported its 32px h1 as live type on
-           two screens, in both themes, and `DIRECTION.md` governs screens.
-           A zero-size box is the honest test for "on screen at all". */
+        /* Descendants of a hidden parent can report display: block. Require a
+           nonzero box so print-only headings do not count as screen text. */
         const box = el.getBoundingClientRect();
         if (!box.width || !box.height) continue;
         /* And nothing parked off the frame. An element hidden by a negative
@@ -594,39 +465,14 @@ const read = () =>
           census[key] = (census[key] ?? 0) + 1;
         }
 
-      /* Occlusion, answered the way a finger answers it. For every
-         interactive box a grid of points is handed to `elementFromPoint`,
-         which walks the real stacking order including every context a
-         declared z-index disappears into - the ticket asks for the
-         effective stacking, and a declared 20 means nothing on its own.
-         Three answers:
+      /* Hit-test controls with elementFromPoint in each scrolled viewport.
+         A hit on the control or a descendant is clear. Hitting an ancestor
+         can indicate clipping or pointer-events. Any other element covers
+         the control. Measure overlap from the two rects.
 
-           the element itself, or something inside it - clear;
-           an ancestor - the element is not on top of its own box, which is
-             a control clipped out of an overflow or under a pointer-events
-             trap, and is as unclickable as a covered one;
-           anything else - covered, and by that.
-
-         The overlap is measured off the two rects rather than counted in
-         samples, so a finding reads "19px of 48" and carpet 26 can size
-         itself from the list.
-
-         The scroll region is stepped a screen at a time, because
-         `elementFromPoint` only answers inside the viewport and a pinned
-         thing covers what is under it at every position, not only at rest.
-
-         **The app's own chrome is exempt at the positions where content is
-         meant to pass beneath it, and only there.** A floating bar that
-         content never went behind would not be floating; what the app
-         promises instead is a reservation, and the two halves of that
-         promise are what this checks. `.app-main` reserves
-         --nav-clearance for the bottom bar, so the bar may cover a row
-         mid-scroll and may not at the end of the column. The field blind
-         holds its own room at the top of the flow, so it may cover a row
-         once the column has moved and may not at rest. Everything else -
-         the save bar above all, which is a second pinned thing over the
-         same column and the column does not know it is there (carpet 26) -
-         is a finding wherever it lands. */
+         Permit the bottom bar to cover rows mid-scroll. At the end,
+         .app-main's nav clearance must expose them. The field blind may
+         cover rows only after scrolling. Flag save bar overlap anywhere. */
       const seenCover = new Set();
       const targets = new Map();
       const occlusion = found.occlusion;
@@ -732,20 +578,9 @@ const read = () =>
           if (box.bottom <= frame.top || box.right <= frame.left || box.left >= frame.right) continue;
           if (box.bottom <= 0 || box.top >= innerHeight) continue;
 
-          /* The rendered box against the 48px floor, taken here rather
-             than in the pass above because the answer needs the control on
-             screen: a box under the floor is not yet a finding, since a
-             control can be drawn small and hit large, and only hit testing
-             can see that. `.tag-info-btn` is 24x24 with an `::after` at
-             `inset: -12px` - a 48px target around a 24px glyph, the pattern
-             `.photo-remove` takes too - and a pseudo has no box to measure.
-             An element is measured as itself: a control nested inside a
-             larger control is still the thing a finger has to find.
-
-             The best reading over all the scroll positions wins, filed
-             after the walk. A control straddling the fold has its reach
-             cut by the viewport edge rather than by anything on the page,
-             and filing the first reading would make that the finding. */
+          /* Use hit testing for the 48px floor so extended targets count. Measure
+             each control at its best scroll position so viewport clipping alone does
+             not count as a target defect. */
           const best = targets.get(el) ?? { w: 0, h: 0 };
           let w = Math.round(box.width);
           let h = Math.round(box.height);
@@ -857,27 +692,11 @@ const seed = async () => {
 };
 await seed();
 
-/* Rule 7's verdict, per reading (carpet 25). Ticket 20's sweep read the
-   field and the back control and left the judging to whoever read the
-   table, which is how `/settings` came to be filed as a question - "door
-   with a field and no back, or deep screen with both?" - rather than as a
-   pass or a finding. The rule has three cases now and each fixes both
-   answers, so the instrument can say which it is:
-
-     door    the field, and never a back control
-     deep    the field and a back control
-     chrome  the field, and a back control on the phone only (ADR-0076);
-             this walk is 390px wide, so here that is a back control, and
-             the 1024px half is the walkthrough's step 14b
-     exception  a screen the rule does not reach, which has to carry the
-             decision that put it outside: /coming-back, chromeless by
-             ADR-0080, and /onboarding, whose header rules 12 to 15 own.
-             Reported as a recorded exception rather than counted as a pass,
-             so the two are never confused for each other
-
-   A state is judged as its own reading, the same way every other check
-   treats one: a sheet open over a screen does not change what the screen
-   is. */
+/* Doors show a field without Back. Deep screens show both. Chrome
+   shows a field and Back on phones only (ADR-0076). This sweep checks
+   390px and walkthrough step 14b checks 1024px. /coming-back and
+   /onboarding are documented exceptions. Judge the underlying screen
+   the same way with a sheet open. */
 const CASES = {
   door: { field: true, back: false },
   deep: { field: true, back: true },

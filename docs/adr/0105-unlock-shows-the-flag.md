@@ -54,9 +54,7 @@ only one: with disguise on, every gate keeps ADR-0101's neutral `--surface-2`
 field at the title's height with the decoy's name, and no colour of the flag
 reaches it. `tests/gate-flag-check.mjs` checks that on every palette and both
 themes, by the DOM and by the pixels of the field, and screenshots of the
-disguised gates match the base pixel for pixel. No second preference was
-added: it would split one intent across two controls, the reason ADR-0035
-gave for not adding one for the in-app motif.
+disguised gates match the base pixel for pixel. Disguise stays under one preference across the unlock screen and the in-app flag.
 
 ## The handover to Today
 

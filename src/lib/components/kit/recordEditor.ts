@@ -21,10 +21,9 @@ export type RecordEditorOptions<TRecord extends { id: string }, TDraft extends {
   upsert?: (draft: TDraft) => boolean | void | Promise<boolean | void>;
   /** Delete a record by id. Omit for records that can only be hidden. A
       journal record is deleted through `undoable` (stores/deleteUndo.ts) and
-      the handle returned, so the toast can offer Undo (functional audit
-      ticket 46); a removal from a draft returns nothing. */
+      the handle returned, so the toast can offer Undo; a removal from a draft returns nothing. */
   remove?: (id: string) => unknown;
-  /** What the toast says once a save lands (after-release ticket 06).
+  /** What the toast says once a save lands.
       Omitted, it says "Saved."; `null` for a screen whose own result line or
       notice already says more. */
   saved?: (draft: TDraft) => string | null;

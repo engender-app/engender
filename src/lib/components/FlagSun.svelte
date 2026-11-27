@@ -1,46 +1,22 @@
 <script lang="ts">
-  /* The flag sun (ticket 19, DIRECTION.md's tier 0): the active flag as
-     one concentric ring per stripe, or one disc for Polish, centred on its
-     field's top right corner. Replaces PrideAurora, a blurred wash of the
-     same stripes shown on ten screens, which is deleted rather than
-     restyled (ADR-0035).
+  /* Draw the active flag at the field's top right, one ring per stripe
+     or a disc for Polish. Read activeFlag
+     reactively. A mount-only read could capture the localStorage mirror
+     before SQLite loads the palette.
 
-     The stripes and the theme come from $lib/theme/activeFlag, which the
-     shell refreshes in the same effect that stamps the palette on <html>.
-     This used to read them itself in onMount, on the reasoning that "/" is
-     its own route and so remounts on every genuine visit - which is true,
-     and still lost the race: on a cold start the palette arrives from SQLite
-     after boot, so a mount that happened in between drew the flag the
-     localStorage mirror had a moment earlier. Changing the palette in
-     Settings and walking back to Home showed the old flag's sun until the
-     app was restarted, on the one screen the flag is the point of.
-
-     The entrance is still a plain CSS animation on mount, which is what
-     makes it play once per visit and never on a reactive update within one.
-     A palette or theme change while mounted updates the rings without
-     replaying it - the rings are keyed by index, so they keep their
-     elements. Settings remounts the component when the resolved theme
-     changes to replay the entrance there. */
+     Index keys keep rings mounted through palette and theme changes,
+     so the CSS entrance runs once per mount. Settings remounts on theme
+     change to replay it. */
   import { sunRings } from '$lib/motion/flagSun';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
 
   let rings = $derived(sunRings(activeFlag.stripes, activeFlag.dark, activeFlag.palette));
 
-  /* A door change draws the sun's arrival itself, ring by ring on the
-     door's own clock (redesign ticket 28): every ring is pulled out of the
-     screen's snapshot under a name of its own and opened from nothing,
-     outermost first, inside --dur-slow. The 700ms entrance below would then
-     be a second arrival running underneath the first - and worse, the new
-     side is captured the instant this mounts, so the photograph the
-     transition animates would be of seven rings at no size at all.
-
-     Read once, here, rather than as a reactive expression: `data-nav` is on
-     <html> for the length of the transition and is taken off at the end of
-     it, and an expression that noticed it going would restart the entrance
-     the moment the door change finished. What this asks is "did I mount
-     inside a navigation", which is answered at mount and never again. A
-     cold start has no data-nav and keeps the authored entrance, which is
-     the one place it was ever meant to play. */
+  /* Sample data-nav at mount. A door transition already opens the
+     named rings on --dur-slow and needs fully drawn snapshots.
+     The 700ms entrance would duplicate that motion and capture
+     tiny rings. Sampling once prevents the entrance starting
+     when the navigation attribute clears. Keep it on cold boot. */
   const carried = typeof document !== 'undefined' && 'nav' in document.documentElement.dataset;
 
   /* A gate draws this sun too (tester-report-02 ticket 07), and a gate

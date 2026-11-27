@@ -1,28 +1,15 @@
-/* The time picker, driven and recorded (phase 12 pickers, ticket 02): what
-   it does - arrows step a drum, a tap on a row brings it to the band, a
-   finger flick comes to rest on a row and writes it into the entry, a typed
-   time turns both drums, Use time commits, Escape leaves the value alone
-   and gives focus back to the field, Clear only where the field is
-   optional, and a swipe on a drum turns the drum rather than pulling the
-   sheet down - and how it moves while it does, every frame Chromium's
-   screencast paints beside a rAF sampler reading the drums.
+/* Exercise drum arrows, taps, flicks and typed time. Check Use time
+   commits, Escape preserves the value and restores focus, Clear requires
+   an optional field, and drum swipes keep the sheet open.
 
-     VITE_DEMO=1 npm run build && node tests/time-picker-check.mjs [--out /abs/dir] [--gate]
+   Compare screencast and rAF samples. Fail when the surface moves more
+   than 45% of itself in one frame or a visible drum jumps five or more
+   rows. Reduced motion can move a drum at opacity 0. At rest it must
+   align to a whole row.
 
-   The yank test is the spec's mechanical one: nothing painted at its
-   destination before it travelled there, no frame with the thing in
-   neither place. Per sample: the surface arriving or leaving more than 45%
-   of itself in one frame, and a drum moving its whole window (five rows)
-   or more in one frame where nothing hid it (a reduced-motion move happens
-   at opacity 0): past that no row is seen in two frames running, which is
-   the drum in neither place. A typed time far from the current one spins
-   fast - 38 minute rows peak near 3.7 rows a frame on Chromium's smooth
-   scroll - and that is travel, not a cut; the peak is printed per scene.
-   Every scene that ends at rest also asserts the drum rests on a whole
-   row.
-
-   `--out` keeps frames and a manifest for tests/panel-motion-flipbook.mjs;
-   `--gate` exits non-zero on any yank or wrong outcome. */
+   VITE_DEMO=1 npm run build && node tests/time-picker-check.mjs [--out /abs/dir] [--gate]
+   --out saves frames for tests/panel-motion-flipbook.mjs. --gate fails
+   on a yank or wrong result. */
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';

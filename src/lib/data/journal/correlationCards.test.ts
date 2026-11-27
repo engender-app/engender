@@ -1,4 +1,4 @@
-/* Factor-impact correlation cards (phase 4 ticket 21): the area that
+/* Factor-impact correlation cards: the area that
    stitches stats' day averages and tag insights to the dose log
    (correlationCards.ts owns the ranking math and is tested without a
    driver). This is phase 4's deliberate reversal of phase 3's explicit

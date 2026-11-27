@@ -1,4 +1,4 @@
-/* The exposure counters area (phase 4 ticket 05): a view over the dose log
+/* The exposure counters area: a view over the dose log
    and the regimen episode history, recomputed on every read. */
 
 import { test } from 'vitest';

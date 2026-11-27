@@ -1,47 +1,16 @@
-/* What an archive Merge decides for each row, and the deletions it carries
-   (functional audit ticket 48, ADR-0098).
+/* Merge rows and tombstones by traveling identity and timestamp
+   (ADR-0098). Updated rows keep their updated_at. Child rows without
+   identity follow their parent. Tables outside the comparison have an
+   explicit class and reason. Tests check every table is classified.
 
-   Until this ticket a Merge added what this device did not have and left
-   every matched row alone, so an edit made on the other device never
-   arrived, and neither did a deletion. Now each row travels with its
-   `updated_at`, and a row present on both sides takes the side that wrote
-   it last. A deletion travels as a row of the `deletion` table (schema
-   version 117, sqlite/deletion-migration.ts): the table, the record's
-   identity and when it went.
+   Take a matched Archive row only when it is newer. A tie keeps this
+   device's row, and legacy rows without a timestamp never replace it.
+   Insert a new row unless the destination deleted it at or after its
+   write. Apply an Archive deletion when the local row is no newer.
+   Retain the tombstone even when there is no row to remove.
 
-   Every table in the schema has one Merge class, below:
-
-     updatedAt  the row carries its own `updated_at` and is matched by its
-                identity - a uuid, a built-in's key, or the natural key of
-                a table that holds one row per thing. Its deletions are
-                recorded by a trigger and carried.
-     parent     a join or child row with no identity of its own. It follows
-                its parent: when the parent is taken from the archive, its
-                rows are taken with it, and when the parent stays, so do
-                they.
-     none       not part of what a Merge compares, and why.
-
-   archiveMerge.test.ts fails on a table with no class, so a table added
-   later cannot be left out of Merge without a test saying so.
-
-   The rule for one row (`RowGate.fate`):
-
-     - present on both sides: the archive's row wins only when it is newer.
-       A tie keeps this device's row, which is what makes merging the same
-       archive twice the same as merging it once. An archive written before
-       this ticket carries no `updatedAt`, and its rows never win.
-     - only in the archive: inserted, unless this device deleted it at or
-       after the archive's last write of it.
-     - a deletion in the archive: applied when this device's row is not newer
-       than it, and recorded whether or not it removed anything, so a third
-       device hears of it too.
-
-   A row the archive wins keeps the archive's `updated_at` rather than
-   taking this device's clock: stamping it now would make the copy look
-   newer than an edit the first device makes after the export, and that
-   edit would lose the next Merge. The clocks of two devices are trusted to
-   be roughly right; what that costs, and the old argument for skipping
-   matched rows instead, are in the ADR. */
+   Keep the incoming timestamp so it cannot mask a later source edit.
+   The comparison depends on both devices' clocks. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { ArchiveDeletion } from '../archive/payload';
@@ -232,23 +201,16 @@ const BUILT_IN: Readonly<Record<string, string>> = {
   tag_group: 'uuid IS NULL'
 };
 
-/** The archive's deletions. Replace installs them as they are, so the
-    restored journal goes on refusing what the archived one had deleted.
-    Merge applies each one that is newer than this device's row, by the rule
-    in the header, and records it either way. A deletion naming a table this
-    build does not classify (one from a newer or an older schema) is left
-    out, and so, in a Merge, is one naming a built-in: applying it took the
-    rows that use the built-in down with it or failed on their foreign key,
-    and the next Merge, finding the built-in reseeded, deleted it again and
-    moved its tags' tombstones to that Merge's clock (re-check carpet 11,
-    F2 and F5). Reconcile has already seeded every built-in by the time this
-    runs, so the row is here to be asked.
-
-    The first section the registry applies, and so the last it discards: a
-    Replace's discard fires the trigger for every row it removes, and this
-    section's own statement clears what that recorded. In a Merge, applying
-    the deletions before the rows means every archive row then meets this
-    device's deletions and the archive's alike, through the same RowGate. */
+/**
+ * Restore tombstones before applying rows. Replace keeps the imported
+ * set and clears tombstones its own discard produced. Merge applies
+ * a deletion when the local row is no newer and records it even when
+ * there is no row to remove.
+ *
+ * Skip tables outside this build's classification. In Merge, skip
+ * tombstones for reconciled built-ins, which may still have dependent
+ * rows. Apply all row decisions through RowGate.
+ */
 export async function applyDeletions({ driver, mode, journal }: Restoring): Promise<void> {
   for (const deletion of journal.deletions) {
     if (MERGE_CLASSES[deletion.table]?.by !== 'updatedAt') continue;

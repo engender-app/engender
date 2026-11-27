@@ -8,7 +8,7 @@
    constructs the real thing and the UI reads it.
 
    Not reactive: the store is set before the first screen renders, and
-   replaced only around a lock on the web (after-release ticket 10), which
+   replaced only around a lock on the web, which
    sets it to null and back while every screen that reads it is unmounted
    behind the lock - so nothing needs to re-run when it changes. Null reads
    as "no store yet", the answer a read during boot already got. */

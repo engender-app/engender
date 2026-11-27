@@ -1,5 +1,5 @@
 /* Which surfaces resurface the past unasked, and that each declares itself
-   (phase 6 ticket 05) - the completeness guarantee, held at the level a
+ - the completeness guarantee, held at the level a
    module with no DOM can be, the same way registry.test.ts holds
    registry.ts's. */
 

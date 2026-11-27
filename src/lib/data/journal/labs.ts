@@ -16,7 +16,7 @@ import { assertValidCost, costColumns, costFromRow, normalizeCost, type CostInpu
     names shown as-is, like every stored analyte. Order is cosmetic - it
     only decides which comes first in a fresh picker - and is not
     alphabetical on purpose, so the list does not read as estradiol plus
-    two afterthoughts (phase 5 ticket 37). */
+    two afterthoughts. */
 const ANALYTE_PRESETS = ['testosterone', 'estradiol', 'prolactin'];
 
 /** No `timing`: the dosing context is not something a caller supplies. It
@@ -57,7 +57,7 @@ export interface LabsArea {
   getUsedAnalytes(): Promise<string[]>;
   /** The analyte of whichever result was most recently saved or edited, or
       null with no results at all. What the trend screen opens on and what
-      a new result prefills to (phase 5 ticket 37) - never a hardcoded
+      a new result prefills to - never a hardcoded
       hormone.
 
       No preference backs this: the "what did they last log" memory is a
@@ -67,8 +67,7 @@ export interface LabsArea {
       have to remember to reset on a fresh device. */
   getMostRecentAnalyte(): Promise<string | null>;
   getResults(analyte: string): Promise<LabResult[]>;
-  /** Every analyte's results drawn on one day (phase 5 deepening ticket
-      21), oldest-saved first. Across analytes, because a single draw
+  /** Every analyte's results drawn on one day, oldest-saved first. Across analytes, because a single draw
       normally yields several and a day view asks about the draw rather than
       about one hormone - which is also why this is one query where the
       clinician summary, having no per-day read to reach for, walks
@@ -76,8 +75,7 @@ export interface LabsArea {
   getResultsOnDay(epochDay: number): Promise<LabResult[]>;
   getResultsInRange(fromEpochDay: number, toEpochDay: number): Promise<LabResult[]>;
   /** The most recently drawn result of any analyte, or null with no results
-      at all. What the care overview marks its draw at (phase 5 deepening
-      ticket 07): the rail asks "when was blood last taken", which is a
+      at all. What the care overview marks its draw at: the rail asks "when was blood last taken", which is a
       question about draw days across every analyte at once, where
       getMostRecentAnalyte above asks the unrelated question of what was
       last typed in.
@@ -191,7 +189,7 @@ export function makeLabsArea(driver: SqliteDriver, regimen: RegimenArea): LabsAr
       episodes, to the draw analyte's hormone (selectTimingDose,
       hormoneDrug.ts) - a concurrent dose of an unrelated drug is skipped
       over exactly as if it weren't there, rather than reported as this
-      draw's context (phase 8 features ticket 37). */
+      draw's context. */
   const deriveTiming = async (draw: LabDraw, analyte: string): Promise<LabTiming | null> => {
     const hormoneDrug = resolveHormoneDrug(analyte);
     if (hormoneDrug === null) return null;

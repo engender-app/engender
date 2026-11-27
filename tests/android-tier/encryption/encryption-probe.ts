@@ -1,23 +1,8 @@
-/* The claim gate on Android (ticket 13's sixth box, ticket 09's gate).
-
-   Ticket 09 proved the at-rest claim on the web the only way the spec
-   accepts: seed protected content of every kind the claim names, close the
-   app, and read the raw bytes of everything it left behind
-   (tests/browser-tier/encryption-probe.ts). This is the same proof on a
-   phone, and it has to be its own probe because almost nothing about where
-   the bytes end up is shared. The journal is an app-private file written by
-   SQLCipher rather than an OPFS pool written by sqlite3mc, the pre-migration
-   copy sits beside it in app storage, and the scan is a Java walk of the app
-   data directory rather than a walk of the OPFS root.
-
-   This half seeds and closes. AndroidEncryptionClaimTest does the reading,
-   because a WebView cannot see the files SQLCipher wrote.
-
-   The data key here is a fixed one rather than the Keystore's. What is under
-   test on this side is that the files are ciphertext; that the real key comes
-   out of Android Keystore and only after authentication is JournalKeystoreTest,
-   on the same device, and the two together are the claim. A probe that had to
-   present a fingerprint could not run unattended at all. */
+/* Seed every protected content type, then close the Android journal.
+   SQLCipher writes the database and migration copy to app-private files.
+   AndroidEncryptionClaimTest reads the raw files that WebView cannot
+   access. A fixed test key proves encryption at rest. JournalKeystoreTest
+   covers the real key's authentication requirement separately. */
 
 import { boot } from '../../../src/lib/data/sqlite/boot.ts';
 import { createAndroidSqlite } from '../../../src/lib/data/sqlite/android-driver.ts';

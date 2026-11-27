@@ -1,4 +1,4 @@
-/* The registry two screens render (phase 6 tickets 02 and 04): every kind
+/* The registry two screens render: every kind
    the app may show or fire unprompted is a row here, and a later ticket adds
    an entry to this array rather than new markup. Held at the level a module
    with no DOM can be: what is listed, in which of the two views, under which
@@ -113,7 +113,7 @@ describe('the notifications view (ticket 04)', () => {
       NOTIFICATION_ROWS.map((row) => [row.key, row.notify?.channel])
     ).toEqual([
       ['reminders', 'reminders'],
-      // A wear prompt is an ordinary Reminder row (CONTEXT.md), so it
+      // A wear prompt is an ordinary Reminder row, so it
       // arrives on the reminder channel rather than one of its own.
       ['check-in', 'checkIn'],
       ['wear-elapsed', 'reminders'],

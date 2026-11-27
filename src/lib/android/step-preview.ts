@@ -1,22 +1,8 @@
-/* The web end of the predictive step back (ticket 04, box 5).
-
-   On Android 14 and later a back swipe reports its progress before it is
-   released. While a step machine is past its first step
-   ($lib/navigation/stepBack), the native StepBack plugin forwards that
-   progress here and this draws the step back under the finger. The release
-   is not forwarded separately: the native side hands it to the ordinary
-   back button, which reaches the owner through stepBack() like any Back,
-   and the owner commits from where the drawing is.
-
-   The web is the source of truth for whether the native callback is on:
-   it is armed only while an owner says so, and disarmed when the owner
-   unmounts or this is torn down. The native side never decides on its own,
-   and whatever it is told, a release always goes on to the ordinary back
-   button (StepBackGesture.java), so a callback left on can only cost the
-   drawing, never a Back.
-
-   A gesture that starts while the gate or an overlay owns Back draws
-   nothing, because those take the release first. */
+/* On Android 14+, preview predictive Back while the current step
+   owner arms it. Disarm when the owner unmounts or preview is torn down.
+   Leave the drawing blank when a gate or overlay owns Back. Native
+   release always follows ordinary Back so stepBack() commits from
+   the preview state. */
 
 import {
   beginStepPreview,

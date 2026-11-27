@@ -1,51 +1,13 @@
-/* The body map's panels and its hit zones (phase 10 redesign ticket 40,
-   redrawn for phase 11 ticket 47).
+/* Give each body region a visible panel and one touch zone. Use
+   nonoverlapping zones that meet the minimum target size at the
+   narrowest supported stage. Each visible panel sits in its own zone.
 
-   Beside BodyRegionMap.svelte for the same reason injectionSiteMap.ts sits
-   beside the injection map: the arrangement makes claims a component's
-   <style> block is not somewhere a test can ask about. No two zones may
-   overlap, or a tap lands on two regions at once; no zone may be under the
-   touch floor at the smallest stage the app can give it; and every shape a
-   person can see has to sit inside a zone that selects the region it
-   belongs to, or the figure shows one thing and answers with another.
-
-   **The regions are the drawing, and the drawing is a body.** That sentence
-   survives four failed arrangements and one that was right about the
-   sentence and wrong about the drawing. Eight rounded rectangles in a
-   column were regions and no body ("why is there no body?"); a wooden
-   mannequin and a capsule silhouette were bodies the regions only sat on
-   top of; dots on that silhouette carried the data without the figure being
-   made of it. What replaced them was one silhouette tiled into panels - the
-   right idea - assembled out of nine rounded rectangles parted by seams of
-   card colour, which is the drawing this file no longer holds (Alicja,
-   2026-09-21: "it looks really bad, blocky, amateurish").
-
-   **A panel is now a band of the shared silhouette, clipped.** The body
-   itself lives in `bodySilhouette.ts` (ADR-0087) as one path; a region owns
-   a rectangular band of it, and what gets drawn is the band intersected
-   with the body, so every panel edge follows the body's own contour and
-   neighbours are parted by a hairline in the region's own ink rather than
-   by a gap. `GROUND_SHAPES`, `SEAM` and `matShape` retired with the
-   rectangles: there is no seam to cut and no shape of a region's own to
-   grow it out of.
-
-   **A band is a window, not the panel.** It is deliberately a little wider
-   than the body it selects - the trunk's bands run to x=32 and x=68 where
-   the torso reaches 32.2 and 67.8 - so that the clip, rather than the
-   number written here, decides where a panel ends. Where two regions divide
-   one piece of the body across its width (the shoulder, where the arm meets
-   the torso), the window edge is the seam, and the hairline drawn on it is
-   the only straight edge left in the figure.
-
-   **Neutrality is not enforced here any more.** It was, when the panels
-   were rectangles and one of them drawn wider than another would have put
-   a bust back on a flat silhouette. A clipped band is as wide as the body
-   is at that height and cannot disagree with it, so the three measurements
-   live on the path in `bodySilhouette.test.ts`.
-
-   `whole_body` is the silhouette under the panels: it carries its own
-   reading as the fill of the limbs and takes a tap wherever no panel is.
-   That is what "the ground the other eight sit on" means. */
+   Clip rectangular bands against the single path in bodySilhouette.ts.
+   Let the windows overshoot the outer contour so the path
+   sets the edges. When two regions share a cross-body boundary, the
+   window edge and its hairline mark their seam. The whole_body reading
+   fills the limbs and handles clicks outside the other panels. The
+   silhouette test owns the figure's neutral proportions. */
 
 import { BODY_REGION_INTENSITY_MAX, BODY_REGION_INTENSITY_MIN } from '../data/bodyMap';
 import type { RegionSideReading } from '../data/bodyMap';
@@ -65,21 +27,11 @@ export interface Box {
 
 export const GROUND_REGION = 'whole_body';
 
-/** The figure's three columns. The middle one is the head, the neck and the
-    torso; the outer two are the arms, and the space beside the drawing that
-    nothing else uses. A band and the button over it are cut from the same
-    column, so what a panel paints and what a tap answers cannot drift
-    apart.
-
-    Where the edge sits is a drawing decision rather than a round number. A
-    band is a window on the body and its hairline is that band's own
-    outline, so a side edge that grazes the body draws a straight line down
-    the side of it - which is how the picked panel first came out as a
-    rectangle over a torso. 69.2 clears the torso, which reaches 67.8, by
-    four pixels at every stage the component allows, and stays inside the
-    nearest arm, which comes no closer in than 70.6. The one height where
-    body does cross it is the shoulder, y 42 to 47, where the arm and the
-    torso divide one mass between them and the line is the seam. */
+/**
+ * The center column covers head, neck, and torso. The side columns cover the arms and surrounding space. Painted bands and hit targets share column boundaries.
+ *
+ * At 69.2 the edge clears the torso (67.8) by four pixels at the smallest size and stays inside the nearest arm (70.6). It crosses the silhouette only at the shoulder seam (y 42 to 47).
+ */
 const COLUMN = { left: 30.8, right: 69.2 } as const;
 const SIDE = FIGURE_BOX.width - COLUMN.right;
 
@@ -275,7 +227,7 @@ function eachRow(area: Box, visit: (y: number, run: [number, number]) => void): 
     with the body. This is the containment rule's left-hand side - "every
     drawn shape lies inside its own box" became "every clipped band's
     bounding box lies inside its own box" when the panels stopped being
-    shapes of their own (ADR-0087). */
+    shapes of their own. */
 export function bandBox(area: Box): Box {
   let left = Infinity;
   let right = -Infinity;

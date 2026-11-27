@@ -1,47 +1,22 @@
-/* Writing the persona into a real journal (ticket 08).
+/* Seed the persona through real journal writes so IDs, photo files
+   and search indexing match normal use (ADR-0002, ADR-0008, ADR-0005).
 
-   The demo used to be a `DB` object in localStorage, so "load the demo" was
-   an assignment. Entries live in SQLite now, and they cannot live in two
-   places at once - leaving the persona in the demo store while the screens
-   read the database would mean a review build with an empty app in it. So the
-   persona goes through the same journal calls a real user's writes go
-   through: every id is minted by the journal (ADR-0002), every photo is a
-   real file (ADR-0008), and the FTS index is written by the same code that
-   maintains it for real notes (ADR-0005). Search on the demo therefore proves
-   something about search.
-
-   Nothing here ships. Like the rest of `demo/`, every import of this module
-   sits behind `__DEMO__`, which vite.config.ts folds to `false` in a
-   production build (ticket 05).
-
-   State jumps use the journal's individual transactions. Cold web boot runs
-   these same writes inside one worker transaction (worker-seed.ts). */
+   Gate imports with `__DEMO__` so production builds exclude them.
+   Demo state jumps use journal transactions. Cold web boot batches
+   the same writes in one worker transaction. */
 
 import type { Journal } from '../journal/journal';
 import type { NormalizedPhoto } from '../journal/photos';
 import { persona, type PersonaLocale } from './persona';
 import { todayEpochDay } from '../epochDay';
 
-/** Deletes every journal row, leaving preferences alone. Only the demo bar's
-    state jumps need this - a real Replace import is ticket 14's, behind the
-    journal rather than beside it.
+/** Clear demo journal rows and keep preferences. Let `discardEverything`
+    choose row order so new sections are included automatically.
 
-    Which rows and in what order is the journal's own answer now
-    (`discardEverything`, phase 5 audit ticket 13), not a second one written
-    here. The walk this replaced covered seven of the thirty-six sections an
-    archive carries, and silently left doses, regimen, side effects,
-    procedures, letters, roadmap and checklists among the rest - a second copy
-    of a hand-ordered list, which is what drift looks like when nothing guards
-    it.
-
-    The entry and milestone photos still go through the journal first, and
-    that is the one thing this function adds: `discardEverything` deletes no
-    file, deliberately, so that a failed import leaves the old photos on disk
-    (restore.ts). Removing them row and file together here keeps a demo device
-    from accumulating orphans across every state jump rather than waiting for
-    the next due orphan sweep. The persona attaches no other kind of file, so the
-    remaining four photo tables need no loop of their own - and if it ever
-    does, the sweep is what reclaims them. */
+    Remove entry and milestone photos through the journal first.
+    `discardEverything` leaves files in place for restore rollback.
+    The persona attaches no other files. The orphan sweep handles any
+    future demo media that this path does not remove. */
 export async function clearJournal(journal: Journal): Promise<void> {
   for (const photo of await journal.photos.inJournal()) await journal.photos.remove(photo.id);
   await journal.discardEverything();
@@ -87,7 +62,7 @@ export async function writePersonaJournal(
 
   // Presentations before entries: an entry naming one by `presentationName`
   // needs the real id, which only exists once the row is written
-  // (phase 5 deepening ticket 17).
+  //.
   const presentationIds = new Map<string, string>();
   for (const { name, roleIndex } of presentations) {
     const created = await journal.presentations.addPresentation(name, roleIndex);
@@ -114,7 +89,7 @@ export async function writePersonaJournal(
 
   for (const reminder of reminders) await journal.reminders.upsertReminder(reminder);
 
-  /* The debrief is linked by the appointment's own id (ticket 58), the same
+  /* The debrief is linked by the appointment's own id, the same
      link `recordDebriefEntry` makes for a person who wrote it through the
      real offer. Unlike that person, the persona has no standing prep list
      for the link to land on, which is why `recordDebriefEntry` creates the
@@ -144,7 +119,7 @@ export async function writePersonaJournal(
 
   for (const result of labResults) await journal.labs.upsertResult(result);
 
-  /* And it is all still there (ticket 135). A seed that stops part way
+  /* And it is all still there. A seed that stops part way
      through throws where it stops - `upsertEntry` refusing a presentation
      something else deleted underneath it, for one - but a seed whose rows
      are removed after it wrote them finishes quietly and leaves a journal

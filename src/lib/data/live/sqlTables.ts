@@ -1,11 +1,11 @@
-/* The coarse-name-to-SQL-table mapping (phase 8 audit ticket 02).
+/* The coarse-name-to-SQL-table mapping.
 
    writes.ts's TABLE_NAMES are invalidation names, coarser than the schema on
    purpose - 'entry' alone covers the entry row, its dimension values, its
    tag links, its body-region values and its search index, because nothing
    reads one without the others (writes.ts's own header says so). Until this
    ticket that mapping lived only in comments; writes.sql.test.ts drives real
-   SQL through the recording driver (ticket 01) and needs it as data.
+   SQL through the recording driver and needs it as data.
 
    Two things a real table name can never be: a coarse name is what a screen
    declares and a driver never sees, so nothing here collides with the other,

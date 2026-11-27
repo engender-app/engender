@@ -36,7 +36,7 @@ export const EASE_OUT_SOFT_POINTS = [0.38, 0.32, 0.2, 1] as const;
     two cannot drift apart. */
 export const EASE_OUT_SOFT_CSS = `cubic-bezier(${EASE_OUT_SOFT_POINTS.join(', ')})`;
 
-/** The opacity an arrival fades in from, instead of 0 (ticket 09). Blink
+/** The opacity an arrival fades in from, instead of 0. Blink
     does not draw a layer at opacity 0, so content fading in from 0 was first
     rastered, and its GPU pipelines first built, on the first frame of its
     own fade, and on the Pixel 10a that frame stalled for 50 to 130 ms. At
@@ -67,7 +67,7 @@ export function isReducedMotion(doc: MotionDocument | undefined = currentDocumen
 
 /** The `behavior` for a programmatic scroll: eased, or instant under reduced
     motion. One place, so a scroll jump cannot teleport in a single frame
-    without the motion setting having been asked (ticket 278). */
+    without the motion setting having been asked. */
 export function scrollBehavior(): 'auto' | 'smooth' {
   return isReducedMotion() ? 'auto' : 'smooth';
 }
@@ -104,22 +104,11 @@ export const DISTANCE_FALLBACK: Record<DistanceToken, number> = {
   '--motion-distance-md': 24
 };
 
-/** A duration token in milliseconds, whatever unit it is written in.
-
-    The unit has to be read rather than assumed, and this cost the app every
-    JS-driven animation it has - in production only, which is why it survived
-    from ticket 09 to phase 5 ticket 31 without anyone seeing it. The tokens
-    are authored as `240ms`, and `npm run dev` serves exactly that, so
-    parseFloat gives 240 and every sheet, toast, fan and crossfade runs at its
-    real duration. A production build minifies the stylesheet, and a CSS
-    minifier is free to rewrite `240ms` as `.24s` because to CSS those are the
-    same value. To parseFloat they are 240 and 0.24. So every transition that
-    reads its duration through here has been running in about a quarter of a
-    millisecond in every build anyone could install, while looking correct on
-    the machine it was written on.
-
-    Found because the calendar's new month label would not animate on a phone
-    (phase 5 ticket 31) and animated perfectly in dev. */
+/**
+  * Return the duration in milliseconds. Production CSS minifiers
+  * can rewrite 240ms as .24s. Parse the unit so both yield 240
+  * instead of running JavaScript animations a thousand times faster.
+  */
 function readCssMs(token: string, fallback: number): number {
   if (typeof document === 'undefined' || typeof getComputedStyle === 'undefined') return fallback;
   const raw = getComputedStyle(document.documentElement).getPropertyValue(token).trim();

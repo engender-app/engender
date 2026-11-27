@@ -1,41 +1,15 @@
 <script lang="ts">
-  /* The transport both players wear (ticket 46).
+  /* The native audio or video element still plays and decodes the
+     media. This shared transport supplies the controls, including a
+     waveform scrubber for audio. It uses the existing Melt slider
+     and needs no remote media or icons. The evaluated Plyr bundle
+     added 32.9KB JavaScript and 5.2KB CSS gzipped. Vidstack's core
+     alone was 22.2KB gzipped. Both had default CDN references.
 
-     Until this ticket a recording was handed to the reader in a bare
-     `<audio controls>` and a video note in a bare `<video controls>`, each
-     with a comment saying the browser's own transport was accessible and
-     familiar and that nothing asked for a custom look. Something asks now:
-     a recorded voice and a video note are two of the most personal things
-     this app holds, and both were drawn by another vendor in another
-     vendor's shapes - rounded pills, its own greys, a shadow under the
-     scrubber's thumb, none of it reachable by a token.
-
-     **Why this is not a library.** Plyr was the ticket's first candidate and
-     was measured rather than argued about: 32.9KB of JavaScript and 5.2KB of
-     CSS gzipped, twelve `box-shadow` declarations (three of them literals
-     with no custom property to override), thirteen distinct `border-radius`
-     values against this app's budget of one, and an icon sprite plus a blank
-     video that default to `cdn.plyr.io` in an app that has to work with the
-     radio off. Vidstack's `media-core` alone is 22.2KB gzipped before any UI
-     of any kind, and its production core names a CDN too. Both were being
-     bought for their control bar - and the control bar is the part this ticket
-     replaces, because the audio scrub has to be the recording's own waveform
-     and no library draws one for video as well. What is left to buy is
-     keyboard handling and ARIA, which melt (already a dependency, already
-     the app's one slider) gives for the price of a builder.
-
-     **What the native elements were buying, and how it is paid back.** Both
-     were keyboard-operable and screen-reader labelled with nobody doing any
-     work. So: the play control is a button with a label that changes with
-     its state, the scrub is a real `role="slider"` with min, max, now and a
-     spoken `aria-valuetext` (melt's), it answers the arrow keys in five
-     second steps and Home/End like a media element does, and `tests/
-     browser-tier/media-transport.mjs` drives both media by keyboard alone.
-
-     The engine is still the native element - this draws its transport and
-     never its own decoder. The element is passed in rather than made here
-     because the two callers differ in the one thing a transport does not
-     care about: one has a frame to show and one does not. */
+     Play is a labelled button. The slider exposes min, max, current
+     position and spoken time. Arrow keys seek in five-second steps
+     and Home and End move to the endpoints. The media transport
+     browser probe drives both players with the keyboard. */
   import { untrack, type Snippet } from 'svelte';
   import { Slider as MeltSlider } from 'melt/builders';
   import Icon from './Icon.svelte';
@@ -275,9 +249,7 @@
 </div>
 
 <style>
-  /* One row, 48 tall, the kit's one-line row (DIRECTION rule 6). Everything
-     in it is a block of 6 (rule 5) drawn in ink, a stripe or a line (rule 4);
-     there is no shadow and no tonal ground anywhere in here. */
+  /* A 48px row with a 6px block radius. Draw in ink, a stripe or a line. */
   .transport {
     display: flex;
     align-items: center;
@@ -406,8 +378,7 @@
 
   /* The playhead, on the same custom property as the fill so the line and
      the colour boundary are the same position by construction. */
-  /* Square ends, like every other piece of ink the app draws (DIRECTION
-     rule 9): 2 units for a series, and no cap on it. */
+  /* The playhead uses the chart series' 2-unit ink and square ends. */
   .transport-head {
     position: absolute;
     left: 0;

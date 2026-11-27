@@ -1,26 +1,9 @@
-/* The voice screen's task chooser (phase 11 pre-production ticket 44), as
-   the two things the ticket can actually be wrong about.
+/* Each voice task label fits its own segment while the track may scroll.
+   Check the explanation appears before the first benchmark and disappears
+   after it on a real journal. Sweep the shared compact control styles so
+   existing fits stay in place and long labels scroll without overlapping.
 
-   One: a label that does not fit. The compact segmented control divides its
-   track between its segments, and a segment paints outside its own box, so
-   a label wider than its share used to run over its neighbour - and the
-   chosen one, which is page-coloured, simply disappeared past the edge of
-   its pill. The rule here is per segment rather than per track: the track is
-   allowed to scroll, that is what its fade and chevron are for, and what
-   must never happen is a word painted where its own segment is not.
-
-   Two: the line that says which task keeps what. It is there for somebody
-   who has never made a benchmark and gone once there is one, so both halves
-   of that are checked against a real journal rather than against the markup
-   that renders them.
-
-   Three: every other compact control in the app. The rule that fixed the
-   voice strip lives in components.css and all of them read it, so the claim
-   written there - that a control whose labels already fitted is laid out
-   exactly as it was, and that the two which did not now scroll instead of
-   painting over themselves - is swept rather than asserted.
-
-   Run: node tests/voice-task-names.mjs   (dev server, no build needed) */
+   Run node tests/voice-task-names.mjs against the dev server. */
 import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { createServer } from 'vite';

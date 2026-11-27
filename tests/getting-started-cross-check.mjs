@@ -1,22 +1,11 @@
-/* Real-browser check for ux-carpet ticket 288: Home's Getting started rows
-   cross themselves off once the thing they suggest has been done.
+/* Sample each frame of Getting started. On day one no row has a
+   strike or check. Newly done rows crossfade icons and draw the
+   strike without intermediate gaps. Cold settled rows start crossed.
+   Work done away animates once on return. Check announcement, row
+   position, link, and un-crossing after deleting the last record.
 
-   What it holds, sampling every animation frame (requestAnimationFrame, not
-   a fixed wait):
-   - day one, nothing done: no row is crossed and `more` has no check at all;
-   - a row that becomes done while Home is on screen crosses: the check and
-     the old icon each pass through intermediate opacities, never both absent
-     or both fully present in a frame, and the strike draws in over several
-     frames rather than appearing at full width in one;
-   - a row that is already done on a cold arrival is crossed in the first
-     frame it exists and never animates;
-   - a row that became done while Home was off screen crosses on the way back,
-     and one that was already shown crossed does not;
-   - the done state is announced, the row stays in place and still links,
-     and deleting the last record un-crosses it.
-
-   Run against a dev server (no build needed):
-     node tests/getting-started-cross-check.mjs */
+   node tests/getting-started-cross-check.mjs
+   Uses the dev server. */
 import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { createServer } from 'vite';
@@ -151,7 +140,7 @@ try {
   await page.evaluate(WALK_FIRST_RUN_FINISH_EXPRESSION);
   await page.waitForSelector('[data-getting-started]');
 
-  /* An offer whose area is already pinned is left out (phase 14 ticket 18),
+  /* An offer whose area is already pinned is left out,
      and day one's default pins include milestones and care. Pinned there,
      Milestones and Care are not offered a second time. This check needs
      all five rows, so it pins only tryouts and comes back to Home. */

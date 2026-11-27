@@ -1,23 +1,11 @@
-/* The day view's cold load, one surface at a time (ux-carpet ticket 174).
+/* Cold-load Day under CPU throttling and sample from first paint.
+   The note and drug reads can initially answer empty before the day
+   supplies IDs. Hold ReadGate until both dependent reads settle.
+   Check the reveal stays visible after a late Android completion.
 
-   `marginNotesRead`/`doseDrugsRead` are chained off the day read over
-   whichever entries/doses it turns out to hold. Their query's very first
-   run answers for an empty id list before the day read has landed, and
-   `LiveQuery.loading` never reports loading again after that - so the day's
-   `ReadGate` used to open on the day read alone, and the entry card's margin
-   notes (and a dose row's drug name) landed a few frames later, inserting
-   height under content that had already settled.
-
-   Sampled from the document's first frame under a slowed CPU, the order a
-   phone always sees and the desktop sweep only caught 6 of 6 runs in dark.
-
-   Also checks that content stays visible when Android delivers the reveal's
-   completion callback after its animation ends (ux-carpet ticket 290).
-
-   Run against a demo build:
-     VITE_DEMO=1 npm run build
-     node tests/day-cold-load-yank.mjs [--runs 5] [--cpu 4] [--out <abs dir>]
-   Exits 1 on any finding. */
+   VITE_DEMO=1 npm run build
+   node tests/day-cold-load-yank.mjs [--runs 5] [--cpu 4] [--out <abs dir>]
+   Exit 1 on findings. */
 import { preview } from 'vite';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';

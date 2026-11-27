@@ -1,4 +1,4 @@
-/* Home's recent entries, grouped into days (ux-carpet ticket 13).
+/* Home's recent entries, grouped into days.
 
    This used to cap what Home drew to five entries total and head a
    truncated day with how many it actually held ("3 that day" over one
@@ -24,7 +24,7 @@ export interface EntryDayGroup {
 
 /** The entries grouped by day, in the order the read handed them over.
 
-    Not Home's alone (phase 5 ticket 22): a day, a search result set and the
+    Not Home's alone: a day, a search result set and the
     starred shelf all group the same way. */
 export function entryDayGroups(entries: Entry[]): EntryDayGroup[] {
   const groups: EntryDayGroup[] = [];

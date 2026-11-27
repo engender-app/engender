@@ -285,7 +285,7 @@ test('every section declares its discard as single-table deletes or a native FTS
   }
 });
 
-/* What travels (ticket 04, ADR-0049): the real registry against the spec's
+/* What travels (ADR-0049): the real registry against the spec's
    own worked cases, not a restatement of whatever archiveSections.ts
    happens to say - each assertion below is a fact settled in
    .scratch/phase-7/portability/spec.md, so a wrong declaration here fails

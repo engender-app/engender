@@ -1,5 +1,4 @@
-/* Screenshots of the tile, one crop per shape per palette per theme
-   (redesign ticket 24).
+/* Screenshots of the tile, one crop per shape per palette per theme.
 
    Crops rather than pages: what this ticket changed is the tile, and a
    review page of whole screens is how a reviewer ends up judging the parts

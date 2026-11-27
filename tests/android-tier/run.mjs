@@ -1,38 +1,15 @@
-/* Android tier (ticket 11): the checks that need a real Android runtime.
+/* Run the Android instrumentation suite with npm run test:android.
+   Native checks run on API 26 and the current Android image. They cover
+   the APK's SQLCipher features (ADR-0020), native loading and the Keystore
+   authorization boundary at API 30.
 
-   Neither the Node tier nor the browser tier can answer what this asks.
-   Whether the native SQLite has FTS5 and window functions is a property of
-   the build that ships in the APK, and ticket 08 measured the framework
-   SQLite on API 35 to have no FTS5 at all - which is one of the two reasons
-   the journal is on SQLCipher (ADR-0020). So it is asserted here, on a
-   device, rather than assumed anywhere.
+   Only the current image runs the WebView contract and encryption suites.
+   The API 26 image's Chrome 69 lacks OPFS and current CSS transform support.
+   A real API 26 device can run the same bundle with a current WebView.
 
-   Two emulators, because the spec asks for API 26 and a current Android.
-   They do not run the same set, and the reason is worth knowing.
-
-   The native checks run on both. That is the half that varies with the
-   platform: the framework, the linker and what the app process can load -
-   and, since ticket 13, what Android Keystore does with the journal's data
-   key, whose authorization model changed at API 30.
-
-   The WebView suites - the contract suite and the encryption claim gate -
-   run only on the current Android. They need a WebView,
-   and Android updates its WebView separately from the OS, so an API level
-   says nothing about what the app runs in. The API 26 emulator image ships
-   Chrome 69 from 2018, which has no OPFS. The current WebView 104 floor
-   also covers the computed CSS transforms used by navigation, so the app
-   cannot start there at all. A real API 26 phone with a current WebView runs
-   the same bundle as an API 35 one, and that is what the API 35 run covers.
-
-   Set ANDROID_TIER_AVDS to a comma-separated list to run others; an AVD
-   whose name is not known here gets the full set.
-
-   Run with `npm run test:android`.
-
-   It prints PASS/FAIL lines like the browser tier's run.mjs. The tests
-   themselves live in android/app/src/androidTest/; this script builds the
-   probe bundle they serve, brings the emulators up and turns the
-   instrumentation output into those lines. */
+   ANDROID_TIER_AVDS accepts a comma-separated list. Unknown AVD names run
+   every suite. The runner builds the probe bundle, starts the emulators and
+   reports the results of tests in android/app/src/androidTest/. */
 
 import { beginAndroidTier, androidBuildIdentity, writeAndroidTierEvidence } from '../../scripts/android-tier-evidence.mjs';
 import { spawn, spawnSync } from 'node:child_process';
@@ -87,10 +64,10 @@ const BOOT_TIMEOUT_MS = 300_000;
 /** The AVDs whose WebView is too old to start the app, so only the native
     half is asked of them. See the header for why this is not a gap. */
 const NATIVE_ONLY = new Set(['gd26']);
-/* The three suites that need no WebView: what the native SQLite build has
-   (ticket 11), what Android Keystore does with the journal's data key
-   (ticket 13), and which authenticators BiometricManager reports available
-   (ticket 09). The photo initialization checks also run without a WebView,
+/* The three suites that need no WebView: what the native SQLite build has,
+   what Android Keystore does with the journal's data key,
+   and which authenticators BiometricManager reports available.
+   The photo initialization checks also run without a WebView,
    and so do the capture-on-leave and disguise capture checks, which need an
    Android below 13 to reach the FLAG_SECURE-only path. These are worth having on the older emulator
    in particular - below API 30 the Keystore key is authorized by time

@@ -1,23 +1,9 @@
-/* Once the journal locks, nothing derived from it is readable outside the
-   encrypted database (security-scan ticket 08: GD-014, GD-023, GD-035,
-   GD-038, GD-040, GD-041, GD-043).
-
-   Drives the demo journal on the dev server, as feedback-concealment-check
-   does, and checks five things across a mid-session lock:
-
-   - Web Storage: after tile and stock-notice snoozes, letters read and met,
-     Home and a category screen visited and a search result opened, neither
-     localStorage nor sessionStorage names a tile, a category, a letter or a
-     search, and a legacy fixture of the old plaintext keys is moved into the
-     journal and deleted on the next unlock, an expired snooze with it.
-   - Disguise: with a flag palette and disguise on, the boot mirror and the
-     locked screen carry only the neutral palette, and the real one is back
-     after unlocking.
-   - Feedback: a failed unlock and a reset leave no journal text in a toast or
-     a live region.
-   - Commands: a quick-add fan open when the lock lands takes no click, real
-     or scripted, into the next session.
-   - Search: what Search holds for the way back never reaches Web Storage. */
+/* Lock the demo journal mid-session. Confirm Web Storage reveals no
+   snoozes, categories, letters or search state and old plaintext keys
+   migrate and disappear on unlock. Disguise keeps palette mirrors
+   neutral until unlock. Failed unlock and reset clear journal text
+   from notices and live regions. An open quick-add fan cannot carry
+   a real or scripted click into the next session. */
 
 import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';

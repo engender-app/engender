@@ -1,4 +1,4 @@
-/* The first-load ratchet (phase 9 audit ticket 01): a first visit's shipped
+/* The first-load ratchet: a first visit's shipped
    bytes and file count, watched the same way every other cost in the repo
    is - measured, budgeted, and failing loud rather than waiting for an
    audit to notice they grew. */

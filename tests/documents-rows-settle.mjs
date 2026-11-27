@@ -1,22 +1,10 @@
-/* The documents list, cold: nothing in the first group changes height after
-   it first paints (phase 12 ux-carpet ticket 212).
+/* Cold-load /media/documents over a filled demo journal. Sample
+   the first group and its rows after each paint. Late target names
+   and sizes must leave the group's height fixed after first paint.
+   Throttle the CPU to expose delayed reads.
 
-   Each document row carries a second line naming what it is filed under,
-   resolved through four reads of their own (documentTargets.svelte.ts), and
-   the list carries a size line read on its own too. When one of them
-   answered after the documents did, the line arrived in a row already on
-   screen: the row grew 40 -> 59px, and the whole first group 11px, in one
-   frame, under the gate's fade. It happened in about 1 of 15 cold loads at
-   full speed and 1 of 3 at 4x CPU, so this runs slowed down.
-
-   Cold-loads /media/documents over the demo journal with every feature
-   filled (the fixture files paper under milestones, procedures and goals),
-   samples the first group and everything in it after every paint, and fails
-   if the group's height changes between two frames.
-
-   Against a demo build:
-     VITE_DEMO=1 npm run build
-     node tests/documents-rows-settle.mjs [--runs 12] [--cpu 4] [--root <built tree>] */
+   VITE_DEMO=1 npm run build
+   node tests/documents-rows-settle.mjs [--runs 12] [--cpu 4] [--root <built tree>] */
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchChromium, settlePage, previewBuild } from './browser-harness.mjs';

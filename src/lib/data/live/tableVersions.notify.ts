@@ -1,4 +1,4 @@
-/* The rune-free half of the tableVersions seam (ticket 27): the
+/* The rune-free half of the tableVersions seam: the
    write-announcement notify.
 
    `tableVersions.svelte.ts` owns the reactive version state and, being

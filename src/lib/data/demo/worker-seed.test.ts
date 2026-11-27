@@ -177,13 +177,13 @@ test('failed cold preparation retains migrated schema and leaves the persona and
 });
 
 
-/* One step short of the v88 baseline (after-release ticket 42): fixed rather
+/* One step short of the v88 baseline: fixed rather
    than read off LATEST_SCHEMA_VERSION, which a later migration moves past it. */
 const BELOW_BASELINE = 87;
 
 test('an authored journal below the baseline is refused before preparation touches it', async () => {
-  /* A development build's journal from partway up the retired chain
-     (after-release ticket 42): it has a schema, rows and preferences, and the
+  /* A development build's journal from partway up the retired chain:
+it has a schema, rows and preferences, and the
      steps that would carry it to the baseline are gone. Preparation must
      neither seed over it nor clear it. */
   const db = await migratedDb();

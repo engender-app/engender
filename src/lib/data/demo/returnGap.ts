@@ -1,26 +1,10 @@
-/* The demo journal five weeks after the person stopped writing in it
-   (phase 8 features ticket 05, ADR-0062).
+/* Seed the usual demo persona against an anchor five weeks ago,
+   beyond the return screen's three-week threshold. Add a
+   letter unlock, milestone and era inside the gap. The ordinary seeds
+   would move their dates with the anchor and supply no era.
 
-   The return surface is the one screen in the app whose whole condition is
-   that nothing has been written for three weeks, so neither of the other
-   two seeds can show it: both stop on today, and a journal that stops on
-   today is not a return. PRODUCT.md's line is that demo data renders every
-   screen, and this is what that costs here.
-
-   Nothing new is invented for it. It is the persona plus every other area,
-   seeded against an anchor day five weeks back so the whole journal stops
-   there, and then three rows dated inside the gap - the arrivals the app
-   made while nobody was looking. Those three are the ones neither existing
-   seed could produce by being shifted: a letter unlocks and a milestone
-   lands on days their own seeds place relative to the anchor, so shifting
-   the anchor moves them out of the gap along with everything else, and
-   neither seed writes an era at all.
-
-   Five weeks rather than the three the threshold asks for, because three
-   weeks exactly is the boundary case and a review build should show the
-   ordinary one. The other three kinds of row need no help: the running wear
-   session the full fixture leaves behind is still running, and the persona's
-   weekly injections leave slots the schedule expected inside the gap. */
+   The existing wear session stays running and the weekly injection
+   schedule leaves expected slots in the gap. */
 
 import type { Journal } from '../journal/journal';
 import { todayEpochDay } from '../epochDay';
@@ -42,24 +26,10 @@ export async function seedReturnGap(
   await seedPersonaJournal(journal, anchor, locale);
   await seedFullFixture(journal, anchor, locale);
 
-  /* One regimen episode active through the gap, not three.
-
-     The full fixture runs an injectable estradiol episode alongside an oral
-     progesterone one and an oral non-hormone one (phase 8 features ticket
-     42) concurrently on purpose - it is the shape concurrent episode
-     handling exists for - and `doses.getComparison` answers
-     `multipleEpisodes` for more than one active at once, because
-     concurrent episodes have no single schedule to compare a gap against.
-     That is the dose log's own answer and the return surface honours it,
-     which means the unedited fixture can never show the dose row at all:
-     it is the one row on this screen that no review build could reach.
-
-     So every episode but the estradiol one ends the day the journal
-     stops. An ordinary thing to have happened, and it leaves exactly one
-     schedule with slots inside the gap. Somebody on several concurrent
-     regimens still gets no dose row on their own return surface, which is
-     a real limit rather than a demo artefact, and it belongs to
-     `getComparison` rather than here. */
+  /* End the demo's other episodes when the journal stops, leaving only
+     estradiol active through the gap. doses.getComparison returns
+     multipleEpisodes for concurrent regimens. With no single schedule
+     to compare, the return screen omits its dose row. */
   for (const episode of await journal.regimen.getEpisodes()) {
     if (episode.drug !== say('Estradiol valerate', 'Walerianian estradiolu')) await journal.regimen.endEpisode(episode.id, anchor);
   }
@@ -70,7 +40,7 @@ export async function seedReturnGap(
      from `anchor` - `persona`'s eras are dated relative to `anchor` too
      (it's seeded with `anchor` as its own "today"), and a fixed offset
      reached backward into them, tripping eras.ts's no-overlap invariant and
-     leaving the whole reseed clearing itself out on the throw (ticket 23). */
+     leaving the whole reseed clearing itself out on the throw. */
   await journal.eras.upsertEra({
     name: say('Second year', 'Drugi rok'),
     startEpochDay: firstDayAfterPersonaEras(persona(anchor).eras),
@@ -95,7 +65,7 @@ export async function seedReturnGap(
 }
 
 /** The day after the latest of the persona's own eras ends, so an era
-    started there can never overlap one of them (ticket 23). Exported for
+    started there can never overlap one of them. Exported for
     its own unit test - `seedReturnGap` as a whole needs a DOM for the
     photos `seedPersonaJournal` writes, so it can't run in the Node tier. */
 export function firstDayAfterPersonaEras(personaEras: readonly { endEpochDay: number }[]): number {

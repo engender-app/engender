@@ -1,59 +1,8 @@
-/* The paper a transition generates (phase 8 features ticket 52, ADR-0065,
-   CONTEXT: "Document"): an opinion, a diagnosis, a court ruling, a referral,
-   a carry letter. Held beside the photos, under the same data key, because
-   the alternative is that file sitting in a phone's Downloads folder.
-
-   Flat, so its three writes come from flatArea.ts and only the reads are its
-   own - and with them ADR-0053's delete contract by construction. The record
-   is a day, a title, a stored file, and (ticket 56) an optional link to a
-   goal, a milestone, a procedure or an episode.
-
-   The link travels as two flat columns, `targetKind`/`targetId`, rather than
-   one nested field: `flatArea` maps one domain field to one column with no
-   join to offer (flatArea.ts's own header), the same reason `milestone`'s
-   `procedureId`/`tryoutId` are flat fields on `Milestone` rather than a
-   nested owner. `documentTarget()` below is the combined read a caller
-   wants instead of the two apart.
-
-   The link is nulled by the three deletes that can reach it -
-   `deleteMilestone`, `deleteProcedure`, `deleteCustomGoal` - each running a
-   cross-table UPDATE before its own row's DELETE, the same order the first
-   two already use for `milestone.procedure_uuid`/`tryout_uuid`. A regimen episode
-   is the one kind with no delete to null it from (regimen.ts: "episodes are
-   never deleted"), so a link to one cannot dangle in practice today. A
-   built-in roadmap goal is the same by construction: it has no row, so there
-   is nothing to delete (roadmap.ts, ticket 69/ADR-0068).
-
-   **The app never reads a document.** No OCR, no text extraction, nothing
-   about what the page says (ADR-0065). That is why there is no method here
-   that returns anything but the fields somebody typed, and why the search
-   registry matches this area on `title` alone.
-
-   **Files before rows, rows before files are forgotten.** The same ordering
-   rule photos.ts states in full, for the same reason: `addDocument` writes
-   both files and then inserts the row, `deleteDocument` deletes the row and
-   then the files. A crash in either gap leaves a file no row references -
-   which `sweepOrphanPhotos` reclaims on the next boot, and which is why
-   `document` had to be added to the list of tables that sweep reads - never
-   a row pointing at a file that is not there.
-
-   An image is normalised on the way in by the existing path
-   (photos/normalize.ts), which is what strips its metadata (ADR-0015) and
-   produces the thumbnail the document's own screen draws, and gets the
-   same opaque `<uuid>.jpg` a photo carries (photos/names.ts). A PDF
-   (ticket 53, ADR-0065) cannot go through that path - canvas normalisation
-   is image-only - so it is stored exactly as it arrived, as `<uuid>.pdf`.
-   That extension is this module's own doing, never trusted from the file
-   that arrived, and it is what tells the two kinds apart afterwards.
-
-   Both kinds have a thumbnail beside them: an image's falls out of
-   normalisation, and a PDF's is its first page drawn once at import
-   (ticket 55, documents/pdf.ts). The names differ only in what they are
-   derived from, which `documentThumbName` below owns so that the sweep,
-   the archive and the screen cannot each have their own idea of it. A PDF
-   the renderer could not read has no thumbnail file at all, and every one
-   of those readers already treats a missing file as nothing to show
-   rather than as an error. */
+/* Store documents under the photo data key (ADR-0065). Search titles only.
+   Normalize images to remove metadata (ADR-0015). Keep original PDF bytes
+   and render a first-page thumbnail when possible. Share documentThumbName.
+   Write files before inserting rows and delete rows before removing files.
+   The orphan sweep handles interruptions. Clear links before deleting targets. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import { afterCommit } from '../sqlite/transactor';
@@ -203,7 +152,7 @@ export function makeDocumentsArea(driver: SqliteDriver, files: PhotoFileStore): 
       if ('pdfBytes' in content) {
         const fileName = `${uuid}.pdf`;
         await files.write(fileName, content.pdfBytes);
-        // No page where the renderer could not read the file (ticket 55).
+        // No page where the renderer could not read the file.
         // The document is still filed: what it holds is the person's, and
         // it can still be written back out from its own screen.
         if (content.thumb) await files.write(documentThumbName(fileName), content.thumb);

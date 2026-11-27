@@ -1,24 +1,8 @@
-/* Compressing a video note that came out over the ceiling (ticket 22).
-
-   Browser-only, so it lives beside limits.ts rather than inside it: the
-   arithmetic that decides whether to re-encode and at what rate is pure and
-   Node-tested, this is the half that needs a canvas. The same division
-   normalize.ts and photos/bytes.ts already draw.
-
-   There is no encoder in this app to call, so the re-encode is the only
-   thing a browser offers: play the captured file, draw each frame to a
-   canvas, and record the canvas back through MediaRecorder at a lower
-   bitrate - recordTimelapse's mechanism (photos/journey-render.ts), pointed
-   at a video source instead of a list of photos. Consequences worth knowing:
-
-     - It runs in real time. A 30-second note costs 30 seconds, which is why
-       limits.ts sizes the capture bitrate to keep this the exceptional path
-       rather than the routine one.
-     - The audio is carried over as a track rather than re-decoded, so speech
-       survives whatever the picture gives up.
-     - Frames come from the decoder, so a source the browser cannot play
-       yields null and the caller keeps the capture. Storing a too-big file
-       is a better outcome than losing the recording. */
+/* limits.ts decides the bitrate. Here, play the video into a canvas
+   and record it with MediaRecorder at that bitrate, carrying the
+   audio track through. Re-encoding takes the clip's full duration.
+   If the browser cannot decode it, return null so the caller keeps
+   the original capture. */
 
 import { VIDEO_MAX_DURATION_MS, frameSize, type VideoBitrates } from './limits';
 

@@ -1,33 +1,10 @@
-/* What the open journal and its data key are handed out through, so that a
-   lock can take both away (after-release ticket 10).
+/* Gate access to the journal and data key. Calls wait for the next open
+   when the gate has no value. A lock waits for active work before closing
+   and releasing the old value.
 
-   Before this, each was a value set once per page and a promise resolved
-   once beside it: fine while a journal stayed open until the tab closed,
-   and the reason a lock on the web could only hide the screen. A lock now
-   closes the database and lets go of the key, and that needs three things
-   neither shape had:
-
-     - calls made while nothing is open wait, and run against whatever opens
-       next rather than against what was open before;
-     - a lock waits for every call already running to settle before the
-       database under it closes, so a save in flight lands rather than being
-       cut off by the close;
-     - after the lock, nothing in here still holds the old value.
-
-   And one thing the queue must not do (security-scan ticket 08, GD-040): a
-   command - a call that changes the journal - made after a session closed
-   was made by whoever stood at the locked screen, not by the person who
-   unlocks the next one. Quick add stayed on screen for its fade after a
-   lock, and a tap in that window waited here and wrote a tally into the
-   next session. So a lock ends the session it closes (`end`), and a
-   command made after that, until the next open, is rejected; a read still
-   waits. A close that is not a lock - the page put away for the back/forward
-   cache, a reopen being prepared - ends nothing, and its commands wait as
-   they always did, as do boot's before the first open.
-
-   Rune-free so the Node tier reaches it. live/journal.svelte.ts puts its
-   facade behind one of these and boot.svelte.ts keeps the data key in
-   another. */
+   end() closes the session to new commands until unlock. Reads may wait.
+   Startup and temporary closes for navigation or reopen still allow
+   commands to queue. Keep this module rune-free for Node tests. */
 
 /** A command made after a lock ended the session it belonged to. */
 export class SessionClosedError extends Error {

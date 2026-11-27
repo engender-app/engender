@@ -1,26 +1,8 @@
-/* A set of things that stays the same set and changes shape (phase 10
-   redesign ticket 10).
-
-   The Journal door draws its month twice: as a strip of thin bars under the
-   header, and - when somebody opens it - as the heat map's seven-column
-   grid. The two are the same thirty days. Swapping one for the other is a
-   cut, and a cut here is the exact thing DIRECTION.md's motion brief rules
-   out: a month does not stop existing and a different month appear, it
-   opens.
-
-   So each day travels from where it stood to where it now stands. The
-   arithmetic is FLIP's: measure before, let the layout change, measure
-   again, then start every cell at the difference and release it. What is
-   here is the difference only - the measuring and the animating need a DOM
-   and live in the screen, the same division indicator.ts keeps with
-   AppNav.svelte.
-
-   Scale rather than width and height, because a cell going from 8x24 to
-   40x40 is a compositor's job: a transform costs nothing per frame, and
-   animating the box would relay out the grid thirty times a frame. It does
-   mean a cell's 1px edge and its 2px corner ride the scale on the way,
-   which at these sizes is a pixel of softness for the length of the travel
-   and nothing at rest. */
+/* Regroup the Journal's month strip into a grid without cutting between
+   two views of the same days. The screen measures cells before and after
+   layout and runs the FLIP animation. This module computes the transform.
+   Scaling an 8×24 cell to 40×40 keeps each frame off the layout thread.
+   The 1px edge and 2px corners scale during travel and settle at rest. */
 
 export interface CellBox {
   /** The day this cell is, so the two measurements can be paired. Cells

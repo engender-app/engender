@@ -22,46 +22,16 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
-/**
- * Phase 9 audit ticket 06's pick channel, exercised end to end through the
- * real WebView: the registration this device's WebView gets, a token
- * redeemed for its exact bytes, a token nobody handed out refused, and the
- * measurement the ticket asks for - what a 25 MB scan costs the main thread
- * through each of the two transports.
+/** Checks picked file transport after the chooser closes, in the app's real
+ * WebView. Seed tokens through {@link PickedFiles}, the store the plugin
+ * uses. The probe checks channel registration, exact bytes and refusal of
+ * unknown tokens through {@code evaluateJavascript}.
  *
- * <p>Tokens are seeded with {@link PickedFiles} directly rather than by
- * driving a real pick: an instrumented test runs in the app's own process,
- * so it is the same static store {@code PhotosPlugin} writes to, and the
- * half this is about is everything after the file chooser closes.
- *
- * <p>Plain {@code evaluateJavascript} rather than a built probe bundle, for
- * the reason {@code PhotoWriteChannelTest} gives: this needs only the
- * WebView's own APIs and the plugins {@code MainActivity} already registers.
- *
- * <p>The fallback's half is phase 9 audit ticket 14's. Until that ticket a
- * 25 MB pick through base64 did not complete on this emulator at all - the
- * whole encoding was one Java String, 34 MB against a 192 MB growth limit,
- * and the allocation was refused - so the comparison here had to be made at
- * a size the fallback survived. It is a piece per bridge call now, so both
- * transports are measured at the ceiling, which is the size the tickets are
- * about.
- *
- * <p><b>What it measured, on tracker35 (API 35 emulator, WebView 124),
- * 2026-09-06.</b> Kept here rather than only in logcat so the next reader
- * has the numbers without a device:
- *
- * <ul>
- *   <li>25 MB over the channel: 0.0ms decode, 61.1ms round trip.</li>
- *   <li>25 MB through the chunked fallback: 34 chunks, 1066.4ms of decode,
- *       3831.4ms round trip - against the same file over the channel in the
- *       same run at 0.0ms and 39.1ms. So the gap between WebView 87 and 105
- *       costs about four seconds of a person's time for a scan at the
- *       ceiling, where before ticket 14 it cost them the scan.</li>
- * </ul>
- *
- * <p>A phone's own figures will be better and are
- * {@code .scratch/pre-production-human-steps/04}'s to take; these are
- * enough to say which transport costs what.
+ * <p>Both transports are measured with a 25 MB file. On tracker35
+ * (API 35, WebView 124, 2026-09-06), the channel took 0.0ms to decode and
+ * 61.1ms round trip. Base64 took 34 chunks, 1066.4ms to decode and 3831.4ms
+ * round trip. The same run measured the channel at 0.0ms and 39.1ms.
+ * These figures describe the emulator. Measure a phone separately.
  */
 @RunWith(AndroidJUnit4.class)
 public class PhotoPickChannelTest {
@@ -250,24 +220,10 @@ public class PhotoPickChannelTest {
     }
 
     /**
-     * The before-and-after at the size the tickets are about: the same 25 MB
-     * scan fetched over each transport, with the blocking span of each
-     * logged.
-     *
-     * <p>This is also phase 9 audit ticket 14's acceptance - the fallback
-     * reaching the ceiling at all. Before it, this leg did not finish on
-     * this emulator: the encoding was one 34 MB Java String against a 192 MB
-     * growth limit and the allocation was refused, so a scan picked on a
-     * WebView below 105 was refused with it. The loop below is what
-     * picker.ts does, written out here because an instrumented test drives
-     * the WebView's own APIs rather than the app's bundle.
-     *
-     * <p><b>What this does not prove.</b> This WebView is 124, so the
-     * fallback runs here only because the test calls the plugin method
-     * directly - no WebView between 87 and 105 was involved. That is enough
-     * for the ticket because what failed at the ceiling was a heap
-     * allocation rather than a WebView API, and this device's heap refuses
-     * it the same way an older device's would.
+     * Fetch the same 25 MB scan over both transports and log blocking
+     * time. Mirror picker.ts's fallback read loop to check the ceiling
+     * without a single large allocation. This WebView is 124, so call
+     * the fallback directly. The check covers heap use at the ceiling.
      */
     @Test
     public void bothTransportsAtTheCeiling() throws Exception {

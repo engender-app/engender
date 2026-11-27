@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* Progress photos (pre-release-human 12, bug 25): shots taken on purpose
+  /* Progress photos: shots taken on purpose
      in one of three poses, a timeline per pose, and the wipe over any two
      shots of the same pose.
 

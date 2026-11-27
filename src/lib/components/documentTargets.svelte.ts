@@ -1,5 +1,4 @@
-/* The four live reads behind a document's link (phase 8 features ticket 56,
-   ADR-0065), wired once rather than at both call sites: the picker walks
+/* The four live reads behind a document's link (ADR-0065), wired once rather than at both call sites: the picker walks
    every kind, and the document's own screen resolves the one it is filed
    under back to a name. Before this the two components declared the same
    four `liveList`s and each carried its own four-way cascade over the kinds.
@@ -69,7 +68,7 @@ export function documentTargets() {
          nothing to sort on: the bundled pack keeps its own order, which is
          the order the roadmap screen draws, and custom goals follow it
          newest first. The pack's goals are offered only while the roadmap
-         shows them (functional audit ticket 34), so a document cannot be
+         shows them, so a document cannot be
          filed against a step the person switched off. */
       kind: 'goal',
       heading: DOCUMENT_TARGET_SECTION_HEADING.goal(),
@@ -80,7 +79,7 @@ export function documentTargets() {
         ...(polishLegalStepsShown(prefs.roadmapPolishStepsChoice)
           ? [
               ...POLISH_PACK.goals.map((goal) => ({ id: goal.key, title: roadmapGoalTitle(goal.key) })),
-              /* The institutions (functional audit ticket 35) sit under the
+              /* The institutions sit under the
                  same switch and file under the same 'goal' link: the six
                  that were steps kept their keys, so their paper did not
                  move. */

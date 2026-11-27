@@ -1,4 +1,4 @@
-/* The Android ten-year benchmark (phase 2 ticket 20).
+/* The Android ten-year benchmark.
 
    The web half of this measurement lives in tests/long-journal/probe.ts and runs
    under headless Chrome with OPFS and the web SQLite driver. This probe is the
@@ -256,8 +256,7 @@ async function run(days: number) {
 
   /* Over the recording adapter, so the mount budgets mean the same thing
      here as they do on desktop: the same statements counted the same way,
-     with the Capacitor bridge underneath instead of a worker (phase 8
-     audit ticket 01). */
+     with the Capacitor bridge underneath instead of a worker. */
   const recorder = recordingDriver(reopened.driver);
   const reopenedJournal = openJournal(recorder.driver, reopenedFiles);
   const rowsBeforeSweep = await reopenedJournal.photos.inJournal();

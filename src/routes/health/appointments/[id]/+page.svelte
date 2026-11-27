@@ -1,29 +1,12 @@
 <script lang="ts">
-  /* One appointment, on its own screen (prh12). Tapping a visit or a wait
-     on the appointments list used to open an editor sheet over the list;
-     everything about one appointment is laid out here instead and edited
-     where it stands, the way a procedure's own screen does it
-     (`/health/surgery/[id]`, prh12 bug 20).
+  /* Each appointment edits in place. Show its heading, state-specific
+     content, surgery journey when it is a consult, fields and Delete.
 
-     Same order whatever state it is in: what it is and when (the heading),
-     then what the visit needs in that state, then the surgery journey it
-     belongs to where it is a consult, then its own facts as fields, then
-     Delete. The state is one of three, read off the day it is on:
-
-     - upcoming (today counts until the day is over, appointments.ts's own
-       line): "What to raise", the standing prep list, then the note. The
-       list is unowned (ADR-0066), so every upcoming visit's screen shows the
-       same one, the one taken into any appointment.
-     - past: the note, which is where an outcome goes, then the debrief -
-       the entry where one was written, the offer on the most recent visit
-       where it is still open.
-     - a wait (no day yet, functional-audit ticket 26): its dated updates,
-       then the note. A visit that began as a wait keeps its updates once
-       it has a day.
-
-     No document can be filed against an appointment (DocumentTargetKind is
-     closed at four kinds, ADR-0065), and an appointment holds no photos, so
-     neither has a section here. */
+     Upcoming includes today (appointments.ts) and shows the shared prep
+     list (ADR-0066) and note. Past shows the note and debrief. Offer a
+     debrief only for the latest visit while it is still open. Undated
+     waits show dated updates before the note and retain them after
+     scheduling. Appointments hold neither photos nor documents (ADR-0065). */
   import { undoable, offerUndo } from '$lib/stores/deleteUndo';
   import type { UndoableDelete } from '$lib/data/journal/undoableDelete';
   import { journalTextAutocomplete } from '$lib/platform';
@@ -278,8 +261,7 @@
     newUpdateText = '';
   }
   const updateDelete = rowWriter();
-  /* One tap, no confirmation: the toast's Undo is the way back (functional
-     audit ticket 46). */
+  /* One tap, no confirmation: the toast's Undo is the way back. */
   async function deleteUpdate(update: AppointmentStatusUpdate) {
     let deletion: UndoableDelete | undefined;
     const write = async () => {
@@ -499,8 +481,8 @@
           <button class="btn btn-primary press" data-save-appointment disabled={!canSaveDetails} onclick={saveDetails}>
             <span>{m.save_changes()}</span>
           </button>
-          <!-- The committed day, even while the fields hold another one
-               (docs/ui-copy.md); a wait has nothing to hand to a calendar.
+          <!-- The committed day, even while the fields hold another one;
+               a wait has nothing to hand to a calendar.
                It opens its own height when a save gives a wait its day, so
                Delete travels down rather than jumping. -->
           {#if stored.epochDay !== null}

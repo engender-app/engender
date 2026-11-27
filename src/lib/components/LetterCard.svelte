@@ -1,49 +1,17 @@
 <script lang="ts">
-  /* One time-capsule letter, in whichever of its states it is in (phase 10
-     redesign ticket 45).
+  /* A sealed letter shows its wait in 40px role-coloured blocks. The blocks
+     and the written duration share durationParts. The card exposes calendar
+     handoff and deletion. Its contents stay inaccessible until opening day.
 
-     The screen used to draw all of them as the same list row: a lock glyph,
-     the word "Sealed" and `Opens 19 Aug 2031` in secondary grey - five years
-     of waiting set in the same shape and the same weights as an ordinary
-     record. This is the only feature in the app with a refusal
-     built into it, and the row said nothing about it.
+     An unread open letter shows a marker beside the date. Once read, the
+     folded card clamps the same paragraph to two lines. Opening removes the
+     clamp and reveals the paragraph downward, keeping its typography and
+     starting height.
 
-     **Sealed.** The wait is the card's own number, on blocks of the area's
-     stripe at display size (rule 2's "a number on a block, 40px", rule 3's
-     "every colour is a stripe, and it is a block"). One block per unit,
-     which is one or two of them - `durationParts` decides which, and
-     `fmtDuration` renders the same parts as a sentence elsewhere, so a card
-     and a sentence about one gap can never disagree. Nothing on it is
-     pressable towards the text, because there is no text to reach: the
-     calendar handoff is its own control at the trailing edge, beside
-     deleting, and the card itself answers no press at all. The refusal is
-     the feature (spec: sealed contents are out of scope under any
-     circumstance) and this is what it looks like.
-
-     **Open.** The day it was written and, once it has been read, its first
-     lines, which is what somebody with ten of them scans for. Until then a
-     mark beside the date instead of any text - the "ready" reading, which
-     Today's live tile already carries and which this screen only has to not
-     lose.
-
-     **The unfold is a blind, and that is why the folded card and the open
-     one are the same paragraph in the same type.** Folded is the whole
-     letter clamped to two lines; open is the clamp taken off. So the first
-     frame of an opening is pixel-for-pixel the frame before it - the box is
-     still its old height and the two lines under the date are the two lines
-     that were already there, or for a first reading no lines, with the text
-     waiting under the folded edge - and everything after it is the box being
-     uncovered downwards. Nothing is swapped, nothing appears at its
-     destination, and no frame has anything in neither place.
-
-     `maskHeight` rather than `resize`, and that is the whole of the
-     difference: `resize` watches for a change and starts its animation from
-     a ResizeObserver, which is delivered after the frame that laid the new
-     height out has already painted. Measured on this card it cost one frame
-     at 149px before the travel from 105px began - the destination painted
-     first, then the journey. `maskHeight` is called at a known moment with a
-     height its caller measured before the layout changed, which is exactly
-     what an opening is. */
+     Measure the folded height before changing layout and pass it to
+     maskHeight. ResizeObserver would start after the expanded box had
+     already painted, which let a 149px frame appear before the motion
+     from 105px. */
   import { tick, untrack } from 'svelte';
   import { navigating } from '$app/state';
   import Icon from './Icon.svelte';

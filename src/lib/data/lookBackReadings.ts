@@ -1,22 +1,8 @@
-/* The Look back door's readings, as a set (phase 11 ticket 07).
-
-   The door used to be a scroll of cards, every one drawn in full at the
-   span the rail points at. It is a grid of tiles now, each stating one
-   headline figure for the span and opening a screen of its own where the
-   full card draws - so the door says several things in one viewport and a
-   person opens the one they meant. What this module owns is the part of
-   that which is not a component: which readings there are, how a tile
-   addresses its screen and how a screen reads the span back, and the
-   headline pick that is arithmetic rather than a read.
-
-   Body map, compare and the counters are readings on the door too, but
-   they were screens already and keep their addresses; only the three below
-   open under `/stats/`. Functional audit ticket 12 cut three: Words,
-   Highest days, and affirming themes, which became the share ring's "on
-   good days" filter on Tags. Alicja's sign-off on that ticket took the
-   mood strip off its own screen: one chart behind a tile was a screen for
-   nothing, so it draws on the door over the tiles. Ticket 31 added the
-   fourth, what the span cost, per currency. */
+/* Own the Look back tiles' reading kinds, routes, span parsing and
+   headline calculations. The door shows summaries and subroutes
+   show full cards. Body map, Compare and counters keep their existing
+   routes. The mood strip stays on the door, Tags owns the good-days
+   filter, and Costs shows totals per currency. */
 import type { RegionSideReading } from './bodyMap';
 import { epochDayFromDateInputValue } from './epochDay';
 import { DEFAULT_SPAN_DAYS, spanRangeQuery, type Span } from './lookBackSpan';

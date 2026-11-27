@@ -1,4 +1,4 @@
-/* The agenda projection (phase 10 redesign ticket 04, ADR-0074): the
+/* The agenda projection: the
    window, the ordering, the fold, the absence rule, the passed slot. Every one of them is decided in `agenda.ts` and asserted
    here, because ticket 13 draws what this returns and can only be as
    truthful as the projection under it. */
@@ -84,10 +84,8 @@ test('the window behind is seven days, ending yesterday', () => {
   assert.equal(toEpochDay - fromEpochDay + 1, AGENDA_PASSED_DAYS);
 });
 
-/* The month the window now covers, drawn the way ADR-0074 says a month has
-   to be drawn: the cap and the fold are what keep it a glance, and the
-   amendment changed neither. Five dated things spread over the thirty days
-   come back as three rows and two folded, in date order, none dropped. */
+/* Cap the month at three visible rows. Fold the other two, keep date
+   order and retain all five. */
 test('a month of marks is three rows and the rest folded, in date order', () => {
   const days = [TODAY + 1, TODAY + 6, TODAY + 12, TODAY + 20, TODAY + AGENDA_DAYS - 1];
   const projection = agenda(input({ marks: days.map((day) => mark('appointment', day)) }));
@@ -213,7 +211,7 @@ test('the passed slot states its own date', () => {
 
 /** The vocabulary of a lapse, in both languages. A word list cannot prove a
     sentence is kind, but it can prove nobody has quietly reintroduced the
-    words ADR-0062 keeps off this kind of row - and it holds for the
+    wording the return surface keeps out of these rows. It holds for the
     translation too, which no test of the English function would see. */
 const FAILURE_WORDS =
   /missed|overdue|too late|failed|forgot|skipped|streak|behind|pominię|zaległ|spóźni|nieudan|zapomnia|passa|zaniedb/i;

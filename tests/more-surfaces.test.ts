@@ -1,4 +1,4 @@
-/* The rules the More hub keeps after the rebuild (phase 5 ticket 24), at the
+/* The rules the More hub keeps after the rebuild, at the
    level a screen's source can be held to - mirrors home-contracts.ts,
    which is where this shape of test started.
 
@@ -30,7 +30,7 @@ describe('what the More hub is built from', () => {
     expect(more).toContain("from '$lib/components/kit/SectionHeading.svelte'");
   });
 
-  it('hides its own screen title, since the tab already says "More" (DIRECTION.md 3d)', () => {
+  it('hides its own screen title, since the tab already says "More"', () => {
     expect(markup).toMatch(/<ScreenHeader\s[^>]*titleHidden/);
   });
 
@@ -61,7 +61,7 @@ describe('what the More hub is built from', () => {
     expect(more).not.toContain('nav_settings');
   });
 
-  it('puts the search box on the field and nothing else there (DIRECTION.md rule 7)', () => {
+  it('puts the search box on the field and nothing else there', () => {
     const field = /\{#snippet field\(\)\}([\s\S]*?)\{\/snippet\}/.exec(markup)?.[1] ?? '';
 
     expect(field).toContain('class="search-box"');
@@ -105,31 +105,11 @@ describe('what the More hub is built from', () => {
   });
 
   it('issues three live reads for twenty rows, not one per row', () => {
-    /* The whole shape of phase 8 UX ticket 02: the lines come out of one
-       assembled last-write call plus the area record. `hub-last-writes` in
-       tests/long-journal/budgets.json is what holds the cost of the first
-       one; this holds the count.
-
-       Three until ticket 16, the third being the regimen episode list that
-       only ADR-0043's gate needed. Three again since redesign ticket 15, and
-       that third one asks nothing until somebody types: the search's record
-       half returns a resolved empty answer for an empty box.
-
-       Four since phase 11 all-four-doors ticket 02, and the fourth is one
-       assembled call for the same reason the first is: what every row has to
-       say facing forwards, rather than a read per row for the milestone, the
-       letter, the wear session, the tryout, the appointment, the procedure,
-       the dose slot, the stock and the measurement.
-
-       Five since phase 11 ticket 17: voice-benchmark's own second read, a
-       memo's last write, which has no place in the first call because a
-       memo has no archive section of its own to be registered under
-       (ADR-0036) - one more assembled call rather than a read hubRows.ts
-       forces onto the registry it does not belong in.
-
-       Six since pre-release-human 12: the regimen episode list, which only
-       ADR-0043's gate for the cycle row needs, is back as it was before
-       ticket 16 took the row off the hub. */
+    /* Pin six hub reads. Last writes and upcoming items each use one
+       assembled call. The other reads provide area records, typed
+       search, the last memo write outside the archive registry
+       (ADR-0036), and regimen episodes for the cycle gate (ADR-0043).
+       tests/long-journal/budgets.json holds last-write cost. */
     const reads = more.match(/live(?:Query|List)\(/g) ?? [];
 
     expect(reads).toHaveLength(6);
@@ -146,8 +126,8 @@ describe('what the More hub is built from', () => {
        `Record` over the row keys cannot see missing. So every `m.` call left
        in the screen is named, and none of them is a row's own words: the
        hidden screen title, the search box's own label, the strings the
-       results share with the search screen, which reads the same registry
-       (redesign ticket 15), and the row that hands a record query over to
+       results share with the search screen, which reads the same registry,
+       and the row that hands a record query over to
        that screen (audit item 11). `m.list_more` went with the paging
        button the same item deleted. */
     const paraglide = [...new Set(more.match(/\bm\.[a-z_]+\(/g) ?? [])];
@@ -197,65 +177,10 @@ describe('what the door and its groups are called', () => {
 });
 
 describe('every row the hub carries', () => {
-  /* One row per line: key, icon, href, home, and whether the row can report
-     a reading of its own areas.
-
-     Written out here rather than derived, so this is an independent statement
-     of the hub and not a restatement of the module's own filter. It was 23
-     rows in 5 + 9 + 4 + 5 until deepening ticket 07 put labs, regimen,
-     and doses behind the care row - the three surfaces /care
-     opens on. Phase 5 deepening ticket 17 added `presentations` and phase 6
-     ticket 01 `eras`; phase 6 ticket 07 added `entry-templates`; phase 8
-     features ticket 09 split the old voice row in two, ticket 14 added
-     `words` and ticket 12 added `dilation`.
-
-     Phase 8 UX ticket 02 moved `photos` and `voice` into a new Media group,
-     resolved three duplicated icon pairs and renamed the personal effects
-     route. Phase 8 features ticket 52 added `documents`, the media group's
-     third row and the first one in it that fronts an area of its own.
-
-     Phase 9 carpet ticket 16 is the reorg: Practice is gone, Support is new,
-     and seven rows moved off the hub entirely onto the screen that owns them
-     - the fourth column names that screen instead of a group. Its reasons are
-     in `hubRows.ts`; what this line-by-line list is for is noticing an
-     unintended change to any of it.
-
-     Redesign ticket 51 (ADR-0084) took `presentations` and `entry-templates`
-     further still: both are reference areas, so both left this registry
-     entirely for a plain row on /settings, the same way tag groups and body
-     regions were never on it at all. Twenty-five rows then, not twenty-seven.
-
-     Redesign ticket 62 took `words` off outright, and it is the first row to
-     go without its screen going anywhere else: the reading it opened draws
-     on the Look back door itself now, so there is nothing left for a row to
-     point at. `stats` stopped being a host with it. Twenty-two rows then.
-
-     Phase 11 all-four-doors ticket 13 folded `side-effects` into `effects`
-     rather than moving it: side effects finish and read on the same screen
-     and the same axis as the changes somebody was hoping for now, so there
-     is one row where there were two, and `cycle-events` moved with it -
-     `effects` hosts it, not `side-effects`, which is not a host at all any
-     more. Twenty-one rows then.
-
-     Redesign ticket 16 (ADR-0084) took `eras` off outright, the same way
-     ticket 62 took `words` off: eras is a reference area, spent on seven
-     other screens and created on exactly one, so it moved to Settings and
-     left this registry rather than moving screens within it. Twenty rows
-     then.
-
-     Phase 11 ticket 17 folded `voice` into `voice-benchmark`: the memos
-     browser is a fourth tab on the voice screen now rather than a screen of
-     its own, `/media/voice/memos` redirects there, and `voice-benchmark`'s
-     own href drops `?tab=record` since that is already the screen's
-     default tab. Nineteen rows now.
-
-     Audit item 10 folded the `body` group into `health`: it was one row
-     under a heading, and the row is what says what it is about. Nothing
-     about the row itself moved - the same key, icon and address - so this
-     table changes in one column.
-
-     Pre-release-human 12 added `progress-photos` after Milestones: posed
-     shots split off the photo library, which became browse-only. */
+  /* List the expected hub rows independently of the registry so the test
+     catches changes to keys, icons, links, owning screens and whether a
+     row reads its own areas. Reference and placement rules live in
+     hubRows.ts (ADR-0084). */
   const EXPECTED: [string, string, string, string, 'read' | 'written'][] = [
     ['care', 'pill', '/care', 'health', 'written'],
     ['cycle-events', 'calendar', '/health/cycle-events', 'health', 'read'],
@@ -475,7 +400,7 @@ describe('a mark names one thing (pre-release-human 12 icon audit)', () => {
     ['src/routes/day/[day]/+page.svelte', '<Icon name="ICON" size=\\{20\\} /><span>{m.era_start_here\\(\\)}', 'era', 'columns'],
     ['src/routes/stats/+page.svelte', 'era-offer-said">\\s*<span class="kit-row-ico"><Icon name="ICON"', 'era', 'columns'],
     ['src/lib/components/searchHitRows.ts', "eras: { icon: 'ICON'", 'era', 'columns'],
-    /* /compare's period sheet (pre-release-human 21): an era row is placed
+    /* /compare's period sheet: an era row is placed
        by its bar on the journal rather than marked by the era glyph, so the
        only mark on a chosen row is the check, and a date field is a day. */
     ['src/lib/components/compare/PeriodSheet.svelte', '{#if same\\(current, preset.choice\\)}<Icon name="ICON"', 'check', 'era'],

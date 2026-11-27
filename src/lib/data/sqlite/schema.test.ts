@@ -1,7 +1,7 @@
 /* Verifies the schema DDL itself (ticket 02's acceptance criteria): it
    applies cleanly through the migration runner, the deltas from the PRD
    schema landed, and the cascades the PRD relies on actually cascade.
-   Part of the Node tier (ticket 03); run with `npm test`. */
+   Part of the Node tier; run with `npm test`. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
@@ -14,7 +14,7 @@ import { makeNodeSqliteDb } from './test-support/node-sqlite-driver.ts';
 import { preSquashChain } from './test-support/pre-squash-chain.ts';
 import { dumpRows, dumpSchema, readSchemaFixture } from './test-support/schema-dump.ts';
 
-/* The version the second squash landed on (after-release ticket 42): one
+/* The version the second squash landed on: one
    baseline statement in place of the v78 baseline and the ten steps after it,
    keeping the number those steps had reached so a journal already on the
    current schema opens without anything running against it. Hardcoded rather
@@ -121,7 +121,7 @@ test.each([1, 78, SQUASH_BASELINE_VERSION - 1])(
     /* The price the squash took: the steps that would have carried such a
        journal forward are gone, so it cannot be opened. What it must not do is
        go wrong quietly, or as a SQLite message: the version is behind rather
-       than ahead, and the runner says so by name (after-release ticket 09), so
+       than ahead, and the runner says so by name, so
        the failure screen can tell the person where the journal came from
        instead of printing "table entry already exists". 87 is the boundary:
        one step short of the baseline is as unsupported as 1. */
@@ -943,7 +943,7 @@ test('the hand-written latest version and the migration list agree', async () =>
      case, where two branches each add a version and the loser renumbers. */
   assert.equal(LATEST_SCHEMA_VERSION, Math.max(...migrations.map((migration) => migration.version)));
 
-  /* The squashed baseline (ticket 42), then the one step that folds 89 to
+  /* The squashed baseline, then the one step that folds 89 to
      119 (pre-publish ticket 01), then contiguous: a gap below the baseline is
      the first squash, the gap between 88 and 119 is the second, and a gap
      above 119 is a migration that went missing. */
@@ -983,7 +983,7 @@ test('every wear session has a kind, and a write that names none gets the defaul
   const db = await migratedDb();
 
   /* NOT NULL because every user-facing string on that screen is picked by the
-     kind (ADR-0064), so there is no wording to draw without one. The default
+     kind, so there is no wording to draw without one. The default
      is what a write that says nothing gets - and what the rows written before
      the column existed became. */
   db.raw.exec(`INSERT INTO wear_session (uuid, start_timestamp, duration_ms, note, updated_at)

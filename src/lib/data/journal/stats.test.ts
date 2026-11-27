@@ -1,4 +1,4 @@
-/* The stats area (ticket 10, ADR-0012). The case this module exists to
+/* The stats area (ADR-0012). The case this module exists to
    settle is the first one: the demo store answered "what is this metric's
    average" with three different numbers depending on which function was
    asked, because two of them multiplied mood by 20 to fake a 0-100 range
@@ -219,7 +219,7 @@ test('a metric nothing was logged against has no spread rather than an error', a
   assert.deepEqual(await journal.stats.daySpread('no-such-dimension', 100, 100), []);
 });
 
-/* body region trend (ticket 09) */
+/* body region trend */
 
 test('a body-region trend reports per-day averages the same way dayAverages does', async () => {
   const { journal } = await journalWithBuiltIns();
@@ -249,7 +249,7 @@ test('the two axes of a region trend independently, and an unlogged axis is abse
     mood: 3,
     bodyRegions: { chest: 80 } // euphoria 60
   });
-  // A region is one value now (ticket 39, ADR-0081), so a day carrying
+  // A region is one value now, so a day carrying
   // both a dysphoria and a euphoria reading needs two entries rather than
   // one row's two axes - the independence this test is about lives at the
   // day level, not the row.
@@ -325,7 +325,7 @@ test('a body-region trend filters by presentation, and partitions the unfiltered
   assert.equal(totalCount(byGirl) + totalCount(byBoy) + totalCount(byNone), totalCount(unfiltered));
 });
 
-/* Weekly wear hours (functional audit ticket 37). Epoch day 4 is Monday. */
+/* Weekly wear hours. Epoch day 4 is Monday. */
 
 test('weekly hours sum sessions and split a Sunday night across calendar weeks', async () => {
   const { journal } = await journalWithBuiltIns();
@@ -499,7 +499,7 @@ test('a recap of an empty month says so rather than dividing by zero', async () 
   });
 });
 
-/* Photo highlights (phase 4 features ticket 01). A wrapped shows pictures
+/* Photo highlights. A wrapped shows pictures
    from the period it covers, and it reads them off this seam like every
    other number in it - so there is still one range, one recomputation, and
    nothing stored. */
@@ -649,7 +649,7 @@ test('a hidden dimension is not the one a recap volunteers', async () => {
 /* Entries per day, which is not the same question as the metric's day
    average: the calendar shades a day by the metric but links it by whether
    anything was logged at all, so a day with entries that carry no value for
-   the metric charted is still a day with entries (ticket 08). */
+   the metric charted is still a day with entries. */
 
 test('entryCountsByDay counts every entry on a day, metric or no metric', async () => {
   const { journal } = await journalWithBuiltIns();
@@ -921,8 +921,7 @@ test('tagShare counts every tag, uncapped, so a ring can be a ring of the whole 
   /* Four distinct tags, so the recap's own LIMIT 3 would drop one. That drop
      is the whole reason this read exists: a parts-of-a-whole form computes
      each share against the sum of what it is handed, so a top three drawn as
-     a full circle inflates every share and can never show the remainder
-     ADR-0058 requires. */
+       a full circle inflates every share and loses the remainder. */
   await journal.entries.upsertEntry({ epochDay: 100, mood: 3, tags: ['e-tired', 'e-happy'] });
   await journal.entries.upsertEntry({ epochDay: 101, mood: 3, tags: ['e-tired', 'e-calm'] });
   await journal.entries.upsertEntry({ epochDay: 102, mood: 3, tags: ['e-tired'] });
@@ -1012,7 +1011,7 @@ test('tagShare on good days counts only the days that clear the good-day bar', a
   assert.deepEqual(await journal.stats.tagShare(101, 101, { goodDays: true }), []);
 });
 
-/* the body map's own read (phase 10 redesign ticket 40) */
+/* the body map's own read */
 
 test('the body map reads every region at once, each on the side it mostly sat on', async () => {
   const { journal } = await journalWithBuiltIns();

@@ -1,21 +1,9 @@
-/* The no-yank proof for the body map's redrawn figure (phase 11 ticket 47).
+/* Sample body-map arrival and selection on each frame. Panels reveal
+   via clip width and selection edges grow in place. Read widths to
+   catch cuts and positions to catch unintended movement.
 
-   Two appearances happen on this component and the ticket's clause binds
-   both: the panels arriving, and an ink edge moving from one panel to
-   another when a region is picked. A yank is Alicja's own word and it has a
-   mechanical test - "things teleporting/disappearing in 1 frame" - so
-   nothing may be painted at its destination before it travelled there, and
-   there may be no frame in which something is in neither place.
-
-   Nothing on this figure moves, which is the point: a panel is a piece of
-   the body and two regions are not adjacent the way tabs are, so the
-   arrival is the clip band widening and the selection is an edge growing
-   from nothing. That makes the sampled properties the widths rather than
-   the positions - but the positions are sampled too, because "nothing
-   moves" is a claim and not an assumption.
-
-   Run: node tests/body-map-figure-yank.mjs [--out <abs dir>]
-   Writes yank.json and prints a verdict per scene. */
+   node tests/body-map-figure-yank.mjs [--out <abs dir>]
+   Writes yank.json and prints verdicts. */
 import { createServer } from 'vite';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';

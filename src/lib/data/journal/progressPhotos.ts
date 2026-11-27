@@ -1,4 +1,4 @@
-/* Progress photos (pre-release-human 12, bug 25): a shot taken on purpose,
+/* Progress photos: a shot taken on purpose,
    in a pose, so the same pose can be compared over months. The poses are
    the person's own list since version 122: Front, Side, Back and Hair built
    in (Hair since version 124, where the hair progress photos went),

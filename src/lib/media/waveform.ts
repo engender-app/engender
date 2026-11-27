@@ -1,4 +1,4 @@
-/* Reading a recording's bars in a browser (ticket 46).
+/* Reading a recording's bars in a browser.
 
    peaks.ts is the arithmetic and knows nothing about files or audio
    contexts, so it can be tested without either. This is the half that needs

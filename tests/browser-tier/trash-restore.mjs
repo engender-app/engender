@@ -1,5 +1,5 @@
 /* Trash Restore admits one write, says when it fails, and collapses the row
-   it restored (last-audit UI ticket 46). Drives trash-restore-probe.ts with
+   it restored. Drives trash-restore-probe.ts with
    real clicks and keys, and reads the rows' boxes on every animation frame
    so a row leaving in one frame, or the rows under it jumping, fails here
    rather than on a recording. Runs in the browser tier; run directly for

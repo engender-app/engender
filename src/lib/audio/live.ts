@@ -1,36 +1,10 @@
-/* The gate, running while the take is still being made.
+/* Compute the four recording checks as samples arrive. Analyze each
+   complete YIN frame once and keep running quality aggregates so polling
+   has constant cost. Keep only the tail needed by the next frame and two
+   seconds of pitch for the trace.
 
-   The recording screen shows the four checks live during three seconds of
-   held breath, which means the analysis has to keep up with the microphone
-   rather than run once at the end. YIN over a growing buffer is quadratic in
-   the search range and would be re-run from the start on every frame of the
-   gauge's animation; on a phone that is where the jank would come from.
-
-   So the frames are computed once each, as the samples that complete them
-   arrive, and never again.
-
-   **Nothing here reads the take twice.** The poll used to re-aggregate
-   every sample captured so far - a peak loop and a
-   level walk over the whole buffer, ten times a second - so it cost thirty
-   times as much at five minutes as at ten seconds and ate the phone's whole
-   frame budget somewhere around a minute in. Every one of those aggregates
-   is now kept running as frames complete (quality.ts's
-   `runningQualitySignals`), and a poll costs the same at any take length.
-
-   That leaves nothing needing the take itself, so the take is not kept. What
-   is held is the tail a frame still reads from - a frame is measured against
-   the samples after it as well as under it - and the two seconds of pitch
-   the gauge draws as its trace.
-
-   The take's own p10/p90 pitch span was the third thing being recomputed per
-   poll, and it got no running form because it needed none: `read()` returns
-   a `QualityReport`, no check in the gate asks about the span, and the
-   summary that computed it was thrown away every time. It is still computed
-   once, at the end, from the decoded file (`trackPitch`, benchmark.ts) -
-   which is the only place its number was ever read from.
-
-   Pure: samples in, a report out. The microphone, the AudioContext and the
-   animation frame are the screen's (audio/capture.ts). */
+   The end-of-take benchmark computes p10/p90 once from decoded audio.
+   audio/capture.ts owns the microphone, clock and frame loop. */
 
 import { frameGeometry, pitchAt, rms, type PitchFrame } from './pitch';
 import { assessQuality, runningQualitySignals, type QualityGate, type QualityReport } from './quality';

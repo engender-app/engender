@@ -1,31 +1,12 @@
-/* Home's cold open, one surface (phase 12 ux-carpet ticket 183).
+/* Sample Home below the reserves from first paint over the persona.
+   Warm reserves hold measured height with no movement below. Halved
+   and missing heights resize within JUMP_PX and the travel rule.
+   margin-first exercises cleanup when the margin finishes a frame
+   before the mask. The placeholder fades out and content fades in,
+   with no appearance or removal at full opacity.
 
-   On a cold load the today tier, the agenda, two notices and the rest of
-   the tiles all answered ~50ms after the screen painted without them, and
-   every block under them teleported in one frame. The fix reserves their
-   room (ReadReserve.svelte, homeReserve.ts) and crossfades them in. This
-   is the scoped check the hydration sweep is too slow and too coarse for:
-   it cold-loads Home over the persona journal several times, samples every
-   animation frame from the document's first, and asks of the blocks that
-   sit *under* the reserves - the log strip, the backup notice, the pinned
-   rows - whether any of them ever moves further than `JUMP_PX` between two
-   frames.
-
-   Cases:
-   - `warm`: the reserve remembers the height from the settle before it,
-     which is every visit after the first. Nothing under it may move at all.
-   - `wrong`: the remembered heights are halved, the guess a changed journal
-     gives. The difference must travel (resize), never jump.
-   - `none`: no remembered height, the first visit. Same rule as `wrong`.
-   - `margin-first`: no remembered height; the bottom margin finishes one
-     frame before the mask, exercising their cleanup order.
-
-   And the reserve itself: the placeholder must fade out and the content
-   fade in, never at opacity 1 on the frame it appears or leaves.
-
-   Run against a demo build:
-     VITE_DEMO=1 npm run build
-     node tests/home-fold-reserve.mjs [--runs 3] [--theme light|dark] [--root <built tree>] */
+   VITE_DEMO=1 npm run build
+   node tests/home-fold-reserve.mjs [--runs 3] [--theme light|dark] [--root <built tree>] */
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';

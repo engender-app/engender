@@ -1,4 +1,4 @@
-/* The medication stock area (phase 4 ticket 04): one row per drug, its
+/* The medication stock area: one row per drug, its
    projection derived from the dose log, and the run-out reminder it
    reconciles through RemindersArea. */
 

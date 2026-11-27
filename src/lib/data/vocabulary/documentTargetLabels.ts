@@ -1,5 +1,5 @@
 /* What the four things a document can be filed under are called, and which
-   glyph stands for each (phase 8 features ticket 56, ADR-0065). Here rather
+   glyph stands for each (ADR-0065). Here rather
    than beside the area for the reason its neighbours give: the wording
    speaks paraglide, and nothing the Node tier touches may import that
    (ADR-0016).

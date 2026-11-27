@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* The app's navigation, both of its shapes (phase 5 ticket 18).
+  /* The app's navigation, both of its shapes.
 
      One component rather than two blocks in +layout.svelte, which is what
      the layout carried before: a bottom bar and a left rail, each with its
@@ -39,7 +39,7 @@
   import Mark from './Mark.svelte';
 
   const NAV = [
-    /* Today, Journal, Look back, Transition (ticket 08) - none of the four
+    /* Today, Journal, Look back, Transition - none of the four
        reuses `nav_home`/`nav_calendar`/`nav_stats`/`nav_more`. Those keys
        still say Calendar/Stats/More everywhere else that already reads them
        (the calendar and stats screens' own headers, a couple of CTA
@@ -131,26 +131,10 @@
     ui.chooserOpen = !ui.chooserOpen;
   }
 
-  /* The lit tab, as one shape that travels rather than four backgrounds that
-     switch (phase 5 ticket 31). The arithmetic - when two measurements are
-     the same place, which way the shape is going, and which of its edges
-     leads on the way - is in
-     $lib/motion/indicator.ts with its own tests; what has to live here is the
-     measuring, because only the DOM knows where a tab actually is.
-
-     One table over both shapes rather than a block each. The first pass had
-     two of everything - two effects, two pills, two sets of five attributes -
-     and the cost showed up immediately as divergence: only the bar got a
-     ResizeObserver, on the reasoning that the rail's rows stack from the top
-     and stay put whatever the window does. Which is true, and irrelevant,
-     because the rail is `display: none` below the shell's breakpoint. Every
-     rail tab measures 0 on a phone, so the pill recorded {0, 0, 0, 0} as a
-     real position and, with nothing to re-measure it, held that forever -
-     widen the window and the rail's active row had no fill at all, because
-     this same commit took the background off `.rail-item.is-active`. The
-     `laidOut` guard below is the fix for the measurement and observing both
-     navs is the fix for the recovery; one table is what stops the next
-     divergence. */
+  /* Share measurements across bar and rail. indicator.ts handles the
+     edge motion. laidOut rejects zero bounds when the rail is
+     display: none. Observe both navs so the pill remeasures when a
+     breakpoint reveals another layout. */
   type Shape = { key: 'bar' | 'rail'; axis: Axis };
 
   const SHAPES: Shape[] = [
@@ -253,7 +237,7 @@
        travel would be the app claiming something happened.
        The first moves neither edge (PLACE): the unplaced pill is pinned at
        the whole bar, so edges on a clock there faded it in across every tab
-       before it shrank onto one (tickets 184 and 166). A nav coming back from
+       before it shrank onto one. A nav coming back from
        display: none is this case too, since the early return above hid its
        pill, so it lands where it belongs and fades in rather than sliding
        from wherever it was last drawn. The re-measure keeps both edges on
@@ -322,22 +306,11 @@
     return () => observer.disconnect();
   });
 
-  /* Whether the four names fit the bar's one-row layout, where each tab is a
-     fifth of the bar (after-release 18, audit A11 and A11Y-04). At 320px
-     with default text "Look back" and "Transition" were 4-5px too wide and
-     ended in an ellipsis; at 130% text two names did, at 200% all four.
-     When one does not fit, the bar takes two rows of two tabs either side
-     of the add button, which gives each name more than twice the room. In
-     those wider tabs the icon goes beside the name when both fit, so two
-     rows cost 42px more than one rather than twice the height; where they
-     do not (320px at 200%), the icon stays above.
-
-     Measured as rendered rather than reasoned from the type scale: Android's
-     font scale reaches the WebView as text zoom, which grows the glyphs but
-     not the rem units the type tokens are written in. The comparison is
-     always against the one-row cell, whichever layout is showing, so the
-     answer does not change because the layout did. Labels never wrap, in
-     either layout, so a label's range is its whole name on one line. */
+  /* Measure each rendered label on one line against its one-row cell,
+     regardless of current layout. Android text zoom scales glyphs
+     without scaling rem tokens. When a label overflows, use two rows
+     around the add button. Place the icon beside its label only
+     where both fit. Keep labels unwrapped in either layout. */
   let rows = $state<'one' | 'two' | 'two-inline'>('one');
 
   function fitLabels() {
@@ -473,7 +446,7 @@
 </nav>
 
 <!-- The indicator is on the anchor, not on a wrapper inside it, so it covers
-     the icon and the label as one shape (DIRECTION.md). A pill behind the
+     the icon and the label as one shape. A pill behind the
      icon alone leaves the label sitting outside the lit area, which reads as
      two elements rather than one tab. -->
 {#snippet tab(item: (typeof NAV)[number])}
@@ -486,7 +459,7 @@
     aria-current={activeKey === item.key && !onChrome ? 'page' : undefined}
     inert={ui.chooserOpen}
   >
-    <!-- The arrival swing (redesign ticket 26) rides the icon box rather than
+    <!-- The arrival swing rides the icon box rather than
          the tab, so it does not fight the tab's own press scale, and it is
          cleared on its own animationend so a tab visited twice swings
          twice. -->

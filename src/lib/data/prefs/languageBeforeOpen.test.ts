@@ -1,5 +1,5 @@
 /* A language picked on the welcome, before there is a journal to write it
-   to (pre-release-human ticket 19).
+   to.
 
    setLocale() reloads the page, and a preference written before SQLite
    opens is held in memory until the journal attaches - so the reload threw

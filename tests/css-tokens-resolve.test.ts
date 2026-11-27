@@ -1,21 +1,8 @@
-/* Every custom property a rule reads has to be defined somewhere. A
-   `var(--x)` whose --x nothing sets is invalid at computed-value time, so
-   the declaration quietly becomes `unset`: a colour inherits the parent's
-   ink, a padding falls back to whatever the element had already, and the
-   page still looks almost right. That is how --muted put the voice
-   screens' captions at full ink, --space-3.5 left Home's Stop and Log on
-   .btn's 24px padding, and --weight-semibold drew the dossier's table
-   headers at 450, for months, with every visual check passing (after-
-   release ticket 23).
-
-   A property counts as defined when the tree sets it by any of the ways it
-   does: a declaration in a stylesheet or a style string, `style:--x=` on an
-   element, `setProperty('--x')`, an `@property` rule, or a quoted key in a
-   style object. A name built from a template (`--mood-${n}`) is checked as
-   a prefix on both sides. A `var(--x, fallback)` with a stated fallback is
-   allowed through: the fallback is the author saying what happens when --x
-   is not set, which is the opposite of falling back silently. Its fallback
-   is still read as a `var()` of its own when it is one. */
+/* An undefined custom property can invalidate its declaration at
+   computed-value time. Recognize declarations, inline styles,
+   style directives, setProperty, @property and quoted style keys.
+   Match templated names by prefix on each side. Allow explicit var()
+   fallbacks and check a nested var() independently. */
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';

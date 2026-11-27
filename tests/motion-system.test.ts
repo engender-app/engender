@@ -1,25 +1,7 @@
-/* The motion system set out in DIRECTION.md's motion section, at the
-   level a stylesheet can be held to.
-
-   The load-bearing one is the reduced-motion invariant. Both reduced-motion
-   paths in theme/base.css work by forcing every duration to 1ms rather than
-   by cancelling anything, which means an animation still runs - it just
-   runs instantly. An animation that ends somewhere other than where its
-   element rests therefore does not become "unanimated" under the clamp; it
-   becomes an element stranded at the wrong size, offset or opacity, with no
-   motion to explain why. That is worse than the motion it replaced, and it
-   is invisible to every other test in the suite because the stylesheet is
-   perfectly valid.
-
-   So: every animation's end state has to be the element's resting state.
-   The three ways an animation is allowed to satisfy that are all accepted
-   below - stop under reduced motion, fill forwards so the end state is the
-   resting state, or end on the same values the base rule already declares.
-
-   Greps, and nothing else is possible (ticket 08): a stylesheet has no
-   interface to call. What is asserted is that a declaration is present or
-   absent in a CSS file, which is the only form the invariant takes until
-   something renders. */
+/* The two reduced-motion paths clamp durations to 1ms, so the element
+   must still end at rest. Allow explicit cancellation under the clamp,
+   forwards fill into the resting state, or end values matching the
+   base rule. Check the CSS declarations directly. */
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -167,7 +149,7 @@ function styleSources() {
   return [...sheets, ...svelteStyleBlocks()];
 }
 
-/* styleSources(), not sheets alone (phase 5 audit ticket 16): a screen's
+/* styleSources(), not sheets alone: a screen's
    @keyframes can live in its own component now that screens.css's clusters
    are moving into their owners, and "the cap that spans every material"
    below already names the risk this closes - a check that only read the six
@@ -608,13 +590,8 @@ describe('tier 1, response', () => {
       'scale(var(--press-depth-add))'
     );
 
-    /* .segment opted out (ticket 15, [data-no-press]) rather than being
-       enumerated here: it is the third control that answers a press without
-       shrinking, and DIRECTION.md's tier 1 says every one of those has to
-       say why - the pill crossing the set is already the response, and
-       scaling the label as well is two answers to one press. What is
-       pinned here is that it still answers at all - a control that does
-       nothing under the finger is the thing tier 1 exists to prevent. */
+    /* [data-no-press] opts a segment out of shrinking. The pill and label
+       colour already respond to a press. Check that feedback stays visible. */
     const components = stripComments(readFileSync(join(root, 'src/lib/styles/components.css'), 'utf8'));
     const segment = rules(components).find((rule) => rule.prelude === '.segment:active' && !isReduceContext(rule));
     expect(segment, '.segment still answers a press').toBeDefined();
@@ -774,10 +751,8 @@ describe('the cap that spans every material', () => {
 });
 
 describe('the token layer behind the five tiers', () => {
-  /* Every tier in DIRECTION.md has to be expressible without anyone
-     reaching for a number: tier 0 the sun's arrival and its breath, tier 1
-     the press, tier 2 navigation, tier 3 change within a screen, tier 4
-     nothing at all. */
+  /* Tokens cover authored moments, press response, navigation, changes
+     within a screen and stillness. */
   it('names a duration and an easing for each tier that moves', () => {
     const base = readFileSync(join(root, 'src/lib/theme/base.css'), 'utf8');
     for (const token of [
@@ -823,21 +798,10 @@ describe('the token layer behind the five tiers', () => {
     }
   });
 
-  /* The other half of that, and the one the clamp cannot cover on its own.
-     `animation-duration: 1ms !important` and its transition twin reach every
-     duration in the app whatever it was written as, but neither touches a
-     delay - so a delay written as a literal survives reduced motion at full
-     length. On its own that is a pause before an instant animation, which is
-     merely wrong; on a staged pair of edges it is worse, because the two
-     halves of one shape come apart. Redesign ticket 26's highlight is that
-     staged pair: its trailing edge waits --stagger-step, which the block
-     above zeroes, and a literal 50ms in its place would hold the shape open
-     for 50ms under a setting whose whole promise is that nothing moves.
-
-     So every delay in the app is either zero or built out of a token the
-     clamp reaches. Longhands and the fourth slot of a shorthand both, since
-     that slot is where a delay is most easily written by hand and least
-     easily noticed. */
+  /* The 1ms reduced-motion duration clamp leaves delays intact.
+     Require zero or a token the clamp clears, including the fourth
+     shorthand slot. A literal delay on a staged highlight edge
+     would leave one half behind after the other finishes. */
   it('writes no delay the reduced-motion clamp cannot reach', () => {
     const TIME = /^-?[\d.]+m?s$/;
     const ZERO = /^-?0m?s$/;
@@ -904,11 +868,8 @@ describe('the token layer behind the five tiers', () => {
 });
 
 
-/* Phase 10 redesign ticket 25: every change of state moves (DIRECTION.md
-   rule 10, ADR-0078). The movements this ticket adds to surfaces that
-   already existed, held at the level a stylesheet can be held to: that each
-   exists, that each spends only transform, opacity or clip-path (nothing
-   that repaints a whole region per frame), and that each clamps. */
+/* These state changes animate with transform, opacity or clip-path.
+   Check that each animation exists and clamps under reduced motion. */
 describe('ticket 25: every state change moves', () => {
   const kit = stripComments(readFileSync(join(root, 'src/lib/styles/kit.css'), 'utf8'));
   const components = stripComments(readFileSync(join(root, 'src/lib/styles/components.css'), 'utf8'));
@@ -1010,7 +971,7 @@ describe('ticket 28: the field is a blind over the content', () => {
   const ruleOf = (css: string, prelude: string) =>
     rules(css).find((rule) => rule.prelude === prelude && !isReduceContext(rule));
 
-  /* The field is a blind over the content (ticket 28). Ticket 25's shared
+  /* The field is a blind over the content. Ticket 25's shared
      name is gone: the card is split into a flat block that carries one name
      across every screen and the elements painted on it, each named per side
      so nothing can pair with anything and nothing morphs.
@@ -1110,8 +1071,8 @@ describe('ticket 28: the field is a blind over the content', () => {
       /* The clip, and `outline-offset`, which moves nothing and is there so
          the animation cannot be composited: a clip-path-only animation is run
          on the compositor in Chromium, which draws --blind-ease's linear() as
-         a straight ramp while the text riding the edge keeps the curve
-         (ticket 285). */
+         a straight ramp while the text riding the edge keeps the curve.
+         */
       expect(Object.keys(frame.decls), `${frame.stops} moves something else`).toEqual([
         'clip-path',
         'outline-offset'
@@ -1122,7 +1083,7 @@ describe('ticket 28: the field is a blind over the content', () => {
     expect(slide[1].decls['clip-path']).toContain('var(--blind-to');
   });
 
-  /* One edge, one clock (ticket 285): what is painted is the smaller of the
+  /* One edge, one clock: what is painted is the smaller of the
      blind's clip and the field group's own box, which the browser animates on
      its default 0.25s ease unless told otherwise. */
   it('animates the field group on the blind\'s own duration and curve', () => {
@@ -1137,9 +1098,8 @@ describe('ticket 28: the field is a blind over the content', () => {
     expect(slide[1].decls.height).toContain('var(--blind-to');
   });
 
-  /* The main-thread pin (app.css, "THE MAIN-THREAD PIN"; ADR-0078's named
-     exception): the keyframes that carry it are exactly these five, each by
-     the two variables and never a literal, so the reason is written once. */
+  /* The five main-thread keyframes use the same two pin variables.
+     app.css explains why the pin keeps the edge and content in sync. */
   it('carries the main-thread pin by name in exactly the keyframes that need it', () => {
     const carrying = [...app.matchAll(/@keyframes ([\w-]+) \{/g)]
       .map((m) => m[1])
@@ -1197,7 +1157,7 @@ describe('ticket 28: the field is a blind over the content', () => {
     );
     for (const name of ['field-part-out', 'field-part-in']) {
       /* The leave also names where it starts from opacity-wise, for a
-         navigation that interrupts another (ticket 285), so its moving frame
+         navigation that interrupts another, so its moving frame
          is the last one and the arrival's is still the first. */
       const [first, last] = frames(keyframesOf(app, name)!.body);
       const frame = name.endsWith('-out') ? last : first;
@@ -1216,7 +1176,7 @@ describe('ticket 28: the field is a blind over the content', () => {
      cannot be left hanging outside the field (Alicja, round one). The ride
      is `translate` and the leave is `transform`, which is what lets the two
      animations sit on one element without overwriting each other.
-     Opening sun appears independently without riding the blind overshoot (ticket 99). */
+     Opening sun appears independently without riding the blind overshoot. */
   it('rides everything painted on the field with the blind, on the blind\'s own curve', () => {
     const ride = 'var(--blind-dur, var(--dur-slow)) var(--blind-ease, var(--ease-out)) both';
     for (const [selector, keyframe] of [
@@ -1229,7 +1189,7 @@ describe('ticket 28: the field is a blind over the content', () => {
       );
     }
     /* `outline-offset` pins the ride to the main thread beside the edge's
-       clip (ticket 285); the screen's follow moves only the screen. */
+       clip; the screen's follow moves only the screen. */
     for (const [name, keys] of [
       ['blind-lead', ['translate', 'outline-offset']],
       ['part-follow', ['translate', 'outline-offset']],
@@ -1242,8 +1202,8 @@ describe('ticket 28: the field is a blind over the content', () => {
     /* The ride ends where the element rests, both ways round. */
     expect(frames(keyframesOf(app, 'part-follow')!.body).at(-1)!.decls.translate).toBe('0 0');
     /* And the leave starts where the photograph was taken - at rest, or as
-       far from it as the edge was when a navigation interrupted another
-       (ticket 285). */
+       far from it as the edge was when a navigation interrupted another.
+       */
     expect(frames(keyframesOf(app, 'blind-lead')!.body)[0].decls.translate).toBe(
       '0 var(--blind-lead-from, 0px)'
     );
@@ -1360,7 +1320,7 @@ describe('ticket 28: the field is a blind over the content', () => {
     );
     expect(old.length, 'the outgoing contents, both paths').toBe(2);
     expect(fresh.length, 'the incoming contents, both paths').toBe(2);
-    /* The contents keep their ride with the edge (ticket 285): the edge is
+    /* The contents keep their ride with the edge: the edge is
        cut at 1ms, and a part that kept only its fade stood where it was
        printed, fading over the page below an edge that had already gone. */
     for (const rule of old) {
@@ -1380,28 +1340,11 @@ describe('ticket 28: the field is a blind over the content', () => {
 });
 
 describe('the cap on animating layout', () => {
-  /* materials.css's contract says only transform and opacity animate,
-     because the target is a Capacitor WebView on a mid-range Android phone.
-     Phase 5 ticket 28 amended it for three materials and redesign ticket 26
-     for one more - the travelling highlight's two edges, which cannot be
-     said with a transform at all, since a translate moves both edges
-     together and the width between them is the live difference of two
-     curves rather than a value with a curve of its own.
-
-     Enumerated here rather than prohibited, so the next one is argued
-     instead of added. Every entry names the selector, the properties and
-     why; anything else animating a layout property fails.
-
-     Writing this check is how it came out that the contract was already
-     not being kept. Six rules were animating a layout property before this
-     ticket touched anything, `.segment-pill`'s own `width` among them -
-     which is the other travelling indicator, doing this ticket's job by
-     the same class of means. They are listed below as INHERITED, and the
-     distinction between the two lists is exactly what each one is worth:
-     an EXEMPT entry has an argument and a measurement behind it, an
-     INHERITED entry has only the fact that it is already shipped. Nobody
-     has benchmarked the second list; this check found it and does not
-     bless it. */
+  /* materials.css normally animates transform and opacity for WebView.
+     The travelling highlight needs layout properties because its two
+     edges move independently. List exceptions by selector, property
+     and reason. EXEMPT entries have measurements. INHERITED entries
+     record existing animations that still need benchmarking. */
   /* `script` marks an entry no stylesheet carries: the movement is written
      into the element's style from a transition's `tick`, once a frame, so
      the CSS scan below never sees it. Such an entry is held against that

@@ -1,17 +1,9 @@
-/* The accessibility floor on the return moment, measured rather than
-   eyeballed (redesign ticket 35, DIRECTION.md's "What is untouched": 320px,
-   200% zoom, 48px targets, 4.5:1 body and 3:1 large, both languages).
+/* Check the return step at 320px and 200% zoom in both languages.
+   Targets must reach 48px with 8dp gaps. Contrast floors are 4.5:1 for
+   body text and 3:1 for large text. Only the answers scroll.
 
-   The step's own rule is rule 14's: the answers are the one region that may
-   scroll, they scroll between the question and the foot, and the foot never
-   moves. So what this reads per case is whether the screen itself scrolls,
-   where the foot's top edge sits, and every control's rect against the 48px
-   floor and the 8dp gap Android asks for.
-
-   Run: VITE_DEMO=1 npm run build   first, then
-        node tests/return-floor-check.mjs
-   Prints a row per case and exits non-zero on a floor breach, so it can be
-   read as a check rather than as a report. */
+   Run VITE_DEMO=1 npm run build, then node tests/return-floor-check.mjs.
+   It prints a row per case and exits nonzero when a floor fails. */
 import { preview } from 'vite';
 import { launchChromium } from './browser-harness.mjs';
 

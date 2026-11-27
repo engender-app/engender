@@ -1,5 +1,5 @@
 // @ts-nocheck
-/* The yank sweep's shared half (ticket 100): the scene table, the
+/* The yank sweep's shared half: the scene table, the
    thresholds and the arithmetic that turns sampled frames into findings,
    and the page-side sampler and proof injection as expression strings, so
    the desktop sweep (`yank-sweep.mjs`, Playwright against a preview
@@ -49,7 +49,7 @@ export const BLOAT_RATIO = 1.4;
     stagger runs a few frames past it; what is left is the stillness that
     says it landed rather than stopped. */
 export const SCENE_MS = 1100;
-/** The hydration sweep's own two clocks (ticket 108). Its blind spot was
+/** The hydration sweep's own two clocks. Its blind spot was
  *  never the arithmetic - it was the window: the gesture sweep's settle
  *  waits 1400ms before recording, and the cold-mount pops (SQLite
  *  liveQuery resolving at 500ms-1500ms, tickets 106 and 107) happen
@@ -63,23 +63,10 @@ export const HYDRATION_MS = 3000;
  *  for the same reason. */
 export const HYDRATION_SETTLE_MS = 1600;
 
-/** How much of a reply the phone's devtools socket will carry, and how
- *  much of it one slice may hold.
- *
- *  Ticket 140: the WebView closes the connection outright for any
- *  `Runtime.evaluate` reply of 4 MiB or more. Measured on the Pixel 10a
- *  against Vanadium 153 by returning a string of a known length - 3.9 MB
- *  comes back, 4.0 MB drops the socket, and every size above it does the
- *  same. The sampler's frame table passes that on the app's densest
- *  screens (`/settings` samples 178 marks over 211 frames, 5.76 MB of
- *  JSON; `/voice?metric=pitch` 4.78 MB), which is the whole of what the
- *  reports had been recording as a renderer crash: nothing on the phone
- *  ever died, the reply was simply too big to carry.
- *
- *  The slice cap is a quarter of the socket's, not a half: a slice of the
- *  frame table is itself JSON, so every quote in it is escaped again on
- *  the way back and a slice can arrive up to twice the size it was cut.
- *  1 MiB leaves that doubling well clear of 4. */
+/** Keep Runtime.evaluate replies below WebView's 4 MiB limit.
+ * The sampler can exceed it on dense pages. Slice at 1 MiB so JSON
+ * escaping, which can double the payload, leaves room in each reply.
+ */
 const DEVTOOLS_REPLY_CAP = 4 * 1024 * 1024;
 const REPLY_SLICE = DEVTOOLS_REPLY_CAP / 4;
 
@@ -110,7 +97,7 @@ export const HYDRATION_PX = 24;
 export const COLOR_DELTA = 0.14;
 /** When more than this many marks on the screen change colour on the exact same frame,
  *  it is a screen-wide theme or palette switch rather than a component colour defect.
- *  A theme switch changes every colour on the screen at once (ticket 136); component
+ *  A theme switch changes every colour on the screen at once; component
  *  colour defects affect only the component's own marks. */
 const GLOBAL_RECOLOUR_MARKS = 6;
 
@@ -240,13 +227,10 @@ export const PROOF = {
   arrival: '.yank-proof-arrival|'
 };
 
-/* Each scene is a rest, a gesture, and what the gesture is supposed to be.
-    Every door direction, then the state changes ADR-0078 flipped the default
-   for: a sheet, a fold, a notice, a row leaving, a segment, a save.
-
-   `firstRun`, where present, names the setup step the scene needs the walk
-   to stop on; each transport implements its own walk (Playwright locators
-   on desktop, devtools evaluates on the device). */
+/* Each scene names a resting state, a gesture and its expected result.
+   Include door directions and changes to sheets, folds, notices, rows,
+   segments and saves. firstRun names the setup step to stop on. Each
+   transport uses its own walk. */
 const SCENES = [
   { name: 'door-today-journal', at: '/', act: '[data-nav-item="calendar"], [data-rail-item="calendar"]', nav: true, after: {"route": "/calendar"}, is: 'the blind pulled up to Journal' },
   { name: 'door-journal-lookback', at: '/calendar', act: '[data-nav-item="stats"], [data-rail-item="stats"]', nav: true, after: {"route": "/stats"}, is: 'the blind between two doors' },
@@ -274,7 +258,7 @@ const SCENES = [
      way down every journal has. */
   { name: 'safe-space-way-down', at: '/doubt', act: '[data-list-row="resources"]', nav: true, after: {"route": "/support/resources"}, is: 'a way down from the breath' },
 
-  /* Transition screens (ticket 108): buttons, switchers and modals */
+  /* Transition screens: buttons, switchers and modals */
   { name: 'milestones-picker', at: '/transition/milestones', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the milestone template picker sheet rising' },
   /* The recorded list is disclosed before measuring the edit action. */
   { name: 'milestones-edit', at: '/transition/milestones', act: '[data-milestone] .kit-row-main', prepare: ['[data-ms-log-toggle]'], when: 'persona', after: {"selector": "[data-sheet]"}, is: 'an existing milestone edit sheet opening' },
@@ -300,7 +284,7 @@ const SCENES = [
   { name: 'tryouts-open', at: '/transition/tryouts', act: '[data-open-tryout], a[data-tryout]', when: 'persona', nav: true, after: {"route": "chosen-href"}, is: 'navigating to tryout detail' },
   { name: 'eras-add', at: '/settings/eras', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the add era sheet opening' },
 
-  /* Settings screens (ticket 108): swatches, switchers, switches and modals */
+  /* Settings screens: swatches, switchers, switches and modals */
   { name: 'settings-palette', at: '/settings', act: '[data-palette-pick="nonbinary"]', after: {"selector": "html", "attribute": "data-palette", "value": "nonbinary"}, is: 'picking a palette swatch' },
   { name: 'settings-mood-preset', at: '/settings', act: '[data-list-row="mood-colours"]', after: {"selector": "[data-sheet]"}, is: 'the mood colours sheet opening' },
   { name: 'settings-accessibility', at: '/settings', act: '[data-list-row="accessibility"]', after: {"selector": "[data-sheet]"}, is: 'the accessibility sheet opening' },
@@ -322,7 +306,7 @@ const SCENES = [
      is a sheet off Care's regimen block, which the carpet's ticket 139
      sweep can add a scene for once it is naming sheet-opens-sheet scenes
      generally. */
-  /* Setup's four movements (redesign ticket 33). `firstRun` is what these
+  /* Setup's four movements. `firstRun` is what these
      need that no other scene does: the flow is reached through the demo's
      first-run control and then walked, and the settle deliberately leaves
      setup when it finds it. Every step change moves the field's own edge
@@ -960,20 +944,9 @@ export const prepareSceneExpression = (scene) => `(async () => {
   return true;
 })()`;
 
-/** Furniture rather than the app: the demo bar and a toast are injected over
-    whatever is being looked at. A navigation needs no exemption at all now
-    that it is read off the pseudos rather than off the tree.
-
-    `.letter-main-btn` is replaced by a non-button reading surface while
-    its card unfolds; the card's blind paints the change, and the cast
-    shows no cut. The button's DOM departure is not a visible exit.
-
-    `.sun-ring` (ticket 150) is FlagSun's per-stripe ring, redrawn rather
-    than recoloured when a flag is picked - the flipbook that shape replaced
-    already showed two flag colours mixed in sRGB spending 200ms as a muddy
-    tan, on the one step whose whole subject is colour (FlagSun.svelte,
-    onboarding's setup-paint comment), so a colour transition here is the
-    wrong fix, not a missing one. */
+/** Ignore injected demo chrome and the letter button replaced during its
+    card's unfold. A sun ring is redrawn on flag change so it keeps the new
+    stripe colour through the transition. */
 /* Ticket 259's clipped arrivals, scrolling sheets and faded skeleton moves
    are filtered in findYanks, where their frame state can be checked. A
    mark-name exemption here would also hide real defects on those marks. */
@@ -1067,7 +1040,7 @@ export const INIT_HIDE_DEMO_SCRIPT = `(() => {
  *  `warn-persist-denied`); the dropout detector then misreads its fade
  *  over changing content as a region vanishing. Stubbed to resolve true
  *  before any page script runs, so the sweep measures the app rather
- *  than manufacturing its own finding (ticket 192). */
+ *  than manufacturing its own finding. */
 export const STUB_PERSIST_SCRIPT = `(() => {
   if (!navigator.storage) return;
   navigator.storage.persist = () => Promise.resolve(true);
@@ -1114,20 +1087,9 @@ export const SETTLE_PAGE_EXPRESSION = (theme) =>
     Returned as an expression string rather than a function value so the
     same code runs through Playwright's evaluate and through the WebView's
     devtools socket on a device. */
-/** The part of `box` a `clip-path: inset(...)` leaves showing. Serialized
-    into the page sampler, so it reads nothing outside itself. A clip that
-    travels between a percentage and a length (kit-block-in's `100%` to
-    `-6px`) computes to `calc(80.99% - 1.14px)` while it runs, which the
-    first version of this split on spaces, failed to read and answered with
-    the whole box: setup-step-forward at 1280 reported every scale tick
-    "0.33 to 1 in one frame" in the frame its wipe began, while the cast
-    shows the tick clipping open over 100ms (carpet 15 row 51).
-
-    `own` is for a mark's own clip: an outset (the -6px that keeps a
-    block's focus ring) shows nothing of the mark itself, so what counts
-    is cut to the box. Counted, a fully closed kit-block-in read as 0.375
-    of the tick and a quarter-open one as 0.73. An ancestor's clip keeps
-    its outset, since a child overflowing into it does show. */
+/** Parse both lengths and mixed calc() in animated inset clips. Keep this
+    helper self-contained for the page sampler. Clamp a mark's own clip to
+    its box. An ancestor's outset can show overflowing children. */
 export function clipInsetBox(box, clipPath, own = false) {
   const raw = /^inset\((.*)\)$/.exec(clipPath ?? '')?.[1];
   if (!raw) return box;
@@ -1329,24 +1291,9 @@ export function samplerExpression(act, ms, names) {
             }
             const visibleArea = Math.max(0, visibleBox.right - visibleBox.left) * Math.max(0, visibleBox.bottom - visibleBox.top);
             const visibility = Math.min(1, visibleArea / (box.width * box.height));
-            /* A box that draws nothing of its own is not something a
-               person can see teleport or vanish - what they see are the
-               painted things inside it - and it is keyed by the text of
-               its descendants, which makes it worse than useless: change
-               the words inside a wrapper and the wrapper's key changes,
-               so one mark vanishes and another arrives at the same
-               position with no pixel having moved. Setup's step change
-               does exactly that (redesign ticket 33) and reported 16 of
-               these across two scenes - `.app-main`, `.screen-setup`,
-               `.setup`, `.setup-field`, `.setup-ask`, `.setup-below` and
-               `.setup-stage`, every one of them a transparent box that
-               sat still at opacity 1 the whole time. The painted marks
-               inside them were clean, and the recording agrees.
-
-               So an element earns a mark by painting something of its own
-               or by holding its own words. The proof scene's marks
-               have a background and their own text, which is what keeps
-               this from being a way to make the sweep quiet. */
+            /* Sample boxes that paint a surface or contain direct text. Transparent wrappers
+               inherit descendant text in their keys, so a text change would report movement
+               for a box that never paints. The proof scene uses marks that paint. */
             const paints =
               cs.backgroundImage !== 'none' ||
               cs.borderTopWidth !== '0px' ||
@@ -1511,7 +1458,7 @@ export function findYanks(frames, instrument, settles = frames.length - 1, telep
         continue;
       }
 
-      /* There-and-back shape (ticket 137): displaced by at least teleport floor
+      /* There-and-back shape: displaced by at least teleport floor
          and returned within one frame to within a small fraction of where it started,
          with the frames outside the pair at rest. Runs in both windows. */
       if (
@@ -1540,7 +1487,7 @@ export function findYanks(frames, instrument, settles = frames.length - 1, telep
       }
     }
 
-    /* Colour jumps and one-frame flips against still neighbours (ticket 136).
+    /* Colour jumps and one-frame flips against still neighbours.
        Normalized by time delta so dropped frames do not artificially inflate rate. */
     const colorDeltas = [];
     for (let i = 1; i < run.length; i++) {
@@ -1650,7 +1597,7 @@ export function findYanks(frames, instrument, settles = frames.length - 1, telep
 
     yanks.push(...findBloat(run, k));
 
-    /* Arrival shape (ticket 137): painted at destination without travelling there.
+    /* Arrival shape: painted at destination without travelling there.
        Gated to gesture window only.
        Two forms:
        1. Tree form: mark absent from start of scene, then present at >= VISIBLE.
@@ -1793,8 +1740,7 @@ function resting(values) {
 
 /* ---------- the render detector (ticket 100's camera half) ----------
  *
- * Moved here from yank-sweep-device.mjs when the hydration sweep (ticket
- * 108) needed the same instrument on the desktop: a cold mount is the one
+ * Moved here from yank-sweep-device.mjs when the hydration sweep needed the same instrument on the desktop: a cold mount is the one
  * moment the DOM sampler cannot watch, because the navigation destroys the
  * page that was sampling - but a CDP screencast keeps arriving from the
  * compositor across the load, on the desktop exactly as on the phone. The
@@ -1825,7 +1771,7 @@ export const GAP_RATIO = 2.5;
  *  cast frame used to be the previous scene's document, then one blank
  *  frame of the new document before its first paint, and a region that
  *  happened to match across both (most often the header) read as a
- *  dropout or bloat that was never there (ticket 192). Two rAFs plus a
+ *  dropout or bloat that was never there. Two rAFs plus a
  *  settle so a compositor frame actually lands on the flat fill before
  *  the navigation tears the document down. */
 const PAINT_BLANK_SENTINEL_EXPRESSION = `(() => {
@@ -1997,7 +1943,7 @@ export function findPixelYanks(grays, w, h, ats) {
     });
   }
 
-  /* Multi-frame dropouts (ticket 117): a cohesive region visible before and after
+  /* Multi-frame dropouts: a cohesive region visible before and after
    * that vanishes or blacks out across 2 or more consecutive frames (e.g. the
    * header dropping out during a view transition). Single-frame spikes are caught
    * above; this catches sustained dropouts. */
@@ -2058,7 +2004,7 @@ export function findPixelYanks(grays, w, h, ats) {
   return { findings, motion };
 }
 
-/* ---------- the hydration sweep's shared half (ticket 108) ---------- */
+/* ---------- the hydration sweep's shared half ---------- */
 
 /** Every screen the app has, as one cold mount each - the full inventory
  *  the gesture sweep never aimed at. `at` is a route (with `{yesterday}`
@@ -2270,27 +2216,13 @@ export const scrapeIdExpression = (need, { waitMs = 3000 } = {}) => `(async () =
   }
 })()`;
 
-/** Waiting for a demo-bar state jump to be *finished* (ticket 135).
- *
- *  Both expressions below used to wait for a screen: the reset for
- *  `[data-home-hello]`, the fill for `/more`. Neither means finished. Home
- *  is already on screen when the reset is clicked from Home, so that wait
- *  returned on its first read, the harness clicked the next jump, and the
- *  second jump's journal clear landed between the first seed's
- *  presentations and the entries that name them - `unknown presentation`
- *  in the page, and a persona missing its later days in every scene the
- *  sweep then photographed.
- *
- *  `data-demo-busy` (DemoBar.svelte) is on the bar for the length of a
- *  jump and gone when it is over, navigation included, which is the only
- *  thing here that means what the wait wants. The bar also disables its own
- *  controls for that length and drops a click that arrives anyway, so a
- *  click is refused rather than queued - which is why these wait for an
- *  idle bar before clicking as well as after. The 50ms is the state flush
- *  after the click, not the jump: the jump is a worker round trip and
- *  cannot finish inside it. */
+/** Wait for the demo bar to be idle before each jump, then wait for
+ * data-demo-busy to clear after it. The bar drops clicks while busy,
+ * including during navigation. A route may already be visible before
+ * seeding ends. The 50ms delay only lets the clicked state flush.
+ */
 /*  The 60 s this wait once capped was a desktop number. The physical device
-    sweep (ticket 139) measured a persona seed at ~266 entries in ~15 minutes
+    sweep measured a persona seed at ~266 entries in ~15 minutes
     on the phone - roughly one insert every 3 s through the worker - so the
     cap now clears a 40 minute jump and only bounds a genuinely wedged bar. */
 /*  Today drawn *and* the boot finished. The greeting alone renders while a
@@ -2526,21 +2458,10 @@ export async function saveSceneCast(cast, outDir, name, label) {
  *  the cast's own clock, so a PNG and the finding it belongs to cannot
  *  come apart - and both transports name them identically. */
 export async function readRenderYanks(cast, outDir, name, label, cap = EVIDENCE_CAP, { allowThin = false, readyFrame = null } = {}) {
-  /* Three seconds of 60fps is 180 frames; in practice Chromium produces
-     between 12 and 120 over a cold load or a sheet opening, but
-     sometimes the new document's blank, the screen, and then nothing at all
-     for the rest of the window. Measured on the lock gate across ten runs
-     once ticket 127 stopped it mounting a splash first - three frames seven
-     times, four twice, two once - against a floor of four, which failed
-     three runs out of four as `only 3 screencast frames` (ticket 134).
-
-     A thin cast is not a recording nobody looked at. A dropout is a frame
-     showing the gap, so a load with no frames between the old screen and
-     the new one is positive evidence that there was none, not a failure to
-     check - and whether the screen arrived at all is already proved by the
-     selector each scene waits for before any of this runs. A one-frame cast
-     passes only when its painted frame matches a second cast started after
-     the ready selector. Otherwise it might show the previous screen. */
+  /* Chromium may only emit a few screencast frames once a scene stops
+     painting. The ready selector verifies arrival. A one-frame cast
+     passes only when its painted frame matches a second cast started
+     after readiness, so a stale frame cannot pass. */
   if (cast.length < 2) {
     if (cast.length === 1) {
       const first = decodePng(Buffer.from(cast[0].data, 'base64'));

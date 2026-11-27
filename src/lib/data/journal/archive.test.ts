@@ -103,7 +103,7 @@ async function populated() {
   /* Saved while that injection is the only dose logged, so its frozen
      day-of-interval is a fixed 5 rather than something the sublingual dose
      below would move. That the dose logged afterwards does not change it is
-     the freeze this archive then has to carry across (ticket 03). */
+     the freeze this archive then has to carry across. */
   const contextLab = await journal.labs.upsertResult({
     epochDay: epochDayFromTimestamp(1_700_000_000_000) + 4,
     analyte: 'estradiol',
@@ -914,26 +914,11 @@ test("a document's link travels, dangling or not, and a restore keeps both", asy
   assert.equal(restoredOrphan.targetId, 'e-no-longer-here', 'a link whose target is gone travels unresolved');
 });
 
-/* Every column of every table, checked against what the snapshot claims to
-   carry. The point is drift: an archive that quietly stops carrying a
-   column added later is a backup that silently loses data, and nothing
-   else in this suite would notice. A new column fails here until it is
-   either carried or listed as deliberately left behind.
-
-   The 27 flat sections' columns are not retyped here (phase 8 audit
-   finding 24): FLAT_CARRIED walks each one's own descriptor
-   (archiveSections.ts's `flatTable`) with the same columnsOf()
-   readFlatTable/applyFlatTable already use, so this oracle checks the
-   descriptor's agreement with the schema rather than a second map's habit
-   of agreeing with the first. Delete a column from a descriptor and this
-   table fails the same way an untracked schema column does - carried by
-   nothing, because FLAT_CARRIED no longer claims it.
-
-   What stays hand-typed in HAND_WRITTEN_CARRIED is every table a
-   descriptor cannot describe - the archive table module's own three
-   limits (a child table, a rowid resolved against another section, an
-   update branch for a built-in row a Replace overwrites in place) - with
-   each exception's reason given where it is declared below. */
+/* Match every schema column to archive coverage or an explicit
+   omission. FLAT_CARRIED uses columnsOf() on the same flatTable
+   descriptors as readers and writers. HAND_WRITTEN_CARRIED covers
+   child tables, cross-section rowids and built-in rows overwritten
+   in place by Replace. */
 const FLAT_CARRIED: Record<string, string[]> = Object.fromEntries(
   ARCHIVE_SECTIONS.flatMap((section) =>
     section.flatTable ? [[section.flatTable.table, columnsOf(section.flatTable).map((c) => c.column)]] : []
@@ -1010,15 +995,15 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   // reason progress_photo above is hand-written.
   hair_removal_photo: ['uuid', 'session_id', 'file_path'],
   // Owns a child (procedure_photo) below. Its consults are appointments now
-  // and travel in their own section (ticket 57).
+  // and travel in their own section.
   procedure: ['uuid', 'name', 'surgery_epoch_day', 'notes', 'kind', 'dilation_opt_in', 'archived',
     'cost_amount', 'cost_currency', 'cost_refunded'],
   // procedure_id travels as the procedure's own uuid, the way dose_pause's
   // episode_id does (ADR-0002) - here and on the child below.
   appointment: ['uuid', 'procedure_id', 'epoch_day', 'kind', 'place', 'note', 'referred_epoch_day',
-    // provider_id travels as the provider's uuid (ticket 27), like procedure_id.
+    // provider_id travels as the provider's uuid, like procedure_id.
     'time_of_day', 'provider_id', 'cost_amount', 'cost_currency', 'cost_refunded'],
-  // appointment_id travels as nesting under its appointment (ticket 26), the
+  // appointment_id travels as nesting under its appointment, the
   // way procedure_photo travels under its procedure.
   appointment_status: ['uuid', 'appointment_id', 'epoch_day', 'status'],
   // procedure_id for the same reason, since schema v83 gave the taper the
@@ -1040,7 +1025,7 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   // both are rowids resolved against the tryouts/milestones sections.
   felt_sense: ['uuid', 'tryout_id', 'epoch_day', 'mood', 'note'],
   // Exactly one owner, unlike felt_sense's two - a margin note always
-  // belongs to an entry (phase 8 features ticket 07), and entry_id is a
+  // belongs to an entry, and entry_id is a
   // rowid resolved against the entries section.
   margin_note: ['uuid', 'entry_id', 'epoch_day', 'text'],
   // Read once for the file manifest, the same reason progress_photo above is
@@ -1065,7 +1050,7 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   // `whole` (see archiveSections.ts's own note on why), but this table
   // still travels with a backup.
   import_log: ['uuid', 'source', 'counts', 'imported_at'],
-  // What this device deleted, carried whole for a Merge to apply (ticket 48).
+  // What this device deleted, carried whole for a Merge to apply.
   deletion: ['tbl', 'row_key', 'deleted_at'],
   // Device-local: every column of it is left behind (below).
   appointment_debrief: [],

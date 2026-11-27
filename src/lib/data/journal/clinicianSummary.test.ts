@@ -1,4 +1,4 @@
-/* The clinician visit summary (phase 4 ticket 12): an assembly over rows
+/* The clinician visit summary: an assembly over rows
    regimen, doses, labs, exposure, sideEffects, cycleEvents, checklists,
    procedures and areaStates own, recomputed on every read. One registry
    since functional-audit ticket 38, which folded the dossier layer that
@@ -495,7 +495,7 @@ test('a drug name with any HRT episode counts as HRT, and an HRT drug is never o
   assert.deepEqual([...excludedClinicianDrugs([drugged('Estradiol', 'hrt')], { Estradiol: true })], ['Estradiol']);
 });
 
-/* Changes noticed (functional-audit ticket 39): every personal effect a
+/* Changes noticed: every personal effect a
    date has been marked for, oldest first. Not range-filtered, for the
    reason procedures are not: a marker is one row per effect whose date is
    replaced in place, a record of what has changed so far rather than an

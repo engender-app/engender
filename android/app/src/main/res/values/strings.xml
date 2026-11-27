@@ -1,9 +1,9 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
     <string name="app_name">engender</string>
-    <!-- Disguise's launcher identity (ticket 15): the label the disguised
+    <!-- Disguise's launcher identity: the label the disguised
          activity-alias shows in the launcher and recents, matching the
-         web install's neutral manifest (ticket 25) and disguise_app_title's
+         web install's neutral manifest and disguise_app_title's
          preview in Settings. -->
     <string name="app_name_disguised">Notes</string>
     <string name="title_activity_main">engender</string>

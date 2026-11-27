@@ -1,28 +1,8 @@
 <script lang="ts">
-  /* Practising, with the live graph (phase 8 features tickets 09 and 10).
-
-     The benchmark flow is a measurement: a fixed passage, a held note, a
-     quality gate, a row written down. Practising is the other thing a
-     person does with a voice app - ticket 09 gave it the live figure, and
-     this ticket gives it something to keep: stopping offers a felt-sense
-     rating and a save, never both at once as a single "recording saved"
-     step, because the two observations the practice material is built on
-     (ears improve faster than muscles, and one bad take is one data point)
-     argue for asking how it felt before anything about the numbers is
-     shown at all - the numbers stay behind the seal `journal.voicePracticeTakes`
-     puts on every take until tomorrow (schema.ts's own note on why).
-     Declining to save is still there; `stop()` calls `finish()` now rather
-     than `discard()`, but nothing is written until Save is pressed, and
-     nothing is asked if the take captured no voice at all.
-
-     The gate's readings are still worth having, because the room and the
-     level are what make the trace trustworthy: a figure drawn from a take
-     that is clipping is a figure about the microphone. So the same advice
-     line runs, and it is the only thing on this tab that mentions the
-     recording while it is running.
-
-     One live audio component in the tree (ticket 09): this is a third
-     caller of VoiceGauge, not a second gauge. */
+  /* Practice shares VoiceGauge for live feedback about room and level.
+     After a nonempty take, ask how it felt before offering Save.
+     journal.voicePracticeTakes seals the numbers until tomorrow. Stopping
+     only finishes the capture, and only Save writes a take. */
   import { onDestroy } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { comfortBand } from '$lib/audio/bands';

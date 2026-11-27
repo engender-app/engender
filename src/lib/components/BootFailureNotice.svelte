@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* What a failed boot says (after-release ticket 09). Moved out of
+  /* What a failed boot says. Moved out of
      +layout.svelte so the gates fixture can draw it for each failure; the
      layout still decides when it shows.
 
@@ -38,9 +38,9 @@
       or the file comes from a build this one cannot carry forward. */
   let offersWayOut = $derived(failure === 'unreadable' || failure === 'below-baseline');
 
-  /* Putting the pre-migration copy back (ticket 04). Only reachable from
+  /* Putting the pre-migration copy back. Only reachable from
      here, and only when boot found a copy to put back. Indeterminate, and
-     it will stay that way (phase 9 audit ticket 11): the restore is one file
+     it will stay that way: the restore is one file
      copy inside the SQLite worker or the native driver with no callback out
      of it, so a sweep says the honest thing where a bar would have to make a
      number up. Immediate rather than delayed, because this notice is the
@@ -95,8 +95,7 @@
   <div class="notice-body">
     <span class="notice-title">{m.boot_db_failed_title()}</span>
     <span data-boot-failure-sentence>{SENTENCE[failure]()}</span>
-    <!-- The way back out of a migration that could not finish (ticket 04,
-         ADR-0006): the copy taken before it started is still on the device,
+    <!-- The way back out of a migration that could not finish (ADR-0006): the copy taken before it started is still on the device,
          and this puts it back. Offered only when there is one, so the button
          never lies about having something to restore. -->
     {#if bootState.recoverable}

@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* The person's own pose list on Progress photos (pre-release-human 12),
+  /* The person's own pose list on Progress photos,
      opened by the pencil beside the pose control.
 
      The rows are the managed-list rows Settings draws for body regions and

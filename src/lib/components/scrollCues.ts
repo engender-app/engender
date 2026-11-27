@@ -1,5 +1,4 @@
-/* Which ends of a scroller have more behind them (tester report 02, ticket
-   09). A new entry's steps fit the window wherever they can, and where
+/* Which ends of a scroller have more behind them. A new entry's steps fit the window wherever they can, and where
    something cannot - a tag group wider than the row, sixteen scales - the
    part that scrolls says so at the end where more is, and only there.
 

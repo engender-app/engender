@@ -1,11 +1,11 @@
-/* How an annotation is written (phase 5 deepening ticket 23).
+/* How an annotation is written.
 
    The selection rule is in $lib/charts/annotations.ts, which stays Node-tier
    safe and so imports no paraglide (ADR-0016). The words are here, beside the
    component that draws them, which is the same split day.ts keeps from
    vocabulary/dayLabels.ts and BarRows.svelte from barRow.ts.
 
-   Descriptive only (PRODUCT.md:109). An annotation names a thing and a date.
+   An annotation names a thing and a date.
    None of these strings says a reading moved, rose, fell or responded, and
    none of them puts an event and a value in the same sentence: a label that
    read "estradiol started, dysphoria down" would be the causal claim the
@@ -48,7 +48,7 @@ function kindWord(kind: ChartAnnotationKind): string {
 }
 
 /** What the record calls itself, with the one kind whose `name` is a key
-    rather than a name resolved here (phase 8 features ticket 04).
+    rather than a name resolved here.
 
     A finished area's `name` is its group key, because journal/chartAnnotations.ts
     is Node-tier and cannot reach paraglide (ADR-0016). The chart

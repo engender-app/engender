@@ -1,22 +1,9 @@
-/* One restore, wherever it is offered (ticket 36).
+/* Share the restore sequence between Settings and onboarding: pick,
+   guard, open and apply. Screens own the rendering. Error kinds map
+   to labels in `vocabulary/archiveErrorLabels.ts` (ADR-0016).
 
-   There are two doors onto it now - Settings' import section, and the
-   welcome step for somebody on a new phone who already has an archive - and
-   before this file there was one implementation with a second one about to
-   be written beside it. What was going to be copied is not the interesting
-   part of the screen: it is the order the picking, the guarding, the opening
-   and the applying happen in, and which of them is the one that writes. So
-   that order lives here and the two screens keep only their own drawing.
-
-   What does *not* live here is the wording. Nothing the Node tier touches
-   may import paraglide (ADR-0016), and the guard below is worth a Node test;
-   the sentence for every outcome stays in vocabulary/archiveErrorLabels.ts
-   with the archive's own five, keyed by the same kind this returns.
-
-   The journal and the preference store arrive by dynamic import rather than
-   at the top, for the same reason: both are rune modules, and a Node test of
-   the guard must not drag them in. journal.ts already reaches for restore.ts
-   this way, so the shape is the repo's own. */
+   Load the journal and preference store dynamically. The Node tests
+   can exercise the guard without loading Svelte rune modules. */
 
 import { openArchive } from '../archive/pack';
 import { archiveFailureKind, type ArchiveFailureKind } from '../archive/failure';
@@ -83,7 +70,7 @@ export function restoreFailureKind(error: unknown, password: string): RestoreFai
  *
  * `verifyArchive` never takes a driver or a file store, so there is nothing
  * here for it to write to - which is what makes this the step a first run can
- * take before it has a journal to write into at all (ticket 36). A refused
+ * take before it has a journal to write into at all. A refused
  * archive is refused with the device untouched.
  */
 export async function runVerify(

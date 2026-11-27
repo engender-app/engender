@@ -1,5 +1,5 @@
 /* The capture → review → accept/cancel cycle every capturePhoto() call site
-   now runs through (ticket 12, ADR-0033): identical everywhere, so it lives
+   now runs through (ADR-0033): identical everywhere, so it lives
    here once rather than five times. What "the last photo of this context"
    means stays entirely the caller's - `getReference` is a plain callback
    the caller supplies, never a shared registry this module or

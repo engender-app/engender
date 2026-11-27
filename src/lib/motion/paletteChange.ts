@@ -13,20 +13,11 @@ export function isAppearancePending(kind: Appearance): boolean {
   return pending[kind] !== undefined;
 }
 
-/* The new colours bloom out of the sun (prh12 bug 9; Alicja chose the
-   direction): a circle centred on the window's top right corner, where the
-   sun's centre sits on an unscrolled screen, grows until it covers the farthest corner of the window, and
-   the sun's rings in the new colours ride its edge, outermost stripe
-   leading, so the change visibly comes from the mark. It replaced a
-   diagonal wipe from the left edge, which had nothing to do with the sun.
-
-   The rings are a real element added to the new side, a disc whose band of
-   stripes lies outside `reach`, scaled up from the centre in step with the
-   circle that clips the new snapshot: at every frame the clip's radius is
-   the disc's outer edge, so the band is the rim of the new colours. Both
-   start in the same task once the transition is ready, on the same curve,
-   and both are transform and clip-path only. At full size the band is past
-   the farthest corner, so nothing is left on screen when it is removed. */
+/* Expand a circle from the sun's centre at the window's top right.
+   A real disc of new stripes rides the clip's edge, outer stripe
+   first. Start both animations together with the same easing, using
+   transform and clip-path. At full size the rim clears the farthest
+   corner and can be removed. */
 
 /** How wide the ring band is, as a share of the reach. */
 const BAND = 0.25;

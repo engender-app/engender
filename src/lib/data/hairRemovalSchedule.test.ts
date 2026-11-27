@@ -1,5 +1,4 @@
-/* Days since each treatment area's last hair-removal session (phase 5
-   ticket 08). Pure: no clock, no database, so every case here is a table of
+/* Days since each treatment area's last hair-removal session. Pure: no clock, no database, so every case here is a table of
    sessions and days. */
 
 import { test } from 'vitest';

@@ -1,5 +1,4 @@
-/* The voice figure's two "exactly one" claims (phase 8 features ticket 09,
-   ADR-0059), as rules over the tree rather than as sentences in a header.
+/* The voice figure's two "exactly one" claims (ADR-0059), as rules over the tree rather than as sentences in a header.
 
    Both are the kind of thing that stays true until somebody adds a second
    one in good faith. The ticket asks for them by name: there is one live

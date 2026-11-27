@@ -10,8 +10,8 @@
      suggestion the person wrote themselves is the only kind the app is
      entitled to make (ADR-0066). On an empty journal there are no chips.
 
-     The "who" is the person's own record of somebody they see
-     (functional-audit ticket 27): picked from chips, or made in the
+     The "who" is the person's own record of somebody they see:
+picked from chips, or made in the
      provider's sheet through "Someone new", which the screen holding these
      fields opens (`onNewProvider`). */
   import { journalTextAutocomplete } from '$lib/platform';
@@ -49,7 +49,7 @@
     cost: CostDraft;
     /** A date input's value, empty for a wait. */
     date: string;
-    /** `HH:MM` or empty (ticket 27). */
+    /** `HH:MM` or empty. */
     time: string;
     referred: string;
     withNote?: boolean;
@@ -107,7 +107,7 @@
     </div>
   </div>
 {/if}
-<!-- Who it is with (ticket 27): one picked at a time, a second tap on it
+<!-- Who it is with: one picked at a time, a second tap on it
      unpicking, the way the kind chips above fill rather than lock. -->
 <Field label={m.appointments_who_label()} legend id="appointment-who">
   {#snippet children(id)}
@@ -173,7 +173,7 @@
       <DatePicker name="appointment-date" bind:value={date} {id} {describedBy} />
     {/snippet}
   </Field>
-  <!-- The time only goes with a day (ticket 27): clearing the day makes a
+  <!-- The time only goes with a day: clearing the day makes a
        wait, and a wait has no time to keep, so the field closes its height
        rather than standing there unsaved. -->
   {#if date}

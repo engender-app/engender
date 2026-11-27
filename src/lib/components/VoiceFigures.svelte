@@ -1,49 +1,15 @@
 <script lang="ts">
-  /* What a take measured, and what each figure is measured against (phase 8
-     features ticket 27, ADR-0060; redesign ticket 42).
+  /* Pitch keeps an absolute hertz scale across takes (ADR-0060). Its
+     note sits on the page colour beneath the pitch block. Each other
+     figure shows the current measurement against the person's own
+     history, with a ring on this take. ownSeries.ts breaks the line
+     when the passage or microphone changes (ADR-0061).
 
-     It was one definition list: seven names on the left, seven numbers on
-     the right, one weight. That layout made a claim and the claim was
-     false - it said the seven are the same kind of fact, and CONTEXT.md
-     says they are two.
-
-     **Pitch keeps an absolute hertz axis across takes**, so it is the one
-     that looks different: a block of the area's stripe with its value on
-     it (rule 3). Its own note sits in a foot of page colour along the
-     bottom edge, where small text has room to breathe.
-
-     **The other six mean nothing on their own.** "+1.4 semitones" is not a
-     fact about anybody until it is a fact about the same person's earlier
-     takes, which is the only reference those figures have, and until this
-     ticket the screen did not draw it. Each one is now a block: the name,
-     the value, the person's own history under it with a ring on this take,
-     and one line saying what that history is. The runs come from
-     charts/ownSeries.ts, so a change of passage or of microphone breaks
-     these lines exactly where it breaks the compare tab's (ADR-0061) - two
-     surfaces cannot disagree about which takes go together.
-
-     **One link at the foot rather than a sentence under each figure**, still
-     Alicja's call from 2026-09-04: the sentences under the blocks say what a
-     line is against, which is a fact about this screen, and never what a
-     figure means, which is the reference screen's (ADR-0060 - it may teach,
-     the figures may not instruct).
-
-     Its own component rather than markup in the flow for the ordinary
-     reason - the flow owns a microphone, a multi-step take and a quality
-     gate, and none of that is needed to state these numbers - and for one
-     specific one: the figure names come off the same registry keys the
-     reference screen builds its sections from (data/voice/metrics.ts), so
-     a name cannot be renamed on one surface and not the other.
-
-     Nothing here reads anything into a voice (PRODUCT.md:109, ADR-0012). A
-     number, its unit, what it is measured against, and where to go to find
-     out what it is.
-
-     Motion: tier 3. A history line draws in from the left ahead of its
-     value, which is the direction time runs in every other chart in the app
-     (rule 10); the values do not count up, because a count-up is for a
-     count and hertz, decibels, semitones and a scaling factor are
-     measurements. */
+     Use the metric registry for names and the reference link. The
+     figures state units and what the history compares and leave
+     interpretation to the reference screen (ADR-0012, ADR-0060).
+     History lines reveal from the left ahead of their values.
+     Measurements appear directly without a count-up. */
   import { m } from '$lib/paraglide/messages';
   import Icon from '$lib/components/Icon.svelte';
   import type { PassageFigures } from '$lib/audio/benchmark';
@@ -171,7 +137,7 @@
     const run = computed.runs[computed.runs.length - 1];
     /* Takes this one may be joined to, but not readings of this figure in
        them: a vowel step skipped every time, or a rate no reader could have
-       reached and which `ownSeries` drops rather than draws (ticket 41).
+       reached and which `ownSeries` drops rather than draws.
        That is a different sentence from having no earlier take. */
     if (scale === null || computed.runs.length === 0) {
       return nothing(series.length > 1 && computed.breaks.length === 0);
@@ -275,8 +241,8 @@
           <div class="vf-line" in:wipe|global={{ authored: true }}>
             <svg viewBox="0 0 100 {SPARK_HEIGHT}" preserveAspectRatio="none" aria-hidden="true">
               <!-- Each run on its casing, the edge kit.css's --role-edge
-                   gives a line whose stripe is under 3:1 on the page
-                   (phase 15 ticket 20); transparent where it is not. -->
+                   gives a line whose stripe is under 3:1 on the page;
+                   transparent where it is not. -->
               {#each line.runs as points, at (at)}
                 <polyline class="vf-casing" {points} vector-effect="non-scaling-stroke" />
                 <polyline class="vf-run" {points} vector-effect="non-scaling-stroke" />

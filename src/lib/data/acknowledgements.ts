@@ -4,8 +4,7 @@
    the phone's file system could read which features a journal uses without
    unlocking it: which Home tiles were snoozed, which letters were opened,
    which letters' arrival had been met, and whether the journal held any
-   entries. They live in the `acknowledgements` preference now (functional
-   audit ticket 45), which is encrypted with the rest of the journal, travels
+   entries. They live in the `acknowledgements` preference now, which is encrypted with the rest of the journal, travels
    in a backup, and is read and written through the same reactive object as
    every other preference.
 

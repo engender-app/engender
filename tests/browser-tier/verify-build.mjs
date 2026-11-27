@@ -1,21 +1,11 @@
-/* Release gate (ticket 04's acceptance: "verify it, do not assume it"):
-   confirms the production build (`npm run build`) is a static SPA that
-   makes zero requests off its own origin - the SQLite .wasm/worker in
-   particular, which Rive's canvas package already gets wrong by
-   defaulting to a CDN. Serves build/ as production does (serve-build.mjs:
-   build/index.html itself, under the isolation headers) and drives a real
-   Chromium through it with Playwright.
+/* Serve the static build under production isolation headers and drive
+   Chromium. Assert zero off-origin requests, including SQLite worker
+   and WASM, and check emitted JS excludes the persona and demo bar.
+   Install the manifest and service worker, then relaunch offline
+   from the precache.
 
-   It also reads the emitted JavaScript from disk (ticket 05): the Alice
-   persona and the demo bar have to be absent from a production build, and
-   the only way to know is to look at what was written, not at the source
-   that was supposed to guard them. Run with `npm run verify:build` after
-   `npm run build`.
-
-   The second half installs the app for real (phase 2 ticket 03): manifest,
-   service worker and precached shell, then kills the network and starts the
-   app again. That is the check no test against a dev server can make -
-   neither the worker nor the manifest exists until something is built. */
+   npm run build
+   npm run verify:build */
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -115,7 +105,7 @@ const { ok, fail, finish } = createReporter();
 try {
   const PASSPHRASE = 'verify-build passphrase';
 
-  /* Onboarding is truly first now (ticket 54): a brand new install used to
+  /* Onboarding is truly first now: a brand new install used to
      stop at the passphrase gate before the database even existed, ahead of
      onboarding's own welcome screen ever getting a chance to paint - only
      the demo build invented a passphrase for itself and never met this.
@@ -163,7 +153,7 @@ try {
     await page.locator('[data-next]').click();
   }
 
-  /* Reaching the lock step is where the access-mode module (ticket 53)
+  /* Reaching the lock step is where the access-mode module
      appears - not before, which the race above already pinned, and not a
      second copy built for onboarding: this is the same AccessModeSetup
      component Settings uses, on screen because the gate itself is
@@ -311,7 +301,7 @@ try {
 
   } else console.log('UNSUPPORTED installation audit: Chromium CDP required; offline engine checks continue');
 
-  /* The same question with disguise on (ticket 25). Flipped through the real
+  /* The same question with disguise on. Flipped through the real
      Settings control, then waited on the boot mirror the head script reads,
      so SQLite and localStorage agree before a fresh page asks Chromium what
      it would install. That keeps this from passing only because the profile
@@ -428,8 +418,7 @@ try {
      worker itself, which the browser fetches and stores on its own; and
      release.json, which describes the directory on the server rather than the
      app in the browser - nothing in the app reads it, and a cached copy would
-     go on answering for the release that was live when it was cached
-     (ticket 05).
+     go on answering for the release that was live when it was cached.
 
      Current OCR assets are checked against the complete generated manifest
      above. Root legacy copies stay on the server for older pages and are
@@ -458,7 +447,7 @@ try {
     ).length === 1,
     'all four bundled woff2 faces': shell.paths.filter((path) => path.endsWith('.woff2')).length === 4,
     /* Both manifests, because either one can be the one a disguised install
-       reads (ticket 25), and every icon either one names - counted off the
+       reads, and every icon either one names - counted off the
        files rather than written down here, so adding a purpose or a disguise
        cannot leave this passing while the shell is short an icon. */
     'the manifests and their icons':
@@ -515,7 +504,7 @@ try {
       );
   }
 
-  /* The version the running app shows (phase 2 ticket 01), read out of the
+  /* The version the running app shows, read out of the
      release that was just built - the real one, resolved from this checkout,
      which is the version this build would ship under.
 
@@ -633,8 +622,7 @@ try {
       short.map((asset) => `${asset}: ${offlineEngine[asset]} of ${onlineSizes[asset]} bytes`).join(', ')
     );
 
-  /* The same question for the PDF renderer's fonts (phase 8 features
-     ticket 55), and it is the half the ticket asks to be proven offline:
+  /* The same question for the PDF renderer's fonts, and it is the half the ticket asks to be proven offline:
      a document that named Helvetica draws blank without these, and it
      would draw blank exactly when there is no network - which is when a
      store that exists so a diagnosis is not in Downloads matters most.

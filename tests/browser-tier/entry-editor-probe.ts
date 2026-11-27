@@ -74,7 +74,7 @@ function settledStep(root: ParentNode): string | null {
   return steps.length === 1 ? steps[0].getAttribute('data-entry-step') : null;
 }
 
-/** Walks a new entry's steps forward (tester report 02, tickets 03 and 09)
+/** Walks a new entry's steps forward
     until `selector` is on the step shown. */
 async function toStepWith(root: ParentNode, selector: string): Promise<void> {
   for (let hop = 0; hop < 6; hop++) {
@@ -136,7 +136,7 @@ async function saveWithNavigationFailure(journal: Journal) {
 
 type FirstStepSave = { mood: number | null; dims: Record<string, number>; note: string; tags: string[]; shownValue: string | null };
 
-/** A new entry finished on its first step (tester report 02, ticket 03):
+/** A new entry finished on its first step:
     a face, optionally one scale moved by a key, and the finish control,
     which saves and leaves in one touch. Read back out of SQLite, so what is
     published is what was written - including that the scales nobody
@@ -192,7 +192,7 @@ type StepTwoSave = {
   starred: boolean;
 };
 
-/** A new entry finished from its second step (tester report 02, ticket 04):
+/** A new entry finished from its second step:
     a face and a scale on the first, then on the second a mode, a tag on the
     page (no chip to open first), the note and the star, and the same finish
     control the first step has. Read back out of SQLite. */
@@ -228,7 +228,7 @@ async function finishOnTheSecondStep(journal: Journal, epochDay: number): Promis
   }
 }
 
-/** A save from a middle step (ticket 09): a face on the first step, a tag on
+/** A save from a middle step: a face on the first step, a tag on
     the marks step, and the finish control pressed there. Writes those two
     and nothing the later steps hold. */
 async function finishOnTheMarksStep(journal: Journal, epochDay: number): Promise<StepTwoSave> {
@@ -255,7 +255,7 @@ async function finishOnTheMarksStep(journal: Journal, epochDay: number): Promise
   }
 }
 
-/** Every body region hidden and no card offered (ticket 09): the body step
+/** Every body region hidden and no card offered: the body step
     is not drawn, and the progress counts the steps that are. */
 async function walkWithTheBodyStepEmpty(journal: Journal): Promise<{ steps: string[]; segments: string[] }> {
   for (const region of await journal.bodyRegions.getBodyRegions()) {

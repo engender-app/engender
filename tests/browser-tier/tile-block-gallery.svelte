@@ -1,6 +1,6 @@
 <script lang="ts">
   /* Every shape a tile has, on one page, at phone width, against the real
-     tokens (redesign ticket 24).
+     tokens.
 
      Five shapes for the live grid - plain, action, dismiss, action and
      dismiss, and the row weight - plus the tight pair, which has no foot

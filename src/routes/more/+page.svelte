@@ -1,52 +1,13 @@
 <script lang="ts">
-  /* The Transition door, reading its own data (phase 8 UX ticket 02; phase 10
-     redesign ticket 15).
+  /* More gets row definitions from hubRows.ts and wording from
+     vocabulary/hubLabels.ts. The hub stays navigable while its
+     assembled live reads fill in the row details.
 
-     Twenty-six rows of a title and an icon, in four groups, used to be
-     declared inline here as four const arrays, and only `/care` said anything
-     about what was behind it. Every row says something now, and this screen
-     owns none of the reasoning: `hubRows.ts` holds the rows and what sits
-     behind them, `vocabulary/hubLabels.ts` holds the words. What is left here
-     is four live reads and two loops.
-
-     Three of the reads are the door's own, and each comes out of one
-     assembled call (`journal/lastWrite.ts`, measured as `hub-last-writes`
-     before this screen was written; `rowForwardReads.ts`, phase 11
-     all-four-doors ticket 02) beside the area record. The fourth is the
-     search (ticket 15) and it asks nothing until somebody types.
-
-     It was three reads until phase 9 carpet ticket 16: the third was the regimen
-     episode list, read only to answer ADR-0043's gate for the cycle row. That
-     row is drawn on /care/changes now (ticket 13 moved it again,
-     with the rest of what /health/side-effects used to draw), which was
-     already asking the same question for the cycle block it draws, so the
-     gate and the read that feeds it are in one place instead of two.
-
-     Nothing gates the screen on the door's own three reads. This is a
-     navigation surface, and a skeleton in front of twenty links a person can
-     already read would be slower than the links.
-
-     **The search (ticket 15).** Twenty-seven rows is a list somebody has to
-     be able to cut through, so the field holds a search box and nothing else
-     (DIRECTION.md rule 7). What it reaches is both halves of what is behind
-     this door:
-
-       the areas   `hubRowsMatching`, in memory, over the titles this screen
-                   already drew. No wait for a keystroke: the rows are already
-                   here and filtering them is a substring test over
-                   twenty-odd short strings.
-       the records `j.textSearch.search`, the same registry and the same read
-                   the search screen's "elsewhere in the journal" half uses,
-                   waited out after the last keystroke because it is SQL over
-                   eighteen areas.
-
-     One flat list of matched areas rather than the grouped index with
-     non-matches removed: a query is a question about the whole door, and
-     keeping five headings over three surviving rows would be the screen
-     answering with its own structure (the same call `searchHitRows.ts` made
-     about grouping hits by area, and Apple's own settings search, in the
-     Mobbin pass). An empty box shows the grouped index, which is the door at
-     rest. */
+     An empty search shows the grouped index. Search matches the
+     area titles in memory and shows the matches in one flat list.
+     After a typing pause, j.textSearch.search searches records
+     through the same registry as the main Search screen's hits
+     outside entries. It runs only after the user types. */
   import { handOverQuery } from '$lib/navigation/searchReturn';
   import { m } from '$lib/paraglide/messages';
   import { navigating } from '$app/state';
@@ -89,7 +50,7 @@
      assembled call, `rowForwardReads.ts`, the shape the last-write read next
      to it already has. */
   let forwardQuery = liveQuery((j) => readRowForward(j, today));
-  /* voice-benchmark's own second read (ticket 17): a memo has no last write
+  /* voice-benchmark's own second read: a memo has no last write
      in the registry the other three rows draw on (ADR-0036), so this joins
      the other three reads rather than being folded into one of them. */
   let voiceMemoLastWriteQuery = liveQuery((j) => j.voice.lastWriteEpochDay(today));
@@ -172,7 +133,7 @@
 
   let typed = $derived(query.trim());
   /* The handoff row's query travels in memory to Search rather than in its
-     address (after-release ticket 10). */
+     address. */
   const handOffSearch = () => handOverQuery(typed);
   let searching = $derived(typed.length > 0);
 
@@ -243,19 +204,8 @@
 </script>
 
 <div class="screen">
-  <!-- DIRECTION.md 3d: the hub had "More" stacked directly above its first
-       group heading, which is two headers saying nearly the same thing. The
-       title stays in the document for a screen reader and stops being a
-       second visible label - and since ticket 08 the tab and this title no
-       longer even say the same word: the tab now names the whole subject
-       (Transition) and the title names the five groups
-       actually behind it.
-
-       So what the field holds is the search box, and nothing else (rule 7).
-       It is a block of the page's own colour on the flag's, which is what
-       makes 16px legal there: the type in it is page ink on the page's
-       ground, not small text on a stripe (rule 3, and the measured pairs in
-       DIRECTION.md's "Contrast"). -->
+  <!-- Keep the hub title as a screen-reader heading. The field holds the
+       search box, which uses page ink on a page-coloured block for contrast. -->
   <ScreenHeader title={m.hub_screen_title()} titleHidden>
     {#snippet field()}
       <div class="search-box">
@@ -317,7 +267,7 @@
        to be announced; empty it takes no room, and while a query is being
        answered it holds its line rather than letting the list jump (the two
        rules beside it in screens.css). -->
-  <!-- The line inside opens and closes its own height (redesign ticket 25):
+  <!-- The line inside opens and closes its own height:
        it used to reserve its line the moment typing began and drop it the
        moment the box was cleared, and both moved the list under the finger
        in one frame (Alicja, on the flipbooks: "the '0 results' simply
@@ -340,8 +290,7 @@
          interpolate against each other with no frame where the page is
          missing both. -->
     <div class="screen-part" data-hub-results transition:collapse={{ skip: leaving }}>
-      <!-- The card goes as one block when the last match does (ux-carpet
-           ticket 206). The rows' own `disclose` is local to the rows, so
+      <!-- The card goes as one block when the last match does. The rows' own `disclose` is local to the rows, so
            when the card's `{#if}` went they did not play: the card stood
            at its last height for as long as the rows' outros held the
            block, some 550ms, then left in one frame, and the "nothing
@@ -391,7 +340,7 @@
       {/if}
 
       <!-- The records go as one block too, heading and all, for the same
-           reason as the areas above them (ticket 206): typed past its last
+           reason as the areas above them: typed past its last
            hit, this card stood 170px tall until the rows' outros let the
            block go and then left in one frame. -->
       {#if hitRows.length}

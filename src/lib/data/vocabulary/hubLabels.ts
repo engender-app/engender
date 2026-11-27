@@ -1,27 +1,12 @@
-/* What the More hub's rows and groups are called, and how a row's second line
-   reads (phase 8 UX ticket 02).
+/* Localize hub titles, group headings and row descriptions here.
+   hubRows.ts stays independent of Paraglide for Node tests (ADR-0016).
+   Exhaustive Records require wording for every row and group.
 
-   Here rather than in `hubRows.ts` for the reason `areaLabels.ts` gives next
-   door: the wording speaks paraglide and nothing the Node tier touches may
-   import that (ADR-0016). `hubRows.ts` holds the rows, what sits behind them
-   and which of them read; this is where they get their words.
-
-   Three `Record`s, each total over every key it is about: a title per row, a
-   heading per group, and a line per row saying what is behind it. So a row
-   added without either is a typecheck failure rather than a blank line on the
-   app's largest navigation surface.
-
-   Every row has that line, which is the spec's user story 13 - "each row to
-   tell me what is behind it, so that navigating is also reading" - and a
-   reading replaces it wherever the row has one. Ten rows never get a
-   reading at all; the others show their line until something is
-   written in them.
-
-   The reading copy is three frames and no more, which is what keeps it
-   translatable: a Polish noun dropped into a frame needs a case the English
-   never asks for (docs/ui-copy.md), so none of them interpolates one, and the
-   duration that does travel through them stays nominative in both languages.
-   The row's title is directly above and supplies the noun already. */
+   A reading replaces a row's description once there is data. Ten rows
+   always use their description. The three reading templates interpolate
+   no noun because Polish case would depend on the frame. The interpolated
+   duration stays nominative in both languages, and the title supplies
+   the noun. */
 
 import { m } from '$lib/paraglide/messages';
 import { fmtDay, fmtDuration } from '$lib/data/dates';
@@ -65,7 +50,7 @@ const ROW_TITLE: Record<HubRowKey, () => string> = {
     A row whose title already says what is behind it holds null and draws no
     line.
     Each is earned by a title that does not say what the screen is
-    (DIRECTION.md 3b) - "Eras", "Care", "Safe space" name
+    on its own. "Eras", "Care" and "Safe space" name
     something the app invented - and, on the reading rows, by a fresh journal
     otherwise leaving thirteen rows mute. Each is a short form of that
     screen's own intro rather than new copy, so the row and the screen behind
@@ -205,23 +190,13 @@ function nextLine(what: NextWhat, epochDay: number, todayEpochDay: number): stri
   }
 }
 
-/** The row's second line. Never null: every row says something.
-
-    Seven shapes. Three are phase 11 all-four-doors ticket 02's and come
-    first on any row that has one - what is running, what is next, and the
-    one row that states a value instead. Which of them a row carries is
-    `rowForward.ts`'s decision and that it beats the four below is
-    `rowLine`'s; the three helpers above only put them into words.
-
-    Then the four this file started with. The line about what is behind the row, which is what a row
-    with no reading to give shows - whether it will never have one or simply
-    does not yet. A reading of when something was last written, in the
-    `{gap} ago` form the injection-site map and the hair-removal screen
-    already use. The same reading once a whole quiet window has passed, worded
-    as an observation rather than as a prompt, since somebody who had a hard
-    spring is not being asked about it here. And the day an area ended, in the
-    words its own screen uses to say it (`area_finish_done_title`), so the two
-    surfaces agree. */
+/**
+ * Every hub row gets a second line. Running, next and value facts from
+ * rowForward.ts take priority. Otherwise show the default description,
+ * time since the last write, an observation after the quiet window, or
+ * the area's finish date. Use area_finish_done_title for the last case
+ * so the row and its screen agree.
+ */
 export function hubRowLine(key: HubRowKey, line: HubLine, todayEpochDay: number, nowMs: number): string {
   switch (line.kind) {
     case 'running':

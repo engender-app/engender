@@ -1,4 +1,4 @@
-/* dayAheadRows.ts (phase 8 features ticket 62): every kind gets a row that
+/* dayAheadRows.ts: every kind gets a row that
    says only its kind, never a specific record, and the five kinds' rows
    never collide on an icon within the card they can both land in. */
 

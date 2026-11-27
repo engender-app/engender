@@ -1,4 +1,4 @@
-/* `skip` for reveal.ts's transitions, said once (ticket 16).
+/* `skip` for reveal.ts's transitions, said once.
 
    A Svelte transition on a screen's nodes can still run when the screen
    itself unmounts during a navigation, and reveal.ts cannot see SvelteKit's

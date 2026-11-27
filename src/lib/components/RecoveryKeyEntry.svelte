@@ -1,35 +1,12 @@
 <script lang="ts">
-  /* Typing a recovery key at a cold-boot gate (ADR-0054, ticket sec-02).
+  /* Both cold-boot gates offer this entry only if the journal has a recovery
+     key (ADR-0054). Distinguish invalid check symbol, a well-formed key which
+     cannot open this journal, and no configured key. Validate the check
+     symbol before running the KDF so typing errors can be corrected.
 
-     One component rendered by both gates rather than a field added to each.
-     The two gates ask for completely different things - a passphrase field,
-     a PIN pad, a button that asks Android - but this screen is the same
-     screen at both of them, and it was going to be the same fourteen lines
-     twice.
-
-     Three failures and three sentences, which is the whole reason
-     data/recovery-key.ts throws three classes. A mistyped key is worth
-     retyping and says so; a well-formed key that is not this journal's is
-     not, and says that instead of sending somebody to look for the paper
-     they are already holding; and a journal with no recovery key gets told
-     that rather than being told its key is wrong. Only the second of those
-     is the undiagnosed failure every other gate has (aesGcm.ts), and here
-     it can be diagnosed because the check symbol did the diagnosing before
-     the KDF was ever asked.
-
-     Not offered where no recovery key exists. The gates read that before
-     anything is typed, so this screen is never a door onto nothing.
-
-     No throttle, and no attempt count, which is a decision rather than an
-     omission. ADR-0041 settled what a growing delay is worth: it prices out
-     somebody typing at the device and buys nothing against an attack that
-     never loads the app's code. Against 120 bits neither of those attackers
-     arrives, so a delay here would be theatre - and it would land on the
-     person who is transcribing 25 characters off paper under stress, who is
-     the only human being who will ever type into this field.
-
-     Hidden while typed unless the person asks to see it (release-blockers
-     ticket 12); RecoveryKeyField owns that and says why. */
+     The key contains 120 bits. An attempt delay would burden someone
+     transcribing 25 characters and would leave offline guessing unaffected
+     (ADR-0041). RecoveryKeyField hides input until the person reveals it. */
   import { m } from '$lib/paraglide/messages';
   import { submitRecoveryKeyUnlock } from '$lib/stores/boot.svelte';
   import { RecoveryKeyMistypedError } from '$lib/crypto/recoveryKey';

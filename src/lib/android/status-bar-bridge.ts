@@ -1,4 +1,4 @@
-/* Which tint Android draws the status bar's own icons in (carpet ticket 154).
+/* Which tint Android draws the status bar's own icons in.
 
    The app is edge-to-edge, so the bar has no background and the system
    draws its icons over whatever the app painted. Home, setup and the gate

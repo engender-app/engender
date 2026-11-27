@@ -1,87 +1,8 @@
-/* Every in-flow offer the app makes, in one list (phase 8 features ticket
-   22, ADR-0045, ADR-0044).
-
-   Several places in the app are the same sentence: something the person
-   just did implies a record they might want, so the app asks. Ticking a
-   transition goal on the roadmap. Reaching surgery day in the procedure
-   hub. Adopting a tryout. Deciding an area is finished or suspended.
-
-   ADR-0045 governs all of them: an automatic trigger never mints a record
-   without confirmation. Before ticket 22 that rule lived in five
-   implementations that could each drift from it independently, and what
-   changed is that it is written once, below, and every trigger reaches its
-   write through it. A new offer since then declares itself here rather than
-   hand-wiring a sixth.
-
-   ## What one entry declares
-
-     key      the offer, as the screens address it
-     trigger  what has to happen before it is offered, in words. Audit
-              rather than behaviour: the trigger itself is a condition on a
-              screen and stays there, and this is what makes the list
-              readable as a list
-     offers   the record the person is being offered. Never two: an offer
-              that wrote a second thing would be a second offer wearing the
-              first one's confirmation
-     copy     what the app says when it asks, and on the two answers
-     write    what confirming writes, through the owning area's own method.
-              Never a raw SQL string and never a second write path - the
-              same discipline day.ts and lastWrite.ts keep
-
-   ## The two that are here and the two that are not
-
-   The spec named four offers. Six were registered by ticket 22, and one of the four
-   it named is deliberately absent. Both differences are findings rather
-   than choices:
-
-   **The surgery-day milestone was missed by the count.** ADR-0045's own
-   text names it - "reaching surgery day or the recovery phase in the
-   procedure hub" - and `health/surgery/+page.svelte` has carried a
-   confirmation sheet for it since phase 5 ticket 12. A registry whose
-   value is that the list is auditable cannot leave an existing offer off
-   it, so it is registered.
-
-   **"Start an era here" is not an offer, and is not registered.** The day
-   view's link (`day/[day]/+page.svelte`, phase 6 ticket 01) mints nothing
-   and pre-fills nothing on the person's behalf: it navigates to the era
-   editor with the day in its start bound, and the editor's own save is the
-   only write. There is no confirmation rule to centralise for a link, and
-   registering it would put a row in this list whose `write` is
-   `goto`. Named here so the next reader finds the reason rather than the
-   gap.
-
-   **Neither is the "name this stretch" offer on Look back (redesign
-   ticket 48).** It dismisses rather than declines - there is no pending
-   write for a "not now" to close out - and its "yes" is the same
-   goto-and-let-the-editor-save shape as "start an era here" above, just
-   with two dates handed over instead of one (`/stats`'s `era-offer`,
-   `/settings/eras`'s `end` query parameter). What is registered here is
-   never an offer whose only action is a link.
-
-   ## Differences between them, documented rather than flattened
-
-   **The tryout offer has two ways to say yes.** Adopting always closes the
-   tryout; the milestone is what is being offered on top, so the sheet
-   carries "adopt and add a milestone", "adopt without one", and "keep it".
-   The middle answer is a decline of this offer that still writes the
-   adoption, so the screen calls `answerOffer` with `createMilestone` false
-   rather than with `'decline'` - it is not a refusal of the gesture, only
-   of the record. `adoptTryout` commits the closure and any milestone together.
-
-   **Not offering twice is each source's own check, not a rule here.**
-   ADR-0045's second half is about a source that already holds the record
-   it mints, and what that means is different in each of the three places
-   it applies: a goal reads `roadmapGoalKey` off the milestones
-   (`milestoneMintedByGoal` below), a procedure reads its own linked
-   milestone, and a tryout has no minted record at all - it cannot be
-   adopted twice because it has an end day. Writing one function over
-   those three would take an argument each caller computes differently and
-   enforce nothing, so each asks its own question and this file holds only
-   the one rule that genuinely is shared.
-
-   Relative imports rather than `$lib`, and no runtime import that is not
-   pure: offers.test.ts reads this file on the Node tier, where no alias
-   exists (see vitest.config.ts). Every area arrives as a type. */
+/* Register offers that write records (ADR-0045, ADR-0044). Screens choose
+   when to ask and the owning area commits the write. Links that open a
+   prefilled era editor leave saving to that editor.
+   Tryout adoption can create a milestone in the same transaction. Each
+   source uses its existing milestone or end day to suppress repeats. */
 
 import { m } from '../paraglide/messages';
 import type { FinishableArea, SuspendableArea } from './areaState';
@@ -166,8 +87,7 @@ export interface FinishedArea {
 }
 
 /** What accepting the suspend action writes: `FinishedArea`'s own shape,
-    narrowed to the areas that can carry a suspended day (phase 8 features
-    ticket 51). */
+    narrowed to the areas that can carry a suspended day. */
 export interface SuspendedArea {
   areas: readonly SuspendableArea[];
   epochDay: number;
@@ -245,24 +165,9 @@ export const OFFERS = {
     }
   },
 
-  /* Phase 8 features ticket 04. The sixth, and the first whose trigger is
-     the absence of writes rather than a write: an area with something in it
-     and nothing added for half a year.
+  /* Offer to finish a populated area after `FINISH_SUGGESTION_QUIET_DAYS` without a write. Show the offer only on the area's screen. `areaFinishOfferDeclined` records a permanent dismissal (ADR-0045).
 
-     Two things keep it from being a nag, and neither is a rule this file
-     could hold. It is offered on the area's own screen, which somebody
-     reached on purpose, and never on Home and never as a notification. And
-     the no is kept forever in `areaFinishOfferDeclined` - which is this
-     offer's own version of ADR-0045's second half, the same way the roadmap
-     reads `roadmapGoalKey` and the surgery hub reads its linked milestone.
-     The threshold itself is `areaGroups.ts`'s FINISH_SUGGESTION_QUIET_DAYS.
-
-     It is also the one entry whose sheet a person can open without being
-     offered anything, from the control at the foot of the same screen. That
-     does not make it two offers: the sentence, the record and the write are
-     the same, and only what opened the sheet differs. What it does mean is
-     that `write` below is reached on a path no automatic trigger started,
-     which is fine - ADR-0045 constrains triggers, not people. */
+     The control at the foot of the screen opens the same sheet and uses the same write without waiting for the automatic trigger. */
   'area-finished': {
     key: 'area-finished',
     trigger:

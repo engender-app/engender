@@ -60,10 +60,7 @@ export async function seedCompleteArchiveJournal(
     note: 'a good day, zażółć gęślą jaźń',
     dims: { [voice.key]: 7, femininity: 60 },
     tags: [tag.id, 'e-happy'],
-    // Three regions on purpose, so the fixture pins the range: one on the
-    // dysphoria side, one on the euphoria side, one further out (ticket 39,
-    // ADR-0081 - the {dysphoria, euphoria} pair ticket 31 gave this table
-    // is retired).
+    // Three regions cover both sides of the shared scale and two intensities.
     bodyRegions: {
       chest: 25,
       [bodyRegion.id]: 80,
@@ -71,7 +68,7 @@ export async function seedCompleteArchiveJournal(
     },
     presentationId: femme.id
   });
-  // Overridden to a day well before the entry's own (ticket 47): the golden
+  // Overridden to a day well before the entry's own: the golden
   // fixture is what proves epoch_day_override actually round-trips through
   // pack/restore, not just that the column exists and always reads null.
   const entryPhotoId = await journal.photos.attach(
@@ -86,8 +83,7 @@ export async function seedCompleteArchiveJournal(
   await journal.marginNotes.add({ entryId: trashedEntry, epochDay: 20051, text: 'A note on a trashed entry' });
   await journal.entries.deleteEntry(trashedEntry);
 
-  /* One document, dated years before this journal's own entries (phase 8
-     features ticket 52): the fixture is where the archive's file manifest
+  /* One document, dated years before this journal's own entries: the fixture is where the archive's file manifest
      gets held to carrying a document's bytes as well as its row, and where
      an out-of-range day proves the section's own ORDER BY. */
   const document = await journal.documents.addDocument(
@@ -101,12 +97,12 @@ export async function seedCompleteArchiveJournal(
     description: 'the pharmacist barely looked up',
     templateKey: 'hrt_start',
     // Not celebrated, so the one field a celebrated milestone leaves out is
-    // in the fixture (functional audit ticket 32).
+    // in the fixture.
     celebrate: false
   });
   await journal.photos.attach({ milestoneId: milestone }, { full: bytes('m'), thumb: bytes('mt') });
 
-  // Filed under the milestone above (phase 8 features ticket 56), so the
+  // Filed under the milestone above, so the
   // fixture pins that the link travels and not just the two columns being
   // there to be null.
   await journal.documents.setDocumentTarget(document, { kind: 'milestone', id: milestone });
@@ -146,12 +142,12 @@ export async function seedCompleteArchiveJournal(
   /* Three eras, so both open bounds and a closed pair all travel. An absent
      bound is the case a round trip can lose silently by defaulting it to a
      day, and it has two sides: the era that reaches back before the journal
-     and the one still running (phase 6 ticket 01). */
+     and the one still running. */
   const beforeIKnew = await journal.eras.upsertEra({ name: 'before I knew', startEpochDay: null, endEpochDay: 19000 });
   await journal.eras.upsertEra({ name: 'first year', startEpochDay: 19001, endEpochDay: 19365 });
   await journal.eras.upsertEra({ name: 'after I moved', startEpochDay: 19366, endEpochDay: null });
   // One mute, so the section is non-empty and a round trip has a row to
-  // lose (phase 6 ticket 05).
+  // lose.
   await journal.eraMutes.setEraMuted(beforeIKnew, true);
   // Two lines, so the fixture pins an order beyond "the only one" (phase 6
   // ticket 14).
@@ -257,21 +253,21 @@ export async function seedCompleteArchiveJournal(
   await journal.feltSense.add({ tryoutId: tryout }, { epochDay: 19910, mood: 4, note: 'felt right' });
   await journal.tryouts.addPhoto(tryout, 19905, { full: bytes('presenting'), thumb: bytes('pt') });
 
-  /* A real procedure now owns this checklist (phase 5 ticket 07); it was a
+  /* A real procedure now owns this checklist; it was a
      placeholder owner pair until ticket 07 shipped the first owner. */
   const procedure = await journal.procedures.upsertProcedure({
     name: 'top surgery',
     surgeryEpochDay: 20050,
     notes: 'drains out on day five',
     // A compiled-in kind rather than 'custom' (the default), so the fixture
-    // proves `kind` round-trips through the archive (ticket 17).
+    // proves `kind` round-trips through the archive.
     kind: 'chest_reconstruction',
     cost: { amount: 9500, currency: 'EUR', refunded: false }
   });
   await journal.procedures.addConsult(procedure, 19950);
   /* One appointment on its own beside the consult above, so the section
-     carries both cases it has to (ticket 57), with a time and a provider
-     (functional-audit ticket 27) so the providers section is not empty and
+     carries both cases it has to, with a time and a provider
+ so the providers section is not empty and
      the link between the two is exercised. */
   const provider = await journal.appointments.upsertProvider({
     name: 'Dr Nowak',
@@ -289,7 +285,7 @@ export async function seedCompleteArchiveJournal(
     note: 'ask about the dose',
     cost: { amount: 200, currency: 'PLN', refunded: false }
   });
-  /* And one still waiting for its day, with a dated update (ticket 26), so
+  /* And one still waiting for its day, with a dated update, so
      the section carries a null day, a referred-on day and its statuses. */
   const waiting = await journal.appointments.upsertAppointment({
     epochDay: null,
@@ -329,7 +325,7 @@ export async function seedCompleteArchiveJournal(
 
   // Two takes' worth of audio and a full set of figures: a benchmark that
   // skipped its vowel would leave the nullable half of the row untested by
-  // the round trip (phase 5 deepening ticket 15).
+  // the round trip.
   await journal.voiceBenchmarks.saveBenchmark({
     epochDay: 20060,
     passageKey: 'builtin',
@@ -344,23 +340,23 @@ export async function seedCompleteArchiveJournal(
     f2Hz: 1265,
     snrDb: 26.3,
     note: 'quiet room, morning',
-    // A short stored track (ticket 09), so the fixture proves the column
+    // A short stored track, so the fixture proves the column
     // travels rather than only that it exists. Encoded as audio/track.ts
     // writes it, hole included.
     pitchTrack: '178.5,181.2,,176.9,180.4',
-    /* And the chain it was recorded through (ticket 28), carrying a real
+    /* And the chain it was recorded through, carrying a real
        one rather than a null for the same reason: a restored benchmark
        that lost its chain would rejoin a series it does not belong to, and
        a fixture with no chain in it could not notice. Written as
        audio/captureChain.ts encodes it. */
     captureChain: 'Pixel 10a | Bottom microphone | ec=off ns=off agc=off',
-    // And the corner-vowel factor (ticket 30), carrying a real number for
+    // And the corner-vowel factor, carrying a real number for
     // the same reason the chain does: a fixture that only ever saw null
     // could not tell a lost column from an unmeasured one.
     resonanceScale: 0.97
   });
 
-  // The import log's only writer is a real commit (ticket 03): run one
+  // The import log's only writer is a real commit: run one
   // rather than hand-seeding the row, the same reason nothing else in this
   // function writes SQL directly.
   await journal.archive.commitDaylioImport(

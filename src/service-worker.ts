@@ -1,22 +1,12 @@
-/* The offline shell (phase 2, ticket 03; ADR-0021 has the reasoning).
-   Everything the app needs to open without a network is precached under one
-   key per release: the fallback document, the app's own chunks and CSS,
-   the journal's SQLite worker and its WASM, the bundled woff2 faces
-   and static/ assets other than PDF fonts - the manifest's icons today, a .riv
-   animation the moment one lands there.
+/* Precache the offline shell per release (ADR-0021): fallback HTML,
+   app chunks and CSS, SQLite worker and WASM, WOFF2 and static assets
+   except PDF fonts. Install OCR library, worker, core and languages as
+   one immutable generation, with recognition lazy. Add PDF assets later.
 
-   OCR's library, worker, core and both languages install as one immutable
-   generation. Recognition stays lazy. PDF worker and fonts are added later.
-
-   This worker still never decides for itself when to take over (phase 2
-   ticket 04, which owns that decision): a new release installs quietly and
-   waits, and the only thing that ends the wait early is a page asking through
-   the message below. A page asks when the journal is idle and never while a
-   write, a migration or an Archive import is in
-   flight - lib/pwa/update.ts holds that rule and lib/data/journal-busy.ts
-   is what it reads. skipWaiting() also changes existing pages' controllers.
-   Those documents keep their original assets until they close or reload;
-   clients.claim() stays absent so a first install does not take over pages. */
+   Wait for the page's update message when no write, migration or import
+   is active (lib/pwa/update.ts and lib/data/journal-busy.ts). skipWaiting()
+   changes existing controllers, so those documents need their original
+   assets until reload or close. First install leaves pages unclaimed. */
 /// <reference types="@sveltejs/kit" />
 /// <reference no-default-lib="true"/>
 /// <reference lib="esnext" />

@@ -1,25 +1,11 @@
-/* Making a benchmark take, with the gate reading out while it happens
-   (phase 5 deepening ticket 15, CONTEXT: "Voice benchmark").
+/* One microphone stream feeds MediaRecorder and the live gauge, so the
+   app needs one recording indicator and one Android permission prompt.
 
-   The browser half of the acoustic engine: one microphone stream feeding two
-   things at once - MediaRecorder, which produces the bytes that get stored,
-   and an AudioContext, which produces the samples the gauge reads. One
-   stream, not two, so there is one microphone indicator and, on Android, one
-   permission moment (voiceRecording.ts's recordStream).
-
-   **The gauge is feedback; the decoded take is the verdict.** What is
-   analysed for storage is the recorded file, decoded once at the end
-   (`decodeTake`), never the samples the gauge saw. The live path polls an
-   AnalyserNode, which hands back its most recent window rather than a
-   contiguous stream, so a few samples at each poll boundary are duplicated
-   or missed - which is fine for a bar that moves and wrong for a number that
-   gets written down. The alternative, an AudioWorklet, is a second bundle
-   entry and a CSP surface for a gauge whose answer is thrown away.
-
-   Analysis runs at 16 kHz throughout: formants of interest sit under 4 kHz
-   and YIN's cost grows with the search range, so the AudioContext is opened
-   at that rate and the stored file is decoded back to it. The recording
-   itself is untouched - the bytes are whatever MediaRecorder produced. */
+   Store results from the decoded take. AnalyserNode polling can repeat
+   or skip samples and is suitable for feedback only. Avoid a separate
+   AudioWorklet bundle and CSP surface for the gauge. Analyze at 16 kHz
+   for sub-4 kHz formants and a smaller YIN search range. Keep the
+   MediaRecorder bytes intact. */
 
 import { decodeToMono } from '$lib/audio/decode';
 import { makeLiveGauge, type LiveGauge } from '$lib/audio/live';
@@ -67,7 +53,7 @@ export interface TakeSession {
 }
 
 /** Decodes recorded audio to mono samples at the analysis rate. The decode
-    itself is audio/decode.ts, shared with the waveform's bars (ticket 46);
+    itself is audio/decode.ts, shared with the waveform's bars;
     the rate is this file's. */
 const decodeTake = (bytes: Uint8Array) => decodeToMono(bytes, ANALYSIS_SAMPLE_RATE);
 

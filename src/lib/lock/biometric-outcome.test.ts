@@ -1,4 +1,4 @@
-/* The four failure states, and the one success (ticket 13).
+/* The four failure states, and the one success.
 
    This is the module the ticket's warning is about: "treating 'cancelled' or
    'unenrolled' as 'authenticated' would unlock the Journal for anyone holding

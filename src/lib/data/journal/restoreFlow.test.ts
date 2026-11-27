@@ -1,5 +1,5 @@
 /* The failure paths, first, because this is the one flow where being wrong
-   loses somebody's journal (ticket 36). The guard is what stands between an
+   loses somebody's journal. The guard is what stands between an
    incomplete form and a decryption attempt, and it is the half of the flow a
    Node test can reach - the rest opens a real container and lives in the
    walkthrough. */

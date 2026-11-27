@@ -1,4 +1,4 @@
-/* The wrapped cadence rule (phase 4 features ticket 01). Rune-free and
+/* The wrapped cadence rule. Rune-free and
    import-light for the same reason epochDay.ts is: which period a wrapped
    covers and which one Home offers today are calendar arithmetic, so they
    are decided here as plain deterministic cases rather than inside a screen

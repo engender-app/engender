@@ -1,6 +1,6 @@
 /* A Reminder's `autoSource` marker: `feature:id`, naming the thing that
    created the row so the app can keep it in step and say where it came from
-   (CONTEXT.md, ADR-0045). Three features write one today - medication stock
+   (ADR-0045). Three features write one today - medication stock
    (`stock:<drug>`), a wear session (`wear:<sessionId>`) and a regimen
    episode's dose schedule (`dose:<episodeId>`) - and a person who
    saves the row in the reminders editor clears it, at which point the row is

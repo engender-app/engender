@@ -1,5 +1,5 @@
 /* Reads the key spaces off the code, and renders the generated blocks in
-   SCREENS.md and CONTEXT.md from them (functional audit ticket 54).
+   SCREENS.md and CONTEXT.md from them.
 
    Shared by features.test.ts, which holds the manifest to the same readers,
    and doc-blocks.test.ts, which compares each block with what is in the doc

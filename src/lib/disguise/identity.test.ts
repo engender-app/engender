@@ -52,8 +52,8 @@ describe('what the tab says', () => {
 
 describe('the Recents preview', () => {
   /* FA 43 hid the Recents card under disguise by making the whole window
-     secure, which also refused screenshots with the capture switch on
-     (tester report 02, ticket 01). Disguise now hides only the card; the
+     secure, which also refused screenshots with the capture switch on.
+Disguise now hides only the card; the
      window flag follows the capture choice. Both are decided natively before
      the first frame, so the read has to be the native one: the live launcher
      alias, the same read the widgets and notifications make.
@@ -109,7 +109,7 @@ describe('where the decoy name is allowed to appear', () => {
       .replace(/(^|[^:])\/\/.*$/gm, '$1');
 
   it('is supplied by catalogues after the pre-paint script', () => {
-    /* ADR-0035 asks for the disguise check to live in one place, and the
+    /* Keep the disguise check in identity.ts (ADR-0101). The
        cost of a surface forgetting it is not cosmetic: it shows the real
        app name to whoever the person was hiding it from.
 

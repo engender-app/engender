@@ -1,60 +1,18 @@
 <script lang="ts">
-  /* The constellation: every entry as a point on a plane of two scales,
-     with the path between them traced by a scrubber (phase 5 deepening
-     ticket 19, ADR-0048).
+  /* This renderer takes points already scaled to 0..1, the scales'
+     endpoint labels, a date formatter and resolved presentation roles
+     (ADR-0048). The caller resolves roles so palette changes recolour the
+     chart without changing its data.
 
-     A dumb renderer, like WearTrendChart beside it. It takes
-     positions already read to 0..1 ($lib/data/constellationData), the two
-     scales' own end words, a formatter for a date and the modes with their
-     resolved roles. It knows no dimension key, no message and no colour of
-     its own: the caller resolves a presentation's role through `roleAt()`,
-     so switching palette recolours every point and nothing here has to be
-     told.
+     One position drives the entrance sweep and the scrubber. The sweep
+     reruns when the point count or either endpoint ID changes. A repeated
+     series or an axis change within that series keeps the scrubber's day.
+     Use --dur-authored with --ease-out. Reduced motion starts at the end.
 
-     ## Why there is a scrubber rather than a static scatter
-
-     The argument for this chart at all is that fluidity is a path rather
-     than a cloud, and the difference between those two readings is entirely
-     in whether anything moves. So one number drives the whole drawing: how
-     far along the readings the head sits. It arrives by sweeping from the
-     start to the end, and after that the slider is the same number under a
-     finger. The entrance and the interaction are one mechanism rather than
-     an animation bolted onto a control - which is also why the sweep is
-     worth its cost, since the code was there anyway.
-
-     Tier 3 (DIRECTION.md): the mark moves, not its container. The sweep
-     replays when the readings themselves change - a different range, an
-     entry saved - and not when a live query merely hands the same ones back
-     again, which is what `signature` below is for. Switching a scale on
-     either axis is deliberately not a replay: those are the same readings
-     seen from another angle, and a person who has scrubbed to a day wants
-     to still be on that day after turning the plane. It takes the authored duration on --ease-out for the reason
-     AreaChart's own first draw does: at --dur-slow a path this long reads
-     as a flicker rather than as a drawing (Alicja, 2026-08-25, "a little
-     slower and not linear").
-
-     Under reduced motion the head starts at the end. That is tier 3's
-     substitute, an instant cut, and nothing is lost by it: the whole
-     picture is what the sweep arrives at.
-
-     ## What is drawn, and in what order
-
-     Points are grouped by mode, one <g> per mode carrying that mode's role,
-     because that is how a surface takes a flag stripe (kit/role.ts) and
-     because 120 inline style attributes is not. Grouping costs the
-     chronological paint order, and it costs little: an older mark is drawn
-     at a fraction of a newer one's alpha, so a newer mark landing under an
-     older one is still the one that reads. The uncoloured group is drawn
-     first, which is the one place the order is worth fixing - a mark with no
-     mode should never cover one that has a colour to say.
-
-     The trail is short on purpose, and the first build had it wrong. Joining
-     forty readings that all sit inside one corner of the plane draws forty
-     lines across each other, which is a tangle and not a path - the exact
-     smear the ticket warned the density would become. What carries the
-     reading instead is a comet's tail: the last TRAIL_READINGS joins, fading
-     out behind the head, so the picture says which way the recent move went
-     and the older marks stay marks. */
+     One SVG group per mode lets the points share a role. Paint uncoloured
+     points first. Older points fade behind newer ones, so the grouping
+     can reorder them without losing which are recent. The trail joins
+     only the last TRAIL_READINGS points to keep dense clusters legible. */
   import { untrack } from 'svelte';
   import { createSubscriber } from 'svelte/reactivity';
   import { EASE_OUT, crossfadeDuration, fadeOnly, motionDuration } from '$lib/motion/tokens';
@@ -621,7 +579,7 @@
      fill to a contrast ratio is what turned nonbinary's yellow to olive, so
      the boundary is a ring instead: --role-edge, the stripe's hue at 3:1,
      where the stripe alone is under it on the plot and transparent where it
-     is not (phase 15 ticket 20). Painted under the fill, so of its 2px only
+     is not. Painted under the fill, so of its 2px only
      the outer pixel shows and the dot keeps its size and its colour. */
   .cn-dot {
     fill: var(--role-draw);

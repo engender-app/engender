@@ -1,94 +1,11 @@
 <script lang="ts">
-  /* The shell the five pre-unlock gates and the mid-session lock are built
-     from (phase 5 ticket 26; redressed by redesign ticket 34).
-
-     They were six copies of the same fourteen lines, and the copies had
-     already drifted - three different inline `text-align:center` styles, two
-     different badge icon sizes, onboarding's classes doing duty on screens
-     that are not onboarding. A gate is the same object every time, so it is
-     one object here.
-
-     **What the shell owns now is the field** (DIRECTION.md rule 15: a gate is
-     a step with nothing to skip). It is rule 12's shape with everything a
-     gate cannot have taken out - no sun, no back, no skip, no leave, no
-     progress - so what is left is a field from under the status bar, and
-     under its bottom edge, on the page, whatever the gate needs: one line,
-     the control, the status line, and under a hairline the way out that is
-     not a way in. `--field` and `--field-ink` are published on <html> by
-     activeFlag. This gate overrides them with `--surface-2` and `--text`
-     while disguise is on, before unlock.
-
-     **What the field holds.** On an unlock (`unlock`: the PIN, passphrase,
-     biometric and device-key gates and the mid-session lock) it is Today's
-     own sun - FlagSun, at Today's size, in Today's corner - with nothing
-     written, and the field is as tall as the sun so its edge cuts no ring
-     (tester-report-02 ticket 07: a tester called the old field, the app's
-     name on one of the flag's colours, "unused potential" on the screen a
-     person meets every time; Alicja picked the sun from four drawings and
-     asked for the field to hold all of it). The sun is still here: a gate
-     arrives as a cut and nothing on it breathes while someone types.
-     $lib/theme/gateFlag decides; under disguise it answers no, so a
-     disguised gate is the neutral field, the decoy's name and the base's
-     height exactly as before, and no colour of the flag reaches it. A gate
-     that is not an unlock paints its own title at 48 on the flag's second
-     colour.
-
-     **What the title says, once, for all six.** An unlock never says the
-     person's name. The mid-session lock used to greet by name because the
-     journal was open behind it, but a lock screen is the surface most likely
-     to be read by somebody other than its owner, and the chosen name can out
-     the person holding the phone, disguise or not (release-blockers ticket
-     12). Everywhere else the name lives in the encrypted journal and the
-     screen renders before it can be read anyway, which is what the three
-     separate greetings this replaced were each working around - "Hi" with
-     nobody to say it to, "Welcome back" on a screen that cannot know whether
-     anybody has been here before. So an unlock's title is the wordmark,
-     whichever secret it asks for. It is no longer painted on an unlock
-     without disguise: it stays the screen's level-one heading, visually
-     hidden, so the screen's accessible name is what it was, and the sun on
-     the field is what the handover to Today carries instead (appOpening.ts
-     holds it still while the field opens to Today's height around it).
-     Under disguise it is painted, as the decoy's name. Always through `appWordmark`, never
-     `m.app_name()`: under disguise the name on a lock screen is the one that
-     must not be the real one (ADR-0035). A gate that is not an unlock keeps
-     its own title, because what a conversion is about to do, and what the
-     access-mode module is asking, are the things those screens are for.
-
-     What it deliberately does not own is the line under the title. Every gate
-     puts different attributes on that line - a `role="status"` on the
-     conversion's progress, an `aria-live` on the Android prompt's outcome, a
-     walkthrough handle on each - and folding it into a prop would mean a
-     second prop for the attributes and a third for the ones that are markup
-     rather than a string. So the gate writes its own `<p class="gate-body">`
-     and everything below it, which is also what makes the conversion
-     screen's progress rail and the PIN pad fit in the same shell without
-     either being a special case.
-
-     **What went, and why.** The 60px `--accent-soft` disc with an icon in it,
-     and the `tone` prop that turned it red on the screens that had bad news.
-     Rule 15 enumerates what a gate's field holds and a mark is not on the
-     list; the disc's own comment already argued the narrow version of this -
-     "the gates say what happened in words, and a red disc is not one of
-     them" - and rule 12 forbids a step a notice, a card or a second heading,
-     so there is nowhere for the alert to move to. The words carry it, which
-     is what docs/ui-copy.md asks of the risk screens anyway. The disc was
-     also 80px of a 568px window (its own height plus its margin), which is
-     most of what rule 14's no-scroll floor needed back.
-
-     **No entrance, and this is where that is written down.** A gate is what a
-     cold start or a mid-session lock lands on. A cold start has nothing to
-     come from, and the lock arriving is the one state change in the app whose
-     whole value is being instant - somebody is walking towards the person
-     holding the phone. So arrival is a cut on every gate, deliberately, and
-     it is the only cut left inside a gate: everything after the first frame
-     moves (ADR-0078). The field's edge travels when the title changes, the
-     page under it rides that edge, the dots fill and empty, a refusal gives
-     the digits back, the wait drains, and the unlock itself is the app
-     opening rather than this screen being replaced ($lib/motion/appOpening).
-
-     The reverse of that arrival is not a cut. Leaving a gate for the app is
-     the moment the whole screen exists for, and it is the one piece of motion
-     in the product somebody sees hundreds of times. */
+  /* GateScreen draws the field and heading. Each gate supplies the body and
+     controls, including any live status. Undisguised unlock shows Today's sun
+     with a visually hidden wordmark. appOpening.ts holds the sun on unlock.
+     Under disguise, suppress the sun. appWordmark selects the decoy name
+     or m.app_name() according to the disguise state.
+     Arrival is a cut on every gate. Later state changes can move the field.
+     Keep controls, status and exit in the scrollable region below. */
 
   import { focusNamedTarget } from '$lib/navigation/arrivalFocus';
   import type { Snippet } from 'svelte';
@@ -139,7 +56,7 @@
            navigation, which is how the unlock's handover closes this field
            into the app's rather than fading one out under another. -->
       <div class="step-field-paint" data-field-blind>
-        <!-- Today's sun, inside the blind as Today nests its own (ticket 148):
+        <!-- Today's sun, inside the blind as Today nests its own:
              unnamed in the opening, it rides the blind's capture rather than
              a hidden one, and is the same drawing in the same place as
              Today's, so the field opens around one sun. -->

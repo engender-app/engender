@@ -36,7 +36,7 @@
     /** The continuous voicing this step is working towards, and null where
         the task has no hold in it - free speech on the practise tab, where
         a run meter under the trace was the hold task's readout on a task
-        that is not a hold (redesign ticket 41). Null draws no run bar and
+        that is not a hold. Null draws no run bar and
         prints no held stretch. */
     targetSeconds: number | null;
     label: string;

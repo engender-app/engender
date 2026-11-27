@@ -21,7 +21,7 @@ export async function readWrappedPeriod(
     metric: string;
     /** The year's rows shade the selected scale rather than mood (phase 11
         ticket 07, WrappedYear.svelte), and only a year has a prose section
-        for letters to the future self (phase 5 deepening ticket 13). */
+        for letters to the future self. */
     year: boolean;
   }
 ) {

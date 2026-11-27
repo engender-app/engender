@@ -1,5 +1,4 @@
-/* Which period a wrapped covers, and which one Home offers today (phase 4
-   features ticket 01).
+/* Which period a wrapped covers, and which one Home offers today.
 
    A wrapped is a retrospective on a *completed* week, month or year
    (CONTEXT: Wrapped). Nothing here reads the clock and nothing here reads

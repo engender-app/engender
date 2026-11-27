@@ -1,4 +1,4 @@
-/* Mounts the kit gallery (phase 5 ticket 20) with the app's own stylesheets,
+/* Mounts the kit gallery with the app's own stylesheets,
    so the surfaces are judged against the real tokens rather than against a
    copy of them. The fonts come from the app's static directory, which this
    tier's vite config serves as its public directory for exactly this. */

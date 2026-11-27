@@ -88,7 +88,7 @@ function localizeRegimenTemplate(t: RegimenTemplate): RegimenTemplate {
 }
 
 /** Keys only; the names come from the message catalogue below. Not stored
-    rows at all - a template is a suggestion the app ships (ticket 05). */
+    rows at all - a template is a suggestion the app ships. */
 const milestoneTemplates: MilestoneTemplate[] = milestoneTemplateRows();
 
 /** Same shape as `milestoneTemplates` above, for regimen episodes (phase 5
@@ -96,8 +96,7 @@ const milestoneTemplates: MilestoneTemplate[] = milestoneTemplateRows();
 const regimenTemplates: RegimenTemplate[] = regimenTemplateRows();
 
 export const vocabulary = {
-  /** Whether the mirror behind this module has been filled at least once
-      (ticket 152/162) - see `reference.ready`. */
+  /** Whether the reference mirror has loaded at least once. */
   get ready(): boolean {
     return reference.ready;
   },
@@ -108,13 +107,13 @@ export const vocabulary = {
     return reference.activeDimensions.map(localizeDimension);
   },
   /** Every dimension that has not been hidden (CONTEXT: "Hidden") - what a
-      template's pre-fill (ticket 17) may set, the same "not hidden" filter
+      template's pre-fill may set, the same "not hidden" filter
       `visibleTagGroups` already applies to tags. */
   get visibleDimensions(): GenderDimension[] {
     return this.dimensions.filter((d) => !d.hidden);
   },
   /** The line under a scale's name on the checklist that chooses which
-      scales get logged (phase 5 ticket 35), saying what the slider
+      scales get logged, saying what the slider
       measures rather than what having it says about you.
 
       A custom scale has no catalogue line to look up, so it gets its own
@@ -126,7 +125,7 @@ export const vocabulary = {
     if (!dim.builtIn) return m.scale_custom_note({ low: dim.low, high: dim.high });
     return builtInDimensionNote(dim.key) ?? undefined;
   },
-  /** The lean the ticked scales carry (phase 5 ticket 43, ADR-0030) -
+  /** The lean the ticked scales carry -
       `null` when both `femininity` and `masculinity` are ticked, or neither,
       and every lean-tagged picker should render unranked. Shared by every
       picker that ranks by lean, so the derivation is computed once rather
@@ -184,7 +183,7 @@ export const vocabulary = {
   /** The built-in regimen episode suggestions (phase 5 ticket 42, CONTEXT:
       "Regimen template"), in the wording the current language gives them -
       what the regimen editor's "add new" picker offers above manual entry.
-      Ranked by the active preset's lean (phase 5 ticket 43, ADR-0030):
+      Ranked by the active preset's lean:
       matching templates first, the rest after in their existing order -
       every template still shown, just reordered. */
   get regimenTemplates(): RegimenTemplate[] {
@@ -252,8 +251,7 @@ export const vocabulary = {
     const found = reference.tag(id);
     return found && localizeTag(found);
   },
-  /** Every presentation a person has named (phase 5 deepening ticket 17,
-      ADR-0048), most-recently-used first - no built-in wording to localize,
+  /** Every presentation a person has named (ADR-0048), most-recently-used first - no built-in wording to localize,
       since every name is typed by the person. */
   get presentations(): Presentation[] {
     return reference.presentations;
@@ -264,8 +262,7 @@ export const vocabulary = {
   presentation(id: string): Presentation | null {
     return this.presentations.find((p) => p.id === id) ?? null;
   },
-  /** One rotating reflection cue for the entry-creation banner (phase 4
-      features ticket 17). */
+  /** One rotating reflection cue for the entry-creation banner. */
   randomPrompt(): string {
     return guidedPromptText(GUIDED_PROMPT_KEYS[Math.floor(Math.random() * GUIDED_PROMPT_KEYS.length)]);
   }

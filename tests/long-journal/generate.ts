@@ -1,36 +1,11 @@
-/* A deterministic ten-year Journal (phase 2 ticket 20).
+/* Write a ten-year journal through openJournal(driver, files), the same
+   handle used by the app (ADR-0017). The caller supplies storage and photo
+   bytes so the fixture can run on any platform. Use normalized JPEG sizes
+   for representative photo-grid and archive measurements (ADR-0008).
 
-   Everything in the app has been demoed against a Journal a few weeks old.
-   This writes the one the product actually asks people to keep: a decade of
-   entries, photos, lab results and milestones, through the same
-   `openJournal(driver, files)` handle a person's own writes go through
-   (ADR-0017). Nothing here reaches for a driver, a file store or a
-   platform, so the Android driver that ticket 11 is building drops in
-   underneath without this file changing.
-
-   Deterministic in the only sense a benchmark needs: the same seed writes
-   the same content, so two runs measure the code rather than the fixture.
-   Identity is the exception - the journal mints a uuid per row (ADR-0002)
-   and a seed cannot reach into that. No clock is read either, here or
-   below: `timestamp` comes from the day and the entry's place in it, and
-   the last day of the journal is a constant rather than today, so the
-   fixture does not drift as the calendar does.
-
-   Photo bytes arrive from the caller. A representative photo is a real
-   JPEG at the sizes ADR-0008 normalizes to, which needs a canvas the Node
-   tier has not got, and the byte size is most of what the photo grid and
-   the Archive export are measuring - so the platform that has the canvas
-   supplies it.
-
-   Phase 5 ticket 36 widened this from five kinds of content to nineteen.
-   `npm run benchmark:long-journal` still reports every measurement inside
-   its budget, but the generation step itself - not one of the individually
-   budgeted numbers, just the "Written in Xs" line the harness prints before
-   measuring anything - moved from 51s to 56s on the machine budgets.json
-   was recorded on. Recorded here, next to the old number, rather than
-   quietly replaced: a ~10% write-time increase for fourteen more areas of
-   content, nothing near the 5x budget headroom any of the measured reads
-   actually gates on. */
+   The same seed produces the same content and timestamps. The journal
+   allocates its own UUIDs (ADR-0002). The fixture ends on a fixed day so
+   benchmark inputs stay stable as the calendar advances. */
 
 import type { Journal } from '../../src/lib/data/journal/journal.ts';
 import type { NormalizedPhoto } from '../../src/lib/data/journal/photos.ts';
@@ -87,12 +62,11 @@ export interface LongJournalSummary {
   tagWordEntries: number;
   /** Entries carrying a body-region feeling whose euphoria clears
       GOOD_DAY_REGION_EUPHORIA_FLOOR (stats.ts) - what isGoodDay's and
-      counterevidencePool's region clause (phase 5 ticket 44) needs to
+      counterevidencePool's region clause needs to
       actually match something, rather than costing a query plan for a
       clause that never does. */
   regionEuphoriaEntries: number;
-  /** Doses logged against the fixture's one regimen episode (phase 5
-      ticket 40). */
+  /** Doses logged against the fixture's one regimen episode. */
   doseEvents: number;
   /** Doses logged against the two episodes phase 5 ticket 36 adds beside
       the one above, so at least one stretch of the fixture has two
@@ -110,8 +84,7 @@ export interface LongJournalSummary {
   checklistItems: number;
   voiceRecordings: number;
   videoNotes: number;
-  /** Standalone appointments, seeded at a quarterly cadence (phase 8
-      features ticket 59). Not counting the surgery's own two consults,
+  /** Standalone appointments, seeded at a quarterly cadence. Not counting the surgery's own two consults,
       which are appointments too (ADR-0066) but come from `addConsult`
       rather than from this loop - this is what the appointment-seeding loop
       itself wrote, the same way `doseEvents` counts one episode's doses and
@@ -119,8 +92,7 @@ export interface LongJournalSummary {
       density ADR-0066 describes: "somebody four years into endocrinology
       has roughly sixteen of these". */
   appointments: number;
-  /** One image document plus several PDFs (phase 8 features ticket 53,
-      ADR-0065), the latter sized to put tens of megabytes of
+  /** One image document plus several PDFs (ADR-0065), the latter sized to put tens of megabytes of
       un-normalisable bytes through the archive - a scale this fixture had
       never carried, since an image document is normalised down to
       essentially nothing and ticket 52 never added one here at all. */
@@ -238,12 +210,12 @@ const CUSTOM_TAG_LABELS = [
    where logging a handful is the point. */
 const DIMENSION_KEYS: string[] = BUILT_IN_DIMENSIONS.map((d) => d.key);
 
-/* Built-in body regions (phase 5 ticket 30/31/44), a handful rather than
+/* Built-in body regions, a handful rather than
    all ten - the good-day and counterevidence measurements need a mix of
    floors cleared and not, not every region logged on every day. */
 const BODY_REGION_KEYS = ['chest', 'hairline', 'genitals', 'voice_throat', 'face_jaw'];
 
-/* Hair-pose progress photos (phase 5 ticket 33): one step every ~200 days,
+/* Hair-pose progress photos: one step every ~200 days,
    the cadence a self-staging screen saw - nobody re-staged weekly. */
 const HAIR_STAGE_STEP_DAYS = 200;
 
@@ -259,7 +231,7 @@ const REGIMEN_DOSE_AMOUNTS = [
 ];
 
 /* One analyte in two unit spellings on purpose: mixed units are two series
-   and never one line (ticket 02), and a ten-year journal is where a person
+   and never one line, and a ten-year journal is where a person
    changes labs and the spelling comes back different. */
 const ANALYTES = [
   { analyte: 'Estradiol', unit: 'pg/mL' },
@@ -418,7 +390,7 @@ export async function generateLongJournal(
       // GOOD_DAY_REGION_EUPHORIA_FLOOR (as a slider position: 75 or above)
       // about half the time - a mix, not an always-true or always-false
       // clause. A region is one value on the shared 0-100 scale now
-      // (ticket 39, ADR-0081), so this picks a side rather than rolling
+      //, so this picks a side rather than rolling
       // each axis independently; 50 itself (the midpoint) never comes up.
       const bodyRegions: Record<string, number> = {};
       if (random() < 0.16) {
@@ -540,7 +512,7 @@ export async function generateLongJournal(
     summary.doseEvents++;
   }
 
-  // A second, overlapping episode (phase 5 ticket 36): an antiandrogen
+  // A second, overlapping episode: an antiandrogen
   // running for about 500 days in the middle of the fixture, well inside
   // the first episode's still-open span - two concurrently active episodes
   // for different drugs, the shape ticket 38's walkthrough test already
@@ -580,7 +552,7 @@ export async function generateLongJournal(
   }
 
   // A third injectable episode, confined to the fixture's final ~150 days
-  // (phase 5 ticket 36). Named distinctly from the first episode's
+  //. Named distinctly from the first episode's
   // "Estradiol" so the two read as a route switch rather than one typo.
   const thirdEpisodeStartEpochDay = lastEpochDay - historicalOffset(150);
   const thirdEpisodeId = await journal.regimen.upsertEpisode({
@@ -713,7 +685,7 @@ export async function generateLongJournal(
      one of the three kinds off a single draw - a second conditional draw
      would spend a different count of the seeded sequence depending on the
      first, and every fixture value generated after this would move with
-     it (ticket 50). */
+     it. */
   const wearKindFor = (roll: number) => (roll < 0.6 ? 'binder' : roll < 0.8 ? 'tucking' : 'compression');
   for (let day = trackingWindowStart; day <= lastEpochDay; day++) {
     if (random() < 0.55) continue;
@@ -778,7 +750,7 @@ export async function generateLongJournal(
     summary.checklistItems++;
   }
 
-  // Documents (phase 8 features ticket 53, ADR-0065): one image, which goes
+  // Documents (ADR-0065): one image, which goes
   // through the same normalisation a photo does and so weighs almost
   // nothing, and several PDFs sized in whole megabytes - the container
   // chunks at 1 MB (archive/container.ts) and had never been measured
@@ -795,7 +767,7 @@ export async function generateLongJournal(
   const DOCUMENT_PDF_SIZES_MB = [3, 5, 4, 6, 5];
   for (const [i, sizeMb] of DOCUMENT_PDF_SIZES_MB.entries()) {
     const pdfBytes = new Uint8Array(sizeMb * 1024 * 1024).fill(between(1, 254));
-    // The first page, as a real import produces one (ticket 55): a
+    // The first page, as a real import produces one: a
     // thumbnail-sized fill, since what the archive measures is the byte
     // count either way.
     const thumb = new Uint8Array(28 * 1024).fill(between(1, 254));

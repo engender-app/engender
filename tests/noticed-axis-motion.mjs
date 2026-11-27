@@ -1,29 +1,11 @@
-/* What the axis does between frames (phase 10 redesign ticket 57).
+/* Seed a regimen and mark changes through the sheet. Default sweep
+   journals have no noticed marks. Sample clip-path, mark opacity and x
+   alongside screencast frames to flag cuts, jumps and missing frames.
 
-   The ticket's motion clause is mechanical rather than aesthetic: nothing
-   appears, disappears or moves in one frame, nothing is painted at its
-   destination before it travelled there, and no frame holds an element in
-   neither its old place nor its new one. Those are numbers, so this reads
-   them: a rAF loop samples the properties each movement animates -
-   the block's clip-path as it uncovers, a mark's opacity as it arrives or
-   leaves, its x as it travels - and the run says which frames the numbers
-   point at. Chromium's screencast records the same window, so the frames a
-   number accuses can be looked at rather than argued about.
-
-   Why its own recorder and not a scene in the yank sweep. The sweep's two
-   journal profiles are the demo persona and an empty journal, and neither
-   has a marker in it: markers are written through this screen's own sheet
-   and nothing else writes them. So a sweep scene pointed at
-   `[data-noticed-mark]` would find nothing to act on. This seeds the
-   journal it needs - a regimen, then changes marked through the sheet -
-   and then records.
-
-   Run: node tests/noticed-axis-motion.mjs [outDir]
-   Needs a demo build on disk (VITE_DEMO=1 npm run build); it serves
-   `build/` rather than building.
-
-   Exits non-zero when a scene fails its own arithmetic, so it is a check
-   and not only a gallery. Frames and a manifest land in outDir. */
+   VITE_DEMO=1 npm run build
+   node tests/noticed-axis-motion.mjs [outDir]
+   Serve build/. Write frames and a manifest to outDir and exit non-zero
+   if a scene fails. */
 import { preview } from 'vite';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';

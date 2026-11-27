@@ -1,27 +1,8 @@
-<!-- The injection rotation body map (phase 4 ticket 02): a tappable region
-     per site, over a schematic body. Deliberately not the same control as
-     the patch/gel application-site picker - a patch site is not rotated on
-     an injection site's schedule, so that one is a flat row of chips and
-     this one is a map you can see the last injection on.
-
-     Real buttons positioned over a decorative SVG rather than tappable SVG
-     shapes: a `<button>` gets the focus ring, the touch target and the
-     accessible name for free, and the silhouette is then just a picture.
-
-     Phase 6 ticket 13: each dot now shades by how long ago its site was
-     used, so the question "where should this one go" is answered off the
-     picture instead of by reading a twelve-row table against it. The dots
-     carry three things at once and each one has its own channel: the fill
-     is recency, a solid ring is the site tapped for this dose, and a
-     dashed ring is where the last injection went. Nothing here says a site
-     is due.
-
-     Phase 11 ticket 48: the figure is the one body the app draws
-     (bodySilhouette.ts, ADR-0087) rather than a circle and five rounded
-     rectangles of this component's own. The dots stay dots - a rotation
-     site is a point on a body, not a region of one - but all twelve were
-     re-placed against the new contour, which is a different shape at a
-     different scale. injectionSiteMap.ts keeps everything about them. -->
+<!-- Real buttons over the decorative silhouette get focus, targets and
+     accessible names. injectionSiteMap.ts positions twelve points on the
+     shared body. Fill shows recency, a solid ring marks this
+     dose's selection, and a dashed ring marks the last injection. The map
+     implies no due site. -->
 <script lang="ts">
   import { rovingRadio } from '$lib/components/rovingRadio';
   import { disclose } from '$lib/motion/reveal';

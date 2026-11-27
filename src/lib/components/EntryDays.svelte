@@ -1,30 +1,12 @@
 <script lang="ts">
-  /* A run of days of entries, journal-connected (phase 5 ticket 22).
+  /* Search and Starred use this list to format dates and times, resolve tags
+     and media marks, and link to entries. Their filtered results cannot give
+     the total entries for a day. Home and Day keep their own count-bearing
+     DayCard wrappers.
 
-     The kit's `DayCard` and `DayEntry` are presentational - they take a
-     formatted date, a formatted time, resolved tag labels and icon names, and
-     know nothing about a journal. This is the caller that knows: it owns the
-     date and time formats, the resolution of a tag id to a word, which media
-     marks an entry carries and where an entry opens.
-
-     It exists because search and the starred shelf were drawing the identical
-     eighteen lines, down to the date format, and Home and a day are two more
-     of the same shape. Those two keep their own: Home caps what it draws and
-     heads each bar with how many entries the day holds, and a day heads its
-     one card with a count too. What is shared here is the case with no count
-     to give - a hit list can say how many entries of a day matched and not how
-     many it holds, and a bar reading "3 that day" over three of five would be
-     the filter describing itself (recentEntries.ts).
-
-     Both callers redraw it under a question that changes while somebody
-     types, so a day and an entry each open their own height when an answer
-     brings them and give it back when the next answer drops them (ticket
-     16, "rows animate in; no row painted in place before it arrives"). A
-     day stays one card while the entries on it come and go. The
-     transitions are local, so a list arriving as a whole rides its
-     caller's own transition instead of opening every row at once. Each
-     entry's wrapper is the kit's `.kit-entry-row`, which tells the rail
-     where a card's first and last entry are (kit.css). */
+     Local height transitions let days and entries appear or disappear as
+     the query changes while the caller animates the whole list's arrival.
+     Keep kit-entry-row wrappers for the rail's first and last marks. */
   import { fmtDayBar, fmtTime } from '$lib/data/dates';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { HOME_AREA_ROLE, roleAt } from '$lib/theme/roles';
@@ -58,7 +40,7 @@
     /** Set where the whole run is disclosed at once by a control (Good
         moments' "See all", phase 14 ticket 18): each day clips open from
         its own left edge, one --stagger-step behind the one above, the
-        way every block in the app arrives (rule 10, ADR-0078). Without
+        way every block in the app arrives. Without
         it a run mounts as it stands, and only a day added later opens. */
     arrive?: boolean;
     /** Each day's heading level, handed to DayCard: the placing screen's

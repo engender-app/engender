@@ -1,4 +1,4 @@
-/* The entries area, exercised through the driver interface (ticket 07).
+/* The entries area, exercised through the driver interface.
    The preset-switch regression test is the one that matters most here:
    dimension values belong to the entry, not to the preset that was active
    when they were logged. */
@@ -505,7 +505,7 @@ test('a trashed entry drops out of entriesForDay, recentDays and entriesWithTag,
   await assert.rejects(journal.entries.upsertEntry({ id: trashed, mood: 5 }), /unknown entry/);
 });
 
-/* Voice recordings (ticket 24): entry-only, sharing the photo file store
+/* Voice recordings: entry-only, sharing the photo file store
    and the same file-before-row / row-before-file ordering (voiceRecordings.ts).
    First-class entry media alongside a photo, so the same rules photos.test.ts
    exercises against journal.photos.attach apply here against upsertEntry's
@@ -686,7 +686,7 @@ test('updating an entry costs fixed round trips however many tags and dimension 
   );
 });
 
-/* The bounded reads the screens use (ticket 08). A screen renders a
+/* The bounded reads the screens use. A screen renders a
    handful of days or a page of hits, and none of them may pull the whole
    entry table across the worker boundary to do it. */
 
@@ -924,8 +924,7 @@ test('counterevidencePool matches any tag id it is given, not just the first', a
 });
 
 test('the purge declines to run while a journal write is in flight', async () => {
-  /* Same rule as the orphan sweep's, and for the same reason (phase 5 audit
-     ticket 02): it reads which entries are past the window and then deletes
+  /* Same rule as the orphan sweep's, and for the same reason: it reads which entries are past the window and then deletes
      them, and it now runs with the screens live - so a restore landing in that
      gap would have its entry deleted anyway. One more boot in the trash is
      nothing; a restored entry deleted is gone. */
@@ -1276,7 +1275,7 @@ test('a trashed entry leaves the whole-journal count, and comes back to it resto
   assert.equal(await journal.entries.countAll(), 2);
 });
 
-/* The qualification rule, narrowed (phase 11 ticket 15).
+/* The qualification rule, narrowed.
 
    The pool's third arm used to admit an entry on one positively marked
    body region alone, note and all. On the demo journal that handed Safe

@@ -1,24 +1,9 @@
-/* What the app asks Android for, and what it deliberately does not (phase 5
-   security ticket 03).
-
-   The permission list is the one privacy claim a reader can check without
-   trusting the code: CONTEXT.md says journal data stays on the device unless
-   the person deliberately creates or delivers an archive, and an app that
-   declares INTERNET is asking to be taken at its word instead. Nothing here
-   opens a socket - Capacitor serves the bundle out of the APK through its
-   asset loader, and tests/browser-tier/verify-build.mjs asserts zero
-   off-origin requests online and offline - so the declaration bought nothing
-   and is gone.
-
-   Source declarations alone do not describe the installed permission set.
-   AndroidX adds biometric permissions and its private receiver permission.
-   check-release-artifacts.mjs gates the complete set from the packaged APK
-   through aapt2. These tests cover source removal directives and EN/PL copy;
-   BackupManifestContractTest checks the installed permissions and components.
-
-   A permission that reappears without a comment naming what needs it fails
-   here rather than shipping. The reasoning for each one that is declared lives
-   beside it in the manifest. */
+/* Guard Android source permission removal directives and EN/PL copy.
+   Capacitor serves APK assets locally, so the app removes INTERNET.
+   AndroidX contributes permissions at merge time. The packaged
+   permission gate uses aapt2 in check-release-artifacts.mjs, and
+   BackupManifestContractTest checks installed permissions and components.
+   Explain each source grant beside its manifest declaration. */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { expectedAndroidPermissions } from '../scripts/check-release-artifacts.mjs';

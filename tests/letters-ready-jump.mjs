@@ -142,7 +142,7 @@ try {
   // Verify browser back restores previous position
   await page.goBack();
   await page.waitForFunction(() => !window.location.hash);
-  /* Back eases to the remembered position now (ticket 278), so wait for it,
+  /* Back eases to the remembered position now, so wait for it,
      to the same limit the assertion below holds it to: the position the
      list was at, which is not always the top. On a timeout, say where the
      scroll stopped, since only CI has failed here. */

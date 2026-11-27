@@ -1,5 +1,4 @@
-/* roleAttrs() and the derivation it opts a surface into (phase 5 ticket
-   32.8). A surface that calls the helper but never gets added to a list
+/* roleAttrs() and the derivation it opts a surface into. A surface that calls the helper but never gets added to a list
    somewhere else was the whole bug - ticket 23's /timeline drew invisible
    dots and rail because .timeline was missing from a hand-maintained
    selector in kit.css, and nothing here would have caught it: the CSS was
@@ -7,7 +6,7 @@
    nothing drew. What's worth holding to a test is that opting in is one
    call now, and that kit.css has nothing left to hand-maintain.
 
-   Half calls and half greps, on purpose (ticket 08): roleAttrs is a
+   Half calls and half greps, on purpose: roleAttrs is a
    function and is called, while "kit.css has nothing left to
    hand-maintain" is a negative over a stylesheet and can only be
    matched. */
@@ -43,8 +42,8 @@ describe('roleAttrs', () => {
     );
   });
 
-  /* The ink a label on a fill takes is the ramp's, not the role's own
-     (phase 9 UX carpet ticket 11). --role-ink-in is proven against the
+  /* The ink a label on a fill takes is the ramp's, not the role's own.
+--role-ink-in is proven against the
      surfaces and the two tints a role paints, and never against the stripe
      itself: measured across all eight palettes, both themes and every
      stripe, 59 of the 66 roles put their own ink below 4.5:1 on their own

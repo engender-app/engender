@@ -1,6 +1,6 @@
-/* Unit tests for the migration runner (ADR-0006). Part of the Node tier
-   (ticket 03); run with `npm test`. No production SQLite driver exists yet
-   (ticket 04); node:sqlite's DatabaseSync stands in as a real, synchronous
+/* Unit tests for the migration runner (ADR-0006). Part of the Node tier;
+run with `npm test`. No production SQLite driver exists yet;
+node:sqlite's DatabaseSync stands in as a real, synchronous
    MigrationDb for these tests only. The fake file-ops object stands in for
    ticket 04's OPFS/Capacitor file copy. */
 

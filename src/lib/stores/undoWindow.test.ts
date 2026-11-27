@@ -1,5 +1,4 @@
-/* The window an undoable deletion stays undoable in (functional audit
-   ticket 46): undo inside it puts the rows back, and once it closes, by
+/* The window an undoable deletion stays undoable in: undo inside it puts the rows back, and once it closes, by
    time or by the toast going away early (a lock), the deletion is final and
    its files go. */
 

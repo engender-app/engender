@@ -1,5 +1,4 @@
-/* Medication reminders derive from the dose schedule (functional audit
-   ticket 21): saving a schedule with reminder times creates its reminders,
+/* Medication reminders derive from the dose schedule: saving a schedule with reminder times creates its reminders,
    changing the schedule or its episode updates them, and ending or hiding
    the episode removes them. Reminders that are not about a scheduled dose
    are never touched. */

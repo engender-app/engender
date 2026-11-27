@@ -30,7 +30,7 @@
   /* The preview is a real slider to try the scale on: it starts at 60% of
      the range and follows the finger, clamped when the maximum shrinks.
      It used to take a fixed value and drop every input, so it would not
-     move at all (pre-release-human 18). Nothing here is saved. */
+     move at all. Nothing here is saved. */
   let previewTried = $state<number | null>(null);
   let previewValue = $derived(Math.min(previewTried ?? Math.round(max * 0.6), max));
 
@@ -120,8 +120,8 @@
 <div class="screen">
   <ScreenHeader title={m.custom_dimension()} back="/settings" />
 
-  <!-- The scales already made, above the form that makes another
-       (functional audit ticket 41): there was no way to correct a scale's
+  <!-- The scales already made, above the form that makes another:
+there was no way to correct a scale's
        wording or take one off the lists, only to add more. Gated on the
        vocabulary mirror and held at last visit's height, as the body-region
        screen's lists are, so a cold open does not cut them in. Nothing

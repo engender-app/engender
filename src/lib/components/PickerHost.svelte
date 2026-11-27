@@ -7,7 +7,7 @@
 
      pickerField.svelte.ts mounts this outside the screen (see the note
      there), so it owns both ends of the popover's motion itself. The popover is a
-     block, and a block does not fade up from nothing (ADR-0078): it
+     block, and a block does not fade up from nothing: it
      unrolls from the field's edge on a clip, travelling the last few
      pixels with it, and rolls back up into the field on the way out. Under
      reduced motion it crossfades instead. */
@@ -94,7 +94,7 @@
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => place(node));
     };
-    /* On the intro's end, Sheet.svelte's reason (ticket 115); the timer is
+    /* On the intro's end, Sheet.svelte's reason; the timer is
        its fallback too, for an intro that is cut short or never fires. */
     const focusCursor = () => {
       clearTimeout(fallback);

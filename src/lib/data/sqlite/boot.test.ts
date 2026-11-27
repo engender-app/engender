@@ -1,6 +1,5 @@
 import { withReadSnapshots } from './transactor.ts';
-/* Unit tests for the boot sequence's ordering and error handling (ticket
-   04). Runs against a fake driver wrapping node:sqlite - the real
+/* Unit tests for the boot sequence's ordering and error handling. Runs against a fake driver wrapping node:sqlite - the real
    createWebSqlite() (driver.ts) needs a browser and is proven
    separately in the browser tier. */
 
@@ -219,7 +218,7 @@ test('does not load reference data or sweep photos after a failed migration', as
 });
 
 test('migrations hold the update guard, so a waiting worker cannot take over mid-migration', async () => {
-  // The dangerous one of the four (ticket 04): a save interrupted costs a
+  // The dangerous one of the four: a save interrupted costs a
   // spinner, a migration interrupted can cost the journal.
   const duringMigration: boolean[] = [];
   const watchingDriver = (): SqliteDriver => {
@@ -501,7 +500,7 @@ test('opens at most one driver per clean boot attempt', async () => {
 test('the auto-log pass runs last of the three, and a failure in it is the next boot\'s problem', async () => {
   /* Last because it writes rows the other two only ever remove, and a
      warning rather than an error because a slot it did not fill is still
-     open tomorrow (phase 11 ticket 11). */
+     open tomorrow. */
   const order: string[] = [];
   const result = await boot({
     createDriver: makeFakeDriver,

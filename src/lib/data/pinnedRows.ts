@@ -1,33 +1,11 @@
-/* What a person put on the front page (phase 10 redesign ticket 05,
-   ADR-0073, CONTEXT: "Pinned row"). The agenda's five kind switches that
-   used to live here went in functional-audit ticket 14: the agenda draws
-   every kind ADR-0067 admits.
+/* Resolve the pins a person chose for Today (ADR-0073). Use the saved
+   onboarding choice or defaults when there is no saved arrangement.
+   A pin carries only a hub row key. DrawnRow and the registry supply
+   its icon, route, areas and description.
 
-   The front page used to be a list the app decided. It pictured one reader -
-   on HRT, under a clinician, logging most days, with a history that begins
-   when the journal does - and every reader who differs met a screen
-   describing somebody else. Nothing here ranks anything: a pinned row is on
-   Today because the person put it there, in the place they put it, and the
-   only pins this module resolves without an arrangement are the saved
-   onboarding choice or the default set.
-
-   A **pinned row** is what a person put on Today. A **hub row** is
-   navigation. One row has one shape - `hubRows.ts`'s `DrawnRow`, which both
-   surfaces use - and the two are still not the same object, because what
-   may be done to them differs: the hub groups its rows and sweeps a
-   finished one into a set of its own, and neither of those may happen to
-   somewhere the person arranged by hand. So this module resolves an order
-   and never touches it again.
-
-   Nothing is restated. A pin is a `hubRows.ts` key and nothing else; the
-   icon, the route, which areas sit behind the row and what its second line
-   says all come off the registry, and `areaState` answers hidden and
-   finished. That is `statsAreas.ts`'s own lesson, which paid for four wrong
-   fields on a shipped screen in one afternoon by restating five.
-
-   Node-tier safe, like the two registries it reads: no clock, no driver, no
-   paraglide, no runes. Today arrives inside `HubReading`, the same as it
-   does for the hub. */
+   Preserve the person's order when a row is finished. areaState
+   supplies hidden and finished state. HubReading supplies today,
+   so there is no separate clock or journal read here. */
 
 import { HUB_ROWS, rowHidden, rowLine, rowReads, type DrawnRow, type HubReading, type HubRow, type HubRowKey } from './hubRows';
 import { ROW_FORWARD_KEYS } from './rowForward';
@@ -55,13 +33,8 @@ const LEGACY_UNANSWERED_AREAS = DEFAULT_ONBOARDING_AREAS;
     would leave this reading a key nobody writes. */
 export type PinPreferences = Pick<PreferenceValues, 'pinnedRows' | 'onboardingAreas'>;
 
-/** One row as the front page draws it - `hubRows.ts`'s `DrawnRow` under the
-    name `CONTEXT.md` gives it, because a pinned row is the domain object
-    and a drawn row is the shape.
-
-    The line is `rowLine`'s, unchanged and not reinterpreted. A pinned row
-    that has gone quiet says the same thing about itself as its hub row
-    does, which is what stops the app having two opinions about one area. */
+/** The front page draws a pinned row as a hubRows.ts DrawnRow. Use the
+    same rowLine reading that the hub shows, including when it goes quiet. */
 export type PinnedRow = DrawnRow;
 
 /** The default set: saved onboarding choices for older journals, or the
@@ -99,8 +72,8 @@ function pinKeys(prefs: PinPreferences, rows: readonly HubRow[]): readonly strin
 
 /** A quiet reading for initial render before SQLite queries settle.
     Every row reports its standing line ('not-yet' or 'no-stream'),
-    so screens can render their pinned list without a cold-mount pop
-    (phase 10 UX carpet ticket 106). */
+    so screens can render their pinned list without a cold-mount pop.
+    */
 export function fallbackReading(todayEpochDay: number): HubReading {
   return {
     todayEpochDay,
@@ -111,47 +84,17 @@ export function fallbackReading(todayEpochDay: number): HubReading {
   };
 }
 
-/** The front page's rows, resolved: the person's pins, the area registry and
-    area state, in the person's own order.
-
-    Three ways a stored pin resolves to nothing, and all three are the same
-    statement - a pin is about a row on a screen, so a pin with no row is not
-    a pin:
-
-      - a key the registry does not hold, which is what a renamed or retired
-        row leaves behind. It resolves to nothing rather than to a guess:
-        matching it against something similar would be the app deciding what
-        somebody meant
-      - a row whose areas the person has hidden, which is `areaState`'s rule
-        and the hub's - a hidden area is out of the navigation, and a front
-        page that kept drawing it would be a second navigation that never
-        heard
-      - the same key twice, which the editing surface cannot produce and an
-        edited archive can. The first place it was put wins, because that is
-        where they put it
-
-    A row the hub does not draw is not one of them either. Seven rows are
-    hosted on a screen of their own rather than listed on the hub
-    (ADR-0072), and all seven are pinnable: where the hub draws a row is the
-    hub's own ranking of itself, and somebody with a dilation log or a hair
-    progression they check daily is exactly the reader who should be able to
-    put it in front of them. The one row this needs saying about is the
-    cycle log, which ADR-0043 gates one-directionally: pinning it is the
-    person asking for it, but the list they pick from has to apply that gate
-    so it is never *offered* cold. That list is ticket 14's, and this is the
-    note it inherits.
-
-    A finished area is **not** one of them. It keeps its row, carrying the
-    day it ended, exactly the way its hub row does - finishing is a statement
-    about a practice rather than a delete. It also keeps its place: the hub
-    sweeps a finished row into a finished set, and doing that to somewhere
-    the person arranged by hand would be the app reordering their front page,
-    which is the one thing this module exists to refuse.
-
-    `rows` is the registry, defaulted rather than reached for, so
-    `pinnedRows.test.ts` can drive this same function over a registry one row
-    short and watch the rule actually fail - the discipline `unregisteredKinds`
-    holds itself to next door. */
+/**
+ * Resolve stored pins in the person's order against the row registry
+ * and area visibility. Skip unknown or hidden rows. The first occurrence
+ * wins if an Archive repeats a key.
+ *
+ * Rows hosted outside the hub can still be pinned (ADR-0072). Apply
+ * the cycle visibility gate when offering pins. A saved cycle pin
+ * already records the person's choice (ADR-0043). Finished rows keep
+ * their place and date. The injected registry lets tests exercise
+ * a missing row.
+ */
 export function pinnedRows(
   prefs: PinPreferences,
   reading: HubReading,
@@ -175,7 +118,7 @@ export function pinnedRows(
   return drawn;
 }
 
-/* ---------- editing it (ticket 14) ----------
+/* ---------- editing it ----------
 
    The five functions below are the whole of what the editing surface may
    do, and they are here rather than in the screen for the reason the

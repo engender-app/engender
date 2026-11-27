@@ -18,15 +18,14 @@ export interface OcrImageSource {
   pickImage(source: 'gallery' | 'camera'): Promise<Uint8Array | null>;
 }
 
-/** Watching a recognition pass that is already running (phase 9 audit
-    ticket 11, ADR-0070). */
+/** Watching a recognition pass that is already running. */
 export interface OcrWatch {
   /** How far through the pass Tesseract says it is, or null while it is
       still loading its language data and has nothing to divide by. */
   onProgress?(fraction: number | null): void;
   /** Stops the pass. Safe here and only here: recognition reads a picked
-      file and never touches the journal, so stopping means picking again
-      (ADR-0070). */
+      file and never touches the journal, so stopping means picking again.
+      */
   signal?: AbortSignal;
 }
 
@@ -103,7 +102,7 @@ interface OcrMachine {
   /** User stops the pass. Only `recognizing` answers to it: that state has
       written nothing, so stopping means picking again, while `saving` is
       already putting rows in the journal and has no defined rollback -
-      the same rule that makes archive import uncancellable (ADR-0070). */
+      the same rule that makes archive import uncancellable. */
   cancel(): void;
 
   /** User closes / cancels the sheet. Returns to idle. */
@@ -276,7 +275,7 @@ export function createOcrMachine(
 
       machine.state = { tag: 'saving', rows };
 
-      /* Rows are written one at a time with no rollback (ADR-0070), so a
+      /* Rows are written one at a time with no rollback, so a
          failure part way leaves some in the journal. Those leave the list. */
       const landed = new Set<OcrReviewRow>();
       try {

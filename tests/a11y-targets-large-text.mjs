@@ -1,60 +1,15 @@
-/* Touch targets and whole navigation names (phase 15 after-release ticket
-   18; accessibility audit A10, A11 and V13, and the 5 October audit's
-   A11Y-04, A11Y-05, L04-08, L06-04 and L07-08; the 12 October UI audit's
-   U38 and U39, last-audit UI ticket 25).
+/* Check 48px touch targets and full nav labels on a demo build. Include
+   pseudo-element hit extensions. Sample elementFromPoint in 0.25px steps
+   up to 60px on each axis. Adjust bounds for discrepancies over 1px.
+   The 47px proof must fail and the 48px proof must pass.
 
-   A target is measured the way a finger meets it, not by its box: from the
-   control's centre, how far left, right, up and down `elementFromPoint`
-   still lands on the control or something inside it. That counts a
-   transparent `::after` extension the way a press does, and it counts
-   nothing a neighbour covers. It steps a quarter of a pixel at a time.
-   Each extent is capped at 60px, so 120 is "at least 48"; an extension
-   reaching out on one side only (the photo years') still counts whole.
+   Test 320px and 390px at 100% and 200% text, with nav labels also at 130%.
+   Use 195px to simulate 200% zoom on a 390px phone. Check English and Polish,
+   clipping ancestors and control overlap. Calendar dates at 320px report
+   only, since seven 48px columns need 336px.
 
-   Every listed control is checked at 320 and 390px wide with the page's
-   text at 100% and 200% (the root font size, which every type token is a
-   rem of). The bottom navigation is checked at 100%, 130% and 200%: every
-   label shows its whole name, no word is broken across lines, and no tab
-   is under 48px.
-
-   A scene marked `narrow` is also checked at 195px, the width a 390px
-   phone leaves at 200% zoom, with text at 100%, in English and Polish:
-   opened letters' rows (the Words cloud was the other one the 12 October
-   audit measured at 23px tall and 29 to 47px wide, until functional audit
-   ticket 12 cut the reading), and the five screens its
-   U51, U52 and U54 found losing content or stacking targets there
-   (last-audit UI 48). Three more checks are theirs. A scene's `whole`
-   text has to show whole: the range of its words inside the viewport
-   and inside every ancestor that clips sideways, which is what Journal's
-   month ("Octobe", "paździe") and In the room's question ("spironolac")
-   failed. A scene marked `apart` has no two listed controls whose boxes
-   overlap, which is what Lab results' back control did, 24px deep under
-   the first action, and what Journal's month button did under the search
-   control.
-
-   The walk alone cannot tell 47px from 48px. Chromium snaps a hit-test
-   point by up to a pixel, so a lone 47px button read 47.75 and a 48px
-   donut row with its neighbour flush below read 47.75 too; the old floor
-   of 48 less a quarter pixel passed both. So the size comes from layout,
-   which is exact: the control's box joined with any absolutely placed
-   `::before`/`::after` it draws inside itself (the .hit-floor extension).
-   The walk then only says what that misses: a side where it lands more
-   than a pixel short of the edge is covered by something and counts as
-   far as the walk got, and a side where it lands more than a pixel past
-   it has an extension layout did not find and counts as walked. Before
-   any scene the measure runs over two planted buttons, 47px and 48px
-   square, and the run stops unless it reads the first under the floor and
-   the second at it. A walk that cannot see a 47px control proves nothing
-   about the real ones.
-
-   The calendar's date links are printed at 320 rather than failed: seven
-   48px columns need 336px of row, which a 320px screen does not have
-   (calendar-month-a11y-check.mjs holds them at 360 and up).
-
-   Against a demo build:
-     VITE_DEMO=1 npm run build
-     node tests/a11y-targets-large-text.mjs [--root <built tree>] [--url <running server>]
-       [--out <dir for results.json>] [--only <scene,scene>] */
+   Run VITE_DEMO=1 npm run build, then node tests/a11y-targets-large-text.mjs.
+   Use --root, --url, --out or --only to select inputs and results. */
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -99,7 +54,7 @@ const SCENES = [
   },
   { key: 'clinician', path: '/health/clinician-summary', targets: '.dossier-row-link' },
   {
-    /* A new entry's first step (tester report 02, ticket 03): the faces and
+    /* A new entry's first step: the faces and
        the two ways on, finish now and continue. */
     key: 'entry-first-step',
     path: '/entry/new/today',

@@ -1,4 +1,4 @@
-/* A procedure's kind (phase 9 carpet ticket 17) and an archive written
+/* A procedure's kind and an archive written
    before it still restores.
 
    The legacy payload here is made by snapshotting a real journal and

@@ -1,4 +1,4 @@
-/* Tests for ready letters count/jump above the waiting list (ticket 41).
+/* Tests for ready letters count/jump above the waiting list.
    Verifies:
    - Boundary-day eligibility logic using local epoch day.
    - Mixed ready/waiting state accurately identifies the ready group count.

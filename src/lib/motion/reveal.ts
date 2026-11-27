@@ -1,29 +1,11 @@
-/* Tier 3 of the motion system (DIRECTION.md tier 3): change within a screen.
+/* Animate changes inside a screen. A left-to-right wipe uncovers
+   one card-sized region at a time. Chromium repaints the clipped
+   subtree each frame, so the cost grows with its area and complexity.
+   Measure before extending a wipe to a large chart.
 
-   Phase 5 ticket 28's third material, and the only one that is geometry
-   rather than a value, which is why it is here rather than in materials.css
-   or the token layer. A wipe uncovers content along one edge instead of
-   fading it in: it says the content was already composed and is being
-   revealed, where a fade says it has just been assembled. On a screen whose
-   numbers the person already knows, revealed is the truer of the two.
-
-   Cap: one region at a time, and a region the size of a card rather than a
-   screen. Chromium repaints the clipped subtree on every frame of a clip-path
-   animation, so the cost is the area times the complexity of what is inside
-   it - which is exactly why the obvious use for this is not claimed here.
-   DIRECTION.md's contract names tier 3's chart re-tween as the thing that
-   might become a clip-path reveal instead. Whether it should is ticket 27's
-   measurement over real screens, not this ticket's guess: a wipe over a
-   365-point path could repaint more per frame than the tween it replaced.
-
-   Left to right, and only left to right. A wipe from another edge is a
-   parameter this has no use for yet, so the first screen that needs one adds
-   it rather than this ticket shipping three directions nothing calls.
-
-   Like the tier-2 primitives in navigation.ts, this reads its duration and
-   its easing out of the token layer and writes its own reduced-motion
-   substitute, because the 1ms clamp in theme/base.css is a CSS rule and never
-   touches a Svelte transition. */
+   Read durations and easing from the tokens. Implement the
+   reduced-motion substitute in each primitive because Svelte
+   transitions bypass the stylesheet's timing clamp. */
 
 import type { Action } from 'svelte/action';
 import { isDoorActive } from '../navigation/doorActivity';
@@ -95,7 +77,7 @@ export function wipe(_node: Element, params?: { authored?: boolean }): Transitio
  * The wipe above uncovers from one edge, which is what a plot that runs left
  * to right wants. A mirrored figure does not: the paired pitch density is two
  * shapes measured outward from a spine down the middle
- * (PitchFigure.svelte, redesign ticket 42, ADR-0083), and uncovering that
+ * (PitchFigure.svelte). Uncovering it
  * from the left would draw the earlier read arriving before the later one -
  * a sequence the picture does not have. This opens from the middle instead,
  * so both shapes grow off the axis they were measured from.
@@ -125,50 +107,20 @@ export function spread(_node: Element, params?: { authored?: boolean }): Transit
 }
 
 /**
- * Tier 3, change within a screen: a group opening its own height.
+ * Animate a group opening its own height so the rows below it move in
+ * the same frames. Apply the layout exception to one group at a time.
+ * Settle at the element's normal auto height. Reduced motion cuts the
+ * transition.
  *
- * DIRECTION.md names this case by itself - "a list insertion opens its own
- * height rather than making everything below it jump" - and it was the
- * first place tier 3 spent the performance contract's one layout-property
- * exception. `resize`, below, is the second - both animate a single scalar
- * height rather than the chart re-tween's per-point SVG path, which is the
- * cost the contract's own escape hatch was written against. What is
- * animated here is the element's own height, so the rows under it travel
- * with it rather than being teleported down the screen by a block appearing
- * at full size.
- *
- * The cap is the same as the wipe's, and stricter in practice: one group at
- * a time, and a group rather than a screen. A disclosure that opens half the
- * document is a screen, and belongs to tier 2 as a navigation instead.
- *
- * Reduced motion is an instant cut, which is tier 3's substitute: a group
- * opening inside a screen has no journey for a fade to stand in for, and the
- * chevron beside it has already turned to say what happened.
- *
- * The `to` state is `height: auto` by way of `scaleY`-free arithmetic on the
- * measured height, so the resting rule the element already has is what it
- * lands on - the invariant DIRECTION.md's reduced-motion contract imposes on
- * every animation in the app.
- *
- * `params.skip`, the same instant cut as reduced motion, for the caller that
- * knows better than this module can: this is a Svelte out-transition, and
- * Svelte still runs it when the *page* unmounts an always-mounted node during
- * navigation, not only when the node's own local condition goes false - the
- * `local`/`global` transition modifiers don't tell those two apart, they only
- * gate whether a *nested* block's outro rides along with an ancestor's.
- * Nothing in this module can see a SvelteKit navigation - that lives in
- * `$app/state`, which breaks reveal.test.ts's plain-node vitest config if
- * imported here - so the caller reads `navigating.to` and says so. A caller
- * that never sees a bare, unwrapped mount point has no need of this; one that
- * does is a screen's own permanent notice unmounting only when the screen
- * itself goes (the roadmap's provenance disclaimer, phase 5 ticket 99 item
- * 16, "when i go back to more there is a sliding-up animation with a yank at
- * the end... i just want a smooth quick transition").
+ * Pass params.skip when navigation unmounts a permanent screen node.
+ * Svelte's transition modifiers cannot distinguish that exit from a
+ * local removal. The caller can read navigating.to, which keeps the
+ * primitive usable in the Node tier.
  */
 export function disclose(
   node: Element,
   params?: { skip?: boolean; onScreen?: boolean; belowFold?: boolean },
-  /* `fadeEdges`: the panel primitive's closing (redesign ticket 25). A
+  /* `fadeEdges`: the panel primitive's closing. A
      box's hairlines were cut to nothing on the first frame of a close,
      because a border cannot shrink below a device pixel and stalled the
      box at its own edge; Alicja read that first frame as the line simply
@@ -197,26 +149,11 @@ export function disclose(
   const height = parseFloat(style.height) || 0;
   const paddingTop = parseFloat(style.paddingTop) || 0;
   const paddingBottom = parseFloat(style.paddingBottom) || 0;
-  /* A bordered surface (Notice.svelte's card) never actually reached zero
-     height without this: border-width is not part of the height/padding
-     this already shrinks, so the box stalled at its own border - top plus
-     bottom, a real but sub-pixel amount for most of the travel - and only
-     visibly lost it in the last frame or two, once easing had slowed the
-     interpolation down near a browser can no longer render a fraction of a
-     device pixel as anything but a solid hairline. The content below rode
-     the smooth shrink the whole way and then took that last sliver in one
-     frame, which is what read as a jump at the end (Alicja, 2026-08-28,
-     closing a notification panel).
-
-     Continuing to interpolate the border proportionally cannot fix that:
-     any value between 0 and a device pixel still paints as a full hairline,
-     so the snap to invisible would keep happening somewhere near the end
-     regardless of how the number is computed. Dropping it to 0 for the
-     whole animation instead - the instant the transition starts rather than
-     the instant it finishes - moves that same unavoidable snap to the first
-     frame, while the box is still nearly full height and a lost 1px edge is
-     not the thing anyone is looking at. A borderless caller measures 0 here
-     and this is a no-op either way. */
+  /* Turn off the border during height travel. At subpixel widths
+     the browser still paints a hairline, so interpolating the border
+     left a last-frame jump under the panel. Removing it before the
+     panel shrinks keeps the jump out of the final frames. A borderless
+     surface already measures zero. */
   const borderTop = parseFloat(style.borderTopWidth) || 0;
   const borderBottom = parseFloat(style.borderBottomWidth) || 0;
   /* Margin is the same story as border above, and a bigger one: `.screen >
@@ -236,28 +173,13 @@ export function disclose(
      * chasing each margin-bearing surface that uses it. */
   const marginTop = parseFloat(style.marginTop) || 0;
   const marginBottom = parseFloat(style.marginBottom) || 0;
-  /* A grid box lays its own content out again on every frame of the
-     collapse, and that is what stopped this reading as a mask. Its `auto`
-     tracks compress once the container's height is definite and smaller
-     than they are, and `align-items: center` then re-centres each item in
-     whatever is left of its track - so Notice.svelte's title climbed
-     steadily toward the top edge while the icon beside it was clipped from
-     the bottom, which is a box squashing its contents rather than a box
-     being covered over (Alicja, ticket 99 item 23: "it looks like a scale
-     animation, whereas it should be a mask animation").
+  /* Pin a grid's measured tracks during the collapse so the clip
+     covers stationary content. A smaller definite height otherwise
+     compresses auto tracks and moves centered items. getComputedStyle
+     already supplies pixel track sizes.
 
-     Pinning the tracks at what they measure right now takes the relayout
-     out of it: the content stays exactly where it was and `overflow:
-     hidden` above does the covering, which is the mask. The used value
-     getComputedStyle returns here is already a px list, so writing it back
-     is the same layout the box has at rest.
-
-     Grid only. A block container's content is top-anchored already, which
-     is why every `.disclosed` caller looked right without this. Asked
-     defensively because a caller can hand this a stand-in for a computed
-     style that names only the properties it cares about - reveal.test.ts
-     does exactly that - and a missing `display` is "not a grid", not a
-     crash. */
+     Ordinary blocks stay top-anchored. A missing display value is treated
+     as a non-grid caller. */
   const rows = style.display?.includes('grid') ? style.gridTemplateRows : '';
   /* Where the box's bottom margin ends, and it is not always zero (redesign
      ticket 25, Alicja on the flipbooks: a notice dismissed on Home jumped
@@ -282,7 +204,7 @@ export function disclose(
      pulled up by the same margin and made taller by it, so the content
      stays where it was and the edge below it does too. */
   const swallowed = collapsedTopMargin(node, style);
-  /* `onScreen` (functional audit ticket 34): a block far taller than the
+  /* `onScreen`: a block far taller than the
      screen travels only the part the viewport shows, the way `resize` does
      since ticket 282, and takes the rest at the end, below the fold where
      nothing is painted. The roadmap's 23 Polish steps are 2967px; travelled
@@ -379,25 +301,13 @@ function collapsedTopMargin(node: Element, style: CSSStyleDeclaration): number {
 }
 
 /**
- * Tier 3, change within a screen: a panel arriving on a settled screen
- * comes down from above (phase 10 redesign ticket 25).
+ * Bring a panel down from behind the element above it. Keep its
+ * full height. Use a negative top margin and clip the part that
+ * has yet to arrive. The lower edge appears first while surrounding
+ * rows give it space progressively.
  *
- * The first cut opened the panel's height with its content pinned to the
- * top, which is `disclose` run forwards: the box's bottom edge descends
- * over content that is already in place. Alicja asked for the reverse of
- * the way a tile closes, "with the only difference being the new one comes
- * from above": the block itself slides down into its slot from behind the
- * element above it, as an object arriving rather than a box unrolling.
- *
- * So the box keeps its full size and is pulled up by a negative top margin
- * for the part of the travel that is still to come, and that same part is
- * clipped off its top - the rows below move by the box's laid-out height,
- * which grows from nothing to the whole, and what shows is the block's
- * bottom edge first, its top edge descending into view last. clip-path and
- * a margin: the margin is the same layout spend `disclose` already makes on
- * height, and there is no height to fight a min-height with.
- *
- * Reduced motion never reaches this: `collapse` has already cut.
+ * The margin is the layout property animated here. collapse has
+ * already cut this path for reduced motion.
  */
 function arrivesFromAbove(node: Element): TransitionConfig {
   const style = getComputedStyle(node);
@@ -446,8 +356,7 @@ function gapItOpens(node: Element): TransitionConfig['tick'] {
 }
 
 /** The kit surface on its way out that this one arrives directly behind,
-    if any: one notice replacing another in the same spot (last-audit UI
-    ticket 41). Svelte marks a node inert for its outro. While it leaves,
+    if any: one notice replacing another in the same spot. Svelte marks a node inert for its outro. While it leaves,
     the kit's surface-after-surface rule gives the arriving one a top margin
     that is gone the frame the leaving node is removed - 20px in one frame
     at the end of the swap. Once it stands in that place its margin is the
@@ -478,8 +387,7 @@ const FROM_ABOVE_MAX = 400;
     however many such wrappers deep. Home's reserves (ReadReserve.svelte,
     ticket 183) put its notices one wrapper down from the blocks they close
     between; reading only siblings, the first notice found nothing above it
-    and its margin ended 20px short. And a screen part's last row (ticket
-    195) meets the part's own 20 on the way down, whatever is under it. */
+    and its margin ended 20px short. And a screen part's last row meets the part's own 20 on the way down, whatever is under it. */
 function meetingMargin(node: Element, side: 'prev' | 'next'): number | null {
   const facing = side === 'prev' ? 'marginBottom' : 'marginTop';
   const own = side === 'prev' ? 'marginTop' : 'marginBottom';
@@ -596,41 +504,19 @@ function hasLineBelow(node: Element): boolean {
   return false;
 }
 
-/** Settles the grid around a panel that is leaving the flow: every tile that
-    changes place travels there, and the space the vacated line held is eased
-    away under the grid. Hands back nothing.
-
-    The other half of `dissolveAt`, and without it the dissolve trades one
-    yank for a worse one. Out of flow, a tile from the line below rewraps up
-    into the freed slot in a single frame, its own line goes with it, and
-    everything under the grid is pulled up by the whole height of that line at
-    once ("the row closes up - still happens with a yank" - Alicja). Both
-    halves of that are real changes and both are worth animating.
-
-    **The tiles that move.** A rewrapped tile is already laid out where it is
-    going by the time this runs, so it is translated back to where it was and
-    released - the tile travels while the closed card dissolves over its slot,
-    and is never hidden behind it. Its width is not animated with it: a card
-    that scales horizontally stretches its own text, so it takes its new width
-    in the frame the travel starts, at its old place (Alicja's call, on the
-    two frames where the tile was in neither place).
-
-    **The space.** As a margin under the grid rather than as the grid's own
-    height, which was the first attempt and was worse: `.kit-tiles` stretches
-    its children, so a grid pinned to its old height made every tile on the
-    surviving line as tall as the vacated one - the dose panel went from 176px
-    to 325px in one frame and eased back down. The space that is actually
-    going is the line's, and it sits below everything that stays.
-
-    Both are read from one pair of measurements, taken with the panel out of
-    the flow for a single synchronous moment before any frame is painted,
-    because what a rewrap does to a row cannot be worked out from the boxes.
-    Two forced layouts, once per dismissal.
-
-    WAAPI rather than the transition's own `tick`, since the transition's
-    `css` is what drives the panel itself and only one of the two can be.
-    `fill` is left alone, so everything is back on its own geometry the moment
-    the travel finishes. */
+/**
+ * Settle the grid when a dissolving tile leaves its slot. Measure
+ * before and with that tile synchronously out of flow to capture
+ * rewrapping and the height of any vacated row.
+ *
+ * Translate every moving tile back to its old position, then let it
+ * travel at its new width. Keep vacated space as a margin below the
+ * grid during travel. Fixing the grid's height would stretch the
+ * remaining flex row.
+ *
+ * Use WAAPI for the tiles and margin so the panel's transition can
+ * keep its own CSS. Normal geometry takes over when playback ends.
+ */
 function settleGrid(node: Element, duration: number): void {
   const parent = node.parentElement;
   const style = (node as HTMLElement).style;
@@ -756,75 +642,12 @@ function sharesItsLine(node: Element): boolean {
 }
 
 /**
- * Tier 3, change within a screen: a panel giving back the space it held,
- * along whichever axis its neighbours will take it back on.
- *
- * The one system phase 9 carpet ticket 04 asks for. Every live panel on Home
- * leaves through this - a notice, a live tile, a look-back tile, the block a
- * whole tier of tiles sits in - and the surface it sits on decides how,
- * rather than each screen patching its own case:
- *
- * - **A row.** Something stands beside it, so the space is horizontal. The
- *   panel shrinks its own width to nothing and takes the row's gap with it,
- *   and because `.kit-tiles` is a flex row (kit.css) the tile beside it grows
- *   into that space on every frame rather than snapping to full width the
- *   frame this node is finally removed. That snap is the defect: a Svelte
- *   out-transition keeps the leaving node in the DOM for its whole duration,
- *   so `:only-child` did not apply until it was over - the yank arrived
- *   *after* the animation looked finished.
- * - **A column.** Nothing is beside it, so the space is vertical and this is
- *   `disclose`, unchanged. The same pair below the 390px floor is stacked,
- *   which is why the axis is read off the layout instead of passed in.
- * - **Neither, when the slot is not actually being given up.** Home's grid is
- *   capped, so dismissing a tile while the fold is holding others promotes
- *   one into the slot the same tick. Nothing is given back there and the
- *   neighbours have nothing to do, so the panel leaving goes at once and the
- *   one taking its place fades in where it stands. It is not a choice of
- *   taste: by the time the leaving panel's transition is created the
- *   replacement is already in its slot, which in a two-up row has bumped the
- *   leaver onto a line of its own - it collapsed a full-width bar below a row
- *   that had already snapped shut, one defect standing in for another. The
- *   screen says so through `markSlotReplacement` because only the list knows
- *   a promotion happened; the DOM at that point cannot tell one from a tile
- *   that was always on the line below.
- *
- * `flex: 0 0 <width>px` rather than a grow: shrink and grow both leave the
- * used width to be negotiated against the siblings mid-travel, and this
- * animation is the one thing that should be deciding it. At t=1 that is the
- * width the element already had, which is the resting-state invariant every
- * animation here is held to.
- *
- * **On the way in it is silent while the screen is still arriving.** Returning
- * to Home from the calendar remounts every panel and their reads answer a
- * moment later, so an entrance played then is the screen assembling itself in
- * front of you - "panels yank into place", the second of this ticket's three
- * defects. After the screen has settled the same entrance is a change worth
- * showing: closing one live tile promotes another out of the fold, and that
- * one should open its own height rather than appear at full size and shove
- * the rows below it.
- *
- * **And so is leaving, for the same window.** Carpet ticket 04 wrote that
- * leaving is never suppressed because a panel that goes during the arrival
- * window went because somebody dismissed it, and that premise is wrong for a
- * capped grid: Home's live tiles answer their reads one by one, and a heavier
- * tile answering after a lighter one displaces it into the fold, which is the
- * list settling rather than anybody's tap - nobody taps inside the first
- * 240ms of a screen. The displaced tile dissolved in front of the reader
- * while the screen was still arriving, a ghost under the log strip for
- * 200ms on every arrival with a full grid (redesign ticket 19, found on the
- * agenda's flipbook and present on main). A leave inside the window cuts,
- * before the swap check, so a settling swap draws neither half.
- *
- * `skip` is the same escape `disclose` documents, for the caller that can see
- * a SvelteKit navigation and this module cannot.
- *
- * `after` holds a column arrival back by that many milliseconds, for a block
- * that replaces another closing in the same place. Arriving from above, the
- * new block's lower edge follows the closing one's down the screen, so the
- * two travel at once and the empty state read as sliding down over a list
- * still closing (FA 46, Trash's last row). Held back, the old block is gone
- * before the new one starts; until then it is clipped to nothing and takes
- * no room, which is its first frame anyway.
+ * Release a panel's space on the current layout axis. Fix a horizontal
+ * panel's width so siblings can grow during its exit. Use disclose when stacked.
+ * markSlotReplacement tells a capped grid to fill a slot without collapsing
+ * an extra row. Enter and leave cut during screen arrival. A caller can also
+ * pass skip. For stacked replacements, after (ms) holds the entering panel at zero
+ * until the exit has collapsed.
  */
 export function collapse(
   node: Element,
@@ -865,21 +688,7 @@ export function collapse(
      tiles-unfold frames 1 to 9). Inline, so the grid's own nth-child rule
      is overridden for this one element and nothing else. */
   if (options?.direction === 'in') (node as HTMLElement).style?.setProperty?.('--tile-index', '0');
-  /* Gated on `data-live-tile`, the same marker `markSlotReplacement`'s only
-     producer (+page.svelte's `$effect.pre`) reads the leaving tile's box
-     through: the swap is a fact about one keyed member of `shownTiles`
-     changing places with another, not about whatever else happens to call
-     `collapse` in the same 50ms window. Home's own tier wrapper - the
-     `{#if todayTiles.length > 0}` div around a lone tier's tiles - shares
-     the primitive and was going through this branch too whenever the tile
-     inside it happened to leave during an unrelated fold promotion
-     elsewhere in the grid: `dissolveAt` takes it out of flow with
-     `position: fixed`, so the tier's own row never shrank and the agenda
-     below it snapped up to fill the space in the frame the tile left,
-     while the tile (also pinned, also fading) hung on top of it for the
-     rest of the 380ms. The wrapper isn't one of the grid's tiles and was
-     never who the swap was measured for; it still owes the column below it
-     a real collapse. */
+  /* Only `data-live-tile` elements participate in keyed slot replacement. Home's `$effect.pre` uses the same marker to find the leaving tile's box. Its surrounding tier wrapper still needs to collapse in flow. Dissolving the wrapper during an unrelated swap pins it in place and makes the agenda jump under a tile still fading for 380ms. */
   if (replacingSlot() && (node as HTMLElement).hasAttribute('data-live-tile')) {
     /* Only an arrival that actually stands in the slot it replaces rises
        into it. Stopping the wear session in the today tier promotes the
@@ -954,23 +763,13 @@ export function collapse(
   return {
     duration: motionDuration('--dur-slow'),
     easing: EASE_OUT,
-    /* `min-width: 0` because a flex item's automatic minimum is its content,
-       and a tile whose title will not wrap would otherwise stall at that
-       width for the whole travel and lose the rest in one frame. The gap
-       leaves as a negative margin on the leading edge: whether this panel is
-       first on its line or last, the gap beside it plus its own zero width
-       comes to nothing, so the survivor lands exactly on the full width.
+    /* Set min-width: 0 so a flexible row panel can shrink past its
+       text's intrinsic width. Cancel the gap with a negative leading
+       margin so the remaining panel lands at full width.
 
-       And the content goes before the box does. A card narrowing along a row
-       reflows its own text on the way - "3 Aug 2025" became "3 A… 2…" over a
-       tile 60px wide - which is the reader being shown a broken layout for
-       240ms rather than a tile leaving. Down a column that never happens,
-       because `disclose` shrinks a box whose lines keep their width. So the
-       row case fades what is inside out as the tile narrows - gone by the
-       time it is down to a third of its width, so the empty surface finishes
-       the journey alone; the survivor's growth,
-       which is the thing actually worth watching, carries on either way.
-       Opacity is the one property this contract spends freely. */
+       Fade the contents before the panel reaches one third of its width,
+       so the last frames show a clean surface instead of reflowing text.
+       A vertical disclosure keeps each line at its normal width. */
     css: (t, u) =>
       `overflow: hidden;` +
       `min-width: 0;` +
@@ -985,80 +784,20 @@ export function collapse(
 }
 
 /**
- * Tier 3, change within a screen: a skeleton crossfading into the content it
- * was standing in for.
+ * Put out:crossfade on the skeleton and let the incoming content render
+ * normally. A second entrance would replay the shell's arrival animation.
  *
- * `out:crossfade` on the skeleton, and nothing at all on what replaces it.
- * That asymmetry is the whole of this primitive and it was wrong the first
- * time: pairing it with an `in:` on the content produced a *sequence*
- * rather than a crossfade, and two things went wrong with that.
+ * Take the leaving node out of flow synchronously so it cannot push the
+ * new content down for one frame. A position declared in css() would
+ * start a frame later. Pin the node's measured width because absolute
+ * positioning otherwise shrinks it to fit, and keep its static vertical
+ * position. Set z-index: -1 so it paints behind the arriving content.
  *
- * The content faded in twice. A screen arriving is tier 2's, and the shell
- * already runs a shared-axis view transition over the whole of it; a
- * content fade a moment later, once the worker answers, is that same
- * content arriving a second time. Alicja saw it as "the panels fade in two
- * times, second time very close to each other and glitchy" (2026-08-26).
- *
- * And the page jumped. In an `{#if}`/`{:else}` both blocks are alive while
- * the transition runs, so a skeleton fading out in normal flow still holds
- * its height and everything under it drops when it finally goes.
- *
- * So the skeleton leaves the flow as it fades - the content is already in
- * its final position underneath, and what animates is the placeholder
- * uncovering it. Content itself is simply there, which is tier 4's default
- * and what DIRECTION.md asks for everywhere it has not authored a moment.
- *
- * Its own width is measured and pinned rather than being stretched to the
- * container. An absolutely positioned box with no width shrinks to fit, so
- * the placeholder would narrow on its first frame; and stretching it to the
- * container instead resolves against whichever ancestor happens to be
- * positioned, which is `.screen` for a placeholder at the top level of a
- * screen and something else for one nested inside a branch. The node knows
- * its own width, so it is asked. Vertical placement needs nothing: an
- * absolutely positioned box with no `top` sits at its static position, which
- * is exactly where it already was.
- *
- * z-index: -1, or the placeholder is never actually underneath. Positioning
- * takes the skeleton out of flow, but a positioned element with no z-index
- * still paints *after* normal-flow content in stacking order regardless of
- * where either one sits in the DOM (CSS2.1 Appendix E) - so without this the
- * skeleton painted over the content it was meant to be fading off of, for
- * the whole of its 160ms, which is a second "appears twice" (phase 5 ticket
- * 32.16) this primitive's own history had already named once and thought it
- * had closed by taking the skeleton out of flow. Out of flow was necessary
- * and not sufficient - it stopped the page jumping, not the paint order.
- *
- * Reduced motion takes the duration to zero through `motionDuration`: the
- * skeleton is removed on the spot, which is tier 3's substitute. There is no
- * resting rule for the `to` state to match, because the node is gone by then.
- *
- * The positioning is written to the node directly, once, rather than through
- * `css()`'s own per-frame string. `css()` is sampled into a native CSS
- * animation, and a freshly assigned `animation` only starts painting on the
- * frame *after* the one that assigns it - so a value that only exists inside
- * `css()` is still absent on the first frame the transition and the arriving
- * content share. For an opacity fade a frame's delay is invisible; for
- * `position: absolute` it is not, because until it lands the skeleton is
- * still in flow at full height next to content already in its own final
- * place, and everything below both is pushed down by the skeleton's height
- * for that one frame before springing back (ticket 153, caught on a cold
- * mount's `care` screen: `.kit-chart-empty` and its siblings dropped exactly
- * one `Skeleton variant="block"` height, then returned). A direct style
- * write takes effect in the same synchronous update that inserts the
- * arriving content, so there is no frame where the skeleton was in flow.
- *
- * Out only, or that write never comes off. `css()`'s properties lived
- * inside Svelte's own generated animation, which Svelte tears down when
- * the transition ends whichever way it ran; a direct write to `node.style`
- * is not part of that lifecycle; and `NoticedAxis.svelte` uses this on
- * `transition:crossfade|global`, both ways, on a clickable mark. Svelte
- * answers a bidirectional directive by calling this once with direction
- * `'both'` - the same shape `collapse`, above, already handles - so a
- * mark that had only ever *left* through this correctly went absolute and
- * invisible, and one that *arrived* through it would otherwise be left
- * permanently `position: absolute; z-index: -1; pointer-events: none`,
- * painted behind its siblings with a dead `onclick`, forever. Told the
- * direction, this only ever writes the positioning on the way out. */
+ * Apply these inline styles only when leaving. Svelte also calls this
+ * with direction 'both' for bidirectional transitions. An entering
+ * clickable mark must keep its normal position and pointer events.
+ * Reduced motion cuts the transition.
+ */
 export function crossfade(
   node: Element,
   params?: unknown,
@@ -1083,7 +822,7 @@ export function crossfade(
        it still counts for `:first-child`. `.kit-heading:first-child`
        (kit.css) reads through it, so heading-led content does not lose
        24px of top margin in one frame when the skeleton is finally
-       removed (ux-carpet ticket 191). */
+       removed. */
     const data = (node as HTMLElement).dataset;
     if (data) data.leaving = '';
   }
@@ -1101,83 +840,20 @@ export function crossfade(
 }
 
 /**
- * Tier 3, change within a screen: a box that changes size in place travels
- * between the two, instead of snapping (phase 5 ticket 32.17).
+ * Animate height when content changes inside a mounted box. Svelte's
+ * transitions cover insertion and removal. This action watches ongoing
+ * layout because CSS auto-height interpolation fails on the browser floor.
  *
- * `disclose` covers a group being born or leaving - a transition, which only
- * fires when Svelte adds or removes the node. What this covers is the other
- * half: a node that stays mounted and changes size under its own content, the
- * shape neither `transition:` nor `in:`/`out:` can see, because nothing about
- * the node's presence changed. When mounted content changes height, this
- * fills the frames between the old and new sizes.
+ * ResizeObserver runs after layout and before paint. Start the WAAPI
+ * animation in that callback so its first frame replaces the height jump.
+ * Height animation is the layout exception that lets neighboring rows move
+ * with the box. Use overflow: clip only during travel. Hidden would create
+ * a formatting context and move collapsing child margins.
  *
- * `interpolate-size: allow-keywords` with `transition: height` - the CSS-only
- * answer to an animated auto height - was tried first and does nothing on
- * this codebase's floor (captured every frame for 500ms after a switch;
- * height went straight from 181 to 118). So this measures instead, the way
- * `disclose` already does for the opening case: `ResizeObserver` reports the
- * node's new height after the browser has already laid it out, ResizeObserver
- * with a real gain: the point it fires at, has finished layout but not yet
- * painted. WAAPI keyframes from the last known height to that new one are
- * started in that same tick, so the paint the browser is about to do already
- * shows the animation's first frame instead of the jump.
- *
- * Height is a layout property, and the performance contract's rule is
- * transform and opacity only - `disclose` already spends the contract's one
- * named exception on exactly this, for the same reason: animating height is
- * what makes the rows below travel with the box instead of teleporting.
- * `resize` is the second spend rather than a new one, on a single scalar
- * height rather than the chart re-tween's per-point SVG path interpolation,
- * which is the cost the contract's own escape hatch was written against.
- *
- * An action, not a transition, and that difference is the whole reason this
- * is a second primitive rather than a mode on the first: a transition is a
- * function Svelte calls once, at the moment a node is created or destroyed,
- * with no way to be told about it again later. An action's `destroy` is that
- * same one-shot shape, but nothing stops it doing its own ongoing watching in
- * between - which is exactly what `ResizeObserver` is.
- *
- * `overflow: clip` for the animation's own duration and no longer: content
- * on the way from a short box to a tall one would otherwise sit outside the
- * animating box until the box catches up, and the box's resting rule already
- * says whatever it says about its own overflow the rest of the time. `clip`
- * rather than `hidden`, because `hidden` makes the box a block formatting
- * context: a first child's top margin that collapses through the box at
- * rest landed inside it for the travel instead, and the content stepped up
- * by that margin in the one frame the overflow came off (ux-carpet ticket
- * 191, a heading-led ReadGate: 16px, 240ms after its content landed).
- * `clip` clips the same and leaves the margins where they rest.
- *
- * Reduced motion skips both the observer's first, harmless call (mount, no
- * prior height to compare against) and every animation after: the box still
- * resizes, in the one frame it always could, which is tier 3's substitute -
- * a change inside a screen has no journey for a fade to stand in for, the
- * same reasoning `disclose`'s own substitute rests on.
- *
- * One box, one animation at a time: the animation's own frames are resizes
- * too, so the observer cannot tell "the content changed again" from "the
- * animation I started is still running" without a signal, and the only
- * signal available - ignore callbacks while animating - is also what stops
- * the box chasing its own frame-by-frame travel forever.
- *
- * A resize that lands mid-flight is not lost, though: the `finished`
- * handler releases the held height before reading the node's real height.
- * If that differs from the animation that just finished,
- * starts a second animation from there rather than snapping to it. One box,
- * one animation at a time still holds - the second animation only starts
- * once the first has fully finished - so a caller with several
- * independently-settling children (a tile grid, a reading grid) gets a
- * chain of smooth pushes instead of a smooth push followed by a silent
- * jump on whichever child happens to settle after the first 240ms.
- *
- * It very nearly overshot instead, the first time this was written:
- * treating the mid-flight resize as ignored *and* resyncing `lastHeight` to
- * whatever the node measured once `fill: none` reverted would have read as
- * a fresh resize against a now-stale number, and reopened a second
- * animation travelling backwards from a height nothing was showing any
- * more. Chasing it forward from the animation's own last known target,
- * rather than backward from a stale `lastHeight`, is what keeps the chain
- * moving the one direction the content actually went.
+ * Ignore observer callbacks during travel so the animation does not chase
+ * its own frames. On completion, release the held height and remeasure. If
+ * content changed, start from the prior animation's target and move to the
+ * new height. Reduced motion applies the layout change immediately.
  */
 /** Every scrolled ancestor of `node` with its scroll position, so a
     layout that briefly shortens the page can be undone before it paints. */
@@ -1260,7 +936,7 @@ export const resize: Action<HTMLElement, unknown> = (node) => {
      ease-out spends its first frame on the whole distance: the Journal's
      "Earlier entries" grew the gate by 972px, and 280px of that in the
      first frame took the button off the screen and painted the next day
-     whole (ux-carpet ticket 282). So the animation runs between the two
+     whole. So the animation runs between the two
      heights as the viewport sees them, and whatever lies past its bottom
      lands there unseen when the animation lets go. */
   const onScreen = (height: number) => {
@@ -1316,7 +992,7 @@ export const resize: Action<HTMLElement, unknown> = (node) => {
       { duration, easing, fill: 'both' }
     );
     /* A box that empties, or fills from empty, also loses or gains its own
-       bottom margin at one end of the travel (ux-carpet ticket 196). Empty
+       bottom margin at one end of the travel. Empty
        and unclipped, its top and bottom margins collapse through it into
        its neighbours'; clipped for the travel, they do not. So the moment
        the clip came off a box that had travelled to nothing, everything
@@ -1444,45 +1120,15 @@ export const resize: Action<HTMLElement, unknown> = (node) => {
 const masks = new WeakMap<HTMLElement, { count: number; overflow: string; rows: string }>();
 
 /**
- * Tier 3, change within a screen: a box that has already been relaid out,
- * uncovering itself from the height it used to have (phase 10 redesign
- * ticket 10).
+ * Animate a panel from its measured old height after relayout.
+ * The caller captures that measurement before changing the layout
+ * and supplies the easing used by the moving content. This is the
+ * same one-height layout exception as disclose and resize.
  *
- * The Journal door's month is one set of cells in two layouts - a row of
- * bars, or the seven-column grid with its legend and chips under it - and
- * the cells' own travel between the two is the screen's (motion/regroup.ts).
- * What is here is the panel around them, which has to give or take a few
- * hundred pixels while that runs, or everything under the month would arrive
- * at its new place in the frame of the tap and the travel would be happening
- * inside a box that had already finished.
- *
- * Height is a layout property, and the performance contract's rule is
- * transform and opacity only. `disclose` spends the contract's one named
- * exception on exactly this and `resize` is the second spend rather than a
- * new one; this is the third, and it is the same scalar as both - one box,
- * one number, no per-point interpolation. What it is not is a mode on either
- * of them: `disclose` animates a node that is arriving or leaving, and
- * `resize` watches a node whose content changes under it, while this one is
- * called at a known moment with a height the caller measured before the
- * layout changed. Only the caller knows that number, because by the time
- * anything here could look, the box is already the size it is going to be.
- *
- * The tracks are pinned for the animation's length, which is `disclose`'s own
- * finding: a definite height smaller than the content compresses a grid's
- * auto tracks, so the box squashes its contents on the way instead of
- * uncovering them. Measured on the month it is 6px of drift rather than the
- * notice's whole icon, and a mask that is 6px of scale is still not a mask.
- * The clip and the tracks both go back the moment the travel is over, so the
- * box's resting rules say whatever they say the rest of the time - a
- * permanent clip on this panel would cut the focus ring off the chips inside
- * it and the outline off today's cell.
- *
- * Reduced motion is the caller's to check, since the caller is also deciding
- * whether to animate the marks inside the box; there is nothing here to
- * substitute a fade for.
- *
- * `easing` is whatever curve the travel inside the box runs on, so the clip
- * edge and the content keep pace.
+ * Pin grid tracks during travel so the panel reveals content at
+ * its own size. Clear the clip and pinned tracks at rest so outlines
+ * and focus rings can extend past the box. The caller checks reduced
+ * motion and coordinates the motion of the inner marks.
  */
 export function maskHeight(
   node: HTMLElement,

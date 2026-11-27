@@ -1,27 +1,12 @@
-/* Reordering a list by hand: the drag a row's handle runs, and the FLIP
-   that carries every row to its new place once an order is written.
+/* TodayEditor and Things that help share drag and FLIP. Each caller
+   defines rows and how to persist order. Pointer events on a handle
+   support touch and keep the rest of the row scrollable. Measure boxes
+   once on grab so dragged rows do not move their own thresholds.
 
-   Two lists use it, the Today editor (TodayEditor.svelte) and Things that
-   help (doubt/comfort), and they had grown two copies of the same ~150
-   lines (phase 14 ticket 18's review). What differs between them stays
-   with them: where an order is written (a preference, a journal write)
-   and which rows the list holds. What is the same is here:
-
-   - **The drag.** Pointer events on a handle rather than HTML5
-     drag-and-drop, which has no touch story, and rather than the whole row,
-     which would make a list a thumb cannot scroll. The gesture is measured
-     against the rows' own boxes, taken once at the grab: the rows move
-     under the pointer as it travels, and measuring again mid-gesture would
-     compare the pointer against boxes the gesture had already displaced.
-   - **The travel.** Measure where every row is painted, write, then start
-     each row at the difference and release it on the next frame. Every row,
-     a zero difference included, with its transition off and its translate
-     cleared before it is measured: a row that stood aside during a drag
-     loses its translate in the same update the order is written, and with
-     its transition left on it was measured mid-flight and then played that
-     loss as a 48px trip the wrong way (sampled on the comfort list).
-
-   Node-tier safe apart from the rune: no clock, no driver, no paraglide. */
+   Measure every row's painted position before writing, then start with
+   the offset from its new position and release on the next frame.
+   Clear transitions and translates on every row, even a zero offset.
+   Leaving a transition enabled previously sent a row 48px the wrong way. */
 
 import { isReducedMotion } from './tokens';
 

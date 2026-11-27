@@ -1,4 +1,4 @@
-/* The PDF renderer, in a real browser (phase 8 features ticket 55).
+/* The PDF renderer, in a real browser.
 
    Everything documents/pdf.ts does needs things the Node tier does not
    have: a worker, a canvas, and a font directory served over HTTP. So the

@@ -43,13 +43,13 @@ const calendarDay: Check = (value) =>
   value <= todayEpochDay() + MAX_FUTURE_EPOCH_DAYS;
 // A wall-clock time in milliseconds, as `updated_at` and Trash hold one.
 const instant = integerBetween(0, Number.MAX_SAFE_INTEGER);
-// When the row was last written (functional audit ticket 48), on every row
+// When the row was last written, on every row
 // and every nested child that has a table of its own; absent on an archive
 // written before it.
 const STAMP = { updatedAt: optional(instant) };
 // `HH:MM` on a 24-hour clock, appointments.ts's own rule for a stored time.
 const clockTime: Check = (value) => typeof value === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
-// A cost (functional audit ticket 30) is three fields on each costed row,
+// A cost is three fields on each costed row,
 // absent on an archive written before it; cost.ts's assertValidCost is the
 // rule, and the amount-and-currency pairing is checked per row below.
 const COST_FIELDS = {

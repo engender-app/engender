@@ -1,39 +1,16 @@
-/* What the tab highlight costs to travel, because redesign ticket 26 animates
-   four layout insets and motion/materials.css's contract says only transform
-   and opacity animate - the target being a Capacitor WebView on a mid-range
-   Android phone rather than a desktop browser.
+/* Measure frame timing and final alignment of the tab highlight on desktop
+   Chromium, at full speed and 4x CPU throttling. Its independently timed
+   edges animate layout insets. The highlight is an empty absolute box with
+   no layout dependents, so only that box reflows. See indicator.ts.
 
-   The claim being measured. That contract has been amended once before, by
-   phase 5 ticket 28, and the shape of that amendment is what this follows: a
-   material may reach past transform and opacity if it arrives with a cap a
-   test can check and a number from a benchmark, so that measurement can only
-   tighten it. The cap here is structural rather than a threshold. The pill is
-   one absolutely positioned, empty box per navigation - no children, no text,
-   no siblings whose position depends on it - so a change to its insets
-   invalidates the layout of exactly that box, and there is nothing for a
-   reflow to cascade into. Two edges on two schedules cannot be said with a
-   transform at all (indicator.ts says why), so the choice was this or the
-   symmetric stretch the ticket replaced.
+   Sample rAF deltas across the highlight and icon's 456ms sequence. A
+   frame over 20ms counts as dropped. The route render can also create a
+   long frame near the start. The final position must match the target tab
+   even when reduced motion clamps the animation to 1ms. Report the host
+   with any result. Device measurements require a phone.
 
-   What this samples: requestAnimationFrame deltas through one tab switch at
-   the phone floor, unthrottled and at 4x CPU throttling, over the whole 456ms
-   the two edges and the icon's swing take. A dropped frame is a delta over
-   20ms. The route change that the same tap causes renders a new screen and is
-   the expensive part of the interaction; it shows up as one long frame near
-   the start, and it is not the travel.
-
-   It also prints where the pill came to rest against its tab, which is the
-   ticket's own acceptance criterion in the one form it can be measured:
-   an animation that ends anywhere but at rest strands the shape when the
-   reduced-motion clamp collapses every duration to 1ms.
-
-   Say which machine produced the number when quoting it: this is a desktop
-   Chromium under CPU throttling, not the device tier. Both Android emulators
-   run with the GPU disabled, so no rendering answer can come from one either;
-   the phone itself is the only place a real one lives.
-
-   Run: VITE_DEMO=1 npm run build first, then
-        node tests/nav-motion-cost.mjs */
+     VITE_DEMO=1 npm run build
+     node tests/nav-motion-cost.mjs */
 import { preview } from 'vite';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';

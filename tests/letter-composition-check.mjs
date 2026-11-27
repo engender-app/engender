@@ -239,7 +239,7 @@ try {
   });
   await page.locator('#letter-text').waitFor({ state: 'detached' });
   assert.equal(await page.locator('[data-discard-record]').count(), 0);
-  // A web lock closes the journal (after-release ticket 10): while the gate is
+  // A web lock closes the journal: while the gate is
   // up there is no handle to read letters through. Waited for rather than read
   // once: the gate is drawn a moment before the lock lets go of the handle.
   await page.waitForFunction(async () => {

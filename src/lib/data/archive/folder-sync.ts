@@ -1,22 +1,9 @@
-/* Folder sync (functional audit ticket 49): the other half of auto-export.
-
-   Auto-export writes this device's journal into a folder the person chose.
-   When something outside the app (Syncthing, a cable, a cloud folder) puts
-   another device's auto-export into the same folder, the next open after
-   unlock merges it with Archive Merge's rules (ADR-0098), so the two
-   journals meet without a network. There is one merge path: this opens the
-   archive and hands it to the same `journal.archive.merge` the import
-   screen uses.
-
-   The plugin picks the archive (FolderArchives.java): only one another
-   device wrote, never one of this device's own backups, and only one
-   modified after the last it tried. This side opens it with the saved
-   backup password, which never crosses the bridge - the key is derived
-   behind it, as for packing an auto-export - and reports how it ended, so
-   the plugin can move past it.
-
-   Android only. The web build has no folder sync (ADR-0099): a browser either cannot
-   keep a folder at all or asks for it again every visit. */
+/* After Android unlock, merge another device's newer archive from the
+   chosen auto-export folder via the same journal.archive.merge as
+   manual import (ADR-0098). FolderArchives.java skips this device's
+   exports and previously tried files. Derive the key in the plugin
+   so the saved password stays there. Report the result so it can
+   advance. Web has no folder sync (ADR-0099). */
 
 import { isAndroid } from '../../platform';
 import { archiveFailureKind } from './failure';
@@ -31,7 +18,7 @@ export interface FolderSyncDeps {
   /** The staged copy's bytes. On Android a fetch from the local server. */
   read(path: string): AsyncIterable<Uint8Array>;
   /** Stops the sync before it writes. Once Merge has begun it finishes:
-      Merge has no rollback part way through (ADR-0070). */
+      Merge has no rollback part way through. */
   signal?: AbortSignal;
 }
 

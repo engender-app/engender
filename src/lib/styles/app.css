@@ -38,26 +38,12 @@ body {
   user-select: none;
 }
 
-/* The opt-in. A journal entry's own note (`.kit-entry-note`, DayEntry and
-   the doubt journal's own quoting of the same notes), the printed journal book's copy of it (`.book-note`), a
-   letter's body once unsealed (`.letter-text`), a lab result's value
-   (`.lab-value`), and the clinician summary in full - the one screen whose
-   entire purpose is being handed to someone else and read, so
-   `.clinician-summary` opts in as a screen rather than line by line. Text
-   fields keep the browser's own selection regardless, restated below for
-   engines that need it said again once an ancestor has turned it off.
+/* Enable selection for journal and book notes, open letters,
+   lab values, clinician summaries and text fields. Leave computed
+   captions with the app chrome.
 
-   Plain classes throughout rather than `data-*` attributes, on purpose:
-   DayEntry's own note already carries `data-entry-note` as a walkthrough
-   locator, and ADR-0029 holds those handles to carrying "no styling and no behavior" so a rename never has to
-   consider a second, unrelated reader. Reaching for that same attribute
-   here to save a selector would have broken the one thing the ADR is for.
-
-   Deliberately not extended to every other place a `note` prop shows up
-   (WrappedYear's figure captions, BarRows', PairedDots' and Tile's own
-   `note` slots):
-   those are computed summaries the app wrote, not something the person
-   typed, and belong with the rest of the app's chrome. */
+   Use classes for styling. ADR-0029 reserves data-entry-note and
+   other walkthrough locators for test handles. */
 :is(
   .kit-entry-note,
   .book-note,
@@ -123,25 +109,10 @@ body {
   pointer-events: none;
 }
 
-/* The one place the window insets are spent (phase 5 ticket 18).
-
-   Both halves of the shell's safe-area defect are fixed by putting them
-   here rather than in the screen wrapper. Top content used to render under
-   a display cutout because nothing consumed the top inset at all; bottom
-   content cleared the bar only when a screen used .screen and did not
-   override its padding, which made clearance a thing 61 screens each had
-   to remember. The scroll region is every screen's parent whether or not
-   it wraps itself in anything, so padding it is not a rule a screen can
-   opt out of by being written differently.
-
-   A decorative bleed opts back out explicitly and locally - Home's flag
-   sun pulls itself up by --inset-top so its corner point lands on the real
-   screen corner (screens.css). That is the only intended direction for an
-   exception: content is safe unless something says otherwise in as many
-   words.
-
-   Left and right are here for landscape, where the cutout is beside the
-   content rather than above it. */
+/* Apply safe-area padding to the scroll region so every screen
+   clears cutouts and navigation regardless of its wrapper.
+   Include horizontal insets for landscape. Decorative bleeds
+   can override padding locally without moving content. */
 .app-main {
   flex: 1;
   overflow-y: auto;
@@ -176,25 +147,10 @@ body {
   padding-bottom: var(--nav-clearance);
 }
 
-/* ---------- the column: the scroll region, and the foot beside it ----------
-
-   Two pinned things sit over this column and only one of them ever floated.
-   `.app-nav` is absolute against the frame and the region reserves
-   `--nav-clearance` for it, which is the promise that lets a bar cover a
-   row mid-scroll and not at the end of the column. The save bar was the
-   second one and it made no such promise: `position: sticky` at the end of
-   the content, over a column that did not know it was there, so it landed
-   on whatever the screen happened to have at that height - the bottom 19px
-   of a 48px slider on `/settings/dimension`, 44 of the same slider's 48 in
-   the entry editor, 36px of a selected photo cell on `/media/photos/export`
-   (carpet 28's occlusion pass; `$lib/stores/saveBar.svelte` has the
-   arithmetic that made every fix from inside the column impossible).
-
-   So the foot is out of the region and beside it, and the reservation is
-   layout: the region is a foot shorter, and nothing is under the foot at
-   any scroll position. This box is what holds the two together, and what
-   keeps them beside the rail rather than under it at desktop width, where
-   `.app` itself is a row. */
+/* Reserve --nav-clearance at the end of the scroll region for the
+   floating bar. Place the save bar beside the region in layout and
+   shorten the region by its height so it never covers content.
+   This column keeps both next to the rail on desktop. */
 .app-column {
   flex: 1;
   /* A flex item will not go below its content's size without this, so a
@@ -245,7 +201,7 @@ body {
      ("opaque, or the rows scroll through it").
 
      The ground is the page's, so nothing here is a surface (rule 4). No
-     hairline over it since bug session 18 (item 84): Alicja found the line
+     hairline over it since bug session 18: Alicja found the line
      clutter, and the foot's buttons already say where the column ends. */
   background: var(--bg);
 }
@@ -290,7 +246,7 @@ body {
 }
 
 /* The gates and onboarding, which render instead of the app and have no bar
-   floating over them (phase 5 ticket 26). The clearance above is the bar's
+   floating over them. The clearance above is the bar's
    height plus its float gap plus the inset plus a breath; on a screen with
    no bar it is room held for nothing, and it pushed a vertically-centred
    gate up by most of a bar's height. What is left is the system inset and
@@ -300,26 +256,15 @@ body {
   --nav-clearance: calc(var(--inset-bottom) + var(--space-5));
 }
 
-/* A new entry is a step with no bottom bar (tester report 02, ticket 03).
+/* A new entry is a step with no bottom bar.
    Only the bar: at desktop width the rail is the app's way around and stays,
    so the editor's column keeps the box Care and Day have. */
 .app.is-barless .app-nav { display: none; }
 
-/* No entrance of its own. It had one - fade in, slide 6px - and suppressing
-   it during a navigation did not work the way suppression looks like it
-   should: `animation: none` does not cancel an animation, it withholds it, so
-   when the attribute the override hung off was removed at the end of the
-   transition the animation applied afresh and played *then*. The screen
-   arrived with the transition and then faded in again behind it, which is
-   Alicja's "loads once and then disappears and loads again" (2026-08-25).
-
-   Removed rather than timed around, because the brief already says so. Tier 2
-   owns a screen arriving, and DIRECTION.md's slop audit names "one identical
-   entrance animation on every section of every screen" as one of the five
-   things it took out. This was that, one level up: the same entrance on every
-   screen in the app, on top of whichever tier-2 pattern the navigation had
-   already chosen. A cold start has no transition and now simply shows the
-   screen, which is tier 4's "content is simply there". */
+/* Let tier 2 animate screen navigation. A separate entrance
+   suppressed by animation: none would restart when the
+   suppression clears and make the screen arrive twice. Cold
+   start shows content immediately. */
 .screen {
   padding: 0 var(--screen-inset);
   position: relative;
@@ -329,43 +274,16 @@ body {
   min-width: 0;
 }
 
-/* Nothing on a screen touches the thing above it.
+/* Give each block 20px of trailing space. A margin based on its
+   previous sibling would change when an outgoing skeleton unmounts,
+   moving the content as it settles. Keep .screen a block container
+   so its positioned layouts and margin collapse continue to work.
 
-   Every screen had been spacing its own areas by hand, with an inline
-   `margin-top` on whichever block happened to need one, and the blocks that
-   nobody remembered ended up flush: two outlined cards with a 0px gap
-   between them, which reads as one card with a line through it (Alicja,
-   2026-08-26, on body measurements - "no 0px gaps should happen anywhere").
-   A floor stated once is the only version of this that stays true as
-   screens change.
-
-   Each block carries its own space *below* it rather than taking space from
-   whatever happens to precede it, and that is load-bearing rather than a
-   preference. Written as `* + *` with a `.screen-header + *` exception, a
-   block's margin depended on its neighbour - so on every screen that shows a
-   skeleton first, the content arrived under the outgoing skeleton, took the
-   generic gap, and then jumped 16px up the moment that skeleton left the DOM
-   and the header became its neighbour instead. Ten screens, every time they
-   loaded (Alicja, 2026-08-26). A block that owns its own trailing space
-   cannot move when something above it is removed.
-
-   The owl was also the wrong shape for a second reason: `.screen` is a block
-   container and several screens position things inside it, so turning it
-   into a flex column to get `gap` would change layout well beyond the
-   spacing this is about. Margins collapse; a gap would not.
-
-   The trailing margin on the last block is deliberate and harmless: the
-   scroll region already clears the floating bar with its own padding.
-
-   20 between two blocks (phase 10, DIRECTION.md rule 1). It was 24, set
-   when two outlined cards at 16px read as one card with a line through it
-   (Alicja, 2026-08-26, register finding 32.14); two flush blocks separated
-   by hairlines can sit closer than two outlined cards, and 20 is one of
-   the three distances the rhythm names. A section heading asks for 40
-   above its rule and owns that margin itself (kit.css). */
+   The scroll region clears the floating bar. Section headings own
+   their 40px top margin in kit.css. */
 /* A reserve's body (ReadReserve.svelte) stands where the screen's own
    children stood, so its blocks take the same floor at the same
-   specificity (ux-carpet ticket 211). */
+   specificity. */
 .screen > *,
 .read-reserve-body > * {
   margin-bottom: var(--space-5);
@@ -393,8 +311,8 @@ body {
 
    --space-5 to match the floor above it. */
 /* A reserve's body (ReadReserve.svelte) stands where the screen's own
-   children stood, so a screen part inside one is spaced the same
-   (ux-carpet ticket 205). */
+   children stood, so a screen part inside one is spaced the same.
+   */
 .screen > .screen-part > *,
 .read-reserve-body > .screen-part > * {
   margin-bottom: var(--space-5);
@@ -417,7 +335,7 @@ body {
    ticket 195; ticket 166's voice task line, 248 -> 268px). The collapse
    holds while a wrapper animates its height as well: `resize` and
    `maskHeight` clip with `overflow: clip`, which is not a formatting
-   context (ticket 191). */
+   context. */
 
 /* Except an inline-level row, whose margins never collapse: last in the
    wrapper, its 20 would sit inside the wrapper on top of the wrapper's own
@@ -430,24 +348,9 @@ body {
 }
 
 /* ---------- phone: the floating bar ----------
-
-   DIRECTION.md's decision 2 gives the whole app one shadow, and this is
-   it. Everything else separates with a 1px line; the bar is the only
-   element that genuinely sits over the content rather than beside it, so
-   it is the only one with anything to cast.
-
-   It floats rather than spanning the edge. That is what lets the bottom
-   inset be a gap the bar sits above instead of padding inside a full-width
-   plane - on a gesture-navigation phone the system's own handle then has
-   the strip to itself, and the bar reads as an object on the screen rather
-   than as the screen's bottom edge.
-
-   Opaque, not translucent. The previous bar was a blurred 88% surface,
-   which is the veil decision 2 rules out; and the app now owns blur as a
-   specific material (the withdrawal behind a sheet, motion/materials.css),
-   so spending it on chrome as well would make the one place it means
-   something mean nothing.
-   ---------- */
+   The opaque bar floats over the content and casts the app's only shadow.
+   The bottom inset stays clear for the system gesture handle. Sheets use
+   their own withdrawal blur from motion/materials.css. */
 .app-nav {
   position: absolute;
   left: calc(var(--nav-float-gap) + var(--inset-left));
@@ -503,7 +406,7 @@ body {
   transition-timing-function: var(--ease-out);
 }
 /* A box around the glyph on both shapes, and on the rail that is all it is
-   for: the arrival swing (redesign ticket 26) needs something to transform
+   for: the arrival swing needs something to transform
    that is not the row itself, since the row carries the press. */
 .nav-icon,
 .rail-icon { display: grid; place-items: center; }
@@ -549,7 +452,7 @@ body {
 /* SH-003: colour alone marked the active tab, which disappears with a
    colour vision deficiency or on a screen turned all the way down. The
    indicator is a filled shape behind the whole tab - icon and label
-   together, per DIRECTION.md - so the active state carries a second cue
+   together, so the active state carries a cue
    that survives both.
 
    The shape itself is .nav-pill below, one element for the whole bar, so
@@ -562,82 +465,16 @@ body {
    (trans, light) and the label is 11px, so the bar's active label has been
    under the 4.5 floor since the pill first travelled. --on-accent-soft is
    5.27:1 on the same fill. It also reads heavier, which is half of what
-   makes the lit tab more pronounced (redesign ticket 26). One ink for one
+   makes the lit tab more pronounced. One ink for one
    fill across both shapes of the navigation. */
 .nav-item.is-active { color: var(--on-accent-soft); }
 .nav-item:hover { color: var(--text); }
 
-/* One lit shape for the set, travelling to whichever tab is current, on both
-   shapes of the navigation - across the bar, down the rail (phase 5 ticket
-   31). AppNav.svelte measures the tab and writes the four insets it is
-   pinned by, plus a schedule for each edge of the axis it travels on.
-
-   Tier 2. The bar is how you move between the four areas of the app, and
-   this is that move made visible in the one piece of chrome that is on every
-   screen. It answers the same navigation the fade-through between the
-   screens does, and it spends the same --dur-med.
-
-   Pinned by four insets rather than placed by `translate` (redesign ticket
-   26), because the two edges of the travelling axis are no longer on the
-   same clock. The leading edge - the one nearer the destination - sets off
-   first on --ease-out-soft over --dur-med; the trailing edge waits
-   --stagger-step, then follows on --ease-in-out over --dur-slow, catching up
-   and closing the shape. Two independently scheduled lengths is what that
-   is, and there is no way to say it in one transform: a translate moves both
-   edges together, and the width in between is the live difference of two
-   curves rather than a value with a curve of its own.
-
-   Each edge carries its own duration as well as its own curve, because the
-   catch-up is the slower half by design (Alicja, on the first flipbook: "the
-   whole thing needs to be a little longer"). The leading edge still lands on
-   --dur-med, so the tab that was tapped lights on tier 2's own duration;
-   what got longer is the closing, which now finishes at 430ms.
-
-   An inset is a layout property, and motion/materials.css's contract says
-   only transform and opacity animate, because the target is a Capacitor
-   WebView on a mid-range Android phone. So this is the contract's second
-   amendment, and it arrives the way the first one did: with a cap a test can
-   check, a reduced-motion substitute, and a number from a benchmark.
-
-   The cap is structural rather than a threshold. The pill is one absolutely
-   positioned, empty box per navigation - no children, no text, and no
-   sibling whose position depends on it - so changing its insets invalidates
-   the layout of exactly that box and there is nothing for a reflow to
-   cascade into. `all` is never named, only the four insets and opacity are,
-   and motion-system.test.ts enumerates every layout property the app is
-   allowed to animate, so the next one has to be argued rather than added.
-
-   The substitute is the same one every --dur-* animation in the app gets:
-   the 1ms clamp lands both edges on the tab at its own size, so what goes
-   is the travel and not the change of state.
-
-   The number is tests/nav-motion-cost.mjs. Desktop Chromium at the 390px
-   floor, unthrottled and at 4x CPU throttling: every frame across the whole
-   456ms sequence is 16.7ms in both runs, and the single long frame in each
-   (34ms, 63ms) lands at +59ms and +78ms, which is the route change drawing
-   the new screen rather than anything the pill does. Not the device tier -
-   see that script's own note on which machine may be quoted for what.
-
-   The old version said it with `scale` and a keyframe, and paid for it
-   twice. The stretch was a tuned percentage of the pill's own length (18% at
-   the cap) rather than the gap it was actually crossing, so the shape never
-   touched both tabs at once; and scaling a rounded rectangle scales its
-   corners with it, which flattened --r-block along the way. Insets keep the
-   one corner the app has at both ends of the stretch, which is what every
-   tab bar in the reference sweep does with its highlight (Apple Store,
-   Flighty, Truecaller).
-
-   Two transitions rather than one for the same reason: a transition on a
-   layout inset retargets from wherever it currently is, so a second tab
-   tapped mid-travel picks the shape up in flight instead of restarting from
-   a position it has already left - which a keyframe on a class cannot do
-   without being cancelled and replayed.
-
-   Both edges end on the tab's own insets, which is the whole of the
-   reduced-motion contract here: the 1ms clamp lands the pill on its
-   destination at its own size, with nothing left mid-stretch. Both delays
-   are tokens the clamp zeroes too (--stagger-step), so the trailing edge
-   cannot outlive it. */
+/* AppNav supplies the highlight's insets. The leading edge moves first and
+   the trailing edge follows after --stagger-step. Insets preserve the radius
+   and support retargeting during a move. This isolated box is the allowed
+   layout-animation exception. Reduced motion removes the stagger and clamps
+   the edge durations. */
 .nav-pill {
   position: absolute;
   left: var(--pill-left, 0);
@@ -645,26 +482,10 @@ body {
   top: var(--pill-top, 0);
   bottom: var(--pill-bottom, 0);
   border-radius: var(--r-block);
-  /* The fill it always had, and a line at full --accent around it: at 11%
-     of the accent the shape is a wash you have to look for (Alicja,
-     2026-09-08), and a stronger fill is not available. Mid-travel the
-     stretched shape passes under the tabs between the two it spans, so
-     their --text-2 label sits on this fill for as long as it is open, and
-     that pair is already at the floor: 4.56:1 at 11% (trans, light), 4.42
-     at 13%, 3.95 at the 20% this was first tried at. So the weight goes on
-     the edge instead, where no label sits. A 1px line rather than a
-     shadow, which the kit does not have, and at --accent rather than
-     --accent-border because a 30% line on an 11% fill is the same wash
-     again. --accent on this fill is 4.07:1 at worst, well over the 3:1
-     floor a non-text boundary answers to.
-
-     Naming what that costs: DIRECTION.md rule 4 budgets two line strengths,
-     --hairline at 14% of the ink and --outline at 19%, and --accent-border
-     is already the accent's own third. A full-strength accent line is a
-     fourth, and it exists on this one element because this is the one block
-     in the app whose whole job is to be seen rather than to sit quietly
-     behind something. Deliberate, argued here, and put to Alicja as a
-     deviation rather than slipped in as a detail. */
+  /* Keep the accent wash at 11% so tabs under the travelling pill retain
+     --text-2 contrast. In light trans the ratio is 4.56:1 at 11%, 4.42:1 at
+     13% and 3.95:1 at 20%. The 1px full-accent edge reaches at least
+     4.07:1 against the wash, above the 3:1 boundary floor. */
   background: var(--accent-soft);
   border: 1px solid var(--accent);
   opacity: 0;
@@ -708,36 +529,14 @@ body {
    back into the four. */
 .nav-pill.is-shown { opacity: 1; }
 
-/* The destination icon answers the arrival (redesign ticket 26). Every tab
-   bar in the reference sweep marks its active icon as the heavier of the set
-   - filled against outline - and this app does not, because a permanent
-   delta between the lit icon and its peers is a second active state to keep
-   honest in every palette and two themes. So the weight is spent in time
-   instead of in ink: the icon gains presence at the moment the highlight
-   lands and gives it straight back, and at rest it is the same drawing as
-   the other three.
+/* Swing the destination icon around its bottom corner on the far
+   side of travel. indicator.ts gives the component the direction
+   to set --nav-anchor. Begin and end at transform:none so repeat
+   visits and reduced motion leave no scale behind.
 
-   A loop, not a settle. Both frames at either end are `transform: none`, so
-   there is no resting declaration to keep in step and nothing for the 1ms
-   clamp to strand - and no tab can accumulate a scale by being visited
-   twice.
-
-   It pivots on a corner rather than on its middle, and which corner is the
-   one fact about it worth stating plainly (Alicja, 2026-09-08): the bottom
-   corner on the far side of the travel, so a highlight arriving from the
-   right pivots the house on its bottom left. A centred pivot is a thing
-   inflating in place; a corner pivot on the side the motion is heading for
-   is a thing the motion caught and swung past, which is what this is meant
-   to be. The component writes --nav-anchor, since only it knows which way
-   the pill came - indicator.ts's `leadingEdge`, mapped onto each axis's own
-   pair of keywords.
-
-   --dur-slow over --dur-med, on the swing rather than on the pill's leading
-   edge, because a 240ms there-and-back on a 24px glyph is two direction
-   changes inside a quarter of a second and reads as a yank rather than a
-   swing (Alicja, on the first flipbook). Delayed --stagger-step, the same
-   beat the trailing edge waits, so the peak lands as the leading edge does
-   and the swing settles exactly when the shape closes. */
+   Use --dur-slow for the there-and-back swing and --stagger-step
+   for its delay. The peak coincides with the leading edge arrival
+   and the icon settles as the pill closes. */
 .nav-icon,
 .rail-icon { transform-origin: var(--nav-anchor, center); }
 .nav-icon.is-arriving {
@@ -852,23 +651,9 @@ html[data-a11y-motion='reduce'] .nav-add-glyph { transform: none; }
 @media (prefers-reduced-motion: reduce) {
   .nav-add-glyph { transform: none; }
 }
-/* ============================================================
-   Tier 2: one screen becoming another (phase 5 ticket 18).
-
-   The pattern is chosen by $lib/navigation/screen-transition.ts and arrives
-   as data-nav on <html>; the layout starts a view transition and these
-   rules say what it looks like. Only the scroll region is named, so the old
-   and new screens animate against each other while the bar and the rail
-   fall into the root group and cross-fade - which is what an active tab
-   indicator moving should do anyway.
-
-   Every duration and easing comes from the same tokens the Svelte-driven
-   transitions read ($lib/motion/tokens.ts), which is ticket 09's rule for
-   keeping the two from drifting. What is not shared is the mechanism: these
-   run on the compositor over a captured frame, which is the reason this
-   ticket could wire tier 2 through the whole app without remounting a page
-   component on every navigation.
-   ============================================================ */
+/* Tier 2 navigation. screen-transition.ts selects data-nav. These rules animate
+   the captured scroll region while the chrome crossfades in the root group.
+   Use the same duration and easing tokens as the Svelte transitions. */
 /* The column rather than the scroll region inside it, since carpet 26 put
    the foot beside the region: a group holds one box for both sides of a
    transition, so naming the region would hand the browser a box a foot
@@ -901,24 +686,11 @@ html[data-a11y-motion='reduce'] .nav-add-glyph { transform: none; }
   pointer-events: none;
 }
 
-/* The floating bar is its own group, above the screen's (Alicja, 2026-08-25:
-   "during the transition the new tab is rendering above the nav for a
-   second"). That is exactly what was happening, and it is how view
-   transitions work rather than a bug in the bar.
-
-   A view transition paints its groups in an overlay above the whole page, so
-   the bar's own z-index stops applying for the length of it: everything not
-   carrying a name goes into the root group, the named screen goes into its
-   own, and the screen's group paints after root because that is the order the
-   names are first encountered. The bar was therefore under the incoming
-   screen's snapshot for the whole transition and popped back in front when it
-   ended, which is the flick.
-
-   Naming the bar gives it a group of its own, and an explicit z-index puts
-   that group on top - DOM order would not, since the bar comes before <main>
-   so its name is encountered first. Its own group also crossfades the old and
-   new bar against each other, which is what an active tab indicator moving
-   should do, and is what the root group was already doing for it. */
+/* Name the floating nav's transition group and put it above the
+   screen group with explicit z-index. Page stacking does not
+   carry into the transition overlay. DOM order puts nav before
+   main, so relying on group order hides nav under the incoming
+   snapshot. The named group crossfades the two nav states. */
 .app-nav { view-transition-name: nav; }
 ::view-transition-group(screen) { z-index: 1; }
 ::view-transition-group(nav) { z-index: 2; }
@@ -929,7 +701,7 @@ html[data-a11y-motion='reduce'] .nav-add-glyph { transform: none; }
 ::view-transition-group(status-strip) { z-index: 7; animation: none; }
 ::view-transition-old(status-strip) { display: none; }
 ::view-transition-new(status-strip) { animation: none; }
-/* The update notice sits under a screen's field (last-audit UI ticket 21),
+/* The update notice sits under a screen's field,
    so in the screen's snapshot it would fade and scale with every
    navigation, though it is the same notice on both sides. It gets a group
    of its own instead, above everything a screen's field can send up: the
@@ -973,7 +745,7 @@ html[data-a11y-motion='reduce'] .nav-add-glyph { transform: none; }
   animation-fill-mode: both;
 }
 /* Two animations, because the incoming screen is doing two things at once
-   and they are not on the same clock (redesign ticket 28). Its own pattern
+   and they are not on the same clock. Its own pattern
    - the fade-through's scale, the shared axis's X - runs on --dur-med as it
    always has; the follow, which is the content travelling with the blind's
    bottom edge, runs on the blind's --dur-slow. They compose rather than
@@ -1024,42 +796,15 @@ html[data-nav='fade-through']::view-transition-new(screen) {
 @keyframes screen-fade-out { to { opacity: 0; transform: scale(0.97); } }
 @keyframes screen-fade-in { from { opacity: var(--nil-opacity); transform: scale(1.03); } }
 
-/* The field is a blind over the content (redesign ticket 28, which amends
-   rule 10 and ADR-0078's field paragraph).
+/* The named blind is the field's opaque paint. Keep its
+   group pinned at the incoming size and animate the rounded clip,
+   so the bottom corners retain their radius. The two snapshots use
+   the same --field colour and move together to avoid a dip in opacity.
 
-   Ticket 25 gave the whole card one name on both sides, so the browser
-   tweened its box between the two doors' heights and crossfaded what was
-   drawn on it. That crossfade is a photograph of the card, contents
-   included, stretched between two heights: the smear Alicja named at frame
-   5 of Journal to Look back (2026-09-08). Her instruction was that the
-   field be "a separate module painted over the content" which "slides out a
-   little bit further down" on the way to a taller door and back up on the
-   way to a shorter one.
-
-   So the card is split. The blind is its paint - a flat block, one window
-   tall, hanging from the field's top edge, carrying the name `blind` on
-   every screen - and the field's height is a clip on it rather than a size.
-   Nothing is ever scaled: a snapshot squashed from 175px to 102px would
-   deform the two bottom corners, and this cannot, because the corners are
-   the clip's own `round` and the picture behind them never changes shape.
-   The group is pinned rather than tweened for the same reason - it holds
-   the incoming blind's box, and the edge is the only thing that moves.
-
-   Both halves run the same slide rather than one fading into the other.
-   They are the same flat colour on every screen (--field is published once,
-   on <html>, by activeFlag), so two identical opaque images on one clip
-   read as one block; a crossfade between them would dip through the middle
-   frames and read as the card blinking.
-
-   --blind-from, --blind-to and the settle on --blind-ease are measured and
-   published per navigation by $lib/motion/fieldBlind. The name is handed
-   over from there too, never written as a rule: a rule names both blinds at
-   once at the new capture - the outgoing screen can still be in the DOM -
-   and Chromium aborts the whole transition on the duplicate.
-
-   Reduced motion needs nothing of its own here: --dur-slow is clamped to
-   1ms at the token, so the blind cuts to its new height, which is the
-   substitute the contract asks for. */
+   fieldBlind publishes the measured --blind-from, --blind-to and
+   --blind-ease and passes the name between captures. Naming both live
+   nodes can abort a Chromium transition. Reduced motion clamps
+   --dur-slow to 1ms. */
 /* Over the content and in the order the field itself paints them: the
    blind's colour, the type on it, and the sun over both. Written out
    because a group with no z-index of its own falls in where its name was
@@ -1096,30 +841,17 @@ html[data-blind-scroll='exit']::view-transition-old(*.sun-shared-ring) {
   animation: blind-scroll-out var(--blind-dur, var(--dur-slow)) var(--blind-ease, var(--ease-out)) both;
 }
 
-/* The field, named only so the blind - nested under it via
-   view-transition-group: nearest (fieldBlind.ts) - inherits an ancestor
-   to be clipped by. A promoted element's capture ignores ancestor
-   overflow: hidden by design (confirmed against the W3C spec and Chrome's
-   own docs, which describe this exact symptom by name); nesting the
-   blind under the field's own group and clipping THAT is Chrome's
-   shipped answer, stable since 140. The field's own capture is hidden
-   rather than left to crossfade - a second whole-field photograph is
-   exactly the smear ticket 25 split this file apart to stop, and nothing
-   here needs the field to be seen, only to contain.
+/* Nest the blind under a named field group via view-transition-group:
+   nearest so the group clips its capture. A promoted snapshot ignores
+   ancestor overflow. Chrome supports this nesting since 140. Hide the
+   field's own capture to avoid a duplicate crossfade.
 
-   Nesting moved the blind's z-index inside this group, where it only
-   orders against its siblings, so the group itself needs the blind's old
-   place over the screen. Without it the field fell in at auto, under the
-   screen's z-index 1: invisible on the doors, whose screen snapshots are
-   transparent where a field was, but the entry editor paints an opaque
-   .editor-bg across its whole snapshot, so Home to a new entry had no
-   header at all for the length of the transition and the real one cut in
-   when it ended (ux-carpet 230). The sun rings are lifted to root groups
-   at z-index 5 so they paint over the titles (*.field-part at 4) rather
-   than being trapped under the field group's z-index 3 (ux-carpet 241). */
+   The field group needs z-index 3 above the screen's 1, including the
+   editor's opaque background. Sun rings are root groups at 5 so they
+   paint over the field parts at 4. */
 ::view-transition-group(field) {
   z-index: 3;
-  /* One edge, one clock (ticket 285). The field's group is what clips the
+  /* One edge, one clock. The field's group is what clips the
      blind - `group-children(field)` below cuts everything nested in it at
      the group's own box - and the browser animates that box from the old
      field's height to the new one's on its own default: 0.25s, plain ease.
@@ -1158,26 +890,14 @@ html {
   --pin-from: 0px;
   --pin-to: 0.01px;
 }
-/* THE MAIN-THREAD PIN (ticket 285, ADR-0078's named exception to "transform,
-   opacity or clip-path"). Every keyframe below that carries
-   `outline-offset: var(--pin-from)` to `var(--pin-to)` is carrying this, and
-   cites it rather than saying why.
+/* Pin the blind's clip, height and text ride to the main thread.
+   Chromium can drop linear() on a composited clip-path
+   and draw a straight 380ms ramp, letting text lead by up to 30px.
+   Clocks on separate threads can also start a frame apart.
 
-   Chromium runs a clip-path-only animation on the compositor, and there
-   --blind-ease's linear() is dropped and the edge is drawn as a straight
-   380ms ramp: measured on screencast frames of Transition to Today, 3.5px a
-   frame from first frame to last, while the same animation read off
-   getComputedStyle went 16px in its first frame, swelled to 5px past its mark
-   and came back. The type riding the edge is a `translate`, which keeps the
-   curve, so the words ran up to 30px ahead of the blue they were printed on.
-   And even with the curves equal, a compositor `translate` and a main-thread
-   clip start a frame apart - 16px at the top of the ease. An animation with a
-   property that cannot be composited stays on the main thread, so a hundredth
-   of a pixel of outline-offset on an element with no outline puts the clip,
-   the field group's height and the type's ride on one thread and one frame.
-   The screen's own follow (blind-follow) is covered by the blind and stays on
-   the compositor. tests/motion-system.test.ts holds the list of keyframes
-   that carry it. */
+   Animate outline-offset by 0.01px on an element without an outline
+   to keep them on one thread. The covered blind-follow remains
+   composited. motion-system.test.ts checks the pinned keyframes. */
 @keyframes blind-slide {
   from {
     clip-path: inset(0 0 calc(100vh - var(--blind-from, 0px)) 0 round 0 0 var(--r-block) var(--r-block));
@@ -1212,29 +932,13 @@ html[data-blind-scroll='enter']::view-transition-new(blind) {
   to { translate: 0 0; outline-offset: var(--pin-to); }
 }
 
-/* What is painted on the field is printed on it, and rides with it (Alicja,
-   round one, 2026-09-09: "make it so that the content on top of the field -
-   especially texts, bars, buttons - actually move with the blind, as if they
-   were physically printed on it"). This replaces the ticket's own "the texts
-   do not ride the blind", and it settles the note beside it - that nothing
-   painted on the field may ever stick out of it - by construction rather
-   than by a clip: a mark on the fabric keeps its distance from the edge, so
-   if it starts inside the field it cannot leave it. Both sides ride on the
-   blind's own curve, not the content's, because they are the blind.
+/* Field content rides on the blind's curve and keeps its position within
+   the moving field. The outgoing part fades for --dur-fast, then the
+   incoming part fades for --dur-fast. Both travel with the blind's
+   direction. --part-travel is 12px within 16px of bottom padding.
 
-   On top of the ride, each element still leaves and arrives on its own, and
-   no frame carries two of them: the outgoing one fades out over --dur-fast,
-   the incoming one fades in over the --dur-fast after that. That travel goes
-   the way the blind is going - the old text drops and the new comes from
-   above on a blind being pulled down, and both the other way on one being
-   pulled up (Alicja, same round) - which is what --part-travel carries. It
-   is 12px against the field's own 16px of bottom padding, so an element
-   travelling towards the edge still cannot reach it.
-
-   Two animations rather than one because they are on two clocks. They
-   compose rather than overwrite because the ride is written as `translate`
-   and the travel as `transform`: the individual property is applied first,
-   and neither touches the other's. */
+   The clocks compose via translate for the ride and transform for the
+   local travel. The individual translate applies first. */
 ::view-transition-old(*.field-part) {
   animation:
     field-part-out var(--dur-fast) var(--ease-in-out) both,
@@ -1272,28 +976,11 @@ html[data-blind-scroll='enter']::view-transition-new(blind) {
   from { opacity: var(--nil-opacity); transform: translateY(calc(-1 * var(--part-travel, 12px))); }
 }
 
-/* Home → Entry (mood-pick) is the one departure whose field-part hold lands
-   on top of another large graphic in the same corner - Home's own sun ring
-   - rather than on empty screen (ticket 159). Every other navigation keeps
-   the shared budget; only this one gets a shorter one, scoped by the
-   attribute `+layout.svelte`'s onNavigate sets and clears around the one
-   transition it names.
-
-   The ride, not the fade: the field-part text itself (both the outgoing
-   wordmark and the incoming title) and the sun's own close each finish
-   well inside --dur-fast's own budget - measuring this against the fix
-   (`tests/yank-sweep.mjs --scenes mood-pick`) showed that shortening
-   field-part-out/in alone left the corner's measured blank window
-   unchanged. What actually runs to the transition's own end is
-   blind-lead/blind-follow/blind-slide - the field's edge settling and
-   everything printed on it (title, sun rings) riding along - on
-   --dur-slow. --blind-dur scopes just that ride, and every
-   `var(--dur-slow)` below that drives blind-slide/blind-lead/blind-follow
-   reads it with the same fallback.
-
-   Halving rather than a literal ms figure so a reduced-motion visitor's
-   already-clamped --dur-slow (1ms) halves too, instead of this override
-   overriding that contract back up. */
+/* Scope the shorter blind ride to Home to Entry via mood pick.
+   The blank corner follows the blind's settling edge, so shorten
+   blind-lead, blind-follow and blind-slide through --blind-dur.
+   Keep the text and ring fades on their own timing. Halve
+   --dur-slow so reduced motion's 1ms clamp still applies. */
 html[data-blind-hold='short'] {
   --blind-dur: calc(var(--dur-slow) / 2);
 }
@@ -1333,8 +1020,7 @@ html[data-blind-hold='short'] {
      something else that asked for nothing. */
   animation: sun-ring-open var(--dur-sun-open) var(--ease-out) both;
 }
-/* Where the field arrives from above, off a screen that was scrolled (ticket
-   285), the sun rides in with it. The rings open in place and do not follow
+/* Where the field arrives from above, off a screen that was scrolled, the sun rides in with it. The rings open in place and do not follow
    the blind, on purpose (see above), and that is safe while the blind's top
    is fixed to the window. Here the whole field is above the window and
    travelling in, so rings that opened in place were a sun painted onto the
@@ -1403,26 +1089,11 @@ html[data-nav='shared-axis-back']::view-transition-new(screen) {
   25% { opacity: var(--nil-opacity); }
 }
 
-/* Into the entry editor: container transform, the one place in the app
-   where the thing tapped becomes the thing that opens (DIRECTION.md tier 2,
-   deferred from ticket 18 to ticket 22 because it is the only pattern that
-   needs the two surfaces to agree on a key rather than only the navigation).
-
-   Two groups animate rather than one. The tapped card and the editor share
-   a name ($lib/motion/container.svelte.ts), so the browser pulls that pair
-   out of the screen snapshot and tweens the box between them; what is left
-   of the screen crossfades under it, which is what keeps the eye on the one
-   thing that is moving.
-
-   --dur-slow, and it is the only pattern that gets it. This is the only one
-   carrying a box across the screen and resizing it on the way, and at
-   --dur-med the card arrives before the eye has followed it, which loses
-   the one thing the pattern exists to show.
-
-   height:100% with object-fit:cover on both halves, because the default is
-   `fill` against a box that is changing size: a 60px row stretched into a
-   full screen is a smear, and the same two frames cropped are a card
-   opening. */
+/* The tapped card and entry editor share a transition name
+   (container.svelte.ts). Their box moves over the screen crossfade.
+   Use --dur-slow for the combined travel and
+   resize. height: 100% and object-fit: cover crop each snapshot
+   instead of stretching a short card into the editor. */
 /* Out, then in, for what is left of the screen (pre-release 18, item 54).
    The outgoing screen ran the crossfade in reverse, and an ease-out
    reversed starts slow: the calendar stayed at 0.99 to 0.72 while the
@@ -1440,23 +1111,11 @@ html[data-nav='container']::view-transition-new(screen) {
   25% { opacity: var(--nil-opacity); }
 }
 
-/* The app opening for its owner: the secret is accepted and the gate gives
-   way (redesign ticket 34, $lib/motion/appOpening, which explains why this
-   one is not a navigation and has to start its own transition).
-
-   The only pattern in the app whose two screens do nothing but change
-   opacity, and the reason is that the movement is already there. A gate's
-   field is one title tall; Home's is 175px of the flag with the sun in it.
-   So the blind opens by that difference on --dur-slow, whatever the gate
-   printed on it (a disguised unlock's decoy name) rides down, the sun's rings
-   open outermost-first as it goes (or, where the gate already drew Today's
-   sun, that sun is held still), and the page follows the edge down instead
-   of waiting under it. A scale on top of all that - fade-through's 0.97 and
-   1.03, which the four tabs use because they are peers with nothing else
-   moving between them - is the app also being replaced while it opens.
-
-   The gate does not recede either, for the same reason: it is not going
-   anywhere, it is being covered. */
+/* appOpening starts its own transition after unlock. Screen snapshots
+   change opacity while the blind grows to Home's 175px flag field
+   over --dur-slow. Gate text and the page ride the edge. The sun
+   opens outer ring first, or stays still if the gate already shows it.
+   Keep the gate in place under the reveal. */
 html[data-nav='open']::view-transition-old(screen) {
   animation-name: screen-fade-away;
 }
@@ -1486,7 +1145,7 @@ html[data-nav='open']::view-transition-new(screen) {
    --dur-crossfade, which the 1ms clamp deliberately does not reach. A screen
    change that cuts with no acknowledgement at all is a worse answer to
    "reduce motion" than a change of opacity that moves nothing. */
-/* Out, then in, rather than both at once (redesign ticket 25). A
+/* Out, then in, rather than both at once. A
    simultaneous crossfade of two text-dense doors is a double exposure for
    its whole length - "the 'today' appears well before the old screen fades
    out", then, once both halves ran the same curve, still two screens
@@ -1510,8 +1169,8 @@ html[data-a11y-motion='reduce']::view-transition-new(screen) {
   animation-fill-mode: both;
   animation-timing-function: linear;
 }
-/* What is printed on the field crossfades the same way and keeps its ride
-   (ticket 285). The blind's edge is cut to its new height by --dur-slow at
+/* What is printed on the field crossfades the same way and keeps its ride.
+   The blind's edge is cut to its new height by --dur-slow at
    1ms; a part that lost its ride with its movement stayed where it was
    printed, fading for 120ms below an edge that had already gone, which is
    text on the page: the search box 70px under the edge on Today to Journal.
@@ -1606,40 +1265,13 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
   }
 }
 
-/* Not a frame around the whole app any more (phase 5 ticket 32.11,
-   reverted here). That version bordered the rail and the column together
-   on `body`, which put the rail back to its normal desktop position but
-   left the border drawn nearly 200px out from where Home's own bleed
-   actually clips its sun - the composition read as a window on the page,
-   but the sun inside it still stopped at an edge with nothing marking it,
-   same as before, just with an unrelated frame around the whole thing
-   (Alicja, 2026-08-27: "the border should only be around the main home
-   content, not over the whole app... the menu can go back to the previous
-   position as well as the width of the app").
-
-   What replaces it is scoped to Home alone, in screens.css: a border
-   directly on `.home`, which already sits at the exact edge `.home-header`
-   bleeds its sun against (`.screen`'s own padding box, per the container
-   query above - the negative margin that pulls the header out to that
-   edge is unchanged). Putting the border on that same box, rather than
-   somewhere past it, means the rounded corner is what clips the sun now,
-   instead of the sun stopping at an edge and a border being drawn
-   somewhere else. */
+/* Home's border belongs on .home in screens.css. Its rounded edge
+   matches the header's bleed and clips the sun where it ends.
+   Framing the rail and column together would put the border beyond
+   that edge. */
 .rail-brand { padding: 0 var(--space-3) var(--space-5); }
-/* The logotype: the real mark beside the word, sized against each other
-   on purpose (ticket 37, Alicja picked option B on 2026-09-30 and asked
-   for a wider gap and a truer centre). The word's own measures are em of
-   the word: the gap is half an em and the track is -0.03em, looser than
-   --display-track because that value is tuned for a headline and closes up
-   at this size next to a solid tile. The mark is a fixed 32px (1.23em of
-   the 26px word) because Mark takes pixels, so the ratio holds at a 16px
-   root and drifts if the word is scaled alone.
-
-   Centring is optical. Outfit's box puts the line's middle 0.37em above the
-   baseline, but the word's ink (x-height 0.49em, ascender 0.73em, one
-   descender) is centred 0.25em above it, so a plain align-items:center
-   leaves the word 0.12em low against the mark. The word's bottom padding
-   lifts it by half its own size. */
+/* Keep the mark at 32px next to the 26px word. The gap and tracking follow
+   the word size. Bottom padding corrects Outfit's optical centre. */
 .lockup {
   display: flex; align-items: center; gap: 0.5em;
   font-family: var(--font-display); font-weight: var(--weight-display);
@@ -1686,8 +1318,7 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
 .rail-item.is-active { color: var(--on-accent-soft); font-weight: var(--weight-bold); }
 /* Pushed to the rail's foot by the flex column's own auto margin, and cut
    off from the four doors above it by a hairline rather than a gap alone -
-   a gap reads as spacing, a rule reads as a different kind of row (ticket
-   09, ADR-0076). */
+   a gap reads as spacing, a rule reads as a different kind of row (ADR-0076). */
 /* The rule is drawn outside the row's box since after-release 17, when
    the row started taking the pill on /settings: drawn as the row's own
    border-top with the padding above the label, the lit shape covered the
@@ -1705,29 +1336,10 @@ html[data-a11y-motion='reduce']::view-transition-new(*.field-part) {
 
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 
-/* ============================================================
-   Paper (phase 5 ticket 17).
-
-   The shell is a fixed-height frame with one scrolling region inside it,
-   which is right on a phone and wrong on paper: a printer lays out what
-   fits in the frame and never sees the rest of the document. The clinician
-   visit summary has printed one truncated page since it was built for this
-   reason. Releasing the height and both overflows is what turns that into
-   as many sheets as the content needs, which the journal book depends on
-   completely - a book is many pages by definition.
-
-   The palette is overridden rather than left to the theme. Print drops
-   background colours by default, so a dark theme would otherwise reach the
-   page as pale grey text on white paper. Paper is white and ink is dark,
-   whatever the app is wearing on screen.
-
-   Navigation is not part of a document, so the rail and the bottom bar do
-   not print. `.no-print` and `.print-heading` live here beside
-   them rather than in each printing screen's own scoped block: both screens
-   had written the same two rules, and a third would have written them again.
-   What each screen still decides for itself is which of its elements carry
-   those classes, and how its own content breaks across sheets.
-   ============================================================ */
+/* Print releases the shell height and overflow so content spans
+   pages. Use dark ink on white paper because printers can drop
+   backgrounds. Hide navigation and share .no-print and
+   .print-heading. Each screen sets its own page breaks. */
 
 /* Paper-only, so it is hidden until the print block below turns it on. */
 .print-heading {

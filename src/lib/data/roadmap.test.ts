@@ -97,7 +97,7 @@ test('a stored tick is cut only when it names one of the three dropped tracks', 
 });
 
 /* The "Polish legal steps" switch: off in every language until somebody
-   turns it on (tester report 02, ticket 08). The group is 721 of the 754
+   turns it on. The group is 721 of the 754
    words the Polish roadmap opened with, so it starts closed there too. */
 test('the Polish legal steps stay closed until somebody answers the switch', () => {
   expect(polishLegalStepsShown(null)).toBe(false);

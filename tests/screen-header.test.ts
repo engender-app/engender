@@ -2,7 +2,7 @@ import { globSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-/* One per-screen header, and it stays one (phase 5 ticket 18).
+/* One per-screen header, and it stays one.
 
    The state this replaced was 56 hand-written header blocks that had
    drifted from each other in small ways, so the thing worth guarding is
@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest';
    writing its own.
 
    That is a negative over every .svelte file in the repo, so it is a grep
-   and could not be anything else (ticket 08). */
+   and could not be anything else. */
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const read = (path: string) => readFileSync(root + path, 'utf8');
@@ -71,20 +71,8 @@ describe('every screen gets its header from one component', () => {
   });
 
   it('does not repeat a tab name in the screen that tab opens', () => {
-    /* DIRECTION.md 3d. Written as the rule rather than as a list of the
-       screens that happen to follow it: a screen whose title is the very
-       message its tab is labelled with has to hide it, so adding a fifth
-       tab or renaming one cannot quietly leave a screen repeating itself.
-
-       Stats is the exception DIRECTION names outright - "Stats keeps its
-       title because the subtitle there carries the active period" - so it
-       is listed here rather than derived. It used to satisfy the rule by
-       accident, through a stats_title that read "Stats · last 30 days" and
-       had no subtitle under it at all; phase 5 UX ticket 23 split that into
-       the title the tab is named with and the period beneath it, which is
-       the header shape every other screen already has and the one 3d
-       describes. A title doing two jobs was the thing to fix, not the
-       repetition. */
+    /* Hide a screen title that repeats its tab name. Look back keeps its
+       title because the subtitle names the active period. */
     /* One door's tab (the fourth) can say either of two things depending on
        disguise (ticket 08, hubTabLabel) - both are listed, so the guard
        still catches whichever one a header regresses to repeating. */

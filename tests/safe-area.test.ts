@@ -2,32 +2,10 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-/* The two halves of the shell's safe-area work that no browser test can
-   reach (phase 5 ticket 18).
-
-   The walkthrough covers the behaviour - where content starts, where the
-   bar ends - by setting the --inset-* tokens itself and measuring what
-   moved. That is the stronger check, and it is deliberately where the
-   layout assertions live. But it is blind to exactly two things, and both
-   of them are the difference between working on a desktop and working on a
-   phone:
-
-   `viewport-fit=cover` cannot be observed in a headless desktop Chromium
-   at all. Every safe-area inset there is 0 whether or not it is declared,
-   so a browser test passes identically with the declaration deleted, while
-   on a device its absence puts every inset back to 0 and reinstates the
-   whole defect.
-
-   And because the walkthrough sets the tokens directly, it would pass just
-   as happily if they were wired to nothing - a --inset-top defined as 0px
-   with no env() behind it satisfies every geometric assertion in that
-   suite and reports zero inset on the one device that has one.
-
-   So this file asserts the two declarations, and only those. Everything
-   about the resulting layout is checked by measuring it instead.
-
-   So these two are greps because the browser they would run in cannot see
-   the thing (ticket 08), not because a rule was left in markup. */
+/* Check viewport-fit=cover and env()-backed inset tokens in source.
+   Headless Chromium always reports zero safe area, and the walkthrough
+   overrides the tokens to measure geometry. That test covers layout,
+   while these declarations ensure phone insets reach it. */
 
 const read = (path: string) => readFileSync(fileURLToPath(new URL(path, import.meta.url)), 'utf8');
 

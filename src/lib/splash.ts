@@ -1,42 +1,12 @@
-/* The handover from the first frame to the app (phase 14 pre-release
-   ticket 13, after-release ticket 31). app.html paints a ground and the
-   mark before any script has run; this is what takes them away.
+/* Keep the first frame until boot and the destination screen are ready.
+   app.html keeps the mark still and crossfades the app over the same
+   body background. Waiting for the destination avoids fading to an
+   empty page while first-run navigation starts.
 
-   How the first frame leaves is app.html's CSS: a crossfade, the first
-   frame fading out while the app's root fades in on the same curve. The
-   mark does not move on the way out, and the ground is the app's own --bg
-   on the body, which neither side fades, so no frame of the handover has
-   either of them somewhere new.
-
-   When it leaves is `splashMayLeave`: once boot has answered, and once the
-   screen it answered with is the one the layout is drawing. Ticket 13 had
-   it start leaving when the layout mounted, so that a screen's own
-   entrances would not finish unseen underneath. But the layout mounts while
-   boot is still working, and on a first visit boot then answers "set up":
-   the layout drops the screen it had started and draws nothing while it
-   navigates to onboarding. Measured at 4x CPU in after-release 31, the
-   first frame had faded onto an empty ground by +420 ms and onboarding
-   arrived whole, in one frame, at +687 ms. Waiting for the answer means
-   the first frame dissolves into a screen that is there.
-
-   Then it waits for that screen to be finished and painted (ticket 08).
-   The screen paints under the still mark at a nil opacity (app.html), and
-   the first time the WebView draws something it compiles the GPU pipelines
-   for it. On the Pixel 10a that is about 120 pipelines and 450 ms for
-   Home, and it used to land inside the fade: stalls of 150-240 ms, three
-   to six frames for a 280 ms fade. So the fade waits until the screen's
-   held reads have answered, the arrivals they start have played out, and
-   three frames in a row come back quick. A body fading in from 0 first
-   reaches the GPU when its fade starts, which is why the arrivals count.
-   Measured over three cold launches each, the fade went from 3-6 frames
-   to 34, with no stall over 50 ms after it began; the mark holds about a
-   second longer. The cap covers a device that never settles and a hidden
-   tab with no frames.
-
-   `answerSplash` ends the handover and takes the element out when it has
-   run, on a timer rather than on `transitionend`, which never fires for a
-   tab that is hidden or a person who asked the system to remove
-   animations. */
+   Wait for held reads, their arrival animations and three fast frames
+   before fading. The WebView's first GPU work can stall the transition.
+   A cap covers a hidden tab or a device that never settles. answerSplash
+   uses a timer so cleanup also runs when transitionend never fires. */
 
 import { afterQuickFrames } from './motion/quickFrames';
 

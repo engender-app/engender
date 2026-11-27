@@ -1,28 +1,11 @@
-/* Video note staging (ticket 22, CONTEXT: "Video note"). voiceRecordings.ts's
-   twin, and for now a parallel copy rather than a shared generic over the two
-   tables: what they have in common today is a uuid, a file and an entry, and
-   a rename on one must not silently change what the other stores.
+/* Stage video notes for an existing entry using PhotoFileStore. As in
+   photos.ts, write the file before inserting its row and remove the row
+   before freeing the file. Video notes have one owner column; photos
+   also support milestones and have thumbnails.
 
-   Worth being honest about: with photo, voice_recording and video_note this
-   is the third file-carrying entry table, so the rule of three is reached and
-   the copy is no longer obviously the cheaper option. Extracting it now would
-   mean rewriting voiceRecordings.ts and photos.ts in the same change - and
-   photos.ts genuinely differs, with a nullable owner pair and a thumbnail
-   sibling - so the extraction belongs in its own ticket rather than smuggled
-   into this one.
-
-   Entry-only, like a recording and unlike photos.ts: ticket 22 excludes
-   milestones, so there is one owner column and no owner to resolve - the
-   caller (entries.ts) already holds a real entry id by the time it stages a
-   note.
-
-   The same file-before-row / row-before-file ordering photos.ts's header
-   states applies here, over the same injected PhotoFileStore: a video note
-   is exactly the kind of binary blob that store already exists to carry.
-   No normalize() step either, but for a different reason than a recording's:
-   a video note IS capped and re-encoded (limits.ts), just not here - that
-   needs a canvas, so it happens in the editor before these bytes arrive,
-   the same division of labour normalizePhoto/photos.ts already draws. */
+   The editor caps and re-encodes video through limits.ts before staging,
+   where the canvas is available. Keep storage separate from voice
+   recordings so each format can change independently. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import { afterCommit } from '../sqlite/transactor';
@@ -138,7 +121,7 @@ export function makeVideoArea(driver: SqliteDriver): VideoArea {
   return {
     async inJournal() {
       // Excludes a trashed entry's notes the same way every other
-      // entry-owned read does (phase 5 ticket 19).
+      // entry-owned read does.
       const rows = await driver.query<VideoRow & { epoch_day: number }>(
         `SELECT v.uuid, v.file_path, e.epoch_day AS epoch_day
          FROM video_note v

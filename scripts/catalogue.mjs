@@ -1,5 +1,4 @@
-/* The one writer for messages/en.json and messages/pl.json (phase 12
-   copy-tooling ticket 01). Keys go in sorted order so a new key lands beside
+/* The one writer for messages/en.json and messages/pl.json. Keys go in sorted order so a new key lands beside
    its own prefix instead of at the end of the file, where every parallel
    branch appends and collides. `$schema` stays first, as the inlang tooling
    expects. Anything that writes a catalogue imports this rather than

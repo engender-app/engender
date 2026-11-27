@@ -9,11 +9,10 @@ export interface AndroidReminderTexts {
   checkInTitle: string;
   checkInBody: string;
   /** The five moods' names, worst first: what TalkBack says for each face
-      on the check-in notification and the word under it (tester report 02,
-      ticket 05). In the app's language rather than the phone's, like every
+      on the check-in notification and the word under it. In the app's language rather than the phone's, like every
       other text here. */
   checkInMoods: string[];
-  /** A medication reminder's two buttons (functional audit ticket 20).
+  /** A medication reminder's two buttons.
       `doseDone` stands in for `doseTaken` while the app is disguised. */
   doseTaken: string;
   doseDone: string;
@@ -25,8 +24,8 @@ export interface AndroidReminderTexts {
 
 export interface AndroidReminderSyncPayload {
   /** `title` is what the notification shows (for a medication reminder,
-      what it reminds about) and `text` the line under it, time included
-      (functional audit ticket 21). Absent `text`, the time stands alone. */
+      what it reminds about) and `text` the line under it, time included.
+Absent `text`, the time stands alone. */
   reminders: Array<Reminder & { text?: string }>;
   checkInEnabled: boolean;
   checkInTime: string;
@@ -34,9 +33,9 @@ export interface AndroidReminderSyncPayload {
   checkInPausedThrough: number | null;
   latestEntryEpochDay: number | null;
   /** Reminder notifications drop the reminder's own title for a generic
-      one when true (ticket 15). */
+      one when true. */
   hideNotificationTitles: boolean;
-  /** The unprompted registry's one cross-class rule (phase 6 ticket 04). An
+  /** The unprompted registry's one cross-class rule. An
       alarm that would fire inside the window is scheduled at the end of it
       instead - held, never dropped - which QuietHours.java does, because the
       fire times themselves are computed natively before any WebView exists. */
@@ -60,8 +59,8 @@ interface AndroidRemindersBridge {
   requestNotificationPermission(): Promise<AndroidReminderStatus>;
   requestExactAlarmPermission(): Promise<void>;
   /** The app's notification settings screen, opened unconditionally - the
-      way back from a refusal the OS has stopped offering a dialog for
-      (phase 10 redesign ticket 31). */
+      way back from a refusal the OS has stopped offering a dialog for.
+*/
   openNotificationSettings(): Promise<void>;
   openBatterySettings(): Promise<void>;
   /** Tries again to lock the old plaintext copy. Resolves either way; the

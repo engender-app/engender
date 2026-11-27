@@ -1,24 +1,8 @@
-/* The checks a driver has to pass to be a driver, written once and run on
-   every tier (ticket 11).
-
-   The Node tier runs them over node:sqlite and the Android tier runs them
-   over SQLCipher through the Capacitor bridge, against the same journal
-   code and the same assertions. That is the point: ADR-0017's seam is only
-   real if the thing above it cannot tell the platforms apart, and the way
-   to know is to ask both the same questions rather than to write each tier
-   its own probe and hope they stayed comparable.
-
-   It is framework-free on purpose. vitest cannot run in a WebView on a
-   phone, so a suite expressed in `test()` and `assert` could not be the
-   same suite in both places - which is how the browser tier ended up with
-   hand-written probes that resemble the Node tests without being them.
-
-   Scope: the behaviours that depend on the SQLite build or on the driver
-   contract, not the journal's whole surface. Business rules that are pure
-   TypeScript above the driver are already covered by the Node tier and
-   would run identically here by construction. What varies by platform is
-   what this asks about - FTS5, window functions, folding, the change
-   counts, transaction rollback, and preferences over the same table. */
+/* Driver contract checks shared by Node's SQLite driver and Android's
+   SQLCipher bridge (ADR-0017). Keep the suite framework-free so the
+   WebView can run the same assertions. Cover platform-dependent FTS5,
+   window functions, folding, change counts, rollback and preference
+   storage. Pure journal rules stay in the Node suite. */
 
 import { foldText } from '../fold.ts';
 import type { SqliteDriver } from '../sqlite/driver.ts';
@@ -320,7 +304,7 @@ export async function runJournalContract(
        number written here: a literal would be asserting that the database was
        empty when the suite started, which is a precondition nothing gives it
        and which would fail as a search bug the first time it was not true.
-       Trashed rows are excluded from `noted` (phase 5 ticket 19): deleteEntry
+       Trashed rows are excluded from `noted`: deleteEntry
        leaves the row and its note in place but drops it from the index the
        same way it drops it from every other read, so ids[1] above widens
        the two counts apart unless trash is left out of both sides. */
@@ -458,8 +442,7 @@ export async function runJournalContract(
     for (const id of [starredId, ownerId, plainId]) await journal.entries.deleteEntry(id).catch(() => {});
   });
 
-  /* A margin note's independence from its entry (phase 8 features ticket
-     07): adding, editing and deleting one leaves the entry's own note
+  /* A margin note's independence from its entry: adding, editing and deleting one leaves the entry's own note
      untouched, on the driver rather than assumed from the two tables being
      separate in the schema - a trigger, a cascade or a shared-connection
      quirk on either tier could still smuggle a write across. */

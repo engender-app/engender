@@ -1,5 +1,5 @@
 /* Epoch-day round-trip check (ADR-0001), replacing the old plain-Node
-   script now that the harness exists (ticket 03). Run under both
+   script now that the harness exists. Run under both
    timezones to catch UTC-anchored regressions:
 
      TZ=America/Los_Angeles npm test -- epochDay
@@ -160,8 +160,8 @@ test(`calendarDuration.months is always 0-11 regardless of gap length under TZ=$
   }
 });
 
-/* durationParts is the one place the "largest one or two units" rule lives
-   (ticket 45): fmtDuration renders it as words, and a letter's countdown
+/* durationParts is the one place the "largest one or two units" rule lives:
+fmtDuration renders it as words, and a letter's countdown
    draws the same parts as numbers on blocks. Two renderings of one rule, so
    a card and a sentence about the same gap can never disagree. */
 test(`durationParts gives years and months for a gap over a year under TZ=${tz}`, () => {
@@ -412,7 +412,7 @@ test(`customInclusiveRange rejects reversed boundaries under TZ=${tz}`, () => {
 });
 
 /* A chart's gutter writes the year on its ends only where the range crosses
-   one (phase 5 UX ticket 25). The lab results screen is what found this:
+   one. The lab results screen is what found this:
    its range is however long somebody has been having blood drawn, so a
    series running 22 June 2025 to 17 June 2026 drew "22 Jun" beside "17 Jun"
    and read as a chart running backwards. */

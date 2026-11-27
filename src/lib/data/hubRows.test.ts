@@ -48,33 +48,16 @@ const hidden = { hidden: true, finishedEpochDay: null, suspendedEpochDay: null }
 
 // --- the registry is the only enumeration --------------------------------
 
-/** Every production file that reads this module - phase 10 redesign ticket
-    12's own proof, after `statsAreas.ts` was deleted as a second enumeration
-    of areas kept alive by nothing since ticket 99 item 36. Named rather than
-    globbed, the choice `feature-screens.test.ts` already made and for the
-    same reason - a surface silently added to this list and a surface
-    silently dropped from it read identically to a glob.
-
-    What this proves and what it does not: every file that imports `hubRows`
-    is one of these nine, so a tenth reader appearing anywhere fails here
-    rather than passing silently. `TodayEditor.svelte` is the sixth, added
-    by ticket 14 - it reads `HubReading` and `HubRowKey` to arrange the
-    front page, and everything it draws about a row comes off the registry
-    the way `pinnedRows.ts` next door does. It cannot see a second registry built
-    without importing this module at all - no scan can - which is why the
-    stronger claim is the deletion itself: `statsAreas.ts` was the one file
-    doing that, confirmed by grep before it was removed, and nothing has
-    replaced it.
-
-    `dayRows.ts`, `searchHitRows.ts` and `rowIcon.ts` are the seventh,
-    eighth and ninth, added by ticket 30: a search hit and a day row used to
-    declare an icon and a route of their own for every screen the hub
-    already named, an agreement the two files stated only in a comment.
-    They now read a row's `icon` and `href` off `hubRow()` wherever a
-    screen has one - the same reasoning `TodayEditor.svelte` already stood
-    on - and keep their own words and local icons only where no hub row
-    owns the screen at all. `rowIcon.ts` is the one call both files share
-    for reading or declaring that icon, rather than each restating it. */
+/**
+ * List production readers explicitly so an added or removed hubRows import
+ * fails the test. TodayEditor and pinnedRows read what they display from the
+ * registry. dayRows and searchHitRows reuse the hub icon and route when a
+ * screen has a hub row, through rowIcon. Screens without a hub row supply
+ * their own labels and icons.
+ *
+ * This test covers imports. A separate registry could bypass it, so the
+ * retired statsAreas registry was removed.
+ */
 const REGISTRY_SURFACES = [
   'src/lib/components/FeatureVisibilityList.svelte',
   'src/lib/components/HostedRows.svelte',
@@ -84,7 +67,7 @@ const REGISTRY_SURFACES = [
   'src/lib/components/searchHitRows.ts',
   'src/lib/data/pinnedRows.ts',
   'src/lib/data/vocabulary/hubLabels.ts',
-  /* The feature manifest (functional audit ticket 54) names each feature's
+  /* The feature manifest names each feature's
      rows by `HubRowKey`, a type-only import, and claims every row once. It
      draws nothing and a row it names that the registry lost stops the
      typecheck, so it is a check on this module rather than a second list. */
@@ -194,23 +177,8 @@ test('a row carries a reading exactly where its own areas have one', () => {
 test('twelve rows can report a reading and seven never can', () => {
   const reads = HUB_ROWS.filter((row) => row.line === 'read');
 
-  // The fifteenth is documents (phase 8 features ticket 52): the media
-  // group's first row that fronts an area of its own. Twelve until redesign
-  // ticket 51 took `presentations` and `entry-templates` - both 'written' -
-  // off the registry entirely. Ten until ticket 59 deleted the
-  // clinician-summary row outright rather than hosting it, and fourteen
-  // since redesign ticket 61 folded the size log into the measurements row.
-  // Thirteen since ticket 13 folded `side-effects` - a 'read' row - into
-  // `effects` rather than giving it a row of its own; the written eight
-  // are untouched by that one. Twelve since functional audit ticket 05
-  // removed the measurements row. The written eight are nine less `words`,
-  // which redesign ticket 62 took off with the screen it opened, and seven
-  // since redesign ticket 16 took `eras` - also 'written' - off the same
-  // way. Six since phase 11 ticket 17 folded `voice` - also 'written' -
-  // into `voice-benchmark`'s own Recordings tab rather than giving it a
-  // row of its own. Thirteen since pre-release-human 12 added
-  // `progress-photos`, a reading row, and twelve since hair progress - also
-  // 'read' - folded into progress photos (version 124). Seven written since
+  // Version 124 folded hair progress into progress photos, leaving 12
+  // reading rows. Seven written since
   // bug session 18 item 70 gave voice memos back a Media row, `recordings`.
   assert.equal(reads.length, 12);
   assert.equal(HUB_ROWS.length - reads.length, 7);
@@ -358,10 +326,8 @@ test('a row that can never read states what is behind it whatever the journal ho
 
 // --- what is next ----------------------------------------------------------
 
-/* The choice rule this ticket exists for (phase 11 all-four-doors ticket 02,
-   DIRECTION.md rule 16). What the fact itself is and where it is read from is
-   `rowForward.test.ts`'s question; these are about which of two facts a row
-   prints when it holds both. */
+/* Check which fact wins when a row has two. rowForward.test.ts checks
+   where the facts come from. */
 
 test('a forward fact beats a last write', () => {
   const line = rowLine(

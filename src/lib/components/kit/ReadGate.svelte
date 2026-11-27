@@ -39,8 +39,7 @@
 
   let branch = $derived(gateBranch(read));
 
-  /* The answer fades in over the skeleton fading out (ux-carpet ticket
-     184). The skeleton's `out:crossfade` only ever handled the leaving
+  /* The answer fades in over the skeleton fading out. The skeleton's `out:crossfade` only ever handled the leaving
      half: whatever replaced it was inserted at full opacity, so a whole
      screen's worth of headings, lines and rows appeared in one frame on
      top of a placeholder still on its way out - measured on Care's cold
@@ -95,7 +94,7 @@
   });
 </script>
 
-<!-- The skeleton and whatever replaces it share one wrapper (ticket 144),
+<!-- The skeleton and whatever replaces it share one wrapper,
      so the swap between them is a resize this persistent node can watch
      rather than a mount/unmount neither `resize` nor a transition can
      see: `out:crossfade` already takes the skeleton out of flow the

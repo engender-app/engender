@@ -1,29 +1,12 @@
-/* The archive area (ticket 13, PRD F14): everything the journal holds, in
-   the shape an archive carries it (archive/payload.ts).
+/* The Archive area builds the payload and file manifest. archiveSections.ts
+   orders the travelling sections (ADR-0027), and archiveRead.ts reads them
+   by stable key or UUID (ADR-0002). Export queries all entry children at
+   once rather than querying dimensions, tags and photos per entry.
 
-   Which areas travel and in what order they are inserted back is the
-   registry's (archiveSections.ts, ADR-0027); the per-section reads are in
-   archiveRead.ts. What is left here is the file manifest, which is this
-   area's alone, and the four operations the app calls.
-
-   The sections read rows themselves rather than calling the other areas'
-   getters, for two reasons. Identity: every row travels by key or uuid, and
-   the entries area addresses entries by the rowid that means nothing on
-   another device (ADR-0002). Volume: the screens read a day or a list at a
-   time and can afford a query per entry for its dimensions, tags and
-   photos; an export reads every entry there has ever been, so each of those
-   becomes one query for the whole journal.
-
-   Photo bytes stay out of the snapshot. It names the files and how long
-   each one is - which is what lets the chunk count be settled before
-   anything is encrypted (ADR-0007) - and hands back a reader for one file
-   at a time, so nothing ever holds the photo set at once.
-
-   Ticket 14's Replace and Merge are the other half of this area, one
-   journal operation each. They live in restore.ts, with the per-section
-   writes in archiveApply.ts: the two halves share nothing but the wire
-   format and the registry, and the ordering rule an import turns on
-   (ADR-0011) is long enough to be worth reading on its own. */
+   The snapshot lists file sizes so encryption can derive the chunk count
+   in advance (ADR-0007). It reads file bytes one at a time. restore.ts
+   implements Replace and Merge in registry order (ADR-0011);
+   archiveApply.ts owns their per-section writes. */
 
 import { thumbFileName } from '../photos/names';
 import type { ImportCommit, OnRestoreProgress, RestoreContents, RestoreMode } from './restore';
@@ -68,11 +51,11 @@ export interface ArchiveArea {
       additions, so they are the counts commit reports (PRD F28). */
   previewDaylioImport(csv: string, naming: DaylioNaming): Promise<DaylioPreview>;
   /** Always Merge. An unmapped mood is refused before restore sees a row.
-      Writes one import_log record on success (ticket 03) - never on the
+      Writes one import_log record on success - never on the
       unmapped-mood refusal above, which never reaches restore either. */
   commitDaylioImport(preview: DaylioPreview, onProgress?: OnRestoreProgress): Promise<DaylioCommitResult>;
-  /** The same two steps for a `.daylio` backup rather than a CSV export
-      (phase 7 ticket 09), which carries milestones, tag groups, custom
+  /** The same two steps for a `.daylio` backup rather than a CSV export,
+      which carries milestones, tag groups, custom
       scales, writing templates, photos and voice notes as well. */
   previewDaylioBackupImport(file: Uint8Array, naming: DaylioNaming): Promise<DaylioBackupPreview>;
   /** Always Merge. `normalize` is the photo pipeline (photos/normalize.ts),
@@ -83,8 +66,8 @@ export interface ArchiveArea {
     normalize: (bytes: Uint8Array) => Promise<NormalizedPhoto>,
     onProgress?: OnRestoreProgress
   ): Promise<DaylioBackupCommitResult>;
-  /** The import history, most recent first, for the settings screen
-      (ticket 03). Its own read rather than a slice of `snapshot()`: every
+  /** The import history, most recent first, for the settings screen.
+      Its own read rather than a slice of `snapshot()`: every
       other archive read costs the whole journal, and a settings screen
       asking "where did this come from" should not pay for it. */
   importLog(): Promise<ArchiveImportLogRecord[]>;
@@ -190,7 +173,7 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
 
     async importLog() {
       // Copied before reversing rather than reversed in place: `toReversed`
-      // is above the WebView floor (ADR-0023, ticket 55) and this is what
+      // is above the WebView floor (ADR-0023) and this is what
       // replaced it, so it has to keep the same promise not to touch what
       // it was handed - the read's array is its own today, and a reader
       // that started sharing one would be a bug nobody would look for here.
@@ -231,8 +214,8 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
       };
 
       /* Two files per photo and one per anything else, which is what the
-         generator above yields and therefore what the restore will count
-         (phase 9 audit ticket 11). Counted from the assets rather than
+         generator above yields and therefore what the restore will count.
+         Counted from the assets rather than
          from preview.photoCount, so the denominator cannot disagree with
          the numerator if either ever changes. */
       const fileCount = preview.assets.reduce((n, asset) => n + (asset.kind === 'photo' ? 2 : 1), 0);

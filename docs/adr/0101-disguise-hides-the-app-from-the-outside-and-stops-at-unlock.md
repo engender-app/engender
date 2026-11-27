@@ -4,7 +4,7 @@ Status: Accepted
 Decided: 2026-11-02
 Last reviewed: 2026-11-12
 Supersedes: ADR-0079 (merged in)
-Amends: ADR-0065 and ADR-0088 (their disguise clauses); the flag-motif clause of ADR-0035 (now in the design notes)
+Amends: ADR-0065 and ADR-0088 (their disguise clauses); replaces the earlier Home flag band
 
 Disguise is for somebody near the phone who has not unlocked the journal: a
 glance at the home screen, the app drawer, a notification, the Recents list,
@@ -113,6 +113,6 @@ by someone who has not unlocked anything.
 - `DisguiseAliasTest.java` walks every alias and holds the one-enabled
   invariant; `CaptureDecisionTest.java` holds the window and Recents decision per capture choice and disguise state, and `DisguiseCaptureTest.java` checks the live window.
 
-History: decided 2026-11-02. Absorbed ADR-0079 (setup offers disguise last) 2026-11-02; it replaced ADR-0035's hidden Home flag band, ADR-0065's disguise argument for no page images in the document list, and ADR-0088's launcher rule. Amended 2026-11-12: see Recents and screenshots.
+History: decided 2026-11-02. Absorbed ADR-0079 (setup offers disguise last) 2026-11-02; it replaced the hidden Home flag band, ADR-0065's disguise argument for no page images in the document list, and ADR-0088's launcher rule. Amended 2026-11-12: see Recents and screenshots.
 
 Amended 2026-11-26: the tally widget is gone.

@@ -1,5 +1,4 @@
-/* The welcome's language switch on a real first run (pre-release-human
-   ticket 19), on the production build, where there is no journal until the
+/* The welcome's language switch on a real first run, on the production build, where there is no journal until the
    access-mode step makes one.
 
    Picking a language reloads the page (setLocale), and a preference written

@@ -1,11 +1,11 @@
-/* Argon2id key derivation (ticket 12), identical code on web and Android -
+/* Argon2id key derivation, identical code on web and Android -
    hash-wasm bundles its WASM as base64 rather than fetching it, so this
    introduces no runtime network request (Notes: re-verify once wired in,
    README claims and runtime behavior have diverged before). */
 
 import type { Argon2Params } from './params.ts';
 
-/* Argon2id runs in a worker where there is one (ux-carpet ticket 209): on
+/* Argon2id runs in a worker where there is one: on
    the main thread it held rendering for 64ms at full speed and 263ms at 4x
    CPU on every passphrase or PIN unlock, the demo's included. Same call,
    same parameters (ADR-0013) - argon2id.worker.ts - only another thread.
@@ -41,8 +41,8 @@ export function prewarmArgon2(): void {
   };
 }
 
-/* The page's own copy is imported when it is needed, not with this module
-   (ux-carpet ticket 217): hash-wasm is ~33 KB of the first-load graph when
+/* The page's own copy is imported when it is needed, not with this module:
+hash-wasm is ~33 KB of the first-load graph when
    imported statically, and the page only runs it where no worker can start.
    The worker imports its own copy (argon2id.worker.ts), a chunk of its own.
    A chunk that fails to load throws out of deriveKey as itself, not as a

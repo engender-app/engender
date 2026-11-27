@@ -1,23 +1,11 @@
 <script lang="ts">
-  /* One procedure, on its own screen (prh12 bug 20). Tapping a procedure on
-     the index used to slide its whole log open under the list, a thousand
-     pixels below the card that opened it, with its name, type and date
-     editable only in a sheet behind a pencil. Everything about one
-     procedure is laid out here instead and edited where it stands.
+  /* Edit a procedure in place. Lead with the active phase and its
+     reading, then show phase records, related
+     papers, fields and Delete.
 
-     Same order in every phase: what is true now (the phase and its
-     reading, DIRECTION.md rule 16), then the record kept against it in the
-     order that phase needs it, then the papers filed against it, then the
-     procedure's own facts as fields, then Delete.
-
-     The log keeps the five phases the index used to draw (phase 5
-     deepening ticket 12): planning, pre-op, surgery day, recovery and
-     archived. Every phase carries the same one Notes field and one
-     Checklist under those two names (functional-audit ticket 24); they
-     used to be retitled per phase, which made one field look like five.
-     A question for a consult goes on the appointment prep list, the one
-     list that is taken into any appointment, rather than into these
-     notes. */
+     Planning, pre-op, surgery day, recovery and archived all share
+     the same Notes and Checklist. Consult questions go in the
+     shared appointment prep list. */
   import { undoable, offerUndo } from '$lib/stores/deleteUndo';
   import type { UndoableDelete } from '$lib/data/journal/undoableDelete';
   import { journalTextAutocomplete } from '$lib/platform';
@@ -323,8 +311,7 @@
     findById: (id) => checklistItems.find((i) => i.id === id)
   });
 
-  /* One entry in the offer registry (phase 8 features ticket 22,
-     ADR-0045): "reaching surgery day or the recovery phase in the procedure
+  /* One entry in the offer registry (ADR-0045): "reaching surgery day or the recovery phase in the procedure
      hub". Both places that call `promptMilestoneConfirmation` only draw
      while the procedure has no milestone. */
   const MILESTONE_OFFER = OFFERS['surgery-day-milestone'];
@@ -527,7 +514,7 @@
 {/snippet}
 
 <!-- A consult date, and a question to take into it. The question goes on
-     the appointment prep list (functional-audit ticket 24). -->
+     the appointment prep list. -->
 {#snippet consultActions()}
   <div class="consult-actions">
     <button class="btn btn-soft press" data-add-consult onclick={openConsultSheet}>
@@ -687,7 +674,7 @@
       </div>
       {/key}
 
-      <!-- Outside the phase chain on purpose (ticket 56, ADR-0065): a
+      <!-- Outside the phase chain on purpose (ADR-0065): a
            document filed against a procedure stays visible whichever phase
            the procedure is in now. -->
       <LinkedDocuments kind="procedure" id={stored.id} />

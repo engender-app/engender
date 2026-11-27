@@ -1,25 +1,12 @@
 <script lang="ts">
-  /* Changing how the journal opens, later (ticket 53). The same module the
-     first run uses, so there is one place that explains the modes and one
-     place that can be got wrong.
+  /* AccessModeSetup shares onboarding's choices. Mode changes rewrap
+     the same data key (keystore.ts). Boot prefers the secret keystore
+     over leftover device-bound material, so interruption retains an
+     opening path. Changing a secret within a mode verifies the old
+     secret in its own passphrase or PIN flow.
 
-     Every direction is a rewrap of the same data key (crypto/keystore.ts):
-     the journal is not re-encrypted, so the change is instant whatever the
-     journal's size, and an interrupted one loses nothing - boot prefers a
-     secret keystore over leftover device-bound material, so a crash mid
-     change leaves a journal that still opens under one mode or the other.
-
-     Changing the secret *within* a mode is a different job and is not here:
-     that is /settings/passphrase for a passphrase and the PIN row below for
-     a PIN, both of which verify the current secret before replacing it.
-
-     Its second question is when that same secret is asked for again
-     (lock-timing ticket 01). It used to be a "Lock on leave" switch on two
-     other screens, which read as a second mechanism rather than the mode's
-     own secret coming back. Asked of the mode the journal is on now, and
-     only while no other mode is being looked at: under a chosen mode's
-     consequence it would read as a question about that one. A mode with no
-     secret has nothing to ask again, so it gets a sentence instead. */
+     Show timing controls only for the active mode while no other mode
+     is being considered. A mode without a secret needs only an explanation. */
   import { onDestroy } from 'svelte';
   import { UnlockCancelledError } from '$lib/lock/unlock-attempt';
   import CurrentProtection from '$lib/components/CurrentProtection.svelte';
@@ -237,7 +224,7 @@
     <!-- Held until the boot says which mode this journal is on. A cold open
          paints before it does, so the list first offered every mode, then
          dropped the current one for the line naming it: 40px up in one
-         frame, 70ms in (ux-carpet ticket 193). -->
+         frame, 70ms in. -->
     <ReadReserve ready={current !== null} estimate={reserve} onrest={rememberHeight}>
       <!-- Travels its height when the module swaps screens inside it: the
            list and a mode's consequence share one grid cell, and the cell
@@ -279,7 +266,7 @@
            one, because only one of them applies at a time and a disabled row
            explaining why would be a third thing to read. -->
       <!-- Only for a mode with a secret to change: the other three drew an
-           empty card here (after-release ticket 09). Opens and closes by its
+           empty card here. Opens and closes by its
            height when a change of mode adds or takes away the secret. -->
       {#if current === 'passphrase' || current === 'pin'}
       <div transition:disclose>

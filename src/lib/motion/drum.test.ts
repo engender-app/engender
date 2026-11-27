@@ -71,7 +71,7 @@ describe('tier 3, a glyph passing through a block', () => {
 
   /* The reduced-motion contract: substitute, never delete. The face does
      not travel, but it still changes by a fade rather than a cut, so the
-     change reads as a change (DIRECTION.md rule 10). */
+     change reads as a change. */
   it('fades rather than travels under reduced motion', () => {
     stubDocument(true);
     const { css, duration } = drumIn(node);

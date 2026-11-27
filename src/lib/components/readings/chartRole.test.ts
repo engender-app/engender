@@ -7,7 +7,7 @@ const dir = fileURLToPath(new URL('.', import.meta.url));
 /* BodyMapTile and CompareTile draw no chart and never call
    roleAt. PlaneReading colours each presentation by its own roleIndex rather
    than a single reading-wide role. DaysReading draws only the mood strip,
-   on mood's own ramp (ADR-0025), since its share ring moved to Tags. None of
+   on mood's own ramp, since its share ring moved to Tags. None of
    the four declares a *_ROLE constant. */
 const EXEMPT = new Set(['BodyMapTile.svelte', 'CompareTile.svelte', 'DaysReading.svelte', 'PlaneReading.svelte']);
 

@@ -17,30 +17,14 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 
 /**
- * The reminder payload on disk (audit finding G-02): every reminder's
- * title, rule and pending occurrence, the
- * hide-titles preference and the epoch day of the latest entry, wrapped under
- * a Keystore AES-GCM key instead of written as a JSON string anyone holding
- * the app's directory can read.
+ * Wrap the reminder title, rule, pending occurrence, hide-titles
+ * preference and latest entry day with a per-device Keystore AES-GCM key.
+ * The alarm receiver needs the payload while the journal is locked, so
+ * use {@code setUserAuthenticationRequired(false)}. The separate plaintext
+ * launch route contains only a route and reminder ID.
  *
- * <p><b>Why not the data key.</b> The alarm receiver has to name the person's
- * own reminder while the journal is locked - that is what the payload is for -
- * so it cannot be under the key that unlocking mints. This key asks for
- * nothing: {@code setUserAuthenticationRequired(false)}, usable by app code in
- * this process with no prompt. What it buys is that a copy of the directory is
- * no longer enough. The ciphertext is only readable on the device whose
- * keystore holds the alias, and the alias cannot be copied out of it.
- *
- * <p><b>Nothing is left outside the wrap.</b> The scheduler needs the reminder
- * rules before it can compute a fire time, and it can decrypt to get them, so
- * there is no field the receiver must read first. The launch route beside this
- * one stays plaintext: it is a route and a reminder id, never a title.
- *
- * <p>The same shape as {@code AutoExportPlugin}'s {@code PasswordStore}, and
- * deliberately its own copy of it rather than a shared helper: each store
- * owning its own alias is what lets {@code DeviceStores} stay a list of
- * owners rather than a list of key names, and it means neither reset can take
- * the other's key with it by accident.
+ * <p>This store owns its alias independently of the auto-export password
+ * so a reset of either owner in {@code DeviceStores} preserves the other.
  */
 public final class ReminderPayloadStore {
 

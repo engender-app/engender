@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The check-in notification unfolded (tester report 02, ticket 05): the
+<!-- The check-in notification unfolded: the
      same five faces, larger, each with its mood's name under it. A cell is
      the touch target, face and word together, and carries the face's
      contentDescription and PendingIntent (ReminderAlarmReceiver). The

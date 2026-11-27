@@ -7,34 +7,14 @@
   import { takeLegacyCareDrug } from '$lib/navigation/journalTextParams';
   import { replaceRoute } from '$lib/navigation/smart-back';
   import { navigating, page } from '$app/state';
-  /* The care overview (phase 5 deepening ticket 07, ADR-0036: a feature
-     surface, so it lives in the More hub rather than under /settings).
+  /* Care is a feature surface in the More hub (ADR-0036). Read draw timing,
+     exposure and stock from their existing modules. careSpine.ts only
+     positions dates on the shared axis.
 
-     What this screen does NOT do is the point of it. The ticket it comes
-     from used to ask for an interactive care canvas - a pharmacokinetic
-     computed draw context, an exposure counter, a stock horizon -
-     and those had already shipped: labTiming.ts, journal/exposure.ts,
-     stockProjection.ts. So there is no modelling here
-     and no second calculation of anything. Every figure on this screen is a
-     live read of a module that already owned it, and the only arithmetic in
-     the diff is careSpine.ts working out where a set of days sit on one
-     line.
-
-     One lane per running drug (phase 11 ticket 10). A stripe per drug and
-     no drug primary: colour is categorical here as everywhere, which is
-     ADR-0012's line rather than this ticket's. Before it
-     the rail drew one episode's days and every other running regimen fell
-     to a grey two-line row under an "Other regimens" heading - which for
-     the ordinary case of a hormone beside a daily pill meant two of three
-     drugs were running off the rail. Each lane now carries its own last
-     dose, next dose and run-out against the shared axis, and today and the
-     most recent draw are drawn once down the whole of it.
-
-     Nothing here judges. A lane says when things happened and when the
-     schedule expects the next one; no mark is late, no interval is the right
-     one, no lane is ranked against another, and no lab value is read as
-     anything (PRODUCT.md:109, and labTiming.ts as the worked
-     precedents). */
+     Each active drug gets a lane with last dose, next dose and run-out.
+     Today and the latest draw cross the shared axis. Stripes distinguish
+     drugs without ranking them (ADR-0012). Report dates and projections
+     without judging schedules or interpreting lab values. */
   import { m } from '$lib/paraglide/messages';
   import { scrollToHash } from '$lib/navigation/scroll-region';
   import { collapse, disclose, maskHeight } from '$lib/motion/reveal';
@@ -649,7 +629,7 @@
                 <!-- Two elements per mark, and the split is load-bearing.
                      Placement along the rail is a transform on the outer
                      box, so a dose logged now moves its marks to their new
-                     days rather than repainting them there (ADR-0078); the
+                     days rather than repainting them there; the
                      inner box carries the settle and the press, and
                      press.css holds the app's press at zero specificity
                      through :where(), so a transform of its own on the link
@@ -706,20 +686,8 @@
     </div>
   {/if}
 
-  <!-- One block per running regimen, in the lanes' own order. Outside the
-       rail's branch on purpose: a regimen is a reading in its own right and
-       it is the one reading that is not a day, so careSpine has nothing to
-       draw for a journal with a regimen and no dose, draw or stock count
-       yet - and while this block sat inside that branch the screen answered
-       "nothing to put on the line" without ever naming the regimen that was
-       running.
-
-       Held until every read the rail waits on has answered, not just the
-       episode read this block itself needs (ticket 99 item 42, "the 'doses,
-       draws and stock' fades in a little too yankily"): gated on one read it
-       appeared a couple of hundred milliseconds early and pushed the
-       skeleton down the screen, which is what read as a yank rather than a
-       fade. -->
+  <!-- Show running regimens even when careSpine has no dated records. Wait for
+       all rail reads before drawing the blocks so they do not displace the skeleton. -->
     {#each lanes as lane (lane.episode.id)}
       {@const route = blockRoute(lane.episode)}
       <!-- `tabindex="-1"` so the jump from the lane's own name moves the
@@ -810,11 +778,8 @@
 
   <SectionHeading text={m.care_group_labs_stock()} />
   <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.readings)}>
-    <!-- Every row states its own current value (DIRECTION.md 3b, and phase
-         11 ticket 10: no row on this screen is a title and a chevron
-         alone). The analyte and the result in its own unit, never converted
-         (ADR-0026), with the day it was drawn - the rail carries that day as
-         a guide and the row says which day the guide is. -->
+    <!-- Each row gives the analyte, result in its recorded unit (ADR-0026)
+         and the day it was drawn. The rail marks that day with a guide. -->
     <ListRow
       key="labs"
       icon="flask"
@@ -862,7 +827,7 @@
     />
   </ListCard>
 
-  <!-- A link to the cycle log (pre-release-human 12), only behind
+  <!-- A link to the cycle log, only behind
        `cycleTrackingVisible` (ADR-0043), with the last three events under
        it. The module itself is on the More hub, in Health. The events are
        static rows (the shape regimen's pause rows use): they name nothing to
@@ -1125,10 +1090,8 @@
     margin-top: var(--space-4);
   }
 
-  /* One regimen, named under the rail: what one of its lines is a line
-     about. Not a ListRow in a card of its own - that is a third stacked
-     container on a 390px screen for one fact, and DIRECTION.md 2b is about
-     exactly that - but it keeps a row's touch target and a row's press. */
+  /* Name the regimen beneath the rail. Keep a row's touch target and
+     press feedback, with no extra card around it. */
   .care-regimen {
     display: flex;
     align-items: center;
@@ -1295,7 +1258,7 @@
   }
 
   /* Today and the draw, down the whole rail: 1px in --text-2, which is what
-     a guide is (DIRECTION.md rule 9) - never a lane's own colour, since a
+     a guide is - never a lane's own colour, since a
      guide belongs to no drug. Today is solid and the draw is dashed: the two
      are told apart by their captions above, and the dash says the draw is a
      thing that happened where today is simply where the reader is. */
@@ -1322,12 +1285,8 @@
     flex-direction: column;
     gap: var(--space-1);
   }
-  /* The lane the reader came back to from a dose or lab record: the same
-     answer the log and labs screens give their linked row (surface-2,
-     rounded), so returning names the lane the same way every other screen
-     names its target. It appears with the screen's own arrival rather than
-     moving after settle - ADR-0078's concern is a settled view changing in
-     place, and this is part of the entrance. */
+  /* Highlight the linked dose or lab lane with rounded surface-2 at
+     arrival. It identifies the target as it comes into view. */
   .care-lane.is-source-lane {
     background: var(--surface-2);
     border-radius: var(--r-block);
@@ -1381,7 +1340,7 @@
     position: absolute;
     top: 0;
     height: 2px;
-    /* Square ends: a series is 2px with square caps (DIRECTION.md rule 9). */
+    /* Square ends: a series is 2px with square caps. */
     transform: translateY(0);
   }
   /* Two lines, not one: the rail is read out from today in both directions,
@@ -1417,7 +1376,7 @@
 
   /* The outer box is the whole track's width and is translated by a
      fraction of itself, which is a fraction of the track: placement is a
-     transform, so a mark whose day changes travels to it (ADR-0078) instead
+     transform, so a mark whose day changes travels to it instead
      of being repainted there. Percentages in translateX resolve against the
      element's own width, which is what makes that work without the track's
      width in pixels. */
@@ -1464,7 +1423,7 @@
        keyframe and not on this rule. With `forwards` a waiting caption had
        no transform at all, so it sat uncentred until its delay ran out and
        then jumped half its own width (26-30px) on the frame it began to
-       fade in (ux-carpet ticket 184). */
+       fade in. */
     opacity: 0;
     animation: care-mark-settle var(--dur-med) var(--ease-out) both;
     animation-delay: calc(var(--care-settle) * var(--dur-authored));

@@ -1,44 +1,13 @@
 <script lang="ts">
-  /* One procedure on the surgery index (phase 5 ticket 12, rebuilt by phase
-     10 redesign ticket 52).
+  /* The surgery index shows one card per procedure. The active card
+     gives the time until the operation or the current recovery day
+     on a role-coloured block. ProcedurePhaseRail places consults
+     and recovery around surgery day. recoveryDay.ts gives the
+     elapsed time. The rail sets no recovery target.
 
-     It used to be a list row: a title, a phase pill, the date and the day
-     count run together in secondary grey, and a row of count badges. The
-     thing in the app with the most phases had the fewest pixels - a real
-     journey with two consults, a date, a recovery and a photo taken during
-     it came out as one 60px row, and none of those four facts surfaced
-     until the row was opened.
-
-     So the card says what is true now (DIRECTION.md rule 16) in the two
-     ways the rule's worked examples do. The live reading - day N of
-     healing, or the days until the operation - is the number on the card,
-     on a block of the area's stripe at display size, which is rule 2's "a
-     number on a block" and the shape LetterCard already uses for a wait.
-     And the journey itself is a line: consults behind, the date as the
-     pivot, the stretch to today ahead of it (ProcedurePhaseRail).
-
-     Nothing on it is a score. Day N is a fact about time, not a position in
-     a recovery anybody is meant to be at - `recoveryDay.ts`'s own rule,
-     which is where that lives rather than in the ADR ticket 52 cites for it
-     (procedureRail.ts has the note) - and the rail draws no horizon to be
-     short of.
-
-     **Open and collapsed.** A procedure still running draws all of it. One
-     the person archived after its operation drops the block and the strip:
-     its phases are still on the rail, but the number belongs to a reading
-     that is still live, and an operation they have filed away has none.
-     Only their own switch collapses a card (functional-audit ticket 24); no
-     number of days since surgery does. What it keeps
-     instead is the date and the day count. That density difference is what lets
-     several running procedures fit at once, which the screen's own intro
-     promises.
-
-     Measured on one journal at 390px, the same two procedures either side
-     of the change: the archived card is 155px against the 100px row it
-     replaces, and the running one 263px against 121px. So collapsed is
-     three fifths of open rather than back to a row - the rail and the
-     consult count are what it spends the extra 55px on, and both are facts
-     the row did not carry. */
+     Only the person's archive switch collapses the card. The
+     archived card retains the phase rail, consult count, date and
+     day count while omitting the live number block and strip. */
   import { m } from '$lib/paraglide/messages';
   import { collapse } from '$lib/motion/reveal';
   import Icon from './Icon.svelte';
@@ -184,7 +153,7 @@
   <div class="proc-top">
     <!-- A row the width of the card answers a press with a wash rather than
          a scale: 0.94 on a 330px card walks its edges 10px inward while the
-         list holds still, which reads as a yank (DIRECTION.md tier 1). -->
+         list holds still, which reads as a yank. -->
     <!-- A link to the procedure's own screen (prh12 bug 20), the way a
          tryout's card links to its own (TryoutCard). It used to be a button
          that slid the procedure's log open under the list. No aria-label:
@@ -291,7 +260,7 @@
           <span class="visually-hidden">{m.surgery_badge_checklist({ n: checklistCount })}</span>
         </span>
       {/if}
-      <!-- What it cost (functional audit ticket 30), as words: no glyph in
+      <!-- What it cost, as words: no glyph in
            the set says money, and the amount is its own label. -->
       {#if cost}
         <span class="proc-badge-tag" data-procedure-cost>{cost}</span>
@@ -374,10 +343,7 @@
     overflow-wrap: anywhere;
   }
 
-  /* No uppercase, no tracking. DIRECTION.md's own census names an
-     uppercase tracked label as the craft floor's tell and declines it; the
-     row this card replaced carried one, and rebuilding the card around it
-     would have kept it for another ticket. */
+  /* Keep labels in normal case with default letter spacing. */
   .proc-phase-pill {
     font-size: var(--text-xs);
     font-weight: var(--weight-medium);

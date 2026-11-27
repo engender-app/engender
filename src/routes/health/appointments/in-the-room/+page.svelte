@@ -1,40 +1,14 @@
 <script lang="ts">
   import { journalTextAutocomplete } from '$lib/platform';
-  /* In the room (phase 8 features ticket 60, ADR-0066): the standing prep
-     list, one question per screen, at a size somebody can read while a
-     doctor is talking to them.
+  /* Show the standing prep list one question at a time (ADR-0066).
+     Answers are optional and stay paired with their questions for
+     the debrief. This view owns no journal record. The shell hides
+     the tab bar so an accidental tap cannot leave the room. The
+     header Back leaves, while the foot control continues.
 
-     This holds nothing of its own. The questions are the prep list's
-     (checklists.ts), the appointment is the record's (appointments.ts), and
-     what gets jotted is the debrief's, pre-filled through the deep link
-     the debrief offer already uses. No table, no row, no column: what is
-     added here is a shape for a list that already existed.
-
-     WHY THE SCREEN IS CHROMELESS. The tab bar floats over every other
-     screen, and here it would be four ways to leave by accident in the
-     middle of a sentence. That absence is the shell's own chrome
-     (chromeless.ts) and is unrelated to the screen's header, which carries
-     the ordinary field and back control every deep screen owes (rule 7,
-     carpet 27) - the foot's one control stays what carries an answer
-     forward; the header's is what leaves without one.
-
-     WHY ADVANCING IS FREE. Somebody who wants nothing but their questions
-     at 32px pays no tap cost at all: the field under each question is
-     optional, an untouched one leaves nothing behind (answeredQuestions,
-     debriefNote.ts), and there is no counter or progress bar anywhere,
-     because a bar that fills is a chore being tracked.
-
-     WHY THE ANSWERS ARE PER QUESTION. One free note loses which answer went
-     with which question, and that pairing is the whole value of reading
-     this back at debrief time.
-
-     WHICH VISIT (ticket 12, audit I3). A day can hold two appointments, and
-     which room somebody is sitting in is a fact only they have. One appointment
-     needs no step: it is the room's own appointment. Two put one quiet
-     control above the question and nothing else changes - the prep list
-     stays standing and shared (ADR-0066), and the answers and the debrief
-     handoff key off the chosen appointment rather than off whichever row the
-     journal happened to list first. */
+     One visit today can be used directly. With several, show a
+     picker. Key the answers and debrief handoff to the chosen
+     appointment while leaving the prep list shared. */
   import { untrack } from 'svelte';
   import { goto, onNavigate } from '$app/navigation';
   import { navigating, page } from '$app/state';

@@ -1,28 +1,10 @@
-/* Shipped reference content and the day a person last checked it
-   (functional audit ticket 40).
+/* Track when reference content needs review (ADR-0102). Helpline and
+   legal content come due in six months. Literature figures come due
+   in 24 months. The release check warns when a date is stale and lets
+   the release proceed.
 
-   Some of what the app ships is other people's facts: phone numbers and
-   opening hours, Polish court procedure, figures read out of papers and
-   guides. Those rot without anything in the code changing. A helpline cuts
-   its hours, a statute moves, a guideline is revised. Each owner already
-   records a reviewed-on day beside its content; this file collects them in
-   one list and says when each falls due, so a release can warn about
-   anything nobody has re-read in time.
-
-   The limits are the functional audit's: six months for helpline and legal
-   content, which changes without notice, and 24 months for literature
-   figures, which change when a paper or a guideline does.
-
-   scripts/check-reviewed-content.mjs runs this in the release workflow and
-   warns. It never fails a release, because a stale date means "go and
-   read the source again", not "this is wrong".
-
-   The rule this enforces:
-   ADR-0102.
-
-   To register new content, export its reviewed-on day next to the content
-   and add a row below. A row is one date: when an area records one date per
-   item (the onset bands do), map its items to one row each. */
+   To register content, export its review date alongside it and add
+   one row per date here, including per-item dates when needed. */
 
 import { literatureReviews } from './data/personalEffectWindow';
 import { INSTITUTIONS_REVIEWED_ON, ROADMAP_PACKS } from './data/roadmap';
@@ -48,7 +30,7 @@ export interface ReviewedContent {
 export const REVIEWED_CONTENT: readonly ReviewedContent[] = [
   { area: 'Resources', item: 'every number, address and opening time', kind: 'helpline', reviewedOn: RESOURCES_REVIEWED_ON },
   /* The court steps per pack, and the institutions to update after the
-     ruling on a day of their own (functional audit ticket 35): they were
+     ruling on a day of their own: they were
      checked on a different day, so each falls due by its own age. */
   ...ROADMAP_PACKS.map((pack) => ({ area: 'Roadmap', item: `${pack.key} pack`, kind: 'legal' as const, reviewedOn: pack.reviewedOn })),
   { area: 'Roadmap', item: 'institutions to update after the ruling', kind: 'legal', reviewedOn: INSTITUTIONS_REVIEWED_ON },

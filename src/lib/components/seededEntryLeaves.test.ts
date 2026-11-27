@@ -4,7 +4,7 @@ import { entrySessionCore } from './entrySession';
 import type { PersistedEntryDraft } from '../data/entryDraftPersistence';
 import { journalWithBuiltIns } from '../data/journal/test-support';
 
-/* A face on the check-in notification (tester report 02, ticket 05) only
+/* A face on the check-in notification only
    opens /entry/new/today?seedMood=N. The promise made for it on 2026-11-10
    is that nothing is written before the person saves: a seeded mood that is
    left behind leaves no entry, no draft mirror and no question about

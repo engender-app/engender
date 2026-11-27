@@ -5,8 +5,7 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * Which archive in the auto-export folder a folder sync merges (functional
- * audit ticket 49). Kept apart from the plugin, like {@link BackupRetention},
+ * Which archive in the auto-export folder a folder sync merges. Kept apart from the plugin, like {@link BackupRetention},
  * so the rule has a JVM test without a document provider behind it.
  *
  * <p>Only an archive another device wrote counts. This device's own are the

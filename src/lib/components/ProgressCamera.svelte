@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* Taking a progress photo (pre-release-human 12, bug 25): a live camera
+  /* Taking a progress photo: a live camera
      with the last shot in the same pose laid over it, faint, so the body can
      be lined up the same way each time. progressCamera.ts says why this is
      an in-app camera rather than the OS one every other still photo uses.

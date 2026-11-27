@@ -1,5 +1,5 @@
 /* The coarse-name-to-SQL-table declaration checked against the schema it
-   claims to describe (ticket 02), the same way ticket 01's own test checks
+   claims to describe, the same way ticket 01's own test checks
    a table the parser invents against `sqlite_master`: a table renamed or
    dropped in a migration and forgotten here fails on sight rather than
    leaving a stale name in the mapping. */

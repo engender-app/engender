@@ -7,10 +7,8 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-/* scripts/link-docs.mjs. The private docs live in a sibling git repo; every
-   app checkout links its root at docs/internal and the four context files at
-   its own root. The ADRs are tracked in the app repo and are not linked. These tests build a throwaway app repo and docs repo side by side in
-   a temp directory and run the script with each checkout as the cwd. */
+/* App checkouts link the private docs at docs/internal and the four context
+   files at their root. Tests run link-docs.mjs in temporary sibling repos. */
 
 const script = fileURLToPath(new URL('../scripts/link-docs.mjs', import.meta.url));
 const LINKS = ['CONTEXT.md', 'PRODUCT.md', 'SCREENS.md', 'DIRECTION.md', 'docs/internal'];

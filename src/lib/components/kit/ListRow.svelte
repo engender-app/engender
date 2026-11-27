@@ -1,18 +1,7 @@
 <script lang="ts">
-  /* A row of the list card: an icon disc, a title, an optional subtitle and
-     a chevron.
-
-     The subtitle is optional because subtitles are earned, not standard
-     (DIRECTION.md 3b). Plenty of rows have nothing to put there. The More
-     hub used to be the example of that and is now the example of earning
-     it: every one of its rows carries a second line, either a reading of
-     when its area was last written to or a short line about what is behind
-     it (phase 8 UX ticket 02, and the spec's user story 13 - "each row to
-     tell me what is behind it, so that navigating is also reading").
-
-     Renders as a link where it navigates and as a button where it acts, so
-     a destination is a destination to the keyboard and to the screen reader
-     as well as to the eye. */
+  /* A list row has an icon, title and chevron. A subtitle can show the
+     latest reading or describe the destination. Render a link for
+     navigation and a button for an action. */
   import type { Snippet } from 'svelte';
   import { crossfade, resize } from '$lib/motion/reveal';
   import Icon from '../Icon.svelte';
@@ -27,8 +16,7 @@
         words says the same thing twice. */
     icon?: string;
     /** Words in the button rather than a glyph, for a control whose meaning
-        no icon carries - "I skipped this" on an auto-logged dose (phase 11
-        ticket 11). The square target widens to fit them; `label` stays the
+        no icon carries - "I skipped this" on an auto-logged dose. The square target widens to fit them; `label` stays the
         accessible name either way, so the two can differ where the visible
         words only make sense next to the row they sit on. */
     text?: string;
@@ -79,8 +67,7 @@
         a stable key, never the title, which is copy. */
     key?: string;
     /** Set, and the row is a checkbox: it announces itself as one, carries
-        its state, and draws its own box at the trailing edge (phase 5
-        ticket 35). The row is the control rather than holding one, so the
+        its state, and draws its own box at the trailing edge. The row is the control rather than holding one, so the
         whole width of it is the target and a keyboard gets one stop per
         row - which is what a list of things to tick wants, and what a row
         holding a switch deliberately does not do. */
@@ -102,7 +89,7 @@
     /** Anything that sits before the chevron: a count, a date, a switch. */
     trailing?: Snippet;
     /** One control of the row's own, beside what the row opens - throwing
-        a letter away, dropping a tryout (phase 5 UX ticket 25).
+        a letter away, dropping a tryout.
 
         It changes the row's markup rather than sitting inside it: a button
         nested in a link is not something a browser or a screen reader can
@@ -152,7 +139,7 @@
      out of flow, so a new line shorter or longer than it resized the row in
      one frame and moved every row under it. The More hub's lines land
      together once its reads answer, and each row gave back 9-19px at once,
-     37px down the door by the second group (ux-carpet ticket 193). */
+     37px down the door by the second group. */
   const textTravel = (node: HTMLElement) => (fadeSwap ? resize(node) : undefined);
 </script>
 

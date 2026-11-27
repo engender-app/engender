@@ -1,4 +1,4 @@
-/* The app root's half of the splash crossfade (after-release ticket 31).
+/* The app root's half of the splash crossfade.
 
    src/app.html fades the root from its nil opacity to 1 when the splash
    leaves, with a transition on the root. The layout writes

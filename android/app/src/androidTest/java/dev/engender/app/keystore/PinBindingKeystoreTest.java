@@ -23,29 +23,12 @@ import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 
 /**
- * PIN mode's binding key on a device, because none of what this class claims
- * is true anywhere else.
+ * Exercise the real AndroidKeyStore provider. The PIN binding key must
+ * be non-exportable and usable without a lock screen or second prompt.
  *
- * <p>Whether a key is really in Android Keystore, whether the platform really
- * refuses to hand out its material, and whether it really needs no
- * authentication are properties of the platform rather than of {@link
- * PinBindingKeystore}. The JVM tier cannot answer any of them: there is no
- * AndroidKeyStore provider there.
- *
- * <p><b>What "survives a process death" means here, and why this is the
- * honest proof of it.</b> Nothing about this key is held in the app's
- * process: {@link PinBindingKeystore} is static, keeps no field, and opens a
- * fresh {@code KeyStore} handle on every call. So a signature produced after
- * the process comes back is the same operation as a signature produced by the
- * next call in this test - the key is fetched from the platform either way.
- * What a restart could break is persistence of the alias, and that is what
- * the assertions below turn on: the key is only ever minted once, in {@link
- * #before()}, and every later read goes back to the keystore for it.
- *
- * <p>No lock screen is set for this run, unlike {@code JournalKeystoreTest}.
- * That is the point of the key rather than an omission: a person typing their
- * PIN must not meet a second gate in front of it, so the key is minted and
- * used with nothing enrolled and no prompt anywhere.
+ * <p>{@link #before()} mints the key once. {@link PinBindingKeystore}
+ * opens a fresh {@code KeyStore} handle on each call and holds no process
+ * state, so repeated calls test the alias lookup used after a restart.
  */
 @RunWith(AndroidJUnit4.class)
 public class PinBindingKeystoreTest {

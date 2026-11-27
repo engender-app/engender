@@ -13,23 +13,10 @@ type BootStatus =
   | 'schema-too-new'
   | 'error';
 
-/** Which failure a boot ended in, in the terms the failure screen speaks
-    (after-release ticket 09). The raw text stays in `error`, which the screen
-    shows only behind its bug-report control.
-
-    - `unreadable`: the key does not read the journal file. SQLCipher reports a
-      wrong key and a file that is not a database the same way, SQLITE_NOTADB
-      (ADR-0020), and retrying cannot fix either (ux-carpet 210).
-    - `below-baseline`: a development build's journal from before the
-      squashed baseline (migrations.ts), which this build cannot carry forward.
-    - `android-plaintext`: a phone still holding a journal from before Android
-      encryption.
-    - `engine`: the database itself never started - the worker or its wasm
-      failed to load, or the SQLite build lacks FTS5.
-    - `storage-full`: the device ran out of space, usually while a migration
-      or its pre-migration copy was being written (last-audit ui 37). Freeing
-      space and trying again is the fix, so the retry stays.
-    - `unknown`: anything nobody has named yet. */
+/** Name the boot failure for the screen. Keep raw error text behind its
+bug-report control. SQLITE_NOTADB covers an unreadable file or wrong key
+(ADR-0020). Separate old schemas, Android plaintext and engine failures.
+Offer retry when storage is full so the user can free space first. */
 export type BootFailure = 'unreadable' | 'below-baseline' | 'android-plaintext' | 'engine' | 'storage-full' | 'unknown';
 
 
@@ -102,7 +89,7 @@ type ReadyState = BootShape & {
   status: 'ready';
   error: null;
   recoverable: false;
-  /** Null while a web lock has the journal closed (after-release ticket 10). */
+  /** Null while a web lock has the journal closed. */
   journal: Journal | null;
   androidKey: null;
 };
@@ -254,7 +241,7 @@ function ready(state: BootState, payload: { journal: Journal }): ReadyState {
 }
 
 /** Swaps the journal handle a ready boot holds: null when a web lock closes
-    it, the reopened one after the unlock (after-release ticket 10). Any
+    it, the reopened one after the unlock. Any
     other state is left as it is. */
 function withJournal(state: BootState, journal: Journal | null): BootState {
   if (state.status !== 'ready') return state;

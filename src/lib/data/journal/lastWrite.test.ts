@@ -1,4 +1,4 @@
-/* The last-write registry (phase 8 features ticket 03): that every area
+/* The last-write registry: that every area
    either has an entry or is written down as deliberately having none, that
    each entry's read is a bounded MAX rather than a fetched list, that a row
    dated after today never counts, and that one call answers for every area

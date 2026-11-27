@@ -1,21 +1,6 @@
-/* The stats area (ticket 10, ADR-0012): every aggregate the stats screen,
-   the calendar and the recap read, computed in SQL and returned in native
-   units.
-
-   Native units is the rule this module is built around. Mood comes back on
-   1 to 5 because that is what was logged; a dimension comes back within its
-   own range. Nothing here rescales anything to make two metrics look alike -
-   that job belongs to metricRange.ts, whose output drives colour and is
-   never shown as a number. The demo store mixed the two and ended up
-   answering "the metric's average" with mood, with mood x 20, and with mood
-   x 20 again from three different functions.
-
-   Ranges arrive as two epoch days rather than a length in days: the journal
-   never reads the clock for a domain answer, so every case here is a plain
-   deterministic fixture.
-
-   Nothing is stored. A recap is recomputed from entries, tags, milestones
-   and dimension values every time it is opened (ADR-0010). */
+/* Aggregate in SQL and return native units (ADR-0012). metricRange.ts only
+   normalizes values for drawing. Callers supply both epoch-day bounds so the
+   journal never reads the clock. Recaps are derived on read (ADR-0010). */
 
 import { epochDayFromTimestamp, startOfDayTimestamp, weekdayOfEpochDay } from '../epochDay';
 import type { ConstellationReading } from '../constellationData';
@@ -65,7 +50,7 @@ export interface DaySpread {
 
 export interface TagInsight {
   /** No label: a built-in tag stores a key and its wording comes from the
-      message catalogue at display time (ticket 05). */
+      message catalogue at display time. */
   id: string;
   count: number;
   withAvg: number;
@@ -140,24 +125,15 @@ export interface StatsArea {
       Descriptive only. Which end came first, and which entry the day
       "really" was, are questions this deliberately cannot answer. */
   daySpread(metric: string, fromEpochDay: number, toEpochDay: number): Promise<DaySpread[]>;
-  /** Every entry in the range carrying a value on both named scales, oldest
-      first, both ends inclusive (phase 5 deepening ticket 19, ADR-0048).
-
-      One row per entry rather than one per day, which is the difference
-      between this and `dayAverages` above and the whole reason it is a
-      separate read: the constellation plots readings, and averaging two
-      entries from one day would place a point at a pair of values nobody
-      logged. Two entries on one day are two points.
-
-      An entry that carries only one of the two scales has no position on a
-      plane and is absent, the same way a day that said nothing is absent
-      from `dayAverages`. Its presentation travels with it and is null as
-      often as not - that is a resting state, and the chart draws the point
-      uncoloured rather than dropping it.
-
-      Mood is deliberately not addressable here, unlike `dayAverages`: it
-      has its own colour system (ADR-0025) and its own cards, and the two
-      axes this answers are the person's own scales. */
+  /**
+   * Return each entry in the inclusive range that has both scale values,
+   * oldest first. The constellation plots exact paired readings, so two
+   * entries on the same day yield two points. Missing either value omits
+   * the point. Missing presentation keeps it uncoloured.
+   *
+   * These axes use the person's scales. Mood has its own colour system
+   * and cards.
+   */
   constellationReadings(
     xKey: string,
     yKey: string,
@@ -182,27 +158,15 @@ export interface StatsArea {
       of every place a user picks things (CONTEXT: Hidden). */
   tagInsights(metric: string, fromEpochDay: number, toEpochDay: number): Promise<TagInsight[]>;
   recap(fromEpochDay: number, toEpochDay: number): Promise<Recap>;
-  /** One point per day a body region (bodyMap.ts) carried an intensity on
-      the named axis in the range, oldest first, both ends inclusive - the
-      same shape as `dayAverages`, so a body-map trend reuses the same chart
-      (ticket 09). Not folded into `dayAverages` itself: a region key and a
-      dimension key share no namespace, and a garbage region should read as
-      "nothing logged" rather than risk colliding with a real dimension's
-      key.
-
-      One axis per call rather than both at once (ticket 31), because the
-      two are independent: a day can carry a euphoria and no dysphoria, so
-      the two series have their own days and their own counts and nothing
-      here pairs them up. A caller drawing both asks twice and the chart
-      overlays the results. Days where the axis is null are absent, not
-      zero - "said nothing" is not "said none".
-
-      `presentationId` filters by entry.presentation_uuid (ADR-0048, ticket
-      18): omitted or absent keeps every entry - the unfiltered view, byte
-      for byte what this returned before the filter existed - `null` keeps
-      only entries carrying no presentation, and a uuid keeps only that
-      one's. This is the read that answers "does this region feel different
-      depending on how I am presenting". */
+  /**
+   * Return oldest-first daily averages for a region and one named axis,
+   * with inclusive bounds. Region keys and dimension keys have separate
+   * namespaces. The two region axes have independent days and counts;
+   * omit days with no value on the requested axis instead of filling zero.
+   *
+   * presentationId omitted keeps all entries; null keeps only entries
+   * without a presentation; a UUID selects that presentation (ADR-0048).
+   */
   bodyRegionTrend(
     region: string,
     axis: BodyRegionAxis,
@@ -210,28 +174,14 @@ export interface StatsArea {
     toEpochDay: number,
     presentationId?: string | null
   ): Promise<DayAverage[]>;
-  /** Multi-track somatic breakdown for an anatomical zone (phase 5 ticket 08).
+  /** Multi-track somatic breakdown for an anatomical zone.
       `presentationId` is ticket 18's same filter, forwarded to
       getRegionSomaticBreakdown. */
   bodyRegionBreakdown(region: string, presentationId?: string | null): Promise<RegionSomaticBreakdown>;
-  /** What the body map paints: one reading per region that has any in the
-      range, both ends inclusive (phase 10 redesign ticket 40).
-
-      Not `bodyRegionTrend` twice per region. That answers "how did this one
-      region go over time", one point per day per axis, and the figure asks
-      the opposite question - every region at once, each collapsed to one
-      reading - so it would be two calls times however many regions somebody
-      has, which is unbounded since ticket 30 (a custom region is an
-      ordinary reference-data row). One grouped statement instead, and the
-      side rule applied to its rows in `regionReading` (bodyMap.ts).
-
-      A region with no readings in the range is **absent** rather than
-      present at zero, so the figure can draw undrawn and faintest
-      differently - the same distinction the injection map's never-used dot
-      carries. The caller has the region list; this only says which of them
-      the range has anything to say about.
-
-      `presentationId` is ticket 18's same three-state filter (ADR-0048). */
+  /** Query the inclusive range once for all body regions and apply bodyMap.ts's
+      regionReading rule. Omit regions without readings so the figure can separate
+      an outline from its faintest fill. presentationId uses the three-state filter
+      (ADR-0048). */
   bodyRegionMap(
     fromEpochDay: number,
     toEpochDay: number,
@@ -251,31 +201,19 @@ export interface StatsArea {
       carried `presentationId` (ADR-0048), oldest first. The presentation
       chip on wear, voice and calendar reads this to highlight a
       day; it never removes one - the chart it is passed to draws exactly
-      what it drew before, and this only says which of those days to mark
-      (ticket 17). A day nothing was logged under this presentation on is
+      what it drew before, and this only says which of those days to mark.
+      A day nothing was logged under this presentation on is
       simply absent, not a day of the chart it filters out. */
   presentationDays(presentationId: string, fromEpochDay: number, toEpochDay: number): Promise<number[]>;
-  /** How many entries in the range carry each tag, largest first, both ends
-      inclusive (phase 8 UX ticket 03, ADR-0058).
-
-      **Every** tag, uncapped, which is the whole reason this exists beside
-      `recap()`'s `topTags` rather than reusing it. That one ends `LIMIT 3`,
-      which is right for a retrospective naming a few tags and wrong for a
-      ring: a parts-of-a-whole form computes each share against the sum of
-      what it is handed, so a top three drawn as a full circle inflates every
-      share and can never show the remainder ADR-0058 requires. Capping is the
-      ring's own job (`charts/parts.ts`), and it can only do it over the whole.
-
-      An entry carrying two tags counts once under each, so the total is tag
-      uses rather than entries - which is what a share by tag is a share of.
-      Hidden tags are left out, the same rule `tagInsights` follows: a hidden
-      tag is out of every place a person picks things (CONTEXT: Hidden), and a
-      slice of the ring is a place it would be back.
-
-      `goodDays` keeps only the days that clear the good-day bar (CONTEXT:
-      Good day), the same rule `isGoodDay` answers for one day: Tags' "on
-      good days" filter (functional audit ticket 12), which took over from
-      the affirming themes reading. */
+  /**
+   * Count every visible tag used in the inclusive range.
+   * One entry contributes once to each tag it carries. charts/parts.ts
+   * needs all tag uses to calculate shares and combine the remainder,
+   * so recap()'s LIMIT 3 would inflate the ring's shares.
+   *
+   * goodDays applies the same threshold as isGoodDay. Hidden tags stay
+   * out of selectable ring slices and tag insights.
+   */
   tagShare(
     fromEpochDay: number,
     toEpochDay: number,
@@ -325,23 +263,9 @@ function goodDaysBetween(fromEpochDay: number, toEpochDay: number): { sql: strin
   };
 }
 
-/* Which rows carry "the metric", as a subquery plus its parameters. Mood
-   is a column on the entry and a dimension value is a row in a join table,
-   so the two cannot be parameterised into one statement - but everything
-   downstream only wants (entry, day, value), which is what this hands
-   back. A dimension key that matches nothing simply selects no rows.
-
-   The fragment's own parameter comes first in every statement that embeds
-   it, because the fragment opens the statement: callers pass
-   `[...params, ...their own]` and must keep it that way round.
-
-   `ordinal` is the entry's own clock, and only `spreadByDay` reads it: the
-   calendar draws a two-reading day chronologically, earliest half on the
-   left (Alicja, 2026-09-02), which is a question about order and not about
-   size. Ties break on the entry id, the same pair `constellationReadings`
-   orders by, so two entries stamped the same second still have one
-   answer. `bodyRegionValues` below carries no ordinal because nothing asks
-   a body region for its order. */
+/* Return a SQL fragment with entry, day and value for mood or a dimension.
+   Bind the fragment's parameters before the caller's. The calendar orders
+   by ordinal then entry ID so tied timestamps still give a stable split. */
 export function metricValues(metric: string): { sql: string; params: (string | number)[] } {
   if (metric === 'mood') {
     return {
@@ -365,7 +289,7 @@ export function metricValues(metric: string): { sql: string; params: (string | n
    entry_body_region rows for one region key.
 
    The axis picks a range and a projection over the shared 0-100 column
-   rather than a column of its own (ticket 39, ADR-0081): the two sides no
+   rather than a column of its own: the two sides no
    longer live in separate columns, so "which axis" is a WHERE clause and a
    SELECT expression, not a name. `axis` is still a closed union rather than
    a caller's string, so nothing user-supplied reaches the SQL - only the
@@ -375,7 +299,7 @@ export function metricValues(metric: string): { sql: string; params: (string | n
    midpoint reads back the identical intensity it did before this ticket.
 
    `presentationId` is entryPresentationFilter's three-state filter
-   (ADR-0048, ticket 18), appended after the region's own parameter. */
+   (ADR-0048), appended after the region's own parameter. */
 function axisFilter(axis: BodyRegionAxis): { where: string; select: string } {
   return axis === 'dysphoria'
     ? { where: 'ebr.value < 50', select: '(50 - ebr.value) * 2' }
@@ -643,28 +567,15 @@ export function makeStatsArea(driver: SqliteDriver): StatsArea {
     },
 
     async tagInsights(metric, fromEpochDay, toEpochDay) {
-      /* "Without" is per tag - each row's comparison set is every valued
-         entry in the range that does not carry that tag - but it does not
-         have to be read per tag. A valued entry either carries the tag or
-         does not, so the two sets partition the range and the tag's own
-         total subtracted from the range's total is exactly the "without"
-         total. Two keys are what make that a partition rather than an
-         approximation: `entry_tag` is keyed on (entry_id, tag_id), so an
-         entry is counted once per tag it carries, and an entry yields at
-         most one `in_range` row either way - mood is a column on it, and
-         `entry_dimension_value` is keyed on (entry_id, dimension_id)
-         against a unique dimension key. That makes this one pass over the
-         range and one over the tag links, instead of the correlated pair
-         per tag that cost 3.5 seconds over a year (ticket 24).
+      /* A tag partitions the range's valued entries into with and without.
+         Subtract its sum and count from the range totals to get without.
+         Unique (entry_id, tag_id) links and at most one value per entry make
+         this exact. One pass over the range and one over tag links replace the
+         per-tag correlated query that took 3.5 seconds for a year.
 
-         Summed rather than averaged, because only sums subtract. The
-         `* 1.0` is what keeps the division off the integer path: mood and a
-         dimension value are both INTEGER columns, so SUM/COUNT would floor
-         an average of 4.5 to 4.
-
-         The three-entry floor counts entries carrying the metric, not
-         entries carrying the tag: an average over two numbers says nothing,
-         and a tagged entry with no mood on it contributes neither. */
+         Use * 1.0 for fractional SQL division. Count only metric-bearing
+         entries toward the three-entry minimum, since a tag alone adds no
+         reading. */
       const values = metricValues(metric);
       const rows = await driver.query<{
         id: string;

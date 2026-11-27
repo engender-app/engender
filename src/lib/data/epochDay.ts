@@ -131,25 +131,15 @@ export interface CalendarDuration {
   days: number;
 }
 
-/** The gap between two epoch days as whole calendar years, whole calendar
-    months and remaining days — never `/365`, `/365.25` or `/30`, so
-    `months` is always 0–11 and a same-length gap reads the same regardless
-    of which months it happens to cross. Order-independent.
-
-    The month rule (Alicja, 13 October 2026): a month from a day the
-    target month does not have ends on that month's last day. 31 January
-    plus one month is 28 February (29 in a leap year), so 31 January to
-    1 March is 1 month 1 day, and 29 February plus a year is 28 February.
-    The whole months are counted by stepping the start forward with that
-    clamp (`epochDayMonthsAgo`'s clamp, run forwards) and taking the most
-    that do not pass the later day; the days are whatever is left, counted
-    from the clamped date. Days are therefore never negative and never
-    more than 30.
-
-    The old rule borrowed the length of the month before the later date
-    once, which left days negative whenever the start day was longer than
-    that month: 31 January to 1 March came out as 1 month and -2 days
-    (last-audit UI 32). */
+/**
+  * Return an order-independent gap in calendar years, months (0–11)
+  * and days (0–30). Count whole months by advancing from the earlier
+  * day without passing the later one. Clamp to the destination
+  * month's last day, then count the remaining days.
+  *
+  * Jan 31 to Mar 1 is 1 month and 1 day. Feb 29 plus a year reaches
+  * Feb 28.
+  */
 export function calendarDuration(fromEpochDay: number, toEpochDay: number): CalendarDuration {
   const lo = Math.min(fromEpochDay, toEpochDay);
   const hi = Math.max(fromEpochDay, toEpochDay);
@@ -176,7 +166,7 @@ export interface DurationPart {
 
     The rule itself, with no words in it. `fmtDuration` renders these as a
     sentence and a sealed letter's card draws the same parts as numbers on
-    blocks (ticket 45), so the two can never disagree about how long a gap
+    blocks, so the two can never disagree about how long a gap
     is. Always one part or two, days included at zero - "unlocks today" is a
     different fact from "0 days" and the caller that has to tell them apart
     compares the days themselves.
@@ -212,11 +202,8 @@ function anniversaryInYear(milestoneDate: Date, year: number): number {
   return clampedEpochDay(year, milestoneDate.getMonth(), milestoneDate.getDate());
 }
 
-/** The next occurrence of a milestone's calendar month/day that falls on
-    or after `onOrAfterEpochDay` — the recurring-yearly anniversary
-    (CONTEXT.md), not `milestoneEpochDay + n * 365`, which drifts across
-    leap years. Returns `onOrAfterEpochDay` itself when today already is
-    the anniversary. */
+/** Find the next calendar anniversary on or after `onOrAfterEpochDay`.
+    Calendar arithmetic keeps the month and day stable through leap years. */
 export function nextAnniversaryEpochDay(milestoneEpochDay: number, onOrAfterEpochDay: number): number {
   const m = localDateFromEpochDay(milestoneEpochDay);
   const refYear = localDateFromEpochDay(onOrAfterEpochDay).getFullYear();
@@ -242,7 +229,7 @@ export function anniversaryYears(milestoneEpochDay: number, onEpochDay: number):
 /** The epoch day this many calendar months before `epochDay`, clamped the
     same way `anniversaryInYear` clamps a year back - 31 October minus one
     month lands on 30 September, not 1 November via rollover. On-this-day
-    (ticket 03) is the caller: a month, six months and a year are all "this
+     is the caller: a month, six months and a year are all "this
     many calendar months back" once a year is written as twelve. */
 export function epochDayMonthsAgo(epochDay: number, months: number): number {
   const d = localDateFromEpochDay(epochDay);
@@ -264,24 +251,13 @@ interface CalendarWeekRange {
   end: number;
 }
 
-/** The Monday-to-Sunday week before the one `epochDay` falls in.
-
-    Monday-first because the calendar heat-map already is, and because a
-    weekly wrapped covering a different seven days than Home's own week
-    strip would be reading back a week the person never saw. Computed from
-    the epoch day's own arithmetic rather than `getDay()`: epoch day 0 was a
-    Thursday, so `+ 3` lands the modulo on Monday, and Sunday comes out as 6
-    - the last day of its week - instead of the 0 that `getDay()` reports
-    and that would push the boundary a day late.
-
-    The modulo is taken twice because JavaScript's `%` keeps the sign of its
-    left operand: a day before 1969-12-29 is a negative epoch day, and one
-    `%` alone hands back a negative remainder, which puts "this Monday"
-    *after* the day asked about and returns the week the day is still in.
-    Nothing calls this with a date that old today - it is only ever asked
-    about today - but this file is the one every module takes its epoch-day
-    arithmetic from, and a helper here that is wrong for a whole range of
-    inputs is a trap for the next caller rather than a saving. */
+/**
+  * Return the Monday-to-Sunday week before the current one, matching
+  * the calendar and Home week strip. Epoch day zero was Thursday.
+  * Offset by 3 before the double modulo to place Monday at 0 and
+  * Sunday at 6. JavaScript's signed remainder needs both modulo
+  * operations for dates before 1969-12-29.
+  */
 export function previousCalendarWeekRange(epochDay: number): CalendarWeekRange {
   const daysSinceMonday = (((epochDay + 3) % 7) + 7) % 7;
   const thisMonday = epochDay - daysSinceMonday;

@@ -1,57 +1,12 @@
-/* The last write in every area (phase 8 features ticket 03, ADR-0027,
-   ADR-0010).
+/* Find each dated area's last write through a bounded MAX in its own
+   read path (ADR-0027, ADR-0010). Each area chooses the relevant date
+   column. Its declaration also exposes the tables it reads.
 
-   Four features want the same fact and none of them could have it cheaply:
-   the return surface (what was last written where, to say anything about a
-   gap), the hub's live lines (eighteen times on one screen), the
-   finished-area suggestion, and Home's cap. What existed instead was six
-   one-off latest reads and a habit of computing recency in memory over a
-   full fetch - `liveTiles.ts` read every measurement ever stored with a
-   range of zero to 999999 and looped to find the newest one.
-
-   A registry mirroring the shape `day.ts` and `textSearch.ts` already use,
-   for the reason those two are (ADR-0027, ADR-0031): the alternative is a
-   hand-written list a new area is silently missing from, with no test able
-   to notice. Unlike those two, this registry's key is `ArchiveSectionName`
-   itself rather than a second, similarly-shaped type - day.ts's own
-   `DaySectionKey` diverges from the archive's names in three places
-   (`procedureRecords`/`procedures`, `tryoutPhotos`/`tryouts`,
-   `feltSense`/`feltSenseEntries`), which is exactly the drift ticket 13
-   asked this registry to avoid: "the key is the area key space ticket 13
-   settles, so this registry and the area record agree by construction."
-
-   What one entry declares:
-
-     key     the area, named by its archive section (ADR-0027) - the same
-             space `area_state` rows are keyed by (areaState.ts)
-     tables  the tables its read touches, so a future live wrapper's
-             dependency list is derived from the registry rather than
-             maintained beside it (writes.ts, the same single-sourcing
-             DAY_TABLES gets)
-     read    one bounded `MAX`, through that area's own method - never a
-             fetched list reduced in JS, and never a raw SQL string written
-             here: the date column differs per table between an epoch day, a
-             timestamp and a span start, and guessing at columns from this
-             seam is what day.ts's own comment already refused
-
-   Explicitly not a generic table-name-driven query, for the reason above.
-
-   Every read is bounded by `todayEpochDay` and no module reads a clock: a
-   row dated after today - a clock-skewed import, a bad write - is excluded
-   rather than trusted as "the last write". The registry's own tests prove
-   this rather than assuming it (a future row is seeded and checked to fall
-   away).
-
-   Registered areas mirror day.ts's own set of dated-record areas exactly,
-   since day.ts already settled which areas hold a dated write worth asking
-   about and which do not - a reference-data area, a span, a schedule or an
-   area with no date of its own answers "when was this last written" no
-   better than it answers "what happened on this day". `LAST_WRITE_OPT_OUTS`
-   below is that same reasoning, restated for this registry's own
-   completeness check rather than copied from day.ts's.
-
-   Home, the More hub and AreaFinish read it, and nothing about this module's
-   shape bends toward whichever of them asks. */
+   Key the registry by ArchiveSectionName, the same keys used by
+   area_state. Cover the dated areas or give a reason in
+   LAST_WRITE_OPT_OUTS. Bound each read by todayEpochDay so a
+   future-dated record cannot drive recency. Home, the More hub,
+   AreaFinish and the return surface share the result. */
 
 import { epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay';
 import type { SqliteDriver } from '../sqlite/driver';
@@ -221,7 +176,7 @@ const ENTRIES = [
     tables: ['tryout'],
     read: ({ tryouts, todayEpochDay }) => tryouts.lastWriteEpochDay(todayEpochDay)
   }),
-  /* Documents (phase 8 features ticket 52). Dated by the day the paper is
+  /* Documents. Dated by the day the paper is
      from rather than the day it was filed, so this answers "the newest
      paper on file" and not "when was one last added" - which is what the
      return surface wants of it, the same as every other entry here. The
@@ -294,7 +249,7 @@ export const LAST_WRITE_OPT_OUTS: Record<Exclude<ArchiveSectionName, LastWriteKe
   // The record of which areas are hidden or finished; asking it for its own
   // last write answers nothing a consumer of this registry could use.
   areaStates: 'the record of which areas are finished, not itself a stream to ask about',
-  // Mirrors day.ts's own opt-out (phase 8 features ticket 07): a margin
+  // Mirrors day.ts's own opt-out: a margin
   // note is not a stream any of this registry's four consumers reports a
   // gap about - it is drawn wherever the entry it annotates is, and asking
   // "when was one last written" answers nothing the return surface or the

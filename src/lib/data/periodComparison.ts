@@ -1,4 +1,4 @@
-/* The arithmetic behind /compare (pre-release-human ticket 21): which two
+/* The arithmetic behind /compare: which two
    periods it opens on, which scale moved most between them, and how the
    two top-tag lists pair up. Pure over epoch days and plain numbers, so
    nothing here reads the clock or the journal.

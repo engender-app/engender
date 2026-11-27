@@ -1,22 +1,9 @@
-/* Every decision a boot makes, in one rune-free place (phase 5 audit ticket
-   14).
-
-   boot-state.ts owns whether a transition is *allowed*. This owns which one is
-   *taken*: web and Android, first run and unlock, a plaintext journal that cannot
-   be opened by this build, a key the platform will not hand over, a schema a
-   newer build already migrated. Those used to be twenty-six branches spread
-   through four near-parallel sequences in boot.svelte.ts, which carries runes
-   and so cannot be imported by the node tier - the one module in the codebase
-   with real ordering invariants was the one no test could reach.
-
-   The shape is the usual one for an async sequence that has to stay testable:
-   an event arrives, `reduce` returns the next state and the effects the
-   adapter should perform, and each effect comes back as another event. The
-   adapter (boot.svelte.ts) holds the I/O and the runes and decides nothing.
-
-   The four sequences are one because their differences are events rather than
-   code paths: `started` carries the platform, the two surveys carry what each
-   platform found, and everything from the data key onwards is shared. */
+/* boot-state.ts validates transitions. This reducer chooses the
+   next state and effects for each event. The boot.svelte.ts
+   adapter runs I/O and reports each effect's result as an event.
+   Web and Android differ in start and survey events, then share
+   the sequence from the data key onward. Keep the reducer rune-free
+   for Node tests. */
 
 import {
   chooseJournalAccessMode,
@@ -82,7 +69,7 @@ export type BootEvent =
   /** A web lock superseded cold boot before it published journal access. */
   | { type: 'journal-open-cancelled' }
   /** The persistence request came back denied, whenever the browser answers
-      (ticket 202) - decoupled from `journal-opened` because that no longer
+       - decoupled from `journal-opened` because that no longer
       waits for it. */
   | { type: 'persist-request-denied' }
   /** However boot() ended badly, unread. Three very different destinations
@@ -93,7 +80,7 @@ export type BootEvent =
   /** Settings, not boot: the access mode was changed while the journal was
       open, so the same data key is now wrapped under a different secret. */
   | { type: 'access-mode-changed'; accessMode: JournalAccessMode }
-  /** A web lock closed the journal (after-release ticket 10). The boot is
+  /** A web lock closed the journal. The boot is
       still done - nothing is surveyed or migrated again - but the handle it
       published is built over the key the lock lets go of, so it goes too. */
   | { type: 'journal-closed' }
@@ -175,7 +162,7 @@ function withDataKey(
   secretAuthenticated = false
 ): BootStep {
   const unlocking: BootEffect[] = unlocked ? [{ type: 'mark-unlocked' }] : [];
-  /* Ready with no journal is a web lock's doing (after-release ticket 10),
+  /* Ready with no journal is a web lock's doing,
      and the key is the unlock screen's: it reopens what the lock closed. A
      key while that reopen is under way is a second submit, refused like
      the duplicates below. No mark-unlocked and no access mode: the screen
@@ -307,8 +294,8 @@ export function reduce(machine: BootMachine, event: BootEvent): BootStep {
 
     case 'journal-opened': {
       const ready = bootTransitions.toReady(machine.boot, { journal: event.journal });
-      /* A denial that arrived before ready is applied here rather than lost
-         (ticket 202): the request is no longer awaited, so nothing orders it
+      /* A denial that arrived before ready is applied here rather than lost:
+         the request is no longer awaited, so nothing orders it
          against journal-opened any more. */
       if (machine.persistDeniedPending) {
         return step({ ...machine, persistDeniedPending: false }, bootTransitions.markPersistDenied(ready), [
@@ -349,7 +336,7 @@ export function reduce(machine: BootMachine, event: BootEvent): BootStep {
 
       /* A development build's journal: the copy a restore would put back is
          the same old journal, so there is nothing to ask the disk about. The
-         screen offers the way out instead (after-release ticket 09). */
+         screen offers the way out instead. */
       if (event.error instanceof JournalBelowBaselineError) {
         return step(machine, bootTransitions.toError(machine.boot, describeError(event.error), 'below-baseline'));
       }
@@ -387,7 +374,7 @@ export function reduce(machine: BootMachine, event: BootEvent): BootStep {
 }
 
 /** The one place a thrown value becomes text. Not a sentence for anybody to
-    read on the failure screen any more (after-release ticket 09): it is the
+    read on the failure screen any more: it is the
     detail a bug report carries, and `classifyFailure` is what the screen
     speaks from. */
 export function describeError(error: unknown): string {
@@ -414,7 +401,7 @@ export type DeviceBoundSetupResult = 'ok' | 'needs-device-lock' | 'device-bound-
     the key. A device with no lock screen is the one refusal with something to
     fix; everything else is the same dead end.
 
-    Named for the mode rather than for a "skip" (ticket 53): device-bound is
+    Named for the mode rather than for a "skip": device-bound is
     one of the module's equal choices now, not the way past a wall. */
 export function deviceBoundSetupOutcome(result: AndroidKeyResult): DeviceBoundSetupResult {
   if (result.kind === 'key') return 'ok';

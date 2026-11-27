@@ -1,32 +1,18 @@
-/* Version 119 (functional audit ticket 50): migration hygiene before 1.0.
-   The last schema change of the audit, written to stand alone so the squash
-   that follows it can lift it whole.
+/* Version 119 removes unused checklist dates and moves its device-local
+   debrief fields to appointment_debrief. Each appointment has one row for
+   the debrief entry and dismissal. Both stay local because they refer to
+   records on this device.
 
-   - `checklist` loses the two columns nothing reads or writes any more
-     (`appointment_epoch_day`, `debrief_dismissed_epoch_day`) and the three
-     device-local debrief columns it carried for want of a better home. Those
-     become `appointment_debrief`, one row per appointment: the entry that
-     debriefs it, and whether the offer to write one was dismissed. It is
-     device-local, like the columns it replaces: it names a row this device
-     happens to hold, so it is neither archived nor merged.
-   - `hair_removal_session` loses the free-text `cost` that version 115 read
-     into `cost_amount` and `cost_currency` and left empty.
-   - `entry.presentation_id`, `entry_template.presentation_id`,
-     `milestone.procedure_id` and `milestone.tryout_id` hold a uuid, and in
-     the rest of the schema `*_id` is a rowid. They become `*_uuid`. RENAME
-     COLUMN rewrites the foreign keys, indexes and triggers that name them, so
-     `entry`, which the search index hangs triggers on, is not rebuilt for a
-     name. The archive's field names do not change: the payload is its own
-     shape.
-   - `voice_benchmark.analyzer_version` says which analyzer measured a take.
-     Null on every benchmark taken before it.
+   Drop hair_removal_session.cost after v115 filled the typed cost columns.
+   Rename the UUID-bearing columns on entry, entry_template and milestone
+   to *_uuid. RENAME COLUMN keeps foreign keys, indexes and triggers
+   attached, including entry's search triggers. Archive field names stay
+   stable. Add nullable voice_benchmark.analyzer_version for future takes.
 
-   The two rebuilt tables drop their deletion triggers with them
-   (deletion-migration.ts), so each puts its own back. `media_file` reads
-   `hair_removal_session`, and SQLite refuses to rename a table into the name a
-   view is waiting on, so the view is dropped first and recreated last, word
-   for word as version 106 wrote it. `regimen_episode.hidden` stays: Care, dose
-   attribution and the clinician summaries read it. */
+   Recreate the rebuilt tables' deletion triggers. Drop and restore
+   media_file unchanged from v106 so it can resolve the rebuilt
+   hair_removal_session. Keep regimen_episode.hidden for Care, dose
+   attribution and clinician summaries. */
 
 import { deletionTrigger } from './deletion-migration.ts';
 

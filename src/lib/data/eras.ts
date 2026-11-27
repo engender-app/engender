@@ -12,8 +12,7 @@
    as a CHECK over one row, and a constraint violation surfacing from the
    driver names a table rather than the era it collided with.
 
-   eraCoversDay delegates to span.ts's spanCoversDay (phase 8 deepening
-   ticket 11) - a domain name reads better than spanCoversDay(era, day) at
+   eraCoversDay delegates to span.ts's spanCoversDay - a domain name reads better than spanCoversDay(era, day) at
    this file's call sites, but the arithmetic lives once. */
 
 import { spanCoversDay, spanOverlapsRange } from './span';

@@ -21,7 +21,7 @@ import java.util.List;
 
 /**
  * The token store between a pick and whichever transport reads its bytes
- * (phase 9 audit ticket 06). Pure logic, so a JVM test rather than an
+ *. Pure logic, so a JVM test rather than an
  * instrumented one - {@code PhotoPickChannelTest} is where the channel that
  * redeems these tokens meets a real WebView.
  *
@@ -159,7 +159,7 @@ public class PickedFilesTest {
         assertFalse(opened[0]);
     }
 
-    /* ---- the chunked read (phase 9 audit ticket 14) ---- */
+    /* ---- the chunked read ---- */
 
     /** The shape the base64 fallback needs: a buffer's worth per call until
         a short read says the file is finished. A short read rather than a

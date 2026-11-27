@@ -1,4 +1,4 @@
-/* The one query behind every annotated chart (phase 5 deepening ticket 23). */
+/* The one query behind every annotated chart. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

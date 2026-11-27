@@ -10,7 +10,7 @@ import org.json.JSONObject;
 import org.junit.Test;
 
 /**
- * The check-in notification's five faces (tester report 02, ticket 05):
+ * The check-in notification's five faces:
  * when they show, where each one lands and what each one is called. The
  * notification itself is built in ReminderAlarmReceiver and checked on a
  * device by ReminderNotificationPrivacyTest; the decisions it builds from

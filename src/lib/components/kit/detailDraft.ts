@@ -1,5 +1,4 @@
-/* The rules behind a screen that edits one record reached by id (phase 5
-   audit ticket 09).
+/* The rules behind a screen that edits one record reached by id.
 
    Three `[id]` screens hand-rolled the same five moves - read the record,
    find it, hold a draft, fill the draft once when the first result lands,

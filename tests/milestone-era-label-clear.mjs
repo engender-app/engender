@@ -1,28 +1,11 @@
-/* An era's name on the milestone rail stays clear of the dots on its band
-   (last-audit UI 51, audit U43).
+/* On the demo journal, check 390px in both themes, English and Polish,
+   and 100% and 200% text. Also check 195px for phone zoom and 1280px.
+   Each era label fits its band and placement stretch, clears every
+   measured dot ring by 3px, and stays visible over other bands. Check
+   adjacent strips at 2x for stray ink. Bands still cover era rows,
+   Full time reaches Today and pressing its label opens the era.
 
-   The demo journal's "Full time" era ends today, so its band runs from the
-   compressed gap row to the today row, and the today dot sits near its
-   bottom. The band was lengthened for the name as a whole, the dot took
-   20px of it, and the last letter ran 0.3px into the dot's ring at 390 and
-   1280px. Painted, the ring cut the bottom off the "e".
-
-   What it holds, on the demo journal at 390px (light and dark, English and
-   Polish, text at 100% and 200%), at the 195px that 200% zoom leaves of a
-   phone, and at 1280px:
-
-   - every era name is drawn whole: its text lies inside the stretch it was
-     placed in and inside its band, so nothing is clipped;
-   - no name comes within 3px of any dot's ring on the rail, measured on the
-     text's own box, which is never smaller than its ink;
-   - the band just beside a ring holds no ink from a name next to it, read
-     from the pixels at 2x, so the check does not rest on layout alone;
-   - no band drawn later covers another band's name;
-   - every band still covers rows of its era, "Full time" still runs
-     through the today row, and a press on its name opens that era.
-
-   Fails on d03441fe (the 0.3px overlap, and ink in the strip above the
-   today ring). Run with `node tests/milestone-era-label-clear.mjs`. */
+   Run node tests/milestone-era-label-clear.mjs. */
 import { realpathSync } from 'node:fs';
 import { createServer } from 'vite';
 import { launchChromium, setAppLanguage, settlePage } from './browser-harness.mjs';

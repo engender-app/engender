@@ -1,5 +1,4 @@
-/* The page a WebView below the floor is sent to (ADR-0023, last-audit ui
-   ticket 35). Capacitor checks `minWebViewVersion` and, when the WebView is
+/* The page a WebView below the floor is sent to (ADR-0023). Capacitor checks `minWebViewVersion` and, when the WebView is
    older, loads `server.errorPath` instead of the app. If that file is not in
    the bundle the person gets a blank white screen and nothing else, which is
    what shipped for two months after the page was deleted as "rubbish" while

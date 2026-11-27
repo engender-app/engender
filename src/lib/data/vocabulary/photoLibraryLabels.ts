@@ -1,4 +1,4 @@
-/* What the photo library calls a source and a chip (phase 11 ticket 14).
+/* What the photo library calls a source and a chip.
 
    Here rather than in `photos/library.ts` for the reason `hubLabels.ts`
    gives: that module is pure and the Node tier tests it, and nothing the

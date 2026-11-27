@@ -1,59 +1,13 @@
-/* The one query behind every annotated chart (phase 5 deepening ticket 23).
+/* Read dated context for a chart range from the existing journal
+   areas (ADR-0010). This view owns no data or Archive section.
+   Recovery uses SURGERY_RECOVERY_CUTOFF_DAYS. Name a dose pause by
+   its episode's drug. Mark only era starts with a day.
 
-   Six areas already store dated things a chart can be read against, and
-   before this a chart that wanted them would have had to open six areas of
-   its own and decide what to keep. This is the one place that does it, so a
-   screen asks one question and gets back what happened in a range.
-
-   A view over rows other areas own, the way `exposure` and `clinicianSummary`
-   are: it stores nothing, writes nothing, and owns no table. Nothing here is
-   an archive section for the same reason - there is no data of its own to
-   travel, and the six areas behind it each carry their own rows already
-   (ADR-0027).
-
-   Two of the seven kinds are derived rather than read, and both follow from
-   dates that are stored (ADR-0010):
-
-     recovery   the stretch after a procedure's surgery day, as long as
-                Home's own recovery tile counts one for
-                (SURGERY_RECOVERY_CUTOFF_DAYS). One constant for the app's
-                answer to "how long is active recovery", not a second one
-                here.
-     dosePause  named by the drug of the episode it hangs off, because
-                "pause" alone on a chart with two regimens on it does not
-                say which regimen paused.
-     era        a point at the day a bounded era starts (phase 6 ticket 03):
-                the boundary a reader wants a chart's own change to sit
-                against, computed here rather than stored, the same as
-                everything else eraRange resolves at read time (ADR-0010).
-                An open start has no day to mark.
-
-   What is deliberately not here, and why:
-
-     dose schedule changes  the ticket asks for them and the schema has
-                            nowhere to get them: `dose_schedule` is one row
-                            per episode with an `updated_at`, so editing a
-                            schedule overwrites the old one and no history
-                            survives. A DosePause is the dated schedule fact
-                            that does exist, and it is drawn. Recording
-                            schedule history would be a new stored thing,
-                            which this ticket rules out.
-     entries                every logged day would be an annotation, and the
-                            line on the chart is already made of them.
-
-   ## Past appointments (phase 8 features ticket 59, ADR-0066)
-
-   Every past appointment draws through this same seam, named by the
-   person's own kind - a consult included, since it is now an appointment
-   row like any other rather than a fact reachable only through the
-   procedure it happens to name. `todayEpochDay` decides past from future
-   here rather than being left to `annotationsInRange`: an appointment is a
-   point, and nothing else in this file's selection filters a point kind by
-   whether it has happened yet, so an appointment still ahead would draw
-   like one that already did unless this seam said otherwise. Future
-   appointments are the calendar's mark to draw (ticket 61), not a chart's.
-
- */
+   Include past appointments, including consults, under the
+   journal's own kind (ADR-0066). Filter them by todayEpochDay
+   before converting them to points. The calendar carries future
+   visits. Schedule changes have no stored history, and entry days
+   already appear in the plotted data. */
 
 import {
   annotationsInRange,
@@ -160,7 +114,7 @@ export function makeChartAnnotationsArea(areas: Areas): ChartAnnotationsArea {
             startEpochDay: era.startEpochDay as number,
             endEpochDay: null
           })),
-        /* Past appointments (phase 8 features ticket 59, ADR-0066). Filtered
+        /* Past appointments (ADR-0066). Filtered
            here rather than left to annotationsInRange: a point kind is kept
            by that function whenever its one day falls in the chart's range,
            and an appointment still ahead is not a day that has fallen
@@ -177,7 +131,7 @@ export function makeChartAnnotationsArea(areas: Areas): ChartAnnotationsArea {
             endEpochDay: null,
             detail: writtenNote(appointment.note)
           })),
-        /* The day a stream ended (phase 8 features ticket 04). One mark per
+        /* The day a stream ended. One mark per
            hub row rather than one per archive section, because voice
            is two sections finished in one gesture and two ticks on the same
            day would be the query disagreeing with the record. `name` is the
@@ -194,7 +148,7 @@ export function makeChartAnnotationsArea(areas: Areas): ChartAnnotationsArea {
           startEpochDay: group.epochDay,
           endEpochDay: null
         })),
-        /* The day an area was paused (phase 8 features ticket 51). Same
+        /* The day an area was paused. Same
            shape as the finished mark above, and for the same reason - a flat
            stretch after this day needs explaining as a pause rather than as
            a gap nobody logged. Only ever produced for `SUSPENDABLE_GROUPS`

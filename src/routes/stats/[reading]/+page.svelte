@@ -1,24 +1,8 @@
 <script lang="ts">
-  /* One reading of the Look back door, on a screen of its own (phase 11
-     ticket 07). The door is a grid of tiles, each stating one figure for
-     the span; this is where the full card draws, with its controls - the
-     second scale, the metric picker, the share ring's days filter, the
-     constellation's scrub and play. Four readings share the route,
-     since they are one screen showing a different card and nothing about
-     the header, the span or the floor differs between them.
-
-     The span comes in on the query the tile wrote (lookBackReadings.ts,
-     the same `from`/`to` /body-map reads). It is not written under the
-     title any more: the period is picked on the door one step back, and
-     Alicja dropped the repeat (bug session 18, item 42). A direct visit with no query, or a key no
-     reading answers to, says so rather than drawing the wrong thing.
-     `words`, `highest` and `themes` are such keys since functional audit
-     ticket 12 cut those readings, and so is `days`, whose one chart, the
-     mood strip, draws on the door itself since Alicja's sign-off on it.
-
-     `page.params.reading` is read as a derived value and not captured
-     once: SvelteKit reuses this component across a same-route navigation
-     between two keys, and a plain const would go stale. */
+  /* Four readings share the span, header and entry floor. Read from/to
+     from the tile's query (lookBackReadings.ts). Report a missing span
+     or unsupported reading key. Derive page.params.reading because
+     SvelteKit reuses this component across reading keys. */
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { currentDay } from '$lib/stores/today.svelte';
@@ -63,7 +47,7 @@
     back="/stats"
   />
 
-  <!-- One placeholder from the first frame to the card (ticket 167). The
+  <!-- One placeholder from the first frame to the card. The
        screen waits on the recap, then mounts the reading, whose own reads
        used to show through as they settled: its chart card's own skeleton,
        then "Not enough data in this range yet." at full opacity for three

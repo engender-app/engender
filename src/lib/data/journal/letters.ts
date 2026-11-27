@@ -33,7 +33,7 @@ export interface LettersArea {
   getLetterSeals(limit: number): Promise<LetterSeal[]>;
   /** One letter by id, or null when there is no such row - the read a
       deep link into a single letter takes, which cannot work from the
-      newest-first page above (phase 5 deepening ticket 13). */
+      newest-first page above. */
   getLetter(id: string): Promise<Letter | null>;
   /** The distinct days a letter unlocks between `fromEpochDay` and
       `toEpochDay` inclusive - never an id, and never the text (phase 8

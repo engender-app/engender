@@ -1,23 +1,10 @@
-/* Tier 2 of the motion system (DIRECTION.md tier 2): how one screen becomes another.
+/* Tier 2 navigation uses fade-through between peer tabs, horizontal
+   shared axis between list and detail, and container transform into
+   the entry editor when the source card becomes the content.
 
-   Material 3's navigation patterns, mapped to this app's actual shape -
-   fade-through between the four tabs because they are peers rather than a
-   sequence, shared-axis-X from a list into a detail because that one is a
-   sequence, and a container transform only into the entry editor, which is
-   the single place where the thing tapped genuinely becomes the thing that
-   opens.
-
-   These sit next to tokens.ts rather than inside it because they are built
-   out of it: every duration and distance below comes from the same
-   --dur-* and --motion-distance-* tokens the CSS reads, which is ticket
-   09's rule for keeping a Svelte transition and its CSS neighbours from
-   drifting apart. Nothing here invents a number.
-
-   The reduced-motion contract is substitute, never delete: each primitive
-   drops its transform and crossfades instead, over a duration the 1ms
-   clamp cannot reach. That clamp is a CSS rule, so it never touched these
-   transitions in the first place - which is exactly why the substitute has
-   to be written out here rather than left to the stylesheet. */
+   Share --dur-* and --motion-distance-* with CSS. In reduced motion,
+   crossfade in place. CSS's 1 ms clamp does not apply to these Svelte
+   transitions, so give each an explicit substitute. */
 
 import { crossfade } from 'svelte/transition';
 import type { TransitionConfig } from 'svelte/transition';
@@ -115,31 +102,14 @@ export function sharedAxisX(
 }
 
 /**
- * Tier 2, a step machine: one thing printed on the field leaving or
- * arriving while the field's own edge moves under it (redesign ticket 33).
+ * Tier 2 step changes animate live DOM field parts. Fade the outgoing part
+ * over --dur-fast, then start the incoming one. The shared box follows the
+ * field edge once for both.
  *
- * The same two movements app.css runs on `::view-transition-*(*.field-part)`
- * for a navigation, written for real elements rather than for photographs of
- * them: a step change is not a navigation, so the question and the answers
- * are still in the DOM and can be transitioned directly. No frame carries
- * two of them - the outgoing one fades out over `--dur-fast` and the
- * incoming one waits that long before starting - and the ride with the edge
- * is not here at all: it belongs to the box both sides sit in, which travels
- * once for the pair of them.
- *
- * `printed` is what tells a thing painted on the field from a thing
- * standing under it: the first travels 12px the way the edge is going and
- * the second only fades, because it is already riding the edge in full.
- *
- * That 12px is read out of `--part-travel` rather than passed in, and the
- * sign is the whole reason. Which way a part travels depends on which way
- * the edge went, and the edge's own direction is not known when the
- * transition starts - the field has not been measured yet, and forward is
- * not the same as taller (a longer question can make a taller field than
- * the step after it). Written into the keyframes as a
- * var(), the browser resolves it per frame off whatever the edge published,
- * and the first frame - where the travel is multiplied by nothing - cannot
- * be wrong.
+ * A printed part moves 12px relative to that box. An item under the field
+ * rides with the box and only fades. Resolve --part-travel per frame, since
+ * the sign depends on the measured edge movement and the next step may be
+ * shorter. The initial frame multiplies travel by zero.
  */
 export function fieldPart(
   node: Element,
@@ -212,24 +182,12 @@ export function fieldPart(
   };
 }
 
-/** How far a sheet has to go to be off the bottom of the frame it is in:
- *  its own height, or the distance from its top edge to that floor, whichever
- *  is further.
- *
- *  Measured off the node because a sheet's height is its content's and every
- *  one of the 36 call sites differs. The floor is the scrim rather than the
- *  window: the scrim is `position: fixed` against `.app`, which carries a
- *  transform, so on the phone-frame demo and in the walkthrough's own frame
- *  the app's bottom edge and the window's are different lines and only the
- *  first one is the one a sheet leaves by.
- *
- *  The two cases the max covers are the two the app has. A sheet on a phone
- *  sits on the floor, so its own height and the distance to the floor are the
- *  same number. On a wide window `.sheet-scrim` centres it, so its height
- *  would leave its top edge on screen and the distance to the floor is what
- *  carries it past. A rect read live also means a dragged sheet measures from
- *  where the finger left it, which is what makes the handover seamless
- *  without either half knowing about the other.
+/**
+ * Move a sheet by the greater of its own height and the distance from
+ * its top to the scrim floor. The scrim is fixed to the transformed
+ * .app frame, which can end above the window bottom. A centered sheet
+ * needs extra distance to clear that floor. Read the live rect so a
+ * dragged sheet continues from its current position.
  */
 function sheetTravel(node: Element): number {
   const rect = node.getBoundingClientRect();
@@ -248,33 +206,13 @@ export function sheetEntranceDelay(): number {
 }
 
 /**
- * Tier 2, sheets: up from below the bottom edge, and back down past it,
- * travelling the sheet's own height. Sized off the node rather than out of a
- * token, which is the whole of redesign ticket 38 - `--motion-distance-md` is
- * 24px, and 24px under an opacity fade on a 717px sheet is a crossfade with a
- * nudge in it.
+ * Tier 2 sheets travel their full height with no opacity change.
+ * The scrim fades separately. The entrance overshoots and settles, the exit
+ * eases down without overshooting, and the skirt keeps the bottom covered.
  *
- * No opacity. ADR-0078's words are that a block never fades up from nothing,
- * and a solid object sliding in from off screen does not also need to appear.
- * The scrim is what announces a sheet, and it fades on the sheet's own clock
- * (Sheet.svelte).
- *
- * **The field's motion, on a sheet.** The curve is the blind's settle from
- * ticket 28 rather than a plain token: coming up it runs past its mark and
- * comes back, going down it does not, and the two decelerations are the ones
- * the blind already picks between (Alicja, on this ticket's first flipbooks:
- * "the same motion as the field ... with an overshoot when coming up from
- * below, and without one when going down"). `.sheet` carries a skirt below
- * itself so the overshoot never lifts it off the edge it stands on.
- *
- * `--dur-slow` in both directions rather than tier 2's asymmetry. That
- * asymmetry exists so a screen does not hesitate before answering and it
- * costs a fade nothing; over a whole sheet's height it is the difference
- * between about 40px between painted frames and about 110.
- *
- * Use as `in:sheetRise` and `out:sheetRise`: the two directions are two
- * curves now, and a bare `transition:` reports 'both' and would get the
- * entrance's overshoot on the way out.
+ * Both directions use --dur-slow to avoid large gaps between frames.
+ * Use in:sheetRise and out:sheetRise separately, since transition: reports
+ * 'both' and would give the exit its own entrance overshoot.
  */
 export function sheetRise(
   node: Element,

@@ -1,24 +1,11 @@
-/* A block that arrives above content already on screen, opened by the
-   compositor instead of by layout (carpet 15 row 47).
+/* Open a block above visible content with compositor transforms. A
+   height-based `disclose` lays out each frame and can start after the
+   switch thumb. Sharing its curve and duration keeps both in step.
 
-   `disclose` animates the box's height, so every frame of it lays the page
-   out again on the main thread, and it starts a frame after the change that
-   asked for it. On the roadmap that change is the Polish steps switch: the
-   thumb (a transform) set off at once while the list under the new group
-   waited for the main thread, then caught up in a lump. This opens the same
-   block with transforms alone, on the same duration and curve, so the list
-   leaves in the thumb's first frame and keeps its place through a stall.
-
-   The new content is laid out whole before the first paint. What follows it
-   is translated back to where it stood and travels down; the boxes that
-   arrived are each translated up so their bottom edge rides the followers'
-   top, clipped there, with their children translated back so the contents
-   stay where layout put them. Everything is linear in the curve's one
-   progress value, so every piece takes the same two-keyframe animation.
-
-   The followers travel only as far as the screen shows (`travel`), the way
-   `disclose`'s `onScreen` and `resize` do: what lies past the bottom edge
-   lands there unseen when the animations let go. */
+   Lay out the full block before paint. Move following content from its old
+   position, clip the new boxes at its edge, and countertranslate their
+   children. All pieces use the same two-keyframe progress. Limit travel
+   to the viewport. Offscreen followers settle unseen. */
 
 import { EASE_OUT_CSS, motionDuration } from './tokens';
 import type { TransitionConfig } from 'svelte/transition';

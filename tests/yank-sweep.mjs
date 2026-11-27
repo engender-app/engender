@@ -1,109 +1,15 @@
-/* The yank sweep (redesign ticket 20, device half added by ticket 100):
-   every navigation and state change sampled per frame, looking for the
-   things Alicja calls a yank - something teleporting from one place to
-   another in a single frame, something disappearing in a single frame, and
-   (ticket 99 round 2's find) something rendering larger than its own
-   resting bounds for a frame or two.
+/* Sample frames for jumps, dropouts and expansions with yank-sweep-core.mjs.
+   Both samplers share one rAF loop. The startViewTransition wrapper selects
+   pseudo-elements while the outgoing DOM is removed. Read actual elements
+   on a settled screen. Skip one-frame runs and intentional reduced-motion cuts.
 
-   Why a detector and not twenty flipbooks. Every round of notes on this
-   phase's motion has come back as a frame pair - "look what happens between
-   frames 5 and 6", "frames 9 and 10 in the first anim, 16 and 17 - second" -
-   and every pair named a real single-frame defect: a card cut instead of
-   faded, a line closing in one frame, an element in neither place for two
-   frames. Those are found by comparing consecutive frames, which is
-   arithmetic, so the arithmetic is written down here instead of being done
-   by eye over hundreds of images. `tests/blind-motion-gallery.mjs` reads one
-   gesture's own pseudo elements in depth; this reads every gesture shallowly
-   and says which ones are worth that depth.
-
-   The scene table, the thresholds and the arithmetic live in
-   `tests/yank-sweep-core.mjs`, shared with `tests/yank-sweep-device.mjs`,
-   which points the same instruments at a real Android phone: the styles a
-   browser reports are not always the pixels a phone paints - the
-   field-blind bug's trace was correct while its render was not - so the
-   device sweep adds a camera (CDP screencast) and reads the render itself.
-
-   What it samples, and why it is two instruments read at once. Across a
-   navigation the live DOM is not what is on screen: the browser paints the
-   captured pseudo elements, and `$lib/motion/outgoingScreen` removes the
-   outgoing page on purpose before the new side is captured. Sampling the
-   tree there reports the whole outgoing screen and all 107 of its
-   descendants as vanishing on one frame, which is true of the DOM and says
-   nothing about what a person saw. So a navigation is read off the
-   transition's own pseudo elements - the translation, the opacity, the
-   extent and the clip the browser is painting at that instant - the way
-   `tests/blind-motion-gallery.mjs` reads one gesture in depth. A state
-   change inside a settled screen runs no view transition, so there the
-   tree *is* what is painted, and every element in the app frame is read:
-   its box, its opacity, and whether it is there at all.
-
-   Which of the two applies is not declared per scene, because a scene does
-   not know: picking a mood on Today and choosing a span on Look back both
-   navigate, and hand-labelling them as state changes reported the whole
-   outgoing screen as 328 and 89 vanishing marks. Both instruments run in
-   the same rAF loop and the run decides.
-
-   What decides is `document.startViewTransition`, wrapped for the length of
-   the sample. Asking the pseudo elements instead does not work:
-   `getComputedStyle(root, '::view-transition-new(screen)')` answers
-   `translate: 0px` at `opacity: 1` whether or not a transition is running,
-   so "a pseudo answered" is true on every frame. Reading that as the window
-   put the frames either side of the transition inside it, and the step from
-   the identity default into the animation's first keyframe - 0 to 77px at
-   opacity 1 to 0 - then read as a teleport and a vanish on every
-   navigation. It is neither: nothing was painted from those frames. Only
-   the frames the browser says it was transitioning on are the run.
-
-   What is not a yank, and is filtered rather than reported. A cut is the
-   documented substitute under `prefers-reduced-motion` (ADR-0078: substitute,
-   never delete), so the reduced-motion pass is a control rather than a
-   subject. The outgoing screen is removed on purpose before the new side is
-   captured (`$lib/motion/outgoingScreen`), so the screen element itself is
-   exempt. And a mark whose whole run is one frame long was never animating.
-
-   A sweep that reports nothing is worth nothing until it has been seen to
-   fail, so `--prove` runs one extra scene whose three marks are built to be
-   wrong: one jumps 200px between two frames after moving smoothly, one
-   goes from opaque to nothing between two frames after fading part of the
-   way, and one renders a window tall for a single frame between two at
-   rest. The run reports them or exits non-zero.
-
-   The proof is synthetic on purpose. Cutting a real surface to order does
-   not work: the first attempt took the CSS transition off the notice, but
-   the notice leaves on Svelte's `transition:collapse`, which writes inline
-   styles per frame and does not read the stylesheet, so the injection was
-   inert and the sweep was right to report nothing. What needs proving is
-   the arithmetic over consecutive frames, and these three marks exercise
-   exactly that, including the part a real surface cannot: marks whose
-   neighbours are moving, so each defect is caught as a spike rather than
-   as motion.
-
-   Run against a demo build:
-     VITE_DEMO=1 npm run build
-     node tests/yank-sweep.mjs
-     node tests/yank-sweep.mjs --prove
-   `--scenes a,b` narrows the run; `--out <dir>` names where the report and
-   the frames of any yank land; `--themes light,dark` runs each scene under
-   more than the default light theme.
-
-   `--force-inset <px>` gives the page the phone's status-bar inset (58 on
-   the Pixel 10a) and the Android platform answer, so the strip
-   `.app-strip` is `inset - 9` px tall and visible to the casts; every
-   settle asserts that height and the report's runtime records
-   `forceInset`. It also makes the desktop sweep keep Android's retained
-   doors. `tests/yank-sweep-strip-check.mjs` reads the saved casts of such
-   a run. `--reduced-motion` runs the control pass (`prefers-reduced-motion:
-   reduce`), recorded as `reducedMotion` in the runtime.
-
-   `--gate` exits non-zero if any style yank is found across the scenes run
-   (ticket 244): CI has no other check that a sheet or other local
-   transition actually plays, and 242's own regression - every ordinary
-   sheet's rise and scrim fade skipped for 34 sheets - passed every guard
-   in the suite silently. Render findings don't gate: the scrim's own
-   withdrawal blur fading in for the first time reads as a "dropout" to the
-   pixel detector on every sheet that has ever been checked this way
-   (tickets 149, 231, phase-12 152), a named false-positive family rather
-   than something a real fix could clear. */
+   Run VITE_DEMO=1 npm run build, then node tests/yank-sweep.mjs. --prove tests
+   synthetic defects and --gate fails style findings. Pixel diffs are advisory
+   because withdrawal blur can resemble a dropout.
+   --scenes, --themes and --out set coverage and output. --reduced-motion
+   checks the cut control. --force-inset enables retained doors and checks the
+   strip at inset minus 9px. Use 58px for Pixel 10a and check saved casts with
+   yank-sweep-strip-check.mjs. */
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -171,7 +77,7 @@ const profiles = flag('profiles', 'persona,empty')
 const passes = Number(flag('passes', '3'));
 /** Injects four defects, so the detector can be seen to find them. */
 const prove = args.includes('--prove');
-/** Exits non-zero on any style yank across the scenes run (ticket 244). */
+/** Exits non-zero on any style yank across the scenes run. */
 const gate = args.includes('--gate');
 
 /** The phone's status-bar inset, forced on a desktop page (`--force-inset

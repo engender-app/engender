@@ -5,7 +5,7 @@ import { chipsFor, narrowTo } from '../photos/library.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { openJournal } from './journal.ts';
 
-/* journal.photoLibrary (phase 11 ticket 14): the one read behind "every
+/* journal.photoLibrary: the one read behind "every
    photo in your journal". Six tables, one dated list, each row saying
    where it came from.
 

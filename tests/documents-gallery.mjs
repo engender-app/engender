@@ -1,24 +1,11 @@
-/* Screenshots of the documents area (phase 8 features tickets 52, 53 and
-   55, ADR-0065).
+/* Capture documents empty, import, list, detail, both PDF pages and
+   unreadable PDF fallback (ADR-0065). Draw input pages in the browser
+   and import via the real picker to exercise normalization, metadata
+   stripping and storage. Use the default palette in both themes.
 
-   Seven states, which are the seven a sign-off has to see: the empty
-   screen, the import sheet with a title typed into it, the list with
-   several documents on it, one document's own screen - the only place in
-   the app that draws a page at all - a PDF's first page with the pager
-   under it, the same PDF turned to page two, and a PDF the renderer could
-   not read (ticket 55), which is the paper icon, the line saying so, the
-   size and the export.
-
-   The pages themselves are drawn in the browser and handed to the real file
-   input, so what is on screen has been through normalizePhoto, the metadata
-   strip and the encrypted file store exactly as an imported scan would be.
-
-   Default flag only, both themes.
-
-   Run: VITE_DEMO=1 npm run build   first, then
-        node tests/documents-gallery.mjs [outDir]
-   Default outDir is .claude/documents-shots, which is gitignored and
-   durable. */
+   VITE_DEMO=1 npm run build
+   node tests/documents-gallery.mjs [outDir]
+   Defaults to .claude/documents-shots. */
 import { preview } from 'vite';
 import { mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
@@ -199,7 +186,7 @@ for (const theme of ['light', 'dark']) {
   await page.waitForTimeout(1200);
   await shoot('04-one-document');
 
-  /* ---------- 05 and 06: a PDF's own screen (ticket 55), on its first
+  /* ---------- 05 and 06: a PDF's own screen, on its first
      page and then turned to its second. The page under the pager is the
      canvas the renderer drew, not the thumbnail: the shot waits for the
      class the screen only sets once a page is on it. ---------- */
@@ -227,7 +214,7 @@ for (const theme of ['light', 'dark']) {
   await page.waitForTimeout(1200);
   await shoot('06-pdf-page-two');
 
-  /* ---------- 07: the PDF nothing can draw (ticket 55). The paper icon,
+  /* ---------- 07: the PDF nothing can draw. The paper icon,
      the line that says so, the size and the export - which is the honest
      thing to offer for a file this app cannot read. ---------- */
   await page.goBack();
@@ -240,7 +227,7 @@ for (const theme of ['light', 'dark']) {
   await page.waitForTimeout(600);
   await shoot('07-pdf-not-drawable');
 
-  /* ---------- 06-09: the link (phase 8 features ticket 56). The seeded
+  /* ---------- 06-09: the link. The seeded
      persona is what the picker needs: "Reset demo state" leaves no
      procedures and no regimen episodes, so a picker shot taken against it
      would show one section of four. "Fill every feature" is the jump that
@@ -252,7 +239,7 @@ for (const theme of ['light', 'dark']) {
   await dress();
 
   /* The picker offers the Polish legal steps only while the roadmap shows
-     them, and they are off until switched on (functional audit ticket 34). */
+     them, and they are off until switched on. */
   await settle('/transition/roadmap');
   const polishSwitch = page.locator('[data-roadmap-polish-steps] [role="switch"]');
   if ((await polishSwitch.getAttribute('aria-checked')) !== 'true') await polishSwitch.click();

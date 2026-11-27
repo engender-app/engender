@@ -1,27 +1,9 @@
 <script lang="ts">
-  /* The box on a tickable row (phase 5 ticket 35).
-
-     Named Check after the mark it draws, which is `check` in icons.ts. Not
-     Tick: the chart kit owns that word for the axis furniture it refuses to
-     draw, and a `.kit-*tick` class fails kit-surfaces.test.ts.
-
-     A rounded square and never a circle. A circle is a radio button in every
-     reference there is, and "pick exactly one of these" is the signal this
-     ticket exists to remove from the screen where somebody chooses which
-     scales they log.
-
-     It carries the row's state on its own, and the row around it does not
-     change. Three of five rows filled with a soft accent wash would be a
-     loud card and a hard one to scan; a filled box against an outlined one
-     is the difference a checkbox is for. Ticked wears exactly the treatment
-     `.tag-chip.is-selected` wears - soft fill, accent edge, `--on-accent-soft`
-     ink - because that is this app's settled answer for a control that is
-     on, and it is already proven across every palette on both themes.
-
-     Decoration, not a control: `aria-hidden`, no tab stop, no press handler
-     of its own. The row is the checkbox and carries `role="checkbox"` and
-     `aria-checked`, so the whole width of the row is the target and a
-     keyboard gets one stop per scale rather than two. */
+  /* Draw a rounded square to signal multiple choices. Borrow the
+     selected chip fill, edge and ink so the surrounding row stays still.
+     The mark is aria-hidden. The full row owns role="checkbox",
+     aria-checked, the press and the single tab stop. Check uses the
+     check icon name, avoiding the chart kit's tick vocabulary. */
 
   let { checked = false }: { checked?: boolean } = $props();
 </script>

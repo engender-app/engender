@@ -1,29 +1,12 @@
-/* A row arriving or leaving last in a `.screen-part` moves nothing but
-   itself (phase 12 ux-carpet ticket 195).
+/* In a live .screen-part with a following block, append and remove a
+   final child at disclose's collapsed geometry. Its height is zero,
+   overflow clips, and margin cancels the smaller adjacent margin
+   (reveal.ts and reveal.test.ts). The previous row keeps its 20px
+   margin and no neighbor moves. A :last-child margin rule had shifted
+   rows on insertion and removal.
 
-   `.screen > .screen-part > *` gives every row 20px under it, and until
-   this ticket `:last-child` took that away from whichever row was last. So
-   the margin a row carried depended on whether anything came after it: a
-   row inserted as the new last child handed its predecessor 20px in the
-   frame it was inserted, and a last row leaving took 20px from the one
-   before it in the frame it was removed. Neither transition can animate a
-   neighbour's margin, so the page stepped 20px on top of whatever the
-   transition did (the voice screen's task line, ticket 166, 248 -> 268px).
-
-   The check runs on the real stylesheet. A throwaway `.screen-part` goes
-   into a live screen with a block after it, and a row is appended as its
-   last child the way `disclose` draws it on its first frame: height 0,
-   clipped, and its bottom margin at minus the smaller of the margins it
-   meets above and below (`restingMarginBelow`, reveal.ts; reveal.test.ts
-   holds that arithmetic). Nothing may move, and the row before it must
-   keep its own margin; the same when it is taken out. The one instance
-   measured before this ticket, the voice screen's task line, was fixed in
-   place by ticket 166 and keeps that fix; this checks the rule every other
-   screen part now inherits.
-
-   Against a demo build:
-     VITE_DEMO=1 npm run build
-     node tests/screen-part-last-row.mjs [--root <built tree>] */
+   VITE_DEMO=1 npm run build
+   node tests/screen-part-last-row.mjs [--root <built tree>] */
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchChromium, settlePage, previewBuild } from './browser-harness.mjs';

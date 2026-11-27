@@ -1,91 +1,18 @@
 <script lang="ts">
-  /* One day (phase 5 UX ticket 22, widened by deepening ticket 21).
+  /* This route owns the day parameter, reads and gates. DayRecords renders
+     the dated areas. Those areas register with journal.day.getDay, so a new
+     section needs no route changes. This view is read-only. Each record
+     links to its own editor or screen.
 
-     What it was: the day's entries and nothing else. Everything else the app
-     recorded that day - the dose, the laser session, the measurement, the lab
-     draw, the wear session, the recovery photo, the felt sense, the side
-     effect - was findable only by opening the screen that owns it and
-     scrolling to the right date. Ticket 04 unified where a day is captured
-     (ADR-0044); this is the read side of it.
+     The day parameter accepts today, a nonnegative epoch day or a valid ISO
+     date. Derive it from the route so same-route navigation updates the reads.
 
-     What it reads is `journal.day.getDay`, whose sections are a registry
-     (day.ts) rather than a list of imports here, so a dated area added later
-     reaches this screen without it being edited - and an area registered
-     nowhere is a compile error there rather than a screen quietly short of
-     one. The screen names no area.
-
-     What a day looks like is DayRecords.svelte, and its reasoning lives
-     there: this route owns the epoch day, the read and the gate, and that
-     component owns the composition. Split so the composition can be looked
-     at against the real tokens without a journal behind it
-     (tests/browser-tier/day-gallery.svelte).
-
-     It writes nothing. Editing happens in the editor and in each area's own
-     screen, and every row here is a link into one of them.
-
-     Which dates reach this screen, audited when it became worth opening, and
-     the ones that deliberately do not:
-
-       reach it - a calendar cell (HeatMap), the editor's back arrow, and, as
-       of this ticket, each of on-this-day's look-back days, through its
-       heading's own action line.
-
-       do not - an entry anywhere it is drawn, because an entry opens into
-       the entry, and on the counterevidence screen that is stated as a rule
-       (DIRECTION: an entry there is cited rather than opened); a letter card,
-       because the letter is the thing being offered; wrapped, which is ranges
-       and has no per-day point to hang a link on; and this screen's own day
-       bar, which would link to itself.
-
-       charts - no chart mark in the app is a dated point that takes a press.
-       AreaChart draws its line and takes none at all; BarRows takes an
-       `onPick`, but its four callers pick a metric or a body region, not a
-       day. The one dated grid that does take a press is the calendar's, and
-       that already lands here. So there is nothing to repoint: making a
-       dated mark tappable is a feature for the chart kit, not a link this
-       audit can fix.
-
-       left alone on purpose - the timeline's milestones, which are dated and
-       currently open nothing. Nothing on that rail is a control: it is read,
-       not operated, and gaps and "you are here" sit in the same list as the
-       milestones. Giving one kind of item a tap target is that screen's
-       decision to make, not this one's. Home's day bars are the other one,
-       and they are a live question rather than a settled exception: the bar
-       is `--text-xs` with tight padding, so making it a link needs a touch
-       target as well as an href.
-
-     `day` accepts `today`, an epoch-day integer or a valid ISO date. It
-     reads the parameter as a `$derived` rather than a const: a same-route navigation between two
-     days reuses this component, and a plain const would keep the first day it
-     saw (see the stale-params note on /entry/[id]).
-
-     A day after today (phase 8 features ticket 62, ADR-0067): before that
-     ticket `journal.day.getDay` was called unconditionally, which reads
-     logged rows a future day cannot have, so it rendered as an empty past
-     day - "Nothing logged this day, add an entry" for a day that has not
-     happened. `isFuture` still takes the whole of that off: never the
-     entries gate, never the "nothing logged" notice, never the add-entry
-     button, never the era-start link.
-
-     What a future day does draw, since audit item 12: what it is expected
-     to hold, said properly. It was a weekday with no date, "Coming up", one
-     row reading "Dose", and 600px of nothing - a screen repeating its own
-     entry point, since Today's agenda row said the same word and went to
-     the same place. So the title carries the date the URL already knows,
-     the schedules' own expectation reaches the dose row (the drug and the
-     amount, which a mark may not carry - ADR-0067), and the records this
-     day genuinely holds ahead of time, an appointment or a milestone, draw
-     through `DayRecords` in the same words a past day uses for them. A mark
-     whose record is on the screen is dropped rather than drawn twice.
-
-     What is coming (`comingRows`) is read unconditionally rather than
-     branched on `isFuture` the way the entries read now is, because
-     `dayAhead`'s own floor already does that work: `getDayAhead` clamps
-     every kind's read at today (dayAhead.ts's `stillAhead`), so a past
-     day's query always resolves to nothing without a second guard here.
-     Today reads both and shows what is coming first, above what was
-     logged - the same reading order the calendar's grid keeps between heat
-     and a mark, and the order Home takes in ticket 63. */
+     Future days show scheduled doses with the drug and amount, plus records
+     already dated ahead of time. A matching visit or milestone replaces its
+     mark. Marks carry no amounts (ADR-0067). Future days hide the empty-log
+     notice, add-entry button and era-start link. dayAhead clamps its read at
+     today, so past days return no upcoming marks. Today shows upcoming rows
+     first and logged records below. */
   import { page } from '$app/state';
   import { goto } from '$app/navigation';
   import { withListReturn } from '$lib/navigation/sourceRecord';
@@ -127,7 +54,7 @@
 
   /* One mark's worth of range - `fromEpochDay` and `toEpochDay` are both
      this screen's own day, the same reason HeatMap asks for a month and
-     Home (ticket 63) will ask for just today. */
+     Home will ask for just today. */
   let dayAheadRead = liveList((j) =>
     parsedDay === null ? Promise.resolve([]) : j.dayAhead.getDayAhead(epochDay, epochDay, currentDay())
   );
@@ -168,7 +95,7 @@
   let namedByRecords = $derived(
     new Set([
       // A visit only: a referral or an update on this day is not the visit
-      // the mark stands for (ticket 26).
+      // the mark stands for.
       ...(day?.appointments.some((a) => a.event === 'visit') ? ['appointment'] : []),
       ...((day?.milestones.length ?? 0) > 0 ? ['milestone'] : [])
     ])
@@ -221,7 +148,7 @@
      `sameIds` above) so the gate below can tell a landed answer from a stale
      one apart. */
   let entryIds = $derived((day?.entries ?? []).map((e) => e.id));
-  /* What the add-entry button says (tester report 02, ticket 08): "another"
+  /* What the add-entry button says: "another"
      is wrong on a day that holds no entry. Decided by the landed read, so a
      day still loading keeps the wording a day with entries has. */
   let noEntryYet = $derived(day != null && day.entries.length === 0);
@@ -242,7 +169,7 @@
      state a rejection is supposed to reach. */
   let marginNotesReady = $derived(marginNotesAnswer !== undefined || marginNotesRead.failed);
 
-  /* Which drug each logged dose carries (phase 11 ticket 19): a day row
+  /* Which drug each logged dose carries: a day row
      names it, so concurrent regimens at the same amount and route stay
      two records there too. attributeDrug at each dose's own timestamp -
      the same question the dose log asks its rows - never the regimen
@@ -283,7 +210,7 @@
      the same "reveal once, when everything has answered" call ticket 146
      made for Home's fold: the records draw once, already carrying their
      margin notes and dose drug names, rather than gaining them a few frames
-     after the gate opens (ticket 174). A day with no records needs neither
+     after the gate opens. A day with no records needs neither
      chained read to have anything real to wait for - `entryIds`/`dayDoses`
      are `[]` there, so both settle on the same frame the day read does. */
   let dayRecordsReady = $derived(!everythingLogged.loading && marginNotesReady && doseDrugsReady);
@@ -339,20 +266,11 @@
   {#if parsedDay === null}
     <Notice key="day-unavailable" title={m.source_record_unavailable()} />
   {:else}
-  <!-- What is coming (ADR-0067): today and a future day both read it, a
-       past day never does (dayAhead.ts's own floor leaves `comingRows`
-       empty there, so nothing below ever draws). The heading is the
-       appointments screen's own "Coming up" - CONTEXT.md names the same
-       concept the same way, and reusing it says one thing once rather than
-       drawing a second string for it.
+  <!-- On today and future days, use the appointments screen's Coming up
+       title (ADR-0067). dayAhead.ts returns no rows for a past day.
 
-       The role is `entriesRole` on a future day and `alsoRole` on today,
-       not the same one always: a future day shows only this card (or only
-       the empty notice below), which is the "one surface, one screen" case
-       role 0 exists for - the only index guaranteed a colour on all 8
-       palettes (`entriesRole`'s own comment below). On today this card sits
-       beside the entries card, which already claims role 0, so it takes
-       role 1 the same way the day's own "also this day" list does. -->
+       A future day can use entriesRole because this is its only card.
+       Today already uses entriesRole for the entries card, so use alsoRole. -->
   {#if comingRows.length > 0}
     <SectionHeading text={m.coming_up_title()} />
     <ListCard role={isFuture ? entriesRole : alsoRole}>
@@ -400,7 +318,7 @@
       {/snippet}
     </ReadGate>
 
-    <!-- "Start an era here" (phase 6 ticket 01): naming a stretch of your own
+    <!-- "Start an era here": naming a stretch of your own
          timeline is a thought that arrives while looking at the day it starts
          on, so the action is offered where the thought is rather than only on
          /settings/eras (redesign ticket 16: the era manager, moved). A link

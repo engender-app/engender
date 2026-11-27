@@ -121,8 +121,8 @@ async function run() {
        synchronous read of `rows` before the first await, which is a Svelte
        dependency and not a table version - so this is the check that the
        two kinds of dependency reach the same effect. Home's felt-sense read
-       was the first of this shape; it went with the active tryout tile
-       (functional-audit ticket 14), and the running tryout's readings are
+       was the first of this shape; it went with the active tryout tile,
+and the running tryout's readings are
        the same question asked of one id. */
     const tryouts = liveList((j) => j.tryouts.getTryouts());
     feltSenseQuery = liveQuery((j) => {

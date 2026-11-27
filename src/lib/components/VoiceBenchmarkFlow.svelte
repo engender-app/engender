@@ -1,36 +1,13 @@
 <script lang="ts">
   import { journalTextAutocomplete } from '$lib/platform';
-  /* Making a voice benchmark (phase 5 deepening ticket 15, CONTEXT: "Voice
-     benchmark"), as one tab of the voice screen (phase 8 features
-     ticket 09).
+  /* The voice tab reports a finished benchmark to its host. Record a
+     passage and then ah, ee and oo. Retry a failed vowel on its own so a
+     brief interruption never invalidates the passage or other vowels.
 
-     It was its own route until ticket 09 merged the two halves of this
-     feature into one screen with three tabs. Nothing about the flow itself
-     changed in that move: it is a component rather than a page, it reports
-     a finished benchmark to whoever embedded it instead of navigating, and
-     the screen's own header is the screen's.
-
-     Two takes in one sitting: the passage read out, then three notes held -
-     "ah", "ee" and "oo" (phase 8 features ticket 30), each its own step
-     because they fail separately - a vowel spoiled by a door slamming is one
-     tap to redo, and re-reading four hundred words to fix three seconds is
-     the thing this flow exists to avoid. So a failed vowel comes back to the
-     vowel, and the passage stays where it is.
-
-     The three vowels feed audio/vowelScale.ts's own factor, fitted across
-     whichever came back with a usable pair - the reason for three rather
-     than one is in that module's header. "ah" is still the vowel the row's
-     own resonance/room figures come from (ticket 15's storage seam, kept
-     unchanged); "ee" and "oo" pass through the same analysis only to feed
-     the factor and are never themselves stored.
-
-     Nothing on this screen reads anything into a voice (PRODUCT.md:109).
-     The figures are stated in their own units and the advice is always about
-     the recording - the room, the length - never about how
-     somebody sounds.
-
-     The analysis is pure and lives in $lib/audio; the microphone and the
-     decode live in stores/voiceBenchmark.ts. What is here is the flow. */
+     vowelScale.ts fits the factor across vowels with usable pairs. Only ah
+     supplies the stored resonance and room figures. Advice concerns
+     recording conditions and length. Figures retain their units and imply
+     no judgment about the voice. */
   import { onDestroy } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { getLocale } from '$lib/paraglide/runtime';
@@ -95,8 +72,8 @@
   type Phase = 'idle' | 'recording' | 'analysing' | 'retry';
 
   /** The three held vowels, in the order the flow asks for them. "ah" is
-      first because it is the one whose take the row still stores whole
-      (ticket 15); "ee" and "oo" only ever feed the scaling factor. */
+      first because it is the one whose take the row still stores whole;
+      "ee" and "oo" only ever feed the scaling factor. */
   const VOWEL_ORDER: readonly VowelLabel[] = ['a', 'i', 'u'];
   const VOWEL_HINTS: Record<VowelLabel, () => string> = {
     a: m.vb_vowel_hint,
@@ -130,7 +107,7 @@
     bytes: Uint8Array;
     figures: ReturnType<typeof analysePassage>['figures'];
     pitchTrack: string | null;
-    /* The chain the passage was recorded through (ticket 28, ADR-0061).
+    /* The chain the passage was recorded through (ADR-0061).
        Kept per take rather than once for the flow because the two steps
        open the microphone separately, and the row stores the chain the
        gated figures came from - see the save. */
@@ -159,7 +136,7 @@
     busy: () => saving,
     /* A figure's "what these numbers mean" link is a navigation to this
        same screen with ?metric=, which opens the reference sheet over the
-       take and leaves it in place (item 91). */
+       take and leaves it in place. */
     staysOnScreen: (departure) =>
       departure.to?.url.pathname === location.pathname && departure.to.url.searchParams.has('metric')
   });
@@ -207,7 +184,7 @@
     if (liveAdvice.length > 0) return liveAdvice;
     return frames.some((frame) => frame.hz !== null) ? [] : [m.vb_hearing_silent()];
   });
-  /* What this take's figures are read against (redesign ticket 42). Six of
+  /* What this take's figures are read against. Six of
      the seven mean nothing except against the same person's earlier takes,
      so the summary needs the history behind them - and it needs it before
      the save, because the summary is where somebody reads their numbers for
@@ -530,7 +507,7 @@
     <div class="screen-part vb-body">
       <SectionHeading text={m.vb_measured()} />
       <!-- Seven figures, each with the sentence that says what it is and
-           links into its own reference section (ticket 27). The list was
+           links into its own reference section. The list was
            markup here until then; what the flow keeps is the take. -->
       <VoiceFigures
         {role}
@@ -541,7 +518,7 @@
         {resonanceScale}
       />
 
-      <!-- The picture the numbers came from (ticket 09). It sits under the
+      <!-- The picture the numbers came from. It sits under the
            figures rather than over them: the numbers are what a person came
            to save, and the drawing is what makes them mean something. -->
       <div class="vb-take">
@@ -574,7 +551,7 @@
       {#if step === 'vowel'}
         <!-- Which of the three this is, said once in words rather than left
              to be inferred from a step that repeats itself with a different
-             sound each time (ticket 30). -->
+             sound each time. -->
         <p class="muted small vb-hint">
           {m.vb_vowel_progress({ index: vowelIndex + 1, total: VOWEL_ORDER.length })}
         </p>
@@ -597,7 +574,7 @@
           />
 
           <!-- How much of the reading has arrived, against the floor the
-               gate is actually applying (ticket 41). It replaced the held
+               gate is actually applying. It replaced the held
                run, which was the hold task's meter on a task that has no
                hold in it: it emptied at every word boundary and the person
                who tried to satisfy it by not breathing was being trained

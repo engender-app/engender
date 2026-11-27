@@ -1,5 +1,4 @@
-/* Presets never store their own lean - it is derived purely from `dims`
-   (ADR-0030, CONTEXT: "Lean"). */
+/* Derive a preset’s lean from `dims`. */
 
 import { test, expect } from 'vitest';
 import { scaleLean, rankByLean } from './lean.ts';

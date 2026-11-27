@@ -1,4 +1,4 @@
-/* Search's own history of what was actually searched (ticket 18): the last
+/* Search's own history of what was actually searched: the last
    MAX_ENTRIES queries that ran, offered back as tappable rows before a
    character is typed, so a returning search is one tap rather than
    retyped.

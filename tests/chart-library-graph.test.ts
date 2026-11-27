@@ -1,58 +1,12 @@
-/* Which modules are allowed to load a charting library, and which of them a
-   first visit is allowed to reach.
+/* Keep chart libraries on chart-only import paths. A kit helper such as
+   barRow must be able to import share without reaching d3. charts/geometry.ts
+   stays dependency-free and charts/areaPath.ts owns the library import.
+   charts/share.ts stays separate so Rollup can group it with the kit helpers.
 
-   Phase 9 audit ticket 02 raised this against a reading of the source graph:
-   `components/kit/barRow.ts` imports one three-line function, `share`, out of
-   `charts/geometry.ts`, whose first act is to import d3-shape. A kit helper
-   that draws no chart therefore carried a charting library in its own import
-   graph, and the audit expected Rollup's small-chunk folding to have put that
-   library in the chunk the first screens download.
-
-   Measured against the build, it had not. On 4c38403a, a production build's
-   `build/index.html` named 107 `_app/immutable` scripts, 810 KB raw and 273 KB
-   gzipped, and no d3 chunk was among them - checked by mapping every emitted
-   chunk back to its module ids rather than by reading the file names, and
-   checked again over the static import closure that adds the home route's own
-   node (145 scripts, 310 KB gzipped) and again over a `VITE_DEMO=1` build.
-   d3-shape and d3-scale sit in four chunks that only chart routes import,
-   17 KB gzipped between them. So there was no 22 KB to save and nothing in
-   the shipped payload to fix.
-
-   The coupling the audit read off the source is real even though the symptom
-   was not, and what made it harmless was a bundler decision nothing states or
-   holds: Rollup groups modules by which entries import them and folds the
-   small leftovers into larger chunks, and next month's grouping is not this
-   month's promise. Two things came out of that, and only together:
-
-   `areaPath` moved to charts/areaPath.ts, leaving charts/geometry.ts
-   importing nothing, so that arithmetic cannot carry a library. And `share`
-   moved to charts/share.ts, because moving the library user out was not on
-   its own enough - with `share` still in geometry.ts, Rollup folded that
-   module into the chunk AreaChart.svelte and d3-shape's monotone curve were
-   already in, and the bar row's chunk went on importing it. Once `share` is
-   a module no chart imports, the chunk holding barRow.ts and BarRows.svelte
-   reaches no chunk carrying d3 at all, which the build says and the source
-   alone could not.
-
-   A `manualChunks` entry pinning d3 was the other fix on offer and is not
-   here. It puts the library in a chunk of its own, which is not what was
-   wrong: a chunk holding a non-chart helper would still import the chart
-   chunk that imports it. What decides this is which modules share an owner,
-   and that is what the rule below is about - including for the next library
-   somebody imports three lines of arithmetic out of.
-
-   First-load figures either side of the change, same production build:
-   107 scripts, 810,248 raw and 273,064 gzipped before, 810,244 and 273,065
-   after. No saving, because there was nothing there to save. Ticket 01's
-   ratchet, which landed while this was in flight, counts the four
-   stylesheets too and reads 111 files and 295,861B against a 296,897B
-   budget on the merged branch - that script is the bundle-side check this
-   file deliberately is not, and it is what would catch a chunk merge this
-   source rule cannot see.
-
-   Static imports only. A dynamic `import()` is the escape hatch by design -
-   it is its own chunk, fetched when a page asks for it - and counting one
-   here would fail the tesseract split that phase 5 deliberately made. */
+   This test walks static source imports. Dynamic import() defers a library
+   until a page needs it, as with Tesseract. Rollup can still merge chunks
+   based on which entries share a module. The first-load budget checks the
+   emitted bundle for that case. */
 
 import { expect, test } from 'vitest';
 import { reach as reachModules, sources, specifiers, type Sources } from './source-graph';

@@ -1,7 +1,6 @@
 <script lang="ts">
   import { journalTextAutocomplete } from '$lib/platform';
-  /* The share sheet ticket 03's calendar builder was missing (phase 10
-     redesign ticket 18, ADR-0067). One sheet, opened from the three surfaces
+  /* The share sheet ticket 03's calendar builder was missing (ADR-0067). One sheet, opened from the three surfaces
      that carry a dated thing worth a mark: the appointment editor, the
      surgery editor and a sealed letter's row.
 
@@ -39,8 +38,8 @@
     /** The day the record already carries - a surgery date, an appointment,
         a letter's unlock day. Read fresh each time the sheet opens. */
     epochDay: number;
-    /** The appointment's own time of day, `HH:MM`, where it keeps one
-        (functional-audit ticket 27). Given, the sheet uses it and does not
+    /** The appointment's own time of day, `HH:MM`, where it keeps one.
+Given, the sheet uses it and does not
         ask; absent, an appointment still offers the field. */
     time?: string | null;
     onClose: () => void;
@@ -48,7 +47,7 @@
 
   let title = $state('');
   // Only an appointment may carry a time (calendarFile.ts). One that keeps
-  // its own (ticket 27) hands it over; one that does not can still be
+  // its own hands it over; one that does not can still be
   // given one here for this file only.
   let time = $state('');
 

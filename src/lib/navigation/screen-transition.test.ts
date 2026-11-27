@@ -97,7 +97,7 @@ describe('choosing a tier-2 pattern', () => {
   });
 
   it('grows the tapped entry into the editor, and shrinks it back', () => {
-    /* The one container transform in the app (DIRECTION.md tier 2): the
+    /* The one container transform in the app: the
        entry card really does become the editor. Ticket 18 wired the other
        three patterns and left this one, because it is the only one that
        needs the two surfaces to agree on a key rather than only the
@@ -190,7 +190,7 @@ describe('choosing a tier-2 pattern', () => {
   });
 });
 
-describe('the blind runs on every navigation the app makes (ADR-0080)', () => {
+describe('the blind runs on every animated navigation', () => {
   /* The cut list is closed. Anything not on it moves, and a route having no
      chrome is not on it - that conflation is what made ticket 35's arrival
      a yank. */

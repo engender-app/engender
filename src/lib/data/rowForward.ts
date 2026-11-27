@@ -1,39 +1,11 @@
-/* What a row says instead of reporting a gap (phase 11 all-four-doors ticket
-   02, DIRECTION.md rule 16, ADR-0067, ADR-0073, ADR-0012).
+/* Project one forward-looking fact per row from records the journal
+   already holds (ADR-0067, ADR-0073). rowForwardReads.ts supplies
+   the data and vocabulary/hubLabels.ts supplies the words.
 
-   Nine of the seventeen rows on the Transition door carried a date-derived
-   second line and all nine looked backwards. The milestones row said
-   "Nothing logged for 1 year 4 months" over a screen showing a name-change
-   hearing in sixteen days, because a milestone still ahead is not a last
-   write and `lastWrite.ts` only answers the backwards question. Rule 16
-   puts what is running and what is next before what changed, so this module
-   is the forwards half: one fact per row, or none where there is nothing
-   ahead to say.
-
-   Pure, above the journal seam, beside `agenda.ts` and `comingBack.ts` and
-   split from its reads the same way (`rowForwardReads.ts` fetches, this
-   projects). No clock, no driver, no paraglide, no runes: today arrives as
-   an argument and the words are `vocabulary/hubLabels.ts`'s.
-
-   **Nothing here is a new kind of fact.** Every row below is read off
-   something a screen already draws - the milestone mirror, the letters'
-   seals, the running wear session, the running tryout, the appointment
-   list, the procedure list, the dose owner's next uncovered slot and the
-   stock projection. What is new is only that a *row* may now say it.
-
-   Names are read off the records rather than off `dayAhead`'s marks, and
-   that is deliberate: ADR-0067 is explicit that a mark carries a day and a
-   kind and nothing else - "never which appointment, never which letter" -
-   and the copy here has to name the thing ("Name-change hearing in 16
-   days"). The next dose slot needs no name, but it must account for logged
-   doses. The dose owner supplies that pairing rather than calendar marks.
-
-   **Nothing here ranks.** A row states the one fact nearest its own reason
-   for existing, and no row is urgent, late or due: the app ranks nothing
-   centrally (ADR-0073), so the rows keep their registry order and this
-   module never reorders anything. Nothing is coloured by how far off a fact
-   is either, which is ADR-0012's rule about what colour may encode - it is
-   for a normalized value on a scale, never for a distance in time. */
+   Use the record's name where copy needs it. Calendar marks carry only
+   a day and kind. Ask the dose area for the next uncovered slot, since
+   it can pair schedules with logged doses. Preserve registry order
+   and reserve color for normalized scale values (ADR-0012). */
 
 import { recoveryDay } from './recoveryDay';
 import type { Appointment, Milestone, Procedure, Tryout, WearKind } from './types';

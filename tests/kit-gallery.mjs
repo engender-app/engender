@@ -1,4 +1,4 @@
-/* Screenshots of the surface kit and the chart kit (phase 5 ticket 20),
+/* Screenshots of the surface kit and the chart kit,
    one per palette per theme.
 
    The kit has no screen to live on until the screen tickets land, so this

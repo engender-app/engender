@@ -1,27 +1,8 @@
 <script lang="ts">
-  /* The yearly wrapped (phase 4 features ticket 01, rebuilt on the kit by
-     phase 5 UX ticket 23). Deliberately not WrappedCompact with more cards
-     in it: a year holds twelve months of shape, and the interesting question
-     about it is where the shape went, which a 365-point day chart flattens
-     and a month-by-month strip shows.
-
-     So the structure is different rather than longer - a cover, the year
-     read month by month, its figures, and the photos as a strip you scroll.
-     The compact template's card-per-question layout is the right answer for
-     a week and the wrong one here.
-
-     The month strip was twelve hand-drawn bars with their own CSS, then the
-     kit's horizontal bars, then a grid of every day of the year as a mood
-     face each - 365 svgs and 1900px of them, with the year's own figures
-     pushed underneath (the whole-app audit's finding 7). Phase 11 ticket
-     07 put the figures first and made the year twelve shaded month columns on the
-     active scale's single-hue ramp (YearRows.svelte): a face wanted 27px,
-     a shaded cell wants none, and mood's own five hexes are all dark on the
-     dark theme at that size, which is what ADR-0025's ramp was never built
-     for. Twelve bars say where the shape went, and a year of cells says
-     what the year was. The cover keeps the year at display size over the flag's
-     own bands, which is the same treatment the kit's tile gives a number
-     that matters, in place of the gradient text the craft floor refuses. */
+  /* The yearly view leads with a cover and figures, then YearRows shows
+     daily readings grouped by month and photos follow in a scroll strip.
+     Shaded cells fit a year's worth of readings without the height of a
+     face per day. The cover uses the flag's bands and flat display text. */
   import { m } from '$lib/paraglide/messages';
   import { fmtDay, fmtMonthName } from '$lib/data/dates';
   import { epochDayFromLocalDate } from '$lib/data/epochDay';
@@ -75,7 +56,7 @@
     scaleTrend: DayAverage[];
     dimChange: RecapDimChange | null;
     topTags: { id: string; label: string; count: number }[];
-    /** The journey anchor's duration (phase 5 ticket 25), already named and
+    /** The journey anchor's duration, already named and
         formatted - the caller resolves the anchor milestone and formats its
         gap to today, the same division of labour dimChange's name
         resolution already follows. Null while no anchor is set - the figure
@@ -96,7 +77,7 @@
      rather than one stripe of it. */
   const AREA_ROLE = WRAPPED_AREA_ROLE;
 
-  /* The year, a day at a time, on the active scale (phase 11 ticket 07).
+  /* The year, a day at a time, on the active scale.
      Which scale is one preference with one control, set on the screen
      that draws the scales; the rows take it the way the calendar's month
      grid does. Each day steps onto the ramp's four shaded levels over the
@@ -180,7 +161,7 @@
   ]);
 
   /* The flag itself under the year, in its own hex values and its own
-     proportions, nudged for nothing (DIRECTION.md decision 1). */
+     proportions, nudged for nothing. */
   let flagFill = $derived(activeFlag.fill === 'none' ? undefined : activeFlag.fill);
 </script>
 
@@ -193,7 +174,7 @@
   <p class="wrapped-cover-intro">{intro}</p>
 </div>
 
-<!-- The year's figures first (phase 11 ticket 07): they sat under 1900px
+<!-- The year's figures first: they sat under 1900px
      of grid at y≈2550, and a retrospective's first answer is a number. -->
 <SectionHeading text={m.wrapped_year_figures()} />
 <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.figures)}>
@@ -256,8 +237,7 @@
   </ListCard>
 {/if}
 
-<!-- The year's letters, each opening on its own text (phase 5 deepening
-     ticket 13). They sit beside the milestones - both are records of the
+<!-- The year's letters, each opening on its own text. They sit beside the milestones - both are records of the
      year itself - and close the screen, so the last word a yearly wrapped
      leaves you with can be your own. The rows take the milestones'
      stripe: a fourth area role would re-shuffle every palette this screen

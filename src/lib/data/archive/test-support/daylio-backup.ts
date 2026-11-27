@@ -1,25 +1,13 @@
-/* The `.daylio` fixture pair (phase 7 ticket 09).
+/* Generate synthetic .daylio fixtures with fflate. Cover base64,
+   deflate and leading-slash asset paths. All names, notes and
+   checksums are invented.
 
-   Built here rather than checked in as two binaries, for one reason: the
-   source file this format was learned from was a real personal journal and
-   has been deleted, so the fixture is the only written record of the shape
-   besides the ticket. A JSON literal a reviewer can read and edit is worth
-   more than an opaque 4KB zip, and it still produces a real zip, written
-   by the same library that reads one (fflate) - a real base64 member, real
-   deflate on one entry, real leading-slash asset paths.
-
-   Nothing here came from the real file. Every name, note and checksum is
-   invented, in the shapes the ticket documents:
-
-     - `dayEntries.month` 0-based, `milestones.month` 1-based
-     - `note` and `note_title` absent rather than empty
-     - `note` bodies as HTML
-     - `mood` a foreign key into `customMoods`, whose `mood_group_id` is
-       the 1-is-best scale position
-     - `assets.checksum` as the file name, under `assets/photos/` for type
-       1 and `assets/audio/` for type 2
-     - `android_metadata` as JSON inside JSON
-     - a `pin` at the top level, which the parser has to strip */
+   Day-entry months start at 0; milestone months start at 1.
+   Omit missing notes and titles. Present note bodies as HTML.
+   Moods reference customMoods with a 1-is-best group position.
+   Name photos (type 1) and audio (type 2) by checksum. Encode
+   android_metadata as nested JSON and include the top-level PIN
+   the parser must strip. */
 
 import { zipSync } from 'fflate';
 

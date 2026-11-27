@@ -1,4 +1,4 @@
-/* The rune-free half of the tableVersions seam (ticket 27): the
+/* The rune-free half of the tableVersions seam: the
    write-announcement notify. The reactive version state lives in
    tableVersions.svelte.ts and is out of the Node tier's reach - `$state` is
    not defined there (ADR-0017) - so this covers only the subscribe/announce

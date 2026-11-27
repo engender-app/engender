@@ -1,5 +1,4 @@
-/* Which screen owns each kind of `dayAhead` mark (phase 10 redesign ticket
-   04, ADR-0074).
+/* Which screen owns each kind of `dayAhead` mark.
 
    Two modules draw a mark now - `dayAheadRows.ts` for `/day/[day]` and
    `agenda.ts` for Today - and both need to know where a row goes. This is

@@ -1,5 +1,4 @@
-/* Every record that carries a cost, in one read (functional audit ticket
-   30). The seam ticket 31's Cost reading in Look back stands on: it picks
+/* Every record that carries a cost, in one read. The seam ticket 31's Cost reading in Look back stands on: it picks
    the span and the presentation, and totals only through
    costTotalsByCurrency (cost.ts), which never adds two currencies together.
 

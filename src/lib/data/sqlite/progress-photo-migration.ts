@@ -1,23 +1,10 @@
-/* Version 120 (pre-release-human 12, bug 25): progress photos.
+/* Schema 120 adds a dated table for progress photos. Keep pose as text
+   without a CHECK. Unknown values read as Front in progressPhotos.ts.
 
-   A progress photo is a shot taken on purpose, in one of three poses, so
-   the same pose can be laid side by side over months. The photo library
-   (/media/photos) stays the place for every photograph the journal holds;
-   this is the record a person makes when the photograph is the point.
-
-   Its own table, dated in its own right, the same shape `hair_photo` has
-   (schema.ts says why a photograph is never a new owner arm on `photo`).
-   `pose` carries no CHECK, by the functional audit's CHECK policy: the
-   vocabulary is progressPhotos.ts's, and a pose the code does not know
-   reads as front.
-
-   The table joins `media_file`, so the library lists it and the orphan
-   sweep keeps its files (photoLibrary.ts, fileOwnership.ts). A view cannot
-   be altered, so it is dropped and created again: the arms before this one
-   are version 119's (hygiene-migration.ts) unchanged, and the new arm is
-   last, ranked after video so nothing already in the library moves within
-   its day. And it records its own deletions, which version 117 could not
-   do for a table that did not exist yet (deletion-migration.ts). */
+   Recreate `media_file` with the v119 arms unchanged. Append progress
+   photos after video so earlier same-day sorting stays stable. The view
+   serves the photo library and orphan sweep. Add the table's deletion
+   trigger for Archive Merge. */
 
 import { deletionTrigger } from './deletion-migration.ts';
 

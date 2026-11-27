@@ -62,4 +62,4 @@ The pool's size and preview are one constant in one place
 affirming-themes reading must agree. The screen's subtitle promises a rule
 the query keeps, and the two move together.
 
-History: decided 2026-08-22 (composer and entries removed); amended 2026-10 (snapshots dropped, widget copy fixed); screen renamed Safe space, formerly ADR-0040, 2026-11-02.
+History: decided 2026-08-22 (composer and entries removed); amended 2026-10 (snapshots dropped, widget copy fixed); screen renamed Safe space, 2026-11-02.

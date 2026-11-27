@@ -1,5 +1,4 @@
-/* What the density has to be true about, before it is drawn (redesign
-   ticket 42).
+/* What the density has to be true about, before it is drawn.
 
    The figure hands somebody three percentiles off a shape they have never
    seen. Once the shape is drawn, the three marks have to land on it where

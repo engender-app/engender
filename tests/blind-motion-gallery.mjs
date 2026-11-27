@@ -1,29 +1,12 @@
-/* Frame-by-frame captures of the field as a blind (redesign ticket 28).
+/* Record each blind transition with Chromium screencast and rAF samples
+   from view-transition pseudos. Measure the clip edge, content offset and
+   ring scale to review travel, overshoot, content overlap and corners.
+   Save JPEGs and per-frame times and trace in manifest.json for
+   tests/panel-motion-flipbook.mjs.
 
-   The ticket's claims are all about where one edge is on a given frame -
-   that it slides rather than crossfades, that the content under it travels
-   with it, that it runs past its mark and comes back, that no frame holds
-   two of the field's contents or a deformed corner. A still cannot show any
-   of that and a description cannot be held to it, so every scene here is
-   recorded twice over the same gesture: Chromium's screencast hands over
-   the real composited frames, which is the flipbook, and a rAF loop reads
-   the view transition's own pseudo elements every frame, which is the
-   number the flipbook is read against.
-
-   Reading the pseudos is what makes this a measurement rather than an
-   opinion. `getComputedStyle(document.documentElement,
-   '::view-transition-new(blind)')` answers with the clip the browser is
-   painting at that instant, so the blind's bottom edge, the content's
-   offset and every ring's scale come off the animation itself rather than
-   off a guess about it.
-
-   Frames land as JPEGs plus a manifest.json naming each scene, its frames,
-   the millisecond each was painted at, and its trace.
-   tests/panel-motion-flipbook.mjs turns that into one page.
-
-   Run: node tests/blind-motion-gallery.mjs [outDir]
-   Needs a demo build on disk (VITE_DEMO=1 npm run build); it serves
-   `build/` rather than building, so the same build can be recorded twice. */
+   VITE_DEMO=1 npm run build
+   node tests/blind-motion-gallery.mjs [outDir]
+   Serve the existing build/ so it can be recorded again. */
 import { preview } from 'vite';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';

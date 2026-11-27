@@ -119,7 +119,7 @@ export async function lookBackContracts(): Promise<Result[]> {
 
   Object.assign(prefs, { surfaceOverrides: {} });
 
-  /* What it cost (functional audit ticket 31). Every check above ran on a
+  /* What it cost. Every check above ran on a
      journal with no cost in it, which is the reading's absent case: no
      tile, and its screen says the span holds none. */
   const costTile = () => root().querySelector<HTMLAnchorElement>('[data-lookback-readings] [data-reading="cost"]');

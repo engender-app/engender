@@ -50,7 +50,7 @@ const documentNames = (row: DocumentFileRow) => documentFilesOf(row.file_path);
 const benchmarkNames = (row: BenchmarkFileRow) =>
   row.vowel_file_path ? [row.passage_file_path, row.vowel_file_path] : [row.passage_file_path];
 
-// Archive reads carry Trash too (functional audit ticket 48); media_file retains every current owner for cleanup.
+// Archive reads carry Trash too; media_file retains every current owner for cleanup.
 export const FILE_OWNERS = {
   photos: owner<PhotoRow>(
     'photo', ['file_path'],

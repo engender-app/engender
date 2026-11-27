@@ -1,4 +1,4 @@
-/* The day view's appointment rows (functional-audit ticket 26): a wait
+/* The day view's appointment rows: a wait
    reaches a day on its referred-on day and on each update's day, and each
    row says which of the three happened. */
 

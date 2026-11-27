@@ -1,75 +1,11 @@
 <script lang="ts">
   import type { TransitionConfig } from 'svelte/transition';
-  /* The visit (phase 8 features ticket 57, phase 11 all-four-doors ticket 12,
-     ADR-0066): one screen for the next appointment, what you want to raise at
-     it, and the ones already behind you.
-
-     ONE RECORD, ONE SCREEN. ADR-0066 decided there is one appointment record
-     and `hubRows.ts` said the rest in as many words - "prep, the record and
-     the debrief were three descriptions of one thing, and the one that names
-     it is the one that stays". The routes did not follow until this ticket:
-     `/health/appointment-prep` was the visit's real index (it carried In the
-     room, the debrief, the clinician summary and the next appointment's date)
-     while the screen named after the record was four rows long. The prep list
-     is a section here now and its address is a stub.
-
-     THE PREP LIST IS STILL STANDING AND UNOWNED. It is a section of this
-     screen rather than a property of the appointment on it: nothing ticks
-     itself off when a visit ends, the list is readable on a day with nothing
-     booked, and with no upcoming visit at all the screen opens on it under a
-     line saying so. What changed is where it is drawn, not what owns it.
-
-     THE GAP, AND WHERE A GAP MAY BE STATED. "in 12 days" beside the date is
-     ADR-0067's amendment (Alicja, 16 September 2026): a gap may be stated on
-     an area's own screen and on its hub or pinned row, and nowhere else that
-     is new. 0067 still refuses one on a calendar mark, because a mark is a
-     glance and a countdown is a demand; this screen is where somebody went to
-     read about the appointment. The words are `hubLabels.ts`'s `gapTo`, the
-     same arithmetic in the same units as the hub row above it, so the two
-     surfaces cannot drift apart.
-
-     TWO LISTS, ONE ORDER APIECE. What is still ahead reads soonest first,
-     because the next one is the one being prepared for; what has been reads
-     newest first, the way every other log on this app reads. Today's
-     appointment counts as coming up until the day is over, which is the same
-     line the debrief has always drawn (`appointments.ts`'s own selectors).
-
-     The next visit is the screen's opening and is not repeated in a list
-     under it - a second booking sits under "Later visits", which exists so
-     that a visit in December is still something you can open and edit, not
-     because the screen has two ideas of what is ahead.
-
-     WHAT LEFT WITH THE MOVE. The prep screen's stock cards went in ticket 09
-     (ADR-0084), "More than one regimen is running" is Care's sentence and is
-     drawn on Care, and the regimen row went with it. Its two "since your last
-     visit" readings - the labs and the side effects drawn between the last
-     appointment and today - went too: the debrief this screen offers already
-     opens pre-filled with both (`debriefNote.ts`, EntryEditor), which is
-     where that reading does work rather than sitting as reference.
-
-     ONE SCREEN PER APPOINTMENT (prh12). Each visit and each wait opens its
-     own screen, `[id]/+page.svelte`, where everything about it is laid out
-     and edited in place; it used to open an editor sheet over this list.
-     The header's add still opens a sheet here, and the new appointment
-     arrives in its list. The fields both ask are `AppointmentFields`.
-
-     WAITING LISTS (functional-audit ticket 26). An appointment with no day is
-     a wait: a referral to a clinic, an NFZ queue, a surgery list. The editor
-     is the same one with the day left empty, plus the day it was referred
-     on and, once saved, its dated updates. The waits sit right under the
-     opening block, because how long somebody has been on a list is as much
-     "what is true now" as the next visit is. Each says how long it has been,
-     from the referred-on day to today, and nothing about how long is left:
-     the app has nothing to predict a queue from (`waitingSince`).
-
-     A TIME AND A WHO (functional-audit ticket 27). A visit with a day can
-     keep its time, which then rides along on its rows and the opening and
-     goes to the calendar hand-off without being asked for again. The "who"
-     is the person's own record of somebody they see: picked from chips in
-     the editor, or made there and attached in one go, and listed at the
-     foot of the screen with a contact, how trans-competent they were and
-     impressions. Nothing about a provider is shared or rated anywhere but
-     here. */
+  /* Appointments use one record and shared fields for visits and waits (ADR-0066).
+     Show the nearest visit first, then waits. Later visits sort soonest first and
+     past visits newest first. Today stays upcoming through the day. Use gapTo on
+     the visit and hub, and omit countdowns from calendar marks (ADR-0067).
+     Waits lack a date and show time since referral. Prep is available without a
+     visit. Debrief opens EntryEditor with lab and side-effect context. */
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
@@ -135,7 +71,7 @@
   let proceduresQuery = liveList((j) => j.procedures.getProcedures());
   let procedureNames = $derived(new Map(proceduresQuery.rows.map((p) => [p.id, p.name])));
 
-  /* The people this person sees (ticket 27), by name, and each one's name
+  /* The people this person sees, by name, and each one's name
      by id so a row can say who without a second read. */
   let providersQuery = liveList((j) => j.appointments.getProviders());
   let providerNames = $derived(new Map(providersQuery.rows.map((p) => [p.id, p.name])));
@@ -181,8 +117,7 @@
      after the first one has already eased into its resting height - the
      block between them (its heading, its screen part, its list) rode the
      first read's settle up a few px, then the checklist's own growth shoved
-     it and everything after it back down, a direction reversal (ux-carpet
-     ticket 238). Neither ReadGate sees the other's read, so `gateTogether`
+     it and everything after it back down, a direction reversal. Neither ReadGate sees the other's read, so `gateTogether`
      holds each one at "loading" until both have answered - one combined
      resize instead of two, a frame apart. Latched like `visitsRevealed`
      further down: once both have answered once, a later refetch of
@@ -316,7 +251,7 @@
     kind: string;
     place: string;
     note: string;
-    /** `HH:MM` or empty (ticket 27). */
+    /** `HH:MM` or empty. */
     time: string;
     providerId: string | null;
     cost: CostDraft;
@@ -366,7 +301,7 @@
     record.openEditor(null);
   }
 
-  /* The provider's own sheet (ticket 27), opened from the list at the foot
+  /* The provider's own sheet, opened from the list at the foot
      of the screen, or from "Someone new" in the new appointment's fields,
      which picks what is saved there. */
   let providerSheet = $state<ProviderSheet>();
@@ -375,7 +310,7 @@
     [provider.competence ? competenceLine[provider.competence]() : undefined, provider.contact ?? undefined]
       .filter((part): part is string => part !== undefined);
 
-  /* Latched: a reserve must not put its placeholder back (ticket 211). */
+  /* Latched: a reserve must not put its placeholder back. */
   let visitsRevealed = $state(false);
   $effect.pre(() => {
     if (!appointmentsQuery.loading) visitsRevealed = true;
@@ -415,7 +350,7 @@
     {/snippet}
   </ScreenHeader>
 
-  <!-- The opening (DIRECTION.md rule 16): what is true now, before any log.
+  <!-- The opening: what is true now, before any log.
        A block rather than a row, because the gap is the reading and a row
        would put it in a subtitle beside the address. It opens the visit's
        own screen, like every row under it. -->
@@ -438,7 +373,7 @@
         >
           <!-- Each line crosses when the visit under it changes - a wait
                given a day sooner than the booked one takes the block over
-               (ticket 26) - the new words fading in and the old ones off
+                - the new words fading in and the old ones off
                where they stood, rather than cutting. The lines' own box
                travels its height (`resize`) when the new words take more or
                fewer lines; its own box rather than the button's, which
@@ -517,9 +452,8 @@
   <div class="screen-part">
     <ListCard role={roleAt(activeFlag.roles, 2)}>
       <!-- Always, which is the merge of two gates that disagreed. The prep
-           list drew this row only once a question existed (ticket 71) and
-           the appointments screen drew it only on the day of a visit (ticket
-           60); on one screen either gate hides a verb the other would have
+           list drew this row only once a question existed and
+           the appointments screen drew it only on the day of a visit; on one screen either gate hides a verb the other would have
            shown, and this ticket asks for two verbs rather than however many
            the state allows. The room owns the empty case itself - it opens
            on `in-the-room-empty`, whose action is the way back here. -->
@@ -540,12 +474,11 @@
     </ListCard>
   </div>
 
-  <!-- Held until the appointments have answered, then faded in (ux-carpet
-       ticket 211): the later and past visits cut in at full opacity under
+  <!-- Held until the appointments have answered, then faded in: the later and past visits cut in at full opacity under
        the gate above when they did. -->
   <ReadReserve ready={visitsRevealed} estimate={visitsEstimate} onrest={visitsRemember}>
     <!-- Each section and each row opens and closes its own height: a wait
-         given a day arrives in one of these lists (ticket 26), and a row
+         given a day arrives in one of these lists, and a row
          that appeared where it lands would be a yank. -->
     {#if later.length}
       <div transition:collapse>
@@ -575,7 +508,7 @@
                    would read as the debrief of whichever visit the eye lands on
                    next, which is the reading ticket 58 already fixed once on the
                    completed row. It opens and closes its height, so the offer
-                   arrives by moving (ADR-0078).
+                   arrives by moving.
 
                    Its own handle rather than Home's `data-debrief-offer`: Home
                    draws the same offer as a Notice with a Notice's controls, and
@@ -616,7 +549,7 @@
     {/if}
   </ReadReserve>
 
-  <!-- Who you see (ticket 27): the person's own notes on each provider,
+  <!-- Who you see: the person's own notes on each provider,
        last because they are reference rather than what is true now. Each
        row opens its notes; a row arrives and leaves by its own height. -->
   <SectionHeading text={m.provider_heading()}>
@@ -695,7 +628,7 @@
 
 <style>
   /* The opening block: the area's own stripe at its real hex with the visit
-     written on it, the same material a tile is (DIRECTION.md rule 3). The
+     written on it, the same material a tile is. The
      gap is the reading and takes the display face; the kind names it above,
      and where and when sit under it in the quiet half of the block's ink.
 
@@ -719,8 +652,7 @@
     font-family: inherit;
     text-align: left;
     text-decoration: none;
-    /* A block arrives by clipping open from its own left edge (rule 10,
-       ADR-0078). `kit-block-in` by name rather than a keyframe of this
+    /* A block arrives by clipping open from its own left edge. `kit-block-in` by name rather than a keyframe of this
        screen's own: it is the kit's movement for a block and this is a
        block, and a second copy of those two frames would be two things to
        keep in step. Svelte only rewrites the names it declares itself, so a

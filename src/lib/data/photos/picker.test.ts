@@ -62,7 +62,7 @@ const noChannel = (): void => {
 
 /** The channel is absent and the bridge walks a picked file in pieces, one
     per call, saying so on the last - which is the shape
-    PhotosPlugin.readPickedChunk answers in (phase 9 audit ticket 14). */
+    PhotosPlugin.readPickedChunk answers in. */
 const bridgeAnswers = (chunks: number[][]): void => {
   noChannel();
   let next = 0;

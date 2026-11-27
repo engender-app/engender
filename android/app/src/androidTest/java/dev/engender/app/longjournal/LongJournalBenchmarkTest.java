@@ -32,22 +32,14 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Runs the ten-year Journal benchmark over the native Android driver.
+ * Benchmark the native Android driver over 3231 entries, 3653 days,
+ * 375 photos, 122 labs and 12 milestones. Check 23 timings against
+ * android-budgets.json using the shared web fixture and measurement.
  *
- * <p>Generates 3231 entries over 3653 days, 375 photos, 122 lab results and 12
- * milestones through the same probe generate.ts and measure.ts use on the web, then
- * checks twenty-three timing measurements against the budgets in android-budgets.json.
- *
- * <p>The probe bundle is built by tests/android-tier/run.mjs (ANDROID_TIER_PROBE=long-journal)
- * and shipped as an androidTest asset under long-journal-probe/. The WebView runs it
- * through Bridge.setServerBasePath, exactly as the contract and archive probes do.
- *
- * <p>Baselines of zero in android-budgets.json mean the numbers have not been recorded
- * on a real device yet. The test runs and prints measurements in that state, but does
- * not fail on budget: the point is to let the first run on a real device produce the
- * numbers that go into the file, not to gate on placeholder zeroes. Re-record by
- * running this test with the recording flag set, copying the logged JSON into
- * android-budgets.json, and committing the result.
+ * <p>tests/android-tier/run.mjs builds ANDROID_TIER_PROBE=long-journal
+ * into androidTest assets and Bridge.setServerBasePath serves it.
+ * Zero baselines print timings without enforcing budgets. Re-record
+ * with the recording flag and copy logged JSON into the budget file.
  */
 @RunWith(AndroidJUnit4.class)
 public class LongJournalBenchmarkTest {

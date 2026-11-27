@@ -1,5 +1,4 @@
-/* What a photo journey export is made of, before any pixels exist (ticket
-   27).
+/* What a photo journey export is made of, before any pixels exist.
 
    The whole export is two steps the user takes separately: generate, then
    share. This module is everything the first step can decide without a

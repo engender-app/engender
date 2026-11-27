@@ -1,23 +1,10 @@
-/* The Settings > Security screenshot blocker, over a demo build (tester
-   report 02, ticket 02).
+/* Check the Android-only screenshot switch on a demo web build. Spoof
+   Capacitor's platform only for Security's mount. Check the default, persisted
+   choice, English and Polish labels, and thumb movement in both themes.
 
-   The row is Android-only and the web build has no Android behind it, so the
-   Capacitor platform answer is swapped for the one navigation that mounts the
-   row and put back before anything else can take the Android path (the
-   Security screen asks once, when it mounts).
-
-   Checks: the switch is named "Block screenshots" and is off on a fresh
-   journal; switching it on survives a reload; the same in Polish; and the
-   thumb travels there instead of arriving, sampled on every animation frame
-   in both themes.
-
-   node tests/screenshot-block-row-check.mjs [--root <tree with build/>]
-     [--shots <dir>]   also writes a crop of the row per theme, language and state
-     [--frames <dir>]  also writes the compositor frames of each flip, with a manifest
-     [--before]        capture only, for a build from before the change: the
-                       same crops and flips, nothing asserted
-
-   Requires `VITE_DEMO=1 npm run build`. */
+   Run node tests/screenshot-block-row-check.mjs after VITE_DEMO=1 npm run build.
+   --root selects the build, --shots and --frames save evidence, and --before
+   captures without assertions. */
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { createReporter, launchChromium, previewBuild, screencast, setAppLanguage, settlePage } from './browser-harness.mjs';

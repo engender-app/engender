@@ -7,25 +7,13 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 /**
- * Runs the JS driver's calls in the order it made them, whatever order they
- * arrive in (ux-carpet 200, ADR-0089).
+ * Run calls in each driver's {@code seq} order, starting at 0 for open
+ * (ADR-0089). Hold early arrivals until ready, then drain consecutive
+ * calls. This keeps transaction ordering without waiting a bridge trip
+ * between statements.
  *
- * <p>The driver no longer waits for one bridge call to come back before it
- * sends the next: that wait was a full round trip per statement, 9-11 ms on
- * the Pixel, and the whole of a warm screen's delay. So order is this class's
- * job now. Every sequenced call carries the driver's {@code session} (one per
- * {@code createAndroidSqlite}) and a {@code seq} counting up from 0, the open.
- * A call whose turn has come runs at once, followed by any held calls it
- * unblocks; a call that arrives early is held until the calls before it have
- * run. Capacitor 8.5 happens to deliver plugin calls in order on one thread,
- * but that is its internal, and a BEGIN before its statements and the
- * migration runner's composition are too load-bearing to rest on it.
- *
- * <p>Not thread-safe by design: every call to {@link #accept} is made on the
- * plugin's one worker thread, so the state here is only ever touched from
- * there. Closing a driver drops its sequence state and refuses later calls.
- * A bounded set remembers recent closed sessions without accumulating one
- * map per unlock.
+ * <p>Only the plugin worker calls {@link #accept}. Close drops sequence
+ * state and a bounded set rejects late calls from recent closed sessions.
  */
 final class CallSequencer {
 

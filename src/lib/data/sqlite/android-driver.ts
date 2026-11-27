@@ -1,35 +1,11 @@
-/* The Android driver (ticket 11): the same SqliteDriver the web tier
-   satisfies, over the local Capacitor plugin in
-   android/app/src/main/java/dev/engender/app/sqlite/.
+/* Implement SqliteDriver over the local Android SQLCipher plugin
+   (ADR-0018, ADR-0020). Pass the Keystore data key without deriving a new
+   key on the bridge.
 
-   Why a local plugin rather than @capacitor-community/sqlite is ADR-0020's
-   ticket 11 amendment, and it comes down to the key: that plugin takes a
-   passphrase and derives the database key itself, where ADR-0018 wants a
-   random data key held by the Keystore and handed to SQLCipher raw. So
-   `dataKey` here leaves as hex and nothing on either side of the bridge
-   stretches it.
-
-   The key is optional and unset for now. Ticket 11 lands the shell, the
-   bridge and the driver; ticket 13 lands the Android Keystore that produces
-   the key, and the only change it needs here is a caller that passes one.
-
-   Calls are pipelined: each one crosses the bridge the moment it is made,
-   without waiting for the one before it to come back (ux-carpet 200,
-   ADR-0089). Waiting was a full round trip per statement, 9-11 ms on the
-   Pixel against about 1 ms sent together, and a warm screen makes 85-130 of
-   them. Order still matters as much as it did - post-order is what the
-   migration runner's callback composition assumes, and what makes a BEGIN
-   arrive before the statements written after it - so every call carries
-   this driver's session and a sequence number counted from the open, and
-   the plugin runs them strictly in that order on its own single thread,
-   holding back any that arrive early (CallSequencer.java). File operations
-   made after the close are the one exception and go on a second session
-   (fileCall below, ui 33). Capacitor 8.5
-   happens to deliver plugin calls in order, but that is a framework
-   internal, and the order here is ours to own.
-
-   withReadSnapshots() reserves the connection for the supplied transaction
-   scope. Unrelated calls wait through COMMIT or ROLLBACK. */
+   Pipeline calls (ADR-0089). Session and sequence numbers let
+   CallSequencer.java execute them in order even when bridge delivery
+   varies. File operations after close use a second session.
+   withReadSnapshots() reserves the connection until commit or rollback. */
 
 import { registerPlugin } from '@capacitor/core';
 import type { SqliteDriver } from './driver.ts';
@@ -63,7 +39,7 @@ interface SqliteBridge {
 
 const Sqlite = registerPlugin<SqliteBridge>('Sqlite');
 
-/** The reset path's wipe on Android (ticket 13, ADR-0014). The journal's
+/** The reset path's wipe on Android (ADR-0014). The journal's
     files live in app-private storage, so emptying the OPFS root - which is
     all the web's reset has to do - does not touch them.
 
@@ -134,19 +110,12 @@ export function createAndroidSqlite(databaseName: string, dataKey?: Uint8Array):
       throw (await opened) ?? error;
     });
 
-  /* The failure screen's file operations come after the close (ui 33).
-     boot() closes the driver when a migration fails, and the plugin refuses
-     every later call on a closed session, so asking for the pre-migration
-     copy there was refused and read as "no copy": the restore was never
-     offered although the copy was on disk. Once this driver is closed its
-     file operations go on a session of their own. The plugin's connection
-     still knows the journal's file and key after a close. A call on the new
-     session waits for the close to come back before it is sent, since two
-     sessions are not ordered against each other by the plugin and the order
-     is ours to own. One session for whatever comes after the close, not one
-     per call, and it is never closed: its close would close the plugin's one
-     connection, which by then may belong to the next driver. That leaves
-     one empty entry in the plugin's session map per failed boot. */
+  /* Failed migration closes the driver before recovery file operations.
+     Use one new session for those calls and wait for the close first
+     because sessions have independent ordering. The plugin retains the
+     journal path and key. Leave the recovery session open because
+     closing could close the next driver's connection. This leaves one
+     empty session entry per failed boot. */
   let closing: Promise<unknown> | null = null;
   let afterClose: (() => Stamp) | null = null;
   const fileCall = <T>(send: (stamp: Stamp) => Promise<T>): Promise<T> =>
@@ -206,7 +175,7 @@ export function createAndroidSqlite(databaseName: string, dataKey?: Uint8Array):
     /* Closes the connection on the way, like the web tier's does and for the
        same reason: it is holding the file being replaced. The caller reloads
        afterwards rather than carrying on over a driver whose database is
-       gone (ticket 04). */
+       gone. */
     async restorePreMigrationCopy() {
       await fileCall((s) => Sqlite.restorePreMigrationCopy(s));
     },

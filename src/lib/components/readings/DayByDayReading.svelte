@@ -1,24 +1,12 @@
 <script lang="ts">
-  /* Day by day: the active scale over the span, with a second scale on
-     offer, and where every scale sat over the period (phase 11 ticket 07,
-     moved off the Look back door's scroll into a reading of its own).
+  /* The tile and detail share one active-scale read. Detail offers a
+     second scale, off by default, period averages and an accessible
+     values list.
 
-     Two views of one read. On the door it is a tile: a 2px line of the
-     series and the active scale's average as the figure. On its screen it
-     is the two cards the door used to draw - the chart with its picker and
-     the second-scale offer, and "Each scale, this period" under it, since
-     that card reads the same series and was the chart's companion on the
-     door - plus the hidden values list, which is the only path a screen
-     reader has through the series.
-
-     The chart fits the card, so what changes with the range is how coarsely
-     it reads: 30 days day by day, a year week by week ($lib/charts/grain).
-     The grain decides how the scrubbed position is named too - a week's
-     reading is a week, and dating it to its Monday alone would be a day
-     standing in for seven. The second scale is opt-in and empty by default:
-     a comparison is a question somebody has to have first (phase 6 ticket
-     12). Both series bucket separately and are read onto the first's
-     positions, since the chart places by index. */
+     Use the span's grain for both grouping and scrub labels. A week
+     bucket must be named as a week. Bucket both scales separately, then
+     align the second to the first scale's positions because the chart
+     places points by index. */
   import { m } from '$lib/paraglide/messages';
   import { fmtDay } from '$lib/data/dates';
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
@@ -109,8 +97,7 @@
         key: standing.key,
         name: metric?.name ?? standing.key,
         note: m.n_days({ n: standing.days }),
-        /* Empty rather than a dash on a scale nothing was logged against:
-           docs/ui-copy.md has no dashes in it. */
+        /* Leave an unlogged scale blank. */
         value: standing.value === null ? '' : nativeValue(standing.key, standing.value),
         amount: standing.share
       };

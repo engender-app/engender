@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* Changing the journal passphrase (ticket 09). This rewraps the random
+  /* Changing the journal passphrase. This rewraps the random
      data key under the new passphrase (crypto/keystore.ts) - the journal
      itself is not re-encrypted, so the change is instant regardless of
      journal size, and an interrupted one loses nothing: the keystore file
@@ -69,7 +69,7 @@
       /* Only a passphrase that did not unwrap the key is the current
          passphrase's fault. A keystore that would not read or write is
          something else, and blaming the typing sent people to retype a
-         passphrase that was right (after-release ticket 09). */
+         passphrase that was right. */
       console.error('changing the passphrase failed', e);
       error = e instanceof DecryptionFailedError ? m.pp_change_wrong_current() : m.pp_change_failed();
       if (e instanceof DecryptionFailedError) errorAt = 'current';

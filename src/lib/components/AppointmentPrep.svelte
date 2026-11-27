@@ -1,14 +1,12 @@
 <script lang="ts">
-  /* "What to raise": the standing appointment prep list (phase 5 ticket 11,
-     ADR-0066), with its add, tick, carry-forward flag and delete. The list
+  /* "What to raise": the standing appointment prep list (ADR-0066), with its add, tick, carry-forward flag and delete. The list
      is standing and unowned - nothing ticks itself off when a visit ends -
      so the appointments list and each upcoming appointment's own screen
      draw the same one list (prh12, the screen per appointment). Its own
      component so those two cannot drift.
 
      The read is handed in rather than made here: the list screen holds this
-     read at "loading" until its visit read has answered too (ux-carpet
-     ticket 238), and that gate is the list's business. */
+     read at "loading" until its visit read has answered too, and that gate is the list's business. */
   import { journalTextAutocomplete } from '$lib/platform';
   import { m } from '$lib/paraglide/messages';
   import { journal, type LiveList } from '$lib/data/live/journal.svelte';
@@ -81,11 +79,11 @@
 <ReadGate {read} variant="line" count={3}>
   {#snippet rows()}
     <ListCard role={roleAt(activeFlag.roles, 1)}>
-      <!-- Hand-rolled rather than ListRow (ticket 16): two trailing actions
+      <!-- Hand-rolled rather than ListRow: two trailing actions
            (carry-forward flag, delete) where `action` takes one, and a
            checkbox main that's role="checkbox" with its own .ap-box.
 
-           Each row opens and closes its own height (ADR-0078), so an item
+           Each row opens and closes its own height, so an item
            added from the sheet arrives by moving rather than appearing
            where it lands. -->
       {#each items as item (item.id)}

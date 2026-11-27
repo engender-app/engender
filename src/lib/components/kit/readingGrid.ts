@@ -1,28 +1,12 @@
-/* How a reading tile joins and leaves the Look back door's grid, and how the
-   tiles around it get to their new cells (ux-carpet ticket 196).
+/* The reading grid manages all cell movement during a span change.
+   Lift outgoing tiles out of flow where painted via gridCell, then fade
+   them there. Fade incoming tiles at their new cells. settleCells
+   applies FLIP after membership or size changes, using the last painted
+   position even when an earlier move is still running.
 
-   Dragging the span changes which readings have anything to say, so tiles
-   come and go and every tile after them changes cell. Through `collapse`,
-   each leaving tile settled the grid on its own, measuring it with only
-   itself taken out: a span that emptied six readings at once sent the
-   survivors 340px off either side of the screen, and before that fix a
-   stale `skip` had them all leave in one frame with the rest snapping into
-   place. The grid is the one thing that knows every cell, so it does the
-   travel:
-
-   - A leaving tile is lifted out of flow where it stands (`gridCell`) and
-     fades there. Written to the node's style directly, the way `crossfade`
-     does it (ticket 153), so no frame has it in flow and out of place.
-   - An arriving tile fades in at its cell.
-   - After any change to the set, and any change to the grid's size, every
-     tile still in the grid that is not where it was travels there from
-     where it was last painted (`settleCells`, a FLIP), including a tile
-     already in the middle of an earlier travel.
-
-   The column a tile sits in is written onto it here (`data-col`,
-   `data-below`) rather than read off `:nth-child`, because a leaving tile is
-   still a child for as long as it fades and would push every rule after it
-   one place along. */
+   Write data-col and data-below explicitly. A departing tile stays a DOM
+   child until its fade completes, so nth-child would count the wrong
+   columns. */
 import type { Action } from 'svelte/action';
 import type { TransitionConfig } from 'svelte/transition';
 import { stillArriving } from '../../motion/screenArrival';

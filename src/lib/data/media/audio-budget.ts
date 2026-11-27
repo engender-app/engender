@@ -1,24 +1,8 @@
-/* The duration budget for audio that is about to be decoded (security-scan
-   ticket 07, GD-017).
-
-   `decodeAudioData` turns a file into PCM for its whole length before
-   anything else can look at it, so the cost of a recording is its
-   duration times its channels, not its size on disk: ten minutes of
-   Opus is a few hundred kilobytes and several hundred of floats. The
-   container says how long it is long before a decoder has to, so that is
-   read first.
-
-   **Why two hours.** The app's own recorder has no length cap, and the
-   stored ceiling for a recording is 10 MiB, which is about 43 minutes
-   of the app's Opus (voiceRecording.ts). Two hours is nearly three times
-   that, and what the decode costs there is bounded: 7200 s at the 8 kHz
-   the waveform decodes at is 230 MB of floats. A recording that is
-   longer still is not refused as a file - it is stored and played - it
-   just has no waveform and draws a plain track.
-
-   **Channels** count against the same budget, as channel-seconds: stereo
-   at the full two hours is allowed, eight channels are allowed for
-   thirty minutes. */
+/* Read duration and channels before decoding PCM. The waveform
+   budget allows two hours of stereo at 8 kHz (about 230 MB) or
+   thirty minutes with eight channels. Oversized audio still stores
+   and plays with a plain track. The app's 10 MiB recording limit
+   holds about 43 minutes of its Opus. */
 
 import { MediaBudgetError } from './budget';
 

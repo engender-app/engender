@@ -1,5 +1,5 @@
 /* The journal reads behind one side of /compare and the compare tile on
-   Look back (pre-release-human ticket 21). One function for both, so the
+   Look back. One function for both, so the
    tile's headline and the screen's headline come from the same numbers.
 
    Every read starts in the same synchronous turn, so a liveQuery calling

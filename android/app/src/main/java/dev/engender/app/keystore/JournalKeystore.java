@@ -30,52 +30,18 @@ import javax.crypto.Cipher;
 import javax.crypto.spec.OAEPParameterSpec;
 import javax.crypto.spec.PSource;
 
-/**
- * Where the Journal's data key lives on Android.
+/** Wraps the journal's 32-byte data key with an Android Keystore key pair.
  *
- * <p>The key itself is 32 random bytes, the same key the web mints and wraps
- * under a passphrase. Here it is wrapped by a key pair that Android Keystore
- * generated and will not hand out: the private half never leaves the
- * platform's keystore, and it is bound to the device's lock screen, so it
- * cannot be used until Android says somebody authenticated. A copy of the
- * app's files therefore yields the wrapped blob and nothing that opens it,
- * which is the claim {@code AndroidEncryptionClaimTest} proves by reading
- * the bytes.
+ * <p>The public key can create the wrap without a prompt on first run.
+ * The private key stays in Keystore. For a wrap bound to the device lock,
+ * API 30 and later authorize the specific {@link Cipher}. Earlier APIs
+ * authorize a short window after a successful device credential prompt.
+ * {@code AndroidEncryptionClaimTest} checks the at-rest protection.
  *
- * <p><b>Why a key pair rather than AES.</b> A user-authentication-bound
- * symmetric key requires authentication for encryption as well as
- * decryption, which would mean a biometric prompt on a first run - before
- * there is a Journal, to protect nothing - and would leave the wrap itself
- * untestable without a person's finger. With RSA the public half wraps
- * freely and only the private half asks. First run is silent; every later
- * boot asks; and the instrumentation test can create a real key on a real
- * device and then prove that unwrapping it without authenticating fails.
- *
- * <p><b>Two ways to be authorized</b>, because the platform changed. From
- * API 30 the key is per-use authorized and the prompt carries the very
- * {@link Cipher} it authorizes, so nothing but that operation is unlocked.
- * Below 30, {@code CryptoObject} cannot be combined with the device
- * credential at all, so the key is authorized for a few seconds after a
- * successful prompt instead and the unwrap happens inside that window. The
- * weaker of the two is the one the platform offers there.
- *
- * <p><b>The cliff, stated once.</b> A Keystore key bound to the lock screen
- * is destroyed by the platform when that lock screen is removed. The wrapped
- * blob outlives the key that opens it, so this file has nothing left to give:
- * that is the Android shape of "forgotten credentials have no
- * data-preserving recovery", it is reported as its own state rather than as a
- * failed finger (BiometricOutcomes.KEY_INVALIDATED), and the copy that tells
- * people to keep a screen lock and export Archives is the mitigation.
- *
- * <p>The journal itself can now survive that, which is a claim
- * about a different file rather than about this one. A recovery key seals the
- * same 32 bytes under 120 bits somebody wrote down, in recovery-key.json,
- * which no Keystore alias is involved in - so a destroyed alias is no longer
- * the end of the journal for anyone who made one. Nothing here changes: this
- * class still holds a blob it cannot open, and it is not what opens it. The
- * entry path that offers the written key is AndroidKeyGate's, on the
- * invalidated screen this paragraph describes: where a recovery key exists
- * that screen leads with it rather than offering a reset and nothing else.
+ * <p>Removing the device lock invalidates its key. The app reports
+ * {@code BiometricOutcomes.KEY_INVALIDATED}. If the person saved a recovery
+ * key, AndroidKeyGate can open the separate recovery wrap. Keep a screen
+ * lock and export Archives to preserve recovery options.
  */
 public final class JournalKeystore {
 

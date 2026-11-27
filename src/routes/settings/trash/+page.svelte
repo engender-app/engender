@@ -27,7 +27,7 @@
     return Math.max(0, TRASH_WINDOW_DAYS - elapsedDays);
   }
 
-  /* One restore at a time across the list (last-audit UI ticket 46): a
+  /* One restore at a time across the list: a
      second tap while one is in flight writes nothing, and a restore that
      fails says so and leaves its row where it was for another try. */
   const restoring = writer();
@@ -41,7 +41,7 @@
 
   const dayOf = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
 
-  /* Delete forever (functional audit ticket 46). It cannot be undone, so
+  /* Delete forever. It cannot be undone, so
      the sheet asks first and the screen keeps a result line afterwards,
      focused, rather than a toast that goes away (the repo's rule for an
      action with no way back). Each purge gets its own line key so a second
@@ -95,7 +95,7 @@
         <ListCard>
           {#each trashed as entry (entry.id)}
             <!-- Wrapped so a restored row gives its height back and the rows
-                 under it close up with it (ADR-0078), rather than leaving in
+                 under it close up with it, rather than leaving in
                  the frame its read answers. -->
             <div class="rows-divide" transition:collapse>
               <ListRow

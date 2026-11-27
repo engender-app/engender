@@ -1,31 +1,11 @@
-/* The More hub's search, when a query stops matching (phase 12 ux-carpet
-   ticket 206).
+/* Type from a matching More search to zero matches and sample each frame.
+   Painted blocks must collapse from above 2px before disappearing. A
+   step of 2px or more needs at least four frames in the same direction.
+   The empty notice starts clipped or transparent. Exclude fully hidden
+   movement because getBoundingClientRect ignores clip-path.
 
-   Typing past the last match used to leave the last card standing,
-   still about 170px tall, for some 550ms and then remove it in one frame,
-   while the "nothing found" notice, which had already arrived underneath
-   it, jumped up 190px into its place. So: settle the hub on a query with
-   matches, type one that has none, and sample every frame after the
-   keystroke for:
-
-   - a block in the results, or under them, that is gone the frame after it
-     stood more than 2px tall (a vanish rather than a collapse);
-   - a step of 2px or more outside a run of 4+ frames moving the same way
-     (home-fold-reserve.mjs's travel rule, ticket 183);
-   - the notice's first frame painting anything: it arrives by `collapse`,
-     clipped from above (memory: a collapse arrival animates clip, not
-     height), so its first frame must be clipped whole or transparent.
-
-   The first two count only what was painted. A box clipped whole or
-   transparent in both frames of a step can change place without anyone
-   seeing it, and getBoundingClientRect ignores clip-path: the notice
-   sometimes mounts a frame before the count line's disclose pushes the
-   results down, and rode that 12.7px step while still clipped to nothing,
-   which failed about one records flow in ten at 4x CPU (ticket 224).
-
-   Against a demo build:
-     VITE_DEMO=1 npm run build
-     node tests/more-search-nothing-found.mjs [--runs 3] [--root <built tree>] */
+   VITE_DEMO=1 npm run build
+   node tests/more-search-nothing-found.mjs [--runs 3] [--root <built tree>] */
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launchChromium, settlePage, previewBuild } from './browser-harness.mjs';
@@ -90,20 +70,11 @@ const SAMPLER = `new Promise((done) => {
    height from above, or at opacity 0.05 or less, it does not. */
 const painted = (box) => box != null && box.o > 0.05 && box.clipTop < box.h - 1;
 
-/* Keeps the samples that are one frame apart and marks the ones that are
-   not. The sampler reads in a timeout after
-   each animation frame, and under 4x CPU throttling that timeout sometimes
-   lands a frame late and the next one a few ms after it, so one step spans
-   two frames and the next is a copy of the same layout (ticket 224: a 12.7px
-   step 27ms after the sample before it, then an identical sample 4ms later,
-   read as a one-frame move and as the notice's first frame already 19px
-   open). A copy taken under half a frame after the sample before it is
-   dropped, and a sample over a frame and a half after the one before it is
-   marked, so the one-frame rules below do not judge a step they did not see
-   whole. The jump and vanish rules still apply across it. What that leaves
-   unjudged, a 2-24px step straight after a gap, is printed under the run
-   rather than dropped, so a real mid-size move that lands on a throttling
-   hiccup is still in front of whoever reads the output. */
+/* Under CPU throttling, the sampler's post-rAF timeout can land a
+   frame late. Drop duplicate timing samples below half a frame apart
+   and mark gaps above 1.5 frames. Skip one-frame judgments across
+   gaps, keep jump and vanish checks, and report 2–24px steps after
+   a gap for review. */
 function consecutive(samples) {
   const kept = samples.filter(
     (s, i) => i === 0 || s.at - samples[i - 1].at >= 8 || JSON.stringify(s.boxes) !== JSON.stringify(samples[i - 1].boxes)

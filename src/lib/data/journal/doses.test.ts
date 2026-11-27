@@ -174,7 +174,7 @@ test('a corrective episode with a past start date changes which episode an alrea
 
   // Logged well after the fact: the episode that was really in effect.
   // Correcting the mistaken one's end alongside it is what makes this a
-  // real correction rather than two drugs concurrently active (ticket 38) -
+  // real correction rather than two drugs concurrently active -
   // the person is saying "this one was wrong", not "both were true".
   await journal.regimen.endEpisode(wrongId, 139);
   await episode(journal, 140, 'estradiol valerate');
@@ -680,7 +680,7 @@ test('countConsumingDosesByDrug refuses overlapping ranges and backwards ones', 
   );
 });
 
-/* Auto-logging (phase 11 ticket 11, ADR-0086). The slot walk itself is
+/* Auto-logging (ADR-0086). The slot walk itself is
    doseSchedule.test.ts's; what these cover is the area around it - which
    schedules it visits, what the rows it writes say, and that running it
    again writes nothing. */
@@ -924,7 +924,7 @@ test('a schedule round-trips the day auto-logging went on, and null again once i
 test('an auto-logged dose names its episode\'s drug, so two regimens at once stay told apart', async () => {
   /* A dose logged by hand can leave `drug` null because the person was on
      one screen for one drug. This one is written unattended, and
-     attribution has nothing else to go on (phase 11 ticket 11). */
+     attribution has nothing else to go on. */
   const { journal } = await journalWithBuiltIns();
   await autoLogging(journal, { startEpochDay: 19000, fromEpochDay: 19099 });
   await episode(journal, 19000, 'spironolactone');

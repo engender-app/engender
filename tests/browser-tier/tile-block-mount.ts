@@ -1,4 +1,4 @@
-/* Mounts the tile grid alone (redesign ticket 24), with the app's own
+/* Mounts the tile grid alone, with the app's own
    stylesheets, so the block, its foot and its controls are judged against
    the real tokens on the real stripes.
 

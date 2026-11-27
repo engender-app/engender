@@ -1,23 +1,8 @@
 <script lang="ts">
-  /* Which reading a chart is plotting, as the heading's one control.
-
-     This is what lets one chart serve every scale rather than a card per
-     dimension - DIRECTION.md's chart rules ask for exactly that on the
-     day-by-day chart, and it is also what makes the tier-3 re-tween worth
-     having, since switching the metric is the switch people make most.
-
-     A native <select>, so Android opens its own picker and a keyboard, a
-     screen reader and the system font scale all get what they expect. A
-     custom dropdown here would be a worse version of a control the platform
-     already ships.
-
-     It is drawn twice, though, because the two things it owes disagree: the
-     pill has to sit inside the heading's own line, and a control has to be
-     48dp to press. So the pill is a span at the heading's height and the
-     real select is invisible on top of it at the full touch target. The
-     select stays the thing that is focused, announced and opened; the span
-     is what is seen, and it is hidden from a screen reader so the control
-     is not announced twice. */
+  /* A native select gives Android its picker and handles keyboard,
+     screen readers and text scaling. Keep the visible pill the
+     height of the chart heading. Overlay a transparent 48dp
+     select and hide the decorative pill from assistive tech. */
   import Icon from '../Icon.svelte';
 
   let {

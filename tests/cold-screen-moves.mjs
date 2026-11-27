@@ -1,31 +1,13 @@
-/* What moves on a screen's cold open after it has first painted (phase 12
-   ux-carpet tickets 191 and 193).
+/* Cold-load each screen on the persona and sample top-level .screen and
+   .screen-part blocks from first paint. ReadGate skeleton removal and
+   margin collapse can move a heading. Later blocks can push settled ones
+   during the 240ms arrival window. Following home-fold-reserve.mjs, steps
+   of 4px or more count as travel in runs of at least four frames in one
+   direction. Steps over 24px require such a run. Skip first appearances
+   and view-transition snapshots. Stub storage.persist to avoid a toast.
 
-   Two defects share this shape. A `ReadGate` whose content starts with a
-   heading moved that content twice after it landed: once when the leaving
-   skeleton came out of the DOM and the heading became `:first-child`
-   (40px of top margin to 16), and once when `resize`'s `overflow: hidden`
-   came off and the heading's margin could collapse through the wrapper
-   again (191). And blocks gated on nothing arrived at full height inside
-   the 240ms arrival window, pushing everything under them in one frame
-   (193, the measurements screen's span and size-change blocks).
-
-   So: cold-load each screen over the persona journal, sample every
-   top-level block of the screen (the `.screen`'s children and each
-   `.screen-part`'s) after every paint from the document's first frame, and
-   report any block whose top steps in one frame. The rule is
-   home-fold-reserve.mjs's (ticket 183): a step of 4px or more counts as
-   travel only inside a run of 4+ consecutive frames moving the same way,
-   and a step over 24px must be inside such a run. A block's first frame is
-   an arrival, not a move; frames under a view transition paint snapshots
-   and are skipped.
-
-   `navigator.storage.persist` is stubbed to resolve true: headless Chromium
-   never grants it, and the toast that says so is a false dropout.
-
-   Run against a demo build:
-     VITE_DEMO=1 npm run build
-     node tests/cold-screen-moves.mjs [--runs 3] [--theme light|dark] [--routes /a,/b] [--dump <dir>] [--root <built tree>] */
+   VITE_DEMO=1 npm run build
+   node tests/cold-screen-moves.mjs [--runs 3] [--theme light|dark] [--routes /a,/b] [--dump <dir>] [--root <built tree>] */
 import { COLD_SCREEN_SAMPLER, COLD_SAMPLE_MS } from './cold-screen-sampler.mjs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';

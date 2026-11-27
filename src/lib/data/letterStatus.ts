@@ -1,21 +1,7 @@
-/* Whether a time-capsule letter is sealed or unlocked (phase 4 ticket 19,
-   phase 5 ticket 01).
-
-   Nothing here is stored in SQLite (ADR-0010) - the schema has no `sealed`
-   column, and whether a letter is readable is a question about today, which
-   changes overnight. It sits above the journal for the same reason
-   milestoneStatus.ts does: "today" is a local calendar day (ADR-0001) and
-   the data layer has no business deciding which one it is, so today
-   arrives as an argument.
-
-   Once `unlockEpochDay` is on or before today the letter stays unlocked
-   for good - there is no re-sealing - which is why this is a single
-   comparison rather than a three-way status like milestoneStatus()'s.
-
-   Live tile state (read resolution and 24h snooze) lives in the encrypted
-   `acknowledgements` preference (ADR-0039, functional audit ticket 45), not
-   in a table and no longer in plaintext localStorage. Every function that
-   touches it takes the AcknowledgementStore to use. */
+/* A letter unlocks when the supplied local day reaches unlockEpochDay
+   (ADR-0001). Resolve that state on read (ADR-0010). Read and write tile
+   acknowledgements and 24h snoozes through the encrypted AcknowledgementStore
+   (ADR-0039). */
 
 import { isSealedUntil } from './sealedUntil';
 import { isTileSnoozed, snoozeTile, clearSnooze } from './liveTilesSnooze';
@@ -39,7 +25,7 @@ export function markLetterRead(letterId: string, store: AcknowledgementStore): v
   if (next !== current) store.write(next);
 }
 
-/** The letters whose arrival has already been met (ticket 45).
+/** The letters whose arrival has already been met.
 
     A separate set from the read one, because the two facts differ: a person
     can be shown a letter's arrival and choose to leave it closed, and that

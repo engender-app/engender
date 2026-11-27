@@ -149,7 +149,7 @@
     findById: (id) => events.find((event) => event.id === id)
   });
 
-  /* Latched: a reserve must not put its placeholder back (ux-carpet ticket 205). */
+  /* Latched: a reserve must not put its placeholder back. */
   let cycleEventsRevealed = $state(false);
   $effect.pre(() => {
     if (!cycleEventsRevealed && (!eventsQuery.loading && !episodesQuery.loading)) cycleEventsRevealed = true;
@@ -167,11 +167,11 @@
     {/snippet}
   </ScreenHeader>
 
-  <!-- Not ReadGate's shape, for the reason the starred screen is not
-       (phase 5 audit ticket 04): the gate branches on one read, and the rows
+  <!-- Not ReadGate's shape, for the reason the starred screen is not:
+the gate branches on one read, and the rows
        here need the regimen episodes as well as the events, so drawing them
        the moment the events land would draw the chart without its bands. -->
-  <!-- Held at last visit's height until the reads answer, then faded in (ux-carpet ticket 205): a page-level skeleton swap cut this in at full opacity. -->
+  <!-- Held at last visit's height until the reads answer, then faded in: a page-level skeleton swap cut this in at full opacity. -->
   <ReadReserve ready={cycleEventsRevealed} estimate={cycleEventsEstimate} onrest={cycleEventsRemember}>
     {#if events.length}
       <div class="screen-part">
@@ -249,15 +249,8 @@
             {/if}
           {/snippet}
         </SectionHeading>
-        <!-- The chart is not in a card. It is the only thing in this area of
-             the screen, and a box drawn around the one thing on a screen is
-             what DIRECTION.md 2b names as making a screen read as generic -
-             the same call the calendar's month grid made. The endpoints sit
-             above it on the kit's filter line, because they say what the
-             chart is showing rather than entering a value. Moved under the
-             reading and the strip (ticket 56, rule 16: what is true now comes
-             first, and a chart against a chosen range is a record of before,
-             not now) - the same move ticket 44 made for wear's own trend. -->
+        <!-- Draw the chart directly on the page, below the current reading and
+             strip. Its filter line names the selected range above the plot. -->
         <div class="kit-filter cd-endpoints">
           <Field label={m.range_from_label()} id="cycle-event-range-start">
             {#snippet children(id)}

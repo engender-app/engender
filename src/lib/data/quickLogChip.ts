@@ -1,4 +1,4 @@
-/* The entry editor's quick-log chip (after-release ticket 01): which
+/* The entry editor's quick-log chip: which
    running drugs it still offers a dose for, and what that dose would leave
    in stock. Only EntryEditor.svelte asks either question, so they live here
    rather than in regimenEpisode.ts and stockProjection.ts, which are both in
@@ -10,7 +10,7 @@ import type { DoseEvent, RegimenEpisode } from './types';
 
 /** Which of `candidates` have no dose logged against their drug among
     `dayDoses` - the entry editor's quick-log chip, which offers a dose only
-    for a drug not already logged that day (after-release ticket 01).
+    for a drug not already logged that day.
 
     Each dose's drug is attributeDrug's answer, the one dayRows draws with:
     a dose's own `drug` is null on most rows, so reading only that field left

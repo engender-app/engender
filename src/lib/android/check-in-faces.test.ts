@@ -3,8 +3,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { MOOD_BLOCK, MOOD_EYE_RADIUS, MOOD_EYES, MOOD_FACES } from '../components/moodFace';
 
-/* The check-in notification's faces are Android vector drawables (tester
-   report 02, ticket 05), because a notification is drawn by the system and
+/* The check-in notification's faces are Android vector drawables, because a notification is drawn by the system and
    cannot run MoodFace.svelte. moodFace.ts says why there is one table of
    faces: a mood that smiles differently on another surface is another mood.
    These checks hold the drawables to that table and their colours to

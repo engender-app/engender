@@ -120,7 +120,7 @@
   let autoHasPassword = $state(false);
   let autoBusy = $state(false);
 
-  /* Five bars for six operations (phase 9 audit ticket 11, ADR-0070).
+  /* Five bars for six operations.
      Import and verify share one because they share their two buttons and
      cannot run at once; everything else has its own place on the screen.
      Each carries a label beside it because these operations move between
@@ -406,13 +406,9 @@
           watch: {
             signal: stop.signal,
             onProgress: (done, total) => {
-              /* The pack is the countable half. What follows it - base64
-                 across the bridge and the SAF write of a multi-megabyte
-                 archive - has no unit of work to report, so the bar goes
-                 back to sweeping under a sentence that says which half
-                 this is. Leaving it parked at 100% through the slower half
-                 would be the bar lying, which is the whole thing ADR-0070
-                 is about. */
+              /* Count packed entries. The bridge transfer and SAF write have no
+                 measurable unit, so switch to the indeterminate sweep
+                 and name the stage. */
               if (done === total) {
                 autoLabel = m.exp_auto_running_writing();
                 autoProgress.report(0, 0);
@@ -508,14 +504,14 @@
     const stop = new AbortController();
     /* Cancellable on the encrypted path alone, and not because the other
        two are dangerous to stop - nothing an export does touches the
-       journal (ADR-0070) - but because there is nothing there to stop.
+       journal - but because there is nothing there to stop.
        journalCsv and journalJson build one string before the body is ever
        pulled, so a stop button on them would refuse the only work they do
        after it was already done. */
     exportProgress.start(path === 'encrypted' ? { onCancel: () => stop.abort() } : undefined);
     try {
       // No "still opening" branch: a call through data/live's handle queues until
-      // the database is open (ticket 08), and every screen reaches it that way.
+      // the database is open, and every screen reaches it that way.
       const delivery = await runExport(
         path,
         {
@@ -543,7 +539,7 @@
         return;
       }
       // Before the toast, so the bar finishes its sentence rather than
-      // being talked over by the answer (ADR-0070).
+      // being talked over by the answer.
       await exportProgress.finish();
       const what = done[path]();
       toast(delivery === 'shared' ? m.exp_done_shared({ what }) : m.exp_done_downloaded({ what }));
@@ -621,13 +617,13 @@
   }
 
   /* The import, run by restoreFlow.ts so the welcome step's restore and this
-     one are the same act (ticket 36). What is left here is what this screen
+     one are the same act. What is left here is what this screen
      says about it. */
   async function doImport() {
     impError = '';
     impErrorKind = '';
     importing = true;
-    /* No stop button, on either mode (ADR-0070): Replace discards this
+    /* No stop button, on either mode: Replace discards this
        device's journal before installing the archive's and Merge writes as
        it reads, so an abort part way through has no defined rollback
        anywhere in the code. The bar says how far along it is and nothing
@@ -647,7 +643,7 @@
     importing = false;
   }
 
-  /* The backup health drill (ticket 28): the same picked file and password
+  /* The backup health drill: the same picked file and password
      as import, but only decrypting, parsing and validating it - nothing here
      is written to. */
   async function doVerify() {
@@ -656,7 +652,7 @@
     verifying = true;
     // Not cancellable either, though nothing is written: a half-drained
     // archive proves nothing, and a drill that can be stopped early is a
-    // drill somebody can believe they passed (ADR-0070).
+    // drill somebody can believe they passed.
     importLabel = m.verify_running_files();
     importProgress.start();
     const result = await runVerify(picked, impPass, (done, total) => importProgress.report(done, total));
@@ -707,7 +703,7 @@
     daylioError = '';
     /* A CSV export carries no photos, so this is one stage and one label
        and it may well finish inside the bar's show delay - which is the
-       case that delay is for (ADR-0070). */
+       case that delay is for. */
     daylioProgress.start();
     try {
       const result = await journal.archive.commitDaylioImport(daylioPreview, (progress) =>
@@ -730,7 +726,7 @@
 
   /* The backup import, beside the CSV one above and deliberately not folded
      into it: the two files carry different things, and somebody holding a
-     CSV export has a CSV export (phase 7 ticket 09). */
+     CSV export has a CSV export. */
 
   function openBackup() {
     backupName = '';
@@ -784,7 +780,7 @@
     try {
       // Some Android file providers type a .daylio file as
       // application/octet-stream rather than zip, and Capacitor's picker
-      // greys out a file that matches no accept entry at all (ticket 66) -
+      // greys out a file that matches no accept entry at all -
       // application/zip alone made that file unselectable.
       const [file] = await chooseFiles('.daylio,application/zip,application/octet-stream');
       if (!file) return;
@@ -878,8 +874,8 @@
   <!-- Both ages are preferences outside the boot set, so on a cold
        navigation straight here they read null until SQLite opens: the card
        said "never" with a tick for a persona backed up 34 days ago, then
-       lost a line and shoved everything under it up 19px in one frame
-       (ticket 176). The rows stand from the first frame and only their
+       lost a line and shoved everything under it up 19px in one frame.
+The rows stand from the first frame and only their
        values wait, a one-line bar in each, so a one-line age lands without
        moving anything; the two-line "never" grows the card through
        `resize`. -->
@@ -950,7 +946,7 @@
   {#if importLog.length > 0}
     <SectionHeading text={m.imp_log_section()} />
     <!-- The card is gone, so the hairline a list begins and ends with
-         (DIRECTION.md rule 4) is the list card's own, and the separator
+          is the list card's own, and the separator
          between two rows is `.kit-row + .kit-row`'s rather than an `.hr`
          written out per row. -->
     <ListCard>
@@ -1475,7 +1471,7 @@
     height: 28px;
     border-radius: var(--r-block);
   }
-  /* From components.css once Settings stopped drawing one (ticket 277):
+  /* From components.css once Settings stopped drawing one:
      this screen is the only reader left. */
   .hr {
     border: none;

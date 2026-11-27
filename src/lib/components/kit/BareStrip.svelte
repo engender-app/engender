@@ -1,16 +1,8 @@
 <script lang="ts">
-  /* The bare strip: cells sitting directly on the page, no card around
-     them. One of the six surfaces precisely because it is not a card - a
-     screen built only from cards is what DIRECTION.md's decision 2b exists
-     to prevent.
-
-     Presentational: the caller brings the days and their levels, so the
-     strip draws a week of a journal, a week of a metric, or a week of
-     demo data without knowing which. DayStrip.svelte is the app's
-     journal-connected caller. Seven of them on a phone, and --strip-count
-     lets a wider caller hand over more without this file caring how many
-     (CARPET-02) - kit.css's desktop breakpoint shrinks the cells' own cap
-     to keep a longer row inside the same column. */
+  /* Cells sit directly on the page. The caller supplies days and levels.
+     DayStrip.svelte connects that shape to the journal. Seven cells fit
+     on a phone. Wider callers set --strip-count, and kit.css caps the
+     cell size to fit the row in its column. */
   import { roleAttrs } from './role';
   import type { Role } from '$lib/theme/roles';
 
@@ -21,7 +13,7 @@
     level: number;
     isToday?: boolean;
     /** No hairline and no fill: the day is not one this strip's schedule
-        had anything to say about (phase 10 redesign ticket 44). It still
+        had anything to say about. It still
         holds its column, so a week keeps its shape and today keeps its
         place in it, and it carries a small neutral-ink dot (kit.css,
         marked on review 2026-09-15) rather than sitting empty - a blank
@@ -35,7 +27,7 @@
     key: string | number;
   }
 
-  /* `onPick` turns each day into a control (ticket 44): dilation and wear
+  /* `onPick` turns each day into a control: dilation and wear
      both open that day's session sheet from the strip, which is the write
      path their per-day rows used to carry. Without it the strip stays what
      it has always been, a drawing. The whole
@@ -61,7 +53,7 @@
   {...roleAttrs(role)}
   style:--strip-count={days.length}
 >
-  <!-- Keyed by the column and not by the day. Paging a week (ticket 44)
+  <!-- Keyed by the column and not by the day. Paging a week
        moves every day in the array at once, so keying on the day makes the
        whole row seven removals and seven insertions - and a cell that was
        just created has no state to transition from, which killed the fade

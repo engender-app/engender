@@ -1,4 +1,4 @@
-/* The documents area (phase 8 features ticket 52, ADR-0065). */
+/* The documents area (ADR-0065). */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

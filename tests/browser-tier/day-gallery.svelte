@@ -1,30 +1,9 @@
 <script lang="ts">
-  /* What a day looks like, at its three sizes (phase 5 deepening ticket 21).
-
-     The composition is the part of that ticket that needed deciding - a day
-     with an entry and nothing else must still look like the screen it was,
-     and a day with eleven kinds of record must not read as a database dump -
-     and a composition is judged by looking at it. The route cannot be driven
-     to those three shapes without seeding three journals, so what this mounts
-     is DayRecords.svelte, which is the whole of the screen below its header
-     and takes a `DayRecords` as a prop. The component is the real one; what
-     the fixture supplies is the day.
-
-     Photographs come through with `fileName: null`, which is the shape the
-     demo persona's own placeholders have (types.ts): PhotoThumb draws its
-     gradient rather than reaching for a file that no fixture has encrypted.
-     What is being looked at here is the row, not the picture in it.
-
-     Two rows read differently here than they do in the app, and it is the
-     fixture rather than the rows: a measurement type and a physical change
-     are both named from the reference mirror (vocabulary.ts), which only a
-     booted journal fills, and `reference` exposes getters precisely so
-     nothing outside it can assign one. So those two show their keys -
-     `waist`, `skin_softening` - where the app shows "Waist" and "Skin
-     softening". The rows' shape is what this page is for.
-
-     tests/day-gallery.mjs drives the selectors below across the three days,
-     all 8 palettes and both themes. */
+  /* Mount DayRecords with three day sizes. Photo placeholders use
+     fileName: null so PhotoThumb draws its gradient. Measurement and
+     change names show keys because the fixture has no booted reference
+     mirror. tests/day-gallery.mjs captures all three days across eight
+     palettes and both themes. */
   import DayRecordsView from '$lib/components/DayRecords.svelte';
   import { DAY_SECTION_KEYS, type DayRecords } from '$lib/data/journal/day';
   import { startOfDayTimestamp } from '$lib/data/epochDay';
@@ -207,13 +186,13 @@
       { id: 'tp1', tryoutId: 'ty1', tryoutLabel: 'Robin', epochDay: DAY, fileName: noFile() }
     ],
     // A row of title and date and no page image at all, which is what
-    // ADR-0065 asks every list to be (phase 8 features ticket 52).
+    // ADR-0065 asks every list to be.
     documents: [
       { id: 'dc1', epochDay: DAY, title: 'Psychiatric opinion', fileName: noFile(), targetKind: null, targetId: null }
     ]
   };
 
-  /* Concurrent doses that differ by name alone (phase 11 ticket 19): three
+  /* Concurrent doses that differ by name alone: three
      drugs taken the same way at the same amount, plus one two regimens
      could both explain and one no episode ever covered. The named rows are
      identical but for the drug, which is the fact the day view has to
@@ -259,7 +238,7 @@
      stops being the widest day this screen can draw - which is what the
      overflow assertions in tests/browser-tier/run.mjs rest on. Published
      as two numbers so that runner can hold them to being equal without
-     importing the registry itself (phase 9 audit ticket 12). */
+     importing the registry itself. */
   const coveredSections = DAY_SECTION_KEYS.filter((key) => maximal[key].length).length;
 
   let shape = $state('typical');

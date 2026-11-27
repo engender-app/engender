@@ -1,4 +1,4 @@
-/* The first run's step order, in one place (phase 10 redesign ticket 33).
+/* The first run's step order, in one place.
 
    Three of this ticket's scripts walk the flow - the shots, the flipbooks
    and the contrast pass - and each declared the nine steps for itself until
@@ -13,7 +13,7 @@
    is what holds the app's own list to what a screen may assume. */
 
 /** In order. `lock` is the access-mode step, which draws its own two screens
-    inside one step (ticket 30). */
+    inside one step. */
 export const SETUP_STEPS = [
   'welcome',
   'name',

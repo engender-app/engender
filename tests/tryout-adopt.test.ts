@@ -81,8 +81,7 @@ describe('tryout-to-milestone adoption pipeline', () => {
     const tryoutDetail = read('src/routes/transition/tryouts/[id]/+page.svelte');
     expect(tryoutDetail).toContain('data-adopt-tryout');
     expect(tryoutDetail).toContain('AdoptTryoutConfirmationSheet');
-    /* The adoption write moved into the offer registry (phase 8 features
-       ticket 22) and this screen reaches it through `answerOffer`, which is
+    /* The adoption write moved into the offer registry and this screen reaches it through `answerOffer`, which is
        the only path from the sheet to a write. */
     expect(tryoutDetail).toContain("OFFERS['tryout-adoption-milestone']");
     expect(tryoutDetail).toContain('answerAdoptOffer');

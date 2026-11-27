@@ -1,5 +1,4 @@
-/* Screenshots of the navigation set and mood's five faces (phase 5 ticket
-   31), one per palette per theme.
+/* Screenshots of the navigation set and mood's five faces, one per palette per theme.
 
    The marks have no screen of their own to be reviewed on - they are spread
    across every screen there is - so this is how they get looked at together:
@@ -62,7 +61,7 @@ for (const palette of PALETTES) {
 }
 
 /* A second pass over the mood presets, on one palette. Mood has its own
-   colour scale (ADR-0025) keyed on [data-mood-preset] rather than on the
+   colour scale keyed on [data-mood-preset] rather than on the
    flag, so the eight palettes above leave the five faces identical and it is
    these four that change them - which makes this the pass that actually
    answers "are the five telling apart". */

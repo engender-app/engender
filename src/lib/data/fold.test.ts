@@ -25,7 +25,7 @@ test('a folded query matches folded text the way search needs', () => {
   assert.ok(foldText('Łóżko było wygodne').includes(foldText('lozko')));
 });
 
-/* The two forms of one fold (phase 5 deepening ticket 24). Every area other
+/* The two forms of one fold. Every area other
    than the entry note is matched by a scan inside SQL rather than through the
    FTS index, so the fold has to hold on that side too - and a fold that
    differed there would be a search that finds a word in a note and misses the

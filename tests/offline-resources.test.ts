@@ -1,23 +1,7 @@
-/* Ticket 32's second acceptance criterion, and the only one a person cannot
-   check by looking at the screen: opening the resource directory, and
-   interacting inside it, makes no network request of any kind.
-
-   The whole app already holds that line - `connect-src 'self'` in
-   deploy/nginx/journal-headers.conf. What is new here is a screen whose content is
-   phone numbers and web addresses, which is exactly the shape that invites
-   someone to make it fetch a live copy, embed an org's logo, or check whether
-   a line is still up. This test is what stops that arriving unnoticed.
-
-   It reads sources rather than driving a browser because the Node tier has no
-   browser (vitest.config.ts). A source grep is a weak test in general -
-   tests/android-back-navigation-wiring.test.ts says as much - but the thing
-   being guarded is literally the absence of a call, and absence is what a
-   grep is good at. The browser tier's offline relaunch
-   (tests/browser-tier/verify-build.mjs) is the belt to this pair of braces.
-
-   The links the screen renders are not requests: a `tel:` or `https:` anchor
-   sends nothing until a person taps it, and a tap hands the address to the
-   dialler or the system browser rather than fetching anything in the app. */
+/* Guard the bundled resource directory against in-app network requests,
+   including remote logos and status checks. This Node test checks source.
+   The browser tier also exercises offline relaunch in verify-build.mjs.
+   A deliberate tap opens a link through the system dialer or browser. */
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -83,7 +67,7 @@ test('every outbound link opens outside the app', () => {
   expect(outbound.filter((a) => !a.includes('target="_blank"'))).toEqual([]);
 });
 
-/* One country at a time since bug session 18 (item 77): the switch used to
+/* One country at a time since bug session 18: the switch used to
    jump down one page and name each country twice. Both regions stay
    compiled in, so the directory is complete offline either way; within a
    region, helplines and support come first and reading after. */

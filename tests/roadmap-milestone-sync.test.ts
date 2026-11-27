@@ -78,7 +78,7 @@ describe('roadmap to milestone sync (ticket 10, ADR-0045)', () => {
   });
 
   it('wires roadmap page to RoadmapMilestonePromptSheet with confirmation flow', () => {
-    /* The write moved into the offer registry (phase 8 features ticket 22)
+    /* The write moved into the offer registry
        and the screen reaches it through `answerOffer`, which is the only
        path there is. What a confirmation actually writes is asserted below
        against the entry itself, which is where it now lives. */

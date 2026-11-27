@@ -140,7 +140,7 @@ export async function fingerprint(d: Device): Promise<{ counts: Record<string, n
     const rows = stmt.all() as Record<string, unknown>[];
     counts[t] = rows.length;
     // A deletion marker's time is SQLite's clock, which a mocked Date.now
-    // does not reach (functional audit ticket 48); its table and key still count.
+    // does not reach; its table and key still count.
     const lines = rows.map((r) => Object.keys(r).sort()
       .map((k) => `${k}=${t === 'deletion' && k === 'deleted_at' ? '*' : cell(r[k])}`).join('|')).sort();
     hash.update(`#${t}\n${lines.join('\n')}\n`);

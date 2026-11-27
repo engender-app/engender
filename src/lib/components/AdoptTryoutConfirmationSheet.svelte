@@ -18,8 +18,7 @@
   import type { FeltSenseEntry, Tryout } from '$lib/data/types';
   import type { OfferCopy } from '$lib/data/offers';
 
-  /* The title and the two outer answers arrive as one `copy` object (phase
-     8 features ticket 22): this is one entry in the offer registry, and an
+  /* The title and the two outer answers arrive as one `copy` object: this is one entry in the offer registry, and an
      offer's words live beside what it writes. The middle button stays
      here - "adopt without a milestone" is this sheet's own third answer,
      not a word the registry has an opinion about. */
@@ -55,7 +54,7 @@
   });
 
   /* How the tryout mostly felt, as a line about the tryout: adoption
-     writes no reading onto the milestone (functional audit ticket 32).
+     writes no reading onto the milestone.
      `feltSense` arrives newest first, as forTryout reads it. */
   let majorityMood = $derived(adoptionMood(feltSense));
 

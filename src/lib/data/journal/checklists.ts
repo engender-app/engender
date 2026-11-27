@@ -17,8 +17,7 @@ export interface ChecklistsArea {
   createChecklist(owner?: ChecklistOwner): Promise<Checklist>;
   getChecklist(id: string): Promise<Checklist | undefined>;
   getChecklistByOwner(owner: ChecklistOwner): Promise<Checklist | undefined>;
-  /** The one standalone checklist behind the appointment prep list (phase 5
-      ticket 11): looked up by having no owner at all, rather than by an
+  /** The one standalone checklist behind the appointment prep list: looked up by having no owner at all, rather than by an
       owner pair, since nothing else in the app creates a standalone
       checklist to be confused with it. */
   getStandaloneChecklist(): Promise<Checklist | undefined>;
@@ -34,7 +33,7 @@ export interface ChecklistsArea {
       07's procedure is the first owner): the rule that a checklist appears
       when its first item does lives here once, rather than at each owner. */
   addToOwnedChecklist(owner: ChecklistOwner, content: string): Promise<ChecklistItem>;
-  /** The debrief-relevant state for one appointment (ticket 58, ADR-0066):
+  /** The debrief-relevant state for one appointment (ADR-0066):
       how many prep items are on the standing list, whether the offer for
       `appointmentId` was dismissed, and the entry that debriefs it, if
       any - both of the latter resolved against `appointmentId` itself, so
@@ -59,7 +58,7 @@ export interface ChecklistsArea {
   setDebriefDismissed(appointmentId: string): Promise<void>;
   /** The entry that debriefs `appointmentId`, or null - both when nothing
       has been recorded yet and when the entry on file was recorded for a
-      different appointment (ticket 58): the appointment prep screen's own
+      different appointment: the appointment prep screen's own
       link to a completed debrief. */
   getDebriefEntryId(appointmentId: string | null): Promise<number | null>;
   /** Links an entry as the debrief for `appointmentId`. Unlike the epoch-day

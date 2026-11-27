@@ -1,33 +1,12 @@
-/* The forward-only migration list (ADR-0006). Append new versions here;
-   never edit a migration once it has shipped.
+/* Append migrations in release order (ADR-0006). Keep released entries
+   intact. Schema 88 was the rc.1 baseline. Step 119 combines the original
+   development steps 89 to 119 in one transaction. POST_RC1_STEPS retains
+   their original numbers for per-step tests.
 
-   Version 88 is the squashed baseline (after-release ticket 42, which
-   replaced ticket 34's v78 baseline and the steps 79 to 88 after it), not a
-   step: it builds the whole schema in one statement. rc.1 shipped at 88, so
-   it stays the baseline, and an rc.1 journal opens on it.
-
-   One step follows it: version 119 (pre-publish ticket 01), which runs what
-   were migrations 89 to 119 in their original order, data conversions
-   included, inside one transaction. An rc.1 journal updates in place in that
-   one step, and a process killed partway leaves it at 88 with its rows, never
-   in between. POST_RC1_STEPS below keeps those steps under the numbers
-   development builds ran them at, because their comments say what each part
-   is for and their tests drive them one at a time; no release ever runs them
-   that way.
-
-   From 1.0.0 on nothing is squashed or edited: every released migration
-   stays in the chain, appended after 119.
-
-   Two kinds of journal cannot be opened by this build, and only development
-   and test builds ever wrote either. One at 1 to 87 is below the baseline,
-   refused with JournalBelowBaselineError; one at 89 to 118 sits between the
-   baseline and the step at 119, refused with JournalBetweenStepsError. Both
-   are refused before anything is copied or written, and the failure screen
-   says the journal comes from a development build and offers the way out
-   (after-release ticket 09): its content can still be carried over through
-   an archive exported by the build that wrote it. Such a journal is behind,
-   not ahead, so SchemaTooNewError never fires for it. `baseline: true` is
-   what lets the runner tell either apart from a first run. */
+   Refuse versions 1 to 87 and 89 to 118 before copying or writing, using
+   JournalBelowBaselineError or JournalBetweenStepsError. The originating
+   development build can export their content as an archive.
+   baseline: true distinguishes these cases from a first run. */
 
 import type { Migration } from './migration-runner.ts';
 import { CLOSED_LISTS_REBUILD } from './closed-lists-migration.ts';

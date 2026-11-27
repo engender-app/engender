@@ -1,29 +1,12 @@
-/* PIN mode's flows (ticket 53), the sibling of journal-passphrase.ts and the
-   same shape: the keystore math plus where the metadata lives, so boot and
-   the settings screen share one spelling of setup, unlock and change.
+/* PIN setup, unlock and change share keystore operations. Every PIN is
+   bound to a device key. Inject keystore and device-secret ports so Node
+   tests can cover both parts.
 
-   The one difference from a passphrase is where the secret comes from. A
-   passphrase is what the person typed; a PIN is what they typed bound to a
-   key that cannot leave this browser (device-secret.ts). That binding is
-   what makes four digits defensible, so it is not optional and not a
-   fallback - every function here goes through it.
-
-   Unlike journal-passphrase.ts this module takes its ports rather than
-   reaching for OPFS and IndexedDB directly. Two moving parts whose
-   interaction *is* the security claim - a keystore file and a device key -
-   is worth being able to test on the Node tier against both of them.
-
-   Since ticket sec-02-06 there are two key stores a PIN can be bound to and
-   the ports say which: the browser's own on the web, and Android Keystore on
-   a phone, where the key is then not in the app's directory for a copy of it
-   to take. Which one wrapped a given keystore is recorded in the keystore
-   (`pinBinding`), not inferred from the platform, because an Android journal
-   made before that ticket is bound to the WebView's store until the first
-   correct PIN rewraps it - and inferring would derive the secret from a key
-   that never wrapped the file and report a correct PIN as wrong.
-
-   The returned data keys live in memory and nowhere else, exactly as
-   ADR-0018 requires. */
+   Use the browser key on web and Android Keystore on Android. Read the
+   binding from pinBinding; earlier Android journals still use the WebView
+   key until successful PIN entry rewraps them. Platform inference would
+   reject a valid PIN on those journals. Data keys stay in memory
+   (ADR-0018). */
 
 import { authenticateCredentials, changeCredentials } from './credential-ownership';
 import { withoutPendingRecoveryKeyOwned } from './recovery-key';

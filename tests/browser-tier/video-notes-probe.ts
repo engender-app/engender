@@ -1,22 +1,8 @@
-/* Browser-tier check for ticket 22's video notes.
-
-   Only provable here. Capture is getUserMedia and MediaRecorder, the
-   re-encode needs a canvas and a decoding <video>, and none of the four
-   exist in Node - so a Node-tier test could only assert against stubs and
-   would prove nothing about whether a real file comes back smaller with both
-   its tracks. limits.ts holds the arithmetic and stays under Node tests;
-   this is the half that has to meet a real Chromium.
-
-   run.mjs launches this tier with a fake camera and microphone and a
-   pre-granted permission, which is what lets the probe drive the app's own
-   startVideoRecording() rather than a stand-in. The fake device produces a
-   moving pattern with a tone on the audio track, so both halves of a video
-   note are present and the re-encode has something real to carry.
-
-   The audio assertion is the one that earned its keep: reencode.ts has to
-   mute the <video> it plays to satisfy the autoplay policy, and a mute that
-   also silenced the captured track would store every oversized note without
-   its sound. */
+/* Drive real browser APIs in Chromium with fake camera and microphone
+   and pre-granted permissions. Re-encode a clip containing moving
+   video and a tone and check the smaller file keeps both tracks.
+   The playback video is muted for autoplay, so check the recording
+   still has sound. limits.ts covers bitrate decisions in Node. */
 
 import { reencodeVideo } from '../../src/lib/data/videoNotes/reencode.ts';
 import {

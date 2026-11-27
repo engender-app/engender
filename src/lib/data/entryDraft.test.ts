@@ -1,4 +1,4 @@
-/* entryDraft's transition rules (ticket 29): draft edits, photo add/remove
+/* entryDraft's transition rules: draft edits, photo add/remove
    with removed-stored-id tracking, isEmpty and toUpsert() - all rune-free,
    so EntryEditor.svelte only needs a thin $state wrapper around this. */
 
@@ -189,7 +189,7 @@ test('setMood, setNote, setDim and toggleTag each make an empty draft non-empty'
   assert.deepEqual(byTag.tags, ['e-happy']);
 
   // Picking a region only puts its slider on screen at the midpoint
-  // (ticket 31). Content arrives when it moves, so the draft is still
+  //. Content arrives when it moves, so the draft is still
   // empty until then.
   const byBodyRegion = createEntryDraft(1);
   byBodyRegion.toggleBodyRegion('chest');
@@ -235,7 +235,7 @@ test('setBodyRegionFeeling overwrites a region\'s position outright', () => {
   draft.setBodyRegionFeeling('chest', 70);
   assert.deepEqual(draft.bodyRegions, { chest: 70 });
 
-  // Overwrite, not merge: the picker's slider (ticket 99) only ever
+  // Overwrite, not merge: the picker's slider only ever
   // produces one position, so a later write replaces it outright, the
   // same as dragging the slider itself would.
   draft.setBodyRegionFeeling('chest', 30);

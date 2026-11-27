@@ -50,7 +50,7 @@
     years?: number;
     entries: Entry[];
     /* Letters this lookback resurfaces - written that day, or unlocked that
-       day (phase 5 deepening ticket 13). Sealed ones are already out. */
+       day. Sealed ones are already out. */
     letters: RetrospectiveLetter[];
   }
 
@@ -102,7 +102,7 @@
     document.getElementById(`on-this-day-${scrollTo}`)?.scrollIntoView({ behavior: scrollBehavior(), block: 'start' });
   });
 
-  /* Latched: a reserve must not put its placeholder back (ux-carpet ticket 205). */
+  /* Latched: a reserve must not put its placeholder back. */
   let onThisDayRevealed = $state(false);
   $effect.pre(() => {
     if (!onThisDayRevealed && (!daysQuery.loading)) onThisDayRevealed = true;
@@ -111,7 +111,7 @@
   const onThisDayRemember = (px: number) => rememberReserve('on-this-day', px);
 </script>
 
-<!-- Held at last visit's height until the look-back has answered, then faded in (ux-carpet ticket 211): the days cut in at full opacity over the skeleton. -->
+<!-- Held at last visit's height until the look-back has answered, then faded in: the days cut in at full opacity over the skeleton. -->
 <ReadReserve ready={onThisDayRevealed} estimate={onThisDayEstimate} onrest={onThisDayRemember}>
   {#if !days.length}
     <Notice icon="info" key="on-this-day-none" title={m.on_this_day_none_title()} text={m.on_this_day_none_body()} />

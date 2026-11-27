@@ -1,33 +1,13 @@
-/* Home at idle keeps its hands off the rasteriser (phase 12 ux-carpet
-   ticket 227).
+/* Trace five seconds on Home after the entrance over a filled journal.
+   Sample the first 30 seconds after input, while the sun breathes.
+   FlagSun drops the entrance transform animation to let the breath
+   composite without raster work. holdWhileStill.ts pauses the faces'
+   SVG animation between movements to avoid main frames. Count raster
+   tasks and main frames per run. A running timer can paint once a second.
+   home-ambient-check covers the later idle pause.
 
-   The flag sun breathes during the first 30 seconds after input. This probe
-   samples that active period; home-ambient-check covers the later idle pause.
-   While each ring also carried its
-   entrance animation, the two animated the same transform and Chromium ran
-   the breath on the main thread, re-rastering the rings every frame: about
-   300 raster tasks a second on a Home nobody was touching, on the web and on
-   the phone alike. FlagSun now drops the entrance once it has ended, and the
-   compositor runs the breath with no raster at all.
-
-   And it keeps the main thread asleep between the mood faces' moves (ticket
-   228). The faces' glance and blink are SVG children, which never
-   composite, and an infinite CSS loop costs a main frame on every vsync for
-   its whole life, holds included: 300 main frames in five seconds for five
-   faces that are, most of the time, not moving. The faces now pause their
-   own loops while they hold (motion/holdWhileStill.ts), so main frames happen
-   only while an eye moves.
-
-   This loads Home over the "fill every feature" journal, waits for the
-   entrance to finish, then records five seconds of a Chromium trace and
-   counts the raster tasks and the main frames in it. What legitimately
-   rasters at idle is small: a running timer ticking once a second. The
-   compositor still draws every vsync, because the sun's breath keeps
-   moving during this sample; that costs no main frame. RUNS runs, each judged on its own.
-
-   Run against a demo build:
-     VITE_DEMO=1 npm run build
-     node tests/home-idle-raster.mjs [--runs 3] [--root <built tree>] */
+   VITE_DEMO=1 npm run build
+   node tests/home-idle-raster.mjs [--runs 3] [--root <built tree>] */
 import { preview } from 'vite';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';

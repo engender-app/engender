@@ -1,4 +1,4 @@
-/* The search registry (phase 5 deepening ticket 24): which areas hold text,
+/* The search registry: which areas hold text,
    that each area's declaration matches the table it names, that a folded
    query reaches all of them, and that searching writes nothing.
 
@@ -362,7 +362,7 @@ test('a search is one round trip, whatever the registry grows to', async () => {
 
   resetRoundTrips();
   await journal.textSearch.search({ query: 'zolc', today: TODAY, limit: 30 });
-  // The page and its count in one statement, and nothing per area (ticket 220).
+  // The page and its count in one statement, and nothing per area.
   assert.deepEqual(roundTrips(), { query: 1, run: 0 });
 });
 

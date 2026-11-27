@@ -49,12 +49,12 @@ export async function reconcileBuiltIns(driver: SqliteDriver, stamp?: number): P
 /** The same work without a transaction of its own, for the one caller that
     is already inside one: an import seeds and then swaps the journal as a
     single transaction, so that a failure leaves the database exactly as it
-    was rather than as the next boot would have made it (ticket 14). SQLite
+    was rather than as the next boot would have made it. SQLite
     has no nested transactions, which is why this is a second entry point and
     not a second implementation. */
 export async function reconcileBuiltInsWithin(driver: SqliteDriver): Promise<void> {
   /* A built-in row nobody has edited is stamped 0 rather than with the time
-     it was seeded (functional audit ticket 48): an archive Merge reads
+     it was seeded: an archive Merge reads
      `updated_at` as the time of the person's last edit, and a device
      installed later must not undo a built-in another device hid. Retiring
      a built-in below is an edit, and carries the clock. */
@@ -79,23 +79,10 @@ export async function reconcileBuiltInsWithin(driver: SqliteDriver): Promise<voi
     [ts]
   );
 
-  /* No preset is seeded. The eight stopped being a picker in ticket 35 and
-     the app has read none since; BUILT_IN_PRESETS survives only to say what
-     a preset key meant when an older archive was written, which
-     archive/payload.ts and schema v42 read from the constant rather than
-     from these rows. Writing eight presets and twenty five link rows into a
-     journal created today put a table in it that nothing would ever read and
-     that every one of its exports would then carry.
-
-     Rows already seeded stay. This stops adding them and deletes nothing, so
-     a journal that has them keeps exporting them and a restore still applies
-     whatever an archive carries (archiveApply.ts).
-
-     What went with it, named because it was deliberate once: an archive that
-     omitted a built-in preset used to come back with that preset's scales
-     intact, because reconcile had already seeded them underneath. Restoring
-     such an archive now leaves the preset absent, which no surface in the
-     app can tell apart from present. */
+  /* Seed no retired presets. `BUILT_IN_PRESETS` still interprets older
+     Archive keys and supports schema 42. Leave existing rows in place
+     for export and apply whatever rows the Archive carries. Restoring
+     an Archive without these presets leaves them absent. */
 
   const groupKeys = await presentKeys(driver, 'tag_group');
   const tagKeys = await presentKeys(driver, 'tag');

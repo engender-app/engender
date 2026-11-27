@@ -49,41 +49,12 @@
   background: #000;
 }
 
-/* ---------- What the .ob- prefix still means ----------
-
-   Not onboarding, any more. The first run has its own frame (below), and
-   ticket 26 took .onboarding, .onboarding-progress and .ob-title with it.
-   Recap went the other way in the same merge: ticket 23 absorbed it into
-   wrapped and deleted the route, which took .recap-progress and the .recap-*
-   block that used to sit further down this file.
-
-   .ob-text is what is left with users, and it has plenty - both settings
-   screens that carry an explanation, and the body of every sheet the gates
-   open. It keeps its name because renaming a class nine screens call by it
-   is a rename ticket, not a merge.
-
-   .ob-dot and .ob-actions had none, dead only as the sum of the two merges
-   above rather than either on its own - left standing rather than swept up
-   inside a merge commit that had no business deleting either ticket's code
-   (phase 5 audit ticket 16 is that sweep). */
+/* .ob-text styles explanatory copy in Settings and gate sheets.
+   The old .ob-dot, .ob-actions and .recap-progress selectors are retired. */
 .ob-text { color: var(--text-2); margin-bottom: var(--space-5); }
 
-/* Nothing on these screens stacks above anything. Every surface here
-   carried `position: relative; z-index: 1`, which existed to sit above
-   PrideAurora - the full-page gradient wash this redesign dropped - and
-   outlived it. On a screen whose own stacking context is created by the
-   entrance animation's transform, a z-index of 1 is enough to paint the
-   cadence switcher over the floating navigation bar, which must always be
-   on top (Alicja, 2026-08-25). Three more of these survive on screens this
-   ticket does not own: .applock, .onboarding and two in the search area.
-
-   ---------- Wrapped ----------
-   Two presentations, deliberately unalike (phase 4 features ticket 01,
-   rebuilt on the kit by phase 5 UX ticket 23). Both are built from the kit's
-   own surfaces now, so what is left here is the three things the kit has no
-   surface for - the head, the cover, and the photo strip - plus the figure
-   values inside a list row. Everything below the first block belongs to one
-   presentation or the other, never to both. */
+/* Wrapped uses kit surfaces for both presentations. This file owns the head,
+   cover, photo strip and row figures. Keep its controls below the floating nav. */
 /* The cadence switcher is the shared segmented control in its link mode
    now, and centring a link inside a segment is that control's own job
    (components.css, a.segment) rather than this screen's. */
@@ -115,7 +86,7 @@
 .wrapped-thin .wrapped-title { overflow-wrap: anywhere; }
 .wrapped-thin .muted { margin-top: var(--space-2); }
 
-/* The wrapped card (ticket 16): a self-contained frame, unlike the wrapped
+/* The wrapped card: a self-contained frame, unlike the wrapped
    screens above which lay their stats directly on the page. It reuses
    .wrapped-stats/.wrapped-stat rather than duplicating that tile styling. */
 .wrapped-card { background: var(--surface); border: 1px solid var(--outline); border-radius: var(--r-block); padding: var(--space-5); }
@@ -257,7 +228,7 @@
 .search-input:focus-visible { outline: none; }
 
 /* The chips are the only place the state of the query is visible once the
-   filters moved into a sheet (phase 5 ticket 22), so they sit directly under
+   filters moved into a sheet, so they sit directly under
    the field rather than under the count. */
 .search-chips {
   display: flex;
@@ -306,24 +277,10 @@
   padding: var(--space-2) var(--space-4);
 }
 
-/* ---------- the date field ----------
-
-   A `<input type="date">` inherits `.input`, which is the app's text field,
-   so a date read as something to be typed rather than picked (Alicja,
-   2026-08-25: "the date renderer should be redesigned - looks like a
-   textbox"). A row of a list instead: the label on the left, the date on the
-   right in the display face, a drawn calendar icon after it, and the whole
-   row is the control.
-
-   The native picker is what opens, because Android's own is better than
-   anything drawn here and knows the reader's locale and their week start.
-   Getting the whole row to open it takes two steps: the input is stretched
-   invisibly over the row, and its picker indicator is stretched over the
-   input. Hiding the indicator instead left nothing reliable to press -
-   Chromium opens the picker from the indicator, not from the text - and
-   leaving it where it lands drew a second calendar glyph on top of the
-   label, because with the date text hidden the indicator moves to the start
-   of the field. */
+/* Stretch the invisible native date input over the whole row
+   and its picker indicator over the input. Chromium opens the
+   picker from the indicator. Keep that target even though the
+   row already paints its own calendar icon. */
 .date-row {
   /* Not redundant with .rows-divide's own position: relative, even though
      every .date-row currently carries that class. The invisible full-bleed
@@ -411,39 +368,17 @@
 }
 
 /* ---------- Settings ---------- */
-/* Phase 5 ticket 24: this section moved onto the kit's ListCard for its
-   container, and picked up two motion fixes on the way, since redesigning
-   the screen that owns them is what made them this ticket's to fix.
+/* The theme swatch uses ListCard. Its compact .press treatment responds to
+   a touch and stays below the 64px ceiling. The preview stays still on hover. */
+/* The shared flag grid uses a 56px column floor. It fits four columns
+   at 320px and reflows to two at 200% zoom. The selected flag's 3px
+   --text outline leaves its box unchanged. Keep the background untinted.
 
-   The hover scale-and-rotate on the preview circle was DIRECTION.md tier
-   4's "no hover-dependent motion" broken outright - a leftover from before
-   the tiers existed. And the swatch never answered a touch at all: ticket
-   30's control inventory covers sliders, switches, segments and keys but
-   never named this control, so it is the one thing on this screen still
-   answering a press with nothing. `.press` is the compact-control class
-   ticket 30 already settled (--press-depth, 0.94) - a swatch is well under
-   its 64px ceiling, so it names the class rather than a number. */
-/* The flag picker, one drawing for setup and Settings (ticket 277): a block
-   of the flag's own stripes, the one radius, a 1px edge, the name under it
-   on the page. Four across at phone width; the 56px floor is what lets 200%
-   zoom drop to two columns instead of shrinking the flags or clipping the
-   names. Nothing tints behind a flag (rule 13); the chosen one takes a 3px
-   --text frame closing in onto its own edge, drawn as an outline so the
-   block's box never changes.
-
-   A name wraps between words and never inside one: overflow-wrap: anywhere
-   broke "Transpłciowa" as "Transpłciow / a" at 360px (pre-publish 03). Three
-   columns kept the words whole but left the sixteenth flag alone on its last
-   row, so the grid stays four across down to 320px (a 56px column floor; at
-   320px a column is 58.5px) and the name gives way instead: each swatch is
-   an inline-size container, paletteNameFit hands its name the longest
-   word's width in ems as --word-em, and the type is the column divided by
-   that, between 0.75 and 1 times --text-xs (9px to 12px). A name that fits keeps
-   --text-xs; "Panseksualna", 75.2px at 12px, is set at 10.95px in a 68.5px
-   column at 360px. At 320px it needs 9.3px, which the 9px floor allows, so no name
-   reaches past its flag at any phone width.
-   tests/palette-name-wrap.mjs sweeps 320 to 430px and 1280px in both
-   languages, in Settings and in setup. */
+   paletteNameFit sets --word-em to the longest word's width in ems.
+   Each swatch is an inline-size container and divides its width by that
+   value, clamped to 0.75–1 times --text-xs (9–12px), to keep words whole.
+   tests/palette-name-wrap.mjs covers both languages and screens from
+   320px to 430px and at 1280px. */
 .palette-grid {
   display: grid; position: relative;
   grid-template-columns: repeat(auto-fill, minmax(max(56px, calc((100% - 3 * var(--space-3)) / 4)), 1fr));
@@ -481,22 +416,10 @@
   white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: normal; hyphens: manual;
 }
 .mood-preset-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-1); }
-/* .kit-row-text's own min-width: 0 lets it shrink to nothing before
-   anything wraps, which is right for a chevron or a Switch beside it but
-   not for a two-segment control next to a two-line title and a three-line
-   subtitle: the text column gave up most of its width to the segments and
-   wrapped hard enough to crowd against them (Alicja, 2026-08-28, on
-   theme controls - "way too crowded"). A floor on the text column turns
-   that shrink into a wrap once the row is too narrow to give both their
-   due, and margin-left: auto keeps the control at the row's own trailing
-   edge whether it is sharing the line or alone on one of its own - a plain
-   width-triggered wrap, not a forced one, so a wide-enough screen still
-   shows both side by side exactly as before. Scoped here rather than in
-   kit.css: Settings' segmented rows are the only rows in the kit that
-   pair a Segmented with a title. Since ticket 277 they carry no subtitle,
-   so the floor is the title's own one-line width rather than a fixed 160px:
-   "Theme" keeps its three segments on its line, and a title too long to
-   share one moves the control under it instead of breaking. */
+/* Pair Settings titles with segmented controls using the title's
+   one-line width as its floor. When both no longer fit, move the
+   control to the next line. margin-left: auto keeps it trailing on
+   either line. Scope this rule to Settings' title-and-control rows. */
 .settings-unit-row { flex-wrap: wrap; row-gap: var(--space-2); }
 .settings-unit-row .kit-row-text { min-width: max-content; }
 .settings-unit-row .kit-row-trail { margin-left: auto; }
@@ -539,20 +462,10 @@
   max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .palette-swatch.is-active .swatch-name { color: var(--on-accent-soft); font-weight: var(--weight-bold); }
-/* flag gradients (static flag colours, not theme tokens)
-
-   Horizontal bands, the way the sun draws the same stripes and the way the
-   flags themselves are made (phase 10, DIRECTION.md rule 13, redesign
-   ticket 33). They were a 135-degree wash, which is the treatment rule 8
-   already corrected for the sun: a flag's stripes have a direction and it
-   is not diagonal. The stops are exact fractions of the stripe count now
-   rather than the rounded ones the wash carried, so no band is a pixel
-   wider than its neighbours.
-
-   One rule for both readers, setup and Settings, which draw the same
-   block. Every palette has one (ticket 277): the last eight had none and
-   drew as empty outlines, and settings-surfaces.test.ts holds each list to
-   the palette's --motif-stripes. */
+/* Draw hard horizontal bands from the same flag stripes the sun uses.
+   Exact fractional stops keep their widths equal. Setup and Settings
+   share these blocks. settings-surfaces.test.ts checks every palette
+   against --motif-stripes. */
 [data-swatch="trans"] { background: linear-gradient(to bottom, #5BCEFA 0 20%, #F5A9B8 20% 40%, #FFF 40% 60%, #F5A9B8 60% 80%, #5BCEFA 80%); }
 [data-swatch="nonbinary"] { background: linear-gradient(to bottom, #FCF434 0 25%, #FFF 25% 50%, #9C59D1 50% 75%, #2C2C2C 75%); }
 [data-swatch="genderfluid"] { background: linear-gradient(to bottom, #FF76A4 0 20%, #FFF 20% 40%, #C011D7 40% 60%, #2F2F2F 60% 80%, #2F3CBE 80%); }
@@ -587,8 +500,7 @@
   font-size: var(--text-sm); font-weight: var(--weight-bold);
   padding: var(--space-2) 0; min-height: var(--touch-target); align-items: center;
 }
-/* The disguise preview's two classes left with the block itself (phase 10
-   redesign ticket 32): Settings and setup's last question both draw it, so
+/* The disguise preview's two classes left with the block itself: Settings and setup's last question both draw it, so
    it is DisguisePreview.svelte's now and its styles are scoped there. */
 
 /* ---------- Manage tags ---------- */
@@ -644,20 +556,9 @@
 /* ---------- Custom dimension ---------- */
 .cd-endpoints { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
 
-/* ---------- The gates (phase 5 ticket 26, redressed by redesign ticket 34)
-
-   The five pre-unlock screens and the mid-session lock, all built from
-   GateScreen.svelte. What stood here was a centred 360px column with a 60px
-   tinted disc on top of it: chrome from before DIRECTION.md, on the screens
-   most people meet most often.
-
-   A gate is a step with nothing to skip (rule 15). So it takes rule 12's
-   shape - a field from the window's top edge holding one title at 48, the
-   page under it - and loses the sun, the back, the skip, the leave and the
-   progress, none of which a gate can have. The field's drawing is the shared
-   one in components.css (`.step-field*`), the same object setup wears, so an
-   edge that moves and a thing printed on it cannot come apart between the two
-   surfaces. What is left here is a gate's own composition. */
+/* Gate composition for GateScreen.svelte. The gate uses the same
+   .step-field* edge as setup. It presents one title or sun over the
+   gate's content, with no navigation or progress controls. */
 
 /* The frame is exactly the window and never scrolls (rule 14). `clip` rather
    than `hidden`, for the reason `.screen-setup` gives: `overflow: hidden`
@@ -716,7 +617,7 @@
   color: var(--field-ink);
   text-wrap: balance;
   /* A 48px word is wider than a 195px window at 200% zoom, which is where
-     every title in the app took this rule (ticket 35). */
+     every title in the app took this rule. */
   overflow-wrap: break-word;
 }
 
@@ -782,20 +683,9 @@
 .gate-page:has(.pin-pad) .gate-foot { margin-top: 0; }
 .gate-note { color: var(--text-2); font-size: var(--text-sm); margin: var(--space-3) 0 0; }
 
-/* An unlock's sun (tester-report-02 ticket 07). Where the title was, the
-   field holds Today's own sun, at Today's size and in the same corner, so
-   opening the app holds one sun still while the field opens around it.
-
-   The field is as tall as the sun wherever the window allows, so its edge
-   does not cut a ring: the outer ring's radius (175px, scaled as Today
-   scales it on a narrow window) and 16px of field under its lowest point
-   (Alicja, signing off: "make THE FIELD bigger also so that the sun isnt
-   cut off"). The corner
-   stays cut by the window's top and side, which is the mark's own drawing.
-   The value is set only on an unlock without disguise, so a disguised gate
-   keeps the base's height exactly. The title's line is held at the height
-   that makes the field that tall, and the edge starts there too, so the gate
-   arrives at its height rather than growing into it. */
+/* An undisguised unlock uses Today's sun at the same size and position.
+   Fit the scaled 175px outer radius plus 16px below it. Set the field height
+   before it draws so appOpening can keep the sun still during unlock. */
 /* The whole sun does not fit over the PIN pad, the tallest gate, on every
    window: at 360x640 the pad and everything under the field need 482px
    (the page's own 454, the screen's 20 under it and 8 to spare, measured),
@@ -925,8 +815,8 @@
    against an indefinite button resolves to auto and leaves the cell as wide
    as whatever it happens to hold. A loaded photograph hid that - its own
    320px intrinsic width filled the track - but a tile with no pixels in it
-   yet, and a video note's tile, which holds a 26px glyph and nothing else
-   (phase 11 ticket 14), both collapsed to about 36px. It also takes the jump
+   yet, and a video note's tile, which holds a 26px glyph and nothing else,
+   both collapsed to about 36px. It also takes the jump
    out of an ordinary photo tile, which used to grow from the glyph's width
    to the track's in the frame its thumbnail arrived. */
 .photo-cell {
@@ -937,7 +827,7 @@
 .photo-cell .photo-thumb { width: 100% !important; aspect-ratio: 1; height: auto !important; }
 .photo-cell .photo-thumb { outline: 3px solid transparent; outline-offset: 2px; transition: outline-color var(--dur-fast) var(--ease-out); }
 /* The ring fades in rather than landing in the frame of the tap, the hold
-   that starts picking included (pre-release-human 12). */
+   that starts picking included. */
 .photo-cell.is-selected .photo-thumb { outline-color: var(--accent); }
 .photo-date { font-size: var(--text-xs); color: var(--text-2); }
 .photo-check {
@@ -1000,7 +890,7 @@
   }
 }
 
-/* ---------- Stats hub (phase 5 UX ticket 23) ---------- */
+/* ---------- Stats hub ---------- */
 
 /* A line of context inside a chart card, above or below the plot: which
    analyte is drawn, that a fold reads the whole journal, which tags were
@@ -1016,8 +906,8 @@
    ChartCard takes no prop for a paragraph and does not need one; this is
    body content, which is what its `children` slot is for. */
 
-/* The figures, as rows of a list card rather than a row of small tiles
-   (phase 5 UX ticket 23). What the list buys is room for a supporting line
+/* The figures, as rows of a list card rather than a row of small tiles.
+   What the list buys is room for a supporting line
    under a figure, which a tile stating a bare number has nowhere to put. */
 .wrapped-figure-value {
   font-family: var(--font-display);
@@ -1044,7 +934,7 @@
   color: var(--text-2);
 }
 
-/* ---------- On this day (phase 5 UX ticket 23) ----------
+/* ---------- On this day ----------
    The photos from the day that resurfaced, under the entries that mention
    them. A wrapping row rather than a scroller: a single day's photos are a
    handful, and a strip you have to drag hides some of them behind an edge. */

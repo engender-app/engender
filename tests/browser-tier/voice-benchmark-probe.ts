@@ -1,25 +1,8 @@
-/* Browser-tier check for ticket 15's acoustic engine, the half the node tier
-   cannot reach.
-
-   What is only provable here: that a take recorded through MediaRecorder,
-   stored as opus in a webm container and decoded back through an
-   OfflineAudioContext still measures what it measured before it made that
-   round trip. The DSP itself is node-tested against synthesized buffers
-   (src/lib/audio/*.test.ts); none of those tests can say whether the codec,
-   the container and the resample leave the numbers intact, and that is the
-   path every stored benchmark actually goes through.
-
-   The signal is an oscillator rather than Chromium's fake device: 185 Hz is
-   in the contract, and the fake device's beep frequency is not
-   (tests/fake-microphone.mjs). The app's own startTake() and
-   decodeTake() run unchanged over it.
-
-   Phase 8 features ticket 09 adds the two halves that ticket needs proving
-   here rather than in Node: that the take a real recording produces carries
-   a stored pitch track, and that the figure drawn from a live session puts
-   its trace where the absolute axis says 185 Hz is. The gauge is
-   mounted for real, so what is measured is the component's own output over
-   frames that came off a microphone. */
+/* Record 185 Hz through the real startTake() and decodeTake() path.
+   Check measurement survives MediaRecorder, Opus in WebM and decode
+   through OfflineAudioContext. Synthetic buffers cover DSP in Node.
+   Check the stored pitch track and the live gauge's placement on
+   the absolute 185 Hz axis. */
 
 import { mount } from 'svelte';
 import { analysePassage } from '../../src/lib/audio/benchmark.ts';
@@ -120,7 +103,7 @@ function drawnTake(pitchTrack: string | null) {
 }
 
 /** The two ways this app opens a microphone, described rather than
-    recorded (phase 8 features ticket 28).
+    recorded.
 
     Against Chromium's own fake device, not the oscillator the takes above
     use: a stream synthesized out of a `MediaStreamAudioDestinationNode`
@@ -151,7 +134,7 @@ async function run() {
 
   /* A steady take, long enough to clear the gate's reading floor twice over.
      The word count is the oscillator's own rather than a whole passage's:
-     the floor scales with it (ticket 41), so 20 English words asks for 1.66s
+     the floor scales with it, so 20 English words asks for 1.66s
      of voice and four seconds of tone answers it with room to spare, where
      a hundred words would ask for more than the take is long. */
   const PROBE_WORDS = 20;
@@ -169,7 +152,7 @@ async function run() {
 
   return {
     /* What a benchmark writes down about the equipment, and what the same
-       microphone looks like under the browser's processing (ticket 28). */
+       microphone looks like under the browser's processing. */
     captureChain: steady.captureChain,
     openedChains: chains,
     figure,

@@ -1,26 +1,11 @@
-/* The golden archive: one encrypted backup, committed as bytes, holding at
-   least one row in every section an archive carries.
+/* Keep a committed encrypted Archive with every section represented.
+   Reading frozen bytes and checking golden-archive-counts.json catches an
+   omitted section or row even if snapshot and restore drift together.
 
-   It exists because the wiring that decides which sections travel is spread
-   across a snapshot, a restore and a wire type, and a section dropped from
-   one of them fails silently - the archive is simply short that area and
-   everything still passes. Reading a fixture that was packed once and never
-   again is the only check that notices, because nothing in this test can
-   change what the fixture says an archive of that journal looks like. Each
-   section's row count is pinned too (golden-archive-counts.json), not just
-   whether it is empty: a section that goes from nine rows to one is still
-   non-empty, and "more than zero" was the whole guarantee until ticket 12.
-
-   Two ways to change what is committed, and they are not interchangeable.
-   `GOLDEN_ARCHIVE=rebuild` packs a brand new `everySection()` journal and is
-   the routine path - it is how adding a built-in dimension, preset or tag
-   shows up in the fixture, because `everySection()` reconciles today's
-   vocabulary itself. `GOLDEN_ARCHIVE=patch` decrypts what is committed and
-   runs a transform over its journal instead of starting from nothing,
-   which is what a change a fresh journal cannot reproduce on its own needs -
-   see golden-archive-fixture.ts's own doc comment on `patchGoldenArchive`.
-   Either way every id in the fixture changes, so a diff that touches more
-   than the section under discussion is the signal to stop and look. */
+   GOLDEN_ARCHIVE=rebuild packs today's everySection() fixture and built-ins.
+   GOLDEN_ARCHIVE=patch transforms the committed input for changes a fresh
+   journal cannot reproduce; see patchGoldenArchive. The regenerated fixture
+   gets fresh IDs. Check unexpected differences outside the target section. */
 
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

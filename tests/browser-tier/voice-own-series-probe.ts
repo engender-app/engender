@@ -1,26 +1,8 @@
-/* Browser-tier check for the own-series trends (phase 8 features ticket 29,
-   ADR-0060, ADR-0061), the half no Node test can reach.
-
-   What is only provable here: that a change of capture chain arrives on
-   screen as a visible break with a sentence in it. The Node tier proves the
-   runs and the reasons as data (charts/ownSeries.test.ts); only a rendered
-   card can say that the runs became two separate plots, that the words
-   between them are the reason for the gap rather than an empty element, and
-   that switching the figure through the card's own picker redraws it.
-
-   The other claim is a negative one, and it is the reason this ticket has a
-   browser check at all: none of these plots may carry a band, a shaded
-   target region or a worse-to-better colour ramp. ADR-0060 forbids all
-   three on these five figures, and the surface that could break the rule is
-   the markup rather than the arithmetic - the pitch figure next door draws
-   bands from the same kit, so "no band anywhere in this card" is a claim
-   about what was rendered.
-
-   The card is mounted three times over made-up benchmarks: one history
-   spanning two chains, one journal holding a single benchmark, and one
-   whose takes all skipped the held vowel so the vowel figures have no
-   readings at all. The figures are invented here rather than measured -
-   what is under test is the drawing, not the acoustics. */
+/* Mount invented benchmarks across two capture chains, one benchmark,
+   and takes without held vowels. Check the chain break renders separate
+   plots with its reason and the picker redraws the figure.
+   charts/ownSeries.test.ts covers the data split. All five figures avoid
+   bands, target shading and graded colours (ADR-0060, ADR-0061). */
 
 import { flushSync, mount } from 'svelte';
 import '$lib/theme/fonts.css';

@@ -1,4 +1,4 @@
-/* Unit tests for the procedures area and milestone linking (phase 5 ticket 12, ADR-0045). */
+/* Unit tests for the procedures area and milestone linking (ADR-0045). */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

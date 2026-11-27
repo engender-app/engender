@@ -1,39 +1,14 @@
 <script lang="ts">
   import { undoable } from '$lib/stores/deleteUndo';
   import { journalTextAutocomplete } from '$lib/platform';
-  /* When you first noticed each change, on the surface kit (phase 5 UX
-     ticket 25).
+  /* NoticedAxis shows recorded dates before any group opens. Keep
+     personal effects and side effects in the axis and their own
+     sections in the log. Literature bands stay with the individual
+     change they describe. A recorded date never implies a band.
 
-     The groups keep their disclosure - a screen that opened every category
-     at once would be a page of timelines - and it finally has motion. A
-     group used to appear at full height, which shoved everything under it
-     down the screen in one frame; it opens its own height now
-     (DIRECTION.md tier 3, and the one place that tier spends a layout
-     property), so the rows below travel with it. Reduced motion is an
-     instant cut, and the chevron has already turned to say what happened.
-
-     The group is a list card rather than a `.card` holding a `.list-group`,
-     which was two containers deep for one list.
-
-     The screen opens on the axis now (phase 10 redesign ticket 57,
-     DIRECTION.md rule 16): every change already marked, at the month it was
-     noticed, before any group is opened. The groups are the log under that
-     reading and are otherwise untouched - they are still where a change is
-     marked for the first time, and still where the literature's bands are
-     drawn against the one change each belongs to. Two drawings on one
-     screen answering two questions: when did I notice this, and what do the
-     tables say about when people usually do.
-
-     Side effects moved in whole (phase 11 all-four-doors ticket 13): a side
-     effect and a change you were hoping for are both something you noticed
-     after starting a regimen, and having them on two screens made the
-     reader classify their own symptom before they could write it down. The
-     axis draws both kinds now (`NoticedAxis`, `$lib/data/noticedAxis`'s
-     `kind` field), the list under it keeps both under their own headings,
-     and the cycle block that used to sit under the side effects screen came
-     with it, its gate unchanged. What did not move: the record itself, the
-     literature bands, or the rule that no band is drawn for what somebody
-     noticed rather than what the tables expect. */
+     A category opens its own height and moves the rows below it.
+     Reduced motion applies the open state immediately. The cycle
+     block keeps its own availability gate. */
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
@@ -96,9 +71,8 @@
   let episodesQuery = liveList((j) => j.regimen.getEpisodes());
   let episodes = $derived(episodesQuery.rows);
   /* The anchor is HRT's own start, not whichever episode is active right
-     now (ticket 07) and not the first episode of any drug (functional audit
-     ticket 18): the HRT start the person set, else the earliest HRT
-     episode. Its drug decides which bands may be drawn at all (ticket 27),
+     now and not the first episode of any drug: the HRT start the person set, else the earliest HRT
+     episode. Its drug decides which bands may be drawn at all,
      so the whole anchor is held rather than only its start day. */
   let anchor = $derived(hrtAnchor(episodes, prefs.hrtStartEpochDay));
   let anchorEpochDay = $derived(anchor?.startEpochDay ?? null);
@@ -111,7 +85,7 @@
 
   /* The catalogue a hidden effect or a disabled category has already
      removed (CONTEXT: "Hidden", "Effect category") - what the timeline and
-     the "mark a change" list offer. A retired built-in (ticket 23) is left
+     the "mark a change" list offer. A retired built-in is left
      out too unless it is already marked, which keeps its row and its mark.
      The fuller list lives only in the manage sheet below. */
   let visibleEffects = $derived(
@@ -144,8 +118,7 @@
     expandedGroups = next;
   }
 
-  /* What the literature says sits behind one disclosure (functional audit
-     ticket 22), closed on every visit, so the person's own markers are what
+  /* What the literature says sits behind one disclosure, closed on every visit, so the person's own markers are what
      the screen shows first. The same state opens the timelines' bands, the
      explanation above the groups and the sentence in the editor sheet: one
      question, asked once, wherever it is asked. */
@@ -168,8 +141,8 @@
      other language would order the pieces.
 
      Null where the band is withheld, and nothing is said in its place: the
-     sentence would be a timing claim about a hormone this person is not on
-     (ticket 27), or about an effect the literature has no window for at
+     sentence would be a timing claim about a hormone this person is not on,
+     or about an effect the literature has no window for at
      all (tiers 2 and 3, ticket 41). */
   function windowCaption(key: string): string | null {
     if (bands?.get(key) == null) return null;
@@ -229,7 +202,7 @@
     return null;
   }
 
-  /* The side effects half of the merged screen (ticket 13): the same list,
+  /* The side effects half of the merged screen: the same list,
      the same editor sheet and the same cycle block that used to live on
      /health/side-effects, moved here whole. */
   let effectsQuery = liveList((j) => j.sideEffects.getSideEffects());
@@ -245,7 +218,7 @@
   let effects = $derived(effectsQuery.rows);
 
   /* `resolved` is the resolved day as a date input value, empty while the
-     side effect is ongoing (functional audit ticket 23). */
+     side effect is ongoing. */
   type SideEffectDraft = { id?: string; date: string; name: string; severity: string; resolved: string };
 
   const record = recordEditor<SideEffect, SideEffectDraft>({
@@ -313,8 +286,8 @@
   }
 
   /* What the axis at the top of the screen draws: the changes that carry a
-     marker, joined to their catalogue entry (ticket 57), and every side
-     effect logged (ticket 13) - the two kinds `NoticedChange.kind` tells
+     marker, joined to their catalogue entry, and every side
+     effect logged - the two kinds `NoticedChange.kind` tells
      apart. Personal effects are only the visible ones, the same catalogue
      the groups below and the chart inside them read, so hiding an effect or
      turning its category off takes it off the axis too. A marker for an
@@ -386,7 +359,7 @@
   }
 
   let manageOpen = $state(false);
-  /* A retired built-in (ticket 23) has no hide toggle to offer: nothing
+  /* A retired built-in has no hide toggle to offer: nothing
      brings it back, so a row for it here would be a switch that does
      nothing. */
   let managedEffects = $derived(vocabulary.personalEffectTypes.filter((e) => !RETIRED_PERSONAL_EFFECT_KEYS.has(e.key)));
@@ -437,7 +410,7 @@
        screens' intros, and in the header it is seven lines of lead before
        a single change is named. A subtitle is a line; this is a paragraph,
        and it belongs where a paragraph goes. The subtitle carries the
-       shorter claim instead (ticket 13): what both halves of this screen
+       shorter claim instead: what both halves of this screen
        are, and the "no grading and no advice" line the side effects screen
        used to open on, rather than losing it in the merge. -->
   <ScreenHeader title={m.effects_timeline()} back="/care">
@@ -452,12 +425,12 @@
   </ScreenHeader>
 
   <!-- Held at last visit's height until every read the body draws from has
-       answered, then faded in (ux-carpet ticket 205). It swapped from a
+       answered, then faded in. It swapped from a
        skeleton inside a resize wrapper: cut in at full opacity, and the
        effects gate inside it could still be answering, its rows one wrapper
        too deep for the screen's spacing. -->
   <ReadReserve ready={bodyRevealed} estimate={bodyEstimate} onrest={rememberBody} data-changes-body>
-    <!-- What is true now, before the records (DIRECTION.md rule 16): every
+    <!-- What is true now, before the records: every
          change already marked, at the month it was noticed, on one line. -->
     <NoticedAxis
       changes={noticedChanges}
@@ -468,7 +441,7 @@
 
     <!-- Under the axis rather than over it, and no longer instead of it.
          This notice used to replace the whole screen, so a journal with no
-         regimen in it saw nothing it had marked (ticket 57) - and a person
+         regimen in it saw nothing it had marked - and a person
          can notice a change before they are on anything, or restore a
          journal and not have typed a regimen back in yet. It reads as what
          a regimen would buy the line above it: months counted from a start
@@ -484,8 +457,7 @@
       />
     {/if}
 
-    <!-- What the literature says, closed until asked for (functional audit
-         ticket 22): no band is drawn and no timing sentence is shown before
+    <!-- What the literature says, closed until asked for: no band is drawn and no timing sentence is shown before
          this opens, so what the person marked comes first. It replaces
          ticket 20's always-visible limitation line and its "About shaded
          bands" disclosure; the limitation now arrives with the bands it
@@ -571,7 +543,7 @@
       {/if}
     {/each}
 
-    <!-- The other change hanging off this screen (ticket 13): a side effect
+    <!-- The other change hanging off this screen: a side effect
          and a change you were hoping for are both something you noticed
          after starting a regimen, and having them as two screens made the
          reader classify their own symptom before they could write it down.
@@ -643,7 +615,7 @@
         {/snippet}
       </Field>
       <!-- The person's own date first, then the literature's timing for the
-           same change behind the screen's one disclosure (ticket 22). -->
+           same change behind the screen's one disclosure. -->
       {#if caption && window}
         <div class="literature" data-sheet-literature>
           <button
@@ -772,7 +744,7 @@
     </div>
   {/snippet}
 
-  <!-- Saying you are done with this area (phase 8 features ticket 04). -->
+  <!-- Saying you are done with this area. -->
   <AreaFinish group="effects" />
 
   <Sheet busy={effectTypeWrite.busy} open={manageOpen} title={m.effect_manage_types()} onClose={() => (manageOpen = false)}>

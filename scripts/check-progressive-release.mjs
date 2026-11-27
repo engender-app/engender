@@ -1,4 +1,4 @@
-/* Progressive release evidence gate (phase 2 ticket 22).
+/* Progressive release evidence gate.
 
    A green build says code compiles. This check proves each release stage has the
    exercises recorded before a channel is marked live on the landing site.

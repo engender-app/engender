@@ -1,27 +1,9 @@
 <script lang="ts">
   import { collapse } from '$lib/motion/reveal';
-  /* Tryouts, on the surface kit (phase 5 UX ticket 25), rebuilt by phase 10
-     redesign ticket 53.
-
-     The row was three controls wearing one row's clothes: a `.list-row`
-     div, a bare anchor inside it holding the text with its own inline
-     `text-decoration:none;color:inherit`, and a delete button beside it -
-     so the tappable area was the words rather than the row. It is the
-     kit's split row now, which is the same two controls with the row's own
-     padding and press behind the first of them.
-
-     What ticket 53 changed is which records get that row. The screen is
-     entirely about tryouts and said nothing about which of them is
-     happening now - and the felt-sense readings that answer the second half of this
-     screen's own subtitle were reachable from the database and drawn
-     nowhere on it. So the screen opens on what is true now (DIRECTION.md
-     rule 16): a running tryout is a card with its length and the shape its
-     readings make, and the ended ones are the log under it, still rows,
-     each gaining how long it ran.
-
-     Appointments is the worked example this follows - the same records
-     split by the one fact that changes which of them you want, with a
-     heading over each half. */
+  /* Show the active tryout first with its length and felt-sense
+     readings. List ended tryouts below with
+     durations. Use split rows so the entry link gets a full target
+     beside Delete. */
   import { undoable } from '$lib/stores/deleteUndo';
   import { m } from '$lib/paraglide/messages';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
@@ -57,7 +39,7 @@
   let feltQuery = liveQuery((j) => j.feltSense.byTryout());
   let feltByTryout = $derived(feltQuery.value ?? new Map<string, FeltSenseEntry[]>());
 
-  /* The gate waits for both (last-audit UI ticket 20). Gated on the
+  /* The gate waits for both. Gated on the
      tryouts alone, a running card painted before its readings had
      answered and said "No felt sense recorded yet" about a tryout that
      had some, then swapped in the reading, the arc and the tally without

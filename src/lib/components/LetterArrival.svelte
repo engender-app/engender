@@ -1,45 +1,15 @@
 <script lang="ts">
-  /* The moment a letter's day arrives (phase 10 redesign ticket 45).
+  /* A letter can take over the screen on its unlock day, once.
+     markLetterGreeted records the greeting across reloads, and the
+     read set also excludes letters already opened. The way past
+     leaves the letter closed. LetterCard draws it in its ready
+     state and owns the unfold and the unread text boundary.
 
-     A letter whose unlock day is today gets the whole screen, once, and then
-     never again. It is the only thing in the app somebody wrote to
-     themselves and could not reach until now, and it had been arriving as
-     one row in a list of four.
-
-     Once per letter, and "once" survives a reload: `markLetterGreeted` in
-     letterStatus.ts, checked against the read set too, since being handed a
-     letter and leaving it closed is still having met it. Meeting it is
-     unconditional in one direction only - the way past does not open the
-     letter, and nothing here reaches the text before the card is opened:
-     an unread card draws no line of it (LetterCard's `read`).
-
-     **It is the card, alone**, rather than a second drawing of one: the same
-     `LetterCard` in its ready state, so opening it here is the same unfold it
-     would be in the list, on one object that stays one object. What the
-     arrival adds is the field, the room around it, and a way past.
-
-     **Not a route.** A route would owe the screen registry, a door rule and a
-     field of its own; this is a moment on a screen rather than a place, which
-     is the reading ADR-0062 gives the return surface. It covers what it
-     arrived on and uncovers it again on the way out, and nothing navigates.
-
-     **It wears the field, and it is not a step.** The sentence sits on the
-     field and the answers on the page under it, which is a step's shape
-     (rule 12) borrowed rather than met: rule 12 enumerates what a step's
-     field holds - the back control, the sun, the question - and says nothing
-     else, and this carries only the sentence. It is not a gate either, since
-     a gate is a step with nothing to skip (rule 15) and the whole point of
-     this one is that there is something to skip; a letter is nobody's to
-     force open, least of all the app's. What it is is a moment, which is the
-     third case ADR-0062 already reads the return surface as, and a moment
-     answers to neither rule.
-
-     **The whole surface is the blind** (rule 10). The field is static here,
-     so there is no edge to walk: what arrives is the arrival itself,
-     uncovered from the top edge down over --dur-slow, field and page
-     together as one sheet. It leaves the same way in reverse, which is what
-     puts the letters screen back exactly as it was. Reduced motion
-     substitutes the crossfade its contract asks for rather than cutting. */
+     The arrival covers the current screen without navigating.
+     Its sentence sits on the field and choices below it.
+     A single blind reveals the field and page from the top over
+     --dur-slow. Closing reverses the blind. Reduced motion uses
+     a crossfade. */
   import { onMount } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { crossfadeDuration, EASE_OUT, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';

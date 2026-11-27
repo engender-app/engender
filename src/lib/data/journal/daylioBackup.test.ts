@@ -1,4 +1,4 @@
-/* Daylio backup import at the public journal seam (phase 7 ticket 09):
+/* Daylio backup import at the public journal seam:
    preview first, then one merge-only commit, against a real migrated
    database rather than against the resolver's own output.
 

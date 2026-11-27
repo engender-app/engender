@@ -36,8 +36,7 @@ describe('the routes that render without chrome', () => {
   });
 
   it('is the return moment, which is a step and has nowhere to go (ticket 35)', () => {
-    /* DIRECTION.md rule 15: one purpose, no navigation. A tab bar over it
-       is four ways off a screen whose foot already carries the one. */
+    /* The return step has one exit in its footer. */
     expect(chromelessPath('/coming-back')).toBe(true);
   });
 
@@ -124,10 +123,8 @@ describe('which navigations cut instead of moving', () => {
 });
 
 describe('the routes with no tab bar over them', () => {
-  /* A new entry is a step in DIRECTION.md rule 15's sense (tester report
-     02, ticket 03): one purpose and no bottom bar. It is not chromeless in
-     the wider sense, because Today's retained doors have to stay mounted
-     under it - it is where the app goes most often from Today. */
+  /* New entry hides the tab bar but keeps Today's retained doors mounted
+     beneath it. */
   it('is a new entry, on any day', () => {
     expect(barlessPath('/entry/new/today')).toBe(true);
     expect(barlessPath('/entry/new/19000')).toBe(true);

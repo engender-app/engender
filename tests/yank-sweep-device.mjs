@@ -1,75 +1,17 @@
 // @ts-nocheck
-/* The yank sweep, device half (ticket 100): the same scene table and the
-   same style arithmetic as `tests/yank-sweep.mjs`, driven through a real
-   Android phone's WebView over its devtools socket - plus a camera the
-   desktop sweep has no need for.
+/* Sample Android WebView styles and compositor frames over CDP. Start the
+   gesture on the second rAF. A transient differs from two matching neighbours.
 
-   Why the camera. Ticket 99 round 2 found a yank whose trace was correct
-   while its render was not: the styles and the pseudo elements all said
-   "clipped, in place", and the phone still painted the blind a window
-   tall for a frame or two. A detector that only reads styles cannot see
-   that class of bug - which is the class this ticket exists to stop
-   missing. So every scene here is also screencast frame by frame through
-   `Page.startScreencast`, the compositor's own frames pushed from the
-   renderer (FLAG_SECURE does not reach them), and a second detector reads
-   the renders: a frame whose content differs from both its neighbours,
-   while the neighbours agree with each other, is a transient - something
-   painted that was never meant to be on screen, whatever the styles
-   claimed. The style trace runs alongside and annotates rather than
-   decides.
+   Use JDK 21, USB debugging and a demo APK with a dev.engender.app.test
+   package. The runner rejects the production ID before adb. Build in a
+   disposable checkout, then pass the serial, --package and APK path.
 
-   Each scene runs under both themes and several passes (`--passes`, default
-   3): a one-frame defect at 60Hz has a real chance of falling between two
-   composited frames, and a transient that shows in any pass counts.
-
-   Driven over the WebView devtools socket rather than by input taps, for
-   the reason the disguise probe already wrote down: the live page is the
-   authority, and the sampler's own rAF loop starts the gesture on its
-   second frame so nothing has to race a tap.
-
-   Run against a real phone with USB debugging on, by serial, after
-   building and installing the demo APK (a debug build: Capacitor leaves
-   its WebView debuggable there, and ticket 99 round 2 also stopped the
-   debug build from setting FLAG_SECURE, so screen recordings work too):
-
-     VITE_DEMO=1 npm run build
-     npx cap sync android
-     JAVA_HOME=~/.sdkman/candidates/java/21.0.12-tem \
-       android/gradlew -p android :app:assembleDebug
-     node tests/yank-sweep-device.mjs <serial> --package dev.engender.app.test.<name> [path/to/app-debug.apk]
-
-    `--scenes a,b` narrows the run, `--passes N` sets the repeats,
-    `--themes light,dark` (both, by default), `--out <dir>` names the report
-    directory, `--compare <report.json>` reads a desktop sweep report and
-    prints the two side by side, `--prove` injects the three wrong marks and
-    fails unless the style arithmetic and the camera both catch them,
-    `--dump` writes every scene's style frames as JSON, and
-    `--cast-scenes a,b` saves all compositor frames for named scenes.
-    `--reduced-motion` runs the control pass (`prefers-reduced-motion:
-    reduce` emulated over CDP, recorded as `reducedMotion` in the runtime).
-
-    `--package dev.engender.app.test.<name>` is required: the runner
-    installs, force-stops and launches it, and `dev.engender.app` is
-    Alicja's real journal, so it is refused before any adb call. Build the
-    test APK in a throwaway worktree with `applicationId` in
-    android/app/build.gradle changed to that id, after `npx cap sync
-    android`. `--port N` (default 9341) is the devtools forward, the only
-    one this run removes.
-
-    `--hydration` (ticket 108) swaps the gesture scene table for the full
-    screen inventory and walks it cold in both database profiles: the
-    camera rolls from the navigation itself and the DOM sampler starts
-    the moment boot reports ready, each for three seconds, because the
-    cold-mount pops live inside the settle this script's gesture half
-    deliberately waits out. `--profiles persona,empty` (both, by default)
-    picks the journal states; one pass per scene by default here, three
-    being a gesture-scene cost the inventory does not need. The scene
-    table, thresholds and profile expressions are the shared core's, so
-    the phone and the desktop cannot drift.
-
-    Selected pixel findings have PNGs next to the report,
-    named <scene>-<profile>-<theme>-p<pass>-<index>-f<finding>{a,b,c}.png.
-    Each report finding names its saved triple or explains its omission. */
+   Gestures default to both themes and three passes. --hydration observes
+   cold mounts and samples for three seconds after boot ready. Use --scenes,
+   --themes, --passes, --profiles and --out to set coverage and output.
+   --port defaults to 9341. --compare reads desktop results. --reduced-motion
+   runs the cut control and --prove checks both detectors.
+   --dump retains style frames. --cast-scenes retains named compositor casts. */
 import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -164,7 +106,7 @@ const only = flag('scenes', '')
 const themes = flag('themes', 'light,dark')
   .split(',')
   .filter(Boolean);
-/** The hydration mode (ticket 108): the full screen inventory walked cold
+/** The hydration mode: the full screen inventory walked cold
  *  in both database profiles, rather than the gesture scenes. */
 const hydration = args.includes('--hydration');
 /** Trust the journal as it stands instead of re-running the demo jumps.
@@ -381,24 +323,11 @@ async function ev(expression, ms = 90000) {
   throw new Error('the WebView kept dropping the devtools socket: ' + (lastError?.message ?? 'unknown'));
 }
 
-/** The sampler's answer, fetched in slices the socket will carry.
- *
- *  Ticket 140: the WebView drops the whole devtools connection for any
- *  reply of 4 MiB or more, and the frame table passes that on the app's
- *  densest screens - `/settings` samples 178 marks over 211 frames, which
- *  is 5.76 MB of JSON, and `/voice?metric=pitch` 4.78 MB. Those were the
- *  scenes the device reports had been recording as `SOCKET_GONE` and
- *  reading as a renderer crash; nothing on the phone was dying, the reply
- *  was simply bigger than the transport. Desktop never saw it because
- *  Playwright's CDP transport has no such cap.
- *
- *  So the table is stringified where it is made and pulled back a slice
- *  at a time. The retry in `ev()` still covers each leg: a re-attach lands
- *  on the same document, so the stashed string is still there. A
- *  navigation is the other thing entirely and this does not survive one -
- *  the global belongs to the document that made it - so the fetch has to
- *  finish before anything moves the page. Every caller below samples and
- *  then fetches, with the next `location.assign` a scene away. */
+/** Fetch the frame table in slices below WebView's 4 MiB devtools
+ * reply limit. Stringify in the page and retry each slice through ev().
+ * Reattaching to the same document preserves the staged string.
+ * Finish fetching before navigating because the document owns it.
+ */
 async function evFrames(expression, ms = 90000) {
   const total = await ev(
     `(async () => {
@@ -745,7 +674,7 @@ const originalAccessMode = await accessMode();
 if (originalAccessMode === 'passphrase' && (profiles.includes('empty') || SCENES.some((s) => s.setup === 'pin')))
   throw new Error('sweep cannot restore a passphrase after profile or lock-gate setup; use a throwaway unlocked or PIN journal');
 
-/* ---------- the hydration run (ticket 108) ---------- */
+/* ---------- the hydration run ---------- */
 
 /** One cold scene: the camera rolls before the navigation, the sampler
  *  starts the moment boot reports ready, both stop three seconds later.
@@ -876,8 +805,7 @@ async function hydrationScenes() {
          scraped last (`/media/documents` today), regardless of which
          scenes actually run below - an artifact of scrape order, not a
          real predecessor screen. Left uncorrected, the scene loop's first
-         hydrationCold scene starts its camera on that leftover page (ticket
-         160): harmless in an unfiltered sweep where a real earlier scene
+         hydrationCold scene starts its camera on that leftover page: harmless in an unfiltered sweep where a real earlier scene
          would have landed there anyway, but a narrowed `--scenes` run has
          no such earlier scene, so the leftover bleeds into evidence for a
          route that never showed it. Settling home first removes the
@@ -954,7 +882,7 @@ async function hydrationScenes() {
 
 }
 
-/* ---------- the gesture run (ticket 100) ---------- */
+/* ---------- the gesture run ---------- */
 
 try {
 if (hydration) {

@@ -1,5 +1,4 @@
-/* Whether a scheduled backup that failed says so on the phone (phase 6
-   ticket 04). The notice has fired since phase 4 with no settings home at
+/* Whether a scheduled backup that failed says so on the phone. The notice has fired since phase 4 with no settings home at
    all; it has one now, `exportFailureNoticeEnabled`, and with it the two
    cross-class rules the registry applies to every producer.
 

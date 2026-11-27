@@ -28,7 +28,7 @@ if (archiveMs < 500 || archiveMs > 2000) {
   console.log(`  note: archive path is ${archiveMs < 500 ? 'well under' : 'well over'} the ~1s target - consider re-tuning memorySize/iterations`);
 }
 /* The PIN profile is the one whose cost is a security figure rather than
-   only a comfort one (ticket 53): four digits is 10,000 candidates, so the
+   only a comfort one: four digits is 10,000 candidates, so the
    per-guess cost is most of what an on-device attacker pays. Under the band
    the quoted brute-force figure in the setup copy stops being true; over
    it, a cold start starts to feel broken. */

@@ -1,4 +1,4 @@
-/* Screenshots of what a day looks like (phase 5 deepening ticket 21): the
+/* Screenshots of what a day looks like: the
    three day shapes the ticket names - one entry and nothing else, a day
    someone logged properly, and every registered section at once - across all
    8 palettes and both themes.
@@ -42,7 +42,7 @@ const shots = [];
 const select = async (label, value) => {
   await page.selectOption(`select[aria-label="${label}"]`, value);
   // The stage is keyed, so this is the remount settling rather than an
-  // entrance: nothing on this screen animates in (DIRECTION, tier 4).
+  // entrance animation. The day screen opens still.
   await page.waitForTimeout(150);
 };
 

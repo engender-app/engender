@@ -126,22 +126,12 @@
   let existing = $derived(loaded.value);
   let day = $derived(existing?.epochDay ?? epochDay ?? untrack(currentDay));
 
-  /* A new entry walks steps (tester report 02, tickets 03, 04 and 09): the
-     quick answer - mood and the scales - then what marked the day, the body
-     and the cards the day offers, and last what is written and attached
-     ($lib/data/entrySteps has the order and when a step is skipped). The
-     first step alone is a complete entry, and each step fits the window
-     wherever its content allows. An entry that exists keeps its single
-     page. Opened for a section (`?open=`, a first photo from Getting
-     started), it starts on that section's step, and Back still walks to the
-     first.
+  /* New entries share one draft across entrySteps. The first step
+     is enough to save. Existing entries keep one page. ?open=
+     starts a new entry at the requested section's step.
 
-     The step is the screen's own state rather than a history entry: the one
-     draft runs through every step, a save from any of them leaves the
-     editor the way it always has, and nothing has to be unwound from
-     history first. Back reaches it three ways - the header's control,
-     Android's gesture ($lib/navigation/stepBack) and the browser's, which
-     the leave guard hands over here instead of asking (ownsDeparture). */
+     Steps stay out of browser history. Header Back, Android gestures
+     and the browser's leave guard all return through the same steps. */
   // svelte-ignore state_referenced_locally
   const stepped = entryId == null;
   /* The marks step holds mode and tags, so it is there while either has
@@ -279,7 +269,7 @@
 
   let deleteOpen = $state(false);
   let promptDismissed = $state(false);
-  /* Guided prompts are an entry-creation aid (ticket 17), not something to
+  /* Guided prompts are an entry-creation aid, not something to
      surface while editing an already-saved entry - `entryId` is undefined
      only for a new one. Read once, like `seedMood` above: the route wraps
      this component in {#key}, so a fresh editor always means a fresh
@@ -289,7 +279,7 @@
     entryId == null && prefs.guidedPromptsEnabled ? vocabulary.randomPrompt() : null
   );
 
-  /* The debrief offer's deep link (phase 6 ticket 08): applied once, the
+  /* The debrief offer's deep link: applied once, the
      same "read once at mount" rule `prompt` above follows, and only for a
      new entry - taking the offer never reaches an existing one. It opens
      under the "How did it go?" scaffold. */
@@ -299,41 +289,16 @@
     void prepareDraft(() => fillDebriefPrefill(debriefForAppointment));
   }
 
-  /* What the debrief opens pre-filled with, under its "How did it go?"
-     scaffold: what the person jotted in the room, then the descriptive list
-     of labs and side effects since the visit.
+  /* Prefill the debrief with answers from the room, paired with their
+     questions, then dated labs and side effects since the visit.
+     Read the in-room state without consuming it so a discarded draft can
+     be started again. Resolve the visit date from its ID. If it is missing,
+     keep the answers and omit the dated list. debriefNote.ts merges the
+     list without locale dependencies (ADR-0016).
 
-     THE ROOM'S ANSWERS FIRST (phase 8 features ticket 60), because they are
-     the person's own words and the list under them is context. Each one is
-     printed under the question it was typed against - that pairing is the
-     whole reason the room asks per question rather than offering one free
-     note (answeredQuestions, debriefNote.ts). They arrive from module state
-     (stores/inTheRoom.ts) rather than from the journal, since ticket 60
-     adds no record: read here, non-destructively, so discarding this entry
-     and taking the offer again pre-fills the same words a second time.
-
-     THE LIST (ticket 19, What to Build #2): the same range and the same two
-     reads the appointment prep screen's own "since last time" cards already
-     use (readLabResultsInRange, sideEffects's own getSideEffectsInRange) -
-     not a new read, the range that ticket added asked of the pair that
-     already answers it. debriefListItems merges and sorts them Node-tier,
-     free of paraglide; the date on each line and the join are here, the
-     same split every other wording split in this app follows (ADR-0016).
-
-     Both sections go on in one write, past one guard: the note is appended
-     to only while it still reads exactly as the scaffold left it. A
-     restored process-death draft, or the person having already started
-     typing, both mean there is something here that is not this function's
-     to overwrite - the offer "does not write" (ticket 19's own line), read
-     as "does not clobber" too. With nothing on either side there is nothing
-     to append; a blank line under a one-line prompt is not a list.
-
-     Takes the appointment's id (ticket 58) and resolves its own day first,
-     since the range the list wants starts there, not at some day the caller
-     already knew. An id the journal no longer holds costs the list, not the
-     answers: the room's own words are held against that id and are still
-     the person's, which is the "offer a blank entry rather than a broken
-     one" rule read the generous way round. */
+     Append both sections in one write only while the note still matches
+     the scaffold. Preserve typing and restored drafts. With no answers or
+     dated items, leave the scaffold alone. */
   async function fillDebriefPrefill(appointmentId: string) {
     // Awaited first, deterministically: a restored process-death draft is
     // the person's own unsaved work and always wins the race against this
@@ -386,7 +351,7 @@
      height blank rather than naming today, which is the wrong day for
      almost every entry anyone reopens. */
   /* On a step the line shares its width with the step's progress, so the
-     day is named in short (ticket 09): the long form wrapped to two lines
+     day is named in short: the long form wrapped to two lines
      at 360px. */
   let dateLine = $derived(
     entryId != null && !existing
@@ -394,7 +359,7 @@
       : `${isToday ? `${m.today()} · ` : ''}${fmtDay(day, stepped ? { weekday: 'short', day: 'numeric', month: 'short' } : { weekday: 'long', day: 'numeric', month: 'long' })}${existing ? ` · ${fmtTime(existing.timestamp)}` : ''}`
   );
 
-  /* The chip row and the section it opens (phase 11 ticket 19). Nothing
+  /* The chip row and the section it opens. Nothing
      takes the focus on arrival, a new entry included: a focused note put
      the keyboard over half the editor before anyone asked to type
      (tests/no-auto-keyboard.mjs). */
@@ -464,7 +429,7 @@
     followReveal(sectionEl, region, chipRow);
   }
 
-  /* Contextual Inline Cards (ticket 04, ADR-0044) */
+  /* Contextual Inline Cards (ADR-0044) */
   let tryoutsQuery = liveQuery((j) => j.tryouts.getTryouts());
   let activeTryout = $derived(
     (tryoutsQuery.value ?? []).find((t) => t.endEpochDay == null && (t.kind === 'name' || t.kind === 'pronouns'))
@@ -492,7 +457,7 @@
 
   let scheduleDose = $derived(dueScheduledDoses[0] ?? null);
 
-  /** Stock as of this entry's own day (phase 5 deepening ticket 06), not
+  /** Stock as of this entry's own day, not
       today's - an entry backdated to a day before a re-count would otherwise
       state a remaining figure the count hadn't reached yet. Read here only
       to say what a quick-logged dose leaves; nothing writes to it
@@ -515,8 +480,7 @@
 
   let isHrtActive = $derived(activeEpisodes.length > 0);
 
-  /* ADR-0043's gate, asked rather than re-derived (phase 8 features ticket
-     04). This screen read the cycle preference directly, which was the
+  /* ADR-0043's gate, asked rather than re-derived. This screen read the cycle preference directly, which was the
      one surface of three that did - so somebody on a testosterone regimen who
      never flipped the switch got the More row and the side-effects section
      and not this, which is the reader the automatic half of the rule exists
@@ -531,22 +495,11 @@
     cycleTrackingVisible(episodesQuery.value ?? [], Date.now(), prefs.cycleTrackingChoice)
   );
 
-  /* The cascade (phase 8 features ticket 04, ADR-0052). The effects chip is
-     the one prompt on this screen that belongs to a finishable area, so it is
-     the one that goes quiet when that area does. Read against today rather
-     than against `day`: an area somebody is done with is done with now, and a
-     backdated entry is not a way back into a prompt they switched off.
-
-     `areaQuiet` by hand rather than `unpromptedQuiet`, which is the seam the
-     tiles and the notifications go through. This screen's four contextual
-     cards are not in `unprompted/registry.ts` at all - they are their own
-     `entry*Enabled` preferences, and a registry whose two views draw live
-     tiles and notifications has no row shape for a chip inside the editor.
-     So the gate is named here, and `EntryEditor.gates.test.ts` pins that this
-     is the only card on this screen belonging to an area that can be
-     finished, which is what keeps the hand-wiring honest. Folding the
-     editor's cards into that registry would give the next one the cascade for
-     free and is worth its own ticket. */
+  /* Check areaQuiet against today so a backdated entry cannot
+     restore the effects prompt after its area is finished
+     (ADR-0052). The editor prompts have their own preferences.
+     EntryEditor.gates.test.ts verifies effects is the only one
+     attached to a finishable area. */
   let areaStatesQuery = liveQuery((j) => j.areaStates.getAreaStates());
   let effectsQuiet = $derived(areaQuiet('personalEffects', areaStatesQuery.value ?? {}, currentDay()));
 
@@ -559,7 +512,7 @@
   let markersQuery = liveQuery((j) => j.personalEffects.getMarkers());
   let recordedEffects = $derived(new Map((markersQuery.value ?? []).map((marker) => [marker.effect, marker.firstNoticedEpochDay])));
 
-  /* The walk this person sees (ticket 09). The body step is there for the
+  /* The walk this person sees. The body step is there for the
      body map or for any card the day offers; a card that arrives with its
      read after the editor opened adds the step, and its segment opens in
      the progress. */
@@ -699,7 +652,7 @@
   let viewedPhoto = $state<{ fileName: string | null; bytes?: Uint8Array } | null>(null);
 
   // Unset while nothing is being recorded; the record/stop button reads
-  // this to know which state it is showing (ticket 24).
+  // this to know which state it is showing.
   let activeRecording = $state<ActiveRecording | null>(null);
   // Owns opening, recording and collection, so a second tap cannot open a
   // competing stream and teardown can cancel before permission returns.
@@ -1099,24 +1052,13 @@
   }
 </script>
 
-<!-- The destination half of the app's one container transform (DIRECTION.md
-     tier 2, deferred to this ticket by ticket 18): the tapped entry row is
-     the box this screen grows out of. Named off the `entryId` prop rather
-     than off the loaded entry, and that is the whole trick - the browser
-     photographs the new screen as soon as the navigation settles, and the
-     entry itself is a worker round trip behind that, so a name waiting on
-     `existing` would arrive after the picture was taken. The route knows
-     which entry this is without asking anybody.
+<!-- Derive the destination's transition name from entryId. The
+     browser takes its snapshot before the worker may resolve the
+     record.
 
-     The name itself lives on `.editor-bg`, not on this element - see
-     DayEntry.svelte's comment, the other half of the same fix: a view
-     transition scales its named element's whole rasterised image between
-     the card's rect and this screen's, and this screen's own heading and
-     fields rode inside that image too, at whatever size the small card
-     was, before growing into a screen (Alicja, 2026-08-27: "the ridiculous
-     huge text transition"). The plain fill grows now; the real content
-     sits outside the named element and crossfades in place through the
-     screen's own transition instead. -->
+     Put the name on .editor-bg so only the fill grows from the tapped
+     row. Keep text and fields outside that raster and crossfade them
+     through the screen transition. -->
 <!-- The fieldset is the screen rather than a wrapper inside it. Its
      `disabled` is what stops native fields taking edits during a save on a
      WebView that predates `inert`, and as a `display: contents` wrapper it
@@ -1158,7 +1100,7 @@
         </button>
       {/if}
       {#if existing && entryDraft.savedId === undefined}
-        <!-- The star left this header for the save bar (ticket 18): a new
+        <!-- The star left this header for the save bar: a new
              entry can be starred before it exists, which this header
              cannot offer since it is only drawn `{#if existing}`. -->
         <button class="icon-btn press" aria-label={m.delete_entry()} onclick={() => (deleteOpen = true)}>
@@ -1208,7 +1150,7 @@
   {/snippet}
 
   {#snippet noteField()}
-  <!-- The page first (phase 11 ticket 19). The note used to sit under mood,
+  <!-- The page first. The note used to sit under mood,
        mode, two sliders and thirty tag chips - about 1900px down on the
        audit's render - and the save was gated on the mood picker three
        viewports above the Save button. What a journal is for comes first
@@ -1246,9 +1188,9 @@
        and "change" links redesign ticket 51 gave them. -->
   {#if vocabulary.visiblePresentations.length > 0}
     {#if onStep}
-      <!-- On a step the question is the one heading (DIRECTION.md rule 12),
+      <!-- On a step the question is the one heading,
            so the part under it is named in the small label the tag groups
-           use, not a heading, and its link ends the row of chips (ticket 09). -->
+           use, not a heading, and its link ends the row of chips. -->
       <div class="step-part">
         <span class="step-part-name">{m.presentation_label()}</span>
       </div>
@@ -1308,7 +1250,7 @@
   {/snippet}
 
   {#snippet chipRow(sections: readonly EntrySection[])}
-  <!-- One chip per folded section, each a key (DIRECTION.md rule 13): its
+  <!-- One chip per folded section, each a key: its
        name, and under it what the section holds once it holds something -
        so a saved entry reads as a summary line under its note. A chip opens
        its section directly under the row and closes it on a second tap; one
@@ -1337,7 +1279,7 @@
   {/snippet}
 
   {#snippet panels(sections: readonly EntrySection[])}
-  <!-- ADR-0078 holds: a section discloses by moving under the note, and a
+  <!-- A section opens beneath the note. On a chip switch, the old section closes and the
        switch from one chip to another is the old section closing while the
        new one opens - two heights travelling, never a cut. A transition is
        local and does not play on first render, so a draft restored with a
@@ -1354,10 +1296,10 @@
     </div>
   {/if}
 
-  <!-- Attachments, split by kind (ticket 19): a person adding a photo does
+  <!-- Attachments, split by kind: a person adding a photo does
        not want the recorder. Each kind keeps its own two controls, pick and
        make, since "Record" on two buttons side by side did not say which one
-       was which (phase 5 ticket 22) and the chip now says it instead. -->
+       was which and the chip now says it instead. -->
   <!-- One surface for the three media kinds (pre-release 18, item 76).
        Each kind was a section of its own, so switching chips closed one
        under the other while the next opened: two blocks travelling, the
@@ -1415,7 +1357,7 @@
           {#if entryDraft.recordings.length > 0}
             <div class="recording-list">
               {#each entryDraft.recordings as r, i (r)}
-                <!-- A row arrives and leaves by collapsing (DIRECTION rule 10),
+                <!-- A row opens or closes its own height,
                      so adding or removing one moves the rows under it rather
                      than jumping them. -->
                 <div class="recording-row" transition:collapse|global>
@@ -1521,7 +1463,7 @@
   {/snippet}
 
   {#snippet cards()}
-  <!-- Contextual Inline Cards (ticket 04, ADR-0044). Offers rather than
+  <!-- Contextual Inline Cards (ADR-0044). Offers rather than
        questions, so they stay where they were - after what the person
        chose to open, before the foot - and take no chip. -->
   {#if activeTryout}
@@ -1620,7 +1562,7 @@
           <!-- Two lines rather than one run-on sentence: a fully-rounded
                pill's ends stop reading as a pill once its text wraps, so a
                chip carrying a second fact gets a plainer rounded rect
-               instead (phase 5 deepening ticket 06). -->
+               instead. -->
           <span class="dose-chip-text">
             <span class="dose-chip-main">
               {m.entry_dose_quick_log({ dose: doseItem.dose, unit: doseItem.doseUnit, drug: doseItem.drug })}
@@ -1759,7 +1701,7 @@
   {@render cards()}
   {/snippet}
 
-  <!-- A new entry's later steps (tester report 02, tickets 04 and 09), in
+  <!-- A new entry's later steps, in
        the order Alicja chose: what is marked comes before what is written.
        Mode and the tags, wrapped chips per group; then the body map and
        the cards the day offers, open on their own step; then the note, and
@@ -2021,7 +1963,7 @@
   }
 
 
-  /* A new entry's steps (tester report 02, ticket 03). Both sides of a
+  /* A new entry's steps. Both sides of a
      change share one grid cell while it runs, so the step under the date
      line is never two steps tall and nothing below it jumps. The stage
      takes no trailing margin of its own: the last block in a step already
@@ -2042,7 +1984,7 @@
   :global(.entry-step > *) { margin-bottom: var(--space-5); }
   :global(.entry-step > .kit-heading) { margin-bottom: var(--space-3); }
   /* The foot marks its own edge, so the last block needs only a breath
-     above it rather than the screen's 20 (ticket 09). */
+     above it rather than the screen's 20. */
   :global(.entry-step > :last-child) { margin-bottom: var(--space-2); }
   /* The heading on the field, stacked the same way for the length of a
      swap, so the field holds one line's height throughout. */
@@ -2059,7 +2001,7 @@
     display: flex;
     gap: var(--space-2);
   }
-  /* More of the step below the foot (ticket 09): the page's colour rises
+  /* More of the step below the foot: the page's colour rises
      over the last of the step at the foot's top edge, and fades away once
      the step is scrolled to its end. Above the foot's own top padding,
      across the column's whole width. */
@@ -2146,7 +2088,7 @@
      them - "sensible offered options and a free choice behind them", the
      ticket's own phrase. */
 
-  /* Grown to the height of its text (ticket 19): the browser owns the
+  /* Grown to the height of its text: the browser owns the
      measurement (`field-sizing`), and where it does not yet, `rows` holds
      the four-line floor it always had. No drag handle: a field that sizes
      itself has nothing for one to do, and the corner grip was the one
@@ -2159,7 +2101,7 @@
     font-family: var(--font-body);
   }
 
-  /* The chip row: one key per folded section (DIRECTION.md rule 13).
+  /* The chip row: one key per folded section.
      Blocks with a 1px outline edge and the app's one corner, wrapping at
      390px rather than scrolling - a row you have to scroll hides the
      question you came for, and "one tap away" has to mean visible. The
@@ -2215,15 +2157,15 @@
   /* The leaving media kind is pinned to the surface's top (mediaOut). */
   .editor-media { position: relative; }
   /* On a step a section is a part in its own right, not something opened
-     under a chip row, so it takes the step's own spacing (ticket 09). */
+     under a chip row, so it takes the step's own spacing. */
   .entry-step > .editor-section { margin-top: 0; }
   .entry-step > .editor-section:last-child { margin-bottom: 0; }
   /* Except one opened from the chip row on the same step: the chip is its
      heading again, so it keeps rule 1's 20 under the row. At 0 the record
-     and add tiles sat flush on the chips (pre-release-human 18). */
+     and add tiles sat flush on the chips. */
   .entry-step > .editor-chips + .editor-section { margin-top: var(--space-5); }
 
-  /* Contextual Inline Cards (ticket 04, ADR-0044) */
+  /* Contextual Inline Cards (ADR-0044) */
   .contextual-panel {
     background: var(--surface);
     border: 1px solid var(--outline);

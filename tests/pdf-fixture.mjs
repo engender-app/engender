@@ -1,5 +1,4 @@
-/* A real PDF, written by hand, for the suites that need one (phase 8
-   features ticket 55).
+/* A real PDF, written by hand, for the suites that need one.
 
    Small enough to read: a catalogue, a page tree, one Helvetica font
    object, and one content stream per page. The offsets in the xref table

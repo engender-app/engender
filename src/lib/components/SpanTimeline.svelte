@@ -1,98 +1,20 @@
 <script lang="ts">
-  /* The Look back door's timeline (phase 10 redesign ticket 11): the
-     person's own history as one rail, and two handles that bound the span
-     the retrospectives read.
+  /* The Look back rail bounds the span that the readings use. It runs from
+     historyStart to today, with milestones and surgery days as marks. The
+     history bands sit at 10px. A full-height copy clipped to the selected span
+     shares a frame with the handles. Flag colours identify eras. Solid
+     secondary ink marks regimen episodes, hollow ink marks tryouts, and full
+     ink marks the span and milestones.
 
-     What the rail holds is what the journal already knows about time: the
-     eras as bands of the flag's colours, the milestones as marks on the
-     axis, today at the right edge, the earliest authored day at the left
-     (lookBackSpan.ts's `historyStart`). Nothing here is a reading - no
-     count, no average - because the ticket adds no readings; the rail is a
-     map of where the person has been, and the span is a stretch of it they
-     point at.
+     A dragged handle tracks the pointer's day within the span bounds. On
+     release, it settles to its grain or a nearby magnet. Taps on marks, eras or lanes and keyboard
+     moves also animate. The handle, frame and clip share --dur-med, clamped to
+     1ms under reduced motion. onLive updates the label during a drag. Commit
+     on release because the readings requery when the span changes.
 
-     Two layers of the same bands. The bottom one is the whole history at
-     10px, always drawn. The top one is the same bands at the rail's full
-     height, clipped to the span, so the selected stretch stands up out of
-     the history and the rest lies low. The clip is what moves when the span
-     does, and it moves as a solid thing (DIRECTION.md rule 10: blocks
-     slide and clip, never fade). The handles are blocks of ink with a grip
-     line, the way a video trimmer's brackets are (Mobbin: YouTube's and
-     X's trim controls), and the span's frame is the two ink rules the top
-     layer wears along its edges - so frame, bands and handles all read as
-     one object being resized.
-
-     Direct manipulation is not animation: while a finger holds a handle the
-     handle follows it exactly, to the day under the finger with no snap
-     and no transition, and the transitions run only on the moves that are
-     not the finger's - a tap on an era, a tap on a milestone, a key press -
-     and on the settle after a release, when the day snaps to its grain or
-     to a magnet and the handle, the clip and the frame travel there on
-     --dur-med (redesign ticket 19; ticket 11 snapped on every move, so the
-     handle stepped under the finger and the release had nothing left to
-     settle). A video trimmer's bracket works the same way (Mobbin: the
-     Shopee and Google Photos trimmers), and it is the movement that tells a
-     person the span they let go of is a whole number of weeks. Reduced
-     motion clamps every one of those to the 1ms base.css already imposes on
-     transitions; nothing here animates by script.
-
-     The span is committed on release, not on every move: the charts under
-     the door re-read on commit, and re-reading six queries per pointer
-     event is not what a drag is for. `onLive` is for the one line that has
-     to follow the finger, the span written under the rail.
-
-     ## What the rail says about itself (phase 11 ticket 06)
-
-     Three things the rail had not been saying, and none of them is a
-     decoration.
-
-     **It draws the stretches it never drew.** Under the eras lie one lane
-     per kind of stretch the journal holds - a regimen episode, a tryout -
-     and a procedure's surgery day is a mark on the axis like a milestone's.
-     Each of those is tap-to-select the way an era already was, so "my moods
-     over the HRT episode" is a stretch somebody can point at rather than
-     one they have to reconstruct with two handles. The lanes sit below the
-     lifted layer rather than behind it: a band drawn behind the span would
-     be covered by it exactly where the person is looking.
-
-     **Colour on this rail means an era, and nothing else.** The first build
-     gave the lanes flag stripes of their own and drew a third lane for the
-     journaling pauses, and the renders were unreadable (Alicja, 2026-09-16:
-     "they're crowded, they use the same colors, it looks bad"): trans,
-     nonbinary and pansexual yield two band colours, so the regimen lane
-     came out the same blue as the first era and the tryout lane the same
-     pink as the second, three lanes deep at 6px each.
-
-     So the eras keep the flag, which is theirs - one colour per era, the
-     way ticket 11 settled - and the two rows are drawn in ink: the regimen
-     solid, the tryout hollow, both in the secondary weight. That is the
-     call the milestone mark on this same rail already made, and its own
-     note says why - a stripe sitting under the eras' colours vanishes into
-     the band of its own hue, and DIRECTION rule 4 gives ink to the smallest
-     things. It cannot collide on any palette, because it
-     never asks the flag for anything.
-
-     Three weights, and each says what it is: the flag is an era, full ink
-     is the two things that are now - the span's own frame and the marks -
-     and the secondary ink is the context under them. Drawn at full ink
-     first, and the render put the heaviest object on the rail under the one
-     the rail exists to set.
-
-     And the breaks came off the rail entirely: a break is the absence of a
-     journal rather than a stretch of a life, and the chart's annotation
-     band still draws them where they explain a flat stretch.
-
-     **It says it can be dragged, and what it is showing.** The span, its
-     length and the legend sit directly under the rail against the handles
-     rather than two elements away as a subtitle of the door's title, and on
-     a journal where nobody has dragged it yet a one-time line sits between
-     the handles (Mobbin: Google Photos' trim tooltip, where the bracket
-     shape alone was not enough either). It fades on the first move of a
-     handle and never comes back - one preference, keyed the way the other
-     one-time hints are. The length counts rather than cutting when the span
-     changes by something other than a finger, which is the same rule the
-     rest of this component follows and the same primitive a live tile's
-     value uses. */
+     The legend and span length sit under the rail. The one-time drag hint
+     fades after the first handle move and its preference keeps it dismissed.
+     The span length counts on moves that do not follow a pointer. */
   import { untrack } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { useDoorActivity } from '$lib/navigation/doorActivity.svelte';
@@ -297,8 +219,7 @@
       /* A control that leaves the screen with the span - the way into its
          retrospective - keeps the rail raised, so the stretch the person
          chose is the last thing standing while the door goes rather than
-         a thing folding away under a finger that just used it (redesign
-         ticket 19). The host marks it; the rail knows nothing about
+         a thing folding away under a finger that just used it. The host marks it; the rail knows nothing about
          routes. */
       if (event.target instanceof Element && event.target.closest('[data-span-keep]')) return;
       active = false;
@@ -343,23 +264,11 @@
 
   const x = (day: number) => railPosition(day, railStart, today) * railWidth;
 
-  /* How far a mark's target reaches either side of its own block (phase 11
-     UI/UX ticket 25, first audit U4).
-
-     The marks used to carry a fixed 36x48px hit box, which is a generous
-     target and was taking two things that were not its own: the history
-     lanes underneath it, whose bands are 8px and 6px and sat entirely
-     inside it, and the next mark along, since a rail of years puts two
-     milestones a few pixels apart as readily as a few centimetres. So the
-     reach is asked per mark instead - half the room to its nearest
-     neighbour, capped at the 12px it used to take - and the box no longer
-     reaches up over the lanes or down over the line under the rail.
-
-     Marks drawn closer together than their own 12px blocks cannot be
-     pulled apart by a hit box at all, and neither can two regimen episodes
-     running at once. That is what the list under the rail is for: it holds
-     every one of these facts as a row, with its dates, at the product's
-     own target floor. */
+  /* Extend a milestone's target to half the nearest gap, capped at
+     12px each side. Keep its height clear of the history lanes and
+     line. Marks closer than their 12px blocks can still overlap, as
+     can concurrent regimen episodes. The dated list below supplies
+     a full-size target for every fact. */
   const MARK_WIDTH = 12;
   const MARK_REACH_MAX = 12;
   let markReach = $derived.by(() => {
@@ -848,9 +757,7 @@
     {/each}
   </div>
 
-  <!-- What the rail is showing, against the handles rather than two
-       elements away under the title (DIRECTION.md rule 7's own "say it
-       once, where it is true"). -->
+  <!-- Keep the reading next to the rail handles. -->
   <p class="span-tl-state" data-span-state-line>
     {#key spanDates}<span class="span-tl-reading" out:crossfade use:dateFadeIn>{spanDates}{`, ${m.n_days({ n: shownDays })}`}</span>{/key}
   </p>
@@ -995,25 +902,15 @@
     font: inherit;
   }
 
-  /* The lifted layer: the bands at full height, framed top and bottom in
-     ink, revealed only across the span. The clip is the object that moves.
+  /* Two translated clipping boxes reveal the lifted bands. The outer box
+     moves the start and top edges, and the inner moves the end. Counter-
+     translate each box's contents by the same amount on the same timing
+     to keep the drawing still through reversal or retargeting. A fixed
+     parent clips the result so it cannot widen the page.
 
-     It used to be one clip-path inset on the layer, and Chromium runs a
-     clip-path transition on the main thread: when the span changes, Look
-     back redraws its readings in a task of 80-110ms on a 6x throttled CPU,
-     the window stood still through it while the handles (transforms) went
-     on, and then it caught up 125px in one frame - on the phone the lifted
-     band popped open whole in 19 of 20 runs (carpet 15 row 51). So the
-     window is two clipping boxes moved by translate, which the compositor
-     runs whatever the main thread is doing: the outer one carries the
-     start and the top edge, the inner one the end edge, and each one's
-     contents are moved back by exactly what moved it, so the drawing
-     stands still and only the edges travel. Each pair transitions the
-     same values with opposite signs on the same duration and curve, so
-     the two always cancel, retargeted or reversed alike. Same edges, same
-     timing and curve as the inset had. The layer's own box, which does
-     not move, clips them all, so a window slid right never widens the
-     page. */
+     Composited translate keeps the edges moving during readings updates.
+     The old clip-path stalled for 80–110ms at 6x CPU slowdown and
+     caught up by 125px in one frame. */
   .span-tl-window {
     overflow: clip;
   }
@@ -1147,20 +1044,11 @@
     z-index: 1;
   }
 
-  /* A history band: a lane's worth of stripe, drawn and tapped by the same
-     element. The 1px edge every block on this rail wears is what keeps two
-     episodes that meet on consecutive days from reading as one. It is the
-     page rather than `--outline` here, because the band is ink: an outline
-     on ink is a darker line on a dark bar, and a gap of page is a gap.
-
-     The target is the band and nothing more (phase 11 UI/UX ticket 25). It
-     used to grow 3px every way, and there is nowhere on this rail for
-     those 3px to come from: the regimen row and the tryout row meet, so
-     the two extensions overlapped by 6px wherever a tryout ran during an
-     episode, and two episodes that meet on consecutive days overlapped
-     along their shared edge. The path that does not depend on aim is the
-     list under the rail, which carries the same fact as a row at the
-     target floor; the band itself takes no tab stop (ticket 29). */
+  /* Use a 1px page-coloured edge to distinguish adjacent ink
+     bands. The band itself is the pointer target. Extending it
+     would overlap consecutive episodes or neighbouring lanes.
+     Keep bands out of the tab order because the dated list
+     provides each fact at the full target size. */
   .span-tl-hband {
     position: absolute;
     box-sizing: border-box;
@@ -1200,12 +1088,9 @@
   .span-tl-hband.is-open-start { border-left: 0; }
   .span-tl-hband.is-open-end { border-right: 0; }
 
-  /* A milestone: a 12px block of ink on the axis, edged in the page so it
-     reads on any band. Ink rather than a stripe, because it sits on the
-     eras' colours and a stripe would vanish into the band of its own hue;
-     the marks and today's line are the rail's time marks, and the colours
-     are the person's eras (DIRECTION.md rule 4: ink for the smallest
-     things). */
+  /* A milestone is a 12px ink block edged in the page colour. Ink stays
+     visible over any era band. The marks and today's line tell time,
+     while the bands carry the person's eras. */
   .span-tl-mark {
     position: absolute;
     bottom: -7px;
@@ -1224,7 +1109,7 @@
     z-index: 2;
   }
 
-  /* A mark's name and day, over it (item 83). Opaque on the page's second
+  /* A mark's name and day, over it. Opaque on the page's second
      surface inside a hairline, as the kit separates anything laid over
      marks: no shadow. Over everything on the rail, handles included: a
      tap brings a handle onto the very mark it names. */

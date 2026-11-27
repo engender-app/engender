@@ -1,5 +1,4 @@
-/* The gate the journal facade and the session key sit behind (after-release
-   ticket 10): what is handed out while the journal is open, what waits while
+/* The gate the journal facade and the session key sit behind: what is handed out while the journal is open, what waits while
    it is locked, and what a lock waits for before the database closes. */
 
 import assert from 'node:assert/strict';

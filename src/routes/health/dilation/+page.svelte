@@ -1,49 +1,17 @@
 <script lang="ts">
   import { undoable } from '$lib/stores/deleteUndo';
   import { journalTextAutocomplete } from '$lib/platform';
-  /* Dilation: a taper typed in and its session log (phase 8 features
-     ticket 12, CONTEXT: "Taper").
+  /* Edit the single taper schedule inline and log sessions through
+     recordEditor and RecordSheet. The week strip opens a session
+     sheet for a date. Today has its own full-size section. Other
+     days in the visible week list their logged and expected sessions.
 
-     Two records, one screen, the same split doses.ts draws between a
-     schedule and what was actually logged against it. The schedule is
-     edited inline rather than through a RecordSheet - there is one of it,
-     never a list to pick from - while sessions use the ordinary
-     recordEditor/RecordSheet pair the rest of the kit's logs do.
-
-     Expected-but-not-logged renders as a gap, copying doses/+page.svelte's
-     adherence rows exactly (ADR-0010): a static row naming the day, and
-     either what was logged or `adherence_nothing_logged`, reused from the
-     dose log's own row rather than a synonym key for the same words - no
-     count,
-     no streak, no colour. Tapping a gap opens the session sheet for that
-     day; tapping a logged row edits it.
-
-     Phase 10 redesign ticket 44 kept that row and cut how many of them
-     there are. `expectedSessionDays` puts a session on nearly every day of
-     a taper that runs months, and one 60px row each captured this screen
-     at 4505px on a demo build with every feature filled - the arithmetic
-     was wrong, not the copy. The app had already made the same argument
-     about the calendar: `DAY_AHEAD_OPT_OUTS` refuses this schedule a mark
-     because an expected session on nearly every day is not information.
-
-     So the screen opens on a week as a strip with today under it at full
-     size (DIRECTION.md rule 16), and the gap rows run under that for the
-     week the strip is showing, today excepted because it is already drawn
-     above them. Tapping a cell opens the same sheet tapping a gap row
-     opens, so the write path is the one that was already here.
-
-     The chart ("Sessions since surgery") is gone (audit item 7): sessions
-     since surgery is a count on nearly every day, a flat line at 1 for
-     months, and the strip plus today's own row already say everything it
-     said.
-
-     Functional audit ticket 25: a stage can be "N times a day" as well as
-     "every N days", because that is how post-vaginoplasty schedules are
-     given. A day that expects several sessions draws one row per session,
-     "Session 2 of 3", the way the dose log draws one row per dose slot
-     ("dose 2 of 3"), and a gap stays a gap: still no count of the week, no
-     streak, no colour. The strip keeps saying only whether a day has a
-     session on it. */
+     A stage can set an interval of days or several sessions a day.
+     Draw one row per slot, with its ordinal on a multi-session day.
+     A gap uses adherence_nothing_logged and opens the sheet for
+     that date (ADR-0010). A logged row opens its record. The strip
+     indicates whether a day has a session. Expected sessions stay
+     out of the calendar's day-ahead marks. */
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
@@ -76,7 +44,7 @@
   import { writer } from '$lib/stores/attempt.svelte';
 
   /* The strip's fill is a colour carrying a value, so it takes role 0
-     (roles.ts) rather than the sessions' own stripe (ticket 44). Index 2 is
+     (roles.ts) rather than the sessions' own stripe. Index 2 is
      trans' achromatic middle band, and a logged day filled in white on a
      near-white page is a day drawn as nothing - the same rule the calendar
      states for its own three readings of a day. */
@@ -120,7 +88,7 @@
   let selectedProcedureId = $state<string | null>(null);
   let startDayInput = $state(dateInputValueFromEpochDay(todayEpochDay()));
   /* One number field for how often, read by the stage's kind: "every 2
-     days" or "3 times a day" (ticket 25). Switching the kind keeps the
+     days" or "3 times a day". Switching the kind keeps the
      number where it is and changes only the words beside it, so nothing in
      the row is swapped out under the person's thumb. */
   type StageKind = 'every' | 'perDay';
@@ -201,7 +169,7 @@
     findById: (id) => sessions.find((s) => s.id === id)
   });
 
-  /* What the strip and the rows both read a day off (ticket 44). One
+  /* What the strip and the rows both read a day off. One
      answer for the two surfaces, so a cell and the row under it can never
      disagree about the same day. */
   let expectedSet = $derived(new Set(expectedDays));
@@ -209,7 +177,7 @@
     (epochDay: number): DayMark =>
       sessionsByDay.has(epochDay) ? 'logged' : expectedSet.has(epochDay) ? 'expected' : 'off'
   );
-  /* How many sessions a day the schedule expected (ticket 25): its stage's
+  /* How many sessions a day the schedule expected: its stage's
      count on an expected day, none on any other. */
   let expectedOn = $derived((epochDay: number) => (taper && expectedSet.has(epochDay) ? sessionsExpectedOn(taper, epochDay) : 0));
   /* A day's rows: one per expected session, filled in the order sessions
@@ -288,7 +256,7 @@
     return m.dilation_stage_now_every({ count: stage.everyNDays });
   }
 
-  /* Latched: a reserve must not put its placeholder back (ux-carpet ticket 205). */
+  /* Latched: a reserve must not put its placeholder back. */
   let dilationRevealed = $state(false);
   $effect.pre(() => {
     if (!dilationRevealed && (!taperQuery.loading && !proceduresQuery.loading && (!taperQuery.value || !sessionsQuery.loading))) dilationRevealed = true;
@@ -324,7 +292,7 @@
   <!-- Both reads, not the taper's alone: which notice the empty screen owes
        depends on the procedure list, and a screen that answered before it
        arrived would show the wrong one and then swap it. -->
-  <!-- Held at last visit's height until the taper, the procedures and the sessions have answered, then faded in (ux-carpet ticket 211): the body used to cut in at full opacity when they did. -->
+  <!-- Held at last visit's height until the taper, the procedures and the sessions have answered, then faded in: the body used to cut in at full opacity when they did. -->
   <ReadReserve ready={dilationRevealed} estimate={dilationEstimate} onrest={dilationRemember}>
     {#if !taper && eligibleProcedures.length === 0}
       <!-- A schedule names the procedure it follows (audit item 7), so with
@@ -477,7 +445,7 @@
             bind:weeksBack
           />
           <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
-            <!-- One row per session today expects (ticket 25). A row each
+            <!-- One row per session today expects. A row each
                  owns its height, so a session logged past the count opens
                  under the others rather than appearing in one frame. The
                  day is named once, on its first row; the rows under it are
@@ -570,7 +538,7 @@
         </ListCard>
       </div>
 
-      <!-- Saying you are done dilating (phase 8 features ticket 04, ADR-0052) -
+      <!-- Saying you are done dilating (ADR-0052) -
            the finish control lives on `taperSessions`, never on the schedule:
            a taper ending is the normal outcome this ticket exists to name. -->
       <AreaFinish group="dilation" />

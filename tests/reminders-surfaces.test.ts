@@ -1,6 +1,6 @@
 /* The rules the two reminders screens keep (phase 11 ticket 13, reshaped by
    pre-release human 18). A stored reminder is a rule in the journal, and only
-   Android can fire it (ADR-0063, CONTEXT.md's Reminder), so the screens are
+   Android can fire it (ADR-0063), so the screens are
    Android-only: the web has no branch of them left, and
    reminders-android-only.test.ts holds the redirect. Mirrors
    settings-surfaces.test.ts and unprompted-view.test.ts. */

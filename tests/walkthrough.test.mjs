@@ -1,18 +1,8 @@
-/* Walkable-flow tests (ticket 20's acceptance for tickets 01/07/08) against
-   the real app, not a probe page - so this serves the app's own production
-   build rather than sharing browser-tier/run.mjs's probe-page dev server.
-   It's `vite preview`, not `vite dev`: the dev
-   server's dependency re-optimization forces a full-page reload the first
-   time it discovers a new dependency deep in boot() (SQLocal's worker,
-   hash-wasm, ...), which raced every flow here and hung page.evaluate calls
-   indefinitely. A built, static bundle has no such reload. Vite picks the
-   port (falling back off its 5173 default if that's taken), so there's no
-   port literal to keep in sync by hand. Run with `npm run test:walkthrough`
-   - it builds first, with the demo bar compiled in (flow 13 drives its
-   #demo-jump control), then serves that build. Since after-release ticket
-   32, vite preview serves build/ itself when the build joined its two
-   locale graphs (vite.config.ts), so this runner loads the shipped
-   document, CSP meta and held module hints included. */
+/* Run npm run test:walkthrough to build and serve the real demo
+   app with vite preview. The static build avoids dev dependency
+   optimization reloads during boot. Vite chooses the port and serves
+   the shipped build/ document with both locale graphs, CSP meta and
+   module hints. Flow 13 uses the compiled-in demo bar. */
 import { execFileSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
 import { preview } from 'vite';
@@ -202,8 +192,7 @@ async function recentEntryEvidence(signal) {
   }, journalChunk);
 }
 
-/* Waits for the boot sequence, not just for the network to go quiet (ticket
-   08). Opening OPFS, running migrations and - on a cold demo start - writing
+/* Waits for the boot sequence, not just for the network to go quiet. Opening OPFS, running migrations and - on a cold demo start - writing
    the persona all happen after the last request has landed, so `networkidle`
    returns mid-write. Reloading there interrupted the seed part-way through the
    persona's 150 days, and because those are written oldest-first, what went
@@ -221,19 +210,9 @@ async function fresh(path = '/') {
   await booted();
 }
 
-/* A navigation that arrives late (32.1). Leaving onboarding used to land on
-   Home and then be undone a moment afterwards by a goto the demo bar's
-   first-run jump had issued before the walk started - so a flow that read the
-   greeting and moved on passed inside the window.
-
-   What this can and cannot see, because it is a race and saying so is the
-   point: the late navigation arrives when the jump's journal clear ends,
-   which is about 1.6s after the jump on this machine, and any walk through
-   the flow here takes longer than that - so the arrival lands during the
-   walk, where it is harmless, rather than inside this hold. It catches the
-   defect on a device or a journal where the clear outlasts the walk, and it
-   catches any other navigation that arrives after Home. The deterministic
-   reproduction is a probe with the clear widened, not this suite. */
+/* Hold on Home to catch navigation that lands after setup. The demo reset
+   can finish before this hold begins, so resizing that race window for a
+   reproduction belongs in a separate probe. */
 async function heldOnHome(what) {
   await page.waitForTimeout(2500);
   if (!page.url().endsWith('/')) throw new Error(`${what}: ${page.url()}`);
@@ -269,10 +248,10 @@ async function openNewestEntry() {
    photos, voice, video - sit behind a chip row and open one at a time, so a
    flow that reaches into one opens its chip first. Mode and gender stay on
    the page. Idempotent: a chip already open is left open. On a new entry's
-   second step (tester report 02, ticket 04) the tags are open on the page
+   second step the tags are open on the page
    and have no chip. */
 async function openSection(section) {
-  /* On a new entry each section is on its own step (ticket 09): the tags
+  /* On a new entry each section is on its own step: the tags
      and the body are open there, the attachments behind their chips. */
   await toEntryStepWith(page, `[data-editor-section="${section}"], [data-section-chip="${section}"]`);
   if (await page.locator(`[data-editor-section="${section}"]`).count()) return;
@@ -322,8 +301,7 @@ async function labSlipImage(lines) {
   return Buffer.from(dataUrl.split(',')[1], 'base64');
 }
 
-/* RFC 4180, enough of it to read back what the plain export writes (ticket
-   15): a quoted field can hold commas, newlines and doubled quotes, and
+/* RFC 4180, enough of it to read back what the plain export writes: a quoted field can hold commas, newlines and doubled quotes, and
    splitting on commas would call every one of those a new column. */
 function parseCsv(text) {
   const rows = [[]];
@@ -434,7 +412,7 @@ try {
   await page.waitForSelector('[data-home-log]');
   ok('a new seedMood on an open first step shows the new face picked');
 
-  /* One more touch saves (tester report 02, ticket 03): the same face, then
+  /* One more touch saves: the same face, then
      the first step's finish control. The entry holds that mood, lands on
      Home, and is one more card on the Journal door. */
   await page.locator('[data-nav-item="home"]').first().click();
@@ -480,7 +458,7 @@ try {
 } catch (e) { fail('entry flow', e); }
 });
 
-/* 2a2. a new entry can be starred before its first save (ticket 18). The
+/* 2a2. a new entry can be starred before its first save. The
    star used to live in the header, drawn only `{#if existing}` - a brand
    new entry had nowhere to star at all. It is on the save bar now for
    both, and `toggleStarred` only flips the local flag until the entry has
@@ -510,7 +488,7 @@ try {
 } catch (e) { fail('star before save', e); }
 });
 
-/* 2a3. a new entry's steps (tester report 02, tickets 04 and 09). What is
+/* 2a3. a new entry's steps. What is
    marked comes before what is written: how is today, then mode and the tags
    open on the page, then the body map and the cards, then the note, and the
    photos, video and voice chips last. Every one of them can still be
@@ -605,21 +583,8 @@ try {
 } catch (e) { fail('slider', e); }
 });
 
-/* 3b. a slider you have let go of stays where you left it.
-
-   Melt registers its window pointermove/pointerup pair inside its `root`
-   getter, and read only from a template spread that pair is torn down and
-   re-attached on every value change. A release landing before Svelte's next
-   flush found no pointerup listener, melt's mouse-down flag is a plain field
-   so nothing else ever cleared it, and the control then committed on every
-   window pointermove for the rest of the screen's life. Measured on
-   2026-08-25: one slider walked 20, 85, 90 with the button up, and two that
-   had both been touched landed on one value. Slider.svelte reads the getter
-   once, untracked, so the pair outlives the re-renders.
-
-   Driven with the mouse rather than the keyboard on purpose - the flow above
-   already covers the keyboard, and this defect only exists on the pointer
-   path. */
+/* Release the pointer, then move it to check the value stays put. Slider.svelte
+   reads Melt's root getter untracked so its pointerup listener survives rerenders. */
 await flow('sliders do not lock together', async () => {
 try {
   await fresh('/entry/new/today');
@@ -726,19 +691,8 @@ try {
 } catch (e) { fail('sliders do not lock together', e); }
 });
 
-/* 3c. one entry straight to another, on the same route.
-
-   /entry/[id] wraps the editor in {#key page.params.id} because SvelteKit
-   reuses a route's component across a navigation between two parameter
-   values, so anything read once from page.params keeps the first id it saw.
-   The way that wrapper goes missing is somebody tidying it away as redundant
-   structure, and no unit test can see its absence - only a client-side
-   navigation from one entry to another can.
-
-   The app offers no link from one entry to another, so the link is put there
-   for the click. That is not a shortcut past the check: the bug lives in
-   SvelteKit's interception of an <a> to the same route, which is exactly what
-   this makes it do. A page.goto would be a reload and would prove nothing. */
+/* Click a client-side link between two entry IDs to exercise the keyed
+   editor remount. Inject the link because the entry page has no such link. */
 await flow('entry to entry', async () => {
 try {
   await fresh('/search');
@@ -846,7 +800,7 @@ try {
   await page.waitForFunction(() => !location.pathname.startsWith('/entry/'), null, { timeout: 10000 });
   if (await page.locator('[data-discard-record]').count()) throw new Error('an unchanged entry asked before leaving');
 
-  /* A new one (tester report 02, tickets 03 and 09): typed into on its
+  /* A new one: typed into on its
      last step. Back there is a step back, not a way out - each asks nothing
      and keeps the face and the note - and only Back off the first step
      meets the question. A new entry has no tab bar, so the header arrow is
@@ -885,7 +839,7 @@ try {
 });
 
 /* 4. calendar → open the month → day → add another. The Journal door opens
-      on the month folded to a strip (redesign ticket 10), whose cells are
+      on the month folded to a strip, whose cells are
       not links: 7px is not a tap target. So the flow starts by opening it,
       which is also the check that the control does. */
 await flow('calendar flow', async () => {
@@ -951,14 +905,9 @@ try {
 } catch (e) { fail('the Journal door blocks', e); }
 });
 
-/* Today faces forward (phase 10 redesign ticket 13; ADR-0067, ADR-0073,
-   ADR-0074). The dated things lead, the mood pick is one write shape of
-   the log strip, the pinned rows draw with their readings, and each
-   section that left this screen is reachable on the door that hosts it.
-   An appointment three days out is written first, since the demo persona's
-   own dated things all fall past the agenda's week. Early in the walk, while
-   the journal is still the persona's: later flows finish areas and change
-   modes, and this one is about the screen, not about their leftovers. */
+/* Today leads with the agenda (ADR-0067), then quick logging and pinned
+   readings (ADR-0073). Seed an appointment within the week because the
+   demo's own dates lie outside it. Run before changes to areas or modes. */
 await flow('today faces forward', async () => {
 try {
   const AGENDA_KIND = 'agenda-13';
@@ -1222,7 +1171,7 @@ try {
   /* Used to also assert [data-day-average] absent here. No component has
      ever owned that handle - day detail (routes/day/[day]/+page.svelte)
      shows no day-average block and never has - so the assertion could not
-     fail either way it went (ticket 01). Deleted rather than repointed. */
+     fail either way it went. Deleted rather than repointed. */
   ok('day detail keeps separate entries');
 } catch (e) { fail('day detail truthfulness', e); }
 });
@@ -1279,7 +1228,7 @@ try {
 });
 
 /* 4c. a margin note: added, rendered as a layer, edited, deleted - and the
-   entry's own note untouched by any of it (phase 8 features ticket 07).
+   entry's own note untouched by any of it.
    Grip handles only, per ADR-0029: data-margin-note-* rather than anything
    read off the rendered date or text. */
 await flow('margin note', async () => {
@@ -1397,11 +1346,11 @@ try {
 
   await page.locator('[data-filter-clear]').click();
   await page.locator('#q').fill('');
-  /* The chip row gives its height back rather than cutting (ticket 16), so
+  /* The chip row gives its height back rather than cutting, so
      it is gone once that has run, not in the same frame. */
   await page.waitForSelector('[data-active-filter-chip]', { state: 'detached', timeout: 2000 })
     .catch(() => { throw new Error('clear-all did not clear chips'); });
-  /* The opening state is what comes back with no criteria (ticket 18); the
+  /* The opening state is what comes back with no criteria; the
      words this used to look for ("try") are no longer on it since ticket
      16 left it one line about what is searched. */
   await page.waitForSelector('[data-search-idle]', { timeout: 2000 })
@@ -1411,7 +1360,7 @@ try {
 } catch (e) { fail('structured search filters', e); }
 });
 
-/* 5c. search reaches past entries (phase 5 deepening ticket 24).
+/* 5c. search reaches past entries.
 
    The registry itself is tested in the node tier; what only the real screen
    can show is the presentation half - searchHitRows.ts imports paraglide and
@@ -1442,7 +1391,7 @@ try {
 
   /* A word in no record at all still says so, rather than showing the
      entries' empty state over hits from somewhere else. The wait covers the
-     search debounce (ticket 15) on top of the round trip a fixed wait always
+     search debounce on top of the round trip a fixed wait always
      had to cover here - there is no result to wait for, only its absence. */
   await page.locator('#q').fill('pierogi');
   await page.waitForTimeout(600);
@@ -1452,7 +1401,7 @@ try {
 } catch (e) { fail('search reaches past entries', e); }
 });
 
-/* 5d. search waits for the typist (phase 8 audit ticket 15).
+/* 5d. search waits for the typist.
 
    Ten keystrokes firing one search rather than ten is proved by counting
    closure runs (tests/browser-tier/live-reads-probe.svelte.ts) - nothing a
@@ -1472,7 +1421,7 @@ try {
 } catch (e) { fail('search waits for the typist', e); }
 });
 
-/* 5e. clearing search does not wait out the debounce (phase 8 audit ticket 15). */
+/* 5e. clearing search does not wait out the debounce. */
 await flow('clearing search does not wait out the debounce', async () => {
 try {
   await fresh('/search');
@@ -1486,12 +1435,12 @@ try {
   // long before a debounced run of an empty query ever could have answered.
   await page.waitForTimeout(80);
   /* The results are on their way out by then, not gone: they fade where
-     they stood (ticket 16), marked `data-leaving` for the length of the
+     they stood, marked `data-leaving` for the length of the
      fade. What must not be there is a result that is staying. */
   const staying = await page.evaluate(() =>
     [...document.querySelectorAll('[data-entry-card]')].filter((card) => !card.closest('[data-leaving]')).length);
   if (staying) throw new Error('clearing left the previous results on screen');
-  // The idle Notice this waited on is gone (ticket 18): the opening state
+  // The idle Notice this waited on is gone: the opening state
   // is real content now, named as a whole by `data-search-idle`.
   if (!(await page.locator('[data-search-idle]').count())) throw new Error('clearing did not bring back the opening state');
 
@@ -1500,7 +1449,7 @@ try {
 });
 
 /* 5g. search opens with something: the opening state's tag chips and this
-   device's own recent searches both run a search on a tap (ticket 18).
+   device's own recent searches both run a search on a tap.
    `fresh()` reloads the page, which drops recentSearches.ts's history -
    session memory now (pre-production audit S1), not the journal's - so
    this flow makes its own recent search rather than assuming an earlier
@@ -1518,8 +1467,8 @@ try {
   await page.waitForSelector('[data-search-idle]');
 
   await page.locator('#q').fill('hopeful');
-  /* A card that is staying, not one of the tag search's still fading out
-     (ticket 16): those matched at once, the box was cleared before the
+  /* A card that is staying, not one of the tag search's still fading out:
+     those matched at once, the box was cleared before the
      typed search had been recorded, and no recent row ever came. */
   await page.waitForFunction(() =>
     [...document.querySelectorAll('[data-entry-card]')].some((card) => !card.closest('[data-leaving]')));
@@ -1566,7 +1515,7 @@ try {
   if (!(spanEnd > spanStart)) throw new Error(`the span is not a span: ${spanStart}..${spanEnd}`);
   /* The tiles re-read on the settled span a beat after the last key. */
   await page.waitForTimeout(600);
-  /* The door is a grid of readings now (phase 11 ticket 07): every tile
+  /* The door is a grid of readings now: every tile
      states a figure and opens a screen carrying the span it was read at,
      so the address on each tile names the two days the rail shows. */
   const tiles = page.locator('[data-reading-grid] [data-reading]');
@@ -1606,8 +1555,8 @@ try {
 } catch (e) { fail('stats', e); }
 });
 
-/* 6a. a tag insight's sheet holds the same set the row's own count named
-   (carpet ticket 19). An unranged read used to open the tag's twenty most
+/* 6a. a tag insight's sheet holds the same set the row's own count named.
+   An unranged read used to open the tag's twenty most
    recent carriers across the whole journal; this asserts the row's count
    against the number of entry cards the sheet actually opened, so the two
    cannot drift apart again without failing here. */
@@ -1644,7 +1593,7 @@ try {
 } catch (e) { fail('tag insight sheet range', e); }
 });
 
-/* 6b. a second scale on the day-by-day chart (phase 6 ticket 12).
+/* 6b. a second scale on the day-by-day chart.
 
    The offer, the pick, and the two things that have to change together: the
    legend arrives to say which line is which, and the value gutter goes,
@@ -1685,19 +1634,8 @@ try {
 } catch (e) { fail('a second scale on the day-by-day chart', e); }
 });
 
-/* 6b2. a tag insight opens the entries carrying that tag, and one of them
-   opens (carpet ticket 10).
-
-   The sheet is the only place /stats draws an entry card, and the ticket's
-   own acceptance asks whether those cards reach the entries they name. The
-   assertion is the card's own href against the URL the tap landed on, not
-   just that a navigation happened: a click that navigates anywhere would
-   pass the weaker version of this check.
-
-   It is also the surface behind the ticket's fade-through carve-out. The
-   pattern itself is pinned in screen-transition.test.ts, where it is a
-   pure function; what this proves is that the tap still arrives, which is
-   the half a table cannot answer. */
+/* Compare the entry card's href with the URL reached from the tag sheet.
+   screen-transition.test.ts separately checks the fade-through pattern. */
 await flow('tag insight entries', async () => {
 try {
   await fresh('/stats/tags');
@@ -1750,7 +1688,7 @@ try {
   await page.waitForSelector('[data-photo-cell] img');
   const thumbnailSrc = await page.locator('[data-photo-cell] img').first().getAttribute('src');
   if (!thumbnailSrc?.startsWith('blob:')) throw new Error('the photo grid did not load stored thumbnails');
-  // Comparing moved to Progress photos (pre-release-human 12); the wipe's
+  // Comparing moved to Progress photos; the wipe's
   // controls are walked there, in the photo library flow below.
   ok('timeline and photo library thumbnails');
 } catch (e) { fail('ticket 18 view-only screens', e); }
@@ -1791,7 +1729,7 @@ try {
 });
 
 /* 6d. a second unit for an analyte is a second trend, not a cliff in the
-   first one (ticket 02). The persona's estradiol history is five results in
+   first one. The persona's estradiol history is five results in
    pg/mL; one result in pmol/L is a number about 3.7 times larger, and the
    screen has to keep it off that line. Estradiol picked explicitly rather
    than assumed as the screen's default (ticket 37 removed that default) -
@@ -1801,8 +1739,7 @@ await flow('lab unit series', async () => {
 try {
   await fresh('/care/labs');
   await page.locator('[data-segment="estradiol"]').click();
-  /* The "+" sheet now prefills from whichever analyte is on screen (ticket
-     37), so the add below has to happen after the switch has actually
+  /* The "+" sheet now prefills from whichever analyte is on screen, so the add below has to happen after the switch has actually
      reached that state - not just after aria-checked flips, which is
      synchronous and settles a query round-trip before the series/result
      list this test reads next actually catches up to the new analyte. */
@@ -1930,7 +1867,7 @@ try {
   await fresh('/settings');
   await page.locator('[data-palette-pick="pansexual"]').click();
   await page.waitForFunction(() => document.documentElement.dataset.palette === 'pansexual');
-  /* The door's field follows the palette (redesign ticket 07): activeFlag
+  /* The door's field follows the palette: activeFlag
      publishes the flag's second colour and its ink on <html> beside the
      roles. Pansexual's is its yellow, which carries the near-black ink. */
   const field = await page.evaluate(() => {
@@ -1944,16 +1881,15 @@ try {
 } catch (e) { fail('palette', e); }
 });
 
-/* 7b. mood preset switch (COL-001/ADR-0025): mood's own scale is picked
-   independently of the palette above, and persists across a reload the
-   same way the palette does. */
+/* 7b. Pick the mood ramp independently of the flag palette. Verify the
+   preset survives a reload. */
 await flow('mood preset', async () => {
 try {
   await fresh('/settings');
   const before = await page.evaluate(() => document.documentElement.dataset.moodPreset);
   if (before !== 'teal') throw new Error('default mood preset is not teal: ' + before);
   /* Switches to plum, not teal. The default was amber and this flow moved it
-     to teal; the default is teal now (phase 5 ticket 31), and leaving the
+     to teal; the default is teal now, and leaving the
      target alone would have had it clicking the preset it already had - the
      flow would pass whether or not the control worked. */
   await page.locator('[data-list-row="mood-colours"]').click(); // a sheet since ticket 277
@@ -2012,9 +1948,8 @@ try {
 await flow('milestone templates', async () => {
 try {
   await fresh('/transition/milestones');
-  /* The templates are a sheet off the header (phase 5 UX ticket 25). It
-     lists all eight in one order, with no shuffle (functional audit ticket
-     32): three at a time behind a dice hid five of them. */
+  /* The templates are a sheet off the header. It
+     lists all eight in one order, with no shuffle: three at a time behind a dice hid five of them. */
   await page.locator('[data-add]').click();
   await page.waitForSelector('[data-template]');
   const keys = await page.locator('[data-template]').evaluateAll((rows) => rows.map((row) => row.getAttribute('data-template')));
@@ -2024,7 +1959,7 @@ try {
 });
 
 /* 10. custom scale: the live preview, then saving it, then finding it in the
-   checklist looking like any built-in (phase 5 ticket 35) */
+   checklist looking like any built-in */
 await flow('custom dimension', async () => {
 try {
   await fresh('/settings/dimension');
@@ -2056,8 +1991,7 @@ try {
   if (!names.includes('Voice comfort')) throw new Error('editor scales: ' + JSON.stringify(names));
   ok('a custom scale previews, saves ticked, and appears like a built-in');
 
-  /* And it can be renamed and hidden afterwards (functional audit ticket
-     41). Hiding unticks it, so it leaves the checklist and the entry
+  /* And it can be renamed and hidden afterwards. Hiding unticks it, so it leaves the checklist and the entry
      screen together. */
   await page.goto(BASE + '/settings/dimension', { waitUntil: 'networkidle' });
   await booted();
@@ -2090,19 +2024,9 @@ try {
 } catch (e) { fail('custom dimension', e); }
 });
 
-/* 10b. Back returns to the screen you were actually on (CARPET-05).
-
-   Home's stale-backup notice is the case that names it. The notice is a
-   deep link out of Home into the export screen, whose header names
-   /settings as where it sits - so back used to land on a Settings screen
-   nobody had opened. Run before the notice is dismissed below, because the
-   notice is the only link into that screen from anywhere but Settings.
-
-   The pair of flows is the whole decision: with an entry behind this one,
-   back walks history; on the entry the app booted onto there is nothing to
-   walk to and the header's href is what is left to offer. Asserting only
-   the first would pass just as well on a back control that had stopped
-   being a link at all. */
+/* Follow the stale-backup notice from Home, then check Back returns there.
+   Run before dismissing the notice. The paired direct-load case checks the
+   header fallback when there is no prior app screen. */
 await flow('back to where you came from', async () => {
 try {
   await fresh('/');
@@ -2140,15 +2064,9 @@ try {
   await notice.getByRole('button').click();
   await notice.waitFor({ state: 'detached' });
 
-  /* And it stays dismissed on the way back (phase 9 carpet ticket 04,
-     ADR-0071's "closed stays closed"). Every close on Home persists
-     somewhere - a preference, a journal write, a 24-hour key in localStorage
-     - and the ADR re-decided none of them, which is a claim nothing was
-     checking. This notice is the one whose close is a preference, and
-     navigating away and back is where a close that only lived in component
-     state would come undone. The greeting is waited for first: an absence
-     assertion on a screen that has not drawn yet passes for the wrong
-     reason. */
+  /* Navigate away after dismissing the notice, then return. Wait for the
+     greeting so the absence check runs after Home has drawn. The close
+     lives in preferences and must survive the component's teardown. */
   await page.locator('[data-nav-item="calendar"]').first().click();
   await page.waitForURL('**/calendar');
   await page.locator('[data-nav-item="home"]').first().click();
@@ -2179,7 +2097,7 @@ try {
   await page.locator('#imp-pass').fill('wrongpass');
   await page.locator('[data-import]').click();
   /* The kind, not just the alert: the screen words this from the error's
-     `kind` now (ticket 23), so an alert alone would still pass if the wrong
+     `kind` now, so an alert alone would still pass if the wrong
      branch fired or the key went missing. */
   await page.waitForSelector('[data-import-error="not-an-archive"]');
   ok('a file that is not a backup is refused, in the words the catalogue gives');
@@ -2189,7 +2107,7 @@ try {
 /* 11b. the whole of F14 through the screen: export the demo journal, then
    import the file that came out of it. Merging your own backup is the one
    import whose outcome is knowable in advance - every row matches by
-   identity, so a second copy of anything would be a bug (ticket 14). */
+   identity, so a second copy of anything would be a bug. */
 await flow('archive round trip', async () => {
 try {
   /* Home's own list of the last few days, counted off the DOM: if a merge
@@ -2204,8 +2122,7 @@ try {
      that is where a second copy of today shows up. Both, rather than the
      day alone: the pair is what says the duplication is neither on Home nor
      behind it. */
-  /* The Journal door, since the recent entries left Home (redesign
-     tickets 10 and 13): it is the everyday list a duplicate would show up
+  /* The Journal door, since the recent entries left Home: it is the everyday list a duplicate would show up
      on now. */
   const homeCards = async () => {
     await page.goto(BASE + '/calendar', { waitUntil: 'networkidle' });
@@ -2302,7 +2219,7 @@ let plainCsv = null;
 try {
 
   await fresh('/entry/new/today');
-  // Mood is required to save (ticket 04): the fixture picks one before the
+  // Mood is required to save: the fixture picks one before the
   // note, same as any real entry would need to.
   await page.locator('[data-mood="3"]').click();
   await toTheRest();
@@ -2414,8 +2331,7 @@ try {
   await page.waitForFunction(() => document.documentElement.dataset.palette === 'nonbinary');
   await page.locator('[data-next]').click(); // flag -> scales
 
-  /* Scales a person ticks, not eight presets a person picks (phase 5
-     ticket 35). The names are the scales' own, and a row whose name does
+  /* Scales a person ticks, not eight presets a person picks. The names are the scales' own, and a row whose name does
      not say what it measures carries a line that does - which is the whole
      reason the checklist replaced the cards, so the subtitle is asserted
      rather than assumed. A name that is its own two ends ("dysphoria -
@@ -2484,7 +2400,7 @@ try {
   const featureCount = await modules.count();
   if (featureCount !== 14) throw new Error(`setup listed ${featureCount} tracking areas, not the registry's 14`);
   // DEFAULT_MODULES in src/lib/onboarding/features.ts: the core set arrives
-  // ticked, the specialist modules do not (pre-release-human 12).
+  // ticked, the specialist modules do not.
   for (const [key, on] of [['care', 'true'], ['milestones', 'true'], ['voice-benchmark', 'true'], ['tryouts', 'false']]) {
     if (await page.locator(`[data-feature-module="${key}"]`).getAttribute('aria-checked') !== on) {
       throw new Error(`${key} did not arrive ${on === 'true' ? 'on' : 'off'} with the default set`);
@@ -2601,24 +2517,10 @@ try {
 } catch (e) { fail('onboarding', e); }
 });
 
-/* 13z. no step scrolls, at every width rule 14 names and with a keyboard up
-   (phase 10 redesign ticket 33, DIRECTION.md rule 14).
-
-   Rule 14's own text hands this measurement to this ticket: before it, setup
-   was a plain column inside the app's one scroll region, so a step with nine
-   rows on it carried the question and the foot off the top of the window -
-   571px of overflow on the permissions step,
-   measured on ticket 31. What holds it now is a fixed frame with one
-   scrolling region inside it, and the only way to know that is still true
-   next month is to measure it here.
-
-   Two reads per step, because they answer different questions. The app's
-   scroll region says the screen did not grow past the window. `.screen-setup`
-   says the frame inside it did not either - it is `overflow: clip`, which
-   draws nothing and still reports what it is hiding, so a step that stopped
-   fitting would clip its own foot in silence rather than scroll. The answers'
-   own region is deliberately not asserted: it is the one thing on a step that
-   may scroll, and on the long steps it does. */
+/* 13z. Check each setup width with the keyboard raised. Measure both
+   the app scroll region and .screen-setup for overflow on every step.
+   The frame uses overflow: clip, so its contents can disappear without
+   moving the outer scroller. The answers region may scroll. */
 await flow('setup no-scroll', async () => {
 try {
   /* The demo bar is 239px of review chrome at 390 wide and is not in the
@@ -2736,7 +2638,7 @@ try {
 });
 
 /* 13a. every step can be left, and leaving keeps what was chosen so far
-   (phase 5 ticket 26) */
+    */
 await flow('onboarding leave', async () => {
 try {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -2792,21 +2694,10 @@ try {
 } catch (e) { fail('onboarding flag skip', e); }
 });
 
-/* 13c. a first run that restores (phase 10 redesign ticket 36).
-
-   The whole path a person on a new phone takes: say on the welcome that you
-   already have a backup, hand over the file and its password, and get the
-   journal back without being asked to invent a life you already have.
-
-   The archive is a real one, exported through the export screen a moment
-   earlier, because a fixture would prove the screen wires up and not that a
-   journal survives the round trip. It is a small one on purpose: what a
-   whole demo journal survives is flow 11b's question, and asking it twice
-   costs this suite a second full export and restore of every photo the
-   earlier flows imported. Here the journal is emptied first and given one
-   entry and one flag, so what has to come back is nameable - the note, and
-   the palette, which is a portable preference (ADR-0003) and therefore also
-   the proof that the flag step was rightly not asked. */
+/* 13c. Restore a real archive from welcome using its file and password.
+   Export one entry and one palette first. Check both survive and the
+   restored portable palette skips its setup step (ADR-0003).
+   Flow 11b covers the full journal and photo round trip. */
 await flow('onboarding restore', async () => {
 let restoreStage = 'starting';
 let exportedArchive = null;
@@ -2901,7 +2792,7 @@ try {
 
   /* Hold the real frame where the arriving name question crosses Back.
      A heading above the control used to swallow a click during this frame.
-     Since the welcome became a hero field (pre-release-human ticket 19) the
+     Since the welcome became a hero field the
      name question arrives riding the field's edge up from below the head
      and never reaches Back, so the frame held is the first one in which
      Back is on screen while a question is still arriving: the click it
@@ -3034,7 +2925,7 @@ try {
   await waitingFor('the permissions step', () => page.waitForSelector('[data-permission-list]'));
   await page.locator('[data-next]').click(); // permissions -> disguise
   /* And disguise, for the same reason: it stores a preference, but a
-     device-local one, so no archive answered it either (ticket 32). Left
+     device-local one, so no archive answered it either. Left
      off, which is what skipping it would also mean. */
   await waitingFor('the disguise step', () => page.waitForSelector('[data-list-row="disguise"]'));
   await page.locator('[data-next]').click(); // disguise -> finish
@@ -3177,7 +3068,7 @@ try {
 });
 
 /* 13b1. turning the disguise on during setup leaves a finished install
-   rather than a setup that died halfway (redesign ticket 32, ADR-0079).
+   rather than a setup that died halfway (ADR-0079).
 
    The web half of the ticket's acceptance. On Android the alias flip closes
    the app and the proof is that the journal opens after the restart; there
@@ -3252,7 +3143,7 @@ try {
 
 /* 13b. the settings scales sheet is the same list onboarding drew, and a
    tick is the change - there is no confirm on the sheet and never was
-   (phase 5 ticket 35) */
+    */
 await flow('settings scales sheet', async () => {
 try {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -3318,7 +3209,7 @@ try {
 
      One entry first, because the onboarding flows above leave the journal
      empty and Home's week strip - the picker's own heading - waits for the
-     first entry (phase 8 UX ticket 01). Written here rather than by a demo
+     first entry. Written here rather than by a demo
      reset, which would put the preferences back and undo the tick this flow
      just made. */
   await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
@@ -3329,8 +3220,7 @@ try {
   await page.waitForFunction(() => document.querySelectorAll('[data-toast-kind="saved"]').length > 0);
   await page.goto(BASE + '/calendar', { waitUntil: 'networkidle' });
   await booted();
-  /* The metric picker left Home with the week strip (redesign tickets 10
-     and 13); the Journal door's is the one that shades the days now. */
+  /* The metric picker left Home with the week strip; the Journal door's is the one that shades the days now. */
   await page.waitForSelector('[data-chart-picker="calendar-metric"]');
   await page.locator('[data-chart-picker="calendar-metric"]').selectOption('femininity');
   await page.waitForFunction(
@@ -3369,7 +3259,7 @@ try {
 });
 
 /* 13c. the first run arrives with the default set ticked, and Skip leaves
-   it exactly as it was (tickets 28, 35) */
+   it exactly as it was */
 await flow('onboarding scales skip', async () => {
 try {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -3470,7 +3360,7 @@ try {
 });
 
 /* 14a. Today's gear reaches Settings, and no other screen's header carries
-   one (ticket 09). Mobile width, then back to desktop for 14b and for step
+   one. Mobile width, then back to desktop for 14b and for step
    15, which follows expecting the wide viewport. */
 await flow('home gear settings', async () => {
 try {
@@ -3499,7 +3389,7 @@ try {
      screen header does" actually means is ScreenHeader's own root, which
      every deep screen and every door but Today renders. `attached`, not
      the default `visible`: More's header has a hidden title and nothing
-     else to hold, so it collapses to nothing on screen (ADR-0075) - true
+     else to hold, so it collapses to nothing on screen - true
      of its content, not of whether a link exists in the DOM. */
   for (const path of ['/calendar', '/stats', '/more']) {
     await page.goto(BASE + path, { waitUntil: 'networkidle' });
@@ -3512,7 +3402,7 @@ try {
 });
 
 /* 14a-zoom. The gear is reachable, not just visible, at 200% zoom on a
-   320px-class phone - the pre-existing 195px check (ticket 23) only holds
+   320px-class phone - the pre-existing 195px check only holds
    the hello line and the sun's layout, never clicks the gear itself. */
 await flow('home gear settings at 200% zoom', async () => {
 try {
@@ -3527,7 +3417,7 @@ try {
 });
 
 /* 14b. the rail's fifth row reaches Settings too, set apart from the four
-   doors (ticket 09). */
+   doors. */
 await flow('rail settings row', async () => {
 try {
   await page.setViewportSize({ width: 1400, height: 980 });
@@ -3573,7 +3463,7 @@ try {
 });
 
 
-/* 16. preferences survive a reload and land before first paint (ticket 06) */
+/* 16. preferences survive a reload and land before first paint */
 await flow('boot preferences', async () => {
 try {
   await page.setViewportSize({ width: 440, height: 940 });
@@ -3634,7 +3524,7 @@ try {
   if (!firstIcon || firstIcon.hadBody) {
     throw new Error('first disguised tab icon: ' + JSON.stringify(firstIcon));
   }
-  /* The install identity has to be neutral before <body> too (ticket 25):
+  /* The install identity has to be neutral before <body> too:
       a browser can query the manifest before hydration runs, and an install
       started off the real one carries the app's own name to the launcher. */
   const firstManifest = await page.evaluate(() => window.__firstManifest);
@@ -3665,7 +3555,7 @@ try {
 } catch (e) { fail('boot preferences', e); }
 });
 
-/* 17. built-in vocabulary is localized by key, not stored in English (ticket 05) */
+/* 17. built-in vocabulary is localized by key, not stored in English */
 await flow('vocabulary localization', async () => {
 try {
   await fresh('/entry/new/today');
@@ -3692,12 +3582,12 @@ try {
 } catch (e) { fail('vocabulary localization', e); }
 });
 
-/* 18. lock on leave and disguise (tickets 17, 30),
+/* 18. lock on leave and disguise,
    then the forgotten-PIN reset.
    Last, because the reset is the one flow that destroys the journal. */
 await flow('lock on leave and reset', async () => {
 try {
-  /* No PIN to set up first any more (ticket 53): mid-session locking now
+  /* No PIN to set up first any more: mid-session locking now
      re-asks whatever opens the journal, and in the demo build that is the
      passphrase. So this flow drives the passphrase shape of the same screen,
      and the PIN shape is covered where the mode is changed, above. */
@@ -3759,7 +3649,7 @@ try {
   await page.locator('[data-screen-back]').click();
   await page.waitForSelector('[data-settings-list]');
 
-  /* Quick add floating over the lock screen (phase 8 audit ticket 08): opened here and left
+  /* Quick add floating over the lock screen: opened here and left
      open, so the leave below has something to fail to close if lockNow()
      stops clearing it. Locking must hide the fan on every platform. */
   await page.locator('[data-nav-fab]').click();
@@ -3842,7 +3732,7 @@ try {
   if (returnedTo !== 0) throw new Error('unlocking landed part-way down the screen rather than at its top: ' + returnedTo);
   if (page.url() !== reading) throw new Error(`unlocking moved the URL: ${reading} -> ${page.url()}`);
 
-  /* A draft typed before a lock is there after it (after-release ticket 10).
+  /* A draft typed before a lock is there after it.
      On the web the lock closes the database and lets go of the key, and
      unmounting the editor used to clear its encrypted mirror as if the
      person had left; the unlock reopens the journal and the remounted
@@ -3911,7 +3801,7 @@ try {
 } catch (e) { fail('lock on leave and reset', e); }
 });
 
-/* 19. the About screen shows the version the build was given (ticket 01).
+/* 19. the About screen shows the version the build was given.
 
    The literal is written twice on purpose: package.json's test:walkthrough
    builds under ENGENDER_VERSION=9.9.9-walkthrough, and this asks for
@@ -3933,7 +3823,7 @@ try {
 } catch (e) { fail('the version the build was given', e); }
 });
 
-/* 20. wrapped (phase 4 features ticket 01): the Home card, both
+/* 20. wrapped: the Home card, both
    presentations, the entry floor and the Settings toggle.
 
    Last, and after the reset in flow 18 has put the persona back, because it
@@ -4074,18 +3964,9 @@ try {
 } catch (e) { fail('wrapped', e); }
 });
 
-/* 21. typed dysphoria and euphoria logging (phase 4 features ticket 02): all
-   seven confirmed categories render as bare names under their own heading,
-   an info affordance tells "social" apart from "societal" - the exact pair
-   CONTEXT.md's glossary calls out as not self-explanatory - hiding one
-   follows the same built-in mechanic as any other tag, and the euphoria tag
-   stays selectable independently of a dysphoria type on the same entry.
-
-   Never run as part of the implementation loop, per this ticket's
-   merge-time note: append here rather than before flow 20 (ticket 01's,
-   which must stay last on its own branch), and run `npx svelte-kit sync`
-   first or the build this file drives dies on ENOENT for
-   .svelte-kit/output/client/service-worker.js. */
+/* 21. Check all seven built-in categories, the help text that distinguishes
+   social and societal, and built-in hiding. Euphoria tags stay selectable
+   beside a dysphoria type on the same entry. */
 await flow('typed dysphoria and euphoria logging', async () => {
 try {
   await fresh('/entry/new/today');
@@ -4130,7 +4011,7 @@ try {
   await page.locator('[data-save]').click();
   await page.waitForSelector('[data-home-log]');
 
-  /* Built-in groups render behind a closed <details> now (ticket 272), so
+  /* Built-in groups render behind a closed <details> now, so
      the hide button has no box until its group's own summary opens it -
      same as a person would have to tap it first. Hiding used to close the
      group right back up: the write reruns the query that supplies each
@@ -4164,7 +4045,7 @@ try {
 } catch (e) { fail('typed dysphoria and euphoria logging', e); }
 });
 
-/* 22. on-this-day (phase 4 features ticket 03): the absolute good-day rule,
+/* 22. on-this-day: the absolute good-day rule,
    the Home card, and the Settings toggle - independent of wrapped's own.
 
    The six-month lookback is where this flow writes: the demo persona only
@@ -4233,7 +4114,7 @@ try {
   const hadWrappedCard = await page.locator('[data-wrapped-card]').count();
   const card = page.locator('[data-on-this-day-card]');
   if ((await card.count()) !== 1) throw new Error('Look back should offer the on-this-day card now, found ' + (await card.count()));
-  /* The tile opens the day in place under the pair (phase 11 ticket 07):
+  /* The tile opens the day in place under the pair:
      the block discloses on the door, and the URL stays. */
   await card.click();
   await page.waitForSelector('[data-lookback-day] [data-lookback]');
@@ -4273,7 +4154,7 @@ try {
 });
 
 /* 23. an unsaved entry survives Android killing the backgrounded process,
-   not only a same-process app-switcher round trip (ticket 14). A full page
+   not only a same-process app-switcher round trip. A full page
    reload discards every JS heap the same way process death does, while
    localStorage - the mirror EntryEditor.svelte writes to on every change -
    survives on disk either way, so this is the closest a desktop browser
@@ -4434,7 +4315,7 @@ try {
 } catch (e) { fail('compare two periods', e); }
 });
 
-/* The roadmap's "Polish legal steps" switch (functional audit ticket 34).
+/* The roadmap's "Polish legal steps" switch.
    Its answer is a stored preference, so it outlives fresh(); every roadmap
    flow sets the state it needs rather than inheriting the last one. */
 async function polishSteps(on) {
@@ -4556,7 +4437,7 @@ try {
 } catch (e) { fail('transition roadmap tri-state', e); }
 });
 
-/* Custom goals (phase 5 ticket 20) in categories of the person's own
+/* Custom goals in categories of the person's own
    (functional audit ticket 34, round two). With the Polish steps off - an
    English install's default - the roadmap still lets somebody make a
    category, add a goal to it that appends to the end of that category and
@@ -4628,7 +4509,7 @@ try {
 } catch (e) { fail('transition roadmap own category', e); }
 });
 
-/* 27. the journal book (phase 5 ticket 17): what the inclusion picker says
+/* 27. the journal book: what the inclusion picker says
    is what the pages hold, and the print layout is many sheets rather than
    one. The second half is the part no unit test can reach - the app shell
    is a fixed-height frame with one scrolling region, so before the print
@@ -4677,8 +4558,7 @@ try {
 } catch (e) { await page.emulateMedia({ media: 'screen' }); fail('journal book', e); }
 });
 
-/* Concurrent regimen episodes and dose-drug attribution (phase 5 ticket
-   38): two episodes for different drugs can both be active without one
+/* Concurrent regimen episodes and dose-drug attribution: two episodes for different drugs can both be active without one
    reading as ended, logging a dose while both are active prompts for
    which drug it was, and ending one drops it out of the active set again
    - the disambiguation this ticket requires before a dose is saved. */
@@ -4729,7 +4609,7 @@ try {
   await page.click('[data-dose-drug="Spironolactone"]');
   await page.click('[data-save-dose]');
   await page.waitForSelector('[data-dose]');
-  // The name leads the title (phase 11 ticket 19), not the trailing
+  // The name leads the title, not the trailing
   // attribution label: a concurrent journal must tell its doses apart
   // before either is opened.
   const doseRowTitle = await page
@@ -4752,7 +4632,7 @@ try {
     throw new Error(`the day row should lead with the drug, got: ${dayDoseTitles.join(' | ')}`);
 
   // With both episodes still active, the schedule-comparison tab has no
-  // single answer of its own (ticket 15) - a picker lets the person choose
+  // single answer of its own - a picker lets the person choose
   // which regimen it compares, rather than the tab going blank the way
   // `adherence_multiple_episodes` used to describe unconditionally.
   await page.goto(BASE + '/care/doses', { waitUntil: 'networkidle' });
@@ -4798,7 +4678,7 @@ try {
 }
 });
 
-/* Characterization pass for the More hub (phase 5 ticket 03): every route
+/* Characterization pass for the More hub: every route
    Settings links, directly or by way of the /more hub. Retired addresses
    are covered by old-addresses-check.mjs. */
 await flow('More hub route characterization', async () => {
@@ -4828,7 +4708,7 @@ try {
 }
 });
 
-/* The permissions list has a permanent home (phase 10 redesign ticket 31).
+/* The permissions list has a permanent home.
    Setup's step says every one of these can be granted later, and the only
    thing that makes that sentence true is a screen in Settings drawing the
    same list from the same component - so what this checks is that the row
@@ -4940,7 +4820,7 @@ try {
     ['/care/regimen', 'regimen-empty'],
     ['/care/doses', 'doses-empty'],
     ['/health/cycle-events', 'cycle-events-empty'],
-    // The merged screen (ticket 13) - side effects keep their own
+    // The merged screen - side effects keep their own
     // empty-state marker under the same roof as the changes axis.
     ['/care/changes', 'side-effects-empty'],
     ['/health/surgery', 'surgery-empty'],
@@ -4950,13 +4830,13 @@ try {
     ['/transition/letters', 'letters-empty'],
     ['/transition/tryouts', 'tryouts-empty'],
     /* `/voice` is not on this list, and still is not now that the
-       fixture writes benchmarks (redesign ticket 42): its remaining empty
+       fixture writes benchmarks: its remaining empty
        notice belongs to the compare tab, and the route opens on the record
        tab, so a check here would pass without ever reaching the thing it is
        about. The voice screen's own walk is below and asks the compare tab
        directly. */
     ['/body/wear', 'wear-empty'],
-    /* `/settings/stock` is not on this list any more (ticket 09, ADR-0084):
+    /* `/settings/stock` is not on this list any more (ADR-0084):
        the stock editor is a sheet off Care's own regimen block now, closed
        by default, so a bare page load of `/care` never renders its
        `care-stock-empty` marker either way - the check above would pass
@@ -4977,7 +4857,7 @@ try {
     }
   }
 
-  /* The starred gap (ticket 18): `/search/starred` redirects into
+  /* The starred gap: `/search/starred` redirects into
      `/search` now, so what proves the fixture closed it is real content on
      arrival rather than an absent empty-state marker - a starred entry or
      photo. */
@@ -5013,7 +4893,7 @@ try {
     throw new Error('the surgery index has no still-running procedure beside the archived one');
   }
 
-  /* The voice screen's three tabs (phase 8 features ticket 09): each one
+  /* The voice screen's three tabs: each one
      renders its own surface and no other tab's, and the compare tab is the
      one that lists benchmarks. Deliberately no microphone here - this
      browser has none, and a step that waits on a live figure would hang
@@ -5071,7 +4951,7 @@ try {
   }
   await page.locator('[data-benchmark-delta]').waitFor();
 
-  /* The metric reference (phase 8 features ticket 27), a sheet over the
+  /* The metric reference, a sheet over the
      voice screen since phase 11 ticket 17 rather than a screen of its own.
      Reached from a figure in the app, and there is no figure to press
      here: a benchmark needs a microphone this browser does not have, so
@@ -5241,21 +5121,8 @@ try {
 }
 });
 
-/* Ticket 67 acceptance: "the same link to a record inside the first batch
-   behaves as it does today". The dossier's dosage log reads oldest first,
-   so its last row is the most recent dose - always within the log's own
-   newest-first first batch - and following it must not expand anything.
-
-   Ticket 08 truncates the preview to twelve rows a table, and the demo
-   persona's default 90-day range logs doses daily on two drugs, well past
-   that floor - so the range's own last row is now `.dossier-row-overflow`,
-   invisible on screen. Narrowed to the last four days from the controls
-   sheet, both daily drugs keep the row count under the floor and the
-   demo's seeded adherence (92%/8% miss, `fullFixture.ts`) makes at least
-   one dose in the window as close to certain as a seeded draw gets - so
-   every link stays visible, and the last one is still today's or
-   yesterday's, nowhere near needing a batch past /care/doses' first
-   thirty. */
+/* Keep the dossier preview under its 12-row cap by choosing four days.
+   Its last visible dose is recent enough to open from the log's first batch. */
 await flow('deep-linked row inside the first batch is unchanged', async () => {
 try {
   await page.goto(BASE + '/health/clinician-summary', { waitUntil: 'networkidle' });
@@ -5300,9 +5167,8 @@ try {
   await page.goto(BASE + '/body/wear', { waitUntil: 'networkidle' });
   await page.waitForSelector('[data-wear-running]', { timeout: 8000 });
 
-  /* Ticket 50, ADR-0064: fullFixture's running session is a binder one nine
-     hours in, so the cue is showing on the card above the list. Asserted
-     before the click, because stopping it is what takes both away. */
+  /* fullFixture has a binder session nine hours in. Confirm the duration
+     cue before stopping it, which removes both the cue and running card. */
   await page.waitForSelector('[data-wear-duration-cue]', { timeout: 8000 });
 
   await page.locator('[data-wear-running]').click();
@@ -5339,33 +5205,12 @@ try {
 });
 
 
-/* The hub reading its own data (phase 8 UX ticket 02).
-
-   Directly after "Fill every feature", because that is what puts a write in
-   most areas - a hub row's line is a read of the journal and there is nothing
-   to read on the persona alone.
-
-   Seven kinds of line since phase 11 all-four-doors ticket 02, and the walk
-   covers the ones only a real journal can show. A row with something running
-   says so, a row with a dated future says that, the Body row states its last
-   value, a row with neither states its last write, and a row that fronts no
-   dated stream and has nothing ahead states what is behind it instead. All
-   five are walked here, on a journal where every feature has been filled.
-
-   The order is what this actually proves, and it is why the finished walk
-   below uses the wear row in particular: that row has a session running on
-   this seed, so "finished" winning over it is the choice rule holding at the
-   top of `rowLine` rather than a row that had nothing to say anyway.
-
-   The sixth kind - a reading row with nothing written yet - is walked further
-   up, on the persona alone: "Fill every feature" now writes into every
-   reading row there is, the voice benchmark included (redesign ticket 42), so
-   there is no longer an empty one to point at under this seed.
-
-   Handles, never wording or structure (ADR-0029). Each row carries
-   `data-hub-line` naming which kind it drew, so they are told apart by that
-   rather than by the copy, which a rewording would let pass for free, or by
-   the kit's `.kit-row-sub` class, which is structure. */
+/* Fill every feature supplies data for the running, upcoming, latest
+   body value, latest write and undated summary row cases. A finished
+   wear row must win over the running session in this seed. The empty
+   reading row is covered earlier on the persona because the filled
+   seed now writes every reading. Assert data-hub-line per ADR-0029 so
+   copy and markup can change independently. */
 await flow('the hub reads its own data', async () => {
 try {
   await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
@@ -5463,8 +5308,7 @@ try {
 }
 });
 
-/* The reorganised tree, tapped rather than asserted (phase 9 carpet ticket
-   16). Seven rows left the hub for the screen that owns them, and the whole
+/* The reorganised tree, tapped rather than asserted. Seven rows left the hub for the screen that owns them, and the whole
    claim of the ticket's last acceptance line is that each is still reachable
    from exactly one place. `more-surfaces.test.ts` holds that each host screen
    links to its rows; what only a walk can say is that following those links
@@ -5475,8 +5319,8 @@ try {
 await flow('the reorganised hub tree', async () => {
 try {
   // Health > Meds opens its own screen; Changes you've noticed is a Body
-  // row of its own now (pre-release-human 12) and carries side effects on
-  // the same axis and the same list (ticket 13).
+  // row of its own now and carries side effects on
+  // the same axis and the same list.
   await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
   await page.locator('[data-list-row="care"]').click();
   await page.waitForURL('**/care');
@@ -5491,7 +5335,7 @@ try {
   await page.locator('[data-list-row="dilation"]').click();
   await page.waitForURL('**/health/dilation');
 
-  // Modes are a Settings row now (redesign ticket 51, ADR-0084), never on
+  // Modes are a Settings row now (ADR-0084), never on
   // the hub at all. It stopped being a screen of its own (audit item 6): the
   // row raises a sheet over Settings rather than navigating, so the URL
   // settles back on /settings and the manager's own content is what proves
@@ -5523,8 +5367,7 @@ try {
 }
 });
 
-/* Cutting through the door with the search box in its field (phase 10
-   redesign ticket 15). Twenty-seven rows is only a list somebody can get
+/* Cutting through the door with the search box in its field. Twenty-seven rows is only a list somebody can get
    through if a word narrows it, and what a word reaches is both halves of
    what is behind the door: the areas by name, and the records inside them.
 
@@ -5547,7 +5390,7 @@ try {
   await page.locator('[data-hub-search]').fill('wear');
   await page.waitForSelector('[data-hub-results] [data-list-row="wear"]', { timeout: 8000 });
   /* Detached rather than absent on the next frame: the index gives its
-     height back on the way out (DIRECTION.md rule 10), so it is still in the
+     height back on the way out, so it is still in the
      document while it does, and waiting for it to go is also what proves the
      collapse finishes rather than stalling. */
   await page.waitForSelector('[data-hub-index]', { state: 'detached', timeout: 8000 });
@@ -5560,7 +5403,7 @@ try {
   await page.waitForURL('**/body/wear');
 
   /* Dilation is a hub row in Health once the journal holds a procedure that
-     can carry one (pre-release-human 12), so a name finds it under that
+     can carry one, so a name finds it under that
      heading, and following it lands on the area. */
   await page.goto(BASE + '/more', { waitUntil: 'networkidle' });
   await page.locator('[data-hub-search]').fill('dilation');
@@ -5609,25 +5452,11 @@ try {
 }
 });
 
-/* Phase 8 features ticket 05, ADR-0062: coming back after five weeks.
-
-   Directly after the fill-every-feature step, and it puts that journal back
-   before it leaves. The jump it needs replaces the journal with one that
-   stops five weeks ago, and a five-week-stale journal has an empty "recent"
-   everywhere, so every later flow would fail for the wrong reason.
-
-   It was written at the end of the file instead, on the theory that nothing
-   after it reads the journal - which was wrong in a way worth recording. The
-   flows down there set a PIN and change access modes, so by then the app
-   boots to a gate: `fresh('/')` never reached `data-boot="ready"` and the
-   whole flow died in `booted()` on a 30-second timeout that named no step of
-   its own. The last third of this file is not a place a flow can start from.
-
-   Handles and never wording (ADR-0029). What is asserted is the two things
-   only a real navigation can answer: that the shell opens the surface by
-   itself when somebody lands on Home after a gap, and that having met it
-   once is what stops it opening again - which is the whole of "a moment, not a place" and is a
-   preference, a redirect and a screen agreeing across a reload. */
+/* Replace the filled journal with one five weeks stale, then restore
+   it before later flows. Run before PIN and access-mode flows that
+   make fresh('/') land on a gate. Use handles (ADR-0029) to check
+   Home opens the return surface once and dismissal persists across
+   reload. */
 await flow('coming back', async () => {
 try {
   await fresh('/');
@@ -5730,32 +5559,15 @@ try {
 }
 });
 
-/* Ticket 18: "compare this stretch" on a tryout and on a procedure, over
-   the journal "fill every feature" just layered onto whatever ~50 earlier
-   flows left the journal holding - `fresh()` reloads the page, not the
-   journal, so this is not the clean persona seed alone. That is exactly
-   why the procedure half below does not assert which of "ready" or "too
-   short" it lands on: the procedure is dated `today - 400`, and whether
-   its 90-day recovery window (long since closed - the fixed-end half of
-   ADR-0049's clamp, next to the tryout's still-open half) has real journal
-   before it depends on how far back editing and importing left the
-   earliest entry, which this suite does not pin down. Both branches are
-   asserted instead - a link that opens with the right two sides, or a
-   notice that says why it does not - and "too short to compare" as a rule
-   is exercised at the unit level (compareStretch.test.ts) regardless. The
-   tryout is dated only `today - 100`, comfortably inside any journal this
-   suite produces, so that half stays a strict assertion. Expected sides
-   are computed from the same pure rule the screens call, so this checks
-   the two agree rather than restating one arithmetic as the other's
-   assertion.
+/* fresh() reloads the page and preserves earlier walkthrough writes.
+   The procedure starts today - 400 and its 90-day recovery ends at a
+   fixed date (ADR-0049). Earlier flows can change the available baseline,
+   so assert either the expected comparison link or the too-short notice.
+   compareStretch.test.ts covers the boundary in isolation.
 
-   The tryout half also proves the ticket's own acceptance criterion that
-   `/compare`'s arithmetic is unchanged: the same two dates, once arrived
-   at through this link and once typed into the pickers by hand exactly as
-   flow 25 already does, have to read the same numbers back - a stronger
-   check than "the diff to sideStats/periodFromRange is empty", since it
-   exercises the real computation rather than trusting the diff not to
-   have touched it. */
+   The still-open tryout at today - 100 must produce both sides from
+   the shared rule. Compare the numbers from its link against the same
+   dates entered manually in /compare. */
 await flow('compare this stretch', async () => {
 try {
   // epochDay.ts and recoveryDay.ts both import nothing of their own (each
@@ -5865,22 +5677,9 @@ try {
 }
 });
 
-/* Importing a Daylio backup (phase 7 ticket 09). The one flow in this
-   suite that hands the app a file: `chooseFiles` creates an input and
-   clicks it (data/fileDialog.ts), so Chromium's own file chooser is what
-   the picker resolves through here too.
-
-   The `.daylio` is built at run time from the same test-support builder the
-   node tier uses, rather than committed as a binary - the format was
-   learned from a real personal journal that has been deleted, and a zip
-   nobody can read is a worse fixture than a JSON literal a reviewer can.
-   Imported dynamically so a Node without type stripping fails this flow
-   rather than the suite.
-
-   Nothing here asserts on wording. The assertions are handles and counts:
-   that a preview resolved, that the sheet closed on commit, that the
-   import wrote a history row, and that picking the same file again offers
-   no confirm button, which is the whole of "re-importing adds nothing". */
+/* Choose a generated .daylio through the browser's real file input. Import the
+   fixture builder dynamically so a Node loader failure stays in this flow.
+   Check preview, commit, the history row and reimport without a confirm action. */
 await flow('daylio backup import', async () => {
 try {
   const { makeDaylioBackup } = await import('../src/lib/data/archive/test-support/daylio-backup.ts');
@@ -5965,22 +5764,11 @@ try {
 });
 
 
-/* The rotation map's dots at the narrowest phone the app supports (phase 6
-   ticket 13). Ticket 10 read the crowding on that figure as a reason to put
-   recency in a text list instead of on the dots, and the crowding was real:
-   two of the twelve 48px targets sat 33.7px apart, so a fifth of six of
-   them belonged to a neighbour. injectionSiteMap.test.ts holds the spacing
-   in the abstract; what only a browser can say is that the figure renders
-   at the width that spacing assumes, that the targets come out at
-   --touch-target, and that a tap aimed at a dot lands on that dot.
-
-   After "Fill every feature", whose 500 days of weekly injections around
-   six of the twelve sites are the only seed with a rotation behind them -
-   which is also what makes the never-used half of the map checkable here.
-
-   A 320px viewport leaves only 280px inside the sheet's padding. The map
-   reaches into that padding to keep its 320px layout width and the gap
-   between targets. Put the 440px viewport back afterwards. */
+/* Use the filled journal's 500 days of weekly injections to check
+   six used and six unused sites. At 320px the map extends into sheet
+   padding to keep its width and 48px targets. Check taps reach the
+   intended dots and restore 440px afterward. injectionSiteMap.test.ts
+   covers abstract spacing. */
 await flow('injection map recency', async () => {
 try {
   await page.setViewportSize({ width: 320, height: 844 });
@@ -6100,12 +5888,8 @@ try {
 }
 });
 
-/* Today's header at what 200% zoom leaves of a 390px phone (redesign
-   ticket 23, DIRECTION.md rule 7). The old header reserved the sun's full
-   350px beside the hello line, which at 195px is more than the screen, and
-   Playwright read the line as hidden: zero width. The foot under the field
-   has no sun beside it, so the line has its width back, and the sun draws
-   at 0.6 so the wordmark in the field's corner is clear of it. */
+/* At 200% zoom a 390px phone leaves 195px. The greeting needs the foot's
+   full width. The sun draws at 0.6 to leave room for the wordmark. */
 await flow('the field at 200% zoom', async () => {
 try {
   await page.setViewportSize({ width: 195, height: 844 });
@@ -6147,24 +5931,11 @@ try {
 }
 });
 
-/* Eras (phase 6 ticket 01, ADR-0049). Two things worth walking that no unit
-   test reaches: leaving a bound open is a choice on screen rather than an
-   empty field, and a collision is answered inside the sheet - a sentence
-   naming the era it hit, and a save that will not fire - rather than thrown
-   after a tap.
-
-   After "Fill every feature" rather than on a first-run journal, because the
-   line saying what an open bound comes to is computed against the journal's
-   own first and last entry: on an empty journal there is nothing to clamp to
-   and the line is correctly absent. The persona seeds eras of its own
-   (redesign ticket 48, "Before HRT"; ticket 62 added two more that cover
-   entries) - checked for, then
-   cleared, all of them, so the rest of this flow keeps testing "all of it"
-   and "earlier still" against the empty slate they were written against:
-   "all of it" is both bounds left open, which is the one era that would
-   collide with *any* other era on the overlap check (`eras.ts`'s
-   `spansOverlap` returns true whenever neither side can prove non-overlap,
-   and an era with both bounds null can never prove either side). */
+/* Check era bounds and overlap on a filled journal (ADR-0049).
+   Open bounds clamp to the first and last entries and the sheet
+   explains the effective range. Clear seeded eras so a new era can
+   leave both bounds open. Such an era overlaps every other era.
+   Check the sheet names the conflict and blocks Save. */
 await flow('eras', async () => {
 try {
   await page.goto(BASE + '/settings/eras', { waitUntil: 'networkidle' });
@@ -6250,7 +6021,7 @@ try {
 }
 });
 
-/* The span offer (redesign ticket 48): dragging or tapping a span on Look
+/* The span offer: dragging or tapping a span on Look
    back's rail offers to name it, once, on the rail itself - never a Today
    notice or a tile. Two things worth walking that a unit test cannot reach
    from here: the offer really does stop coming back once dismissed for a
@@ -6315,23 +6086,8 @@ try {
 }
 });
 
-/* Quick add, rebuilt (phase 5 ticket 18, closing spec 04).
-
-   The old sheet offered two choices that both led to the same screen. What
-   is checked here is the widening - every option reaching the surface that
-   records that thing - and, separately, that both gestures reach the same
-   targets: tap the add button and tap a row, or press the button and slide
-   onto a row without ever letting go.
-
-   The two gestures are worth testing separately because they resolve
-   through different code paths in the browser even though they resolve
-   through one rule in the component: a tap ends in a click on the row, and
-   a slide ends in a pointerup the row never sees.
-
-   The wear session is asserted through the fan's flight rather than through
-   a count on a screen, and that is not the weaker check it looks like: the
-   flight starts when the write comes back from the worker, not when the
-   finger lifts. */
+/* Tap and drag-to-select use different event paths. Exercise both against the
+   same destinations. The wear animation starts after the worker confirms the write. */
 async function openQuickAdd(path = '/') {
   await fresh(path);
   await page.locator('[data-nav-fab]').click();
@@ -6460,7 +6216,7 @@ try {
 
 await flow('the appointment record', async () => {
 try {
-  /* The appointment record (phase 8 features ticket 57, ADR-0066): write a
+  /* The appointment record (ADR-0066): write a
      visit down, edit it, and throw it away.
 
      The kind suggestions are the half worth walking. Nothing ships in
@@ -6557,7 +6313,7 @@ try {
 
 await flow('the calendar handoff', async () => {
 try {
-  /* The calendar handoff (phase 10 redesign ticket 18, ADR-0067): the
+  /* The calendar handoff (ADR-0067): the
      sheet's default title stays neutral until the person changes it, and
      an edited title and a typed time both reach the file that gets
      shared. Runs against the appointment surface; the surgery date and a
@@ -6674,7 +6430,7 @@ try {
 
 await flow('in the room', async () => {
 try {
-  /* In the room (phase 8 features ticket 60): the standing prep list read
+  /* In the room: the standing prep list read
      one question per screen, and what gets jotted arriving in the debrief
      attributed to the question it was typed under.
 
@@ -6857,8 +6613,7 @@ try {
 
 await flow('cycle tracking opt-in', async () => {
 try {
-  /* Cycle tracking stays out of sight until it is asked for (ADR-0043,
-     phase 5 deepening ticket 05). The demo journal is transfemme by
+  /* Cycle tracking stays out of sight until it is asked for (ADR-0043). The demo journal is transfemme by
      construction - estradiol, no testosterone - so by default not one
      surface names the cycle log, while the log itself keeps its records
      and its direct URL. Two ways in, walked one after the other: the
@@ -6883,7 +6638,7 @@ try {
 
   // The direct URL still answers, records intact - hiding a row never
   // closes a screen (ADR-0043). `data-cycle-event` only names a row inside
-  // the strip's current week now (phase 10 redesign ticket 56), and the
+  // the strip's current week now, and the
   // fixture's events land roughly monthly, so a week can hold none by
   // chance; `data-cycle-events-today` is the row the non-empty branch
   // always draws regardless of which week that is.
@@ -6972,7 +6727,7 @@ try {
 
     await page.goto(BASE + '/entry/new/today', { waitUntil: 'networkidle' });
     await booted();
-    // The cards are on a new entry's body step (ticket 09); the body map is there either way.
+    // The cards are on a new entry's body step; the body map is there either way.
     await toEntryStepWith(page, '[data-editor-section="body"], [data-contextual="cycle-event"]');
     const cyclePanel = page.locator('[data-contextual="cycle-event"]');
     if (Boolean(await cyclePanel.count()) !== shown) throw new Error(`${locale} entry cycle prompt visibility disagreed`);
@@ -7119,8 +6874,7 @@ try {
   await page.click('[data-save-regimen]');
   await page.waitForTimeout(500);
 
-  /* The axis at the top of "changes you've noticed" (phase 10 redesign
-     ticket 57). It runs on the journal this flow has just left behind - a
+  /* The axis at the top of "changes you've noticed". It runs on the journal this flow has just left behind - a
      bare persona with one estradiol episode 400 days ago and nothing marked
      against it - which is why it sits inside this flow rather than in one of
      its own: a later flow would have to rebuild that journal to get an empty
@@ -7193,8 +6947,8 @@ try {
   await page.goto(BASE + '/body/wear', { waitUntil: 'networkidle' });
   await booted();
   /* [data-skeleton] used to match nothing - Skeleton.svelte only ever wrote
-     `class="skeleton"` - so this wait was a no-op from its first tick
-     (ticket 01). Skeleton.svelte now stamps data-skeleton on its own root,
+     `class="skeleton"` - so this wait was a no-op from its first tick.
+     Skeleton.svelte now stamps data-skeleton on its own root,
      chosen over pointing this wait at something wear-log-specific because
      every other screen that shows a Skeleton while loading gets the same
      real wait for free. */
@@ -7241,19 +6995,8 @@ try {
 } catch (e) { fail('quick add press without a slide', e); }
 });
 
-/* The shell's window insets (phase 5 ticket 18).
-
-   A headless desktop Chromium reports every safe-area inset as 0, so
-   env(safe-area-inset-*) can never exercise the defect here - which is why
-   the shell reads --inset-* tokens the layout can be told to change. This
-   flow sets them to a phone's numbers and then asserts against the real
-   rendered geometry rather than against the stylesheet: where content
-   actually starts, and where the bar actually ends.
-
-   The device check the acceptance list asks for is a separate thing and
-   this does not stand in for it. What this catches is a regression - a
-   screen or a control that stops consuming the insets, on every run,
-   without anyone plugging a phone in. */
+/* Set the shell's --inset-* tokens because desktop Chromium reports zero
+   safe-area insets. Check the rendered content and bar against those values. */
 const CUTOUT = { top: 48, right: 0, bottom: 24, left: 0 };
 
 async function withSimulatedInsets(fn) {
@@ -7453,7 +7196,7 @@ try {
       throw new Error(key + ' is missing from the show column');
     }
   }
-  /* And Today's own thirteen are not here any more (phase 11 ticket 04):
+  /* And Today's own thirteen are not here any more:
      a live tile is arranged in the editor on the page it draws on. */
   for (const key of ['dose-panel', 'wear-timer']) {
     if (await page.locator(`[data-live-tile="${key}"]`).count()) {
@@ -7461,8 +7204,7 @@ try {
     }
   }
   /* Remaining prompts that came off Settings' Tracking section. The
-     roadmap's milestone prompt moved onto the roadmap (functional audit
-     ticket 34), the binder cue onto Wear (ticket 37). */
+     roadmap's milestone prompt moved onto the roadmap, the binder cue onto Wear. */
   for (const key of ['roadmap-milestone-sync', 'wear-duration-cue']) {
     if (await page.locator(`[data-prompt="${key}"]`).count()) {
       throw new Error('the ' + key + ' prompt is still on the notifications screen');
@@ -7493,21 +7235,8 @@ try {
 } catch (e) { fail('the unprompted registry view', e); }
 });
 
-/* Phase 8 features ticket 52, ADR-0065: a piece of paper filed, found,
-   opened and thrown away.
-
-   The whole of that path is UI - a file chooser, a sheet, a list row, a
-   detail screen and a confirm - so nothing below the screens can prove it,
-   which is what this flow is for. The page itself is drawn on a canvas and
-   handed to the real input, so it goes through normalizePhoto and the
-   encrypted store the way a scan would.
-
-   Phase 8 features ticket 70: this used to open on an asserted-empty
-   list, which the persona document seeded by ticket 64 broke the same
-   way it broke the PDF flow below - see that flow's own comment for the
-   mechanism. Fixed by joining the seeded row rather than unseeding it
-   (ticket 64 put it there on purpose), so this flow ends back at its
-   starting row count instead of an empty notice. */
+/* File a canvas image through the real chooser and encrypted store (ADR-0065).
+   Find and open it, then delete it and check that the seeded list count returns. */
 await flow('a place for paper', async () => {
 try {
   await fresh('/media/documents');
@@ -7534,7 +7263,7 @@ try {
   await page.locator('[data-save-document]').click();
   /* Counted rather than waited for, and found by its own text in JS, for
      the reason the flow below spells out: the demo persona files paper of
-     its own (ticket 64), so a bare `[data-list-row]` wait is already
+     its own, so a bare `[data-list-row]` wait is already
      satisfied and `first()` is somebody else's document - this one is
      dated 1994 and sorts last. */
   await page.waitForFunction((before) => document.querySelectorAll('[data-list-row]').length > before, paperBefore);
@@ -7583,22 +7312,10 @@ try {
 } catch (e) { fail('a place for paper', e); }
 });
 
-/* Phase 8 features ticket 53, ADR-0065: a PDF filed the same way, one the
-   renderer cannot read (ticket 55) - the paper icon, the line that says
-   so, its size and the export action are what its own screen has instead.
-   Type is decided by reading the bytes: this file is named .png in the
-   chooser and is a PDF anyway.
-
-   Not asserting the list starts empty here (unlike "a place for paper"
-   above): ticket 64 seeded the demo persona with a document of its own,
-   which `fresh()` cannot clear - it lives in SQLite, not localStorage - so
-   the list already carries that row before this flow ever saves its own.
-   Our own row is found by counting (a plain increase proves the save
-   landed, race-free against the seeded row already satisfying a bare
-   `[data-list-row]` wait) and then by reading each row's own text in JS
-   rather than a Playwright text locator - `walkthrough-locators.test.ts`
-   reserves those for a deliberate exception, and there is nothing
-   deliberate about a title used only to tell two rows apart. */
+/* Import bytes that sniff as PDF despite a .png name. An unreadable
+   PDF still shows its icon, notice, size and export action (ADR-0065).
+   fresh() leaves the seeded document in SQLite, so wait for the row
+   count to increase, then read row text inside the page. */
 await flow('a document can be a PDF', async () => {
 try {
   await fresh('/media/documents');
@@ -7862,20 +7579,9 @@ try {
 } catch (e) { fail('a roadmap goal reworded and removed', e); }
 });
 
-/* redesign ticket 17: a photo's day, asked for on import and editable
-   afterwards (ADR-0015 - the file's own capture date is never read). Backend
-   and screens shipped earlier as ticket 47; this proves the ask, the skip
-   and the after-the-fact edit through the real screens rather than assuming
-   the wiring still holds after the token/direction passes (tickets 07/22/23)
-   repainted every surface it renders on.
-
-   Placed before the access-mode/recovery-key tests below for the same
-   reason those order themselves the way they do (see the recovery key
-   comment just past this block): the last of them leaves the journal on
-   device-bound access, whose unlock is a WebAuthn PRF ceremony a headless
-   Chromium page never resolves - a fresh() after it hangs boot rather than
-   reaching Home, which showed up here first only because this ticket's
-   tests were the first ever appended after it. */
+/* Test choosing, skipping and later editing a photo's journal day. The image
+   metadata is stripped (ADR-0015). Run before device-bound access, which
+   requires a WebAuthn PRF unlock headless Chromium cannot complete. */
 await flow("a photo's day, on screen", async () => {
 try {
   const skipPhoto = await tinyPhoto(page, '#c94f7c');
@@ -7978,7 +7684,7 @@ finally {
 }
 });
 
-/* The photo library (phase 11 ticket 14): one grid over all six tables that
+/* The photo library: one grid over all six tables that
    hold a photograph, and the wipe over any two of them.
 
    On the full fixture, which is the only journal that has all six - the
@@ -8076,7 +7782,7 @@ try {
   await page.keyboard.press('Escape');
 
   /* Two shots of one pose on Progress photos, which the full fixture gives
-     four of per pose (pre-release-human 12): picked and wiped. The pair
+     four of per pose: picked and wiped. The pair
      comes from the grid, so the wipe draws no earlier/later arrows here. */
   await page.goto(BASE + '/transition/progress-photos', { waitUntil: 'networkidle' });
   await booted();
@@ -8242,32 +7948,18 @@ try {
 } catch (e) { fail('licence notices', e); }
 });
 
-/* LAST. The access mode: changing it, and PIN mode's gate, throttle and the
-   PIN that opens it (ticket 53, replacing ticket 17's app lock).
-
-   Last on purpose, and it cannot be anywhere else. This flow leaves the
-   journal in PIN mode, and there is no way back to where it started: coming
-   back through the module means typing the demo build's own passphrase, which
-   is four characters, and the module enforces the real eight-character floor.
-   Refusing it is correct behaviour, so the flow ends here rather than asking
-   the app to accept a passphrase no real setup screen would.
-
-   Everything after a mode change would meet a gate instead of the app, which
-   is exactly what happened when this sat at position 12: fifteen flows passed,
-   this one changed the mode, and the remaining twenty-six timed out one after
-   another with nothing to say for themselves.
-
-   Passphrase, PIN and biometrics moved onto one screen in ticket 18, reached
-   from a single Security row rather than being set up straight off /settings -
-   so this flow goes through that row rather than assuming the switch is on
-   the page it lands on. */
+/* Run last. This flow changes the journal to PIN mode and checks
+   its gate, throttle and unlock. Leaving PIN mode through Security
+   would require the four-character demo passphrase, which correctly
+   fails the real eight-character minimum. Later flows would meet
+   the gate. */
 await flow('access mode', async () => {
 try {
   await fresh('/settings');
   await page.locator('a[href="/settings/security"]').click();
   await page.waitForSelector('[data-security-list]');
 
-  /* Biometrics is Android-only (ticket 18) - a desktop browser has no
+  /* Biometrics is Android-only - a desktop browser has no
      platform prompt behind it, so the toggle must not exist here at all
      rather than sit there doing nothing. This is also as much of the
      consent-flow gating as this suite can reach: the ask itself lives
@@ -8285,7 +7977,7 @@ try {
     throw new Error('a screenshot-blocker toggle rendered on a build with no Android platform behind it');
   }
 
-  /* Changing access mode (ticket 53). The demo journal opens under a
+  /* Changing access mode. The demo journal opens under a
      passphrase, so the module offers the other two and marks this one as
      current - which is also the assertion that it reads the mode off the
      keystore rather than tracking it separately. */
@@ -8329,7 +8021,7 @@ try {
   /* A mismatch on the second entry, which has to land back on "choose four
      digits" rather than some third state - and back from the secret screen
      has to return to the consequence screen with PIN still the chosen mode,
-     not to the bare list (ticket 30). */
+     not to the bare list. */
   await typePin('1234');
   await typePin('4321');
   const mismatch = await page.locator('[data-access-status]').innerText();
@@ -8405,7 +8097,7 @@ try {
      current now, so the module must have stopped offering it and must say so.
      This is the last thing the suite does, so the journal is left in PIN mode
      deliberately - see the note at the top of this flow. */
-  /* Settings has no pointer left in the More hub (ticket 09) - the gear at
+  /* Settings has no pointer left in the More hub - the gear at
      the end of Today's foot is the way in now, and this flow is already on
      Today, having just cleared the gate above. */
   await page.locator('[data-home-gear]').click();
@@ -8431,22 +8123,10 @@ try {
 } catch (e) { fail('access mode', e); }
 });
 
-/* AFTER LAST. A recovery key used for what it is for (ADR-0054, ticket
-   sec-02), which can only be checked here and in this order.
-
-   Every part of this needs state the flow above leaves behind: the journal
-   is in PIN mode with a known PIN, which is what makes a reload land on a
-   gate instead of the app. `fresh()` only clears localStorage - it does not
-   reseed the journal or the keystore - so a mode change persists across
-   flows and this is the one place a gate is reachable at all.
-
-   The chain: mint a key while the journal is open, meet the PIN gate, get
-   in with the written key instead of the PIN, land on the forced
-   access-mode module, choose device-bound from it, then destroy the local
-   key device-bound mode depends on and come back through the dead-end
-   screen with the same key. That last state is the one the ticket exists
-   for - a browser that threw away its key - and it is the only screen in
-   the app that used to have nothing on it but a reset. */
+/* Run after the PIN-mode flow. fresh() preserves journal and key
+   state (ADR-0054). Create a recovery key while unlocked, reload to the
+   PIN gate, recover into the forced mode picker and choose device-bound.
+   The note below explains the demo boot limit for device-key loss. */
 await flow('the recovery key at the gate', async () => {
 try {
   /* No fresh() here, and that is the first thing this flow taught: fresh()
@@ -8461,7 +8141,7 @@ try {
   await booted();
   await page.waitForSelector('[data-home-hello]');
 
-  /* Settings has no pointer left in the More hub (ticket 09) - the gear at
+  /* Settings has no pointer left in the More hub - the gear at
      the end of Today's foot is the way in now, and this flow is already on
      Today, having just cleared the gate above. */
   await page.locator('[data-home-gear]').click();
@@ -8521,21 +8201,8 @@ try {
   if (await page.locator('[data-home-hello]').count()) {
     throw new Error('a recovery unlock reached Home without choosing an access mode');
   }
-  /* This screen's arrival is the same kind of instead-of-the-route moment
-     as a mid-session lock (flow 18), and quick add is the same
-     layout-level sibling there too (phase 8 audit ticket 08) - the layout
-     clears the same flag here for the same reason lockNow() does.
-
-     What this check cannot do is provoke the bug: `recoveryUnlock.used`
-     only turns true from a gate that renders before AppNav exists
-     (needsPassphrase/needsAuthentication/needsDeviceRecovery are all
-     chromeless, so there is no `[data-nav-fab]` to open the fan from), and
-     the same dispatch that sets it also flips `bootState` to `ready` - so
-     this screen's own precondition is true from the instant it could ever
-     be checked, before a fan could have been opened. Unlike flow 18's
-     check, reverting the layout's clear would not fail this one; it is
-     belt-and-suspenders for a path the boot state machine does not
-     currently allow the fan to reach at all. */
+  /* Recovery unlock is chromeless until the access chooser takes over. This
+     checks the initial closed state. Flow 18 exercises clearing an open fan. */
   if (await page.locator('[data-fan]').count()) {
     throw new Error('the quick-add fan is floating over the post-recovery access-mode screen');
   }
@@ -8551,22 +8218,12 @@ try {
     throw new Error('the device-bound offer appeared on a journal that already has a recovery key');
   }
 
-  /* The cliff itself - a browser that threw its local key away - is where
-     this flow stopped, and it stops on purpose rather than for want of
-     trying. Deleting the device-key slot and reloading does reach the
-     dead-end screen in a real build; in a demo build it does not, because a
-     keystore-less journal is what the demo boot path treats as a first run,
-     so it mints its own passphrase keystore and the reload lands on the
-     passphrase gate instead. Driving the app past that would mean teaching
-     the demo path about a state only this test wants.
-
-     What covers that screen instead: its two states are shot in the gates
-     gallery (`device-recovery-with-key` beside `device-recovery`), against a
-     real recovery wrap rather than a prop, and the condition behind them is
-     one read of `recoveryKeyState`, which the node tier owns. What only a
-     real gate could prove - that a written key opens a journal whose secret
-     is gone, and that the app then refuses to go anywhere until a new one is
-     set - is what the steps above are. */
+  /* A production build reaches device recovery after losing its local
+     key. Demo boot instead mints a passphrase keystore and lands on
+     its gate. The gates gallery renders both device recovery states
+     with a real recovery wrap, and Node tests recoveryKeyState.
+     This walkthrough checks written-key recovery and forced mode
+     selection through the gate it can reach. */
 
   ok('a written key opens a journal whose PIN is gone, is refused when mistyped, and owes a new access mode before the app comes back');
 } catch (e) { fail('the recovery key at the gate', e); }

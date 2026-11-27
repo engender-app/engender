@@ -187,13 +187,9 @@ describe('palette contrast coverage', () => {
     }
   });
 
-  /* COL-001/ADR-0025: mood is drawn as a face (eyes, mouth) on top of a
-     --mood-N fill, so it carries the same 4.5:1 promise the rest of the token
-     layer does. Since ticket 279 (ADR-0091) the face is drawn in the step's
-     own --mood-N-ink rather than always in --text, which is what lets the
-     deep end of a ramp be deep. The fills are fixed per preset+theme while
-     --text is the palette's, so the promise is checked against every
-     palette's own --text - hence the full cross product. */
+  /* Check each mood fill against its --mood-N-ink at 4.5:1. Fill and ink
+     vary by preset and theme, and the ink can resolve through palette
+     --text, so test every combination. */
   it('keeps every face on every mood step at 4.5:1 against its own fill', () => {
     for (const preset of MOOD_PRESETS) {
       for (const theme of THEMES) {
@@ -237,16 +233,8 @@ describe('palette contrast coverage', () => {
     }
   });
 
-  /* ADR-0077: each preset runs between two deliberately chosen hues instead
-     of tinting one, so "two colours, not one" is the claim these three hold.
-     Read on the shipped hexes, in OKLab, which is the space palettes.css
-     mixes in.
-
-     Hue distance is where the two-hue reading comes from; monotone travel is
-     what keeps it a gradient rather than a wander through a third hue the
-     ends do not sit either side of; and rising chroma is the "how much"
-     channel mood keeps whichever way the hue goes, alongside the lightness
-     each theme steps through (ADR-0091). */
+  /* Measure the shipped ramp values in OKLab. Check endpoint hue distance,
+     one-way hue travel and rising chroma across the five steps. */
   it('runs every mood preset between two hues at least 60 degrees apart', () => {
     for (const preset of MOOD_PRESETS) {
       for (const theme of THEMES) {
@@ -280,14 +268,9 @@ describe('palette contrast coverage', () => {
     }
   });
 
-  /* "How much" is the other half of the ramp's job, and with the hue moving
-     it cannot be read off one channel alone. What the five steps have to be
-     is five colours a person can tell apart, which is one measurement: the
-     OKLab distance between neighbours. ADR-0077's ramps had 0.031 at their
-     closest and read as three near-identical blues on teal light's steps 2
-     to 4, the complaint ticket 279 answers. 0.07 is the floor since then
-     (ADR-0091); the closest pair shipped is amber light's, at 0.074, where
-     the hue swings 25 to 30 degrees a step and the lightness only 0.06. */
+  /* Require an OKLab distance of at least 0.07 between neighbouring steps.
+     The old minimum of 0.031 made several teal steps look alike. Amber
+     light is the closest shipped pair at 0.074. */
   it('keeps every neighbouring pair of steps a visibly different colour', () => {
     for (const preset of MOOD_PRESETS) {
       for (const theme of THEMES) {
@@ -328,13 +311,9 @@ describe('palette contrast coverage', () => {
     }
   });
 
-  /* The day someone logged as awful must not be the one they cannot see
-     (ADR-0077's reason for starting the light ramp at 0.90): --mood-1 is
-     drawn as a bar and a calendar cell with no ink and no outline, straight
-     on the page. Ticket 279 retuned the ramps and was held to keep that
-     separation, so each preset's step 1 is measured against the one it
-     replaced, on every palette's own --bg. */
-  it('keeps step 1 at least as far from every page as ADR-0077 had it', () => {
+  /* The lowest mood step must stay visible as a bar or calendar cell.
+     Measure each preset against its previous step 1 on every page colour. */
+  it('keeps step 1 at least as far from every page as the previous ramp', () => {
     const ADR_0077_STEP_1: Record<string, Record<(typeof THEMES)[number], string>> = {
       amber: { light: '#EFD3F5', dark: '#6F5B73' },
       teal: { light: '#E0D8FF', dark: '#655E7D' },
@@ -370,10 +349,8 @@ describe('palette contrast coverage', () => {
     }
   });
 
-  /* Settings previews each preset as a strip of its light-theme steps
-     (screens.css). Those five were hand-copied and nothing held them to the
-     ramp, so they still showed ADR-0025's single-hue ramps through the whole
-     of ADR-0077; ticket 279 found them and this keeps them in step. */
+  /* Settings previews must use the current light-theme ramp. The old
+     hand-copied preview could drift when the main ramp changed. */
   it("previews each preset in Settings with that preset's own light ramp", () => {
     const screensCss = readFileSync('src/lib/styles/screens.css', 'utf8');
     for (const preset of MOOD_PRESETS) {
@@ -508,9 +485,7 @@ describe('palette contrast coverage', () => {
   });
 });
 
-/* The phase 10 direction's two enumerations (redesign ticket 07,
-   DIRECTION.md rule 11). Both are computed on the exact hexes, never read
-   off a render. */
+/* Compute both contrast tables from exact hex values. */
 describe('the field and the fills (phase 10)', () => {
   function stripesOf(palette: string): string[] {
     const raw = /--motif-stripes:\s*([^;]+);/.exec(blockBody(String.raw`\[data-palette="${palette}"\]`));
@@ -518,9 +493,8 @@ describe('the field and the fills (phase 10)', () => {
     return raw[1].split(',').map((s) => s.trim());
   }
 
-  /* The table DIRECTION.md prints under "Contrast, measured": the flag's
-     second colour, its ink, and the ratio to two places. Only large text
-     sits on the field, which answers to 3:1; nonbinary's 4.41 is why. */
+  /* The field’s flag colour and ink must clear 3:1 for large text. The
+     4.41:1 nonbinary pairing is below the normal text floor. */
   const FIELD: Record<string, [string, string, number]> = {
     trans: ['#F5A9B8', '#101820', 9.59],
     nonbinary: ['#9C59D1', '#FFFFFF', 4.41],
@@ -575,29 +549,13 @@ describe('the field and the fills (phase 10)', () => {
     expect(flagField([])).toBeUndefined();
   });
 
-  /* The voice figure's own two claims (redesign ticket 42).
-
-     The pitch value sits on a block of the stripe at 19px bold, which is
-     large text and answers to 3:1 - the floor rule 11 states, and the one
-     every flag clears with nonbinary's 4.41 as the worst of the eight. It
-     is the same ink and the same block the picking rows carry.
-
-     The density is a chart mark, so it takes the stripe undiluted and owes
-     no ratio at all: `kit.css`'s own note records why, in Alicja's words
-     from 2026-08-25 about what a contrast floor did to nonbinary's yellow.
-     What is asserted here instead is that it cannot quietly become a second,
-     floored colour - the shape is the trace's colour exactly - and the
-     measured worst case is pinned so that a change to either the wash or
-     the stripe list shows up as a number rather than as nothing.
-
-     Measured, both themes, every chromatic role of every flag: the outline
-     against the 18 per cent band wash, against the 9 per cent middle band,
-     and against the bare surface between them. The worst of all three is
-     nonbinary's yellow on the light theme at 1.13:1 against its own band -
-     the same 1.16:1 the pitch trace has always had against the surface.
-     Since phase 15 ticket 20 that is no longer the whole line: the stripe
-     keeps its colour and an edge drawn under it carries the 3:1, measured in
-     the essential-graphics cases below. */
+  /* The 19px bold pitch value meets large text's 3:1 floor on the stripe.
+     Nonbinary is the lowest of eight at 4.41:1. The density trace keeps
+     its exact stripe colour. Across both themes and every chromatic role,
+     check its colour against the 18% band wash, 9% middle band and bare
+     surface. The weakest case is nonbinary yellow at 1.13:1 on the light
+     band (1.16:1 on the surface). The under-stroke meets 3:1, checked
+     separately below. */
   it('draws the density in the flag colour itself, never a floored one', () => {
     let worst = { ratio: 99, where: '' };
     for (const palette of PALETTES) {
@@ -734,7 +692,7 @@ describe('the field and the fills (phase 10)', () => {
 
   });
 
-  /* The day bar is a block of ink (ux-carpet ticket 282): its 13px date
+  /* The day bar is a block of ink: its 13px date
      and aside are --bg on --text. 13px is small text whatever its weight,
      so the pair answers to 4.5:1. */
   it("keeps the day bar's date readable on its ink in every palette and theme", () => {

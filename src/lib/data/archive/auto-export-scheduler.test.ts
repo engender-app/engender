@@ -319,7 +319,7 @@ describe('auto-export scheduler', () => {
   test('posts the failure notice, localized, when a scheduled run fails', async () => {
     /* The strings used to be English literals inside AutoExportPlugin, which
        made the one notification nobody could turn off also the one nobody
-       could read in Polish (phase 6 ticket 04). */
+       could read in Polish. */
     runAndroidAutoExport.mockResolvedValue({ outcome: 'failed', reason: 'destination-full' });
 
     startAutoExportScheduler();

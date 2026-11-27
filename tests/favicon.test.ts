@@ -1,21 +1,7 @@
-/* The tab icon (F24). A favicon href that points at nothing fails silently -
-   the browser simply keeps whatever icon the tab already had, which in the
-   disguise case is the flag the toggle promised to take away. The walkthrough
-   drives the swap in a real tab; these are the two things it cannot see from
-   there - that every name the chrome rule can produce is a file the build
-   ships, and that the disguised one still draws what Settings shows people
-   it will draw.
-
-   Which names those are is no longer read off the two source files with a
-   regex. That check only ever asserted that app.html and +layout.svelte
-   both mention both filenames, which is true of two files that disagree
-   about when to use which; the fixture the two adapters are driven against
-   is what says that now (prefs/fixtures/document-chrome.json). This file
-   asks the remaining question, which is whether the files exist.
-
-   A file on disk and the glyph inside it: greps and byte reads, with no
-   rule to call (ticket 08). Which name the chrome rule produces is
-   documentChrome's own test. */
+/* A missing favicon can leave the old flag visible in disguise.
+   Check every icon in the document-chrome fixture ships in the build
+   and verify the disguised glyph. The adapters' own fixture tests
+   cover name selection and the walkthrough drives the tab swap. */
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';

@@ -1,33 +1,10 @@
-/* Browser-tier check for the metric reference (phase 8 features ticket 27,
-   ADR-0060; folded into the voice screen's own sheet by phase 11 ticket
-   17), the half no Node test can reach.
-
-   What is only provable here: that the per-figure links the app builds
-   name a section the reference sheet actually renders. Ticket 17 moved
-   this from a fragment (`#pitch`, resolved by the browser through
-   `:target`) to a query (`?metric=pitch`, opened by the voice screen's own
-   `$effect`) - the sheet itself needs a real SvelteKit router this
-   isolated harness does not run, so what is driven below is the two
-   halves a router is not needed for: that `metricHref`'s query names a
-   real key, and that a section with that key's id is one of the seven the
-   sections loop actually mounts.
-
-   Both link surfaces are here because they are different shapes. The
-   figure list a take shows carries one link to the sheet as a whole
-   (Alicja's call on 2026-09-04: six sentences under six numbers turned
-   the list into a page of links), and the compare view links each of its
-   two labels into that figure's own section. So what is driven below is
-   every href `metricHref` produces, whoever renders it.
-
-   Both surfaces mount for real: the summary's figure list over a fixed set
-   of figures, and every one of the seven sections the sheet would render,
-   each `VoiceMetricSection` mounted the way `voice/+page.svelte`
-   mounts it - into a `<section id={key}>` of its own, with no journal
-   behind it (`figure: null`, the same fallback an unread journal gets
-   there).
-
-   The second claim is that pitch and spread explain different measurements
-   without drawing a population range in either section. */
+/* Mount the summary and all seven VoiceMetricSection entries with
+   figure: null, as on an unread journal. The summary links to the
+   reference sheet and the compare labels link to individual sections.
+   Check every query metricHref emits names a mounted section ID. The
+   isolated harness has no SvelteKit router to exercise the sheet's
+   opening effect. Check pitch and spread explain distinct measurements
+   without population ranges (ADR-0060). */
 
 import { mount } from 'svelte';
 import '$lib/theme/fonts.css';
@@ -61,7 +38,7 @@ const FIGURES = {
 };
 
 /** The takes behind it, so the blocks draw the history they are read
-    against (redesign ticket 42). Two earlier ones on the same chain, then
+    against. Two earlier ones on the same chain, then
     this take, which is what the ring sits on. */
 const CHAIN = 'Pixel|Microphone|ec=off ns=off agc=off';
 const SERIES = [0, 1, 2].map((at) => ({
@@ -127,7 +104,7 @@ try {
        figures rather than of empty rows. */
     stated: (row.querySelector('.vf-value, .vf-pitch-value')?.textContent ?? '').trim(),
     /* Whether this figure drew the history it is read against, and whether
-       the ring landed on this take (redesign ticket 42). */
+       the ring landed on this take. */
     history: row.querySelectorAll('.vf-run').length,
     ring: row.querySelectorAll('.vf-ring').length,
     against: (row.querySelector('.vf-against')?.textContent ?? '').trim()

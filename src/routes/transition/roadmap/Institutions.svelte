@@ -1,6 +1,5 @@
 <script lang="ts">
-  /* Name and document changes, per institution (functional audit ticket
-     35). After the ruling every office is updated on its own, so each one
+  /* Name and document changes, per institution. After the ruling every office is updated on its own, so each one
      is a row that says where it stands - not started, submitted on a day,
      waiting since a day, done on a day - and opens a sheet holding its
      dated changes, the paper filed against it, and a form to record the
@@ -152,8 +151,7 @@
   }
 
   const changeDelete = rowWriter();
-  /* One tap, no confirmation: the toast's Undo is the way back (functional
-     audit ticket 46). */
+  /* One tap, no confirmation: the toast's Undo is the way back. */
   async function deleteChange(change: InstitutionChange) {
     let deletion: UndoableDelete | undefined;
     const write = async () => {

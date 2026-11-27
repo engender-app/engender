@@ -1,5 +1,4 @@
-/* What the Security row's switch shows and writes (tester report 02,
-   ticket 02).
+/* What the Security row's switch shows and writes.
 
    The row is a blocker a person switches on, and it is off on a fresh
    install. The stored preference keeps its older direction,

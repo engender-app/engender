@@ -1,41 +1,13 @@
 <script lang="ts">
-  /* The area chart: a whole range in one card, read by moving a finger
-     across it.
+  /* Fit the whole date range in the card. The caller uses grain to bucket
+     the data to the available positions and supplies their meanings.
+     Scrubbing follows the nearest reading and shows its date and value.
+     The axis gutter shows the scale endpoints.
 
-     It used to be a timeline you scrolled - every reading kept a 14px slot,
-     so a year was 365 slots and you read it a week at a time by dragging.
-     That is the wrong trade on a phone (Alicja, 2026-08-25: "the graph
-     shouldn't be scrollable"). A chart in a card is something you glance
-     at, and a chart you have to drag has no shape at all until you have
-     dragged all of it.
-
-     So the range fits, and what changes with the range is the grain
-     ($lib/charts/grain): a month is read day by day, a year week by week,
-     several years month by month, chosen from how many positions a card can
-     hold rather than from a table of ranges. The caller buckets and passes
-     the result, because only the caller knows what a position means - an
-     epoch day here, a position on a dosing cycle there.
-
-     What replaces the scroll is a scrub. Drag anywhere on the plot and a
-     dotted line follows the nearest reading with its value and its date
-     above it. That is where an exact number comes from now; the gutter says
-     what the ends of the scale are, and nothing else is written on the
-     marks.
-
-     Tier 3 (DIRECTION.md), twice. Switching range or metric re-tweens the
-     line between the two datasets rather than tearing it down - the outgoing
-     dataset is read onto the incoming one's own point count first, which is
-     what makes a week and a year interpolable pairwise at all. And the first
-     draw, which has nothing to tween from, uncovers from the left edge:
-     oldest reading to newest, so a timeline is revealed in the direction
-     time runs in and the ring on the latest reading is the last thing to
-     appear. It plays once per arrival and takes the authored duration, on
-     --ease-out, because at --dur-slow it read as a flicker rather than as a
-     drawing (Alicja, same round: "a little slower and not linear").
-
-     Under reduced motion both are an instant cut - tier 3's substitute, not
-     tier 2's crossfade: a change inside a screen has no journey for a fade
-     to stand in for. */
+     For range or metric changes, resample the outgoing path to the
+     incoming point count so the paths can interpolate. First draw wipes
+     from oldest to newest with the authored duration and --ease-out.
+     Both updates apply immediately under reduced motion. */
   import { untrack } from 'svelte';
   import { fade, fly } from 'svelte/transition';
   import { crossfade, disclose } from '$lib/motion/reveal';
@@ -110,22 +82,9 @@
     /** What this series is. Only read when a second metric shares the plot,
         where the heading no longer answers it on its own. */
     name?: string;
-    /** A second metric on the same plot (phase 6 ticket 12).
-
-        No `x` of its own: it is read onto `points`' positions by the caller
-        (charts/grain.ts's alignSeries), so `values` is the same length and a
-        `null` is a position this metric has no reading at. Aligning here
-        instead would mean the chart deciding what a position is, which is
-        the one thing the caller owns.
-
-        Its own range, because that is the point of it: mood's 1 to 5 and a
-        dimension's 0 to 100 are placed by where each sits inside its own
-        bounds, and the two lines are then comparable in shape without
-        either being rescaled into the other's units. That placement is the
-        **Normalized value** and it is never shown - the plot prints no
-        value gutter once there are two series on it, and every number
-        anybody reads here comes back out of `formatValue` in the metric's
-        own **Native units**. */
+    /** A second metric aligned to points by charts/grain.ts. A null marks a missing
+        reading. Scale each line to its own range and format labels in native units.
+        Hide the value gutter when two metrics share the plot. */
     overlay?: {
       values: Sample[];
       min: number;
@@ -157,26 +116,12 @@
           card is the card. See Role.paired in $lib/theme/roles. */
       role?: Role;
     };
-    /** Which of `points` are marked, and what colour to ring them in. `at`
-        is aligned with `points` the same way `overlay.values` is - the
-        caller places, this chart only draws - because only the caller knows
-        what a position covers on a re-keyed axis
-        ($lib/charts/presentationHighlight.ts).
-
-        Two callers: the days logged under a chosen presentation (phase 8
-        features ticket 17, ADR-0048), and the two takes picked for
-        comparison on the voice screen (redesign ticket 42), so picking a
-        pair moves every figure rather than only the pitch trend. Both are
-        the same kind of claim - these readings, out of the ones drawn - and
-        neither adds a reading.
-
-        A ring around the existing dot, never a second mark: the chip
-        highlights, it never adds a reading nobody logged (ADR-0030's rank,
-        never gate, restated for a mark). Drawn regardless of how many
-        points are on the plot - unlike the plain dots below, which give way
-        to the line past sixty of them - because a chosen presentation
-        covering most of a long range is exactly the case ticket 17 asks to
-        still read clearly. */
+    /**
+      * The caller aligns at with points, including on re-keyed axes.
+      * Ring existing points for selected presentations or voice takes
+      * (ADR-0048). Keep rings visible beyond sixty points,
+      * when ordinary dots give way to the line.
+      */
     highlight?: {
       at: boolean[];
       role: Role;
@@ -461,23 +406,10 @@
          It stays for a pair placed against one range, though - the two ends
          of one band are the case that rule was not written for, and the
          ends of the scale are the ends of both lines. -->
-    <!-- Mounted either way, and hidden rather than removed for the second
-         scale (ticket 99 item 25, "when switching from one scale to 2, it
-         happens with a yank... only happens when switching between 1 and 2
-         curves"). Taking the column out moved the plot 29px to the left and
-         widened it by the same, in the frame the second line arrived - so
-         the line already on the chart jumped sideways while the new one was
-         trying to fade in, which is the whole of the yank. Switching between
-         two second scales never did it, because by then the column was
-         already gone.
-
-         The numbers still go, which is what the rule above is actually
-         about: they are one range printed beside two lines placed against
-         their own. What stays is the space they took, so the plot is drawn
-         in the same place before and after and the arrival is the fade the
-         overlay path already had. `visibility` rather than `opacity`, so
-         the column keeps its width from the same digits it always did
-         rather than from a guess written here. -->
+    <!-- Hide the axis labels with visibility when a second scale is
+         shown. The scales have independent ranges. Keep the column's
+         measured width so the first line stays still while the second
+         fades in. Unmounting the column shifted the plot by 29px. -->
     <div
       class="kit-area-scale"
       class:is-hidden={!oneScale}
@@ -719,15 +651,9 @@
   </div>
 
   {#if overlaid && overlay}
-    <!-- Which line is which. DIRECTION.md's chart rules refuse a legend and
-         name one exception, the wear trend's: that rule is about a
-         single-series chart whose marks carry their own values, and two
-         unnamed lines are not a chart. This is the same case - two metrics
-         on two ranges against one axis - so it takes the same exception.
-
-         The swatches are line segments repeating the plot's own strokes, one
-         solid and one dashed, so the pairing holds for anybody who cannot
-         separate the two colours. -->
+    <!-- An overlaid chart needs a key because it puts two metrics against
+         one axis. Match the plot with a solid swatch and a dashed one so
+         readers can identify both lines by stroke as well as colour. -->
     <!-- The stripe is set here as well as on the plot: the two are siblings
          rather than one inside the other, so a custom property declared on
          the plot does not reach the swatch that names its line. -->
@@ -845,22 +771,8 @@
     text-overflow: ellipsis;
   }
 
-  /* What one tick stands for, under its own name (phase 11 UI/UX ticket
-     49). The person's own sentence, so it wraps where the name above it
-     does not - and stops at two lines, because a plate the height of a
-     paragraph would cover the plot it is answering about. The plot is a
-     fixed 132px and the plate caps its own width at half of that plot, so
-     neither of those can grow under it.
-
-     Reading order rather than the plate's own edge, even in the corners
-     the plate anchors right in: right-aligned, Blink draws no ellipsis on
-     the line a clamp cut, so the sentence stopped mid-word with nothing
-     saying it had been cut. The name line above it is left-aligned for the
-     same reason - an ellipsis at the end of a line is the whole point of
-     both.
-
-     Here rather than in kit.css: one consumer, which is what
-     scripts/check-screens-classes.mjs asks a class like this to be. */
+  /* Wrap the annotation to two lines inside half the 132px plot. Left-align
+     both fields so Blink shows the ellipsis when the description is clamped. */
   .kit-area-annotation-note {
     max-width: 100%;
     white-space: normal;
@@ -871,23 +783,10 @@
     overflow: hidden;
   }
 
-  /* The presentation chip's mark (phase 8 features ticket 17, ADR-0048): a
-     ring around a reading already drawn, in the chosen presentation's own
-     colour rather than the chart's. Hollow, so the dot or line underneath
-     still shows through - the chip highlights, it never redraws what was
-     there. `--highlight` is set once, on the plot's own wrapper, by
-     whichever presentation is chosen; unset it draws nothing, which is
-     "choosing none" reading exactly as it did before this existed.
-
-     Dashed rather than solid: a presentation's role and the chart's own
-     section role are both resolved through roleAt() and can land on the
-     same stripe - the first presentation anyone creates defaults to role
-     0, the same role most single-value charts take - and a solid ring in
-     the same colour as the mark it rings would vanish into it. The dash is
-     what still reads once colour cannot be relied on to.
-
-     Here rather than in kit.css for the reason the collapsed gutter above
-     is: one consumer, and this circle is that consumer's own markup. */
+  /* Use --highlight for a hollow ring around the existing
+     reading (ADR-0048). When unset, omit the ring. Chart and
+     presentation can share the same role stripe, so the dash
+     keeps the ring distinguishable without another colour. */
   .kit-area-highlight {
     fill: none;
     stroke: var(--highlight);

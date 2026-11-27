@@ -102,7 +102,7 @@ describe('magnifyRow', () => {
   });
 });
 
-/* The gaze is the magnifier's second channel (phase 9 carpet ticket 01). The
+/* The gaze is the magnifier's second channel. The
    magnifier answers the finger with size, which only the face under it can
    show; the gaze answers with direction, which every face in the row can show
    at once. That is the whole reason it exists: a row of five that all turn

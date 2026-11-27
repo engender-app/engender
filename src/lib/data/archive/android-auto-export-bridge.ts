@@ -54,7 +54,7 @@ interface AndroidAutoExportBridge {
       none. This device's own backups are never staged. */
   stageFolderArchive(): Promise<{ path: string | null; modifiedAt?: number }>;
   finishFolderArchive(options: { modifiedAt: number; outcome: FolderSyncOutcome | 'cancelled' }): Promise<AutoExportStatus>;
-  /** Posts the scheduled-backup failure notice (phase 6 ticket 04). The
+  /** Posts the scheduled-backup failure notice. The
       strings arrive from this side now, so the notice is localized and the
       registry's disguise rule can reach it - the plugin used to hold English
       literals and had no way to know about either. */

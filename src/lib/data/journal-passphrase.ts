@@ -1,4 +1,4 @@
-/* The web passphrase flows (ticket 09), one level above the pure keystore:
+/* The web passphrase flows, one level above the pure keystore:
    each of these is "the keystore math plus where the metadata lives", so
    boot and the settings screen share one spelling of setup, unlock and
    change instead of each composing keystore.ts with keystore-file.ts

@@ -133,7 +133,7 @@ public class ReminderNotificationPrivacyTest {
         assertEquals(Notification.VISIBILITY_PRIVATE, notification.visibility);
     }
 
-    /* The check-in's five faces (tester report 02, ticket 05). A
+    /* The check-in's five faces. A
        notification built with custom views carries them in contentView and
        bigContentView; the generic one carries neither and lets the system
        draw its title and text. */

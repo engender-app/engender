@@ -1,32 +1,13 @@
-/* The shipped-bytes ratchet (phase 9 audit ticket 01). Between 27 August and
-   6 September the first-load graph grew from 224KB gzip/81 files to
-   296KB/111 files - honest growth, six real features landing in ten days -
-   and nothing in the repository would have said so: tests/long-journal/
-   budgets.json watches statements and bytes at the driver seam, never what
-   a first visit actually downloads. This is that measurement.
+/* Measure gzip bytes and file count for the /_app/immutable URLs requested
+   by build/index.html. The original 27 August–6 September increase was
+   224 KB/81 files to 296 KB/111 files. Installed OCR is reported separately
+   so its storage and transfer costs leave the initial graph budget intact.
 
-   Reads the emitted build rather than the source: every /_app/immutable URL
-   build/index.html asks for, gzipped the way the August audit measured it.
-
-   File count is exactly reproducible - five straight rebuilds of one commit
-   with no source change all emitted 111 files - so its budget is the
-   baseline itself, no headroom, the same rule the mount-* statement counts in
-   tests/long-journal/budgets.json use. Bytes are not: those same five
-   rebuilds gzipped to 295868-295884B, a ~16B spread with no commit in
-   between - Vite/Rollup's content hashing is not fully deterministic run to
-   run. GZIP_WOBBLE_FLOOR_BYTES absorbs exactly that, the same job FLOOR_MS
-   does for the timing budgets - a fixed floor rather than a percentage,
-   because the noise is a small constant amount unrelated to bundle size, and
-   a percentage of 296KB would swallow the small regressions this exists to
-   catch.
-
-   Reports installed OCR separately from the eager execution graph. Its larger
-   accepted transfer/storage cost must not weaken the first-load ratchet.
-
-   Run with `node scripts/check-first-load-budget.mjs` after `npm run
-   build`, which is what `npm run check:first-load-budget` does. With
-   --record it prints the budget block in the shape
-   scripts/first-load-budget.json wants and fails on nothing. */
+   Five builds of the same source all emitted 111 files but gzipped to
+   295868–295884 bytes. The file limit uses the exact baseline.
+   GZIP_WOBBLE_FLOOR_BYTES allows a fixed byte spread, since a percentage
+   would hide small regressions. Run npm run check:first-load-budget after
+   building. --record prints the JSON budget block without enforcing limits. */
 import { existsSync, readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { gzipSync } from 'node:zlib';

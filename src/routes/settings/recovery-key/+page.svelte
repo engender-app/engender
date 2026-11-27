@@ -1,27 +1,13 @@
 <script lang="ts">
-  /* The recovery key, from Settings (ADR-0054, ticket sec-01).
+  /* Recovery key settings distinguish missing, active, newly minted and
+     pending confirmation (ADR-0054). Minting stores a second wrap.
+     Confirmation makes it active and invalidates the old key. Leaving or
+     reloading before confirmation leaves the new wrap pending. Finish by
+     typing the new key, minting another, or keeping the old one.
 
-     Four states and they are the whole screen: this journal has no
-     recovery key, it has one, one has just been minted and is on screen
-     for the only time it ever will be, or one was minted and the screen
-     never got to its confirmation (last-audit UI 42). The third is not a
-     variant of the second - it is the only moment the characters exist
-     anywhere - so it gets its own branch rather than a flag on the second.
-
-     The confirmation is the commit. Minting writes the new key beside the
-     old one (data/recovery-key.ts), and "I have written it down" is what
-     makes it the key and the old one stop working. Anything else that takes
-     the screen away - a reload, a closed app, a process the system killed,
-     Leave - leaves the new key waiting, and the fourth state says so with
-     the three ways out the protocol allows: type the new key to finish,
-     make another, or keep the old one.
-
-     Nothing here can show a key again once it is acknowledged or left, and
-     that is a property of the design rather than a decision this screen
-     makes: only the wrap is stored (crypto/recoveryWrap.ts), so replace is
-     the only answer to "I am not sure I still have it". The one exception
-     is a lock, which takes the screen without asking; the key it took comes
-     back sealed from memory after unlocking (data/recovery-key-held.ts). */
+     Only the wrap persists, so characters cannot be shown again after
+     confirmation or leaving. On lock, recovery-key-held.ts can seal the
+     key in memory and return it after unlock. */
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
@@ -324,7 +310,7 @@
     if (!isLockedNow(bootState.accessMode)) forgetHeldRecoveryKey();
   });
 
-  /* Latched: a reserve must not put its placeholder back (ticket 211). */
+  /* Latched: a reserve must not put its placeholder back. */
   let presenceRevealed = $state(false);
   $effect.pre(() => {
     if (recoveryKeyPresence.known && heldRead) presenceRevealed = true;
@@ -336,8 +322,7 @@
 <div class="screen" bind:this={screen}>
   <ScreenHeader title={m.rk_title()} back="/settings/security" />
 
-  <!-- Held until the key's presence is known, then faded in (ux-carpet
-       ticket 211): a cold open reads it after the first paint, and the panel
+  <!-- Held until the key's presence is known, then faded in: a cold open reads it after the first paint, and the panel
        cut in at full opacity when it came back. A key held across a lock
        reserves nothing: it opens within the screen's first frame, and a
        placeholder there only flashed and faded out over the key. -->
@@ -473,8 +458,7 @@
   <p class="ob-text">{confirming === 'revoke' ? m.rk_revoke_body() : m.rk_replace_body()}</p>
   <!-- Danger, with a way back: both confirms lead to the written key no
        longer opening the journal, and the sheet used to offer them as the
-       primary action with only a drag or the scrim to say no (after-release
-       ticket 09). -->
+       primary action with only a drag or the scrim to say no. -->
   <div class="stack-3" style="margin-top:var(--space-4)">
     {#if confirming === 'revoke'}
       <button class="btn btn-danger" type="button" data-confirm-revoke disabled={busy} onclick={revoke}>
@@ -529,8 +513,8 @@
 
 <style>
   /* The make button follows this panel with no gap, so the panel's bottom
-     hairline ran along the button's top edge and read as part of it
-     (pre-release-human 18). The button closes the panel instead. */
+     hairline ran along the button's top edge and read as part of it.
+     The button closes the panel instead. */
   .rk-before-make { border-bottom: 0; }
 
   /* Single-consumer classes live with their consumer (scripts/check-screens-classes.mjs). */

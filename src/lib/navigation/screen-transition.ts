@@ -1,4 +1,4 @@
-/* Which tier-2 pattern one screen becomes another with (phase 5 ticket 18).
+/* Which tier-2 pattern one screen becomes another with.
 
    The primitives themselves were built by ticket 17 and live in
    $lib/motion/navigation.ts. What was missing was the decision: nothing in
@@ -132,26 +132,15 @@ export function screenTransition(facts: NavigationFacts): ScreenTransition {
   return activeTabKey(from, chromeOrigin) === activeTabKey(to, chromeOrigin) ? 'shared-axis' : 'fade-through';
 }
 
-/** The one surface carved out of the container transform (Alicja,
-    2026-08-26, phase 5 ticket 25). It draws entry cards like Home, a day
-    and a search hit do, so by the rule above it is a correct source - and
-    she read the transform out of it as far too big a movement for what
-    happens there. The screen is a list of past good days offered back as
-    evidence, so an entry on it is being cited rather than opened, and a box
-    growing into the whole screen claims more than the tap meant.
-
-    What it gets instead is the shared axis, named rather than left to the
-    tab rule at the bottom: that rule would call this a tab change and fade,
-    while coming back out of the editor is a slide, and a screen you fade
-    into and slide out of reads as two different places. On the axis it is
-    what it looks like - a step into one of the entries and a step back.
-
-    Written as an exception here rather than as a prop on DayEntry because
-    this file is where the rule it excepts is stated, and a rule and its one
-    carve-out belong in the same table. The source card is not told
-    anything: the layout drops the container name on any navigation this
-    function does not call the transform, so the pattern decides and the
-    surfaces stay uniform. */
+/**
+ * Use shared-axis motion between Safe Space's good-days evidence list
+ * and an entry. A cited entry should feel like a step into the detail,
+ * not a card opening into the whole screen. This also pairs the entrance
+ * with the editor's return instead of fading one way and sliding back.
+ *
+ * Keep the exception in this rule table. The layout removes the
+ * container name when this function chooses a different transition.
+ */
 const NO_CONTAINER = '/doubt';
 
 /** Routes whose sub-paths are views of one screen rather than steps into it. */
@@ -163,22 +152,9 @@ function isEntryEditor(path: string): boolean {
   return /^\/entry\/\d+$/.test(path);
 }
 
-/** Home is the one screen carrying the sun ring, so it is the one departure
-    whose field-part hold lands over a second large graphic in the same
-    corner rather than empty screen (ticket 159, measured on the mood-pick
-    gesture specifically). Named as its own fact rather than folded into the
-    tier-2 table above: this is still a fade-through like any other tab
-    crossing, and every other one keeps the shared blind budget - only this
-    one gets a shorter ride, which +layout.svelte reads to scope
-    `--blind-dur` (app.css) to just this navigation.
-
-    Every `/entry/new` departure from Home, not only mood-pick's own
-    `seedMood` query: the geometry that makes the gap read as broken is
-    Home's sun ring sitting in the corner, which is the same regardless of
-    which control sent the tap there (a mood row, quick add's fan, an
-    appointment's `debriefFor` link). Narrowing to `seedMood` alone would
-    leave the identical gap open on those other paths into the same
-    screen. */
+/** Use a shorter blind hold when Home opens /entry/new so the hold does not
+    cover its sun. Apply it to every entry path, including Quick add and the
+    debrief link. The layout scopes --blind-dur to that transition. */
 export function leavesHomeForEntry(from: string | null, to: string): boolean {
   return from === '/' && to.startsWith('/entry/new');
 }

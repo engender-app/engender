@@ -1,5 +1,4 @@
-/* The ceiling on a single document's stored file (phase 8 features ticket
-   53, ADR-0065).
+/* The ceiling on a single document's stored file (ADR-0065).
 
    25 MB. Images are normalised first (photos/normalize.ts) and land at
    2048px on the long edge and quality 0.82, which essentially never

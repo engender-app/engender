@@ -2,8 +2,8 @@
 
    One seam, two platforms. On the web this is a file input; on Android it
    is Capacitor's photo picker, which hands back the one photo the user
-   chose without ever asking for the read-the-whole-gallery permission
-   (ticket 11). The Android half lands with the shell - what matters now is
+   chose without ever asking for the read-the-whole-gallery permission.
+   The Android half lands with the shell - what matters now is
    that the call sites above never learn which one they got.
 
    Bytes, not File objects or URIs: a File is a web type and a content://
@@ -48,27 +48,19 @@ interface PhotoSelectionPicker {
 
 // The fallback transport's own decode: a bridge response crosses as JSON,
 // so on a WebView too old for the pick channel a picked file is still a
-// base64 string and this is still what it costs (phase 9 audit ticket 06).
+// base64 string and this is still what it costs.
 function base64ToBytes(base64: string): Uint8Array {
   return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
 }
 
-/** The floor's transport, a piece at a time (phase 9 audit ticket 14). A
-    plugin response is one JSON string by construction, so asking for a
-    whole 25 MB scan meant native building a 34 MB String for it - one
-    allocation the heap can simply refuse, which is how a pick at the
-    ceiling used to fail on a WebView too old for the channel. Native walks
-    the file instead and says `done` on the last piece.
-
-    Each piece is decoded on its own rather than the strings joined first.
-    Joining would work - the native chunk is a multiple of three, so no
-    piece carries padding - but it would put the whole encoding back in one
-    string, which is the allocation this exists to avoid.
-
-    The pieces are still joined at the end, because every caller wants one
-    array. That copy is the peak here: the pieces and the joined array are
-    both live for it, against the base64 string, atob's intermediate binary
-    string and the array all being live at once before. */
+/**
+  * On the fallback plugin path, native reads a chunk at a time
+  * and signals done on the last one. A single 25 MB scan would
+  * require a 34 MB base64 string that the native heap can refuse.
+  * Decode each chunk separately to avoid rebuilding that string.
+  * Join only the byte arrays at the end, when both chunks and
+  * the assembled buffer are live.
+  */
 async function pickedBytesInChunks(token: string): Promise<Uint8Array> {
   const chunks: Uint8Array[] = [];
   let length = 0;
@@ -228,7 +220,7 @@ export function filePhotoPicker(options?: PickerOptions): PhotoSelectionPicker {
           // together. The fallback transport needs the same discipline -
           // PickedFiles keeps one chunked read open at a time, so a second
           // token's first chunk ends the first file's read wherever it had
-          // got to (phase 9 audit ticket 14).
+          // got to.
           // A read that hits the native stream limit still says too-large.
           // After every file the lock is asked again, as readTokens does: a
           // lock that lands stops the reading, the files read so far go back
@@ -263,10 +255,10 @@ export function filePhotoPicker(options?: PickerOptions): PhotoSelectionPicker {
   };
 }
 
-/** A document to file, one at a time - PDF or image (ticket 54). Same split
+/** A document to file, one at a time - PDF or image. Same split
     as filePhotoPicker(): Capacitor's native `ACTION_OPEN_DOCUMENT` pick on
-    Android, so a document never takes the WebView file input's crash path
-    (ticket 66); the same web file input elsewhere. Bytes only, same as
+    Android, so a document never takes the WebView file input's crash path;
+    the same web file input elsewhere. Bytes only, same as
     every other picker here - accept.ts is what tells a PDF from an image. */
 export function documentPicker(options?: PickerOptions): PhotoPicker {
   const last = { tokens: [] as string[] };
@@ -295,7 +287,7 @@ export function documentPicker(options?: PickerOptions): PhotoPicker {
     and deletes that cache file; it never writes to MediaStore. A camera app
     may keep its own copy, so gallery behaviour depends on that camera. On
     the web, the file input's `capture` hint opens the device camera instead of
-    the usual chooser (ticket 12). */
+    the usual chooser. */
 export function cameraPhotoPicker(options?: PickerOptions): PhotoPicker {
   const last = { tokens: [] as string[] };
   return {

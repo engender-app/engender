@@ -60,7 +60,7 @@ public class RemindersPlugin extends Plugin {
             textObject.put("doseDone", text(texts, "doseDone", "Done"));
             textObject.put("doseSkip", text(texts, "doseSkip", "Skip"));
             textObject.put("doseNoted", text(texts, "doseNoted", "Noted"));
-            // The check-in faces' names (tester report 02, ticket 05);
+            // The check-in faces' names;
             // CheckInFaces.names falls back to the phone's own when absent.
             JSONArray moods = texts == null ? null : texts.optJSONArray("checkInMoods");
             if (moods != null) textObject.put("checkInMoods", moods);
@@ -128,7 +128,7 @@ public class RemindersPlugin extends Plugin {
         call.resolve(status());
     }
 
-    /* The way back from a refusal (phase 10 redesign ticket 31). Distinct
+    /* The way back from a refusal. Distinct
        from requestNotificationPermission above, which only reaches the
        settings screen when notifications are off app-wide: once
        POST_NOTIFICATIONS has been refused twice Android stops showing the
@@ -179,8 +179,7 @@ public class RemindersPlugin extends Plugin {
         call.resolve(result);
     }
 
-    /** Taken and Skip taps the journal has not taken in yet (functional
-        audit ticket 20). Read, not consumed: the app clears each one only
+    /** Taken and Skip taps the journal has not taken in yet. Read, not consumed: the app clears each one only
         after its dose is written, so a crash in between replays it, and
         replaying is harmless (doseActions.ts). */
     @PluginMethod

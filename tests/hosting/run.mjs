@@ -1,5 +1,5 @@
 /* Verifies production hosting rules against the real nginx config from
-   deploy/nginx (phase 2 ticket 05). It builds the self-hosting image from
+   deploy/nginx. It builds the self-hosting image from
    deploy/self-host, which installs those rules unchanged, boots it with the
    built app mounted as /srv/engender, then checks headers, cache policy, SPA
    fallback, release metadata, and a cold install followed by an offline start.

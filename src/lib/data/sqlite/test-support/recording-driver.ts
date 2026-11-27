@@ -1,42 +1,12 @@
-/* The driver that says what it touched (phase 8 audit ticket 01).
+/* Wrap any SqliteDriver to record statements, visible table effects
+   and serialized result size (ADR-0017). The dependency tests compare
+   observed tables to live/writes.ts. Statement and byte counts measure
+   the traffic through the worker or Capacitor bridge consistently
+   on every driver.
 
-   A fifth adapter at the `SqliteDriver` seam (ADR-0017), beside node-sqlite,
-   sqlocal, the message-channel driver and the Android one. It wraps any of
-   them and answers two questions the repo could not ask before:
-
-   1. **Which tables did this operation touch, and which of them did it
-      write?** `live/writes.ts` classifies every operation as a read or a
-      write against a hand-written table list sitting two files from the SQL
-      it describes, and nothing compares the two. Its own header names the
-      cost: a write misfiled as a read shows stale data forever, and the
-      failure looks like a Svelte bug. With this, the comparison is a test.
-
-   2. **How many statements did it fire, and how many bytes came back?**
-      Those are the metrics this architecture is actually priced in. Native
-      SQLite answers almost every hot read on a ten-year journal in under
-      2ms; what costs is the crossing. `mc-driver.ts` posts one message per
-      statement to a worker that serialises everything, and
-      `android-driver.ts` turns each statement into a Capacitor bridge call
-      that its own comment prices at "tens of milliseconds whatever SQL sits
-      behind it". So a screen's cost is a statement count and a byte count,
-      and a benchmark that reports only milliseconds is measuring the cheap
-      half of this system on desktop.
-
-   Wrapped from outside rather than instrumented inside each driver, which
-   is what makes the numbers comparable: the same statement counted the same
-   way whichever platform is underneath. It is the same wrapping the
-   encrypting file store makes over the raw one.
-
-   **Test support, and it has to stay there.** Every recorded statement pays
-   a `JSON.stringify` of its own result, which is precisely the cost the app
-   must not carry. Its own test asserts nothing in `src/` outside test
-   support imports it.
-
-   **What it cannot see.** Triggers. `entry_fts` is written by triggers on
-   `entry`, so a statement that says `INSERT INTO entry` announces `entry`
-   and nothing else - which is the truth about the SQL and not the whole
-   truth about the write. Whoever compares these against a declaration
-   should expect that difference and record it rather than parse deeper. */
+   Keep this wrapper in tests because serializing each result adds real
+   cost. It can see an INSERT into entry, but not the trigger's write
+   to entry_fts. Account for trigger effects separately in declarations. */
 
 import type { SqliteDriver } from '../driver.ts';
 

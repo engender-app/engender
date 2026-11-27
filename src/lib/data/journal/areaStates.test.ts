@@ -1,4 +1,4 @@
-/* The area record (phase 8 deepening ticket 13, ADR-0052): what a row says,
+/* The area record (ADR-0052): what a row says,
    and what an absent row says. */
 
 import { test } from 'vitest';
@@ -73,8 +73,7 @@ test('a finished area is not hidden by finishing, and stays readable and searcha
   const hits = await journal.textSearch.search({ query: 'dry skin', today: 19900, limit: 10 });
   assert.ok(hits.hits.some((hit) => hit.area === 'sideEffects'), 'a finished area is still searched');
 
-  /* And the day it was written on still shows it (phase 8 features ticket
-     04). The cascade takes away prompts and tiles; a day someone opens to
+  /* And the day it was written on still shows it. The cascade takes away prompts and tiles; a day someone opens to
      read is neither, and a record that vanished from it would be the app
      quietly losing something they remember writing. */
   const day = await journal.day.getDay(19800);

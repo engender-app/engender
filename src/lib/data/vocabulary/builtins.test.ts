@@ -1,7 +1,7 @@
 /* The built-in vocabulary is keyed rather than named, and reconciling it
    into a store is idempotent - which is what lets seeding run on every
    boot and before every import instead of behind a "seed only if empty"
-   branch (ticket 05). */
+   branch. */
 
 import { test, expect } from 'vitest';
 import {
@@ -172,7 +172,7 @@ test('regimen templates seed with no display text, because wording is resolved b
   expect(rows.every((t) => t.name === '' && t.drug === '' && t.ester === null && t.route === '')).toBe(true);
 });
 
-/* Acceptance box 2 (phase 5 ticket 43): every regimen template carries a
+/* Acceptance box 2: every regimen template carries a
    hand-authored lean. Milestone templates carry none since functional
    audit ticket 32: all eight were neutral, so the lean ordered nothing. */
 test('milestone templates are a key and a name, in the order the picker lists them', () => {

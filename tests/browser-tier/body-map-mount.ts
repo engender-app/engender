@@ -1,4 +1,4 @@
-/* Mounts the body-map figure gallery (phase 10 redesign ticket 40) with the
+/* Mounts the body-map figure gallery with the
    app's own stylesheets, in the order +layout.svelte imports them, so the
    shapes are judged against the real cascade rather than a copy of it.
 

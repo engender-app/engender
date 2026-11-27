@@ -1,29 +1,11 @@
-/* Wrapped's chosen period, clear of the cadence track's chevrons (last-audit
-   UI ticket 26, finding U40).
+/* Open every Wrapped cadence cold at each width and in both languages.
+   The selected tab stays fully inside the track and clear of opaque
+   chevrons. Each hint appears exactly when content lies beyond its
+   edge, including after scrolling to each end. At 200% zoom exercise
+   click, Enter and drag. A selection that scrolls eases across frames
+   or lands immediately with reduced motion.
 
-   The track scrolls when its four cadences run wider than the screen, and
-   each edge with more track past it carries a chevron on an opaque ground
-   (components.css, .segmented-hint). Opening Last year at 390px used to
-   scroll the track only until the segment's edge met the track's edge, so
-   the end chevron's ground sat over its last letter: "Last yea". The same
-   in Polish and at the 200%-zoom width. At that width "Miniony tydzień"
-   and "Miniony miesiąc" were 143px and 144px in a 145px track, wider than
-   the track less even one chevron, so the labels became one word each
-   (Week, Month, Year, Range; Alicja, 2026-10-15).
-
-   What is held here, per language and width, for every cadence opened
-   cold:
-   - the chosen segment's whole box is inside the track and outside both
-     hints, with no exceptions;
-   - each hint is drawn exactly while there is a segment past its edge, at
-     rest, at the far end of the scroll and back at its start.
-   Then, at the 200%-zoom width, where the track still scrolls, the three
-   ways of changing the track: a mouse click on a tab, Enter on a focused
-   tab, and a mouse drag across the track. A choice that has to scroll the
-   track eases there rather than jumping, sampled per frame, and under
-   reduced motion it lands in place instead.
-
-   Run: node tests/segmented-chosen-clear.mjs   (dev server, no build needed) */
+   Run node tests/segmented-chosen-clear.mjs against the dev server. */
 import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { createServer } from 'vite';

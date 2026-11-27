@@ -1,4 +1,4 @@
-/* The counter the update guard reads (ticket 04). Part of the Node tier; run
+/* The counter the update guard reads. Part of the Node tier; run
    with `npm test`. */
 
 import assert from 'node:assert/strict';
@@ -68,7 +68,7 @@ test('a stopped listener hears nothing further', () => {
 
 test('the write watch answers yes for a write already in flight, and for one that starts later', () => {
   // What boot's two housekeeping passes ask before each step they cannot take
-  // back (phase 5 audit ticket 02).
+  // back.
   const duringAWrite = markJournalBusy();
   const started = watchJournalWrites();
   assert.equal(started.sawWrite(), true, 'a write already open counts');

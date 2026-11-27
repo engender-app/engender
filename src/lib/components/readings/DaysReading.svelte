@@ -1,22 +1,7 @@
 <script lang="ts">
-  /* How the days fell: the days at each mood (phase 11 ticket 07), drawn
-     on the Look back door itself above the reading tiles. It used to be a
-     tile of its own, "Mood across your days", opening a screen that held
-     this one strip and nothing else; Alicja's sign-off on functional audit
-     ticket 12 took the tile and the screen out ("if it's just a single
-     chart, it should display a screen before"), which also left the door
-     an even number of tiles.
-
-     "What you write about", the share by tag, was the second card here
-     until functional audit ticket 12 moved it to Tags, beside every other
-     tag reading on the door.
-
-     Absent rather than empty, like the tiles: under the floor, or over a
-     span with no mood on any day, the door's own thin-span line already
-     says why there is nothing, so this draws nothing.
-
-     The mood distribution takes no flag role: it is drawn on mood's own
-     ramp (ADR-0025), the one colour system here that is not the flag's. */
+  /* Draw the mood distribution on Look back in mood's own ramp.
+     Leave it out below the entry floor or when no day
+     in the span has a mood. Look back already explains sparse spans. */
   import { m } from '$lib/paraglide/messages';
   import { liveList } from '$lib/data/live/journal.svelte';
   import { moodDistribution } from '$lib/data/statsCharts';

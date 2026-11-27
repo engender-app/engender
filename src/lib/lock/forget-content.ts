@@ -1,24 +1,9 @@
-/* Journal content the page holds outside the database, which a lock takes
-   with it (after-release ticket 10; audit L09-02, L09-03, SEC-08).
+/* Clear journal content held outside the database on lock: live-query
+   results, search text, room answers and waveform caches.
 
-   Closing the database and releasing the key leaves the journal itself
-   unreadable from this tab, but a few things were copied out of it on the
-   way: the reads' last answers (ux-carpet 201), a search held for the way
-   back from an entry and a query on its
-   way from More, the answers jotted in the room before their debrief, and
-   the waveform bars of recordings already played. Each is cheap to
-   recompute or deliberately short-lived, so a lock drops all of them rather
-   than weighing which are sensitive.
-
-   The holders register here rather than being imported from here, and
-   this module imports nothing. Boot imports it, so anything it imported
-   joined the first-load graph: the room answers, the held search and the
-   waveform cache are route code, and importing them cost two extra files
-   on a first visit. A holder's memory exists only once its module has run,
-   and its module registers as it runs, so nothing held in memory can miss
-   the lock. Older versions held search text in sessionStorage, which
-   outlives a reload that loaded no search code yet. Remove that legacy key
-   here by name as well. */
+   Holders register when their modules load. Keep this module free of
+   imports so boot does not load route code. Also remove the legacy
+   sessionStorage search key, which can survive a reload without search. */
 
 /** The legacy sessionStorage key used before searches stayed in memory. */
 const HELD_SEARCH_KEY = 'engender-search-return';

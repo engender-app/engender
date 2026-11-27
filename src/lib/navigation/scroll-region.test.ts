@@ -1,8 +1,8 @@
 /* The batch half of scroll-region only. The scroll half reads and writes a
    real element and belongs to the browser tier; these two functions hold a
    map and touch no document, which is the whole reason they are testable
-   here (phase 8 features ticket 66). `hashRowId` joins them for the same
-   reason (ticket 67): called with an explicit hash, it touches no `location`
+   here. `hashRowId` joins them for the same
+   reason: called with an explicit hash, it touches no `location`
    either. */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
@@ -79,7 +79,7 @@ describe('hashRowId', () => {
   });
 });
 
-/* What the transition asks before the region has got anywhere (ticket 285):
+/* What the transition asks before the region has got anywhere:
    where a screen was left, which is where the eased restore is about to take
    it. rememberScroll reads the one element, so it is stubbed. */
 describe('savedScroll', () => {
@@ -121,7 +121,7 @@ describe('savedScroll', () => {
   });
 });
 
-/* A screen rewriting its own address in place (last-audit UI ticket 12):
+/* A screen rewriting its own address in place:
    opening a photo half way down the library sent the grid back to its first
    row, because the restore after every navigation read a `goto` as a screen
    to open at the top. The region is stubbed at 500px; a restore that goes

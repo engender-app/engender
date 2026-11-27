@@ -1,26 +1,11 @@
-/* The licence notices the app carries for what it ships (phase 15
-   release-blockers ticket 10).
+/* Generate notices for code actually shipped. Vite supplies client and
+   worker module IDs; the lockfile supplies package names, versions and
+   licences. Fail the build if a bundled package cannot be matched or
+   its required licence text is missing.
 
-   engender is GPL-3.0-only, and most of what it bundles is MIT, ISC, BSD or
-   Apache-2.0. Each of those asks for the same small thing when its code is
-   passed on: the copyright line and the licence text travel with it. Until
-   this ticket the app carried none of them - About said "Source code is
-   public" and stopped there - so every APK and every hosted copy fell short
-   of terms that cost nothing to keep.
-
-   What counts as shipped is read off the build, not off package.json. The
-   Vite plugin in vite.config.ts collects every module the client bundle and
-   its workers pulled in and hands their ids here; a package is in the
-   notices because its code is in the bundle. The lockfile is then what
-   check-licences.mjs already reads, for the name, version and licence of
-   each. A bundled package that cannot be matched to the lockfile, or that
-   ships no licence text when its licence asks for one, fails the build: that
-   is the check that every shipped package appears in the notices.
-
-   Three things reach the app without passing through the bundler, and are
-   named here by hand: the OCR engine and language data prepare-vendor-assets
-   copies into static/, the fonts, and the Android libraries the APK carries
-   around the WebView. */
+   The app is GPL-3.0-only. Carry each dependency's applicable copyright
+   and licence notice. The OCR assets, fonts and Android libraries bypass
+   bundling, so list them explicitly. */
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { lockfilePackages, READ_BY_HAND } from './check-licences.mjs';

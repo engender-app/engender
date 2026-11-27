@@ -1,50 +1,12 @@
-/* Whether an area is hidden, whether the person has said it is finished, and
-   whether they have paused it for now (ADR-0052, CONTEXT: "Finished").
+/* Keep hidden, finished and suspended state per Archive section (ADR-0052,
+   ADR-0027). Hidden changes navigation independently. Finishing and
+   suspending store dates for charts and summaries. The writers clear
+   one date when setting the other, so a stream can occupy only one state.
+   SUSPENDABLE_AREAS names the streams that accept a pause.
 
-   Nothing in the app modelled an area ending. Dilation tapers off, the last
-   electrolysis session is the last one, a name change happens once - and the
-   app's only word for "I am no longer doing this" was stopping, which it
-   renders as absence, which every living tracker reads as a lapse. Three
-   separate things are recorded here instead, per area:
-
-     hidden            take this out of the navigation, the way a tag is
-                       hidden - CONTEXT.md's own word
-     finishedEpochDay  the day the person says the stream ended, kept as a
-                       date rather than a flag so `chartAnnotations.ts` can
-                       draw it beside a regimen change and a clinician
-                       summary can say when a stream stopped
-     suspendedEpochDay the day the person paused the stream, intending to
-                       come back - phase 8 features ticket 51, cut from
-                       ticket 44's finding that hormone tracking (ticket 44's
-                       own motivating case) is not this, but voice practice
-                       and hair removal are. Same shape as finishedEpochDay
-                       and the same reason: a chart can draw the day the
-                       pause started, and a clinician summary can say so
-
-   Hidden is independent of the other two. Suspended and finished are not: a
-   stream is active, suspended or finished, never two of those at once -
-   `journal/areaStates.ts`'s writers enforce it by clearing whichever of the
-   two the other one is setting. Only `hairRemovalSessions`, `voiceBenchmarks`
-   and `voicePracticeTakes` can carry a suspended day today
-   (`SUSPENDABLE_AREAS` below); the other six finishable areas named no case
-   for it when asked (ticket 51), and stay as they were. A finished area is
-   not hidden by finishing: the whole point is that a stream you are done
-   with is still readable. Neither deletes anything.
-
-   The key space is `ArchiveSectionName` and not the More hub's rows
-   (ADR-0027). An archive section is already the canonical answer to "does
-   this area exist", it is already the space two other registries do
-   exhaustiveness against (`day.ts`, `textSearch.ts`), and it is a wire key,
-   so it cannot be renamed casually - a hub row can be regrouped or renamed
-   this afternoon without a stored key changing meaning underneath it. Where
-   one hub row fronts two sections - voice is `voiceBenchmarks` plus
-   `voicePracticeTakes` - the row finishes both together and the one-to-many mapping
-   is presentation, living with the hub.
-
-   Rune-free and driver-free, like `cycleTracking.ts` next door and for the
-   same reason: both functions take the state and the day as arguments, so
-   every surface that asks gets the same answer and the Node tier can test
-   the rule with no driver at all. */
+   Finished and suspended records remain readable. A hub row may map
+   to multiple sections and apply the same operation to each without
+   changing the stored keys. These rules take the state and day as input. */
 
 import type { ArchiveSectionName } from './journal/archiveSections';
 
@@ -85,8 +47,7 @@ export type AreaStates = Partial<Record<HideableArea, AreaState>>;
 export const AREA_STATES_BEFORE_READ: AreaStates = {};
 
 /** The areas a person can declare finished: the original nine approved area
-    by area by Alicja on 2026-09-03, plus `voicePracticeTakes` (phase 8
-    features ticket 10), which that ticket posed as an open choice rather
+    by area by Alicja on 2026-09-03, plus `voicePracticeTakes`, which that ticket posed as an open choice rather
     than a decision Alicja had already made - "decide with the deepening
     spec's ticket 13 in hand whether practice takes join the finishable set
     or sit behind the same row" - resolved here and worth her confirming.
@@ -107,29 +68,15 @@ export const FINISHABLE_AREAS = [
   'wearSessions',
   'sideEffects',
   'personalEffects',
-  /* Two sections, one hub row: a benchmark and a practice take are both dated records of the same
-     ongoing practice of tracking a voice, so declaring that practice done
-     finishes both together (phase 8 features ticket 10).
+  /* One hub row covers voice benchmarks and practice takes, so
+     finishing the practice marks both sections. Sealing a take hides
+     its figures for a day and leaves the ongoing practice intact.
 
-     This is a different question from why a letter stays out below, and
-     answering it is not "how letter-like is the seal" - a practice take
-     reuses that mechanic outright (sealedUntil.ts). It is whether there is
-     a *practice* left over once one sealed record opens. A letter has none:
-     writing it, sealing it and it later being read is the whole transaction,
-     and nothing about "have you written enough letters" is a question this
-     app asks. A practice take's seal only withholds one take's own figures
-     for a day - the practice of taking them is what keeps going the way any
-     other measurement does, which is what makes "done practising" a real
-     statement to make about it. Its own opt-out from day.ts and
-     lastWrite.ts is about the seal alone and says nothing about this
-     question - see the comment there.
-
-     A voice memo belongs to an entry and travels inside `entries`, so the
-     memos are entry content rather than a series of their own and there is
-     nothing else here to name. */
+     A sealed letter is a one-off record. A voice memo belongs to its
+     entry and has no separate area to finish. */
   'voiceBenchmarks',
   'voicePracticeTakes',
-  /* Dilation (phase 8 features ticket 12) - the motivating case ADR-0052
+  /* Dilation - the motivating case ADR-0052
      itself names: a taper tapers off, and finishing it says so is the
      normal outcome rather than a lapse. The schedule (`taper`) stays out
      below, the same reason `doseSchedules` does: it is what was meant to
@@ -246,44 +193,19 @@ export function areaStateResting(state: Pick<AreaState, 'hidden' | 'finishedEpoc
   return !state.hidden && state.finishedEpochDay === null && state.suspendedEpochDay === null;
 }
 
-/** Whether a surface fronting these areas has gone with them.
-
-    Every one of them has to be hidden, and there has to be at least one: a
-    surface fronting no area is a screen rather than an area and nothing
-    hides it, and one whose other half is still shown has something left to
-    show. `cycleEvents` is outside `HideableArea` (ADR-0043), so a surface
-    fronting only it can never go this way - the asymmetry the ADR asks for,
-    expressed rather than special-cased.
-
-    Here rather than in its caller because it used to answer this for two
-    surfaces that front areas - the More hub's rows and the stats tab's
-    cards (`statsAreas.ts`, deleted by phase 10 redesign ticket 12), which
-    each asked it per card off a single named area and so could disagree
-    with the row it sits behind. One caller is left, `hubRows.ts`'s
-    `rowHidden`, and the seam stays: the rule an area's own screen and the
-    hub have to agree on belongs to neither. */
+/**
+ * Hide a surface only if it fronts at least one area and all those areas are hidden. `cycleEvents` is outside `HideableArea`, so a surface for it alone stays visible (ADR-0043). `hubRows.ts` uses this rule so a hub row and the screen it opens agree.
+ */
 export function areasHidden(areas: readonly ArchiveSectionName[], states: AreaStates): boolean {
   if (areas.length === 0) return false;
   return areas.every((area) => area !== 'cycleEvents' && areaHidden(area, states));
 }
 
-/** Whether an area should stop talking: hidden, finished, or suspended, any
-    of them on or before today. The one question the prompt-and-tile cascade
-    asks, so a hidden, finished or suspended area silences prompts and tiles
-    the same way while the per-surface `*Enabled` preferences keep governing
-    the areas that are on.
-
-    Nothing to do with quiet hours (`unprompted/quietHours.ts`), which is a
-    window in the day and applies to every area at once. The name is the one
-    the features spec asked for; the two never appear in the same read, and
-    an area that is quiet here is quiet at every hour.
-
-    A finish or suspend day is compared against today rather than trusted as
-    a flag for the reason ADR-0049 clamps an open bound at read time: the
-    stored fact is the day the person named, and what follows from it on any
-    given day is read, never stored. This ships the question; the cascade
-    that consumes it is the features spec's, and nothing here silences
-    anything by itself. */
+/**
+ * An area is quiet when hidden, finished, or suspended as of today. Prompts and tiles share this check. Per-surface `*Enabled` preferences still govern active areas. Quiet hours separately apply to all areas for part of the day.
+ *
+ * Compare stored finish and suspend days at read time so a future date leaves the area active until then (ADR-0049).
+ */
 export function areaQuiet(area: HideableArea, states: AreaStates, todayEpochDay: number): boolean {
   const state = states[area];
   if (!state) return false;

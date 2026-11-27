@@ -1,4 +1,4 @@
-/* The install contract (ticket 03). A manifest is inert data, so nothing at
+/* The install contract. A manifest is inert data, so nothing at
    runtime fails loudly when a field goes missing - the app simply stops
    being installable, or installs with a stale colour or a shortcut that
    404s. These assertions are the parts of it that have to stay true, read
@@ -8,7 +8,7 @@
    available: tests/browser-tier/verify-build.mjs asks it whether the built
    app is installable.
 
-   Greps by design (ticket 08). A manifest is data: the check is that a
+   Greps by design. A manifest is data: the check is that a
    field holds a value, read off the file the build ships, and there is
    nothing to run. */
 import { readFileSync, existsSync } from 'node:fs';

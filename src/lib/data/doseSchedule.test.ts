@@ -1,5 +1,4 @@
-/* Expected dose slots and the actual-vs-scheduled pairing (phase 4 ticket
-   02). Pure: no clock, no database, so every case here is a table of days
+/* Expected dose slots and the actual-vs-scheduled pairing. Pure: no clock, no database, so every case here is a table of days
    and timestamps. */
 
 import { test } from 'vitest';
@@ -384,7 +383,7 @@ test('siteRecency ignores oral doses and injection doses with no site on record'
 });
 
 /* Three reads the log-a-dose sheet needs to stop asking for what the app
-   already knows (phase 5 UX ticket 37). Pure like everything else here:
+   already knows. Pure like everything else here:
    the sheet hands over an episode's words, the dose log, and a
    comparison, and gets back what to prefill. */
 
@@ -555,7 +554,7 @@ test('nearestOpenSlotDistance treats a paused day as not open: the next slot pas
   assert.equal(nearestOpenSlotDistance(schedule(1, 1), 100, [], [pause(100, 100)], 100, 30), 1);
 });
 
-/* The auto-log walk (phase 11 ticket 11). Every case is a schedule switched
+/* The auto-log walk. Every case is a schedule switched
    on at a day, a today, and what the log already holds. */
 
 const autoLogging = (everyNDays: number, dosesPerDay: number, fromEpochDay: number): DoseSchedule =>

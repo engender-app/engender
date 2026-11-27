@@ -1,24 +1,9 @@
-/* How much room Home keeps for its read-gated blocks before they answer
-   (phase 12 ux-carpet ticket 183).
-
-   Home cannot know how tall its today tier, agenda, notices and tiles will
-   be until nineteen-odd reads have answered, and drawing them the frame
-   they do shoved everything under them 400 to 980px in one frame. So each
-   slot remembers the height it last rested at, and the next visit holds a
-   placeholder that tall until the reads agree. A wrong guess is a height
-   `resize` travels (motion/reveal.ts), never a jump.
-
-   Home's own three slots are kept per device in localStorage, under the
-   `engender-` prefix reset.ts clears with the rest of the app's keys: Home
-   can paint before the database has answered, and a height of Today's
-   sections names nothing in the journal.
-
-   Every other slot is a screen of its own - dilation, doses, hair
-   progress, wear - and a key there said which of them this journal has
-   been opened on, readable without unlocking it. Those heights are the
-   device-local `layoutReserves` preference, inside the encrypted journal
-   (security-scan ticket 08), reached through the store prefs/store.svelte.ts
-   registers. The first unlock moves the old keys over and deletes them. */
+/* Hold each slot's last settled height while its reads load. Animate
+   corrections with resize (motion/reveal.ts). Home's three heights
+   can safely live in resettable engender- localStorage keys for first
+   paint. Feature-specific heights reveal journal usage, so keep them
+   in the encrypted device-local layoutReserves preference. First
+   unlock migrates and removes the legacy keys. */
 
 export type ReserveSlot =
   | 'above'
@@ -49,10 +34,10 @@ export type ReserveSlot =
 const HOME_SLOTS: readonly string[] = ['above', 'below', 'pinned'];
 
 /* Home's three slots keep the keys ticket 183 gave them. Other screens'
-   late blocks hold their room the same way (ux-carpet ticket 193): the
+   late blocks hold their room the same way: the
    clinician summary's scope row, the access-mode screen's mode list, the bodies
-   that used to swap in from a page-level skeleton (ticket 205) or cut in
-   with no placeholder at all (ticket 211), and the hosted-rows card a screen draws for the More hub
+   that used to swap in from a page-level skeleton or cut in
+   with no placeholder at all, and the hosted-rows card a screen draws for the More hub
    (`hosted-<host>`). */
 /* Exported for its own test, which holds it to the prefix reset clears. */
 export function reserveKey(slot: ReserveSlot): string {

@@ -1,21 +1,6 @@
-/* Where the finish control is, and where it is not (phase 8 features ticket
-   04).
-
-   The ticket's own line: it appears on each finishable area's own screen and
-   nowhere else. That is a claim about seven route files, and nothing else in
-   the tree can make it - `areaGroups.ts` knows which groups exist and the
-   routes know which screen is which, and only this test knows they line up.
-   An eighth group added without a screen to finish it on would otherwise be
-   a compile-clean feature nobody can reach.
-
-   Phase 11 all-four-doors ticket 13 took `health/side-effects` off this list
-   without adding a replacement: side effects finish on
-   care/changes now, under `effects`, the way voice's two areas
-   always have. Ticket 21 moved that screen's own address, and
-   the voice screen's, off the retired Practice prefix.
-
-   A source scan, like the clinician summary's print-parity test: these are
-   `.svelte` files and the node tier cannot mount one (ADR-0016). */
+/* Read route sources to check that each finishable area has its control
+   on its owning screen. Match the registry to routes so a new area cannot
+   ship with no way to finish it. Node cannot mount these files (ADR-0016). */
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';

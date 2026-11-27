@@ -1,4 +1,4 @@
-/* The batching read (phase 5 audit ticket 03).
+/* The batching read.
 
    Counting calls against a fake store rather than timing anything: what
    the photo grid needs is that a screenful of tiles costs one round trip,

@@ -1,4 +1,4 @@
-/* The editor's chip row (phase 11 ticket 19): one chip per folded
+/* The editor's chip row: one chip per folded
    section, under the note, each opening its section directly under the
    row. Mode and Gender are not here: Alicja's note on the spike (17
    September 2026) was that those two stay open on the page, so the chips
@@ -16,7 +16,7 @@ import type { EntryDraft } from './entryDraft';
 export const ENTRY_SECTIONS = ['tags', 'body', 'photos', 'voice', 'video'] as const;
 export type EntrySection = (typeof ENTRY_SECTIONS)[number];
 
-/* A new entry's last step (tester report 02, tickets 04 and 09) draws only
+/* A new entry's last step draws only
    the attachments' chips, after the note; tags and the body are open on
    their own steps. */
 export const ATTACHMENT_SECTIONS: readonly EntrySection[] = ['photos', 'video', 'voice'];
@@ -31,11 +31,8 @@ export function isEntrySection(value: unknown): value is EntrySection {
 
 type SectionDraft = Pick<EntryDraft, 'tags' | 'bodyRegions' | 'photos' | 'recordings' | 'videos'>;
 
-/** What a chip states under its name once its section holds something -
-    "4" for four tags, "2" for two photos - or null while the section is
-    empty, in which case the chip reads its name alone (DIRECTION.md rule
-    13's key shape: the name, and the answer on a second line only where
-    there is one). */
+/** Show the count below the chip name when the section has content.
+    Return null for an empty section so the name stands alone. */
 export function sectionState(section: EntrySection, draft: SectionDraft): string | null {
   switch (section) {
     case 'tags':

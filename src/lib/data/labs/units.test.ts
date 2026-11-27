@@ -33,7 +33,7 @@ describe('labs preferred-unit catalogue', () => {
   });
 
   test('drops a stored prolactin preference silently, dropped hormone or not', () => {
-    // Someone set this before prolactin stopped converting (ticket 14). The
+    // Someone set this before prolactin stopped converting. The
     // key is just unknown now, same as any other stray key would be.
     const sanitized = sanitizePreferredLabUnits({
       estradiol: 'pg/mL',

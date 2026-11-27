@@ -1,26 +1,10 @@
-/* The dilation taper (phase 8 features ticket 12, CONTEXT: "Taper"). The
-   session log is a flat table (schema.ts) through flatArea.ts's shared
-   triple - the row-and-write contract ticket 08 installs, adopted rather
-   than copied from a sibling module: an unknown
-   id throws on upsert and succeeds-and-changes-nothing on delete, with no
-   assertion of its own on the delete path.
+/* The taper area owns its schedule and session log. Sessions use
+   `flatArea.ts`: upsert rejects an unknown ID, while delete is a no-op.
 
-   The schedule left that shape at schema v83 (audit item 7): it names
-   which procedure it dilates for rather than carrying a surgery date of
-   its own, which is a join - flatArea.ts's own refusal - so it is
-   hand-written here the same way appointments.ts resolves its own
-   `procedure_id`: a `procedureRowid` lookup on write, a
-   `LEFT JOIN procedure` on read, the procedure's `uuid` is what the rest
-   of the app calls its id.
-
-   One area for both tables, the same reasoning doses.ts gives for folding
-   a schedule and its events under one name: nothing here reads a session
-   without knowing whether there is a schedule to compare it against, and a
-   screen showing both should not have to compose two area handles.
-
-   The schedule's `stages` is JSON in a single column rather than a child
-   table - the right call because the expansion (taperSchedule.ts) always
-   reads every stage at once and never queries one on its own. */
+   Since schema 83 the schedule names a procedure rather than carrying
+   its surgery date. Resolve the procedure row ID on write and join it
+   on read. Callers identify the procedure by UUID. Store stages as JSON
+   because expansion reads every stage together (`taperSchedule.ts`). */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import { sessionSlots, sessionsExpectedOn, type SessionSlotNumber } from '../taperSchedule';
@@ -36,8 +20,7 @@ interface TaperInput {
 }
 
 /** A session as a day lists it: which of that day's expected sessions it
-    is, when the schedule asked for more than one (functional audit ticket
-    25). */
+    is, when the schedule asked for more than one. */
 export type DayTaperSession = TaperSession & { slot: SessionSlotNumber };
 
 interface TaperSessionInput {

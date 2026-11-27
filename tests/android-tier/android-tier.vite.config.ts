@@ -1,24 +1,8 @@
-/* Builds an android-tier probe into a static bundle the instrumentation
-   tests serve to the app's WebView (ticket 11, ticket 13).
-
-   Separate from the app's vite.config.ts and named so svelte-check's project
-   auto-discovery does not pick it up, for the same reason the browser tier's
-   config is - run.mjs loads it explicitly.
-
-   A build rather than a dev server: a probe runs inside an emulator's
-   WebView from the app's own file system, where there is no host to reach.
-   Relative asset paths for the same reason, since Bridge.setServerBasePath
-   serves a bundle from a directory rather than from a document root - which
-   is also why each probe is its own self-contained bundle in its own
-   directory rather than two pages sharing one.
-
-   They build straight into the test APK's assets rather than into a dist/
-   beside this file. Partly to save a copy step, but mostly because
-   SvelteKit's generated tsconfig includes every .js file under tests/, so a
-   bundle left there becomes 400 svelte-check errors in generated code.
-
-   ANDROID_TIER_PROBE picks which one. run.mjs builds the regular tier's
-   bundles; kdf-budget is an explicit physical-Pixel measurement. */
+/* Build each Android probe as a self-contained static bundle with
+   relative paths for Bridge.setServerBasePath. Output directly to test
+   APK assets so SvelteKit does not type-check generated JS under tests/.
+   run.mjs loads this config explicitly and selects via ANDROID_TIER_PROBE.
+   kdf-budget requires an explicit physical-device run. */
 import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { join } from 'node:path';

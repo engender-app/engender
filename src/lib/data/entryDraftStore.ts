@@ -1,28 +1,11 @@
-/* Where an in-progress entry draft survives a killed process (ticket 14),
-   the same read/write/clear shape as the boot cache and the PIN-attempt
-   store (ADR-0009's mirror-outside-SQLite pattern): the journal stays the
-   source of truth for saved entries, this is a throwaway mirror the editor
-   keeps in step with itself and clears the moment its own write lands or it
-   leaves normally (a privacy lock during a pending save retains it for
-   recovery; ticket 16, phase 8 deepening - clearing only on unmount left a
-   killed process between a successful save and the clear holding a mirror
-   whose removals the save had already actioned). A process death mid-edit
-   also leaves it behind to be found.
+/* Keep a local recovery mirror for an in-progress entry (ADR-0009).
+   Clear it when a save commits or the editor exits normally. A process
+   death or privacy lock during a pending save keeps the draft available.
 
-   What is left behind is ciphertext (sec-audit 02, finding G-01). The
-   snapshot is journal content - the note, the mood, the tags, the region
-   feelings - so writing it as bare JSON put readable journal text in the
-   WebView's localStorage, next to the database whose whole purpose is that
-   this text is unreadable. It is encrypted under the session data key, which
-   exists for as long as the journal is open, so nothing new has to be kept
-   anywhere. A draft that outlives a reset then decrypts to nothing, which is
-   the right outcome rather than a loss: there is no journal left for it to
-   belong to.
-
-   Encrypting makes both halves async, and everything that can go wrong on
-   the way back - a foreign key, a mirror from an older build, plain garbage -
-   reads as no draft at all, the same discard the shape check has always
-   done. */
+   Encrypt the draft with the session data key so the note, mood, tags and
+   region ratings do not appear in localStorage plaintext. Both read and
+   write are asynchronous. Unreadable snapshots and snapshots under an
+   old key, including after a reset, are discarded. */
 
 import { open, seal } from '../crypto/aesGcm';
 import type { PersistedEntryDraft } from './entryDraftPersistence';

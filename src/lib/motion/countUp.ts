@@ -1,24 +1,8 @@
-/* Tier 3, change within a screen: a count on a block counting up to its
-   value (phase 10 redesign ticket 25, DIRECTION.md rule 10).
-
-   A live tile's value is a string the screen already formatted - "28",
-   "Estradiol valerate", "9h 0m 15s", "3 Aug 2025" - and only one of those
-   is a quantity. A count is something the eye can watch arrive, digit by
-   digit, and a block whose number rises as the block itself clips open reads
-   as a reading being taken rather than as a label being pasted. A name has
-   no travel between two values; a duration is already moving on its own
-   clock; a date is a name for a day. Those cut, which is what they did
-   before this and is still the right answer for them.
-
-   Held to `--dur-slow`, the tier's own duration, on the tier's own curve,
-   so the number lands on the frame the block's clip does (kit.css,
-   `kit-block-in`). Under reduced motion the substitute is the final number
-   at once - nothing moves, and the reading is not withheld for 380ms from
-   somebody who asked for stillness.
-
-   The shape is reveal.ts's: a runner that reads the token layer and hands
-   back a cancel, so the component that owns the number keeps owning it and
-   this module never touches a node. */
+/* Animate quantities as their tiles clip open.
+   Names, dates and durations cut to the final string. Match
+   `kit-block-in`'s duration and curve. With reduced motion, show the
+   final number immediately instead of waiting 380 ms. The runner
+   returns a cancel function and lets the component own the DOM. */
 
 import { EASE_OUT, motionDuration } from './tokens';
 

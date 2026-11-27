@@ -1,25 +1,10 @@
 // @ts-nocheck
-/* The field-text probe's shared half (ticket 285): the page-side sampler as
-   an expression string, and the arithmetic that turns its rows and a
-   screencast into findings. No browser and no app import, so the arithmetic
-   is unit-tested with synthetic frames (field-text-core.test.ts) and the
-   same code judges every scene.
-
-   Two instruments, because each one is wrong in a different way.
-
-   The sampler reads geometry: on a navigation the view transition's own
-   pseudo elements (the blind's clip, every named part's group box, its ride
-   and travel), on a step machine the real elements against the field's
-   `--blind-edge`. It is cheap and it gives numbers, but a rAF callback runs
-   before a ResizeObserver callback in the same frame, so on a step machine
-   it can see a layout the browser never painted. A one-sample finding there
-   is discounted; two in a row are real.
-
-   The pixels are the authority. The probe paints the field pure blue and its
-   ink pure green (the two custom properties, forced with !important), so a green
-   pixel below the last blue pixel of its own column is ink painted over the
-   page rather than over the field. That cannot be a layout artefact: it is
-   what the composited frame showed. */
+/* Share the page sampler and finding arithmetic with the unit tests.
+   Sample view-transition clip and part geometry during navigation,
+   and --blind-edge and elements during setup. A setup rAF can run
+   before ResizeObserver and see unpainted geometry, so require two
+   consecutive samples. For painted ink, check green pixels below
+   the last blue field pixel in their own screencast column. */
 
 import { decodePng } from './png-decode.mjs';
 

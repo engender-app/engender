@@ -192,7 +192,7 @@ async function run() {
   // Deleting the entry takes both files, and the sweep finds nothing left
   // to do - the two halves of the delete rule, on real storage.
   //
-  // deleteEntry only moves the row to trash now (phase 5 ticket 19), so the
+  // deleteEntry only moves the row to trash now, so the
   // files outlive it until purgeExpiredTrash reclaims them - the same real
   // removal path entries.test.ts exercises against a fake store, here
   // against real OPFS. Backdating trashed_at is what that test does too;

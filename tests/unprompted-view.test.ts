@@ -1,21 +1,7 @@
-/* The rules the one view over the unprompted registry keeps (phase 6 ticket
-   04, merged from two screens onto one by deepening ticket 09 - this file
-   was unprompted-views.test.ts, and before that live-tiles-surfaces.test.ts,
-   when there were two), at the level a screen's source can be held to -
-   mirrors settings-surfaces.test.ts.
-
-   The rows' content is registry.test.ts's business (one per kind, which
-   preference each reads); this file holds only what the markup promises:
-   that the screen renders the registry rather than hand-written rows, that
-   a row carrying a switch is a plain div rather than a control nested in a
-   control, that a kind with no notify leaves that slot empty rather than
-   drawing a dead switch, and that the notify column - not the whole screen
-   - is absent on web rather than shown and inert.
-
-   Phase 11 ticket 04 took Today's thirteen live tiles off this screen and
-   onto Today's own editor, and moved the four prompt toggles here off
-   Settings' Tracking section. So two more rules: the registry is filtered
-   rather than copied, and the prompts are here rather than there. */
+/* Check the view renders filtered registry rows and prompt toggles.
+   Switch rows use plain wrappers to avoid nested controls. Kinds
+   without notifications have an empty slot. On web omit the notify
+   column and retain the screen. registry.test.ts covers row content. */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -91,8 +77,7 @@ describe('what the merged screen is built from', () => {
   });
 
   it('keeps both cascades, unchanged, in the direction each screen it merged already had', () => {
-    /* Turning a kind off turns its notification off too (phase 4 features
-       ticket 04); turning a notification on turns the kind itself on
+    /* Turning a kind off turns its notification off too; turning a notification on turns the kind itself on
        (ticket 04's own other direction). Matched on the assignment rather
        than on a whole statement, so reformatting the line is not a test
        failure. */

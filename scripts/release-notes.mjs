@@ -1,5 +1,4 @@
-/* The release notes for one version, read out of CHANGELOG.md (phase 2 ticket
-   06). The release pipeline calls this before it builds anything, so a tag
+/* The release notes for one version, read out of CHANGELOG.md. The release pipeline calls this before it builds anything, so a tag
    with no notes fails while nothing has been published yet.
 
    Four call-outs are required, and they are the four a person needs before

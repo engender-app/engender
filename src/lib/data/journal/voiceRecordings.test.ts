@@ -83,7 +83,7 @@ test('an entry with several recordings orders them oldest first alongside anothe
   );
 });
 
-/* journal.voice.lastWriteEpochDay (phase 11 ticket 17): hubRows.ts's
+/* journal.voice.lastWriteEpochDay: hubRows.ts's
    voice-benchmark row folds this in beside the benchmark's own last write,
    so it needs the same bounded-by-today MAX every other lastWriteEpochDay
    keeps (journal/lastWrite.ts's own rule). */

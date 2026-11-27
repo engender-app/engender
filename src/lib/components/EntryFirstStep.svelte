@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* A new entry's first step (tester report 02, ticket 03): the quick answer
+  /* A new entry's first step: the quick answer
      before the writing. The five faces and every scale the person has ticked,
      in their own order, and nothing else - a person who only wants to mark
      the day is done here, and nothing on it is required.
@@ -43,7 +43,7 @@
 
 {#if dims.length > 0}
   <!-- Named in the step's small label, not a second heading: the step's
-       question is its one heading (ticket 09, DIRECTION.md rule 12). -->
+       question is its one heading. -->
   <div class="step-part"><span class="step-part-name">{m.gender_label()}</span></div>
   {#each dims as { dim, ticked } (dim.key)}
     <DimensionSlider {dim} value={values[dim.key] ?? null} onInput={(v) => { if (!saving) onDim(dim.key, v); }} />

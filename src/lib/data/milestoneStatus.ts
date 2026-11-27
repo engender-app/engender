@@ -29,7 +29,7 @@ export function milestoneStatus(milestone: Pick<Milestone, 'epochDay'>, todayEpo
   if (milestone.epochDay === todayEpochDay) return { type: 'today', days: 0 };
   // Years counted from the anniversary rather than measured off the gap, so a
   // 29 February milestone does not read "0 years" on the day it flags as its
-  // first (ticket 10).
+  // first.
   const years = anniversaryYears(milestone.epochDay, todayEpochDay);
   const nextAnniversary = nextAnniversaryEpochDay(milestone.epochDay, todayEpochDay);
   return {
@@ -56,7 +56,7 @@ export function upcomingMilestones(
 
 /** The milestone Home marks today: the first one landing on today, either
     on its own day or on an anniversary of it, in `upcomingMilestones`'
-    order (functional audit ticket 32). A milestone the person set not to be
+    order. A milestone the person set not to be
     celebrated is passed over, and so is an anniversary whose day
     `mayResurface` refuses, because an anniversary brings back a day from
     the past and a muted era asked for that not to happen (ADR-0049). A

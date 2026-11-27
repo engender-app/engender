@@ -1,50 +1,15 @@
-/* A Daylio `.daylio` backup becomes an archive-shaped merge (phase 7
-   ticket 09), the same way daylio.ts does it for the CSV: parse and
-   resolve here, hand the resolved journal to the ordinary skip-existing
-   merge, and never write on the way to finding a bad record.
+/* Preview a Daylio backup as an Archive-shaped merge without writing.
+   The backup supplies mood definitions and their positions. CSV
+   provides localized labels, so its importer resolves them separately.
 
-   Why a second Daylio source at all, when the CSV importer works. The CSV
-   carries a mood as a localised label, so daylio.ts has to guess a mood's
-   position from a hardcoded English and Polish table and give up on
-   anything it cannot match. In the file this format was learned from, 10
-   of 15 moods were user-defined and in Polish - every one of them a mood
-   the CSV path mismaps or refuses. The backup carries the mood definition
-   table itself, so the position is a stated fact rather than a guess.
-   It also carries milestones, the person's own tag groups, custom scales,
-   writing templates, and the photos and voice notes a CSV has no room
-   for.
+   The format is undocumented. Accept unknown keys and report unexpected
+   versions in the preview. dayEntries.month is zero-based and
+   milestones.month is one-based. Malformed records fail with context.
+   Semantic gaps show up for review. Commit applies the previewed result.
 
-   The format is undocumented by its vendor, so the shape it is read at is
-   the ticket's own field reference, extracted from a real backup that has
-   since been deleted. Two consequences run through this file:
-
-     - **Every field is optional and every unknown key is tolerated.**
-       Android stayed at `version: 15` for years while the schema gained
-       fields, so the version number cannot gate anything. It is reported
-       when it is not the expected one and the import proceeds.
-     - **The two month conventions are real.** `dayEntries.month` is
-       0-based and `milestones.month` is 1-based, in the same file. Each
-       has its own test, because getting one wrong shifts dates
-       plausibly and raises nothing.
-
-   The failure split is daylio.ts's, unchanged: a structural problem
-   throws with the record named, a semantic gap is listed in the preview
-   and confirmed with the person looking at it, and the preview is the
-   exact work a commit performs.
-
-   Unzipping goes through fflate rather than the platform's own
-   DecompressionStream, for the reason transtracks.ts found first: this
-   former WebView 87 floor preceded 'deflate-raw' support in Chrome 103.
-   WebView 104 now supports it, but fflate remains the shared ZIP owner
-   across the browser targets. One zip reader in the repo, and it is that
-   one.
-
-   Identity is derived from content (ADR-0002), because Daylio's ids are
-   per-collection integers unique only inside one backup. One limit worth
-   stating: these uuids are not the CSV path's. A journal that imported
-   the CSV and then imports the backup gets both copies, because the two
-   files do not carry a shared identifier for the same day and the CSV's
-   own mood label cannot be reconstructed from the backup's table. */
+   Use fflate for ZIP handling. Derive identity from content because
+   Daylio IDs are local to one backup (ADR-0002). CSV and backup IDs
+   differ, so importing both can duplicate days. */
 
 import { dateInputValueFromEpochDay, epochDayFromDateInputValue, localDateFromEpochDay } from '../epochDay';
 import { foldText } from '../fold';

@@ -21,7 +21,7 @@ describe('android main activity recents policy', () => {
 /* Alicja, 2026-10-06: screenshots and the Recents preview are visible and
    only optionally hidden, and the Block screenshots switch decides screenshots. A set
    lock does not hide screenshots, but on 2026-11-12 she reversed the Recents
-   half: while a lock is set no preview is kept (tester report 02, ticket 07),
+   half: while a lock is set no preview is kept,
    because the task snapshot is taken before a cover can be drawn. Android 13+
    has no getter for the Recents choice, ScreenCapturePlugin records the last
    value it passed (RecentsFollowsBothSwitchesTest reads it) and this pins

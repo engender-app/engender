@@ -32,7 +32,7 @@ const ENTRIES = [
   { key: 'rate', tier: 'ownSeries' },
   { key: 'resonance', tier: 'ownSeries' },
   { key: 'room', tier: 'ownSeries' },
-  /* The corner-vowel scaling factor (phase 8 features ticket 30). Fitted
+  /* The corner-vowel scaling factor. Fitted
      across the two extra held vowels alongside the one `resonance` already
      reads, so it is read against the person's own earlier takes like
      `resonance`, since it is built from the same two formants. */

@@ -1,4 +1,4 @@
-/* The editor's chip row (phase 11 ticket 19): which section each chip
+/* The editor's chip row: which section each chip
    opens, and what a chip says about its section's current value. The
    words are the component's (labels come from the catalogue); what is
    tested here is the value a chip states, or the null that means "read

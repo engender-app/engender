@@ -1,25 +1,10 @@
-/* Tier 2 inside one screen: a new entry walking between its steps (tester
-   report 02, tickets 03 and 04).
+/* Keep the header field, date and finish control fixed while entry steps
+   change. The outgoing and incoming parts share one .entry-stage grid
+   cell, so the swap leaves the surrounding layout in place.
 
-   A step change here is not a navigation. The editor is one screen holding
-   one draft, and the header's field, the date line under it and the foot all
-   stay where they are; what changes is the step's own heading on the field
-   and the answers under it. Both sides of the change are real elements in
-   one grid cell for the length of it (EntryEditor's `.entry-stage`), so
-   nothing under them moves while they swap.
-
-   The swap is Material's shared axis on X, which the app already runs from a
-   list into its detail (Alicja chose it over a field-edge crossfade and a
-   page turn on ticket 03's sign-off page, 2026-11-11). The leaving step
-   slides the way the person is going and fades on --dur-fast; the arriving
-   one comes from the other side on --dur-med. A sequence reads as a
-   sequence, and the step a person came from is always on the side Back
-   points to. `back` reverses the direction for a step back. Under reduced
-   motion it is the tier-2 crossfade.
-
-   The foot is the one thing every step shares: the finish control stays
-   where it is, and only the way on (`footContinue`) opens and closes beside
-   it, on the first step that has one and the last that has none. */
+   Material's horizontal shared axis uses --dur-fast for exit and
+   --dur-med for entry, with back reversing the direction. Reduced motion
+   crossfades. footContinue opens beside Finish on steps that can advance. */
 
 import type { TransitionConfig } from 'svelte/transition';
 
@@ -80,23 +65,11 @@ export function footContinue(node: Element, params: { instant?: boolean } = {}):
   };
 }
 
-/* A step back scrubbed by Android's back gesture (ticket 04, box 5).
-
-   From the second step, a back swipe draws the step change under the
-   finger: the second step moves off and the first comes up beneath it, the
-   same movement a tap on Back plays, with the gesture's progress standing
-   in for time. Every part of the change is a part here - the step, the
-   heading on the field, the way on under the finish control, the scroll
-   back to the top - and each carries the very TransitionConfig the timed
-   change runs on it, so the two cannot drift apart.
-
-   Releasing settles forward from where the finger left it and cancelling
-   settles back, each part from its own current t over its own duration
-   scaled by the distance left, on its own curve. So a leaving part still
-   finishes before an arriving one, as in the timed change, and nothing
-   restarts from an end. Progress arrives from the bridge as fast as the
-   system sends it; it is drawn once per animation frame, the latest value
-   only. */
+/* Use Android back progress to scrub the same TransitionConfigs as a
+   timed step back: the step, field heading, footContinue and scroll.
+   Complete or cancel from each part's current progress on its own
+   curve, scaling duration to distance left. Draw the latest bridge
+   progress once per animation frame. */
 
 export type ScrubClock = {
   frame(run: () => void): number;

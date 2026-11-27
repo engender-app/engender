@@ -1,35 +1,12 @@
-/* The open calendar month, as a screen reader and a finger meet it (phase
-   14 ticket 28, accessibility audit findings A03 and A10).
+/* Open Show month before auditing because the folded strip is hidden
+   from assistive tech. Check axe, a labelled list with one named item per
+   day, and Tab visiting date links in order and then leaving the month.
+   Links are at least 48 x 48 CSS px and never overlap. Seven columns need
+   336px of row, so enforce the size from 360px viewport width and report
+   the smaller column pitch at 320px.
 
-   The audit found two things once the month was opened with "Show month",
-   which a scan of the route alone never sees because the folded strip is
-   hidden from assistive tech:
-
-   - A03: the days sat in a role="grid" with no rows and no gridcells, so
-     axe reported aria-required-children. The month is a labelled list of
-     date links now: one list item per day, a link for every day that has
-     somewhere to go, and Tab walking the links in date order.
-   - A10: a date measured about 41.7 x 60.7 CSS px at 390 wide, under the
-     project's 48px floor. The link now takes the whole column, gap
-     included, so the visible cell stays the size it was.
-
-   At each width this opens the month and checks:
-
-   - axe finds nothing inside the month (the audit's own tag set);
-   - it is a list with one item per day of the month, and every item says
-     its date in words, month included (the link's own name where there is
-     a link);
-   - every link is at least 48 x 48 and no two links overlap;
-   - from the "Show month" button, Tab reaches the links one by one in
-     date order and leaves the month after the last one.
-
-   7 x 48px of columns needs 336px of row, so the floor is reachable from a
-   360px-wide screen up; at 320 the column pitch is about 42px whatever
-   the cell does, which is printed rather than failed.
-
-   Against a demo build:
-     VITE_DEMO=1 npm run build
-     node tests/calendar-month-a11y-check.mjs [--root <built tree>] [--url <running server>] [--axe <axe.min.js>] */
+   VITE_DEMO=1 npm run build
+   node tests/calendar-month-a11y-check.mjs [--root <built tree>] [--url <running server>] [--axe <axe.min.js>] */
 import { readFile } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { createRequire } from 'node:module';

@@ -31,7 +31,7 @@ export class EmptyArchiveFileError extends Error {}
 
 /** The archive the user chose, or null if they backed out - an ordinary
     outcome, not an error. Android's `MimeTypeMap` only resolves an accept
-    entry that names a real MIME type (ticket 66); the extension alone
+    entry that names a real MIME type; the extension alone
     resolved to nothing and crashed the picker before it could open. */
 export async function pickArchive(): Promise<PickedArchive | null> {
   const [file] = await chooseFiles(`${ARCHIVE_FILE_EXTENSION},${LEGACY_ARCHIVE_FILE_EXTENSION},application/octet-stream`);

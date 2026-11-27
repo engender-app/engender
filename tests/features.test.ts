@@ -1,4 +1,4 @@
-/* The feature manifest against the code (functional audit ticket 54).
+/* The feature manifest against the code.
    src/lib/features.ts types every key by its own registry, so a key the code
    lost fails the typecheck there. This file keeps tableNames.ts, the
    generated list that lets a type reach the schema, and covers what no

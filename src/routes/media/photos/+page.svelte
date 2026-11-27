@@ -3,27 +3,12 @@
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   import { photoOwnerHref } from '$lib/data/photos/library';
   import { withSourceReturn } from '$lib/navigation/sourceRecord';
-  /* The photo library: every photograph in the journal, wherever it is
-     kept (phase 11 ticket 14). Browse only since pre-release-human 12:
-     comparing two photographs moved to Progress photos
-     (/transition/progress-photos), where the shots are taken in the same
-     pose on purpose and a side-by-side reads as something.
+  /* journal.photoLibrary reads photos and video notes across all six
+     tables. This screen browses them. Compare lives in Progress
+     photos, where shots share a pose.
 
-     Until this the grid read the `photo` table, which is an entry's
-     photographs and a milestone's, and the line over it said "Every photo
-     in your journal". Four more tables hold photographs - progress photos,
-     hair removal, tryouts, surgery recovery - and `video_note` holds a
-     note recorded in the editor, and none of the five could be found again
-     except through the day it hangs off. `journal.photoLibrary` is the one
-     read across all six; this screen is where it is looked at.
-
-     What the chips do is narrow, not navigate. The grid is the same grid
-     either way and the selection is the same selection, so tapping "Hair"
-     moves the photographs rather than repainting the screen (ADR-0078,
-     motion/narrow.ts). The chip lives in the query, so a link can open the
-     library already narrowed and a reload keeps it.
-
-     A video note's tile plays it in the app's own player. */
+     Filter the same grid and selection through the query. narrow.ts
+     moves surviving tiles. Video notes open the app player. */
   import { tick } from 'svelte';
   import { crossfade } from '$lib/motion/reveal';
   import { page } from '$app/state';
@@ -161,7 +146,7 @@
 
   /** Narrowing by a chip, as one move rather than a repaint: measure where
       the tiles stand, change the query, then walk the survivors back to
-      where they were and release them (ADR-0078, motion/narrow.ts). The
+      their old positions and release them (motion/narrow.ts). The
       tiles the chip drops leave the flow in the same frame, so the grid
       rewraps once instead of twice. */
   /* The count's new number fading in. Only a change plays it: the {#key}
@@ -444,24 +429,9 @@
 </div>
 
 <style>
-  /* The day-edit affordance on a browse cell (ticket 47): a sibling of
-     .photo-cell rather than a change to it, so export/+page.svelte's own
-     .photo-cell button - screens.css's shared class - keeps meaning
-     exactly what it always has there.
-
-     Sized and lifted the same way .starred-photo-unstar already solves
-     the identical problem (screens.css): a real button here needs the
-     full --touch-target hit area, but a 44px disc would swallow half the
-     104px cell, so the tap target and the visual circle are two
-     differently-sized boxes - the outer button transparent and centred
-     on the corner, the smaller ::before disc carrying the surface fill
-     and the edge that separates it from whatever the photo underneath
-     happens to be.
-
-     On the photograph's top-left corner. It was the bottom-left corner
-     until last-audit UI 52: that corner is the date caption's row, and
-     the disc covered the caption's first letter while the 48px target
-     took taps meant for the tile (audit U44). */
+  /* Put the day edit on the photo's top-left corner, clear of its date caption.
+     Use a full touch target with a smaller visible disc. Keep it a sibling of
+     .photo-cell so export can keep using that class for its own button. */
   .photo-cell-controls { position: relative; }
   /* While picking, the day button steps back (a tap there would open a
      sheet over the picking) and a video note's tile dims, since a note is
