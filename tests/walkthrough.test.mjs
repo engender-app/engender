@@ -6805,10 +6805,21 @@ try {
      the whole point of it being here is that a session started late is a
      session recorded wrong - so this checks it never leaves the screen, and
      that the row comes back saying the other thing. */
-  await openQuickAdd('/stats');
+  // Quick add repeats the last wear kind, so log a finished session first.
+  await fresh('/body/wear');
+  await page.locator('[data-add]').click();
+  await page.locator('[data-sheet] [data-segment="backfill"]').click();
+  await page.locator('#wear-duration').fill('1');
+  await page.locator('[data-save-wear-session]').click();
+  await page.waitForSelector('[data-sheet]', { state: 'detached' });
+
+  await page.goto(BASE + '/stats', { waitUntil: 'networkidle' });
+  await booted();
+  await page.locator('[data-nav-fab]').click();
+  await page.waitForSelector('[data-choose="wear"]:enabled', { timeout: 8000 });
   const startLabel = (await page.locator('[data-choose="wear"]').textContent()).trim();
   if (await page.locator('[data-choose="wear"][data-wear-running]').count()) {
-    throw new Error('a session was already running on a fresh journal');
+    throw new Error('Quick add offered Stop before this flow started a session');
   }
   await page.locator('[data-choose="wear"]').click();
   await page.waitForSelector('[data-fan-flight]', { timeout: 8000 });
