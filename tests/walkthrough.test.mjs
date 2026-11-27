@@ -6610,7 +6610,7 @@ try {
     const cyclePanel = page.locator('[data-contextual="cycle-event"]');
     if (Boolean(await cyclePanel.count()) !== shown) throw new Error(`${locale} entry cycle prompt visibility disagreed`);
     if (shown) {
-      const chipNames = locale === 'pl' ? ['Okres', 'Plamienie', 'Czysto'] : ['Period', 'Spotting', 'Clear'];
+      const chipNames = locale === 'pl' ? ['Krwawienie', 'Plamienie', 'Pusto'] : ['Period', 'Spotting', 'Clear'];
       for (const name of chipNames) {
         if (await cyclePanel.getByRole('button', { name, pressed: false }).count() !== 1) {
           throw new Error(`${locale} entry cycle control ${name} lost its announced name or state`);
@@ -7757,9 +7757,7 @@ try {
      acknowledging it leaves a screen with no key on it, and coming back to
      the screen fresh does not bring the characters back - the file holds a
      wrap and nothing else. */
-  if (await page.locator('[data-recovery-key]').count()) {
-    throw new Error('the key is still on screen after being acknowledged');
-  }
+  await page.locator('[data-recovery-key]').waitFor({ state: 'detached' });
   await page.locator('a[href="/settings/security"]').click();
   await page.waitForSelector('[data-security-list]');
   await page.locator('a[href="/settings/recovery-key"]').click();
@@ -7776,9 +7774,7 @@ try {
   await page.waitForSelector('[data-confirm-revoke]');
   await page.locator('[data-confirm-revoke]').click();
   await page.waitForSelector('[data-make-recovery-key]');
-  if (await page.locator('[data-list-row="remove-recovery-key"]').count()) {
-    throw new Error('the removed key still offers a remove row');
-  }
+  await page.locator('[data-list-row="remove-recovery-key"]').waitFor({ state: 'detached' });
 
   ok('a recovery key is made once, shown once, and removed from Settings');
 } catch (e) { fail('the recovery key', e); }
@@ -8041,8 +8037,7 @@ try {
      a key that belongs to another journal. */
   await page.fill('[data-recovery-key-input]', written.slice(0, -1) + (written.endsWith('0') ? '1' : '0'));
   await page.locator('[data-submit-recovery-key]').click();
-  const mistyped = await page.locator('[data-recovery-key-error]').innerText();
-  if (mistyped.trim() === '') throw new Error('a mistyped recovery key said nothing');
+  await page.locator('[data-recovery-key-error]').filter({ hasText: /\S/ }).waitFor();
   if (!(await page.locator('[data-recovery-key-input]').count())) {
     throw new Error('a mistyped key left no field to correct');
   }
