@@ -136,11 +136,19 @@ try {
   });
 
   await section('a slide onto a target, then Enter', async () => {
+    // Quick add repeats the last wear kind, so log a finished session first.
+    await settlePage(page, base, '/body/wear', 'light');
+    await page.locator('[data-add]').click();
+    await page.locator('[data-sheet] [data-segment="backfill"]').click();
+    await page.locator('#wear-duration').fill('1');
+    await page.locator('[data-save-wear-session]').click();
+    await page.waitForSelector('[data-sheet]', { state: 'detached' });
+
     await settlePage(page, base, '/', 'light');
     const fab = await page.locator('[data-nav-fab]').boundingBox();
     await page.mouse.move(fab.x + fab.width / 2, fab.y + fab.height / 2);
     await page.mouse.down();
-    const target = page.locator('[data-fan-target="wear"]');
+    const target = page.locator('[data-fan-target="wear"]:enabled');
     await target.waitFor({ state: 'visible' });
     await page.waitForFunction(() =>
       document.getAnimations().every((a) => a.playState !== 'running' || a.effect?.getTiming().iterations === Infinity)
