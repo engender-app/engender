@@ -52,7 +52,10 @@ async function open() {
   assert(browser, 'owned Chromium must expose CDP');
   current.browser = browser;
   const context = browser.contexts()[0];
-  const page = await context.newPage();
+  const tabs = context.pages();
+  const page = tabs.find((tab) => tab.url() === 'about:blank') ?? await context.newPage();
+  // Chromium can restore the previous app tab. Close it before a fresh boot takes OPFS.
+  await Promise.all(tabs.filter((tab) => tab !== page).map((tab) => tab.close()));
   page.setDefaultTimeout(30000);
   await page.goto(origin, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => {
