@@ -11,9 +11,10 @@ import { budgetFailures, firstLoadBudgetFor, firstLoadUrls, gzipTotal, localeGra
 describe('recorded production startup budget', () => {
   const { firstLoad } = JSON.parse(readFileSync('scripts/first-load-budget.json', 'utf8'));
 
-  it('keeps the merged 11-file graph without spare round trips', () => {
-    expect(budgetFailures({ files: 12, gzipBytes: firstLoad.gzipBytesBaseline }, firstLoad))
-      .toEqual(['first-load file count is 12, over the 11 budget']);
+  it('keeps the recorded file count without spare round trips', () => {
+    const files = firstLoad.filesBudget + 1;
+    expect(budgetFailures({ files, gzipBytes: firstLoad.gzipBytesBaseline }, firstLoad))
+      .toEqual([`first-load file count is ${files}, over the ${firstLoad.filesBudget} budget`]);
   });
 
   it('allows only the 1,024-byte build wobble above the recorded bytes', () => {
@@ -24,7 +25,7 @@ describe('recorded production startup budget', () => {
   });
 
   it('rejects the audit\'s 14,139-byte eager d3 increase even without another file', () => {
-    const measured = { files: 11, gzipBytes: firstLoad.gzipBytesBaseline + 14139 };
+    const measured = { files: firstLoad.filesBudget, gzipBytes: firstLoad.gzipBytesBaseline + 14139 };
     expect(budgetFailures(measured, firstLoad)).toEqual([
       `first-load gzip total is ${measured.gzipBytes}B, over the ${firstLoad.gzipBytesBudget}B budget`
     ]);
