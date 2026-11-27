@@ -89,6 +89,9 @@ try {
   const goal = await page.locator('[data-goal]').first().getAttribute('data-goal');
   const rowSel = `[data-goal="${goal}"]`;
   await page.waitForFunction((sel) => document.querySelector(sel)?.getAttribute('data-status') === 'unchecked', rowSel);
+  // The legal steps open in with their own motion; a click on a row still moving waits
+  // for it to settle, which would land after the sampling window below.
+  await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running' || a.effect?.getTiming().iterations === Infinity));
 
   const getters = [
     // border-color as an [r,g,b] channel sum, cheap and monotonic enough
