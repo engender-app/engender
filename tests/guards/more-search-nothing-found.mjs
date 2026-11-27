@@ -116,10 +116,11 @@ function findings(raw, unjudged = []) {
 }
 
 /* Two ways to run out: a query answered by records only ("dose" finds no
-   area but three records), and one answered by areas only ("measu"). */
+   area but three records), and one answered by areas only ("roadm"; "measu" matched
+   nothing once body measurements were removed). */
 const CASES = [
   ['records to nothing', 'dose', 'dosexq'],
-  ['areas to nothing', 'measu', 'measuxq']
+  ['areas to nothing', 'roadm', 'roadmxq']
 ];
 let failed = false;
 for (let run = 1; run <= RUNS; run++) {

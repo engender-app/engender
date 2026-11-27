@@ -120,7 +120,9 @@ async function clientRoute(path) {
 async function ready() {
   await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 60000 });
   // The editor is a step with no tab bar, so a retained editor is ready on its own handles.
-  await page.waitForSelector('[data-nav-item="calendar"], [data-entry-step], #ed-note', { timeout: 15000 });
+  // Whichever is visible: the calendar tab stays in the document, hidden, while the editor is up,
+  // and a plain selector list waits on that first match alone.
+  await page.locator('[data-nav-item="calendar"]:visible, [data-entry-step]:visible, #ed-note:visible').first().waitFor({ timeout: 15000 });
   databaseEvents.push({ type: 'ready', ...await page.evaluate(() => ({ path: window.historyProof.databasePath, token: window.historyProof.token })), index: ++eventIndex });
 }
 async function calendar() {

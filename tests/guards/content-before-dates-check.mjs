@@ -25,7 +25,7 @@ const flows = [
   { handle: 'milestone', path: 'transition/milestones', date: 'ms-date', area: 'milestones', operation: 'upsertMilestone',
     add: '[data-add]', row: '[data-milestone]', text: 'Fixture milestone',
     values: { 'ms-name': 'Fixture milestone', 'ms-description': 'A day to remember', 'ms-date': '2024-03-12' },
-    change: 'ms-description', controls: () => [page.locator('#ms-name'), page.locator('#ms-description'), page.locator('#ms-date'), sheet().locator('.photo-remove'), sheet().locator('[data-milestone-celebrate] [role="switch"]'), sheet().locator('[data-milestone-anchor] [role="switch"]')],
+    change: 'ms-description', controls: () => [page.locator('#ms-name'), page.locator('#ms-description'), page.locator('#ms-date'), sheet().locator('.photo-remove'), sheet().locator('[data-add-photo]'), sheet().locator('[data-capture-photo]'), sheet().locator('[data-milestone-celebrate] [role="switch"]'), sheet().locator('[data-milestone-anchor] [role="switch"]')],
     labels: { 'ms-name': 'name_label', 'ms-description': 'ms_description_label', 'ms-date': 'date_label' } },
   { handle: 'side-effect', path: 'care/changes', date: 'side-effect-date', area: 'sideEffects', operation: 'upsertSideEffect',
     add: '[data-add]', row: '[data-side-effect]', text: 'Fixture headache',
@@ -244,12 +244,22 @@ try {
   await page.getByText('Fixture headache', { exact: false }).waitFor();
   console.log('PASS side effect remains owned by Changes; appointment preparation receives its name');
 
+  // The offer sits beside an active testosterone regimen, so start one.
+  await page.evaluate(async () => {
+    const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
+    const { todayEpochDay } = await import('/src/lib/data/epochDay.ts');
+    await journal.regimen.upsertEpisode({
+      drug: 'testosterone', ester: null, dose: 2, doseUnit: 'mg', route: 'oral', interval: 'daily',
+      startEpochDay: todayEpochDay() - 30, endEpochDay: null, endReason: null
+    });
+  });
   for (const choice of [false, true]) {
     await page.evaluate(async (choice) => {
       const { prefs } = await import('/src/lib/data/prefs/store.svelte.ts');
       prefs.cycleTrackingChoice = choice;
     }, choice);
-    await settlePage(page, server.resolvedUrls.local[0], 'care/changes', 'light');
+    // The cycle log's way in sits beside the regimen since e901cd734, not on Changes.
+    await settlePage(page, server.resolvedUrls.local[0], 'care/regimen', 'light');
     assert.equal(await page.locator('a[href="/health/cycle-events"]').count(), choice ? 1 : 0);
     await reopen(flows[2]);
     await valuesMatch(flows[2]);

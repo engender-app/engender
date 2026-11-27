@@ -59,7 +59,9 @@ try {
   for (const path of ['/settings/notifications', '/settings/eras']) {
     for (const method of ['header', serial ? 'system Back' : 'browser Back']) {
       const row = page.locator(`a[href="${path}"]`);
-      await row.scrollIntoViewIfNeeded();
+      // To the top of the view: Settings is shorter now, and bringing a row just into
+      // view no longer leaves the page deep enough for the restore to mean anything.
+      await row.evaluate((el) => el.scrollIntoView({ block: 'start' }));
       await page.waitForTimeout(100);
       const before = await position();
       assert.ok(before > 1000, 'Settings must be scrolled deeply');
