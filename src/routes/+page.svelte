@@ -190,9 +190,13 @@
   let entryCount = $derived(entryCountQuery.value);
   /* Whether the count line will draw, before the count has answered: the
      mirror below is the last answer this device saw, written for the
-     calendar's own boot guess and read here for the line's
-     room. */
-  const hadEntries = prefs.acknowledgements.hasEntries === true;
+     calendar's own boot guess and read here for the line's room. It lives
+     in the encrypted preferences, so a cold boot paints Home before it can
+     be read and sees `null`. Unknown counts as having entries: Home only
+     boots into a journal that exists, and holding the room for a line that
+     then stays away costs less than the line arriving and pushing the page
+     down 9px in one frame. Only a recorded "no entries" leaves it out. */
+  const hadEntries = $derived(prefs.acknowledgements.hasEntries !== false);
   let countPending = $derived(entryCountQuery.loading || journalBoundsQuery.loading);
   const countFade = (_node: Element) => fadeOnly(motionDuration('--dur-fast'));
 
