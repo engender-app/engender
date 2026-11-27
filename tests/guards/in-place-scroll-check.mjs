@@ -125,8 +125,9 @@ try {
   });
   assert.ok(nearChips > 40, `the chips sit too near the top to test a scrolled chip change: ${nearChips}px`);
   const beforeChip = await settledScroll();
-  await page.locator('[data-photo-chip="hair"]').click();
-  await page.waitForURL((url) => url.searchParams.get('source') === 'hair');
+  // Progress photos answer to the progress chip since hair progress folded into them.
+  await page.locator('[data-photo-chip="progress"]').click();
+  await page.waitForURL((url) => url.searchParams.get('source') === 'progress');
   await page.waitForFunction((count) => document.querySelectorAll('[data-photo-source="entry"]').length === 0 && document.querySelectorAll('[data-photo-cell]').length > 0, ENTRY);
   holds(beforeChip, await settledScroll(), 'picking a chip');
   await page.locator('[data-photo-chip="everything"]').click();
