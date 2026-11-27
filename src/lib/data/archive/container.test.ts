@@ -315,7 +315,8 @@ test('an oversized final frame is refused without pulling its 8 MiB tail', async
   assert.equal(pulled, 1);
 });
 
-test('a final frame and oversized tail split into small pieces stop after bounded reads', async () => {
+// Pulls the archive one byte at a time: 1.4 s locally, over 5 s on a CI runner.
+test('a final frame and oversized tail split into small pieces stop after bounded reads', { timeout: 20_000 }, async () => {
   const { k, bytes } = await framed(CHUNK);
   let pulled = 0;
   async function* pieces() {

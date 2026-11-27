@@ -199,12 +199,13 @@ function commandExists(command) {
 }
 
 /** Signer digests from `apksigner verify --print-certs`. Older build-tools
- * number the signers (`Signer #1 ...`); newer ones may label each by the SDK
- * range it covers (`Signer (minSdkVersion=26, maxSdkVersion=...) ...`), which
- * can repeat one certificate, so the result holds each digest once.
+ * number the signers (`Signer #1 ...`). Newer ones label each by its signing
+ * scheme (`V3.0 Signer: ...`, as on the CI runner since image 20261111) or by
+ * the SDK range it covers (`Signer (minSdkVersion=26, ...)`), and either can
+ * repeat one certificate, so the result holds each digest once.
  * @param {string} output */
 export function apkSignerFingerprints(output) {
-  const lines = output.matchAll(/^Signer (?:#\d+|\([^)\n]*\)) certificate SHA-256 digest: ([a-f0-9]{64})\r?$/gm);
+  const lines = output.matchAll(/^(?:Signer (?:#\d+|\([^)\n]*\))|V\d+(?:\.\d+)? Signer:) certificate SHA-256 digest: ([a-f0-9]{64})\r?$/gm);
   return [...new Set([...lines].map(match => match[1]))];
 }
 
