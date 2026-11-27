@@ -119,7 +119,7 @@ await block('cold authentication respects newer locks', 5, async () => {
   }
 });
 
-await block('private reopening checks schema before journal access', 5, async () => {
+await block('private reopening checks schema before journal access', 4, async () => {
   for (const result of await verifyWarmSchema()) ok(`warm schema: ${JSON.stringify(result)}`);
 });
 
