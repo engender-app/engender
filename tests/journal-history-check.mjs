@@ -141,6 +141,7 @@ try {
   await stepBack();
   await page.waitForURL(url => url.pathname === '/more');
   await page.waitForLoadState('networkidle');
+  await page.locator('[data-hub-search]').waitFor();
   if (serial) await page.waitForSelector('[data-retained-door="/more"][data-retained-active]');
   await page.waitForFunction(() => !document.documentElement.dataset.nav);
   await back();
