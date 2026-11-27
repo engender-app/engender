@@ -80,6 +80,9 @@ try {
   await page.locator('#hair-removal-cost').fill('125');
   await page.locator('#hair-removal-cost-currency').click();
   await page.locator('[data-currency-option="PLN"]').click();
+  // The currency list is a sheet of its own; the form stays inert until it has closed,
+  // and fill() writes nothing into an inert field.
+  await page.waitForFunction(() => !document.querySelector('#hair-removal-provider')?.closest('[inert]'));
   await page.locator('#hair-removal-provider').fill('Clinic fixture');
   await fillDate(page, '#hair-removal-date', '2024-03-12');
   await page.keyboard.press('Escape');
