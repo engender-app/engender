@@ -58,7 +58,7 @@ export async function writePersonaJournal(
   const heldBefore = await journal.entries.countAll();
   let written = 0;
 
-  await journal.tags.addTag(customTag.groupKey, customTag.label);
+  await journal.tags.addTag(customTag.groupKey, customTag.label, customTag.icon);
 
   // Presentations before entries: an entry naming one by `presentationName`
   // needs the real id, which only exists once the row is written

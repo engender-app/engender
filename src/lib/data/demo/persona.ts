@@ -33,7 +33,7 @@ import {
    that behaves like a user's own. It used to sit inside the built-in gender
    group carrying `builtIn: false`, which made the shipping vocabulary
    depend on a demo detail. */
-const VOICE_PRACTICE = { groupKey: 'gender', label: 'voice practice' };
+const VOICE_PRACTICE = { groupKey: 'gender', label: 'voice practice', icon: 'mic' };
 
 /** The language the persona writes in (pre-publish ticket 03): the pl-PL
     store screenshots and the Polish landing guide are taken from this
@@ -95,7 +95,7 @@ interface PersonaAppointment extends AppointmentInput {
 }
 
 interface Persona {
-  customTag: { groupKey: string; label: string };
+  customTag: { groupKey: string; label: string; icon: string };
   presentations: PersonaPresentation[];
   entries: PersonaEntry[];
   milestones: PersonaMilestone[];
