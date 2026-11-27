@@ -336,8 +336,12 @@
 <style>
   /* Named so the settings-row test below can find it without depending on
      ListRow's own class names, and so the gap to the Preview heading below
-     is this screen's call rather than a bare margin on a shared kit row. */
+     is this screen's call rather than a bare margin on a shared kit row.
+     flow-root keeps the reserve's margins inside the wrap: empty, they
+     collapsed through it, and when the row arrived on a cold open the
+     preview dropped 16px in one frame before the reserve's travel began. */
   .settings-row-wrap {
+    display: flow-root;
     margin-bottom: var(--space-2);
   }
 
