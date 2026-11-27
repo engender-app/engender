@@ -13,3 +13,4 @@
 #
 # If user.signingkey holds the key text rather than a path, append that text
 # instead of running cat. A reviewed commit is the only way this list changes.
+barankiewicz@protonmail.ch ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIL0mdBc5MoZYKWXa9v/cFrnzq84t3iGYaOo6FLXHia9v
