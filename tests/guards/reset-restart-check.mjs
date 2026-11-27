@@ -22,7 +22,7 @@ async function stop(graceful = false) {
   if (!current) return;
   const { process: child, browser } = current;
   current = null;
-  if (child.exitCode === null && child.signalCode === null) {
+  if (child.pid && child.exitCode === null && child.signalCode === null) {
     const exited = new Promise(resolve => child.once('exit', resolve));
     if (graceful && browser) {
       const cdp = await browser.contexts()[0].newCDPSession(browser.contexts()[0].pages()[0]);
@@ -34,22 +34,35 @@ async function stop(graceful = false) {
 }
 async function open() {
   rmSync(join(profile, 'DevToolsActivePort'), { force: true });
-  const child = spawn('prlimit', ['--core=0', '--', process.env.CHROMIUM_PATH ?? '/usr/bin/chromium-browser',
+  const executable = process.env.CHROMIUM_PATH ?? '/usr/bin/chromium-browser';
+  // Match Playwright's launch mode for the synthetic guard on runners without user namespaces.
+  const child = spawn('prlimit', ['--core=0', '--', executable,
     `--user-data-dir=${profile}`, '--remote-debugging-port=0', '--headless=new',
-    '--disable-crash-reporter', '--disable-breakpad', '--no-first-run', '--no-default-browser-check',
-    '--window-size=412,915', 'about:blank'], { detached: true, stdio: 'ignore' });
+    '--no-sandbox', '--disable-crash-reporter', '--disable-breakpad', '--no-first-run', '--no-default-browser-check',
+    '--window-size=412,915', 'about:blank'], { detached: true, stdio: ['ignore', 'ignore', 'pipe'] });
   current = { process: child };
+  let stderr = '';
+  let spawnError;
+  let connectionError;
+  child.stderr.setEncoding('utf8').on('data', (chunk) => { stderr = (stderr + chunk).slice(-8192); });
+  child.once('error', (error) => { spawnError = error; });
   const deadline = Date.now() + 30000;
   let browser;
-  while (Date.now() < deadline) {
-    assert.equal(child.exitCode, null, 'owned Chromium must stay running');
+  while (Date.now() < deadline && !spawnError && child.exitCode === null && child.signalCode === null) {
     try {
       const port = Number(readFileSync(join(profile, 'DevToolsActivePort'), 'utf8').split('\n')[0]);
       browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`, { timeout: 1000 });
       break;
-    } catch { await delay(50); }
+    } catch (error) {
+      connectionError = error;
+      await delay(50);
+    }
   }
-  assert(browser, 'owned Chromium must expose CDP');
+  if (!browser) {
+    const status = child.signalCode ?? child.exitCode ?? (child.pid ? 'still running' : 'not started');
+    throw new Error(`Owned Chromium did not expose CDP (${executable}, ${status})${stderr ? `\n${stderr.trim()}` : ''}`,
+      { cause: spawnError ?? connectionError });
+  }
   current.browser = browser;
   const context = browser.contexts()[0];
   const tabs = context.pages();
