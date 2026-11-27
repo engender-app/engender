@@ -320,7 +320,7 @@ const PRESS_OPT_OUTS: { file: string; count: number; reason: string }[] = [
   {
     file: 'src/lib/components/kit/DayEntry.svelte',
     count: 1,
-    reason: 'an entry row in a day card is list content being read, not a control - the row press read as text jumping (ticket 99 item 10)'
+    reason: 'an entry row in a day card is list content being read, not a control - the row press read as text jumping'
   },
   {
     file: 'src/lib/components/kit/Disclosure.svelte',
@@ -340,7 +340,7 @@ const PRESS_OPT_OUTS: { file: string; count: number; reason: string }[] = [
   {
     file: 'src/lib/components/kit/ListRow.svelte',
     count: 5,
-    reason: 'the row scale made a tapped list jump sideways; the row is the list, not a button on it (ticket 99 item 10)'
+    reason: 'the row scale made a tapped list jump sideways; the row is the list, not a button on it'
   },
   {
     file: 'src/lib/components/LetterCard.svelte',
@@ -376,7 +376,7 @@ const PRESS_OPT_OUTS: { file: string; count: number; reason: string }[] = [
     file: 'src/routes/transition/roadmap/+page.svelte',
     count: 3,
     reason:
-      "a goal row's main half and the add row are the width of the card; the compact depth walked the tick box and the title inward under the finger, which Alicja read as a yank (pre-release-human 18, item 72)"
+      "a goal row's main half and the add row are the width of the card; the compact depth walked the tick box and the title inward under the finger"
   },
   {
     file: 'src/lib/components/SpanTimeline.svelte',
@@ -556,8 +556,7 @@ describe('tier 1, response', () => {
     expect(mixed, 'an unparseable linear() takes the whole shorthand with it, not just its own half').toEqual([]);
   });
 
-  /* Settled two depths on a Pixel 10a and they did not land in the same place; found the
-     reason and turned it into a rule. Scale is a fraction, so one fraction moves a 320px
+  /* Scale is a fraction, so one fraction moves a 320px
      button's edge several times as far as a 48px key's. The three depths are three size
      classes of one law - the bigger the control, the shallower the fraction.
 
@@ -1325,12 +1324,12 @@ describe('the cap on animating layout', () => {
       selector: "[data-nav-pill='bar']",
       props: ['left', 'right', 'top', 'bottom'],
       reason:
-        'one absolutely positioned empty box per nav, so its insets invalidate its own layout and nothing else; tests/tools/nav-motion-cost.mjs holds the frame cadence at 4x CPU throttling. Top and bottom move only in the two-row bar large text brings (after-release 18), the same box crossing rows'
+        'one absolutely positioned empty box per nav, so its insets invalidate its own layout and nothing else; tests/tools/nav-motion-cost.mjs holds the frame cadence at 4x CPU throttling. Top and bottom move only in the two-row bar large text brings, the same box crossing rows'
     },
     {
       selector: "[data-nav-pill='rail']",
       props: ['top', 'bottom'],
-      reason: "the same box on the rail's axis, for the same reason (redesign ticket 26)"
+      reason: "one absolute box moves along the rail without affecting adjacent rows"
     },
     {
       selector: '.segment-pill',
@@ -1342,7 +1341,7 @@ describe('the cap on animating layout', () => {
       selector: '.month-jump-pill',
       props: ['left', 'right', 'top', 'bottom'],
       reason:
-        "the Journal month picker's pill (ticket 281), .segment-pill's shape on two axes: one absolutely positioned empty box out of the grid's flow, so its insets cannot move a month; the ticket's probe sampled 52 distinct frames of a two-step travel with no edge moving more than 15.2px in a frame"
+        "the Journal month picker’s pill uses .segment-pill's shape on two axes: one absolutely positioned empty box out of the grid's flow, so its insets cannot move a month; the motion probe sampled 52 distinct frames of a two-step travel with no edge moving more than 15.2px in a frame"
     },
     {
       selector: '.wear-week-bar',
@@ -1761,7 +1760,7 @@ describe('the Journal month opens and folds without a smear or a squeeze', () =>
   });
 });
 
-/* prh12: setup's flag step picked a flag by writing the preference, so the
+/* Setup's flag step picked a flag by writing the preference, so the
    whole screen cut to the new colours in one frame. It goes through the same
    bloom out of the sun that Settings uses. */
 describe('setup picks a flag the way Settings does', () => {

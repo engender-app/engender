@@ -274,7 +274,7 @@
 
   /* Second entry point into the appointment prep list: a one-tap add, seeded from what is
      already on screen, rather than a detour through that list's own editor. One add per
-     tap, and a failed one says so (UI 17); a later tap is a second add on purpose. */
+     tap, and a failed one says so; a later tap is a second add on purpose. */
   const prepWrite = writer();
   async function addToAppointmentPrep(name: string) {
     if (!(await prepWrite.run(() => journal.checklists.addToStandaloneChecklist(m.appointment_prep_from_effect_item({ name })), m.write_failed()))) return;
@@ -362,7 +362,7 @@
   let newEffectName = $state('');
   let newEffectCategory = $state('');
 
-  /* One type per tap (UI 17): a custom type can only be hidden, never
+  /* One type per tap: a custom type can only be hidden, never
      deleted, so a double tap used to leave a duplicate for good. A failed
      add keeps the name and says so. */
   const effectTypeWrite = writer();
@@ -545,9 +545,7 @@
          reader classify their own symptom before they could write it down.
          Its own heading, list, editor sheet and empty state - moved here
          whole from /health/side-effects, whose route was removed. -->
-    <!-- The wrapper names nothing but the crop: a sign-off render needs one
-         stable box around the heading and the list, the way `data-noticed-axis`
-         already gives the axis one. -->
+    <!-- This wrapper gives the screenshot probe a stable crop around the heading and list. -->
     <div data-side-effects-section>
       <SectionHeading text={m.side_effects()} />
       <ReadGate read={effectsQuery} variant="line" count={3}>

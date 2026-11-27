@@ -30,7 +30,7 @@ const toHex = (bytes: Uint8Array): string =>
 
 /* The recovery worker in flight, if any. The pool's access handles belong to one worker at
    a time, and after a failed boot the copy check holds them on a worker of its own for a
-   few hundred ms (219). A "Try opening again" pressed in that window started a new worker
+   few hundred ms. A "Try opening again" pressed in that window started a new worker
    that asked for the pool at once and failed with "Access Handles cannot be created" -
    every time, measured, while a retry a moment later worked. So a new connection holds its
    messages until that worker has closed. Settled either way: a recovery that failed has

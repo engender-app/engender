@@ -134,7 +134,7 @@ test('the start-over wipe names the database it deletes', async () => {
   expect(sent.find((call) => call.method === 'deleteDatabase')?.options).toEqual({ name: 'engender.sqlite3' });
 });
 
-/* ui 33: the failure screen's file operations come after boot() closed the
+/* The failure screen's file operations come after boot() closed the
    driver, and the plugin refuses a closed session. They go on a second
    session, sent only once the close has answered, since the plugin orders
    calls within a session and not across two. */

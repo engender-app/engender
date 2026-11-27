@@ -48,7 +48,7 @@ describe('optical centring', () => {
 
 /* Settings' first card draws `mood`, `globe` and `access` side by side, and
    the first two are both a 9-unit ring with something inside. A third ring
-   made the row three coins in a stack (prh12), so the accessibility figure
+   made the row three coins in a stack, so the accessibility figure
    stands on its own. */
 describe('access is not another ring', () => {
   it('draws no circle bigger than a head', () => {

@@ -52,13 +52,13 @@ const AREA_ROWS: Record<
   procedures: {
     ...iconOf('surgery'),
     label: () => m.surgery_journey_title(),
-    // Its own screen (prh12), the way an appointment's hit opens that appointment.
+    // Open the procedure screen directly.
     href: (hit) => `${hubRow('surgery').href}/${encodeURIComponent(hit.id)}`
   },
   appointments: {
     ...iconOf('appointments'),
     label: () => m.appointments_title(),
-    // Its own screen (prh12), the way a tryout's hit opens that tryout.
+    // Open the appointment screen directly.
     href: (hit) => `${hubRow('appointments').href}/${hit.id}`
   },
   /* One area, two screens. A question written for an appointment belongs to the prep list,

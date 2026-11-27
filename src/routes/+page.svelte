@@ -1476,7 +1476,7 @@
   }
 
   /* The time today's latest mood was logged, secondary type on the log
-     heading's line (UX-16). */
+     heading's line. */
   .home-log-logged {
     display: grid;
     justify-items: end;

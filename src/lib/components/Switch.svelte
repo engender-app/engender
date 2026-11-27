@@ -19,7 +19,7 @@
      It used to spread Melt's Toggle trigger, which also set aria-pressed:
      a toggle button's state on top of a switch's, so axe flagged every
      switch in the app and a screen reader was handed two answers to one
-     question (release blockers 09). Space and Enter come from the button
+     question. Space and Enter come from the button
      itself, and a native disabled button already refuses the click. */
   const flip = () => onChange(!checked);
 </script>

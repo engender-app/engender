@@ -49,7 +49,7 @@ test('a word the fold does not cover is still found, by FTS5 folding it', async 
 });
 
 test('a Cyrillic word is found however either side was capitalised', async () => {
-  /* Item 4. The entry half of the answer, and it was the half nobody had run: `fold.ts`'s
+  /* Entry notes use the same text folding: `fold.ts`'s
      table lists only Polish and Western European letterforms, so the suspicion was that a
      Cyrillic note fell through it. It does not, for two reasons that both have to hold - JS
      `toLowerCase` folds Cyrillic case on the way into `entry_fts`, and FTS5's default

@@ -204,9 +204,8 @@ describe('ClinicianSummaryDossier preview truncation', () => {
   });
 });
 
-/* the 5 October audit's follow-up on the summary a person hands their doctor. */
 describe('ClinicianSummaryDossier says only what the person told it', () => {
-  /* L04-02: every summary printed "Pronouns: Not specified", and nothing
+  /* Every summary printed "Pronouns: Not specified", and nothing
      in the app could change it. */
   it('draws the pronouns row only when pronouns were given', () => {
     expect(dossierComponent).toMatch(/{#if demographics\.pronouns\?\.trim\(\)}/);
@@ -219,7 +218,7 @@ describe('ClinicianSummaryDossier says only what the person told it', () => {
     expect(summaryPage).not.toMatch(/prefs\.pronouns/);
   });
 
-  /* L04-06: print showed the raw route code ("im", "oral") in English,
+  /* Print showed the raw route code ("im", "oral") in English,
      while the screen and the dose tables showed the label. */
   it('prints the same route label it shows, with no print-only route code', () => {
     expect(dossierComponent).not.toContain('dossier-route-print');
@@ -234,9 +233,7 @@ describe('ClinicianSummaryDossier says only what the person told it', () => {
   });
 });
 
-/* (UI-11): at phone width a wide table reads as stacked rows, and paper keeps the table.
-   The rendered check (every column on screen at 320 and 390, dates on one line) is the
-   ticket's browser probe; this pins the parts a later edit could quietly break. */
+/* Narrow screens stack rows. Print keeps the table. */
 describe('stacked rows at phone width', () => {
   const screenBlock = printCss.slice(printCss.indexOf('@media screen'));
 

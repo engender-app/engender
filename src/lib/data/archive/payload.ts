@@ -637,9 +637,8 @@ export interface ArchiveTryout extends ArchiveStamped {
 }
 
 /** One point in a tryout's felt-sense history, named by the tryout's own travelling uuid
-    rather than its rowid, which means nothing on the device importing this (ADR-0002). let
-    a milestone own readings too; cut them, and an older archive's milestone readings are
-    dropped on restore (restore.ts). */
+    rather than its rowid, which means nothing on the device importing this (ADR-0002).
+    Restore drops milestone readings from older archives (restore.ts). */
 export interface ArchiveFeltSenseEntry extends ArchiveStamped {
   id: string;
   tryoutId: string;

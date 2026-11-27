@@ -22,7 +22,7 @@ describe('accessibility seams', () => {
        screen reader can report. The series has to be readable as text somewhere on this
        screen, which is what this check is about - not which control opens it.
 
-       It was an "All values" link opening a sheet of bar rows item 26 took the link away.
+       The old "All values" link opened a sheet of bar rows.
        The text stayed: a visually hidden list of the same rows, which costs nothing on
        screen and keeps the numbers reachable. If that list ever goes too, this check should
        fail rather than be updated again. */

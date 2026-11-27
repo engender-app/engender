@@ -318,8 +318,7 @@ test('a finished area can still be added, and says the day it ended', () => {
 /* The pinned rows on Today drew the same backwards lines the Transition door did - "Last
    logged 8 days ago", "Nothing logged for 1 year 4 months" - and they draw the forward ones
    now through the same function, so a row cannot say one thing on one screen and something
-   else on the other. The rows here are `DEFAULT_ONBOARDING_AREAS`, which is the ticket's
-   own sign-off set. */
+   else on the other. The rows here are `DEFAULT_ONBOARDING_AREAS`, so the test covers the pins a new journal starts with. */
 
 test('the default pins draw whatever the forward read gave them', () => {
   const forward = {

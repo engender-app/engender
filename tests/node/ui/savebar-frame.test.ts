@@ -43,7 +43,7 @@ describe('the foot is the frame\'s, not the screen\'s', () => {
     const offenders = sources()
       .filter(({ text }) => /class=("|')[^"']*\beditor-savebar\b/.test(text) || /\.editor-savebar\b/.test(text))
       .map(({ path }) => path);
-    expect(offenders, 'the sticky footer retired with carpet 26').toEqual([]);
+    expect(offenders, 'only the shared save bar can use a sticky footer').toEqual([]);
 
     /* Twelve feet over ten files: the entry editor, two settings screens,
        the photo export, the compare tab, the two

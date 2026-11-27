@@ -6,7 +6,14 @@ import { parse } from 'svelte/compiler';
 import ts from 'typescript';
 
 const EXTENSIONS = new Set(['.css', '.html', '.java', '.js', '.mjs', '.svelte', '.ts', '.xml']);
-const INTERNAL_REFERENCE = /\b(?:tickets?[\s-]+#?(?:[a-z]+-)*\d+|phase[\s-]+\d+|(?:bug|interactive)[\s-]+session|(?:functional|final|last)[\s-]+audit|pre-release-human|ux-carpet|tester[\s-]+report|(?:after-release|pre-release|after-rc1|final-audit|(?:re-check[ -])?carpet|audit item|bug|issue)[\s-]+\d+|(?:CARPET|AU|FA|GD)[ -]\d+|audit\s+(?:finding\s+)?(?:(?:UI|A11Y)[\s-]+)?[A-Z]+-?\d+|Alicja)\b|\.scratch\/|\b(?:CONTEXT|DIRECTION|PRODUCT|SCREENS|DESIGN)\.md\b|\bdocs\/(?:agents\/|internal\/|research\/|ui-copy\.md)/gi;
+const INTERNAL_REFERENCE = new RegExp([
+  /\b(?:tickets?[\s-]+#?(?:[a-z]+-)*[a-z]*\d+|phase[\s-]+\d+|(?:bug|interactive)[\s-]+session|pre-release-human|ux-carpet|tester[\s-]+report|Alicja)\b/,
+  /\b(?:(?:functional|final|last|sec|security)[\s-]+audit|sign[\s-]+off|prh[\s-]?\d+)\b/,
+  /\b(?:after-release|pre-release|after-rc1|final-audit|(?:re-check[ -])?carpet|audit item|bug|issue|redesign|release blockers)[\s-]+\d+\b/,
+  /\bitem\s+\d+\b|\baudit\s+(?:finding\s+)?(?:(?:UI|A11Y)[\s-]+)?[A-Z]+-?\d+\b/,
+  /\b(?:(?:CARPET|AU|FA|GD|UI|UX|A11Y|PERF)[ -]\d+|L\d{2}-\d{2})\b/,
+  /\.scratch\/|\b(?:CONTEXT|DIRECTION|PRODUCT|SCREENS|DESIGN)\.md\b|\bdocs\/(?:agents\/|internal\/|research\/|ui-copy\.md)/
+].map((pattern) => pattern.source).join('|'), 'gi');
 
 /** @typedef {{ start: number, end: number }} Range */
 
@@ -100,10 +107,16 @@ export function commentRanges(file, source) {
   const extension = extname(file);
   let ranges;
   switch (extension) {
+    case '.md': ranges = [{ start: 0, end: source.length }]; break;
     case '.svelte': ranges = svelteComments(source); break;
     case '.css': case '.java': ranges = cssOrJavaComments(source, extension === '.java'); break;
     case '.html': case '.xml': ranges = markupComments(source); break;
     default: ranges = scriptComments(file, source);
+  }
+  if (file === 'src/lib/data/sqlite/schema.ts') {
+    for (const match of source.matchAll(/^--[^\r\n]*(?:\r?\n--[^\r\n]*)*/gm)) {
+      ranges.push({ start: match.index, end: match.index + match[0].length });
+    }
   }
   return ranges.sort((a, b) => a.start - b.start);
 }
@@ -117,8 +130,9 @@ export function countReferences(file, source) {
 }
 
 export function commentSourceFiles() {
-  return execFileSync('git', ['ls-files', '-z', '--', 'src', 'tests', 'android/app/src', 'scripts'], { encoding: 'utf8' })
-    .split('\0').filter((file) => EXTENSIONS.has(extname(file)) && existsSync(file));
+  return execFileSync('git', ['ls-files', '-z', '--', 'src', 'tests', 'android/app/src', 'scripts',
+    ':(top,glob)*.config.*', 'ARCHITECTURE.md'], { encoding: 'utf8' })
+    .split('\0').filter((file) => (file === 'ARCHITECTURE.md' || EXTENSIONS.has(extname(file))) && existsSync(file));
 }
 
 function main() {
@@ -130,7 +144,7 @@ function main() {
       throw new Error(`Cannot scan comments in ${file}`, { cause: error });
     }
     if (count) {
-      console.error(`FAIL ${file} has ${count} internal references in comments. Explain the behavior or link to a public source.`);
+      console.error(`FAIL ${file} has ${count} internal references. Explain the behavior or link to a public source.`);
       process.exitCode = 1;
     }
   }

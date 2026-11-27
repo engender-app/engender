@@ -125,7 +125,7 @@
   let takeSaved = $state(false);
 
   /* A recorded take lives only here until Save, so leaving the screen or switching to
-     another tab used to drop it without a word (02). Leaving asks first while a take is
+     another tab used to drop it without a word. Leaving asks first while a take is
      unsaved (leaveGuard.ts); the page routes its tab switch through `leave`. */
   const guard = leaveGuard({
     holding: () => passageTake !== null && !takeSaved,

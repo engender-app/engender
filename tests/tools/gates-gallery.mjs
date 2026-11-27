@@ -22,7 +22,7 @@ import { PALETTES } from '../palettes.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);
-/* The gates alone, which is what a gate ticket's sign-off shows: the first run has its own
+/* Capture the gates. Setup has its own
    galleries since it became a step machine, and a review page that also carries ten setup
    steps is a review page nobody can find the change in. */
 const gatesOnly = argv.includes('--gates-only');

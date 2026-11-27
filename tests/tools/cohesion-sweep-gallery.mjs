@@ -149,8 +149,7 @@ const AUDITED = ['.card', '.app-savebar'];
    journal. Keep its findings separate until the main run writes its
    report, then merge them in. */
 const PIN_ANDROID = args.includes('--pin-android');
-/* `[data-checkin]` rather than a `.card` variant: took the box off the check-in group, and
-   the group is what this leg exists to photograph. */
+/* Crop the check-in group using `[data-checkin]`. */
 const GATED = [{ path: '/settings/reminders', name: 'reminders', shoot: '[data-checkin]' }];
 const SCREEN = resolve(root, 'src/routes/settings/reminders/+page.svelte');
 const PINNED = '  let isWeb = $derived(false && !isAndroid()); // pinned by tests/tools/cohesion-sweep-gallery.mjs';
@@ -1016,7 +1015,7 @@ for (const [bucket, items] of Object.entries(groups)) {
   for (const row of rows) lines.push(`- \`${row.where}\` - ${row.detail} - ${row.routes.length} reading(s): ${row.routes.join(', ')}`);
   lines.push('');
 }
-/* Rule 7, route by route . The other checks report the divergences and say nothing about
+/* Check the field route by route. The other checks report the divergences and say nothing about
    what passed, which is right for a rule that reads a property off every element on the
    screen. This one is a verdict per screen against what that screen *is*, so the whole list
    goes in the report: a route missing from it is a route the walk never read, and that is

@@ -692,7 +692,7 @@ test('the manifest leaves out a page a PDF never had', async () => {
   );
 });
 
-/* Left Trash out of archives. carries it, so moving an entry to Trash on one device,
+/* Archives carry Trash state. Moving an entry to Trash on one device,
    restoring it, or deleting it for good reaches the other through a Merge. */
 test('a trashed entry travels with its Trash time, and its photo, recording and video-note files with it', async () => {
   const { journal, db, entry, photo, recording, videoNote, milestonePhoto } = await populated();

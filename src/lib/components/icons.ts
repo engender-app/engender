@@ -44,10 +44,7 @@ export const PATHS: Record<string, string> = {
   download: '<path d="M12 1.79v12M7 8.79l5 5 5-5"/><path d="M5 19.79h14"/>',
   upload: '<path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 21h14"/>',
   tag: '<path d="M2.81 12.31V4.81a2 2 0 0 1 2-2h7.5L21.81 12.31a2.1 2.1 0 0 1 0 3L15.31 21.81a2.1 2.1 0 0 1-3 0z"/><circle cx="8.31" cy="8.31" r="1.3"/>',
-  /* Redrawn rather than shifted. moved this glyph to put its bounding box in the middle of
-     the box and said in as many words that optical centring across the set was - this is
-     that: the pole is shorter, the banner reaches further right, and the whole mark now
-     measures 0.28 off centre where the shifted version measured 1.6. */
+  /* Shorten the pole and extend the banner to centre the ink within the icon. */
   flag: '<path d="M6 21V5"/><path d="M6 6h12.5l-2.4 4 2.4 4H6"/>',
   flask: '<path d="M10 1.38v7L4.5 18.38a2 2 0 0 0 1.8 3h11.4a2 2 0 0 0 1.8-3L14 8.38V1.38"/><path d="M8 1.38h8M7.5 14.38h9"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',

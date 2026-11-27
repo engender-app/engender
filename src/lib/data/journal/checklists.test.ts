@@ -185,7 +185,7 @@ test('getDebriefState reads everything the offer predicate needs in one call', a
 });
 
 test('a journal with no most recent past appointment gets no debrief offer', async () => {
-  /* Item 6, rekeyed. Both halves of the gate are already tested apart - `getDebriefState`
+  /* Both halves of the gate are already tested apart - `getDebriefState`
      answers a null appointment id with itemCount/dismissed/debriefEntryId that all read as
      "nothing recorded" above, and `debriefOfferVisible` answers false to a null id in
      debriefOffer.test.ts - but nothing joined them, so nothing would notice a read that

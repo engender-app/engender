@@ -248,7 +248,7 @@ try {
   assert.equal(await page.locator('#regimen-every').inputValue(), '9');
   await fault('deletePause', 'fail');
   await page.locator('[data-delete-pause]').click();
-  // Deleting a pause asks first (UI 07); the write runs on the confirm.
+  // Deleting a pause asks first; the write runs on the confirm.
   await page.locator('[data-confirm-delete-pause]').click();
   await failed();
   assert.equal((await stored()).pauses.length, 1);

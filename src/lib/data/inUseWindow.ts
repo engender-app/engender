@@ -2,7 +2,7 @@
    stockProjection.ts.
 
    An in-use window in days and an explicit end date are two different things a label can
-   say, stored as typed rather than one derived from the other . This module never derives
+   say, stored as typed rather than one derived from the other. This module never derives
    one from the other either: it only combines whichever was typed into a single day to
    display, for the container whose opened date and window this is.
 

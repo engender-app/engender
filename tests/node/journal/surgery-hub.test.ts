@@ -197,7 +197,7 @@ describe('Procedure Care & Recovery Hub', () => {
   });
 });
 
-/* prh12: rows about a procedure open its own screen, not the surgery list. */
+/* Rows about a procedure open its own screen, not the surgery list. */
 describe('rows elsewhere open the procedure screen', () => {
   it('opens a search hit and a day recovery-photo row on /health/surgery/<id>', () => {
     expect(read('src/lib/components/searchHitRows.ts')).toContain(

@@ -396,9 +396,7 @@ export async function seedFullFixture(
   // behind it and one still to come - `open` (ProcedureRecoveryCard.svelte)
   // is everything but the archived phase, so this is what puts a full-size,
   // still-running rail beside the first procedure's collapsed, archived
-  // one. The consult ahead is what gives that card its forward line (audit
-  // item 13): with both consults behind it, the card that is meant to say
-  // what is next has nothing to say.
+  // one. The upcoming consult supplies the active card’s next event.
   const secondProcedureId = await journal.procedures.upsertProcedure({
     name: say('facial feminization surgery', 'feminizacja twarzy (FFS)'),
     kind: 'facial_feminization',

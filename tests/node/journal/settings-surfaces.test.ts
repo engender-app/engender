@@ -231,7 +231,7 @@ describe('what Settings is built from', () => {
     }
   });
 
-  it('sizes the flag bands to the border box so no edge row shows the far end (prh12)', () => {
+  it('sizes the flag bands to the border box so no edge row shows the far end', () => {
     /* The swatch's 1px edge is translucent and a gradient defaults to the
        padding box and tiles, so the border row drew the opposite end of the
        flag: the last band along the top, the first along the bottom. */

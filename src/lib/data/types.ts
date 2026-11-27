@@ -660,15 +660,7 @@ export interface RegimenTemplate {
   lean: Lean;
 }
 
-/** A stable key into `personal_effect_type` (schema.ts) - an open vocabulary now, not a
-    closed union. closed this list at four feminizing markers; reopened it once to reach
-    trans-masc parity and closed it again at eight, calling that closure final. is the third
-    revisit and stops closing it: roughly forty feminizing and thirty masculinizing
-    built-ins, plus whatever a person adds of their own, the same `key: string` a
-    `MeasurementType` or `BodyRegion` uses rather than a string-literal union `labels.ts`
-    would otherwise have to cover exhaustively. "Masculinizing fat redistribution" stays a
-    distinct key from "fat redistribution" - the two describe different, not opposite,
-    changes - and every existing key from the eight is unchanged. */
+/** A stable key into `personal_effect_type` (schema.ts), an open vocabulary. */
 export type PersonalEffectType = string;
 
 /** Which of the source material's two time-course tables a built-in effect's window is a

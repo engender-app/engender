@@ -171,7 +171,7 @@ if (offered) {
 /* A restore that was interrupted - the live file back at schema 0 with a readable copy
    beside it - is finished without asking. The runner throws InterruptedRestoreError from
    inside boot(), after which the driver is closed, so the restore has to run on a worker of
-   its own (219). Stamped 0 here, and reloaded rather than retried: nothing is pressed, the
+   its own. Stamped 0 here, and reloaded rather than retried: nothing is pressed, the
    next boot has to find it and put the copy back. */
 {
   const { context, page, bootOf, settled } = await failedMigration('interrupted', 0);

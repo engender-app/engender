@@ -54,7 +54,7 @@ interface AgendaAppointment {
   place: string | null;
   more: number;
   /** The appointment the row names, whose own screen it opens while it is
-      the day's only one (prh12). */
+      the day's only one. */
   id: string;
 }
 
@@ -184,7 +184,7 @@ export function agenda(input: AgendaInput): Agenda | null {
       };
       if (mark.kind === 'appointment' && mark.epochDay === input.todayEpochDay && today) {
         item.appointment = today;
-        /* The day's only appointment opens its own screen (prh12). Two on
+        /* The day's only appointment opens its own screen. Two on
            the day keep the list: the row names only the first of them. */
         if (today.more === 0) item.route = `${item.route}/${encodeURIComponent(today.id)}`;
       }

@@ -61,7 +61,7 @@
   let litKey = $derived<Record<string, string>>({ bar: activeKey, rail: railKey });
   /* A borrowed door is lit so the bar keeps its place, but it is not the
      page: settings chrome is, so nothing on the bar claims aria-current
-     there (UI-07: screen readers heard Today on /settings). */
+     there. Marking Today current would announce the wrong page. */
   let onChrome = $derived(page.url.pathname.startsWith('/settings'));
 
   /* Which mark the add control is wearing. All three are rendered and

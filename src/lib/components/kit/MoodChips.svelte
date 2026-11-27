@@ -43,7 +43,7 @@
   /* A tap toggles: picking the selected mood again clears it. An arrow key
      picks nothing here, because Today's pick opens the editor: arrows only
      move focus, and Space or Enter is the pick (rovingRadio's
-     `selectOnArrow`, audit A11Y-02). */
+     `selectOnArrow`). */
   function choose(i: number) {
     announce(i, STEPS[i] === value ? null : STEPS[i]);
   }

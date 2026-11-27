@@ -2,8 +2,8 @@
    screens because a component fixture cannot prove the date picker, mounted outside the
    screen, cooperates with the app shell and live routes.
 
-   Pass an output directory to keep sign-off screenshots: node
-   tests/guards/sheet-focus-check.mjs.claude/-shots */
+   Pass an output directory to save screenshots: node
+   tests/guards/sheet-focus-check.mjs <output-dir> */
 import { preview } from 'vite';
 import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';

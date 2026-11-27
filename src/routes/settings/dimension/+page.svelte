@@ -48,8 +48,8 @@
   /* Add the scale, then tick it, which is what makes it appear in the editor. It used to
      take three writes: a dimension, a custom preset holding the active preset's scales plus
      the new one, and a switch to that preset - all because the stored choice was a preset
-     and a preset had to exist for a scale to be in one. made the stored choice the list
-     itself, so the second and third writes have nothing left to do. */
+     and a preset had to exist for a scale to be in one. Storing the list directly
+     makes only the dimension write necessary. */
   const saving = writer();
   async function saveDimension() {
     let created: { key: string } | undefined;

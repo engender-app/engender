@@ -106,11 +106,11 @@ describe('choosing a tier-2 pattern', () => {
     expect(
       screenTransition(nav({ from: '/entry/41', to: '/day/20690', type: 'popstate', delta: -1 }))
     ).toBe('container');
-    /* A day card is a container; Home's rows are not (item 23, below). */
+    /* A day card is a container; Home's rows are not. */
   });
 
   it('fades Home into an entry like a tab crossing, both ways', () => {
-    /* Item 23: from Home an entry opens as a peer crossing, not a box
+    /* From Home an entry opens as a peer crossing, not a box
        growing - the same fade-through a tab switch gets. Back out of it the
        tab rule already fades too, because /entry lights the calendar tab
        and / is no tab's step, so the pair stays symmetric without this

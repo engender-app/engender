@@ -130,7 +130,7 @@
 .step-field {
   position: relative;
   flex: 0 0 auto;
-  /* Sideways only. stopped this field crossing the top inset: setup draws the sun in its
+  /* Expand sideways only. Keep the field below the top inset: setup draws the sun in its
      corner, and the status bar's own icons were landing on the flag's bands. The band above
      the field is the page's colour now - white in light, near black in dark - which is a
      ground the bar's icons can be read against whichever tint Android picks. The gate wears
@@ -1093,11 +1093,8 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
     transition: transform var(--dur-fast) var(--ease-out), opacity var(--dur-fast);
   }
 }
-/* --outline (19% of --text) is a card's edge - a subtle line between two already-similar
-   surface tones. A mood face sits straight on the bare app background instead, which is wh
-   item 2's regression report caught: the intended border read as no border at all. It took
-   the 30% line for a while; (rule 4) left the app two line strengths and the disc takes
-   --outline, since faces separate the five steps by their drawing rather than by a ring. */
+/* The disc uses --outline. The face drawing distinguishes the five steps,
+   including when the edge is faint against the page background. */
 .mood-face-disc {
   fill: var(--face-mood);
   stroke: var(--outline);

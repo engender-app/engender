@@ -164,8 +164,7 @@ await block('sheet cleanup after navigation', 5, async () => {
     /* overlayLock.ts's `onOverlayKeydown` is registered on `window` with
        `capture: true` and, for a still-registered owner, calls
        `event.preventDefault()` / `stopImmediatePropagation()` before any
-       bubble-phase listener sees the key - that is the mechanism item 3
-       names ("stays topOwner() ... so Escape ... acts on it"), and it is
+       bubble-phase listener sees the key. Escape then acts on the top owner, and this is
        what a plain bubble listener added *after* navigating can prove
        directly: it only ever misses Escape if something upstream already
        consumed it. On the fixed branch the departed sheet's own listener

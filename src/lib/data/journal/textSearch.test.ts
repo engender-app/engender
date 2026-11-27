@@ -277,7 +277,7 @@ test('a row that matched on two of its columns shows the one its area prefers', 
 });
 
 test('a Cyrillic word in a scanned area is found however either side was capitalised', async () => {
-  /* Item 4, the non-entry half - and the half that was genuinely broken. An entry note goes
+  /* Check the non-entry search branches. An entry note goes
      through `foldText` in JS on both sides, where `toLowerCase` handles Cyrillic; a
      milestone name is matched by `foldedSql` inside SQL, and SQLite's `lower` maps A-Z and
      nothing else. So `Настя` stayed capitalised in the column while `настя` was folded on

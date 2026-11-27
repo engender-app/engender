@@ -22,8 +22,7 @@
   }: {
     row: GrantRow;
     title: string;
-    /** What the app does with the capability, in those terms rather than in the OS's . One
-        line. */
+    /** Describe what the app does with this permission in one line. */
     why: string;
     busy?: boolean;
     /** True on the row whose answer just changed, which is the one row that

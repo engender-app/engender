@@ -144,7 +144,7 @@
   inset: 0 min(0px, calc((100% - var(--touch-target)) / 2));
 }
 
-/* Phone width (the audit's UI-11). Six tables 336 to 625px wide sat in a 306px region, so
+/* At phone width. Six tables 336 to 625px wide sat in a 306px region, so
    even with a scroll cue every header past the edge read cut mid-word ("Rout", "Dose 48
    m"), and dates broke a word a line. Below 30rem of frame, a table with three or more
    columns reads as stacked rows instead: each row a block, each cell its header over its

@@ -429,7 +429,7 @@ export async function measureLongJournal(
 
   // The doubt journal (doubt/+page.svelte) always runs this pool, not from
   // a sheet someone opens: the same EUPHORIA_TAG_KEYS and limit (20) the
-  // screen itself uses. Widened by 44 to include a
+  // screen itself uses. The pool includes a
   // body-region euphoria clause alongside starred entries and euphoria
   // tags.
   await measure('doubt-counterevidence', 'doubt journal, the counterevidence pool', async () => {
@@ -536,7 +536,7 @@ export async function measureLongJournal(
   // Stock (care/+page.svelte's stock sheet): getProjections(today) used to read
   // every dose from the oldest stock entry forward and reduce three numbers
   // per entry out of them - O(entries x doses) at decade scale, and 538KB of
-  // Home's mount on this fixture. replaced that with
+  // Home's mount on this fixture. The projection now uses
   // one grouped count per date window (stockProjection.ts's projectEveryStock),
   // so what this now measures is a handful of counts whatever the log's
   // length, and mount-home's byte figure below is the ratchet that keeps it

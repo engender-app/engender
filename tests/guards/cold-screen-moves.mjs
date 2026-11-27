@@ -29,9 +29,8 @@ const flag = (name, fallback) => {
 const RUNS = Number(flag('runs', '3'));
 const THEME = flag('theme', 'light');
 const DUMP = flag('dump', '') && resolve(flag('dump', ''));
-/* The screens with a heading-led ReadGate (191) and the ones found with a
-   late ungated block (193). `--routes` takes any list; every static route
-   was swept this way on 2026-09-23. */
+/* Default routes cover heading-led ReadGate and late ungated blocks.
+   Use --routes to supply a different list. */
 const ROUTES = flag(
   'routes',
   '/transition/tryouts,/health/surgery,/transition/letters,/body/hair-removal,/media/photos/export,' +

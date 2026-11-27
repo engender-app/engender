@@ -653,11 +653,8 @@
     gap: var(--space-5);
   }
 
-  /* The earlier/later row under a take. It lived in screens.css while the progress-photo
-     comparison read it too; put that comparison on one draggable divider
-     (PhotoWipe.svelte), which left this screen as the only consumer and
-     check-screens-classes.mjs asking for the rule here. Its buttons were sized 36px until
-     SH-106 and take `.icon-btn`'s own 44px since; the rule carries no size of its own. */
+  /* The take navigation uses the 44px target from `.icon-btn`.
+     Progress photos use the divider in PhotoWipe.svelte. */
   .compare-nav {
     display: flex;
     align-items: center;
