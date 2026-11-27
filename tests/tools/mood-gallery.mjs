@@ -149,7 +149,7 @@ if (args.includes('--app')) {
 }
 
 const server = await createServer({
-  configFile: `${here}/browser-tier/browser-tier.vite.config.ts`,
+  configFile: `${here}/../browser-tier/browser-tier.vite.config.ts`,
   server: { port: 0 }
 });
 await server.listen();

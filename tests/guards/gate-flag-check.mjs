@@ -20,7 +20,7 @@ const check = (name, pass, detail) => (pass ? ok(name) : fail(name, detail));
 
 /* The fixture's own build flag, so it renders as the app's demo would. */
 const server = await createServer({
-  configFile: `${here}/browser-tier/browser-tier.vite.config.ts`,
+  configFile: `${here}/../browser-tier/browser-tier.vite.config.ts`,
   server: { port: 0 },
   define: { __DEMO__: 'true' },
   logLevel: 'error'
