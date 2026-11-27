@@ -150,6 +150,17 @@ try {
         return original(...args);
       };
     }
+    /* Deleting a pause runs through journal.undoable, which hands the removal
+       a transaction's own journal and so never reaches the patched method;
+       its fault goes on undoable instead. */
+    const undoable = bootState.journal.undoable.bind(bootState.journal);
+    bootState.journal.undoable = async (remove) => {
+      const fault = window.regimenFault;
+      fault.calls.deletePause = (fault.calls.deletePause ?? 0) + 1;
+      if (fault.operation === 'deletePause' && fault.mode === 'fail') throw new Error('Injected regimen write failure');
+      if (fault.operation === 'deletePause' && fault.mode === 'pending') await new Promise((resolve) => { fault.resolve = resolve; });
+      return undoable(remove);
+    };
     const { attachJournal, journalIsOpen } = await import('/src/lib/data/live/journal.svelte.ts');
     attachJournal(bootState.journal);
     journalIsOpen();
