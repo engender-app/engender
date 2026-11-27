@@ -549,9 +549,15 @@ try {
   console.log('PASS confirmation renders across eight palettes and both themes with 48px actions');
   await discard();
   await navigate('/settings');
-  await page.locator('[data-segment="pl"]').click();
+  await Promise.all([
+    page.waitForEvent('load'),
+    page.locator('[data-segment="pl"]').click()
+  ]);
   await page.waitForSelector('[data-app-root][data-boot="ready"]');
+  assert.equal(await page.locator('html').getAttribute('lang'), 'pl');
+  const languageDocument = await page.evaluate(() => performance.timeOrigin);
   await navigate('/health/appointments');
+  assert.equal(await page.evaluate(() => performance.timeOrigin), languageDocument, 'the appointment link stays in the Polish document');
   await openNew();
   await page.locator('#appointment-note').fill('Pytania na wizytę');
   await page.locator('[data-close-record]').click();
