@@ -169,14 +169,14 @@
         onclick={() => {
           const { id, builtIn, icon, was } = renameTarget!;
           const label = renameTarget!.label.trim();
-          const renames = label !== '' && label !== was.label;
-          const reicons = !builtIn && icon !== was.icon;
-          const write = renames || reicons
-            ? async () => {
-                if (renames) await journal.tags.renameTag(id, label);
-                if (reicons) await journal.tags.setTagIcon(id, icon);
-              }
-            : null;
+          const changedLabel = label && label !== was.label ? label : undefined;
+          const changedIcon = !builtIn && icon !== was.icon ? icon : undefined;
+          let write = null;
+          if (builtIn && changedLabel) {
+            write = () => journal.tags.renameTag(id, changedLabel);
+          } else if (changedLabel !== undefined || changedIcon !== undefined) {
+            write = () => journal.tags.editOwnTag(id, { label: changedLabel, icon: changedIcon });
+          }
           saveFromSheet(write, () => (renameTarget = null));
         }}><span>{m.save()}</span></button
       >

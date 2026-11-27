@@ -14,8 +14,8 @@ export interface TagsArea {
   addTag(groupKey: string, label: string, icon?: string | null): Promise<Tag>;
   renameTag(id: string, label: string): Promise<void>;
   setTagHidden(id: string, hidden: boolean): Promise<void>;
-  /** Own tags only; a built-in's icon is this build's. null is no icon. */
-  setTagIcon(id: string, icon: string | null): Promise<void>;
+  /** Update the supplied fields of an own tag. A null icon clears it. */
+  editOwnTag(id: string, changes: { label?: string; icon?: string | null }): Promise<void>;
   /** Customs only; built-ins hide. Removes the tag's entry links too.
       Idempotent: deleting an already-gone tag is success. */
   deleteTag(id: string): Promise<void>;
@@ -113,11 +113,13 @@ export function makeTagsArea(driver: SqliteDriver): TagsArea {
       return { id: uuid, label, builtIn: false, hidden: false, ...(icon !== null ? { icon } : {}) };
     },
 
-    async setTagIcon(id, icon) {
-      const row = await byDomainId(id);
-      if (!row) throw new Error(`unknown tag: ${id}`);
-      if (row.key !== null) throw new Error(`a built-in tag's icon is not stored: ${id}`);
-      await driver.run('UPDATE tag SET icon = ?, updated_at = ? WHERE id = ?', [icon, now(), row.id]);
+    async editOwnTag(id, { label, icon }) {
+      const result = await driver.run(
+        `UPDATE tag SET label = COALESCE(?, label), icon = CASE WHEN ? THEN ? ELSE icon END, updated_at = ?
+         WHERE uuid = ? AND key IS NULL`,
+        [label ?? null, icon === undefined ? 0 : 1, icon ?? null, now(), id]
+      );
+      assertChanged(result, `own tag: ${id}`);
     },
 
     async renameTag(id, label) {

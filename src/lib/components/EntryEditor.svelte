@@ -1505,6 +1505,7 @@
 
   {#snippet tagPicker()}
     <TagPicker
+      emotionFamilies
       groups={vocabulary.visibleTagGroups}
       selected={entryDraft.tags}
       onChange={(next) => entryDraft.setTags(next)}

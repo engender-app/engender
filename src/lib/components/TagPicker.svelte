@@ -4,20 +4,21 @@
   import Icon from './Icon.svelte';
   import Sheet from './Sheet.svelte';
   import { tagIconOf, tagIconSvg } from './tagIcons';
-  import { finerOf, tapFamily, toggleTag } from '$lib/data/vocabulary/emotionFamilies';
-  import { EMOTION_FAMILIES } from '$lib/data/vocabulary/builtins';
+  import { familyPicked, finerOf, tapFamily, toggleTag } from '$lib/data/vocabulary/emotionFamilies';
   import { disclose, resize } from '$lib/motion/reveal';
   import { pinnedOut } from '$lib/motion/narrow';
-  import { motionDuration } from '$lib/motion/tokens';
+  import { crossfadeDuration, EASE_OUT, fadeOnly, isReducedMotion, motionDistance, motionDuration } from '$lib/motion/tokens';
   import type { Tag, TagGroup } from '$lib/data/types';
 
   let {
     groups,
     selected,
+    emotionFamilies = false,
     onChange
   }: {
     groups: TagGroup[];
     selected: string[];
+    emotionFamilies?: boolean;
     onChange: (next: string[]) => void;
   } = $props();
 
@@ -25,61 +26,72 @@
   // type), so this stays null for every chip that has no info affordance.
   let infoTag = $state<Tag | null>(null);
 
-  const FAMILY_ORDER: readonly string[] = EMOTION_FAMILIES.map((f) => f.key);
-
   /* Emotion families (pre-release-human 22): the one family whose finer
      words show under the emotions row, or none. One at a time keeps the
      step short; a closed family with finer picks says so with a count. */
   let open = $state<string | null>(null);
+  let switching = $state(false);
 
   /** A group's tags split for the families row: each family with the finer
       words of it this group shows, then every other tag. A finer word whose
       family is hidden has nothing to open it, so it stands as a plain pill. */
   function arrange(g: TagGroup) {
-    const shown = new Map(g.tags.map((t) => [t.id, t]));
     const families: { tag: Tag; finer: Tag[] }[] = [];
+    if (!emotionFamilies || g.key !== 'emotions') return { families, rest: g.tags };
     const filed = new Set<string>();
     for (const t of g.tags) {
       const finer = finerOf(t.id);
       if (finer.length === 0) continue;
-      const words = finer.flatMap((id) => shown.get(id) ?? []);
+      const words = g.tags.filter((tag) => finer.includes(tag.id));
       families.push({ tag: t, finer: words });
       for (const w of words) filed.add(w.id);
       filed.add(t.id);
     }
-    /* The families' own order, not the group's: a journal that predates
-       `e-angry` holds it after the phase 1 six, where reconcile appended it. */
-    families.sort((a, b) => FAMILY_ORDER.indexOf(a.tag.id) - FAMILY_ORDER.indexOf(b.tag.id));
     return { families, rest: g.tags.filter((t) => !filed.has(t.id)) };
   }
 
-  const toggle = (id: string) => onChange(toggleTag(selected, id));
-  const tapOn = (family: string) => {
+  function toggle(id: string, finer: boolean) {
+    const next = toggleTag(selected, id, finer);
+    if (open && !familyPicked(next, open)) open = null;
+    onChange(next);
+  }
+
+  function tapOn(family: string) {
     const next = tapFamily({ selected, open }, family);
+    switching = open !== null && next.open !== null;
     open = next.open;
     if (next.selected !== selected) onChange(next.selected);
-  };
+  }
 
-  /** A finer word arriving: it fades and rises into place, each a beat
-      after the one before. motionDuration is 0 under reduced motion, the
-      instant cut tier 3 owes that setting. */
-  function wordIn(_node: Element, { index }: { index: number }): TransitionConfig {
-    const duration = motionDuration('--dur-fast');
+  function trayMotion(node: Element): TransitionConfig {
+    return isReducedMotion() ? fadeOnly(crossfadeDuration()) : disclose(node);
+  }
+
+  function wordsIn(_node: Element, { switching }: { switching: boolean }): TransitionConfig {
+    const reduced = isReducedMotion();
+    if (reduced && !switching) return { duration: 0 };
+    const duration = reduced ? crossfadeDuration() : motionDuration('--dur-fast');
+    const distance = reduced ? 0 : motionDistance('--motion-distance-sm');
+    const outgoing = switching ? crossfadeDuration() : 0;
+    const total = outgoing + duration;
     return {
-      duration,
-      delay: duration === 0 ? 0 : 40 + index * 28,
-      css: (t) => `opacity: ${t}; transform: translateY(${(1 - t) * 6}px);`
+      duration: total,
+      css: (t) => {
+        // Wait for the outgoing fade within the same frame clock.
+        const progress = EASE_OUT(Math.max(0, (t * total - outgoing) / duration));
+        return `opacity: ${progress};` + (reduced ? '' : `transform: translateY(${(1 - progress) * distance}px);`);
+      }
     };
   }
 </script>
 
-{#snippet chip(t: Tag)}
+{#snippet chip(t: Tag, finer = false)}
   <button
     class="tag-chip"
     class:is-selected={selected.includes(t.id)}
     aria-pressed={selected.includes(t.id)}
     data-tag={t.id}
-    onclick={() => toggle(t.id)}
+    onclick={() => toggle(t.id, finer)}
   >
     {@html tagIconSvg(tagIconOf(t))}{t.label}
   </button>
@@ -105,18 +117,22 @@
   <div class="tag-row" role="group" aria-label={m.tags_group_aria({ group: g.name })}>
     {#each families as f (f.tag.id)}
       {@const inside = f.finer.filter((w) => selected.includes(w.id)).length}
+      {@const picked = familyPicked(selected, f.tag.id)}
       <button
         class="tag-chip"
-        class:is-selected={selected.includes(f.tag.id)}
+        class:is-selected={picked}
         class:is-open={open === f.tag.id}
-        aria-pressed={selected.includes(f.tag.id)}
+        aria-pressed={picked}
         aria-expanded={f.finer.length > 0 ? open === f.tag.id : undefined}
         aria-controls={open === f.tag.id ? `family-${g.key}` : undefined}
         data-tag={f.tag.id}
         data-family={f.tag.id}
-        onclick={() => (f.finer.length > 0 ? tapOn(f.tag.id) : toggle(f.tag.id))}
+        onclick={() => (f.finer.length > 0 ? tapOn(f.tag.id) : toggle(f.tag.id, false))}
       >
         {@html tagIconSvg(tagIconOf(f.tag))}{f.tag.label}{#if inside > 0}<span class="tag-count" aria-hidden="true">{inside}</span><span class="visually-hidden">{m.tag_family_picked_inside({ count: String(inside) })}</span>{/if}
+        {#if f.finer.length > 0}
+          <span class="family-chevron"><Icon name="chevronDown" size={14} /></span>
+        {/if}
       </button>
     {/each}
     {#each rest as t (t.id)}
@@ -126,12 +142,18 @@
   {#if families.length > 0}
     {@const openFamily = families.find((f) => f.tag.id === open && f.finer.length > 0)}
     {#if openFamily}
-      <div class="family-tray" id={`family-${g.key}`} transition:disclose>
+      <div class="family-tray" id={`family-${g.key}`} transition:trayMotion>
         <div class="family-words-frame" use:resize>
           {#key openFamily.tag.id}
-            <div class="tag-row family-words" role="group" aria-label={openFamily.tag.label} out:pinnedOut>
-              {#each openFamily.finer as t, index (t.id)}
-                <span class="family-word" in:wordIn|global={{ index }}>{@render chip(t)}</span>
+            <div
+              class="tag-row family-words"
+              role="group"
+              aria-label={openFamily.tag.label}
+              in:wordsIn|global={{ switching }}
+              out:pinnedOut={{ opacityOnly: true }}
+            >
+              {#each openFamily.finer as t (t.id)}
+                {@render chip(t, true)}
               {/each}
             </div>
           {/key}
@@ -170,8 +192,13 @@
   .tag-picker :global(.tag-chip.is-selected .tag-icon) {
     color: currentColor;
   }
-  .tag-chip.is-open {
-    border-color: var(--accent);
+  .family-chevron {
+    display: inline-flex;
+    flex: none;
+    transition: transform var(--dur-fast) var(--ease-out);
+  }
+  .tag-chip.is-open .family-chevron {
+    transform: rotate(180deg);
   }
   .tag-count {
     margin-left: 1px;
@@ -184,15 +211,12 @@
     color: currentColor;
   }
 
-  /* The finer words' tray: one surface under the row that opens its own
-     height (disclose) and keeps that one box while a different family's
-     words replace these (resize). Which family it belongs to is the chip
-     with the accent edge: a pointer under it named whichever chip stood
-     above it once the families wrapped to two rows. */
+  /* One tray opens to its own height and resizes when its words change. */
   .family-tray {
     position: relative;
     margin-top: var(--space-3);
-    border-radius: 18px;
+    border-radius: var(--r-block);
+    border: 1px solid var(--outline);
     background: var(--surface-2);
   }
   .family-words-frame {
@@ -200,8 +224,5 @@
   }
   .family-words {
     padding: var(--space-3);
-  }
-  .family-word {
-    display: inline-flex;
   }
 </style>

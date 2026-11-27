@@ -4,6 +4,7 @@
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
+import { toggleTag } from '../vocabulary/emotionFamilies.ts';
 import { journalWithBuiltIns, UUID_PATTERN } from './test-support.ts';
 
 test('a custom tag gets a minted uuid id, never a Date-based one', async () => {
@@ -123,17 +124,19 @@ test('an own tag takes an icon when added, changes it, and drops it back to none
   const read = async () => (await journal.tags.getTagGroups()).flatMap((g) => g.tags).find((t) => t.id === tag.id);
   assert.equal((await read())?.icon, 'mountain');
 
-  await journal.tags.setTagIcon(tag.id, 'bike');
+  await journal.tags.editOwnTag(tag.id, { label: 'cycling', icon: 'bike' });
+  assert.deepEqual(await read(), { id: tag.id, label: 'cycling', builtIn: false, hidden: false, icon: 'bike' });
+  await journal.tags.editOwnTag(tag.id, { label: 'biking' });
   assert.equal((await read())?.icon, 'bike');
-  await journal.tags.setTagIcon(tag.id, null);
-  assert.deepEqual(await read(), { id: tag.id, label: 'climbing', builtIn: false, hidden: false });
+  await journal.tags.editOwnTag(tag.id, { icon: null });
+  assert.deepEqual(await read(), { id: tag.id, label: 'biking', builtIn: false, hidden: false });
 
-  await assert.rejects(journal.tags.setTagIcon('nope', 'bike'), /unknown tag/);
+  await assert.rejects(journal.tags.editOwnTag('nope', { icon: 'bike' }), /unknown own tag/);
 });
 
 test('a built-in tag keeps the icon this build gives it; none is stored', async () => {
   const { journal } = await journalWithBuiltIns();
-  await assert.rejects(journal.tags.setTagIcon('e-happy', 'bike'), /built-in/);
+  await assert.rejects(journal.tags.editOwnTag('e-happy', { icon: 'bike' }), /unknown own tag/);
   assert.equal((await journal.tags.getTagGroups()).flatMap((g) => g.tags).find((t) => t.id === 'e-happy')?.icon, undefined);
 });
 
@@ -168,4 +171,25 @@ test('a restore refuses an icon that is not a name', async () => {
   archived.tagGroups.flatMap((g: { tags: { id: string; icon?: unknown }[] }) => g.tags).find((t: { id: string }) => t.id === tag.id).icon = 42;
   const b = await journalWithBuiltIns();
   await assert.rejects(b.journal.archive.replace({ journal: archived, files: (async function* () {})() }));
+});
+
+test('a finer emotion reaches the scale comparison, tag share and search', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const tags = toggleTag([], 'e-overwhelmed');
+  const finer = [];
+  for (const epochDay of [100, 101, 102]) {
+    finer.unshift(await journal.entries.upsertEntry({ epochDay, mood: 2, dims: { femininity: 10 }, tags }));
+  }
+  await journal.entries.upsertEntry({ epochDay: 103, mood: 4, dims: { femininity: 90 }, tags: ['e-anxious'] });
+  await journal.entries.upsertEntry({ epochDay: 104, mood: 4, dims: { femininity: 90 } });
+
+  const insights = await journal.stats.tagInsights('femininity', 100, 104);
+  assert.deepEqual(insights.find((row) => row.id === 'e-overwhelmed'), {
+    id: 'e-overwhelmed', count: 3, withAvg: 10, withoutAvg: 90
+  });
+  assert.deepEqual(await journal.stats.tagShare(100, 104), [
+    { id: 'e-anxious', count: 4 }, { id: 'e-overwhelmed', count: 3 }
+  ]);
+  const hits = await journal.entries.searchEntries('', [], { tagIds: ['e-overwhelmed'] });
+  assert.deepEqual(hits.map((entry) => entry.id), finer);
 });

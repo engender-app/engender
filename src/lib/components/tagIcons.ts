@@ -322,14 +322,15 @@ export const BUILT_IN_TAG_ICONS: Record<BuiltInTagKey, TagIconName> = {
 /** The icon a tag wears: a built-in's from this build, an own tag's as
     stored. Undefined for none. */
 export function tagIconOf(tag: Pick<Tag, 'id' | 'builtIn' | 'icon'>): string | undefined {
-  return tag.builtIn ? (BUILT_IN_TAG_ICONS as Record<string, string>)[tag.id] : tag.icon;
+  if (!tag.builtIn) return tag.icon;
+  return Object.hasOwn(BUILT_IN_TAG_ICONS, tag.id) ? BUILT_IN_TAG_ICONS[tag.id as BuiltInTagKey] : undefined;
 }
 
 /** The icon as an inline SVG coloured by currentColor, or '' for no icon and
     for a name this build does not know. */
 export function tagIconSvg(name: string | undefined, size = 16): string {
-  const paths = name ? (PATHS as Record<string, string>)[name] : undefined;
-  if (!paths) return '';
+  if (!name || !Object.hasOwn(PATHS, name)) return '';
+  const paths = PATHS[name as TagIconName];
   return `<svg class="icon tag-icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none"
     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
     aria-hidden="true" focusable="false">${paths}</svg>`;

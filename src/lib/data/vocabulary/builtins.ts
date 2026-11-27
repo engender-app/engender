@@ -98,8 +98,7 @@ export const BUILT_IN_TAG_GROUPS = [
    a finer word picks its family too, so a family's count in stats includes
    its finer days. Five of the six families are the phase 1 emotion tags, so
    an older entry's tags keep their meaning; `e-hopeful` was one of those and
-   is a finer word under happy now, still the same tag. Order here is the
-   order the step shows them. */
+   is a finer word under happy now, still the same tag. */
 export const EMOTION_FAMILIES = [
   { key: 'e-happy', finer: ['e-hopeful', 'e-proud', 'e-grateful', 'e-excited', 'e-close'] },
   { key: 'e-calm', finer: ['e-content', 'e-relieved', 'e-safe', 'e-grounded'] },

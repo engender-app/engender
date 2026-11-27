@@ -27,4 +27,5 @@ test('a built-in takes its icon from this build; an own tag wears what it stores
 test('no icon and a name this build lacks both draw nothing', () => {
   expect(tagIconSvg(undefined)).toBe('');
   expect(tagIconSvg('from-a-later-release')).toBe('');
+  expect(tagIconSvg('constructor')).toBe('');
 });

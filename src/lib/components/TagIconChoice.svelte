@@ -1,29 +1,34 @@
 <script lang="ts">
   /* Which icon an own tag wears (pre-release-human 22): no icon, or one of
      the 120 in tagIcons.ts. Native radios, so arrow keys and a screen
-     reader's "1 of 121" come with them. Each is named by Lucide's own name
-     for the drawing, in English in both languages. */
+     reader's "1 of 121" come with them. */
   import { m } from '$lib/paraglide/messages';
   import { TAG_ICON_NAMES, tagIconSvg } from './tagIcons';
 
   let { value = $bindable(null), name }: { value: string | null; name: string } = $props();
 
-  const spoken = (icon: string) => icon.replaceAll('-', ' ');
+  function showChecked(grid: HTMLElement) {
+    const checked = grid.querySelector<HTMLElement>('.is-selected');
+    if (checked) grid.scrollTop = checked.offsetTop - (grid.clientHeight - checked.offsetHeight) / 2;
+  }
 </script>
 
 <fieldset class="icon-choice" data-tag-icon-choice>
-  <legend class="tag-group-name">{m.tags_icon()}</legend>
-  <div class="icon-choice-grid">
+  <legend class="tag-group-name">
+    {value === null ? m.tags_icon() : m.tags_icon_selected({ name: m.tag_icon_name({ icon: value }) })}
+  </legend>
+  <div class="icon-choice-grid" use:showChecked data-sheet-no-drag>
     <label class="icon-choice-cell" class:is-selected={value === null} title={m.tags_icon_none()}>
       <input class="visually-hidden" type="radio" {name} checked={value === null} onchange={() => (value = null)} data-icon-none />
       <span class="icon-choice-none" aria-hidden="true"></span>
       <span class="visually-hidden">{m.tags_icon_none()}</span>
     </label>
     {#each TAG_ICON_NAMES as icon (icon)}
-      <label class="icon-choice-cell" class:is-selected={value === icon} title={spoken(icon)}>
+      {@const label = m.tag_icon_name({ icon })}
+      <label class="icon-choice-cell" class:is-selected={value === icon} title={label}>
         <input class="visually-hidden" type="radio" {name} checked={value === icon} onchange={() => (value = icon)} data-icon={icon} />
         {@html tagIconSvg(icon, 22)}
-        <span class="visually-hidden">{spoken(icon)}</span>
+        <span class="visually-hidden">{label}</span>
       </label>
     {/each}
   </div>
@@ -39,6 +44,7 @@
   /* Four and a half rows show, the half saying there is more; the rest
      scroll inside, so the sheet's button stays in reach under 121 choices. */
   .icon-choice-grid {
+    position: relative;
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
     gap: var(--space-1);
@@ -47,6 +53,7 @@
     padding: 2px;
   }
   .icon-choice-cell {
+    position: relative;
     display: grid;
     place-items: center;
     height: 48px;

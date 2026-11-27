@@ -4,7 +4,7 @@
 
 import { test, expect } from 'vitest';
 import { BUILT_IN_TAG_GROUPS, EMOTION_FAMILIES } from './builtins.ts';
-import { familyOf, tapFamily, toggleTag } from './emotionFamilies.ts';
+import { familyOf, familyPicked, tapFamily, toggleTag } from './emotionFamilies.ts';
 
 const emotions: readonly string[] = BUILT_IN_TAG_GROUPS.find((g) => g.key === 'emotions')!.tags;
 
@@ -33,6 +33,13 @@ test('tapping a picked family that another family hides opens it without unpicki
   expect(tapFamily({ selected: ['e-anxious', 'e-worried'], open: 'e-sad' }, 'e-anxious'))
     .toEqual({ selected: ['e-anxious', 'e-worried'], open: 'e-anxious' });
   expect(tapFamily({ selected: ['e-anxious'], open: null }, 'e-anxious')).toEqual({ selected: ['e-anxious'], open: 'e-anxious' });
+});
+
+test('a legacy hopeful entry shows Happy as picked without rewriting its saved tag set', () => {
+  const selected = ['e-hopeful'];
+  expect(familyPicked(selected, 'e-happy')).toBe(true);
+  expect(tapFamily({ selected, open: null }, 'e-happy')).toEqual({ selected, open: 'e-happy' });
+  expect(tapFamily({ selected, open: 'e-happy' }, 'e-happy')).toEqual({ selected: [], open: null });
 });
 
 test('tapping a picked, open family unpicks it and its finer words, and closes it', () => {
