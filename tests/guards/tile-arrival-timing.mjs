@@ -527,6 +527,9 @@ try {
     };
   });
   await page.goto(`${base}/more`, { waitUntil: 'networkidle' });
+  /* The retained Look back door reads its rail's annotations while /more
+     boots, so that count starts at the page load, not at the click. */
+  const bootSql = await page.evaluate(() => window.__scopeQueries);
   await page.evaluate(() => { window.__scopeQueries = []; });
   await page.locator('[data-nav-item="stats"]').click();
   await waitFor(TILES['/stats']);
@@ -540,8 +543,8 @@ try {
   const metricKey = (query) => query.sql.includes('gd.key = ?') ? query.params[0] : 'mood';
   scopeCheck(!tilesSql.some(spread) && !tilesSql.some(tagShare), 'Look back tiles omit screen-only spreads and tag shares');
   const initialTileKeys = new Set(tilesSql.filter(tileAverages).map(metricKey));
-  scopeCheck(initialTileKeys.size <= 2, 'Look back tiles read mood and the active scale without loading every scale');
-  scopeCheck(tilesSql.filter((query) => query.sql.includes('FROM dose_pause p JOIN regimen_episode e')).length === 1, 'Look back reads annotations only for its history rail');
+  const annotationReads = [...bootSql, ...tilesSql].filter((query) => query.sql.includes('FROM dose_pause p JOIN regimen_episode e'));
+  scopeCheck(annotationReads.length === 1, 'Look back reads annotations only for its history rail');
 
   await page.goto(`${base}/stats/day-by-day`, { waitUntil: 'networkidle' });
   await waitFor(`!!document.querySelector('[data-values-list] li') && !!document.querySelector('[data-chart="area"]')`);
@@ -550,6 +553,13 @@ try {
   const seriesKeys = new Set(chartSql.filter(averages).map(metricKey));
   scopeCheck(metricOptions.length > 2 && metricOptions.every((key) => seriesKeys.has(key)) && chartSql.some(spread), 'Day by day screen retains every scale, spreads and accessible values');
   scopeCheck(chartSql.some((query) => query.sql.includes('FROM dose_pause p JOIN regimen_episode e')), 'Day by day screen retains chart annotations');
+  /* The compare tile reads every active scale for both of its stretches
+     (b3050974e), so the tiles' averages are mood and the active scales: the
+     picker's options. A scale that is not ticked must not be read. */
+  scopeCheck(
+    initialTileKeys.size > 0 && [...initialTileKeys].every((key) => metricOptions.includes(key)),
+    'Look back tiles read mood and the active scales, never a scale that is not ticked'
+  );
 
   const selectedMetric = metricOptions.at(-1);
   await page.locator('[data-chart-picker="stats-metric"]').selectOption(selectedMetric);

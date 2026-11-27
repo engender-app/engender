@@ -9,6 +9,7 @@
      maskHeight animates the difference once at the swap. A persistent
      resize wrapper would lag and clip later child motions. */
   import type { Snippet } from 'svelte';
+  import type { TransitionConfig } from 'svelte/transition';
   import Skeleton from '../Skeleton.svelte';
   import { crossfade, maskHeight } from '$lib/motion/reveal';
   import { EASE_OUT_CSS, NIL_OPACITY, isReducedMotion } from '$lib/motion/tokens';
@@ -47,6 +48,13 @@
   $effect.pre(() => {
     if (released()) ready = true;
   });
+
+  /* The hold only crossfades out if it was ever painted. Reads that answer
+     before the first frame (a revisit served from memory) would otherwise
+     fade a never-seen skeleton out under content that is already drawn. */
+  function holdOut(node: Element, params?: unknown, options?: { direction?: 'in' | 'out' | 'both' }): TransitionConfig {
+    return painted ? crossfade(node, params, options) : { duration: 0 };
+  }
 
   /* A skeleton block (Skeleton.svelte, `block`) is about 166px with its gap,
      so this many fill the room; the last one is clipped at the edge. */
@@ -215,7 +223,7 @@
        transition only plays when its own block goes, so a placeholder one
        block down was cut, at full opacity, when the outer block went. -->
   {#if !ready && estimate > 0}
-    <div class="read-reserve-hold" out:crossfade style:height="{estimate}px" data-read-reserve-hold>
+    <div class="read-reserve-hold" out:holdOut style:height="{estimate}px" data-read-reserve-hold>
       <Skeleton variant="block" count={Math.max(1, Math.ceil(estimate / SKELETON_BLOCK_PX))} />
     </div>
   {:else if ready}

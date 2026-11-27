@@ -11,7 +11,9 @@
      motion it crossfades instead. */
   import type { Snippet } from 'svelte';
   import type { TransitionConfig } from 'svelte/transition';
-  import { crossfadeDuration, EASE_OUT, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
+  import { cubicOut } from 'svelte/easing';
+  import { crossfadeDuration, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
+  import { playAfterPaint } from '$lib/motion/screenArrival';
   import Sheet from './Sheet.svelte';
   import { registerOverlayRegion } from './overlayLock';
   import type { PickerKind } from './pickerField.svelte';
@@ -66,9 +68,13 @@
     if (isReducedMotion()) return fadeOnly(crossfadeDuration());
     const edge = above ? 'top' : 'bottom';
     const dir = above ? 1 : -1;
+    /* Cubic, not the app's quint ease-out, and the close at --dur-med too: quint moves
+       30% of the roll in its first frame and 53% in two (45% and 71% at --dur-fast), so
+       one late frame on a slow device showed the popover half open. Cubic moves 19%, and
+       36% across two. */
     return {
-      duration: motionDuration(closing ? '--dur-fast' : '--dur-med'),
-      easing: EASE_OUT,
+      duration: motionDuration('--dur-med'),
+      easing: cubicOut,
       css: (_t, u) => {
         const shut = Number((u * 100).toFixed(2));
         const inset = edge === 'bottom' ? `0 0 ${shut}% 0` : `${shut}% 0 0 0`;
@@ -100,10 +106,17 @@
       node.querySelector<HTMLElement>('[data-sheet-focus]')?.focus({ preventScroll: true });
     };
     const fallback = setTimeout(focusCursor, motionDuration('--dur-med') + 200);
+    /* Both rolls start their clock on the popover's first painted frame. Opened or
+       closed in a long task, the clip otherwise starts counting before anything is
+       drawn, and on a slow device the first frame shown is already half unrolled.
+       Svelte creates the animation right after dispatching the start event. */
+    const fromFirstFrame = () => queueMicrotask(() => playAfterPaint(node, node.getAnimations()));
     document.addEventListener('click', outside);
     document.addEventListener('scroll', follow, true);
     window.addEventListener('resize', follow);
     node.addEventListener('introend', focusCursor, { once: true });
+    node.addEventListener('introstart', fromFirstFrame);
+    node.addEventListener('outrostart', fromFirstFrame);
     return () => {
       release();
       cancelAnimationFrame(frame);
@@ -111,6 +124,8 @@
       document.removeEventListener('scroll', follow, true);
       window.removeEventListener('resize', follow);
       node.removeEventListener('introend', focusCursor);
+      node.removeEventListener('introstart', fromFirstFrame);
+      node.removeEventListener('outrostart', fromFirstFrame);
       clearTimeout(fallback);
     };
   }
