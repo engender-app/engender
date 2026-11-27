@@ -120,31 +120,30 @@ try {
   await page.evaluate(() => { const bar = document.querySelector('.demo-bar'); if (bar) bar.style.display = 'none'; });
 
 
-  // A save that leaves the screen: a reminder.
-  await navigate('/settings/reminders/new');
-  await page.locator('[data-save]').waitFor();
-  await fault('reminders', 'upsertReminder');
-  await page.locator('[data-save]').click();
-  await expectToast('failed');
-  assert.match(page.url(), /reminders\/new$/, 'a failed save stays on the screen');
-  await setMode('pass');
-  await page.locator('[data-save]').click();
-  await page.waitForURL(/\/settings\/reminders$/);
-  await expectToast('record-saved');
-  console.log('PASS leaving save: failure stays on the screen, success leaves and confirms');
+  // The one save that left its screen was a reminder's, and reminders are
+  // Android-only since e38d3d7b7: no web screen has that shape any more.
 
-  // Surgery notes: confirm, and switching procedure asks first.
-  await page.evaluate(async () => {
+  // Surgery notes: confirm, and leaving for another procedure asks first.
+  // Each procedure is a screen of its own since 9b8f8cccc, so switching is a navigation.
+  const [procedureOne, procedureTwo] = await page.evaluate(async () => {
     const { journal } = await import('/src/lib/data/live/journal.svelte.ts');
-    await journal.procedures.upsertProcedure({ name: 'Probe procedure one' });
-    await journal.procedures.upsertProcedure({ name: 'Probe procedure two' });
+    return [
+      await journal.procedures.upsertProcedure({ name: 'Probe procedure one' }),
+      await journal.procedures.upsertProcedure({ name: 'Probe procedure two' })
+    ];
   });
-  await navigate('/health/surgery');
-  await page.getByRole('button', { name: /Probe procedure one/ }).first().click();
+  await navigate(`/health/surgery/${procedureOne}`);
   await page.locator('#surgery-notes').fill('Ask about drains');
-  await page.getByRole('button', { name: /Probe procedure two/ }).first().click();
+  await page.evaluate((path) => {
+    const link = document.createElement('a');
+    link.href = path;
+    document.body.append(link);
+    link.click();
+    link.remove();
+  }, `/health/surgery/${procedureTwo}`);
   await page.locator('[data-keep-editing]').click();
   await page.locator('[data-keep-editing]').waitFor({ state: 'detached' });
+  assert.ok(page.url().endsWith(`/health/surgery/${procedureOne}`), 'keeping stays on the procedure');
   assert.equal(await page.locator('#surgery-notes').inputValue(), 'Ask about drains', 'keeping leaves the notes');
   await fault('procedures', 'setNotes');
   await page.locator('[data-save-notes]').click();
@@ -152,9 +151,9 @@ try {
   await setMode('pass');
   await page.locator('[data-save-notes]').click();
   await expectToast('record-saved', /Notes saved/);
-  await page.getByRole('button', { name: /Probe procedure two/ }).first().click();
-  assert.equal(await page.locator('[data-keep-editing]').count(), 0, 'saved notes switch without a question');
-  console.log('PASS surgery notes: switching asks before losing typed notes, a failed save says so, a save confirms');
+  await navigate(`/health/surgery/${procedureTwo}`);
+  assert.equal(await page.locator('[data-keep-editing]').count(), 0, 'saved notes leave without a question');
+  console.log('PASS surgery notes: leaving asks before losing typed notes, a failed save says so, a save confirms');
 
   // Today: an entry saved today is acknowledged on the strip.
   await navigate('/');
