@@ -1,30 +1,11 @@
-/* Deciding what a picked file is, and refusing what it isn't (phase 8
-   features ticket 53, ADR-0065).
+/* Sniff the PDF signature before image decoding (ADR-0065). Other files
+   use the existing photo path, including its UnsupportedImageError for
+   HEIC. DocumentRefusedError covers document-specific refusals.
 
-   PDF's signature is checked first, ahead of the image decoder: trying to
-   decode a PDF as an image would otherwise reach the same "unreadable"
-   refusal an unrecognised file gets, for the wrong reason, and the
-   decoder is real work a file already identified has no need of. Anything
-   that isn't a PDF goes through the existing photo path unchanged - HEIC
-   refused ahead of its own decoder (photos/normalize.ts) exactly as it
-   already was, because this widens what a document accepts, not what an
-   image is. `DocumentRefusedError` only speaks for the two refusals that
-   are new here; a HEIC file keeps raising `UnsupportedImageError`, which
-   already carries the wording a document's own picker shows for it.
-
-   The size ceiling is checked against what will actually be stored: the
-   normalised bytes for an image (photos/normalize.ts already shrinks
-   before this ever runs), the untouched bytes for a PDF (there is no
-   normalisation path for one - ADR-0065).
-
-   A PDF's first page is drawn here too (ticket 55), for the same reason
-   an image is normalised here: this is the one place a picked file is
-   turned into the pair of things a document is stored as, and the
-   thumbnail is the half a screen can show immediately. It is the only
-   moment the renderer is woken by anything but somebody opening a
-   document. Failing to draw it is not a refusal - the file is still
-   filed, still exported, and its own screen says it has no page to
-   show. */
+   Check the bytes that will be stored: normalized images and untouched
+   PDFs. Try rendering a PDF's first page for the thumbnail at import.
+   Keep the original file and export it even if rendering the thumbnail
+   fails; the document screen can explain the unavailable preview. */
 
 import type { NormalizedPhoto } from '../journal/photos';
 import { normalizePhoto, UnsupportedImageError } from '../photos/normalize';
@@ -44,7 +25,7 @@ interface StoredPdf {
     has a row or a file name of its own. */
 export type DocumentFile = NormalizedPhoto | StoredPdf;
 
-export type DocumentRefusalKind = 'unsupported' | 'too-large';
+export type DocumentRefusalKind = 'unsupported' | 'too-large' | 'too-many-pixels';
 
 export class DocumentRefusedError extends Error {
   readonly kind: DocumentRefusalKind;
@@ -57,6 +38,8 @@ export class DocumentRefusedError extends Error {
 }
 
 const TOO_LARGE_MESSAGE = `That file is too large to store. Up to ${DOCUMENT_SIZE_CEILING / (1024 * 1024)} MB.`;
+
+const TOO_MANY_PIXELS_MESSAGE = 'That image has more pixels than this app will open.';
 
 const UNSUPPORTED_MESSAGE = "This file isn't a PDF or an image this app can read. Try a PDF, a JPEG or a PNG.";
 
@@ -92,6 +75,12 @@ export async function acceptDocumentFile(bytes: Uint8Array): Promise<DocumentFil
     // HEIC keeps its own refusal and its own wording (ADR-0065's own
     // instruction) - only "not an image either" is new here.
     if (error instanceof UnsupportedImageError && error.kind === 'heic') throw error;
+    // An image declaring more pixels than the budget (media/budget.ts) is
+    // a different refusal from "not an image either": it is one, and the
+    // person can fix it by choosing a smaller one.
+    if (error instanceof UnsupportedImageError && error.kind === 'too-many-pixels') {
+      throw new DocumentRefusedError('too-many-pixels', TOO_MANY_PIXELS_MESSAGE, { cause: error });
+    }
     throw new DocumentRefusedError('unsupported', UNSUPPORTED_MESSAGE, { cause: error });
   }
   refuseAboveCeiling(photo.full.byteLength);

@@ -1,33 +1,9 @@
-/* Re-keying a day series against an event (phase 8 features ticket 16,
-   CONTEXT: "Day of interval", "Day since").
+/* Re-key DayAverage values by the event that supplies their origin.
+   Repeating intervals start at 1. A single anchor starts at 0, so surgery
+   day is 0 and the next day is Post-Op Day 1.
 
-   A day series is a run of one value per calendar day - a day-average mood,
-   a body region's daily intensity, a day's wear hours - and every one of
-   them arrives in stats.ts's `DayAverage` shape. Re-keying takes such a
-   series and plots it against something other than the calendar: which day
-   of a repeating interval each day fell on, or how many days each day sits
-   from one dated event.
-
-   This started as the injection-interval fold in intervalMoodPattern.ts and
-   answered one question. The arithmetic never had anything to do with
-   injections or with mood, so it is here, and that file's two functions are
-   callers rather than a second copy.
-
-   Two rules, and they have different origins on purpose:
-
-   - **Repeating** counts from 1, because the day the event happened is "day
-     1 of the interval" and CONTEXT.md has said so since phase 5.
-   - **Anchored** counts from 0, because the event is a single dated moment
-     and the app already speaks that way about the only one it has: the
-     surgery day is "Surgery day" and the day after is "Post-Op Day 1". A
-     1-based anchored axis would contradict a badge on the same screen.
-
-   Descriptive throughout, the rule the whole chart family holds to: a
-   position says where days fell and stops. Nothing here draws an expected
-   trajectory, a modelled curve or a shaded window on a re-keyed axis - the
-   same refusal the qualitative hormone curve makes, and for the same
-   reason, that a re-keyed axis makes a shape look predicted when it was
-   only rearranged. */
+   The new axis places recorded values. Expected curves and literature
+   windows stay off it to avoid implying a prediction. */
 
 import type { DayAverage } from './journal/stats';
 
@@ -76,7 +52,7 @@ export type Keying =
           would draw a mark past the end of the axis. The repeating rule
           takes no such field - what it excludes is decided by the
           intervals it was handed, and capping those by the clock would
-          change what the injection-interval chart has always answered. */
+          change what the repeating-axis chart answers. */
       todayEpochDay: number;
     };
 

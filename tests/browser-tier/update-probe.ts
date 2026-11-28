@@ -1,22 +1,8 @@
-/* Ticket 04's update rule, against a real browser's service-worker
-   lifecycle.
-
-   The Node tier drives the decision against a fake registration
-   (src/lib/pwa/update.test.ts). What only a browser can answer is whether
-   the decision holds when the lifecycle is real: whether a second release
-   genuinely installs and waits behind the first, whether a waiting worker
-   left unasked really does stay put through an attempt to apply it, and
-   whether asking it - once the journal is idle - actually ends with the new
-   worker in control of this page.
-
-   Two things here are the tier's rather than the app's. The worker is
-   /update-sw.js, served with a generation number the dev server changes on
-   demand (browser-tier.vite.config.ts), because the app's own worker only
-   exists after a build; it imports the skip-waiting listener from the app's
-   source, so the message being honoured is the shipped one. And `reload` is
-   recorded instead of performed, since a probe that reloaded would throw its
-   own results away - everything below it, skipWaiting and controllerchange
-   included, is the browser doing the real thing. */
+/* Drive the real service-worker lifecycle. The second generation
+   waits until the idle page sends the shipped skip-waiting message,
+   then takes control. browser-tier.vite.config.ts changes /update-sw.js
+   generations for the test. Record reload so the probe retains results.
+   src/lib/pwa/update.test.ts covers the decision in Node. */
 
 import { markJournalBusy } from '../../src/lib/data/journal-busy.ts';
 import { applyUpdate, updateReady, watchForUpdates } from '../../src/lib/pwa/update.ts';

@@ -1,47 +1,12 @@
 <script lang="ts">
-  /* The one screen over the unprompted registry (phase 6 tickets 02 and 04,
-     merged from two screens onto one by deepening ticket 09). "Stop showing
-     me this" and "stop buzzing my phone" are two questions about the same
-     list, so this is one `{#each}` with two toggle columns rather than two
-     screens each running their own - ADR-0039's amendment argues for
-     exactly this consolidation. `/settings/live-tiles` used to be the first
-     question's own screen; it now redirects here.
+  /* Draw one RegistryRow per registered kind with separate Show and Notify controls.
+     isLiveTileKind keeps Today's live tiles in the Today editor. The writing prompt below
+     the list is a single preference and has no registry kind of its own.
 
-     **Minus Today's own thirteen** (phase 11 ticket 04). A live tile is
-     arranged where it draws, in Today's editor, so this screen is every
-     other registered kind: the stock notice, the two look-back cards, and
-     the four that fire. `isLiveTileKind` is the filter rather than a second
-     list, so the editor and this screen cannot each think they own a kind.
-     That also takes the last of the Home column's untruth with it - two of
-     the three rows left draw on Look back, never on Home - which is why the
-     column head asks whether the app may show the thing at all rather than
-     naming a screen.
-
-     The rows are not written here: $lib/unprompted/registry.ts is what a
-     later ticket extends, and RegistryRow draws one, so this page is the
-     {#each} and nothing else.
-
-     **The four prompts below the list** came off Settings' Tracking section
-     with the same ticket, where they floated under no heading of their own.
-     Each is the app speaking up without being asked - after a mood-only
-     save, while writing, eight hours into a binder session, over a ticked
-     roadmap goal - which is the question this whole screen is about. They
-     are not registry rows: none of them is a kind of its own with a surface
-     and a channel, each is one boolean a single feature reads, so they sit
-     under a heading of their own rather than being forced into a list whose
-     shape promises two columns.
-
-     Absent on web rather than shown and inert, for the notify column only
-     (user story 18): a browser cannot fire a scheduled notification while
-     the app is closed, so a switch there would be a promise the platform
-     does not keep. The show column carries no such limit - a notice or a
-     card is in-app UI, not an OS notification - so it stays live on web,
-     and so do the four prompts; only the notify slot on each row, the
-     permission notice and the two notification-only cards after the list
-     drop out. What takes their place on web sits above the rows it
-     explains (ticket 13): the platform notice opens the screen, so every
-     row's Show toggle is read beside the explanation of why there is no
-     second toggle, not three sections later. */
+     Web keeps Show and the prompts. It omits Notify, the permission notice and the
+     notification-only cards because a closed browser cannot deliver these scheduled
+     notifications. Put the platform notice above the rows to explain the controls available
+     there. */
   import { m } from '$lib/paraglide/messages';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -53,74 +18,108 @@
   import Switch from '$lib/components/Switch.svelte';
   import RegistryRow from '$lib/unprompted/RegistryRow.svelte';
   import { isAndroid } from '$lib/platform';
-  import {
-    androidRetrospectiveNotifications,
-    type AndroidRetrospectiveNotificationStatus
-  } from '$lib/retrospective/android-bridge';
+  import { notificationsTitle } from '$lib/notificationsTitle';
+  import { androidReminders, type AndroidReminderStatus } from '$lib/reminders/android-bridge';
   import { disclose } from '$lib/motion/reveal';
-  import { UNPROMPTED_ROWS, type BooleanPrefKey, type UnpromptedRow } from '$lib/unprompted/registry';
+  import { watchStatus } from '$lib/permissions/watchStatus';
+  import {
+    UNPROMPTED_ROWS,
+    isSurfaceRow,
+    surfaceOn,
+    withSurface,
+    type BooleanPrefKey,
+    type UnpromptedRow
+  } from '$lib/unprompted/registry';
   import { isLiveTileKind } from '$lib/data/liveTiles';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
+  import { fmtDay } from '$lib/data/dates';
+  import { currentDay } from '$lib/stores/today.svelte';
 
   /** Every kind Today's editor does not arrange. */
   const ROWS = UNPROMPTED_ROWS.filter((row) => !isLiveTileKind(row.key));
 
   let isWeb = $derived(!isAndroid());
   let visibleRows = $derived(isWeb ? ROWS.filter((row) => row.surface) : ROWS);
+  // No row carries both switches since, so Home switches and
+  // notification switches get a card each rather than a column each.
+  let homeRows = $derived(visibleRows.filter((row) => row.surface));
+  let notifyRows = $derived(visibleRows.filter((row) => !row.surface));
 
   /* Every producer here posts through the same POST_NOTIFICATIONS
      permission, so one status/request pair covers the whole list. */
-  let notifyStatus = $state<AndroidRetrospectiveNotificationStatus>({ notifications: 'not-required' });
+  let notifyStatus = $state<AndroidReminderStatus | 'unreadable'>({ notifications: 'not-required', exactAlarms: 'not-required' });
 
-  async function refreshStatus() {
-    if (isWeb) return;
-    try {
-      notifyStatus = await androidRetrospectiveNotifications.getStatus();
-    } catch (error) {
-      console.error('Could not read notification status', error);
-    }
-  }
+  /* Re-read whenever the screen comes back to the front, because the way out of a refusal
+     is Android's settings screen. A read the bridge refuses says it could not check, rather
+     than calling notifications either on or off. */
+  let statusWatch: ReturnType<typeof watchStatus<AndroidReminderStatus | 'unreadable'>> | null = null;
 
   async function requestNotifications() {
     try {
-      notifyStatus = await androidRetrospectiveNotifications.requestNotificationPermission();
+      await androidReminders.requestNotificationPermission();
     } catch (error) {
       console.error('Could not request notification permission', error);
     }
+    await statusWatch?.refresh();
   }
 
   $effect(() => {
     if (isWeb) return;
-    void refreshStatus();
+    const watch = watchStatus<AndroidReminderStatus | 'unreadable'>({
+      read: () => androidReminders.getStatus(),
+      unreadable: 'unreadable',
+      apply: (next) => {
+        notifyStatus = next;
+      }
+    });
+    statusWatch = watch;
+    return () => {
+      watch.stop();
+      statusWatch = null;
+    };
   });
 
   /* Both cascades from the two screens this merged, unchanged: turning a
-     kind off also turns its notification off (phase 4 features ticket 04),
-     and turning a notification on turns the kind itself on (ticket 04). One
+     kind off also turns its notification off,
+     and turning a notification on turns the kind itself on. One
      invariant either direction keeps - nothing fires for a kind that is off
      - whichever switch the person just touched. */
   function setKind(row: UnpromptedRow, v: boolean) {
-    if (!row.surface) return;
-    prefs[row.surface.prefKey] = v;
+    if (!isSurfaceRow(row)) return;
+    prefs.surfaceOverrides = withSurface(prefs.surfaceOverrides, row.key, v);
     if (!v && row.notify) prefs[row.notify.prefKey] = false;
   }
 
   function setNotify(row: UnpromptedRow, v: boolean) {
     if (!row.notify) return;
     prefs[row.notify.prefKey] = v;
-    if (v && row.surface) prefs[row.surface.prefKey] = true;
+    if (v && isSurfaceRow(row)) prefs.surfaceOverrides = withSurface(prefs.surfaceOverrides, row.key, true);
   }
+
+  /* The check-in's switch lives on the reminders screen, beside its time and
+     its pause; a second one here wrote the same
+     preference from a screen that could show neither. Its row here is a way
+     there that says where it stands. */
+  let checkInState = $derived.by(() => {
+    if (!prefs.checkInEnabled) return m.checkin_state_off();
+    const through = prefs.checkInPausedThrough;
+    if (through !== null && through >= currentDay()) {
+      return m.checkin_state_paused({ date: fmtDay(through + 1, { day: 'numeric', month: 'long' }) });
+    }
+    return m.checkin_state_on({ time: prefs.checkInTime });
+  });
 
   let anyNotifyOn = $derived(ROWS.some((row) => row.notify && prefs[row.notify.prefKey]));
 
-  /* The four prompts, in the order Settings drew them. A list rather than
-     four copies of the same eight lines of markup: they differ only in
+  /* The remaining prompts, in the order Settings drew them. A list rather than
+     copies of the same markup: they differ only in
      which boolean they write and what they are called.
 
      A named shape rather than an inline one, the way the registry names
      `UnpromptedRow`: the four fields travel together everywhere they go. */
   interface PromptRow {
-    /** The walkthrough's handle (ADR-0029), never the title, which is copy. */
+    /** The walkthrough's handle, never the title, which is copy. */
     key: string;
     prefKey: BooleanPrefKey;
     title: () => string;
@@ -128,64 +127,56 @@
   }
 
   const PROMPTS: PromptRow[] = [
-    { key: 'entry-nudges', prefKey: 'entryNudges', title: () => m.entry_nudges(), subtitle: () => m.entry_nudges_sub() },
-    { key: 'guided-prompts', prefKey: 'guidedPromptsEnabled', title: () => m.guided_prompts(), subtitle: () => m.guided_prompts_sub() },
-    {
-      key: 'wear-duration-cue',
-      prefKey: 'wearDurationCueEnabled',
-      title: () => m.wear_duration_cue_toggle(),
-      subtitle: () => m.wear_duration_cue_sub()
-    },
-    {
-      key: 'roadmap-milestone-sync',
-      prefKey: 'roadmapMilestoneSyncEnabled',
-      title: () => m.roadmap_milestone_sync_title(),
-      subtitle: () => m.roadmap_milestone_sync_sub()
-    }
+    { key: 'guided-prompts', prefKey: 'guidedPromptsEnabled', title: () => m.guided_prompts(), subtitle: () => m.guided_prompts_sub() }
   ];
 </script>
 
 <div class="screen" data-screen>
-  <ScreenHeader title={m.notif_title()} back="/settings" />
-
-  {#if isWeb}
-    <!-- The in-app/phone distinction first, where the list it governs can
-         be read next to it (ticket 13): the switches below are real, and
-         what they do not do is reach a phone. -->
-    <Notice icon="info" key="notifications-web" title={m.notif_web_title()} text={m.notif_web_body()} />
-  {/if}
+  <ScreenHeader title={notificationsTitle()} back="/settings" />
 
   {#if !isWeb}
-    <div class="registry-heads" aria-hidden="true">
-      <span class="registry-head">{m.notif_col_show()}</span>
-      <span class="registry-head">{m.notif_col_notify()}</span>
-    </div>
+    <SectionHeading text={m.notif_section_home()} />
   {/if}
-
   <ListCard>
-    {#each visibleRows as row (row.key)}
+    {#each homeRows as row (row.key)}
       <RegistryRow
         key={row.key}
-        notifyColumn={!isWeb}
         title={row.title()}
-        subtitle={row.surface?.subtitle() ?? row.notify?.subtitle() ?? ''}
-        surface={row.surface
+        subtitle={row.surface?.subtitle?.()}
+        surface={isSurfaceRow(row)
           ? {
               label: m.notif_show_toggle_aria({ name: row.title() }),
-              checked: prefs[row.surface.prefKey],
+              checked: surfaceOn(prefs.surfaceOverrides, row.key),
               onChange: (v) => setKind(row, v)
-            }
-          : undefined}
-        notify={!isWeb && row.notify
-          ? {
-              label: m.notif_notify_toggle_aria({ name: row.title() }),
-              checked: prefs[row.notify.prefKey],
-              onChange: (v) => setNotify(row, v)
             }
           : undefined}
       />
     {/each}
   </ListCard>
+
+  {#if notifyRows.length > 0}
+    <SectionHeading text={m.notif_section_notify()} />
+    <ListCard>
+      {#each notifyRows as row (row.key)}
+        {#if row.key === 'check-in'}
+          <ListRow key="check-in" title={row.title()} subtitle={checkInState} href="/settings/reminders" />
+        {:else}
+          <RegistryRow
+            key={row.key}
+            title={row.title()}
+            subtitle={row.notify?.subtitle?.()}
+            notify={!isWeb && row.notify
+              ? {
+                  label: m.notif_notify_toggle_aria({ name: row.title() }),
+                  checked: prefs[row.notify.prefKey],
+                  onChange: (v) => setNotify(row, v)
+                }
+              : undefined}
+          />
+        {/if}
+      {/each}
+    </ListCard>
+  {/if}
 
   <SectionHeading text={m.notif_prompts_heading()} />
   <!-- Each stays a plain div rather than a ListRow, the rule Settings kept
@@ -213,7 +204,15 @@
   </ListCard>
 
   {#if !isWeb}
-    {#if notifyStatus.notifications === 'denied' && anyNotifyOn}
+    {#if notifyStatus === 'unreadable' && anyNotifyOn}
+      <Notice
+        icon="alert"
+        key="notify-unknown"
+        title={m.perm_status_unknown_title()}
+        text={m.notif_status_unknown_body()}
+        action={{ label: m.read_retry(), onclick: () => void statusWatch?.refresh() }}
+      />
+    {:else if notifyStatus !== 'unreadable' && notifyStatus.notifications === 'denied' && anyNotifyOn}
       <Notice
         icon="alert"
         key="notify-denied"
@@ -246,7 +245,7 @@
              jump once the inline styles come off (components.css). -->
         <div class="disclosed quiet-body" transition:disclose>
           <div class="quiet-window">
-            <Field label={m.notif_quiet_from()} id="quiet-start">
+            <Field label={m.range_from_label()} id="quiet-start">
               {#snippet children(id)}
                 <TimePicker name="quiet-start" {id} required bind:value={prefs.quietHoursStart} />
               {/snippet}
@@ -280,34 +279,14 @@
 </div>
 
 <style>
-  /* Right-aligned to match .kit-row-trail's own two fixed-width slots
-     (RegistryRow.svelte), with no left padding of its own so the gap and the
-     slot width are the only things that have to agree between the two
-     files. +1px accounts for the list card's own border, which the row's
-     padding is measured from the inside of. */
-  .registry-heads {
-    display: flex;
-    justify-content: flex-end;
-    gap: var(--space-2);
-    padding: 0 calc(var(--space-4) + 1px) var(--space-2) 0;
-  }
-
-  .registry-head {
-    flex: 0 0 var(--touch-target);
-    text-align: center;
-    font-size: var(--text-xs);
-    color: var(--text-2);
-  }
-
   /* The window is not a row, so it takes the row's own horizontal padding
      rather than sitting flush against the card's edge (kit.css). */
   .quiet-body {
     padding: var(--space-2) var(--space-4) var(--space-3) var(--space-3);
   }
 
-  /* Two time fields side by side, the shape journaling-pause's two date
-     fields already use, so the window reads as one range rather than as two
-     unrelated settings. */
+  /* Two time fields side by side, so the window reads as one range rather
+     than as two unrelated settings. */
   .quiet-window {
     display: grid;
     /* minmax(0, 1fr), not 1fr: a time field's min-content width is a text

@@ -1,9 +1,8 @@
 <script lang="ts">
-  /* A time field (phase 12 pickers, ticket 02), in place of the platform's
-     `<input type="time">` and keeping its contract: the value is `HH:MM` on
-     a 24-hour clock, or empty. The field is readonly and the picker
-     (TimePickerPanel.svelte) is the control, behind a tap, Enter or
-     ArrowDown, in the same host as the date picker's (pickerField.svelte.ts). */
+  /* A time field, in place of the platform's `<input type="time">` and keeping its
+     contract: the value is `HH:MM` on a 24-hour clock, or empty. The field is readonly and
+     the picker (TimePickerPanel.svelte) is the control, behind a tap, Enter or ArrowDown,
+     in the same host as the date picker's (pickerField.svelte.ts). */
   import { m } from '$lib/paraglide/messages';
   import TimePickerPanel from './TimePickerPanel.svelte';
   import { PickerField } from './pickerField.svelte';

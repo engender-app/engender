@@ -1,49 +1,19 @@
-/* Two questions about the same handful of routes, and they do not have the
-   same answer.
+/* Onboarding, In the room and the return moment hide the tab bar and rail.
+   screen-transition.ts uses the narrower set of gates, onboarding and In the
+   room to decide when the app gives way to a cut. The return moment stays
+   inside Today and gets its normal field transition from Home.
 
-   **Which routes the shell paints no chrome for** - no tab bar, no rail.
-   Onboarding, the in-the-room view of the prep list, and the return moment.
+   In the room retains its own back control. Hiding the tab bar there prevents
+   accidental exits while someone is speaking. Keep both route tables here so
+   the layout and tests use the same rules. */
 
-   **Which routes render *instead of* the app rather than inside it.** That
-   is the narrower set, and it is what decides between a tier-2 movement and
-   an instant cut (screen-transition.ts): a gate or onboarding is not
-   somewhere the app navigated to, it is what is drawn when the app is not.
-   The return moment is not one of those. It is a step Home walks to
-   (+layout.svelte's own `goto`), and it lights the Today tab
-   (active-tab.ts), so it owes the movement every other step inside a tab
-   gets - the field's blind coming down from the sun's height to the step's.
-
-   Conflating the two is what Alicja caught on ticket 35's flipbooks: the
-   empty state arriving had "no animation at all, yank between frames 7 and
-   8", and the yank was one predicate answering both questions. Home sat
-   still for 107ms and then the whole screen cut.
-
-   The room is on the narrower list because it is read while somebody is
-   being spoken to and a floating tab bar would be four ways to leave by
-   accident mid-sentence; the screen's own header back control (carpet 27)
-   is a deliberate exception to that and does not put the bar back.
-
-   Here rather than in the layout for the reason active-tab.ts gives: the
-   rule is a table, the layout is where a table gets buried, and a rule
-   nobody can run in a test is one nobody can check. */
+import { parseDayParam } from '../data/dayParam';
 
 /**
- * Whether one navigation is a cut rather than a movement.
- *
- * `from` is null on a cold start, which has nothing to come from.
- *
- * Setup is the one route on the narrow list above whose two legs are not
- * the same question, and redesign ticket 33 is where that showed. Arriving
- * is not a navigation: there is no app yet, and the shell redirects here
- * because `prefs.onboarded` is false. Leaving is - somebody pressed "Start
- * writing" and the app opened, which is the moment the whole flow is for,
- * and rule 12 already says the sun's handover to Home is one object at one
- * size rather than two suns. Cut, it was the app's largest surface changing
- * in a single frame at the end of ten steps that had all moved.
- *
- * This is ticket 35's lesson one route further on: one predicate answering
- * two questions is what produced that ticket's own yank, and the fix each
- * time is another question rather than a wider answer.
+ * A cold start cuts because from is null. Arrival at setup is a redirect
+ * before the app opens. Leaving setup moves so its sun hands over to Home
+ * at the same size. This predicate describes the transition, separately from
+ * whether a route shows chrome.
  */
 export function cutsInsteadOfMoving(from: string | null, to: string): boolean {
   if (from === null) return true;
@@ -64,10 +34,24 @@ export function replacesAppNavigation(path: string): boolean {
 
 /** Renders without the shell's chrome, whoever is looking at it. */
 export function chromelessPath(path: string): boolean {
-  /* The return moment (ADR-0062, redesign ticket 35) is chromeless and
-     nothing more: it is a step in DIRECTION.md rule 15's sense - one
-     purpose, no navigation - and its foot carries the one way off, so a bar
-     over it would be both a second way and a claim that this is a place
-     rather than a moment. */
+  /* The return step is chromeless. Its footer holds the only exit. */
   return replacesAppNavigation(path) || path === '/coming-back';
+}
+
+/** Hide the tab bar on chromeless routes and new entry. A new entry keeps
+    chromelessPath false so Today's retained doors stay mounted. */
+export function barlessPath(path: string, today: number = Number.MAX_SAFE_INTEGER): boolean {
+  if (chromelessPath(path)) return true;
+  const day = /^\/entry\/new\/([^/]+)\/?$/.exec(path)?.[1];
+  /* Only a day the editor opens. Anything else is the route's unavailable
+     notice, which keeps the app's chrome and Back. */
+  if (day === undefined) return false;
+  let value: string;
+  try {
+    value = decodeURIComponent(day);
+  } catch {
+    return false;
+  }
+  const epochDay = parseDayParam(value, today);
+  return epochDay !== null && epochDay <= today;
 }

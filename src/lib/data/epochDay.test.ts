@@ -1,5 +1,5 @@
 /* Epoch-day round-trip check (ADR-0001), replacing the old plain-Node
-   script now that the harness exists (ticket 03). Run under both
+   script now that the harness exists. Run under both
    timezones to catch UTC-anchored regressions:
 
      TZ=America/Los_Angeles npm test -- epochDay
@@ -72,19 +72,24 @@ test(`epochDayFromTimestamp round-trips with epochDayFromLocalDate under TZ=${tz
   expect(epochDayFromTimestamp(d.getTime())).toBe(epochDayFromLocalDate(d));
 });
 
-test(`startOfDayTimestamp is not epochDay * 86400000 across a DST transition under TZ=${tz}`, () => {
-  // A UTC-anchored day is always exactly 86400000ms; a real local day is
-  // 23 or 25 hours on the day the clocks change. Skipped outside the two
-  // zones this ticket names, since other zones may not observe DST at all.
-  if (tz !== 'Europe/Warsaw' && tz !== 'America/Los_Angeles') return;
-  const springForward =
-    tz === 'Europe/Warsaw'
-      ? epochDayFromLocalDate(new Date(2024, 2, 31)) // last Sunday of March
-      : epochDayFromLocalDate(new Date(2024, 2, 10)); // second Sunday of March
-  const before = startOfDayTimestamp(springForward);
-  const after = startOfDayTimestamp(springForward + 1);
-  expect(after - before).toBe(23 * 3600000);
-});
+for (const [zone, month, day] of [
+  ['Europe/Warsaw', 2, 31],
+  ['America/Los_Angeles', 2, 10]
+] as const) {
+  test(`startOfDayTimestamp spans 23 hours across spring forward in ${zone}`, () => {
+    const originalTz = process.env.TZ;
+    process.env.TZ = zone;
+    try {
+      const springForward = epochDayFromLocalDate(new Date(2024, month, day));
+      const before = startOfDayTimestamp(springForward);
+      const after = startOfDayTimestamp(springForward + 1);
+      expect(after - before).toBe(23 * 3600000);
+    } finally {
+      if (originalTz === undefined) delete process.env.TZ;
+      else process.env.TZ = originalTz;
+    }
+  });
+}
 
 test(`startOfDayTimestamp spans a full 86400000ms on an ordinary day under TZ=${tz}`, () => {
   const day = epochDayFromLocalDate(new Date(2024, 6, 15));
@@ -101,9 +106,8 @@ test(`epochDayFromDateInputValue returns null for the empty string under TZ=${tz
   expect(epochDayFromDateInputValue('')).toBeNull();
 });
 
-/* Ticket 10: 16 call sites each decided by hand what an unreadable date
-   means - 15 answered "today", one answered null. This is that one answer,
-   written down once. */
+/* 16 call sites each decided by hand what an unreadable date means - 15 answered "today",
+   one answered null. This is that one answer, written down once. */
 test(`epochDayFromDateInputValueOrToday falls back to today for the empty string under TZ=${tz}`, () => {
   expect(epochDayFromDateInputValueOrToday('')).toBe(todayEpochDay());
 });
@@ -113,9 +117,9 @@ test(`epochDayFromDateInputValueOrToday passes a real value through under TZ=${t
   expect(epochDayFromDateInputValueOrToday('2024-03-01')).toBe(day);
 });
 
-/* Ticket 10: four screens (clinician summary, photo export, search, wrapped)
-   each hand-wrote the same two-ended range - start can't run past end, end
-   can't run before start. This is that pair, written once. */
+/* Four screens (clinician summary, photo export, search, wrapped) each hand-wrote the same
+   two-ended range - start can't run past end, end can't run before start. This is that
+   pair, written once. */
 test(`dayRangeStartMax lets an empty end field mean "no upper bound" under TZ=${tz}`, () => {
   expect(dayRangeStartMax('')).toBeUndefined();
 });
@@ -155,8 +159,8 @@ test(`calendarDuration.months is always 0-11 regardless of gap length under TZ=$
   }
 });
 
-/* durationParts is the one place the "largest one or two units" rule lives
-   (ticket 45): fmtDuration renders it as words, and a letter's countdown
+/* durationParts is the one place the "largest one or two units" rule lives:
+fmtDuration renders it as words, and a letter's countdown
    draws the same parts as numbers on blocks. Two renderings of one rule, so
    a card and a sentence about the same gap can never disagree. */
 test(`durationParts gives years and months for a gap over a year under TZ=${tz}`, () => {
@@ -244,13 +248,14 @@ test(`anniversaryYears counts the anniversaries that have arrived, under TZ=${tz
 });
 
 test(`a 29 February milestone reads as a whole year old on its 28 February anniversary, under TZ=${tz}`, () => {
-  // calendarDuration is a day short here - 2025-02-28 is 365 days after
-  // 2024-02-29, one short of the calendar year - so the years shown beside
-  // an anniversary have to come from the anniversary, not from the gap.
+  // 2025-02-28 is 365 days after 2024-02-29. The anniversary clamps to the
+  // 28th, and the gap clamps the same way, so the
+  // two agree that a whole year has passed rather than the gap reading a
+  // day short of it.
   const milestone = epochDayFromLocalDate(new Date(2024, 1, 29));
   const feb28 = epochDayFromLocalDate(new Date(2025, 1, 28));
 
-  expect(calendarDuration(milestone, feb28).years).toBe(0);
+  expect(calendarDuration(milestone, feb28)).toEqual({ years: 1, months: 0, days: 0 });
   expect(anniversaryYears(milestone, feb28)).toBe(1);
   expect(anniversaryYears(milestone, feb28 - 1)).toBe(0);
 });
@@ -406,7 +411,7 @@ test(`customInclusiveRange rejects reversed boundaries under TZ=${tz}`, () => {
 });
 
 /* A chart's gutter writes the year on its ends only where the range crosses
-   one (phase 5 UX ticket 25). The lab results screen is what found this:
+   one. The lab results screen is what found this:
    its range is however long somebody has been having blood drawn, so a
    series running 22 June 2025 to 17 June 2026 drew "22 Jun" beside "17 Jun"
    and read as a chart running backwards. */
@@ -428,9 +433,8 @@ test(`crossesCalendarYear is true for the lab range that found it under TZ=${tz}
   expect(crossesCalendarYear(from, to)).toBe(true);
 });
 
-/* Audit item 20.2: "in 0 days" and "in 1 days" - a reminder due today or
-   tomorrow, or one already gone by, each got its own case instead of the
-   general "in n days" clamped at zero. */
+/* .2: "in 0 days" and "in 1 days" - a reminder due today or tomorrow, or one already gone
+   by, each got its own case instead of the general "in n days" clamped at zero. */
 test(`relativeDayFromToday is today at zero days under TZ=${tz}`, () => {
   expect(relativeDayFromToday(100, 100)).toEqual({ kind: 'today' });
 });
@@ -468,4 +472,94 @@ test('msUntilNextLocalMidnight lands on the next local midnight', () => {
   expect(after.getHours()).toBe(0);
   const morning = new Date(2026, 9, 5, 0, 0, 0);
   expect(epochDayFromLocalDate(new Date(morning.getTime() + msUntilNextLocalMidnight(morning)))).toBe(epochDayFromLocalDate(morning) + 1);
+});
+
+test('calendar duration borrows across a year boundary and keeps exact-month zero days', () => {
+  const day = (year: number, month: number, date: number) => epochDayFromCalendarDate(year, month, date)!;
+  expect(calendarDuration(day(2025, 11, 20), day(2026, 1, 10))).toEqual({ years: 0, months: 1, days: 21 });
+  expect(calendarDuration(day(2025, 12, 15), day(2026, 1, 15))).toEqual({ years: 0, months: 1, days: 0 });
+  expect(calendarDuration(day(2025, 12, 31), day(2026, 1, 1))).toEqual({ years: 0, months: 0, days: 1 });
+});
+
+/* The old borrow added the length of the month before the end date once, so a start day
+   longer than that month left days negative: 31 January to 1 March came out as 1 month and
+   -2 days. a month from the 31st ends on the shorter month's last day, so 31 January + 1
+   month is 28 or 29 February and 31 January to 1 March is 1 month 1 day. Every expected
+   value below is worked by hand from that rule, not from the implementation. */
+test('31 January to 1 March is 1 month 1 day, never negative days', () => {
+  const day = (year: number, month: number, date: number) => epochDayFromCalendarDate(year, month, date)!;
+  const d = calendarDuration(day(2026, 1, 31), day(2026, 3, 1));
+  expect(d.days).toBeGreaterThanOrEqual(0);
+  expect(d).toEqual({ years: 0, months: 1, days: 1 });
+});
+
+test.for([
+  // The 29th, 30th and 31st into a common February (28 days).
+  ['2026-01-29', '2026-02-28', { years: 0, months: 1, days: 0 }],
+  ['2026-01-30', '2026-02-28', { years: 0, months: 1, days: 0 }],
+  ['2026-01-31', '2026-02-28', { years: 0, months: 1, days: 0 }],
+  ['2026-01-31', '2026-02-27', { years: 0, months: 0, days: 27 }],
+  ['2026-01-29', '2026-03-01', { years: 0, months: 1, days: 1 }],
+  ['2026-01-30', '2026-03-01', { years: 0, months: 1, days: 1 }],
+  ['2026-01-31', '2026-03-02', { years: 0, months: 1, days: 2 }],
+  ['2026-01-31', '2026-03-03', { years: 0, months: 1, days: 3 }],
+  ['2026-01-31', '2026-03-31', { years: 0, months: 2, days: 0 }],
+  // The same into a leap February (29 days).
+  ['2028-01-29', '2028-02-29', { years: 0, months: 1, days: 0 }],
+  ['2028-01-30', '2028-02-29', { years: 0, months: 1, days: 0 }],
+  ['2028-01-31', '2028-02-29', { years: 0, months: 1, days: 0 }],
+  ['2028-01-31', '2028-02-28', { years: 0, months: 0, days: 28 }],
+  ['2028-01-29', '2028-03-01', { years: 0, months: 1, days: 1 }],
+  ['2028-01-30', '2028-03-01', { years: 0, months: 1, days: 1 }],
+  ['2028-01-31', '2028-03-01', { years: 0, months: 1, days: 1 }],
+  // The 29th, 30th and 31st into a 30-day month. Only the 31st is missing
+  // from April, so the 29th and 30th are controls the old code also got right.
+  ['2026-03-29', '2026-04-30', { years: 0, months: 1, days: 1 }],
+  ['2026-03-30', '2026-04-30', { years: 0, months: 1, days: 0 }],
+  ['2026-03-30', '2026-05-01', { years: 0, months: 1, days: 1 }],
+  ['2026-03-29', '2026-04-28', { years: 0, months: 0, days: 30 }],
+  ['2026-03-31', '2026-04-30', { years: 0, months: 1, days: 0 }],
+  ['2026-03-31', '2026-05-01', { years: 0, months: 1, days: 1 }],
+  ['2026-05-31', '2026-06-30', { years: 0, months: 1, days: 0 }],
+  ['2026-08-31', '2026-10-01', { years: 0, months: 1, days: 1 }],
+  ['2026-10-31', '2026-11-30', { years: 0, months: 1, days: 0 }],
+  ['2026-03-31', '2026-05-31', { years: 0, months: 2, days: 0 }],
+  // Across a year boundary, where the old borrow reached the wrong month.
+  ['2025-12-31', '2026-02-28', { years: 0, months: 2, days: 0 }],
+  ['2025-12-31', '2026-03-01', { years: 0, months: 2, days: 1 }],
+  ['2025-01-31', '2026-03-01', { years: 1, months: 1, days: 1 }],
+  // A year from 29 February ends on 28 February, by the same clamp.
+  ['2024-02-29', '2025-02-28', { years: 1, months: 0, days: 0 }],
+  ['2024-02-29', '2025-03-01', { years: 1, months: 0, days: 1 }],
+  ['2024-02-29', '2024-03-28', { years: 0, months: 0, days: 28 }],
+  ['2024-02-29', '2024-03-29', { years: 0, months: 1, days: 0 }]
+] as const)('calendarDuration from %s to %s clamps to the shorter month', ([from, to, expected]) => {
+  const a = epochDayFromDateInputValue(from)!;
+  const b = epochDayFromDateInputValue(to)!;
+  expect(calendarDuration(a, b)).toEqual(expected);
+  expect(calendarDuration(b, a)).toEqual(expected);
+});
+
+test(`calendarDuration never returns negative days, over every start day of 2023-2028, under TZ=${tz}`, () => {
+  const start = epochDayFromLocalDate(new Date(2023, 0, 1));
+  const end = epochDayFromLocalDate(new Date(2028, 11, 31));
+  const outOfRange: string[] = [];
+  for (let from = start; from <= end; from++) {
+    for (let gap = 0; gap <= 800; gap += 1) {
+      const d = calendarDuration(from, from + gap);
+      if (d.days < 0 || d.days > 30 || d.months < 0 || d.months > 11 || d.years < 0) {
+        outOfRange.push(`${dateInputValueFromEpochDay(from)} +${gap}: ${JSON.stringify(d)}`);
+      }
+    }
+  }
+  expect({ count: outOfRange.length, first: outOfRange.slice(0, 5) }).toEqual({ count: 0, first: [] });
+});
+
+test('custom inclusive range accepts one calendar day', () => {
+  expect(customInclusiveRange(20000, 20000)).toEqual({ start: 20000, end: 20000 });
+});
+
+test('a missing range end stays invalid before the Unix epoch', () => {
+  expect(customInclusiveRange(-1, null)).toBeNull();
+  expect(customInclusiveRange(0, null)).toBeNull();
 });

@@ -1,20 +1,21 @@
-/* Recording a voice note in the editor (ticket 24).
+/* Recording a voice note in the editor.
 
-   One seam, both platforms, unlike photoPicking.ts's camera capture: an
-   Android photo needs the system camera app (photos/picker.ts), but audio
-   capture is plain `getUserMedia`/`MediaRecorder`, which the same Chromium
-   WebView Capacitor already wraps on Android handles exactly like the
-   browser does. Capacitor's own WebChromeClient requests RECORD_AUDIO at
-   the OS level and grants the WebView resource on approval - see
-   AndroidManifest.xml's permission block - so there is no native bridge
-   for this the way photos.ts needs one for the camera intent.
+   One seam, both platforms, unlike photoPicking.ts's camera capture: an Android photo needs
+   the system camera app (photos/picker.ts), but audio capture is plain
+   `getUserMedia`/`MediaRecorder`, which the same Chromium WebView Capacitor already wraps
+   on Android handles exactly like the browser does. Capacitor's own WebChromeClient
+   requests RECORD_AUDIO at the OS level and grants the WebView resource on approval - see
+   AndroidManifest.xml's permission block - so there is no native bridge for this the way
+   photos.ts needs one for the camera intent.
 
-   No normalize() step: ticket 24 excludes client-side audio effects, so
-   the bytes MediaRecorder produced are exactly what gets stored. */
+   No normalize step: excludes client-side audio effects, so the bytes MediaRecorder
+   produced are exactly what gets stored. */
 
 import { captureChainOf, deviceFromUserAgent } from '$lib/audio/captureChain';
 import { chooseFiles } from '$lib/data/fileDialog';
 import { VIDEO_SIZE_CEILING } from '$lib/data/videoNotes/limits';
+import { refuseAudioOverBudget } from '../data/media/audio-budget';
+import { MediaBudgetError } from '../data/media/budget';
 import { m } from '$lib/paraglide/messages';
 import { toast } from './toasts.svelte';
 
@@ -65,21 +66,20 @@ const UNPROCESSED_AUDIO: MediaTrackConstraints = {
   autoGainControl: false
 };
 
-/** What the platform will say about the hardware, for the chain a
-    benchmark records (audio/captureChain.ts, ticket 28, ADR-0061).
+/** What the platform will say about the hardware, for the chain a benchmark records
+    (audio/captureChain.ts, ADR-0061).
 
-    Client hints rather than the user agent: Chrome 110 reduced the Android
-    user agent string and froze its model token to `Android 10; K` on every
-    phone, so parsing it can no longer tell two phones apart.
-    `getHighEntropyValues(['model'])` still answers with the build model,
-    and both of this app's platforms are Chromium in a secure context
-    (capacitor.config.ts sets `androidScheme: 'https'`). Where the API is
-    missing, or answers with nothing, the user agent's platform token
-    stands in and the microphone's own label carries the difference.
+    Client hints rather than the user agent: Chrome 110 reduced the Android user agent
+    string and froze its model token to `Android 10; K` on every phone, so parsing it can no
+    longer tell two phones apart. `getHighEntropyValues(['model'])` still answers with the
+    build model, and both of this app's platforms are Chromium in a secure context
+    (capacitor.config.ts sets `androidScheme: 'https'`). Where the API is missing, or
+    answers with nothing, the user agent's platform token stands in and the microphone's own
+    label carries the difference.
 
-    Not an ambient fingerprinting surface: it is read at the moment a
-    benchmark opens the microphone, stored inside the same encrypted
-    journal as the audio it describes (ADR-0020), and shown to nobody. */
+    Not an ambient fingerprinting surface: it is read at the moment a benchmark opens the
+    microphone, stored inside the same encrypted journal as the audio it describes
+    (ADR-0020), and shown to nobody. */
 async function deviceName(): Promise<string> {
   const hints = navigator.userAgentData;
   if (hints) {
@@ -164,13 +164,13 @@ export function recordStream(stream: MediaStream): ActiveRecording {
     async stop() {
       try {
         if (recorder.state !== 'inactive') recorder.stop();
-        await stopped;
       } finally {
         // Closes the mic indicator the OS/browser shows while a stream is
         // live - stopping the recorder alone leaves the track open. In a
         // `finally` so a failed stop still lets the tracks go.
         for (const track of stream.getTracks()) track.stop();
       }
+      await stopped;
       if (chunks.length === 0) return null;
       return new Uint8Array(await new Blob(chunks, { type: RECORDING_MIME_TYPE }).arrayBuffer());
     }
@@ -179,9 +179,15 @@ export function recordStream(stream: MediaStream): ActiveRecording {
 
 /** Opens the microphone and starts capturing. Null if the browser refused -
     permission denied, no microphone, or an unsupported codec - reported with
-    a toast and treated as an ordinary outcome rather than an error. */
-export async function startRecording(): Promise<ActiveRecording | null> {
+    a toast and treated as an ordinary outcome rather than an error. A
+    cancelled owner gets neither recording nor delayed refusal feedback. */
+export async function startRecording(signal?: AbortSignal): Promise<ActiveRecording | null> {
+  if (signal?.aborted) return null;
   const stream = await openMicrophone();
+  if (signal?.aborted) {
+    if (typeof stream !== 'string') for (const track of stream.getTracks()) track.stop();
+    return null;
+  }
   if (stream === 'unsupported') {
     toast(m.recording_unsupported());
     return null;
@@ -223,5 +229,17 @@ export async function pickRecording(): Promise<Uint8Array | null> {
     toast(m.recording_too_large());
     return null;
   }
-  return new Uint8Array(await file.arrayBuffer());
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  /* Bytes and length are different budgets: a few hundred kilobytes of low
+     bitrate speech can be hours long, and the decoder behind the waveform
+     pays for the hours (data/media/audio-budget.ts). Checked here, on the
+     header, so a recording the app will not open is not stored either. */
+  try {
+    refuseAudioOverBudget(bytes);
+  } catch (error) {
+    if (!(error instanceof MediaBudgetError)) throw error;
+    toast(m.recording_too_long());
+    return null;
+  }
+  return bytes;
 }

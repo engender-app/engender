@@ -1,18 +1,7 @@
 <script lang="ts">
-  /* A row of the list card: an icon disc, a title, an optional subtitle and
-     a chevron.
-
-     The subtitle is optional because subtitles are earned, not standard
-     (DIRECTION.md 3b). Plenty of rows have nothing to put there. The More
-     hub used to be the example of that and is now the example of earning
-     it: every one of its rows carries a second line, either a reading of
-     when its area was last written to or a short line about what is behind
-     it (phase 8 UX ticket 02, and the spec's user story 13 - "each row to
-     tell me what is behind it, so that navigating is also reading").
-
-     Renders as a link where it navigates and as a button where it acts, so
-     a destination is a destination to the keyboard and to the screen reader
-     as well as to the eye. */
+  /* A list row has an icon, title and chevron. A subtitle can show the
+     latest reading or describe the destination. Render a link for
+     navigation and a button for an action. */
   import type { Snippet } from 'svelte';
   import { crossfade, resize } from '$lib/motion/reveal';
   import Icon from '../Icon.svelte';
@@ -27,16 +16,15 @@
         words says the same thing twice. */
     icon?: string;
     /** Words in the button rather than a glyph, for a control whose meaning
-        no icon carries - "I skipped this" on an auto-logged dose (phase 11
-        ticket 11). The square target widens to fit them; `label` stays the
+        no icon carries - "I skipped this" on an auto-logged dose. The square target widens to fit them; `label` stays the
         accessible name either way, so the two can differ where the visible
         words only make sense next to the row they sit on. */
     text?: string;
     label: string;
     onclick: () => void;
-    /** The control's own walkthrough handle, where the row's `key` is not
-        it: a delete button on a photo row is `data-delete-hair-photo`, and
-        the name is the screen's, not the kit's (ADR-0029). */
+    /** The control's own walkthrough handle, where the row's `key` is not it: a delete
+        button on a photo row is `data-delete-hair-photo`, and the name is the screen's, not
+        the kit's. */
     attrs?: Record<string, string>;
   };
 
@@ -64,10 +52,10 @@
         procedure's date, its consults, its checklist. */
     subtitle?: RowLine | RowLine[];
     /** Set where the row's words come from a read that lands once while the
-        row is on screen - the hub's lines, the curve row's reading, a day's
-        drug names - so the swap fades the previous words off instead of
-        cutting (the same asymmetry the skeleton's crossfade keeps: what
-        replaces them is simply there). Off by default, and a row whose
+        row is on screen - the hub's lines, a day's drug names - so the
+        swap fades the previous words off instead of cutting (the same
+        asymmetry the skeleton's crossfade keeps: what replaces them is
+        simply there). Off by default, and a row whose
         words tick must never set it: a fading swap on a clock is a pulse. */
     fadeSwap?: boolean;
     /** A name from $lib/components/icons.ts. */
@@ -75,12 +63,11 @@
     maskImage?: string;
     href?: string;
     onclick?: () => void;
-    /** The row's own identity for the walkthrough's handle (ADR-0029) -
-        a stable key, never the title, which is copy. */
+    /** The row's own identity for the walkthrough's handle - a stable key, never the title,
+        which is copy. */
     key?: string;
     /** Set, and the row is a checkbox: it announces itself as one, carries
-        its state, and draws its own box at the trailing edge (phase 5
-        ticket 35). The row is the control rather than holding one, so the
+        its state, and draws its own box at the trailing edge. The row is the control rather than holding one, so the
         whole width of it is the target and a keyboard gets one stop per
         row - which is what a list of things to tick wants, and what a row
         holding a switch deliberately does not do. */
@@ -102,7 +89,7 @@
     /** Anything that sits before the chevron: a count, a date, a switch. */
     trailing?: Snippet;
     /** One control of the row's own, beside what the row opens - throwing
-        a letter away, dropping a tryout (phase 5 UX ticket 25).
+        a letter away, dropping a tryout.
 
         It changes the row's markup rather than sitting inside it: a button
         nested in a link is not something a browser or a screen reader can
@@ -111,11 +98,10 @@
         same reason Notice's dismiss does - an icon button with no
         accessible name cannot be reached by voice or announced at all. */
     action?: RowAction;
-    /** The caller's own attributes, landing on the row itself - the same
-        contract Tile and Notice already have. `data-list-row` names the
-        slot and the handle beside it names the thing in it, which is what
-        lets a screen keep the walkthrough handle it has had since phase 4
-        while the container underneath it changes (ADR-0029). */
+    /** The caller's own attributes, landing on the row itself - the same contract Tile and
+        Notice already have. `data-list-row` names the slot and the handle beside it names
+        the thing in it, which is what lets a screen keep the walkthrough handle it has had
+        in older versions while the container underneath it changes. */
     [attribute: string]: unknown;
   } = $props();
 
@@ -141,11 +127,17 @@
     return transition;
   };
 
+  /* The arriving words fade in over the leaving ones. `crossfade` alone is the leaving
+     half, so with only that the new line was painted at full opacity in the frame the words
+     changed (Look back's "Femininity, 3 to 7" line on a span change). */
+  const lineIn = (node: Element) =>
+    fadeSwap ? crossfade(node, undefined, { direction: 'in' }) : { duration: 0 };
+
   /* And a row whose words cross also travels its height: the old line leaves
      out of flow, so a new line shorter or longer than it resized the row in
      one frame and moved every row under it. The More hub's lines land
      together once its reads answer, and each row gave back 9-19px at once,
-     37px down the door by the second group (ux-carpet ticket 193). */
+     37px down the door by the second group. */
   const textTravel = (node: HTMLElement) => (fadeSwap ? resize(node) : undefined);
 </script>
 
@@ -164,12 +156,12 @@
   <span class="kit-row-text" class:fade-swap={fadeSwap} use:textTravel>
     {#if title}
       <span class="kit-row-title" data-row-title>
-        {#key title}<span out:lineOut>{title}</span>{/key}
+        {#key title}<span in:lineIn out:lineOut>{title}</span>{/key}
       </span>
     {/if}
     {#each subtitles as line, i (i)}
       <span class="kit-row-sub">
-        {#key line}<span out:lineOut>{line}</span>{/key}
+        {#key line}<span in:lineIn out:lineOut>{line}</span>{/key}
       </span>
     {/each}
   </span>
@@ -214,11 +206,10 @@
     {#if action}{@render rowAction(action)}{/if}
   </div>
 {:else if action}
-  <!-- The split shape names both halves: `data-row-action` has always been
-       on the control, and `data-row-main` is here for the same reason
-       (ADR-0029, and the test that holds it). A row that acts in place from
-       its main half - the return surface's two offers - is otherwise only
-       reachable by its class, which is structure and exactly what the
+  <!-- The split shape names both halves: `data-row-action` has always been on the control,
+       and `data-row-main` is here for the same reason (and the test that holds it). A row
+       that acts in place from its main half - the return surface's two offers - is
+       otherwise only reachable by its class, which is structure and exactly what the
        walkthrough may not grip. -->
   <div class="kit-row is-split" data-list-row={key} {...rest}>
     {#if href}

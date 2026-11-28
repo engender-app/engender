@@ -1,24 +1,12 @@
 <script lang="ts">
-  /* Day by day: the active scale over the span, with a second scale on
-     offer, and where every scale sat over the period (phase 11 ticket 07,
-     moved off the Look back door's scroll into a reading of its own).
+  /* The tile and detail share one active-scale read. Detail offers a
+     second scale, off by default, period averages and an accessible
+     values list.
 
-     Two views of one read. On the door it is a tile: a 2px line of the
-     series and the active scale's average as the figure. On its screen it
-     is the two cards the door used to draw - the chart with its picker and
-     the second-scale offer, and "Each scale, this period" under it, since
-     that card reads the same series and was the chart's companion on the
-     door - plus the hidden values list, which is the only path a screen
-     reader has through the series.
-
-     The chart fits the card, so what changes with the range is how coarsely
-     it reads: 30 days day by day, a year week by week ($lib/charts/grain).
-     The grain decides how the scrubbed position is named too - a week's
-     reading is a week, and dating it to its Monday alone would be a day
-     standing in for seven. The second scale is opt-in and empty by default:
-     a comparison is a question somebody has to have first (phase 6 ticket
-     12). Both series bucket separately and are read onto the first's
-     positions, since the chart places by index. */
+     Use the span's grain for both grouping and scrub labels. A week
+     bucket must be named as a week. Bucket both scales separately, then
+     align the second to the first scale's positions because the chart
+     places points by index. */
   import { m } from '$lib/paraglide/messages';
   import { fmtDay } from '$lib/data/dates';
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
@@ -27,7 +15,7 @@
   import { metricStandings } from '$lib/data/statsCharts';
   import { nativeAmount, nativeValue, spreadNote } from '$lib/data/wrappedDisplay';
   import { readingHref } from '$lib/data/lookBackReadings';
-  import { metricChoices, nameInSentence, shownMetric } from '$lib/data/metricChoices';
+  import { averageLabel, metricChoices, shownMetric } from '$lib/data/metricChoices';
   import type { Span } from '$lib/data/lookBackSpan';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
@@ -67,17 +55,16 @@
   const CHART_ROLE = 0;
 
   let metrics = $derived(metricChoices());
-  let metricOptions = $derived(metrics.map((mt) => ({ value: mt.key, label: mt.name })));
-  let shown = $derived(shownMetric(metrics));
 
   let annotationsQuery = liveList((j) =>
     view === 'tile' ? Promise.resolve([]) : j.chartAnnotations.getAnnotations(from, to, today)
   );
 
-  /* The tile draws only the active scale. The screen also draws the
-     scales card, so it needs every metric. */
+  /* Every metric, on the tile as well as the screen: which of them have
+     readings in the span decides what the picker offers and what the tile
+     draws (below). */
   let seriesQuery = liveQuery(async (j) => {
-    const keys = view === 'tile' ? [shown.key] : metrics.map((mt) => mt.key);
+    const keys = metrics.map((mt) => mt.key);
     const [rangeFrom, rangeTo] = [from, to];
     const series = await Promise.all(keys.map((key) => j.stats.dayAverages(key, rangeFrom, rangeTo)));
     return new Map(keys.map((key, i) => [key, series[i]]));
@@ -86,6 +73,13 @@
   joinReadGroup(() => !seriesQuery.loading);
   let series = $derived(seriesQuery.value ?? new Map<string, DayAverage[]>());
   let seriesFor = $derived((key: string): DayAverage[] => series.get(key) ?? []);
+
+  /* Only scales with readings in the span are offered, and a stored choice with none here
+     falls back to the first that has some. The stored preference is kept, so a span where
+     that scale has readings shows it again. */
+  let withData = $derived(metrics.filter((mt) => seriesFor(mt.key).length > 0));
+  let shown = $derived(withData.find((mt) => mt.key === shownMetric(metrics).key) ?? withData[0] ?? shownMetric(metrics));
+  let metricOptions = $derived(withData.map((mt) => ({ value: mt.key, label: mt.name })));
 
   /* Where each scale sat over the period. The bar's length is where the
      average lands inside that metric's own range and the number beside it
@@ -101,8 +95,7 @@
         key: standing.key,
         name: metric?.name ?? standing.key,
         note: m.n_days({ n: standing.days }),
-        /* Empty rather than a dash on a scale nothing was logged against:
-           docs/ui-copy.md has no dashes in it. */
+        /* Leave an unlogged scale blank. */
         value: standing.value === null ? '' : nativeValue(standing.key, standing.value),
         amount: standing.share
       };
@@ -113,11 +106,11 @@
   let compareKey = $state('');
   let comparing = $state(false);
   $effect(() => {
-    if (compareKey && !metrics.some((mt) => mt.key === compareKey && mt.key !== shown.key)) {
+    if (compareKey && !withData.some((mt) => mt.key === compareKey && mt.key !== shown.key)) {
       compareKey = '';
     }
   });
-  let compared = $derived(metrics.find((mt) => mt.key === compareKey));
+  let compared = $derived(withData.find((mt) => mt.key === compareKey));
   let compareOptions = $derived([
     { value: '', label: m.stats_compare_none() },
     ...metricOptions.filter((option) => option.value !== shown.key)
@@ -215,7 +208,7 @@
       name={m.stats_day_by_day()}
       href={readingHref('day-by-day', span)}
       headline={activeScaleRow?.value || undefined}
-      note={m.lookback_facts_average({ name: shown.name, nameInSentence: nameInSentence(shown.name) })}
+      note={averageLabel(shown)}
     >
       {#snippet drawing()}
         <svg viewBox="0 0 {SPARK_W} {SPARK_H}" preserveAspectRatio="none">
@@ -233,9 +226,8 @@
     </ReadingTile>
   {/if}
 {:else}
-  <!-- Its own heading rather than the screen's title a second time
-       (release audit U14): this card is one scale across the days, and the
-       card under it is every scale across the period. -->
+  <!-- Its own heading rather than the screen's title a second time (release): this card is
+       one scale across the days, and the card under it is every scale across the period. -->
   <ChartCard level={2} heading={m.stats_scale_each_day()} kind="day-by-day" role={roleAt(activeFlag.roles, CHART_ROLE)}>
     {#snippet control()}
       <ChartPicker
@@ -276,7 +268,7 @@
       {/if}
       <!-- The second scale, offered rather than presented, in one row that
            does not move: the offer and the picker it becomes. -->
-      {#if metrics.length > 1 && plotted.points.length}
+      {#if withData.length > 1 && plotted.points.length}
         <div class="reading-axes">
           <p class="reading-axis">
             {#if comparing || compared}

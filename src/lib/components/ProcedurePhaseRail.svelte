@@ -1,33 +1,10 @@
 <script lang="ts">
-  /* One procedure's phases on one line (phase 10 redesign ticket 52,
-     DIRECTION.md rule 16): the consults behind it, the surgery date as the
-     pivot, the stretch to today ahead of it, and today's own mark.
+  /* procedureRail.ts places consults, surgery and today on one line. Positions
+     use square-root distance from surgery, so rail lengths have no day unit.
+     The recovery segment ends at today to avoid implying a recovery deadline.
 
-     Its own component rather than markup on the card for the reason
-     MilestoneRail gives: the arithmetic lives in $lib/data/procedureRail
-     with its own tests, and the markup and classes that turn those
-     positions into a line are one thing. The card that carries it is about
-     a name, a number and a photo strip.
-
-     Decorative to a screen reader, and that is deliberate rather than
-     lazy - but it only holds while the card beside it still writes every
-     fact on this line down in text: the date, the day count, and how many
-     consults there are. The first build of this ticket dropped the consult
-     badge and left two consults existing nowhere but as two hollow dots on
-     an `aria-hidden` line, which made this comment false rather than the
-     rail wrong. Anything added to the rail owes the card a line of text.
-
-     Nothing here is a scale. The positions are square roots of distance
-     from the date (procedureRail.ts says why), so a length along this line
-     is not a number of days and the card writes every date out. There are
-     no ticks between the marks and no horizon: the stretch drawn ahead of
-     the date stops at today, because a band running on to a 90-day cutoff
-     with today somewhere along it is a progress bar through somebody's
-     recovery - which ticket 52 rules out in its Out of scope, and which
-     recoveryDay.ts's own header has refused since that module was written.
-     ADR-0012 is the neighbouring rule rather than this one: it is what says
-     no end of a scale is the good end, which is why rule 9 cites it against
-     a second colour across a spine. */
+     The rail is aria-hidden. Its card must state every fact encoded by the
+     marks, including the surgery date, day count and number of consults. */
   import { procedureRail, type ProcedureMark } from '$lib/data/procedureRail';
   import type { Procedure } from '$lib/data/types';
 

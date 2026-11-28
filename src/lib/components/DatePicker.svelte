@@ -1,13 +1,11 @@
 <script lang="ts">
-  /* A date field: the day written out ("3 Oct 2026") in a readonly field,
-     and the picker (DatePickerPanel.svelte) behind a tap, Enter or ArrowDown
-     on it. The picker is the control, so the field takes no typing of its
-     own; typed entry lives in the picker's foot, which is where `yyyy-mm-dd`
-     still belongs. The field used to show that string too, the one place in
-     the app a date read as `2026-10-03` (after-release 28). `value` stays
-     `yyyy-mm-dd`, and `data-date-value` carries it for the guards.
-     pickerField.svelte.ts owns the field's half: where the picker is
-     mounted, and when. */
+  /* A date field: the day written out ("3 Oct 2026") in a readonly field, and the picker
+     (DatePickerPanel.svelte) behind a tap, Enter or ArrowDown on it. The picker is the
+     control, so the field takes no typing of its own; typed entry lives in the picker's
+     foot, which is where `yyyy-mm-dd` still belongs. The field used to show that string
+     too, the one place in the app a date read as `2026-10-03`. `value` stays `yyyy-mm-dd`,
+     and `data-date-value` carries it for the guards. pickerField.svelte.ts owns the field's
+     half: where the picker is mounted, and when. */
   import { m } from '$lib/paraglide/messages';
   import { fmtDateValue } from '$lib/data/dates';
   import DatePickerPanel from './DatePickerPanel.svelte';

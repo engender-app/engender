@@ -1,9 +1,8 @@
-/* Browser-tier check for ticket 12: hash-wasm claims to bundle its WASM as
-   base64 rather than fetch it, unlike the Rive runtime, which defaults to
-   a CDN - the ticket's own Notes say to re-verify that claim once wired
-   in rather than trust the README. run.mjs records every request made
-   while this page loads and asserts none of them happened at all (base64
-   means no request, not just no *external* request). */
+/* Browser-tier check for hash-wasm claims to bundle its WASM as base64 rather than fetch
+   it, unlike the Rive runtime, which defaults to a CDN - the ticket's own Notes say to
+   re-verify that claim once wired in rather than trust the README. run.mjs records every
+   request made while this page loads and asserts none of them happened at all (base64 means
+   no request, not just no *external* request). */
 import { deriveKey, randomSalt } from '../../src/lib/crypto/argon2id.ts';
 import { encrypt, decrypt } from '../../src/lib/crypto/aesGcm.ts';
 import { ARCHIVE_ARGON2_PARAMS, PIN_ENCRYPTION_ARGON2_PARAMS } from '../../src/lib/crypto/params.ts';

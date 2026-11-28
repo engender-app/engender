@@ -1,50 +1,24 @@
-/* Remaining medication stock and its run-out projection (phase 4 ticket 04,
-   CONTEXT: "Medication stock", "Run-out projection", "Regimen episode",
-   "Dose event", "Dose pause"). Pure, kept above the journal seam beside
-   doseSchedule.ts and labTiming.ts: nothing here reads a clock or a
-   database, and both figures are derived on read rather than stored
-   (ADR-0046, generalizing ADR-0010's rule against stored derived state) -
-   the schema comment at medication_stock's own migration (v7) argues why a
-   decremented number would drift the way `reminder.trigger_time` did, and
-   why that is not ticket 03's stored-context exception: every dose this
-   projects over is still sitting in `dose_event`, unlike the dose log a lab
-   draw's context was measured against.
+/* Derive remaining medication stock and run-out from stored dose events
+   (ADR-0046). A stored balance could drift. Match stock by drug rather than
+   episode so a dose or route change preserves the count.
 
-   Scoped by drug (free text on RegimenEpisode.drug), matched exactly the
-   way an analyte's unit or a lab provider is (CONTEXT: "Analyte", "Lab
-   provider") - not by regimen episode, because a dose or route change on
-   the same drug starts a new episode, and an episode-scoped count would go
-   stale on the very next adjustment.
-
-   The trailing consumption rate deliberately does not reach for
-   dose_schedule or dose_pause, the way labTiming.ts's day-of-interval does
-   not reach for dose_schedule: a schedule is optional and one per episode,
-   so a figure that depended on one would silently go missing for someone
-   who has never set one (labTiming.ts's own reasoning). Working the pause
-   case through shows a second reason, in the opposite direction from the
-   one that reasoning might suggest: excluding a pause's days from the
-   trailing window - mirroring how adherence() excludes them from the
-   expected-slot count - raises the rate back to the non-paused pace and
-   projects an EARLIER run-out, which is backwards. Nothing is being
-   consumed while a pause runs, so the stock lasts longer in calendar time,
-   not less. Leaving every calendar day in the denominator - counting a
-   pause exactly like a run of skipped doses, both zero-consumption days
-   that pull the average down - is what pushes the date later, which is
-   the direction box 3 asks for. The decision behind this paragraph is
-   ADR-0055, which restates it from ADR-0032; the streak half of that older
-   one is gone. */
+   Average consumption over every calendar day in the trailing window.
+   Paused and skipped days count as zero, so a pause extends projected
+   supply (ADR-0055). The calculation also works without a dose schedule
+   or a pause record. The caller supplies dates and storage. */
 
 import { epochDayFromTimestamp } from './epochDay';
 import { attributeDrug, drugSpans, drugNameKey, sameDrug } from './regimenEpisode';
 import { rangesFromCuts } from './span';
 import type { DoseEvent, RegimenEpisode } from './types';
+import { clearSnooze, isTileSnoozed, snoozeTile } from './liveTilesSnooze';
+import type { AcknowledgementStore } from './acknowledgements';
 
 /** How many trailing days of the dose log the consumption rate is
     estimated from, capped at how long the current stock entry has been in
     effect when that is shorter - there is nothing to estimate from before
     the count was recorded. */
-/* TRAILING_WINDOW_DAYS stays exported only for its own test (AU-09 test-only
-   review). */
+/* TRAILING_WINDOW_DAYS stays exported only for its own test. */
 export const TRAILING_WINDOW_DAYS = 30;
 
 /** How many days before a projected run-out an Android prompt is dated
@@ -56,13 +30,13 @@ export const TRAILING_WINDOW_DAYS = 30;
     day the acceptance criteria describe. */
 export const RUN_OUT_LEAD_DAYS = 5;
 
-/* StockEntry stays exported only for its own test (AU-09 test-only review). */
+/* StockEntry stays exported only for its own test. */
 export interface StockEntry {
   drug: string;
   quantity: number;
   unit: string;
   recordedEpochDay: number;
-  /** How many doses one unit holds (after-release ticket 01): five doses to
+  /** How many doses one unit holds: five doses to
       a vial, 28 to a blister. Null or missing means one dose per unit, the
       only reading there was before. */
   dosesPerUnit?: number | null;
@@ -91,8 +65,7 @@ export interface StockProjection {
   runOutEpochDay: number | null;
   /** Doses in `[stock.recordedEpochDay, asOfEpochDay]` left out of every
       stock's count because more than one concurrent regimen episode was
-      active and the dose named no drug of its own to break the tie (phase
-      5 ticket 38). Whole-window rather than this drug's own, since an
+      active and the dose named no drug of its own to break the tie. Whole-window rather than this drug's own, since an
       ambiguous dose cannot be told apart for any drug, not just this one -
       the same figure appears on every entry's projection for the window it
       shares. */
@@ -168,8 +141,7 @@ function projectStockFromCounts(
     the ranges asked for. Declared structurally rather than imported from
     the doses area, so this module still depends on nothing below the
     journal seam: `DosesArea.countConsumingDosesByDrug` satisfies it. */
-/* DrugDoseCounter stays exported only for its own test (AU-09 test-only
-   review). */
+/* DrugDoseCounter stays exported only for its own test. */
 export type DrugDoseCounter = (
   ranges: readonly { fromEpochDay: number; toEpochDay: number }[]
 ) => Promise<readonly { drug: string | null; countsByRange: readonly number[] }[]>;
@@ -268,8 +240,7 @@ export async function projectEveryStock(
     For a caller holding the doses already. A caller that would have to
     fetch a decade of them to count three numbers should ask its area for
     the counts and use `projectStockFromCounts` instead (stock.ts). */
-/* projectStock stays exported for its own test, and cross-checked in
-   stock.test.ts (AU-09 test-only review). */
+/* projectStock stays exported for its own test, and cross-checked in stock.test.ts. */
 export function projectStock(
   stock: StockEntry,
   doses: readonly DoseEvent[],
@@ -298,13 +269,11 @@ export function projectStock(
   );
 }
 
-/** The day an order has to be placed: `runOutEpochDay` minus `leadTimeDays`
-    where a lead time is set, the run-out day itself where none is set
-    (redesign phase 10 ticket 01). Null wherever `runOutEpochDay` is null -
-    there is nothing to place an order ahead of. Kept separate from
-    `projectStockFromCounts` rather than folded into `StockProjection`, so the
-    run-out projection itself stays exactly what it was before a lead time
-    existed (ADR-0046). */
+/** The day an order has to be placed: `runOutEpochDay` minus `leadTimeDays` where a lead
+    time is set, the run-out day itself where none is set. Null wherever `runOutEpochDay` is
+    null - there is nothing to place an order ahead of. Kept separate from
+    `projectStockFromCounts` rather than folded into `StockProjection`, so the run-out
+    projection itself stays exactly what it was before a lead time existed (ADR-0046). */
 export function reorderByEpochDay(runOutEpochDay: number | null, leadTimeDays: number | null): number | null {
   if (runOutEpochDay === null) return null;
   if (leadTimeDays === null) return runOutEpochDay;
@@ -312,73 +281,31 @@ export function reorderByEpochDay(runOutEpochDay: number | null, leadTimeDays: n
 }
 
 /** Threshold in days below which a medication stock triggers a low-stock notice. */
-/* STOCK_DEPLETION_NOTICE_THRESHOLD_DAYS stays exported only for its own test
-   (AU-09 test-only review). */
+/* STOCK_DEPLETION_NOTICE_THRESHOLD_DAYS stays exported only for its own test. */
 export const STOCK_DEPLETION_NOTICE_THRESHOLD_DAYS = 7;
-const STOCK_NOTICE_SNOOZE_STORAGE_KEY = 'engender-stock-notice-snooze-until';
-/* Pre-rename name (audit finding S3): unprefixed, so the reset's
-   engender- prefix sweep left it behind. Migrated on first read rather
-   than dropped, so a snooze already in effect survives the rename.
-   Lazily on read rather than once at module load like
-   recentSearches.ts's purgeLegacyRecentSearches: the storage here is
-   whatever a caller passes in (a fake in tests), which a load-time call
-   has no access to, and there is a value worth carrying over rather than
-   just dropping. */
-const LEGACY_STOCK_NOTICE_SNOOZE_STORAGE_KEY = 'stock_notice_snooze_until';
+/* The notice's 24-hour snooze is the `stock-notice` tile's snooze in the encrypted
+   acknowledgements preference. It sat in plaintext localStorage before, where a key that
+   exists only after somebody dismissed a running-out medication notice said so to anyone
+   with the device's files; the first unlock moves an old one over (acknowledgements.ts). */
+const STOCK_NOTICE_TILE = 'stock-notice';
 const STOCK_NOTICE_SNOOZE_DURATION_MS = 24 * 60 * 60 * 1000;
 
-function resolveStorage(storage?: Storage): Storage | null {
-  if (storage) return storage;
-  if (typeof localStorage !== 'undefined') return localStorage;
-  return null;
+export function isStockNoticeSnoozed(store: AcknowledgementStore, nowMs: number = Date.now()): boolean {
+  return isTileSnoozed(STOCK_NOTICE_TILE, store, nowMs);
 }
 
-function migrateLegacyStockNoticeSnooze(s: Storage): void {
-  if (s.getItem(STOCK_NOTICE_SNOOZE_STORAGE_KEY) !== null) return;
-  const legacy = s.getItem(LEGACY_STOCK_NOTICE_SNOOZE_STORAGE_KEY);
-  if (legacy === null) return;
-  s.setItem(STOCK_NOTICE_SNOOZE_STORAGE_KEY, legacy);
-  s.removeItem(LEGACY_STOCK_NOTICE_SNOOZE_STORAGE_KEY);
-}
-
-export function isStockNoticeSnoozed(nowMs: number = Date.now(), storage?: Storage): boolean {
-  const s = resolveStorage(storage);
-  if (!s) return false;
-  try {
-    migrateLegacyStockNoticeSnooze(s);
-    const raw = s.getItem(STOCK_NOTICE_SNOOZE_STORAGE_KEY);
-    if (!raw) return false;
-    const until = Number(raw);
-    return !Number.isNaN(until) && nowMs < until;
-  } catch {
-    return false;
-  }
-}
-
-export function snoozeStockNotice(nowMs: number = Date.now(), storage?: Storage): void {
-  const s = resolveStorage(storage);
-  if (!s) return;
-  try {
-    s.setItem(STOCK_NOTICE_SNOOZE_STORAGE_KEY, String(nowMs + STOCK_NOTICE_SNOOZE_DURATION_MS));
-  } catch {
-    // Storage write failure ignored gracefully.
-  }
+export function snoozeStockNotice(store: AcknowledgementStore, nowMs: number = Date.now()): void {
+  snoozeTile(STOCK_NOTICE_TILE, store, STOCK_NOTICE_SNOOZE_DURATION_MS, nowMs);
 }
 
 /* clearStockNoticeSnooze stays exported for its own test, and cross-checked in
-   stock-notice.test.ts (AU-09 test-only review). */
-export function clearStockNoticeSnooze(storage?: Storage): void {
-  const s = resolveStorage(storage);
-  if (!s) return;
-  try {
-    s.removeItem(STOCK_NOTICE_SNOOZE_STORAGE_KEY);
-  } catch {
-    // Storage remove failure ignored gracefully.
-  }
+   stock-notice.test.ts. */
+export function clearStockNoticeSnooze(store: AcknowledgementStore): void {
+  clearSnooze(STOCK_NOTICE_TILE, store);
 }
 
 /* isStockDepletingSoon stays exported for its own test, and cross-checked in
-   stock-notice.test.ts (AU-09 test-only review). */
+   stock-notice.test.ts. */
 export function isStockDepletingSoon(
   projection: StockProjection,
   asOfEpochDay: number,
@@ -419,9 +346,8 @@ export function isStockDepletingSoon(
 interface DepletingStockInfo<T = StockEntry> {
   entry: T;
   projection: StockProjection;
-  /** The day this reading is gated and sorted on: `reorderByEpochDay` where
-      a row carries one, the projection's own run-out day otherwise
-      (redesign phase 10 ticket 16). Named so a caller can print the exact
+  /** The day this reading is gated and sorted on: `reorderByEpochDay` where a row carries
+      one, the projection's own run-out day otherwise. Named so a caller can print the exact
       date it was judged against rather than recomputing a third answer. */
   actionableEpochDay: number;
   daysRemaining: number;

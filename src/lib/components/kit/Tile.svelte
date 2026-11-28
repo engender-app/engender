@@ -1,41 +1,11 @@
 <script lang="ts">
-  /* One tile of the grid: where it goes, and the reading that is the reason
-     to go there.
+  /* A tile names its destination, shows a reading when it has one and puts any small note
+     on the page-coloured foot. A tight grid uses the flag bar in place of the foot, with
+     actual stripes and proportions from --flag-fill.
 
-     The value is the tile's own data rather than a hero metric - a big
-     accent number with a small label and a supporting line was the template
-     the slop audit removed from Home. Here the number sits under the title
-     it belongs to and a tile with nothing to report is a title and a note.
-
-     The tile is a block of its area's stripe (phase 10 rule 3): the exact
-     hex, with the title and the value written on it, and the note in a foot
-     of page colour along the bottom edge, because small text is what no
-     band can carry. A grid marked `data-tight` - the two look-back tiles,
-     Safe space's two stats - has no foot and wears the flag itself instead,
-     a bar of the real stripes at their real hex values in stripe order and
-     the flag's own proportions, nudged for nothing. That bar is the one
-     place in the kit where the flag is shown as itself rather than used as
-     a screen's colour, and it is drawn from --flag-fill, which the grid
-     above sets from $lib/theme/roles.
-
-     `.press` is tier 1, from $lib/motion/press.css: the whole tile answers
-     a press by scaling, which a full-width list row cannot do without
-     moving the card around it.
-
-     Two weights. A card is the two-up default: title at the top of the
-     block, value at display size on its bottom edge, foot under that. A row
-     takes the whole width and is half the height, so its title and value
-     stack tight against whatever control it carries - so a screen ordering
-     its tiles by urgency can draw the difference rather than only sorting
-     by it.
-
-     Anything else the caller puts on it lands on the anchor. That is how a
-     screen stamps its own walkthrough handle without the kit learning what
-     wrapped or on-this-day are: `data-tile` names the slot, and the
-     capability handle beside it names the offer, which is the one the
-     walkthrough has been gripping since phase 4 (ADR-0029). A tile whose
-     only name were its slot would have cost that suite a rename for a
-     capability that never went anywhere. */
+     Cards are the two-up default. A row takes the whole width and stacks its title and
+     value beside its control. Forward attributes to the anchor. data-tile identifies the
+     slot and a capability handle stays with the action across layouts. */
   import { untrack } from 'svelte';
   import { navigating } from '$app/state';
   import Icon from '../Icon.svelte';
@@ -79,12 +49,11 @@
     /** How much of the screen the tile is worth. A card is the two-up
         default. A row takes the grid's whole width and is shorter, stacking
         its title and value tight rather than spending a card's height on
-        them, which is what a thing bound to today gets on Home (phase 8 UX
-        ticket 01) - the
+        them, which is what a thing bound to today gets on Home - the
         weight is the tile's own layout, so it belongs here rather than as
         an override reaching in from a screen. */
     weight?: 'card' | 'row';
-    /** An optional in-place control for the tile (ADR-0039). */
+    /** An optional in-place control for the tile. */
     action?: TileAction;
     /** An optional dismiss control for the tile. */
     dismiss?: TileDismiss;
@@ -99,40 +68,18 @@
     if (tile) requestAnimationFrame(() => tile.removeAttribute('data-intentional-tile-exit'));
   }
 
-  /* Phase 9 carpet ticket 04: a tile joins and leaves its grid through the
-     one panel primitive, so a pair standing side by side gives its space
-     back along the row and the same pair stacked below the floor gives it
-     back down the column - `collapse` reads which from the layout.
+  /* collapse follows the layout axis, giving back width on a row and height
+     when stacked. Attach it to Tile because TileGrid receives its children
+     as one snippet. Svelte needs |global here so the transition runs when a
+     caller's parent block removes the tile.
 
-     It rides the tile rather than the grid because TileGrid takes its
-     children as one snippet and cannot reach inside them, and rather than a
-     wrapper at each call site because that is the per-screen patch this
-     ticket exists to remove: Home used to declare a slide of its own, on the
-     x axis whatever the layout was doing, which at 390px collapsed the width
-     of a tile whose neighbours were giving back height.
-
-     `|global`, and it is load-bearing rather than decoration. A Svelte
-     transition is local by default, which means it plays only when the block
-     it is written in is created or destroyed - and this one is written in
-     Tile's own body, while what actually creates and destroys a tile is the
-     caller's `{#each}`. That is a parent block, so the local rule skipped it
-     silently: the tile vanished in a frame and nothing in the DOM ever
-     carried an inline style. Notice.svelte gets away without it because its
-     callers wrap it in an `{#if}` whose own creation the transition can see.
-     Told globally, a tile collapses whatever removes it, which is the
-     contract this ticket wanted in the first place.
-
-     `skip` is then what keeps `|global` honest, and it is Notice's own for
-     the same reason: Svelte runs an outro when the *page* unmounts a tile,
-     and a screen leaving should not spend 240ms folding its tiles up first.
-     The entrance's counterpart is inside `collapse` - a tile that appears
-     while the screen is still arriving is simply there. */
-  /* Also stood down while a ReadGroup is holding it (ticket 190): nobody
+     skip disables the 240ms outro on page exit. collapse also skips the
+     entrance while the screen itself is arriving. */
+  /* Also stood down while a ReadGroup is holding it: nobody
      can see it arrive under the group's placeholder, and the group's fade
      is the arrival.
 
-     A function called as the transition starts, not a `$derived` (ticket
-     196). Svelte reads the params again when the outro starts, and a
+     A function called as the transition starts, not a `$derived`. Svelte reads the params again when the outro starts, and a
      derived read from an effect that is already being destroyed hands back
      its cached value (Svelte's `derived_inert`) - which was the value from
      mount, `skip: true` while the group still held it. Every tile on the
@@ -142,14 +89,12 @@
   const group = readGroup();
   const panel = () => ({ skip: navigating.to !== null || heldByReadGroup(group) });
 
-  /* The value on the block counts up where it is a count (phase 10 rule 10,
-     redesign ticket 25): from nothing on arrival, from the last number on a
-     change, over --dur-slow so it lands on the frame the block's own clip
-     does (kit.css, kit-block-in). A name, a duration or a date is not a
-     count and is written straight; `asCount` is what decides, so a tile
-     never guesses from its own key. The runner reads the token layer and
-     substitutes the final number under reduced motion, and the effect's
-     cleanup cancels a travel the next change or an unmount interrupts. */
+  /* The value on the block counts up where it is a count: from nothing on arrival, from the
+     last number on a change, over --dur-slow so it lands on the frame the block's own clip
+     does (kit.css, kit-block-in). A name, a duration or a date is not a count and is
+     written straight; `asCount` is what decides, so a tile never guesses from its own key.
+     The runner reads the token layer and substitutes the final number under reduced motion,
+     and the effect's cleanup cancels a travel the next change or an unmount interrupts. */
   /* Seeded synchronously so no frame draws an empty value: a count starts
      at "0" in the frame the tile mounts, everything else at itself. The
      effect below takes over from there; untrack, because this is the one
@@ -178,12 +123,11 @@
       <span class="kit-tile-title">{title}</span>
       {#if value}<span class="kit-tile-value">{shown}</span>{/if}
     </a>
-    <!-- Its own row rather than inside .kit-tile-main (ticket 99 item 9): the
-         note used to make .kit-tile-main a two-line block, which is-split's
-         align-items: center then centred as a whole - so the value, which
-         actually reads on the first of those two lines, sat visibly above
-         the action button's true centre. Out here, the title/value line and
-         the action button share one row and centre against each other. -->
+    <!-- Its own row rather than inside .kit-tile-main: the note used to make .kit-tile-main a
+         two-line block, which is-split's align-items: center then centred as a whole - so
+         the value, which actually reads on the first of those two lines, sat visibly above
+         the action button's true centre. Out here, the title/value line and the action
+         button share one row and centre against each other. -->
     {#if note}<span class="kit-tile-note"><span class="kit-tile-note-text">{note}</span></span>{/if}
     {#if action.href}
       <a
@@ -230,13 +174,12 @@
       <span class="kit-tile-title">{title}</span>
       {#if value}<span class="kit-tile-value">{shown}</span>{/if}
     </a>
-    <!-- Outside the link, as on the action shape above and for the reason
-         phase 10's rule 3 gives: the note is a foot of page colour along the
-         bottom edge of the block, and a foot spans the block's full width
-         whatever controls the tile carries. Inside the link it was one cell
-         of the tile's grid, so the foot stopped short of both edges and left
-         a sliver of stripe down each side. The whole tile still taps
-         through - the block above the foot is the link. -->
+    <!-- Outside the link, as on the action shape above and for the reason rule 3 gives: the
+         note is a foot of page colour along the bottom edge of the block, and a foot spans
+         the block's full width whatever controls the tile carries. Inside the link it was
+         one cell of the tile's grid, so the foot stopped short of both edges and left a
+         sliver of stripe down each side. The whole tile still taps through - the block
+         above the foot is the link. -->
     {#if note}<span class="kit-tile-note"><span class="kit-tile-note-text">{note}</span></span>{/if}
     <button
       type="button"

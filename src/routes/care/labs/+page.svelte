@@ -1,6 +1,5 @@
 <script lang="ts">
-  /* Your numbers, your trend, on the surface and chart kits (phase 5 UX
-     ticket 25).
+  /* Your numbers, your trend, on the surface and chart kits.
 
      The first thing on the screen was a card of unit preferences - a
      heading, an explanation and one select per analyte - so a screen about
@@ -14,10 +13,12 @@
      across the plot now names each reading as the finger passes it. The
      draw's context - the timing figure and the lab - rides on the scrub's
      own label, so it is still the same three facts as before. */
+  import { undoable } from '$lib/stores/deleteUndo';
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { hashRowId, scrollToHash } from '$lib/navigation/scroll-region';
   import { careLaneReturnHref } from '$lib/navigation/sourceRecord';
+  import { replaceRoute } from '$lib/navigation/smart-back';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import TimePicker from '$lib/components/TimePicker.svelte';
@@ -32,12 +33,13 @@
   import { ALLOWED_PREFERRED_UNITS, PREFERRED_UNIT_ANALYTES, preferredUnitForAnalyte, normalizeUnit, type PreferredUnitAnalyte } from '$lib/data/labs/units';
   import { defaultUnitForAnalyte, nextUnitAfterAnalyteChange } from '$lib/data/labs/preferred-units';
   import { platformImageSource, tesseractOcrRecognizer } from '$lib/data/labs/ocr-adapters';
-  import { isAndroid } from '$lib/platform';
+  import { journalTextAutocomplete } from '$lib/platform';
   import {
   formatLabReviewValue,
   type OcrReviewRow
 } from '$lib/data/labs/ocr';
   import { toast } from '$lib/stores/toasts.svelte';
+  import { writer } from '$lib/stores/attempt.svelte';
   import { intlLocale, fmtDay, fmtRangeEnds } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
@@ -55,30 +57,38 @@
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
+  import CostField from '$lib/components/CostField.svelte';
+  import { blankCostDraft, costDraftFrom, costDraftOk, costFromDraft, type CostDraft } from '$lib/components/costDraft';
+  import { deviceDefaultCurrency } from '$lib/data/cost';
+  import { costLine } from '$lib/data/vocabulary/costLabel';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
-  import { disclose } from '$lib/motion/reveal';
+  import { collapse, disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
 
-  /* Colour that carries a value takes role 0 (DIRECTION.md). The results
+  /* Colour that carries a value takes role 0. The results
      list takes the stripe after it. */
   const SECTION_ROLE = { chart: 0, results: 1 };
 
   let unitsOpen = $state(false);
 
-  /* Deep link handling (phase 11 ticket 14): resolve the lab result by its
+  /* Deep link handling: resolve the lab result by its
      UUID directly so the screen switches to the analyte the result belongs
      to and scrolls to the highlighted row. A missing or deleted result gets
      the unavailable state SourceRecordHandoff renders for every source
-     link's target (phase 11 ticket 11). */
+     link's target. */
   let deepLinkedLabId = $derived(page.url.searchParams.get('lab') ?? hashRowId(page.url.hash));
-  let deepLinkedLabQuery = liveQuery((j) =>
-    deepLinkedLabId ? j.labs.getResultById(deepLinkedLabId) : Promise.resolve(null)
+  let deepLinkedLabQuery = liveQuery(async (j) => {
+    const id = deepLinkedLabId;
+    return { id, result: id ? await j.labs.getResultById(id) : null };
+  });
+  let deepLinkedLab = $derived(
+    deepLinkedLabQuery.value?.id === deepLinkedLabId ? deepLinkedLabQuery.value.result : undefined
   );
 
   /* No hormone assumed: the screen opens on whatever the journal actually
-     has, and stays empty until getMostRecentAnalyte resolves (ticket 37). */
+     has, and stays empty until getMostRecentAnalyte resolves. */
   let analyte = $state('');
 
   /* Two lists, two questions: the picker offers analytes with results behind
@@ -89,22 +99,28 @@
   let analytes = $derived(usedQuery.rows);
   let offeredQuery = liveList((j) => j.labs.getAnalytes());
   /* Which analyte the screen opens on, or falls back to after the one on
-     screen stops having results (ticket 37). Gated on both queries loading:
+     screen stops having results. Gated on both queries loading:
      deciding early off usedQuery alone would settle on analytes[0] before
      mostRecentQuery answers, and never revisit it once analyte is no longer
      "missing". */
   let mostRecentQuery = liveQuery((j) => j.labs.getMostRecentAnalyte());
   $effect(() => {
-    if (deepLinkedLabQuery.value) {
-      analyte = deepLinkedLabQuery.value.analyte;
-      return;
-    }
-    if (usedQuery.loading || mostRecentQuery.loading || (deepLinkedLabId && deepLinkedLabQuery.loading)) return;
+    if (usedQuery.loading || mostRecentQuery.loading || (deepLinkedLabId && deepLinkedLab === undefined)) return;
     if (analytes.length && !analytes.includes(analyte)) analyte = mostRecentQuery.value ?? analytes[0];
   });
 
+  function openLinkedLab() {
+    if (!deepLinkedLab) return;
+    analyte = deepLinkedLab.analyte;
+    if (page.url.searchParams.has('lab')) {
+      const url = new URL(page.url);
+      url.searchParams.delete('lab');
+      void replaceRoute(url, { noScroll: true, keepFocus: true });
+    }
+  }
+
   $effect(() => {
-    if (!resultsQuery.loading && deepLinkedLabId && deepLinkedLabQuery.value) {
+    if (!resultsQuery.loading && deepLinkedLabId && deepLinkedLab) {
       scrollToHash();
     }
   });
@@ -113,7 +129,7 @@
   let returnHref = $derived(careLaneReturnHref(page.url));
 
   /* The list is every result this analyte has, in order. The charts are those
-     same results split by unit (ticket 02): a value in ng/dL and one in
+     same results split by unit: a value in ng/dL and one in
      nmol/L differ by a factor of about 29, so a single line over both would
      draw a cliff where nothing happened.
 
@@ -126,7 +142,7 @@
   let seriesQuery = liveList((j) => j.labs.getSeries(analyte));
   let series = $derived(seriesQuery.rows);
 
-  /* What was happening around these draws (ticket 23). One query across every
+  /* What was happening around these draws. One query across every
      series this analyte has, narrowed per chart below: a series exists per
      unit and each one covers however long that unit has been drawn in, so
      there is no single range to ask for - and asking once per chart would be
@@ -145,8 +161,7 @@
      annotations are asked over the series' own span, so their real answer
      comes a round trip after the series', and the caption under a chart
      arrived a frame after the chart did - 20px in one frame, pushing the
-     list under it while the gate's fade was still running (ux-carpet
-     ticket 193). `loading` on the query itself cannot say this: it goes
+     list under it while the gate's fade was still running. `loading` on the query itself cannot say this: it goes
      false on the first answer, the one asked over an empty span. Latched,
      like a read's own loading: a span that changes later (a new result) is
      the chart's own change, not an arrival. */
@@ -174,7 +189,7 @@
     retry: () => usedQuery.retry()
   };
 
-  /* Ten as the flat-run floor rather than measurements' one: an analyte's
+  /* Ten as the flat-run floor: an analyte's
      values run in the hundreds, so a whole unit either side would still
      draw as a flat line. */
   const chartFor = (s: LabSeries) =>
@@ -205,16 +220,20 @@
     time: string;
     analyte: string;
     customAnalyte: string;
-    value: string;
+    value: number | null;
     unit: string;
     note: string;
     provider: string;
     /** Read-only: the context is frozen when the result is saved, so the
         sheet shows what was recorded rather than offering to change it. */
     timing: LabResult['timing'];
+    cost: CostDraft;
   };
 
-  const validValue = (value: string) => value.trim() !== '' && Number.isFinite(Number(value));
+  /* A number input binds the number it parsed, or null while it holds nothing parseable:
+     blank, a lone minus, `e`. Bound as a string, the field was rewritten under the caret on
+     every key. */
+  const validValue = (value: number | null): value is number => value !== null && Number.isFinite(value);
 
   let unitStated = false;
   const record = recordEditor<LabResult, LabDraft>({
@@ -222,17 +241,17 @@
       date: dateInputValueFromEpochDay(todayEpochDay()),
       time: '',
       /* Whatever the screen is already showing - itself the most
-         recently logged analyte, or none - rather than a hormone
-         (ticket 37). Unit likewise: a set preferred unit wins, then the
-         last unit this analyte was actually recorded in, the same
-         fallback the measurements screen uses for its own unit. */
+         recently logged analyte, or none - rather than a hormone.
+Unit likewise: a set preferred unit wins, then the
+         last unit this analyte was actually recorded in. */
       analyte,
       customAnalyte: '',
-      value: '',
+      value: null,
       unit: defaultUnitForAnalyte(analyte, prefs.preferredLabUnits) || (results[results.length - 1]?.unit ?? ''),
       note: '',
       provider: '',
-      timing: null
+      timing: null,
+      cost: blankCostDraft(deviceDefaultCurrency())
     }),
     fromRecord: (result) => ({
       id: result.id,
@@ -240,16 +259,17 @@
       time: result.drawTime ?? '',
       analyte: result.analyte,
       customAnalyte: '',
-      value: String(result.value),
+      value: result.value,
       unit: result.unit,
       note: result.note,
       provider: result.provider,
-      timing: result.timing
+      timing: result.timing,
+      cost: costDraftFrom(result.cost, deviceDefaultCurrency(), intlLocale())
     }),
     async upsert(draft) {
-      const value = Number(draft.value);
+      const value = draft.value;
       const resultAnalyte = draft.analyte === 'custom' ? draft.customAnalyte.trim() : draft.analyte;
-      if (!validValue(draft.value) || !resultAnalyte) return false;
+      if (!validValue(value) || !resultAnalyte || !costDraftOk(draft.cost)) return false;
 
       /* Which units this analyte already has, ignoring the result being edited,
          so that changing the unit on an analyte's only result does not announce
@@ -272,7 +292,8 @@
            derives the timing context from this; a blank one means no hours
            figure rather than a zero (labTiming.ts). */
         drawTime: draft.time || null,
-        provider: draft.provider
+        provider: draft.provider,
+        cost: costFromDraft(draft.cost)
       });
       analyte = resultAnalyte;
 
@@ -287,7 +308,7 @@
     },
     // The new-unit toast already says the result went in; one toast at a time.
     saved: () => (unitStated ? null : m.saved()),
-    remove: (id) => journal.labs.deleteResult(id),
+    remove: (id) => undoable((j) => j.labs.deleteResult(id)),
     findById: (id) => results.find((result) => result.id === id)
   });
 
@@ -297,7 +318,6 @@
 
   const ocrSaver: OcrSaver = {
     getExistingResults: (a) => journal.labs.getResults(a),
-    getPreferredUnit: (a) => preferredUnitForAnalyte(a, prefs.preferredLabUnits),
     async saveResult(params) {
       await journal.labs.upsertResult(params);
       analyte = params.analyte;
@@ -308,7 +328,7 @@
   // $state proxy from inside its own methods. So the component owns the
   // reactive copy, and the machine notifies it on every transition.
   let ocrState = $state<OcrMachineState>({ tag: 'idle' });
-  /* The scan's own bar (phase 9 audit ticket 11, ADR-0070). The fraction
+  /* The scan's own bar. The fraction
      comes off the machine's state rather than a second callback, because
      `recognizing` is what carries it - and the run is started and settled
      here, in one place, rather than at each of the machine's exits. */
@@ -338,7 +358,7 @@
   async function scan(source: 'gallery' | 'camera') {
     // Stoppable because this state has written nothing: it reads a picked
     // file and runs Tesseract against it. `saving`, after the review, has,
-    // and gets no stop button (ADR-0070).
+    // and gets no stop button.
     ocrProgress.start({ onCancel: () => ocr.cancel() });
     await ocr.pickSource(source);
     if (ocrState.tag !== 'review') {
@@ -406,14 +426,6 @@
         : m.labs_ocr_pick_sheet()
   );
 
-  /* What the scanner is about to spend, said before it spends it (phase 5
-     performance ticket 01). The engine and its two language files are 21 MB
-     over the wire and the shell no longer precaches them, so a person opening
-     this on mobile data is about to pay for a feature they may have opened by
-     accident. Not on Android, where every one of those files is already inside
-     the APK and nothing is downloaded at all. */
-  const ocrDownloads = !isAndroid();
-
   function openOcrImport() {
     ocr.open();
   }
@@ -447,12 +459,14 @@
     draft.analyte = next;
   }
 
-  /* Ticket 11's other entry point into the appointment prep list: a one-tap
-     add, seeded from the analyte already on screen. */
+  /* Other entry point into the appointment prep list: a one-tap add, seeded from the
+     analyte already on screen. One add per tap, and a failed one says so; a later
+     tap is a second add on purpose. */
+  const prepWrite = writer();
   async function addToAppointmentPrep(draft: LabDraft) {
     const resultAnalyte = analyteOf(draft);
     if (!resultAnalyte) return;
-    await journal.checklists.addToStandaloneChecklist(m.appointment_prep_from_lab_item({ analyte: resultAnalyte }));
+    if (!(await prepWrite.run(() => journal.checklists.addToStandaloneChecklist(m.appointment_prep_from_lab_item({ analyte: resultAnalyte })), m.write_failed()))) return;
     toast(m.appointment_prep_added_toast());
   }
 </script>
@@ -466,19 +480,19 @@
       <button class="icon-btn press" data-import-lab aria-label={m.labs_ocr_import_aria()} onclick={openOcrImport}>
         <Icon name="camera" size={20} />
       </button>
-      <button class="icon-btn press" data-add aria-label={m.labs_add_aria()} onclick={() => record.openEditor(null)}>
+      <button class="icon-btn press" data-add aria-label={m.add_a_result()} onclick={() => record.openEditor(null)}>
         <Icon name="plus" size={22} />
       </button>
     {/snippet}
   </ScreenHeader>
 
-  <!-- The unavailable state is the shared one (SourceRecordHandoff, ticket
-       11): same notice every source-linked screen shows for a record that is
-       no longer there. -->
+  <!-- The unavailable state is the shared one: same notice every source-linked screen shows
+       for a record that is no longer there. -->
   <SourceRecordHandoff
     id={deepLinkedLabId}
-    ready={!deepLinkedLabQuery.loading}
-    found={deepLinkedLabQuery.value !== null}
+    ready={deepLinkedLab !== undefined}
+    found={deepLinkedLab !== null}
+    onOpen={openLinkedLab}
   />
 
   <ReadGate read={chartsRead} variant="block" count={1}>
@@ -491,7 +505,12 @@
       key="labs-analyte"
     />
 
-    {#each series as s (s.unit)}
+    <!-- By position, not by unit: estradiol in pg/mL and prolactin in ng/mL are different
+         keys, so switching analyte built a second chart above the first while the old
+         block, held by its mixed-units notice's outro, stayed under it for 420ms and pushed
+         the list 240px down and back. Reused, the one chart tweens to the new readings in
+         place. -->
+    {#each series as s}
         {@const chart = chartFor(s)}
         {@const mixed = comparabilityLabels(seriesComparability(s.results))}
         <div data-lab-series={s.unit}>
@@ -521,7 +540,7 @@
             {/if}
           </ChartCard>
           <!-- Stated, not warned about: the series is drawn whole, and this
-               says what it is made of (ticket 03). -->
+               says what it is made of. -->
           {#if mixed.length}
             <Notice
               icon="info"
@@ -530,7 +549,10 @@
               title={m.labs_mixed_title()}
               text={m.labs_mixed_body()}
             />
-            <ul class="lab-mixed-list">
+            <!-- Opens and closes with the notice above it rather than
+                 riding the notice's outro and going in one frame (28px
+                 under the list on the switch away, 48px on the way in). -->
+            <ul class="lab-mixed-list" transition:disclose>
               {#each mixed as reason (reason)}<li>{reason}</li>{/each}
             </ul>
           {/if}
@@ -544,25 +566,29 @@
            draws its card once the read has answered. -->
       {#if !resultsQuery.loading}
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.results)}>
-          <!-- Hand-rolled rather than ListRow (ticket 16): the value carries
+          <!-- Hand-rolled rather than ListRow: the value carries
                .lab-value (app.css) to opt back into text selection, and the
                context line carries .lab-context's own size and colour -
                both classes ListRow's plain title/subtitle strings have no
                room for. -->
+          <!-- Keyed by the analyte the rows belong to, so switching analyte swaps the list
+               in one piece rather than closing every old row while the new ones open beside
+               them; a delete or an Undo inside one analyte still moves its row. -->
+          {#key results[0]?.analyte}
           {#each [...results].reverse() as r (r.id)}
-            <button
+            <button transition:collapse
               class="kit-row"
               class:is-target-lab={r.id === deepLinkedLabId}
               id={r.id}
               data-lab-result={r.id}
-              aria-label={m.labs_result_aria({ analyte: r.analyte, date: fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
+              aria-label={m.labs_result_aria({ analyte: r.analyte, value: `${r.value} ${r.unit}`, date: fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
               onclick={() => record.openEditor(r)}
             >
               <span class="kit-row-ico"><Icon name="flask" size={22} /></span>
               <span class="kit-row-text">
                 <span class="kit-row-title lab-value">{r.value} {r.unit}</span>
                 <span class="kit-row-sub">
-                  {fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}{r.note ? ' · ' + r.note : ''}
+                  {[fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' }), r.note, costLine(r.cost)].filter(Boolean).join(' · ')}
                 </span>
                 <!-- The context on its own line, not appended to the date: it is
                      two more facts about the draw, and three of them run together
@@ -573,6 +599,7 @@
               </span>
             </button>
           {/each}
+          {/key}
         </ListCard>
       {/if}
     {/snippet}
@@ -582,8 +609,7 @@
         key="labs-empty"
         role={roleAt(activeFlag.roles, SECTION_ROLE.results)}
         title={m.labs_empty_title()}
-        text={m.labs_empty_body()}
-        action={{ label: m.labs_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
+        action={{ label: m.add_a_result(), primary: true, onclick: () => record.openEditor(null) }}
       />
     {/snippet}
   </ReadGate>
@@ -617,11 +643,11 @@
     editTitle={m.labs_edit_sheet()}
     saveLabel={m.labs_save()}
     deleteLabel={m.labs_delete()}
-    canSave={(draft) => !!analyteOf(draft).trim() && validValue(draft.value)}
+    canSave={(draft) => !!analyteOf(draft).trim() && validValue(draft.value) && costDraftOk(draft.cost)}
     confirm={{
       title: m.labs_delete_sheet(),
       question: (result) => m.labs_delete_q({ analyte: result.analyte }),
-      hint: () => m.labs_delete_hint(),
+      hint: () => m.delete_undo_hint(),
       confirmLabel: m.labs_delete(),
       cancelLabel: m.keep_it()
     }}
@@ -644,30 +670,30 @@
         <div class="disclosed" transition:disclose>
           <Field label={m.labs_custom_label()} id="lab-custom-analyte" hint={!editor.customAnalyte.trim() ? m.labs_missing_analyte() : undefined}>
             {#snippet children(id, hintId)}
-              <input class="input" {id} required aria-invalid={!editor.customAnalyte.trim()} aria-describedby={hintId} name="lab-custom-analyte" placeholder={m.labs_custom_placeholder()} bind:value={editor.customAnalyte} />
+              <input autocomplete={journalTextAutocomplete()} class="input" {id} required aria-invalid={!editor.customAnalyte.trim()} aria-describedby={hintId} name="lab-custom-analyte" placeholder={m.labs_custom_placeholder()} bind:value={editor.customAnalyte} />
             {/snippet}
           </Field>
         </div>
       {/if}
       <div class="cd-endpoints lab-pair">
-        <Field label={m.labs_value_label()} id="lab-value" hint={!validValue(editor.value) ? m.labs_invalid_value() : undefined}>
+        <Field label={m.labs_value_label()} id="lab-value" hintAfter hint={!validValue(editor.value) ? m.labs_invalid_value() : undefined}>
           {#snippet children(id, hintId)}
-            <input class="input" type="number" step="any" {id} required aria-invalid={!validValue(editor.value)} aria-describedby={hintId} name="lab-value" placeholder={m.labs_value_placeholder()} inputmode="decimal" bind:value={() => editor.value, (value) => { editor.value = value == null ? '' : String(value); }} />
+            <input class="input" type="number" step="any" {id} required aria-invalid={!validValue(editor.value)} aria-describedby={hintId} name="lab-value" placeholder={m.labs_value_placeholder()} inputmode="decimal" bind:value={editor.value} />
           {/snippet}
         </Field>
-        <Field label={m.labs_unit_label()} id="lab-unit">
+        <Field label={m.unit_label()} id="lab-unit">
           {#snippet children(id)}
-            <input class="input" {id} name="lab-unit" placeholder={m.labs_unit_placeholder()} bind:value={editor.unit} />
+            <input autocomplete={journalTextAutocomplete()} class="input" {id} name="lab-unit" placeholder={m.labs_unit_placeholder()} bind:value={editor.unit} />
           {/snippet}
         </Field>
       </div>
       <Field label={m.labs_provider_label()} id="lab-provider">
         {#snippet children(id)}
-          <input class="input" {id} name="lab-provider" placeholder={m.labs_provider_placeholder()} bind:value={editor.provider} />
+          <input autocomplete={journalTextAutocomplete()} class="input" {id} name="lab-provider" placeholder={m.labs_provider_placeholder()} bind:value={editor.provider} />
         {/snippet}
       </Field>
       <div class="cd-endpoints lab-pair">
-        <Field label={m.labs_date_label()} id="lab-date">
+        <Field label={m.date_label()} id="lab-date">
           {#snippet children(id)}
             <DatePicker name="lab-date" bind:value={editor.date} {id} />
           {/snippet}
@@ -682,14 +708,14 @@
       </div>
       <Field label={m.labs_note_label()} id="lab-note">
         {#snippet children(id)}
-          <input class="input" {id} name="lab-note" placeholder={m.labs_note_placeholder()} bind:value={editor.note} />
+          <input autocomplete={journalTextAutocomplete()} class="input" {id} name="lab-note" placeholder={m.labs_note_placeholder()} bind:value={editor.note} />
         {/snippet}
       </Field>
+      <CostField id="lab-cost" bind:draft={editor.cost} />
 
-      <!-- The detail view's copy of the context. Read-only, because it was
-           recorded when the result was saved and is not recomputed
-           afterwards (ticket 03, box 6). A saved result with no hours figure
-           says what would give it one, rather than staying blank. -->
+      <!-- The detail view's copy of the context. Read-only, because it was recorded when
+           the result was saved and is not recomputed afterwards. A saved result with no
+           hours figure says what would give it one, rather than staying blank. -->
       {#if editor.id}
         <div class="kit-panel" style="margin-bottom:var(--space-4)" data-lab-context>
           <h4>{m.labs_context_title()}</h4>
@@ -706,7 +732,7 @@
       {/if}
     {/snippet}
     {#snippet extraActions(editor)}
-      <button class="btn btn-soft" data-add-to-appointment-prep onclick={() => addToAppointmentPrep(editor)}>
+      <button class="btn btn-soft" data-add-to-appointment-prep disabled={prepWrite.busy} onclick={() => addToAppointmentPrep(editor)}>
         <span>{m.appointment_prep_add_button()}</span>
       </button>
     {/snippet}
@@ -717,30 +743,21 @@
     title={ocrSheetTitle}
     onClose={closeOcrSheet}
   >
-    <!-- The tag itself, not just its wording, so a walkthrough can grip the
-         state directly (ADR-0029) rather than matching translated copy.
-         What is drawn rather than the raw tag, because the bar's hold at
-         full outlives the pass by design: a handle that said `review`
-         while the screen still showed the scan running would send a
-         walkthrough clicking a row that is not there yet. -->
+    <!-- The tag itself, not just its wording, so a walkthrough can grip the state directly
+         rather than matching translated copy. What is drawn rather than the raw tag,
+         because the bar's hold at full outlives the pass by design: a handle that said
+         `review` while the screen still showed the scan running would send a walkthrough
+         clicking a row that is not there yet. -->
     <div data-ocr-state={showRecognizing ? 'recognizing' : ocrState.tag}>
     {#if ocrState.tag === 'picking'}
       <h3>{m.labs_ocr_pick_sheet()}</h3>
       <p class="muted small" style="margin-bottom:var(--space-4)">{m.labs_ocr_pick_intro()}</p>
-      {#if ocrDownloads}
-        <Notice
-          icon="info"
-          key="labs-ocr-download"
-          title={m.labs_ocr_download_title()}
-          text={m.labs_ocr_download_body()}
-        />
-      {/if}
       <div class="stack-3">
         <button class="btn btn-soft" data-ocr-pick="gallery" onclick={() => scan('gallery')}>
           <span>{m.labs_ocr_pick_gallery()}</span>
         </button>
         <button class="btn btn-soft" data-ocr-pick="camera" onclick={() => scan('camera')}>
-          <span>{m.labs_ocr_pick_camera()}</span>
+          <span>{m.take_a_photo()}</span>
         </button>
       </div>
     {:else if showRecognizing}
@@ -752,27 +769,27 @@
         <Icon name="alert" size={20} />
         <div class="notice-body">{m.labs_ocr_permission_denied()}</div>
       </div>
-      <button class="btn btn-soft" data-ocr-retry onclick={() => ocr.retry()}><span>{m.labs_ocr_retry()}</span></button>
+      <button class="btn btn-soft" data-ocr-retry onclick={() => ocr.retry()}><span>{m.read_retry()}</span></button>
     {:else if ocrState.tag === 'recognition-failed'}
       <h3>{m.labs_ocr_pick_sheet()}</h3>
       <div class="notice notice-danger" role="alert" style="margin-bottom:var(--space-3)">
         <Icon name="alert" size={20} />
         <div class="notice-body">{m.labs_ocr_failed()}</div>
       </div>
-      <button class="btn btn-soft" data-ocr-retry onclick={() => ocr.retry()}><span>{m.labs_ocr_retry()}</span></button>
+      <button class="btn btn-soft" data-ocr-retry onclick={() => ocr.retry()}><span>{m.read_retry()}</span></button>
     {:else if ocrState.tag === 'lookup-failed'}
       <h3>{m.labs_ocr_pick_sheet()}</h3>
       <div class="notice notice-danger" role="alert" style="margin-bottom:var(--space-3)">
         <Icon name="alert" size={20} />
         <div class="notice-body">{m.labs_ocr_lookup_failed()}</div>
       </div>
-      <button class="btn btn-soft" data-ocr-retry onclick={() => ocr.retry()}><span>{m.labs_ocr_retry()}</span></button>
+      <button class="btn btn-soft" data-ocr-retry onclick={() => ocr.retry()}><span>{m.read_retry()}</span></button>
     {:else if ocrState.tag === 'no-rows'}
       <h3>{m.labs_ocr_empty_sheet()}</h3>
       <p class="muted small" style="margin-bottom:var(--space-4)">{m.labs_ocr_no_rows_body()}</p>
       <div class="stack-3">
         <button class="btn btn-primary" data-ocr-manual onclick={() => { ocr.close(); record.openEditor(null); }}><span>{m.labs_ocr_no_rows_manual()}</span></button>
-        <button class="btn btn-soft" data-ocr-retry onclick={() => ocr.retry()}><span>{m.labs_ocr_retry()}</span></button>
+        <button class="btn btn-soft" data-ocr-retry onclick={() => ocr.retry()}><span>{m.read_retry()}</span></button>
       </div>
     {:else if ocrState.tag === 'review' || ocrState.tag === 'save-validation-failed' || ocrState.tag === 'saving' || ocrState.tag === 'save-failed'}
       <h3>{m.labs_ocr_review_sheet()}</h3>
@@ -798,29 +815,29 @@
             {/if}
             <Field label={m.labs_analyte_label()} id={`ocr-analyte-${i}`}>
               {#snippet children(id)}
-                <input class="input" {id} data-ocr-field="analyte" value={row.analyte} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, analyte: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
+                <input autocomplete={journalTextAutocomplete()} class="input" {id} data-ocr-field="analyte" value={row.analyte} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, analyte: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
               {/snippet}
             </Field>
             <div class="cd-endpoints lab-pair">
               <Field label={m.labs_value_label()} id={`ocr-value-${i}`}>
                 {#snippet children(id)}
-                  <input class="input" {id} data-ocr-field="value" inputmode="decimal" value={row.value} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, value: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
+                  <input autocomplete={journalTextAutocomplete()} class="input" {id} data-ocr-field="value" inputmode="decimal" value={row.value} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, value: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
                 {/snippet}
               </Field>
-              <Field label={m.labs_unit_label()} id={`ocr-unit-${i}`}>
+              <Field label={m.unit_label()} id={`ocr-unit-${i}`}>
                 {#snippet children(id)}
-                  <input class="input" {id} data-ocr-field="unit" value={row.unit} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, unit: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
+                  <input autocomplete={journalTextAutocomplete()} class="input" {id} data-ocr-field="unit" value={row.unit} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, unit: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
                 {/snippet}
               </Field>
             </div>
-            <Field label={m.labs_date_label()} id={`ocr-date-${i}`}>
+            <Field label={m.date_label()} id={`ocr-date-${i}`}>
               {#snippet children(id)}
                 <DatePicker {id} data-ocr-field="date" value={row.date} onchange={(v) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, date: v } : r); handleOcrRowsChange(updated); }} />
               {/snippet}
             </Field>
             <Field label={m.labs_note_label()} id={`ocr-note-${i}`}>
               {#snippet children(id)}
-                <input class="input" {id} value={row.note} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, note: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
+                <input autocomplete={journalTextAutocomplete()} class="input" {id} value={row.note} oninput={(e) => { const updated = ocrRows.map((r, j) => j === i ? { ...r, note: (e.target as HTMLInputElement).value } : r); handleOcrRowsChange(updated); }} />
               {/snippet}
             </Field>
           </div>

@@ -1,23 +1,13 @@
 <script lang="ts">
-  /* Two scales at once: the constellation (phase 5 deepening ticket 19,
-     ADR-0048), a reading of its own since phase 11 ticket 07. It was the
-     deepest thing on the Look back door and sat 510px into the scroll,
-     where nobody scrubbed it; on its own screen it opens at the door's span
-     with the scrub and the play control it always had.
-
-     Its tile has no figure (Alicja, on the spike: "drop the title - just
-     show the small header and a bigger graph"): the reading is the shape,
-     so the drawing takes the room a headline would - every point of the
-     span faint, the last one solid, on a 1px cross for the two midlines.
-
-     Gated on data and on nothing else: the reading exists once the journal
-     holds a presentation, and there is no preference to turn it on. Its
-     two axes are the person's own scales, defaulting to the first two they
-     have ticked; no dimension key is written here. */
+  /* Constellation's tile previews the span with faint points and
+     a solid latest point. Detail offers scrub and play (ADR-0048).
+     Require two enabled scales and a co-recorded point in the span.
+     Draw entries without a mode uncoloured. planeAxes defaults to
+     the pair with the most points without storing dimension keys. */
   import { m } from '$lib/paraglide/messages';
   import { fmtDay } from '$lib/data/dates';
   import { liveList } from '$lib/data/live/journal.svelte';
-  import { plotPoints, type ConstellationPoint } from '$lib/data/constellationData';
+  import { planeAxes, planePartners, plotPoints, type ConstellationPoint } from '$lib/data/constellationData';
   import { nativeValue } from '$lib/data/wrappedDisplay';
   import { readingHref } from '$lib/data/lookBackReadings';
   import type { Span } from '$lib/data/lookBackSpan';
@@ -37,33 +27,32 @@
   let from = $derived(span.start);
   let to = $derived(span.end);
 
-  let xKey = $state('');
-  let yKey = $state('');
-
-  /* Held to the ticked scales: unticking the scale an axis was on drops
-     that axis to the first one still ticked. */
-  $effect(() => {
-    const active = vocabulary.activeDimensions;
-    if (active.length < 2) return;
-    if (!active.some((d) => d.key === xKey)) xKey = active[0].key;
-    if (!active.some((d) => d.key === yKey) || yKey === xKey) {
-      yKey = (active.find((d) => d.key !== xKey) ?? active[0]).key;
-    }
-  });
+  /* Which pairs of ticked scales have points in the span, so the pickers offer only those
+     and the plane opens on the pair with the most. `picked` is what the person chose; the
+     axes are that pair while it has points, and planeAxes' fallback otherwise - unticking a
+     scale or moving the span lands on a pair that draws rather than on an empty plane. */
+  let pairsQuery = liveList((j) => j.stats.constellationPairs(from, to));
+  let activeKeys = $derived(vocabulary.activeDimensions.map((d) => d.key));
+  let picked = $state({ x: '', y: '' });
+  let axes = $derived(planeAxes(pairsQuery.rows, activeKeys, picked));
+  let xKey = $derived(axes?.x ?? '');
+  let yKey = $derived(axes?.y ?? '');
 
   let xScale = $derived(vocabulary.activeDimensions.find((d) => d.key === xKey));
   let yScale = $derived(vocabulary.activeDimensions.find((d) => d.key === yKey));
-  let hasConstellation = $derived(vocabulary.presentations.length > 0);
-  let canPlot = $derived(hasConstellation && xScale !== undefined && yScale !== undefined);
+  let canPlot = $derived(xScale !== undefined && yScale !== undefined);
+  const optionsOf = (keys: string[]) =>
+    vocabulary.activeDimensions.filter((d) => keys.includes(d.key)).map((d) => ({ value: d.key, label: d.name }));
+  let xOptions = $derived(optionsOf(planePartners(pairsQuery.rows, activeKeys, null)));
+  let yOptions = $derived(optionsOf(planePartners(pairsQuery.rows, activeKeys, xKey)));
 
-  /* Picking a scale that is already on the other axis swaps the two. */
+  /* Picking for x the scale already on y swaps the two; y only offers
+     partners of x, so it never meets x. */
   const pickX = (key: string) => {
-    if (key === yKey) yKey = xKey;
-    xKey = key;
+    picked = { x: key, y: key === yKey ? xKey : yKey };
   };
   const pickY = (key: string) => {
-    if (key === xKey) xKey = yKey;
-    yKey = key;
+    picked = { x: xKey, y: key };
   };
 
   let constellationQuery = liveList((j) => {
@@ -72,7 +61,7 @@
     return j.stats.constellationReadings(x, y, from, to);
   });
   /* Whether there is a tile is settled once this answers (ReadGroup). */
-  joinReadGroup(() => !constellationQuery.loading);
+  joinReadGroup(() => !pairsQuery.loading && !constellationQuery.loading);
   let readings = $derived(new Map(constellationQuery.rows.map((r) => [r.id, r])));
   let points = $derived(
     xScale && yScale
@@ -100,6 +89,15 @@
     });
   };
 
+  const hoverLines = (point: ConstellationPoint) => {
+    const raw = readings.get(point.id);
+    return [
+      fmtDay(point.day, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }),
+      m.values_second({ name: xScale?.name ?? '', value: nativeValue(xKey, raw?.x ?? 0) }),
+      m.values_second({ name: yScale?.name ?? '', value: nativeValue(yKey, raw?.y ?? 0) })
+    ];
+  };
+
   /* The tile's plane: a square, y up as the chart draws it. */
   const PLANE = 100;
   const px = (x: number) => (x * PLANE).toFixed(1);
@@ -123,7 +121,7 @@
       {/snippet}
     </ReadingTile>
   {/if}
-{:else if hasConstellation}
+{:else}
   <!-- No role on the card: its marks already carry one role each, resolved
        from the mode they were logged under. -->
   <ChartCard level={2} heading={m.stats_constellation()} kind="constellation">
@@ -137,6 +135,7 @@
             y={{ low: yScale.low, high: yScale.high }}
             {dayLabel}
             {readingLabel}
+            {hoverLines}
             scrubLabel={m.constellation_scrub()}
             ariaLabel={m.constellation_aria({ x: xScale.name, y: yScale.name })}
           />
@@ -154,7 +153,7 @@
             key="constellation-x"
             labelledBy="constellation-x"
             value={xKey}
-            options={vocabulary.activeDimensions.map((d) => ({ value: d.key, label: d.name }))}
+            options={xOptions}
             onPick={pickX}
           />
         </p>
@@ -164,17 +163,15 @@
             key="constellation-y"
             labelledBy="constellation-y"
             value={yKey}
-            options={vocabulary.activeDimensions.map((d) => ({ value: d.key, label: d.name }))}
+            options={yOptions}
             onPick={pickY}
           />
         </p>
       </div>
-    {:else}
+    {:else if activeKeys.length < 2}
       <ChartEmpty>{m.constellation_needs_scales()}</ChartEmpty>
+    {:else}
+      <ChartEmpty>{m.not_enough_data()}</ChartEmpty>
     {/if}
-  </ChartCard>
-{:else}
-  <ChartCard level={2} heading={m.stats_constellation()} kind="constellation">
-    <ChartEmpty>{m.constellation_needs_scales()}</ChartEmpty>
   </ChartCard>
 {/if}

@@ -1,31 +1,15 @@
-/* Voice benchmarks (phase 5 deepening ticket 15, CONTEXT: "Voice
-   benchmark").
-
-   Its own table and its own area, deliberately not part of voiceRecordings.ts.
-   A recording is a memo on one entry. A benchmark belongs to a day and only
-   means anything because its conditions were fixed - the same passage, the
-   same held vowel, the same quality floor - which is what makes two of them
-   six months apart comparable. Nothing about that fits on voice_recording,
-   and nothing here touches it.
-
-   Files before rows, the ordering photos.ts's header sets out and
-   voiceRecordings.ts follows: both takes are written through the injected
-   PhotoFileStore before the row that names them exists, so a crash in the
-   gap leaves a file no row references (which the boot sweep reclaims) rather
-   than a row pointing at audio that is not there. The bytes are what
-   MediaRecorder produced, stored as they arrived; the store the journal is
-   handed is already the encrypting one (photos/encrypted-file-store.ts, ADR
-   -0018/-0020), so nothing in this module encrypts anything itself.
-
-   The acoustic figures arrive computed. The analysis is pure (lib/audio/)
-   and runs where the audio can be decoded, which is the browser; this area
-   stores what it is handed and reads it back, exactly as photos.ts stores
-   bytes it never re-encodes. */
+/* Voice benchmarks belong to a day and use a fixed passage, vowel
+   and quality floor. Store them separately from entry recordings.
+   Write both MediaRecorder takes through the injected encrypting
+   PhotoFileStore before creating the row (ADR-0018, ADR-0020). A crash
+   can leave files for boot cleanup rather than a row with missing audio.
+   The browser computes the figures in `lib/audio/` before storage. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { VoiceBenchmark } from '../types';
 import type { PhotoFileStore } from '../photos/photo-file-store';
 import { removeRecordingFilesAfterCommit, stageRecording } from './voiceRecordings';
+import { ANALYZER_VERSION } from '../../audio/analyzerVersion';
 import { mintUuid, now } from './support';
 
 /** What the recording flow hands over: a day, which passage was read, the
@@ -37,7 +21,7 @@ import { mintUuid, now } from './support';
 interface NewVoiceBenchmark {
   epochDay: number;
   /** Which passage was read. A benchmark is comparable only to others from
-      the same passage (CONTEXT: "Benchmark passage"), which is why the row
+      the same passage, which is why the row
       says rather than the surface guessing. */
   passageKey: string;
   passageAudio: Uint8Array;
@@ -54,42 +38,39 @@ interface NewVoiceBenchmark {
       median - that follows from `f0MedianHz` and is derived at display time
       (ADR-0010, audio/pitch.ts's noteName). */
   note?: string | null;
-  /** The passage's pitch over time, already downsampled and encoded
-      (audio/track.ts, ticket 09). Null when the take held no voiced frame
-      to draw, which is a take the gate has already failed. Stored rather
-      than derived, unlike the note name: the samples it comes from are not
-      kept, so nothing downstream could recompute it (ADR-0010's own
-      exception, ADR-0059). */
+  /** The passage's pitch over time, already downsampled and encoded (audio/track.ts). Null
+      when the take held no voiced frame to draw, which is a take the gate has already
+      failed. Stored rather than derived, unlike the note name: the samples it comes from
+      are not kept, so nothing downstream could recompute it (ADR-0010's own exception,
+      ADR-0059). */
   pitchTrack?: string | null;
-  /** What recorded the take (audio/captureChain.ts, ticket 28, ADR-0061).
-      Optional here for the same reason it is nullable in the column: a
-      caller with no live track to read has nothing to say about the
-      equipment, and a made-up chain would be worse than none. The
+  /** What recorded the take (audio/captureChain.ts, ADR-0061). Optional here for the same
+      reason it is nullable in the column: a caller with no live track to read has nothing
+      to say about the equipment, and a made-up chain would be worse than none. The
       recording flow always has one. */
   captureChain?: string | null;
-  /** The corner-vowel scaling factor (audio/vowelScale.ts, ticket 30). Null
-      the same way `f1Hz`/`f2Hz` are: fewer than two of the three held vowels
-      cleared the gate, or the flow skipped the extra two entirely. */
+  /** The corner-vowel scaling factor (audio/vowelScale.ts). Null the same way `f1Hz`/`f2Hz`
+      are: fewer than two of the three held vowels cleared the gate, or the flow skipped the
+      extra two entirely. */
   resonanceScale?: number | null;
 }
 
 export interface VoiceBenchmarksArea {
   /** Every benchmark, oldest first. */
   getBenchmarks(): Promise<VoiceBenchmark[]>;
-  /** The benchmarks recorded on one day (phase 5 deepening ticket 21). Its
+  /** The benchmarks recorded on one day. Its
       own query rather than a filter over that one, so the day view pays for
       the day it is showing. */
   getBenchmarksOnDay(epochDay: number): Promise<VoiceBenchmark[]>;
   /** Writes both takes, then the row. Returns the benchmark's uuid. */
   saveBenchmark(input: NewVoiceBenchmark): Promise<string>;
-  /** Removes the row, then both audio files (ticket 16) - the row-then-files
+  /** Removes the row, then both audio files - the row-then-files
       ordering voiceRecordings.ts's own delete helper already carries.
       Idempotent, like the journal's other deletes: a row already gone
       leaves nothing to remove. */
   deleteBenchmark(id: string): Promise<void>;
-  /** The day of the most recent benchmark at or before `todayEpochDay`, or
-      null if there is none (phase 8 features ticket 03, lastWrite.ts). One
-      bounded `MAX`, not a fetched list reduced in JS. */
+  /** The day of the most recent benchmark at or before `todayEpochDay`, or null if there is
+      none (lastWrite.ts). One bounded `MAX`, not a fetched list reduced in JS. */
   lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
 }
 
@@ -166,8 +147,8 @@ export function makeVoiceBenchmarksArea(driver: SqliteDriver, files: PhotoFileSt
       const uuid = mintUuid();
       const timestamp = now();
       await driver.run(
-        `INSERT INTO voice_benchmark (${BENCHMARK_COLUMNS}, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO voice_benchmark (${BENCHMARK_COLUMNS}, updated_at, analyzer_version)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           uuid,
           input.epochDay,
@@ -187,7 +168,10 @@ export function makeVoiceBenchmarksArea(driver: SqliteDriver, files: PhotoFileSt
           input.pitchTrack ?? null,
           input.captureChain ?? null,
           input.resonanceScale ?? null,
-          timestamp
+          timestamp,
+          // The figures above were measured by the analyzers in lib/audio/
+          // as they stand now, whichever flow handed them over.
+          ANALYZER_VERSION
         ]
       );
       return uuid;

@@ -46,11 +46,6 @@ public class WidgetDisguiseTransitionTest {
     }
 
     @Test
-    public void tallyClearsAndRestoresExistingLabels() {
-        assertTransitions(new TallyWidgetProvider());
-    }
-
-    @Test
     public void doubtClearsAndRestoresExistingLabels() {
         assertTransitions(new DoubtWidgetProvider());
     }

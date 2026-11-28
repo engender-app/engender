@@ -1,24 +1,8 @@
-/* The checks a driver has to pass to be a driver, written once and run on
-   every tier (ticket 11).
-
-   The Node tier runs them over node:sqlite and the Android tier runs them
-   over SQLCipher through the Capacitor bridge, against the same journal
-   code and the same assertions. That is the point: ADR-0017's seam is only
-   real if the thing above it cannot tell the platforms apart, and the way
-   to know is to ask both the same questions rather than to write each tier
-   its own probe and hope they stayed comparable.
-
-   It is framework-free on purpose. vitest cannot run in a WebView on a
-   phone, so a suite expressed in `test()` and `assert` could not be the
-   same suite in both places - which is how the browser tier ended up with
-   hand-written probes that resemble the Node tests without being them.
-
-   Scope: the behaviours that depend on the SQLite build or on the driver
-   contract, not the journal's whole surface. Business rules that are pure
-   TypeScript above the driver are already covered by the Node tier and
-   would run identically here by construction. What varies by platform is
-   what this asks about - FTS5, window functions, folding, the change
-   counts, transaction rollback, and preferences over the same table. */
+/* Driver contract checks shared by Node's SQLite driver and Android's
+   SQLCipher bridge (ADR-0017). Keep the suite framework-free so the
+   WebView can run the same assertions. Cover platform-dependent FTS5,
+   window functions, folding, change counts, rollback and preference
+   storage. Pure journal rules stay in the Node suite. */
 
 import { foldText } from '../fold.ts';
 import type { SqliteDriver } from '../sqlite/driver.ts';
@@ -30,8 +14,12 @@ import { openJournal } from './journal.ts';
 import { observeWrites } from '../live/writes.ts';
 import type { PhotoFileStore } from '../photos/photo-file-store.ts';
 import { sweepOrphanPhotos } from './photos.ts';
+import { purgeExpiredTrash } from './entries.ts';
+import { journalIsBusy } from '../journal-busy.ts';
+import { boot } from '../sqlite/boot.ts';
+import { noopFileOps } from '../sqlite/test-support/noop-file-ops.ts';
 import { restoreArchive } from './restore.ts';
-import { answerTotal, entrySearchFiltersOf, savedQuestionInputOf, starredPhotosAsked } from '../savedQuestionQuery.ts';
+import { answerTotal, starredPhotosAsked } from '../searchAnswer.ts';
 import type { EntrySearchFilters } from './entries.ts';
 
 interface ContractCheck {
@@ -74,7 +62,7 @@ function recorder() {
  * Runs the contract against an already-migrated driver.
  *
  * The caller supplies the journal's file store because the two tiers hold
- * photos differently and this suite is not about photos (ticket 12 is).
+ * photos differently and this suite is not about photos.
  */
 export async function runJournalContract(
   driver: SqliteDriver,
@@ -161,8 +149,6 @@ export async function runJournalContract(
     const first = await journal.entries.upsertEntry({ epochDay: 29000, mood: 3, note: 'merge first' });
     const last = await journal.entries.upsertEntry({ epochDay: 29001, mood: 3, note: 'merge last' });
     const snapshot = await journal.archive.snapshot();
-    const bad = { ...snapshot.journal, entries: snapshot.journal.entries.map((entry) =>
-      entry.epochDay === 29001 ? { ...entry, epochDay: null } : entry) };
     await driver.run('DELETE FROM entry WHERE id IN (?, ?)', [first, last]);
     let entered!: () => void;
     let release!: () => void;
@@ -173,10 +159,11 @@ export async function runJournalContract(
       transaction: (work) => driver.transaction(async (scope) => {
         entered();
         await held;
-        return work(scope);
+        await work(scope);
+        throw new Error('deliberate Merge rollback');
       })
     }, files, 'merge', {
-      journal: bad as typeof snapshot.journal, files: (async function* () {})()
+      journal: snapshot.journal, files: (async function* () {})()
     }).then(() => '', (error) => String(error.message));
     await started;
     const saving = journal.hairRemoval.upsertSession({
@@ -184,7 +171,7 @@ export async function runJournalContract(
     });
     await new Promise((resolve) => setTimeout(resolve, 0));
     release();
-    r.equal('the invalid Merge refuses an entry without a day', (await restoring).includes('entry.epoch_day'), true);
+    r.equal('the Merge reports its own rollback', await restoring, 'deliberate Merge rollback');
     const sessionId = await saving;
     r.equal('a fulfilled hair-removal save survives the failed Merge rollback',
       await driver.query('SELECT uuid FROM hair_removal_session WHERE uuid = ?', [sessionId]), [{ uuid: sessionId }]);
@@ -317,7 +304,7 @@ export async function runJournalContract(
        number written here: a literal would be asserting that the database was
        empty when the suite started, which is a precondition nothing gives it
        and which would fail as a search bug the first time it was not true.
-       Trashed rows are excluded from `noted` (phase 5 ticket 19): deleteEntry
+       Trashed rows are excluded from `noted`: deleteEntry
        leaves the row and its note in place but drops it from the index the
        same way it drops it from every other read, so ids[1] above widens
        the two counts apart unless trash is left out of both sides. */
@@ -330,16 +317,11 @@ export async function runJournalContract(
     for (const id of ids) await journal.entries.deleteEntry(id).catch(() => {});
   });
 
-  /* Ticket 06's own acceptance criterion: a saved question is one table
-     over this same FTS index, never a second search path. Proven by running
-     the identical filters twice - once as the ad hoc call `/search` makes,
-     once read back off a row this suite just wrote - rather than by
-     inspecting savedQuestions.ts's source, which a driver-tier suite has no
-     way to do anyway. The comma-joined tag/mood columns are what a native
-     driver could bind differently than node:sqlite, so the round trip
-     belongs here rather than in a pure Node test. */
-  await r.section('a saved question answers exactly like the ad hoc search it was saved from', async () => {
-    const group = await journal.tags.addGroup('saved-question-contract-test');
+  /* The filters /search builds narrow the FTS read on the driver itself:
+     the tag and mood lists bind as IN (...) parameters, which a native
+     driver could bind differently than node:sqlite. */
+  await r.section('the search filters narrow to the one entry inside all of them', async () => {
+    const group = await journal.tags.addGroup('search-filter-contract-test');
     const tag = await journal.tags.addTag(group.key, 'therapy');
     const day = 20100;
     const matchId = await journal.entries.upsertEntry({
@@ -374,83 +356,66 @@ export async function runJournalContract(
     const adHocHits = (await journal.entries.searchEntries(queryText, [], filters)).map((e) => e.id);
     const adHocTotal = await journal.entries.countSearchMatches(queryText, [], filters);
     r.equal('the ad hoc filters narrow to the one entry inside all of them', adHocHits, [matchId]);
-
-    const savedId = await journal.savedQuestions.upsertSavedQuestion({
-      name: 'Good sessions',
-      queryText,
-      tagIds: filters.tagIds,
-      moods: filters.moods,
-      startEpochDay: filters.startEpochDay,
-      endEpochDay: filters.endEpochDay,
-      hasNote: filters.hasNote,
-      hasPhoto: filters.hasPhoto,
-      starred: false
-    });
-    const saved = (await journal.savedQuestions.getSavedQuestions()).find((q) => q.id === savedId);
-    r.equal('the saved row round-trips its comma-joined columns back into arrays', saved?.tagIds, filters.tagIds);
-    r.equal('and its 0/1 columns back into booleans', [saved?.hasNote, saved?.hasPhoto], [true, false]);
-
-    if (saved) {
-      const savedFilters = {
-        tagIds: saved.tagIds,
-        moods: saved.moods,
-        startEpochDay: saved.startEpochDay,
-        endEpochDay: saved.endEpochDay,
-        hasNote: saved.hasNote,
-        hasPhoto: saved.hasPhoto
-      };
-      const savedHits = (await journal.entries.searchEntries(saved.queryText, [], savedFilters)).map((e) => e.id);
-      const savedTotal = await journal.entries.countSearchMatches(saved.queryText, [], savedFilters);
-      r.equal("the saved question's hits equal the ad hoc search's hits", savedHits, adHocHits);
-      r.equal("and its total equals the ad hoc search's total", savedTotal, adHocTotal);
-    }
+    r.equal('and the total counts the same one', adHocTotal, 1);
 
     for (const id of [matchId, wrongMoodId, outsideRangeId]) await journal.entries.deleteEntry(id).catch(() => {});
-    await journal.savedQuestions.deleteSavedQuestion(savedId).catch(() => {});
   });
 
-  /* After-release ticket 16 (audit L08-01): Starred is a filter on /search,
-     and a question saved with it on came back without it, so it answered
-     with every entry carrying the tag. This one goes through the two
-     conversions the screens use, savedQuestionInputOf on the way in and
-     entrySearchFiltersOf on the way out, because the section above builds
-     its filters by hand and so could never notice a field they drop. */
-  await r.section('a saved question keeps Starred and answers with starred entries only', async () => {
-    const group = await journal.tags.addGroup('saved-question-starred-test');
-    const tag = await journal.tags.addTag(group.key, 'binder');
-    const starredId = await journal.entries.upsertEntry({ epochDay: 20200, mood: 4, tags: [tag.id], starred: true });
-    const plainId = await journal.entries.upsertEntry({ epochDay: 20200, mood: 4, tags: [tag.id] });
+  /* Mode, body region and one scale's range, each alone and each with text, through the
+     same two reads /search makes. The region and scale halves are EXISTS subqueries over
+     their own tables, and the scale's range binds two numbers, so they belong on every
+     driver rather than in a Node-only test. */
+  await r.section('mode, body region and a scale range narrow the search, alone and with text', async () => {
+    const femme = await journal.presentations.addPresentation('filterprobe femme', 0);
+    const work = await journal.presentations.addPresentation('filterprobe work', 1);
+    const day = 20400;
+    const a = await journal.entries.upsertEntry({
+      epochDay: day, mood: 4, note: 'filterprobe walk', presentationId: femme.id,
+      bodyRegions: { chest: 70 }, dims: { femininity: 80 }
+    });
+    const b = await journal.entries.upsertEntry({
+      epochDay: day, mood: 3, note: 'filterprobe walk', presentationId: work.id,
+      bodyRegions: { hips_waist: 20 }, dims: { femininity: 30 }
+    });
+    const c = await journal.entries.upsertEntry({
+      epochDay: day, mood: 3, note: 'filterprobe other', presentationId: femme.id,
+      bodyRegions: { chest: 30, hips_waist: 60 }, dims: { femininity: 75 }
+    });
+    const d = await journal.entries.upsertEntry({ epochDay: day, mood: 3, note: 'filterprobe bare' });
 
-    const filters = { tagIds: [tag.id], starred: true };
-    const adHocHits = (await journal.entries.searchEntries('', [], filters)).map((e) => e.id);
-    r.equal('the ad hoc search narrows to the starred entry', adHocHits, [starredId]);
+    const ask = async (query: string, filters: EntrySearchFilters) => {
+      const hits = (await journal.entries.searchEntries(query, [], filters)).map((e) => e.id).sort((x, y) => x - y);
+      const total = await journal.entries.countSearchMatches(query, [], filters);
+      return { hits, total };
+    };
+    const ids = (...list: number[]) => ({ hits: [...list].sort((x, y) => x - y), total: list.length });
+    const inDay = { startEpochDay: day, endEpochDay: day };
 
-    const savedId = await journal.savedQuestions.upsertSavedQuestion(savedQuestionInputOf('Starred binder days', '', filters));
-    const saved = (await journal.savedQuestions.getSavedQuestions()).find((q) => q.id === savedId);
-    r.equal('the saved row keeps Starred', saved?.starred, true);
-    if (saved) {
-      const savedFilters = entrySearchFiltersOf(saved);
-      const savedHits = (await journal.entries.searchEntries(saved.queryText, [], savedFilters)).map((e) => e.id);
-      r.equal("the saved question's hits equal the ad hoc search's hits", savedHits, adHocHits);
-      r.equal('and its total says one', await journal.entries.countSearchMatches(saved.queryText, [], savedFilters), 1);
-    }
+    r.equal('a mode alone finds its entries', await ask('', { ...inDay, presentationIds: [femme.id] }), ids(a, c));
+    r.equal('two modes find either', await ask('', { ...inDay, presentationIds: [femme.id, work.id] }), ids(a, b, c));
+    r.equal('a mode with text', await ask('walk', { presentationIds: [femme.id] }), ids(a));
+    r.equal('a body region alone finds every entry with a reading there', await ask('', { ...inDay, bodyRegions: ['chest'] }), ids(a, c));
+    r.equal('a body region with text', await ask('walk', { bodyRegions: ['hips_waist'] }), ids(b));
+    r.equal('a scale range alone, ends included', await ask('', { ...inDay, scale: { key: 'femininity', min: 75, max: 80 } }), ids(a, c));
+    r.equal('a scale range with text', await ask('walk', { scale: { key: 'femininity', min: 0, max: 50 } }), ids(b));
+    r.equal('an entry without that scale is outside every range', await ask('filterprobe', { scale: { key: 'femininity', min: 0, max: 100 } }), ids(a, b, c));
+    r.equal('all three with text narrow to one', await ask('filterprobe', {
+      presentationIds: [femme.id], bodyRegions: ['hips_waist'], scale: { key: 'femininity', min: 70, max: 100 }
+    }), ids(c));
+    r.equal('and nothing when they disagree', await ask('filterprobe', { presentationIds: [work.id], bodyRegions: ['chest'] }), ids());
 
-    for (const id of [starredId, plainId]) await journal.entries.deleteEntry(id).catch(() => {});
-    await journal.savedQuestions.deleteSavedQuestion(savedId).catch(() => {});
+    for (const id of [a, b, c, d]) await journal.entries.deleteEntry(id).catch(() => {});
+    await journal.presentations.setPresentationHidden(femme.id, true).catch(() => {});
+    await journal.presentations.setPresentationHidden(work.id, true).catch(() => {});
   });
 
-  /* The follow-up to the section above: on /search, Starred also brings
-     every starred photo and counts it in the total, and the saved question
-     screen showed the entries alone, so the same question gave two
-     different answers. Both screens now read the photos and the total
-     through starredPhotosAsked and answerTotal, which this runs once with
-     the ad hoc filters and once with the saved row's. That proves the
-     helpers and the saved row's round trip agree, not that each screen
-     calls them; tests/search-filter-scope.mjs is what checks the two
-     screens state the same total. */
-  await r.section('a saved Starred question answers with the same entries, photos and total as /search', async () => {
-    const group = await journal.tags.addGroup('saved-question-starred-photo-test');
+  /* Starred on /search brings every starred photo beside the starred
+     entries and counts it in the total, through the same helpers the
+     screen calls. */
+  await r.section('Starred answers with starred entries, every starred photo and one total', async () => {
+    const group = await journal.tags.addGroup('search-starred-photo-test');
     const tag = await journal.tags.addTag(group.key, 'voice');
+    const plainId = await journal.entries.upsertEntry({ epochDay: 20300, mood: 4, tags: [tag.id] });
     const starredId = await journal.entries.upsertEntry({ epochDay: 20300, mood: 4, tags: [tag.id], starred: true });
     const ownerId = await journal.entries.upsertEntry({ epochDay: 20301, mood: 3, note: 'photo owner' });
     const photoId = await journal.photos.attach({ entryId: ownerId }, {
@@ -472,17 +437,11 @@ export async function runJournalContract(
     r.equal('and the starred photo, counted in its total', [adHoc.photos.includes(photoId), adHoc.total], [true, 1 + adHoc.photos.length]);
     r.equal('and no photos when Starred is off', (await starredPhotosAsked(journal.photoLibrary, { tagIds: [tag.id] })).length, 0);
 
-    const savedId = await journal.savedQuestions.upsertSavedQuestion(savedQuestionInputOf('Starred voice days', '', filters));
-    const saved = (await journal.savedQuestions.getSavedQuestions()).find((q) => q.id === savedId);
-    r.equal('the saved question answers exactly as the ad hoc search', saved ? await answer(saved.queryText, entrySearchFiltersOf(saved)) : null, adHoc);
-
     await journal.photos.remove(photoId).catch(() => {});
-    for (const id of [starredId, ownerId]) await journal.entries.deleteEntry(id).catch(() => {});
-    await journal.savedQuestions.deleteSavedQuestion(savedId).catch(() => {});
+    for (const id of [starredId, ownerId, plainId]) await journal.entries.deleteEntry(id).catch(() => {});
   });
 
-  /* A margin note's independence from its entry (phase 8 features ticket
-     07): adding, editing and deleting one leaves the entry's own note
+  /* A margin note's independence from its entry: adding, editing and deleting one leaves the entry's own note
      untouched, on the driver rather than assumed from the two tables being
      separate in the schema - a trigger, a cascade or a shared-connection
      quirk on either tier could still smuggle a write across. */
@@ -513,15 +472,13 @@ export async function runJournalContract(
     r.equal('foldText strips Polish letterforms', foldText('Zażółć Gęślą Jaźń ŁÓŻKO'), 'zazolc gesla jazn lozko');
   });
 
-  /* Window functions, which ADR-0012's aggregates lean on in three places:
-     `daySpread`'s FIRST_VALUE/LAST_VALUE over a named WINDOW clause below,
-     and `recap`'s ROW_NUMBER and NTILE. A build compiled with
-     SQLITE_OMIT_WINDOWFUNC fails here and nowhere else.
+  /* Window functions, which ADR-0012's aggregates lean on in three places: `daySpread`'s
+     FIRST_VALUE/LAST_VALUE over a named WINDOW clause below, and `recap`'s ROW_NUMBER and
+     NTILE. A build compiled with SQLITE_OMIT_WINDOWFUNC fails here and nowhere else.
 
-     It used to be the streak's gaps-and-islands query, which phase 8 UX
-     ticket 01 deleted; the day spread was picked to replace it because the
-     WINDOW clause is the syntax an omitted-window-function build refuses
-     earliest. */
+     It used to be the streak's gaps-and-islands query, which deleted; the day spread was
+     picked to replace it because the WINDOW clause is the syntax an omitted-window-function
+     build refuses earliest. */
   await r.section('window functions', async () => {
     const spreadDay = 1000;
     for (const mood of [2, 5, 3]) {
@@ -567,10 +524,9 @@ export async function runJournalContract(
     r.equal('the sweep removes orphan thumbnails', await files.read('orphan-photo-thumb.jpg').then((v) => v == null), true);
   });
 
-  /* ADR-0009: preferences live in SQLite and the boot cache mirrors them.
-     Asked here because the pref table is the first thing the app reads on a
-     phone, and a driver that mangled the round trip would surface as a
-     device that quietly forgot its theme. */
+  /* Preferences live in SQLite and the boot cache mirrors them. Asked here because the pref
+     table is the first thing the app reads on a phone, and a driver that mangled the round
+     trip would surface as a device that quietly forgot its theme. */
   await r.section('preferences', async () => {
     const preferences = await openPreferences(driver);
     await preferences.set('theme', 'dark');
@@ -674,6 +630,101 @@ export async function runJournalContract(
     });
   });
 
+  r.checks.push(...await runBootHousekeepingContract(driver, files));
+  return r.checks;
+}
+
+/** The same Replace/boot contention fixture runs over Node, native files
+    and OPFS. Restore the caller's rows afterwards so contract markers stay. */
+export async function runBootHousekeepingContract(driver: SqliteDriver, files: PhotoFileStore): Promise<ContractCheck[]> {
+  const r = recorder();
+  const baseJournal = openJournal(driver, files);
+  await baseJournal.reconcileBuiltIns();
+  const baseline = await baseJournal.archive.snapshot();
+  const baselineFiles = await Promise.all(baseline.files.map(async (file) => ({
+    name: file.name, bytes: await baseline.readFile(file.name)
+  })));
+  let resume = () => {};
+  const gate = new Promise<void>((resolve) => { resume = resolve; });
+  let hold = false;
+  const contended: SqliteDriver = {
+    ...driver,
+    async transaction(work) {
+      if (hold) await gate;
+      return driver.transaction(work);
+    }
+  };
+  const journal = observeWrites(openJournal(contended, files), () => {});
+  let reconciliation: Promise<unknown> | undefined;
+  try {
+    const kept = await journal.entries.upsertEntry({ epochDay: 31000, mood: 4 });
+    const expired = await journal.entries.upsertEntry({ epochDay: 31001, mood: 4 });
+    const photo = { full: new Uint8Array([1, 3, 5]), thumb: new Uint8Array([2, 4]) };
+    await journal.photos.attach({ entryId: kept }, photo);
+    await journal.photos.attach({ entryId: expired }, photo);
+    const [keptRow] = await driver.query<{ uuid: string }>('SELECT uuid FROM entry WHERE id = ?', [kept]);
+    const [expiredRow] = await driver.query<{ uuid: string }>('SELECT uuid FROM entry WHERE id = ?', [expired]);
+    const incoming = await journal.archive.snapshot();
+    const incomingFiles = await Promise.all(incoming.files.map(async (file) => ({
+      name: file.name, bytes: await incoming.readFile(file.name)
+    })));
+    const oldOnly = await journal.entries.upsertEntry({ epochDay: 31002, mood: 4 });
+    await journal.photos.attach({ entryId: oldOnly }, photo);
+    await journal.archive.replace({ journal: incoming.journal, files: (async function* () {
+      for (const file of incomingFiles) yield file;
+    })() });
+    await driver.run('UPDATE entry SET trashed_at = ? WHERE uuid = ?', [Date.now() - 31 * 86400000, expiredRow.uuid]);
+    /* Trash travels with its files: the expired entry's row still owns them, so the archive
+       carries them and only the purge below removes them. They are the old media boot
+       housekeeping must clear. */
+    const [expiredPhoto] = await driver.query<{ file_path: string }>(
+      'SELECT p.file_path FROM photo p JOIN entry e ON e.id = p.entry_id WHERE e.uuid = ?', [expiredRow.uuid]
+    );
+    const orphans = [expiredPhoto.file_path, thumbFileName(expiredPhoto.file_path)];
+    const restored = await journal.archive.snapshot();
+    const carried = new Set(restored.files.map((file) => file.name));
+    r.equal('Replace leaves proven old media for boot housekeeping',
+      (await files.list()).filter((name) => orphans.includes(name)).length === 2 && orphans.every((name) => carried.has(name)), true);
+
+    hold = true;
+    reconciliation = journal.stock.reconcileRunOutReminders(31003);
+    r.equal('the stock reconciliation admits the contending write', journalIsBusy(), true);
+    let start = () => {};
+    let purged = 0;
+    const result = await boot({
+      createDriver: () => contended,
+      fileOps: noopFileOps(),
+      purgeExpiredTrash: async (opened) => { purged = await purgeExpiredTrash(opened, files); },
+      sweepOrphanPhotos: (opened) => sweepOrphanPhotos(opened, files),
+      scheduleHousekeeping: (run) => { start = run; }
+    });
+    if (result.phase !== 'ready') throw result.error;
+    start();
+    hold = false;
+    resume();
+    await reconciliation;
+    await result.housekeeping;
+    r.equal('first eligible boot purges the expired Replace entry', purged >= 1, true);
+    r.equal('expired Replace row is removed from SQLite',
+      await driver.query('SELECT uuid FROM entry WHERE uuid = ?', [expiredRow.uuid]), []);
+    r.equal('first eligible boot removes every proven Replace orphan',
+      await Promise.all(orphans.map((name) => files.read(name).then((bytes) => bytes === null))),
+      orphans.map(() => true));
+    const [keptFile] = await driver.query<{ file_path: string }>(
+      'SELECT p.file_path FROM photo p JOIN entry e ON e.id = p.entry_id WHERE e.uuid = ?', [keptRow.uuid]
+    );
+    r.equal('boot preserves committed full photo bytes', [...(await files.read(keptFile.file_path))!], [...photo.full]);
+    r.equal('boot preserves committed thumbnail bytes', [...(await files.read(thumbFileName(keptFile.file_path)))!], [...photo.thumb]);
+  } catch (error) {
+    r.equal('Replace boot housekeeping contract completes', String(error), 'no failure');
+  } finally {
+    hold = false;
+    resume();
+    await reconciliation;
+    await baseJournal.archive.replace({ journal: baseline.journal, files: (async function* () {
+      for (const file of baselineFiles) yield file;
+    })() });
+  }
   return r.checks;
 }
 

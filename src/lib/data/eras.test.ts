@@ -155,10 +155,9 @@ describe('eraRange', () => {
   });
 });
 
-/* Phase 6 ticket 03: `/compare` and Wrapped both read `getJournalBounds()`
-   as a liveQuery, which is null both while it loads and on a journal that
-   has never held an entry - a moment `eraRange` itself never has to answer
-   for, since its own tests always hand it real bounds. */
+/* `/compare` and Wrapped both read `getJournalBounds()` as a liveQuery, which is null both
+   while it loads and on a journal that has never held an entry - a moment `eraRange` itself
+   never has to answer for, since its own tests always hand it real bounds. */
 describe('eraRangeOrNull', () => {
   it('answers exactly as eraRange does once bounds are known', () => {
     const bounds = { firstEpochDay: 120, lastEpochDay: 400 };

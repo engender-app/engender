@@ -6,21 +6,16 @@
    ============================================================ */
 
 /* ---------- text & primitives ---------- */
-/* ScreenHeader.svelte's own styles (phase 5 ticket 18); nothing else
-   should wear these class names.
-
-   The header is two things now (phase 10, DIRECTION.md rule 7; redesign
-   ticket 23): the field, a solid block of one of the flag's colours that
-   holds the back control, the title and the actions, and under it, on the
-   page, the subtitle. The header itself paints nothing and pads nothing;
-   the field does both. */
+/* ScreenHeader.svelte owns these classes. The solid flag field holds back,
+   title and actions. The subtitle sits on the page below. The field owns
+   the fill and padding. */
 .screen-header {
   position: relative;
   min-height: calc(var(--space-8) + var(--touch-target) + var(--space-4));
 }
 /* The field. `--field` and `--field-ink` are published on <html> by
    activeFlag (the flag's second colour and black or white, whichever
-   measures higher; `--surface-2` and `--text` under disguise), so this rule
+   measures higher), so this rule
    never reads a stripe and never decides anything per screen. Its height
    is its content plus 40 above and 16 below, never fixed, so a Polish
    title that wraps grows it rather than clipping. The bottom corners are
@@ -31,8 +26,7 @@
   border-radius: 0 0 var(--r-block) var(--r-block);
   min-height: calc(var(--space-8) + var(--touch-target) + var(--space-4));
   box-sizing: border-box;
-  /* The paint is a child now, not this element's background (redesign
-     ticket 28): the field's box is the measurement and the blind is what
+  /* The paint is a child now, not this element's background: the field's box is the measurement and the blind is what
      stands in for its colour, so the two can move on different clocks
      during a navigation. `isolation` keeps the blind's negative z-index
      inside this box without reordering the field against its own siblings
@@ -42,8 +36,15 @@
   position: relative;
   isolation: isolate;
   overflow: hidden;
+  /* The words sit on the field's lower edge, the way Today's name does: a field taller than
+     its title - a sun's corner on Settings, a tall window - put the title at the top with
+     the colour hanging empty under it. The back row rides down with the title it belongs
+     to. */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
 }
-/* The blind (redesign ticket 28). A window tall, hanging from the field's
+/* The blind. A window tall, hanging from the field's
    top edge, so its bottom edge can be pulled down past the field's box or
    up to the window's own top without the block ever being resized: at rest
    the field's overflow clips it to exactly the field, and during a
@@ -80,23 +81,11 @@
    context - only a name does - so this is safe to leave on permanently. */
 [data-field-part] { view-transition-class: field-part; }
 
-/* ---------- a field whose edge moves without a navigation ----------
-
-   Setup and the gates are step machines (DIRECTION.md rules 12 and 15), and
-   a step is one screen in many states rather than two screens with a
-   photograph of each. So this field's bottom edge cannot be a view
-   transition: it is driven from the field's own measured height by
-   $lib/motion/stepBlind, and these are the rules that mechanism writes
-   into. Redesign ticket 33 built them inside onboarding's own scoped style
-   block; ticket 34 needs the same drawing on five gates, so the pattern is
-   here and each surface adds only what differs - setup the sun's reserve
-   and the back control's row, a gate nothing at all.
-
-   `.screen-field` above is the other half of the same idea and stays
-   separate on purpose. A door's field moves only on a navigation, so its
-   paint can be a clipped child; this one has to let its paint stand taller
-   than its box for the length of a close, which is what the split below is
-   for. */
+/* stepBlind moves Setup and gate field edges from measured
+   heights. The steps update in
+   place and let paint extend beyond a shrinking box until
+   the close finishes. The door field uses navigation snapshots
+   and keeps its paint clipped. */
 
 /* `--blind-edge` is where the field's bottom edge is, in pixels. Registered
    rather than left a plain custom property for the reason every var()-driven
@@ -141,39 +130,24 @@
 .step-field {
   position: relative;
   flex: 0 0 auto;
-  /* Sideways only. Carpet ticket 154 stopped this field crossing the top
-     inset: setup draws the sun in its corner, and the status bar's own
-     icons were landing on the flag's bands. The band above the field is
-     the page's colour now - white in light, near black in dark - which is
-     a ground the bar's icons can be read against whichever tint Android
-     picks. The gate wears this same class and follows it; it has no sun,
-     but a step machine and a gate arriving one after the other with
-     different top edges would be a jump between them. */
-  margin: calc(-1 * var(--field-bleed-top)) calc(-1 * var(--space-5)) 0;
+  /* Expand sideways only. Keep the field below the top inset: setup draws the sun in its
+     corner, and the status bar's own icons were landing on the flag's bands. The band above
+     the field is the page's colour now - white in light, near black in dark - which is a
+     ground the bar's icons can be read against whichever tint Android picks. The gate wears
+     this same class and follows it; it has no sun, but a step machine and a gate arriving
+     one after the other with different top edges would be a jump between them. */
+  margin: calc(-1 * var(--field-bleed-top)) calc(-1 * var(--screen-inset)) 0;
   padding: var(--space-2) var(--space-5) var(--space-4);
   color: var(--field-ink);
-  /* The paint below is a window tall and absolutely positioned in this box,
-     and an absolutely positioned child contributes its overflow to its
-     containing block's - which propagated all the way up and made the frame
-     report exactly `--nav-clearance` of content it was hiding, on every step
-     at every size. `clip` stops the propagation without making anything a
-     scroll container, and the margin is what stops it also clipping the
-     paint, which has to be able to stand taller than this box for the length
-     of a close: the edge starts at the height the field had and this box is
-     already at the height it is going to.
-
-     120px, and the number is the point. A clip container's clip box is what
-     its ancestors see, so a margin big enough to reach past the frame
-     propagates again - `50vh` did, and put 20px back on setup's disguise
-     step at 360x640. The largest close in either flow needs 41px of room
-     (the travel plus the settle); 120 is room to spare and still well inside
-     the shortest frame anything here is measured at. The handover out is not
-     constrained by this at all - a named element escapes its ancestors'
-     clipping for the length of a navigation, which is the whole mechanism
-     ticket 28 relies on. */
+  /* overflow: clip contains the window-tall absolute paint without
+     creating a scroll container. Its 120px margin lets the paint
+     extend past the box during a close. The largest measured close
+     needs 41px including the settle. A margin reaching past the frame
+     can propagate overflow again, as 50vh did at 360x640. Named
+     navigation captures escape ancestor clipping while in flight. */
   overflow: clip;
   overflow-clip-margin: 120px;
-  /* Everything on the field is cut at the edge the eye sees (ticket 285), not
+  /* Everything on the field is cut at the edge the eye sees, not
      at the box's own bottom plus 120px. A step that asks a taller question is
      laid out at its final height on the first frame while the painted edge
      travels there over --dur-slow, and the incoming lines start fading in
@@ -184,13 +158,11 @@
      an edge below its box, which a negative inset gives back. */
   clip-path: inset(0 0 calc(100% - var(--blind-edge)) 0);
 }
-/* The paint, split from the box above (ticket 28's mechanism, and the same
-   reason it exists there): a flat block a window tall whose bottom edge is a
-   clip, so the edge moves without the block ever being resized and no frame
-   can deform the two bottom corners. A sibling of the content rather than a
-   wrapper round it, because the box may not clip the paint: the field's own
-   overflow would cut it back to the new height on the frame the height
-   changed, which is the jump the clip is here to prevent. */
+/* The paint, split from the box above: a flat block a window tall whose bottom edge is a
+   clip, so the edge moves without the block ever being resized and no frame can deform the
+   two bottom corners. A sibling of the content rather than a wrapper round it, because the
+   box may not clip the paint: the field's own overflow would cut it back to the new height
+   on the frame the height changed, which is the jump the clip is here to prevent. */
 .step-field-paint {
   position: absolute;
   top: 0;
@@ -211,20 +183,11 @@
   display: grid;
 }
 .step-field-ask > * { grid-area: 1 / 1; }
-/* What arrives on the field rides its edge (ticket 285, and ticket 28's rule
-   for the doors: the type is printed on the blind, on the blind's own curve).
-   A taller question is laid out at its final height on the first frame while
-   the painted edge travels there; left alone it stood still while the edge
-   uncovered it. Its bottom keeps its distance from the edge instead: it is
-   offset by however far the edge still has to go, which is the registered
-   --blind-edge less where it will rest, so it needs no clock of its own, is
-   exactly on the edge's curve on every frame, and an interrupting change is
-   a continuation for free. Each heading carries its own rest (stepBlind sets
-   --own-rest when it arrives and whenever the field is measured), the
-   leaving one included, which rides the edge from where it stood; before the
-   first measurement nothing has one and the offset is nothing. The clip on
-   .step-field remains as the backstop that stops anything painting past the
-   edge. */
+/* Offset each question by --blind-edge minus its own resting
+   edge so it rides the same curve through interruption.
+   stepBlind sets --own-rest for each heading, including the
+   one leaving. Before the first measurement the offset is zero.
+   Keep the step-field clip as the paint limit. */
 .step-field-ask > * {
   translate: 0 calc(var(--blind-edge) - var(--own-rest, var(--blind-edge)));
 }
@@ -257,40 +220,26 @@
   transition: none;
 }
 
-/* On a screen, the field runs out to both side edges - through .screen's
-   own 20px and padded back in by it, so the title starts where the content
-   under it does.
+/* The field extends through the screen's 20px side padding and pads its
+   title back to the content edge. Keep its top below the status bar
+   everywhere. A flag behind system icons can obscure them, and inconsistent
+   top edges snap during the blind transition, which moves the bottom edge
+   only. Android gets the page's status bar tint from status-bar-bridge.ts.
 
-   It used to run up through the window inset too, to meet the window's own
-   top edge. Carpet ticket 154 took that back, for two reasons that arrived
-   in that order. The status bar is drawn by the system over whatever the
-   app painted, and on Home and setup that was the flag: the bar's right
-   end crossed two to four of the sun's rings and its icons disappeared
-   into the light band every palette puts near the corner. Retiring the
-   bleed on only those two then left the app with two different field top
-   edges, 48px apart on a Pixel - and the blind that carries the field
-   between doors is one named object across the navigation, whose bottom
-   edge is built to travel and whose top edge is not ("the field must
-   always stay a single object that transitions to other states only by
-   moving up or down", Alicja, fieldBlind.ts). Sampled through a door
-   change, ::view-transition-group(blind) held top: 0px the whole way, so
-   that 48px was a change of colour with nothing animating it.
-
-   So every field starts below the inset now, the band behind the status
-   bar is the page's own colour on every screen, and the app tells Android
-   which tint to draw there (status-bar-bridge.ts).
-
-   Not quite all of the inset, though: `--field-bleed-top` (theme/base.css)
-   is the part the bar does not use, 9px on a Pixel and nothing at all in
-   a browser, and every field takes it back. The reasoning and the floor
-   that keeps it safe on a short bar are written at the token. */
+   --field-bleed-top reclaims the unused inset below the bar, 9px on a Pixel
+   and zero in browsers. The token documents the floor for shorter bars. */
 .screen > .screen-header > .screen-field {
-  margin: calc(-1 * var(--field-bleed-top)) calc(-1 * var(--space-5)) 0;
+  margin: calc(-1 * var(--field-bleed-top)) calc(-1 * var(--screen-inset)) 0;
   padding: var(--space-8) var(--space-5) var(--space-4);
   min-height: calc(var(--space-8) + var(--touch-target) + var(--space-4));
 }
 /* The controls on the field take its ink, not the page's text colour. */
 .screen-field .icon-btn { color: inherit; }
+/* And hover with a tint of that ink, not the page's --surface-2: on the
+   coloured field that was a solid disc, near the arrow's own darkness in the
+   dark theme (rgb 29 42 52 behind an ink of 16 24 32), so the arrow sank into
+   its hover. */
+.screen-field .icon-btn:hover { background: color-mix(in srgb, currentColor 12%, transparent); }
 .screen-back {
   grid-column: 1 / -1;
   justify-self: start;
@@ -298,20 +247,40 @@
      start left of the content edge for the arrow to look aligned with the
      title under it. The target keeps its full width; only the box moves. */
   margin-left: calc(-1 * var(--space-3));
+  /* Above the title's words for a press. The title is set solid at 0.95, so its text runs
+     taller than its own line and reached 5px up into the bottom of the back control's
+     target (12px with text at 200%), and the title came later in the document, so a press
+     there landed on the heading and did nothing (found by a11y-targets-large-text.mjs).
+     Positioned, the control takes its whole 48px back; nothing is drawn differently. */
+  position: relative;
+  /* Hung from the title rather than floating over it ("awkward, especially in relation to
+     the text"). The arrow sat 26px of field above the title's cap line, a 16px thin glyph
+     over 34px caps set at 800, so it read as a stray mark. Lowered 8px, its ink ends about
+     16px over the caps, near half their height, which ties it to the title as a kicker; the
+     field's own height is unchanged. That came back as too close to the title, so it sits
+     halfway between: 4px lowered, about 20px of field between its ink and the caps. */
+  top: var(--space-1);
 }
-/* A hidden title with no back control and no actions leaves the field
-   nothing to hold, so the header collapses to nothing visible rather than
-   painting an empty band: the two hubs that hide their title otherwise gain
-   their field's contents from tickets 09 and 15, and /settings was here
-   until carpet 25 gave it rule 7's chrome case. A screen can hide its title
-   and still show a back control or an action, and those keep the field - the
-   room does now (carpet 27).
-
-   Unpainted, not display: none. The visually hidden title inside is still
-   the screen's heading for a screen reader and the document outline (the
-   component's own reason for hiding rather than dropping it), and a
-   display: none ancestor would take it out of the accessibility tree; the
-   walkthrough's hub characterisation reads that heading. */
+/* A size up and a little heavier, so the arrow holds its own next to the
+   title's weight: 28px with a 2.6px stroke, against the 24px and 2px of an
+   action's glyph. At 28px its left ink lands on the title's stem (x 23 at
+   390px, the stem at 23) with the pull above unchanged. */
+.screen-back .icon {
+  width: 28px;
+  height: 28px;
+  stroke-width: 2.25;
+}
+/* The actions on the back control's line come down with it, so the row
+   stays one line. Only where they share it: under 240px they take a line
+   of their own (below), and lowered there they would reach into the title. */
+@container app (min-width: 240px) {
+  .screen-header-row.has-back-actions .header-action {
+    position: relative;
+    top: var(--space-2);
+  }
+}
+/* Collapse the field if there is no visible title, back control or action.
+   Leave the visually hidden heading in the accessibility tree. */
 .screen-header.is-collapsed,
 .screen > .screen-header.is-collapsed {
   min-height: 0;
@@ -323,17 +292,16 @@
   margin: 0;
   min-height: 0;
 }
-/* A field holding only what the door put there - hidden title, no back
-   control, no actions - keeps the 16 under its contents and drops the 40
-   above them to match (audit item 10). That 40 is the room the 48px title
-   needs above it; with no title drawn it was 88px of empty colour above the
-   Transition door's search box, of a 155px field. The minimum goes with it,
-   or the band keeps the height a title's line would have taken. */
+/* A field holding only what the door put there - hidden title, no back control, no actions
+   - keeps the 16 under its contents and drops the 40 above them to match. That 40 is the
+   room the 48px title needs above it; with no title drawn it was 88px of empty colour above
+   the Transition door's search box, of a 155px field. The minimum goes with it, or the band
+   keeps the height a title's line would have taken. */
 .screen-header.is-field-only .screen-field {
   padding-top: var(--space-4);
   min-height: calc(var(--space-4) + var(--touch-target) + var(--space-4));
 }
-/* Which leaves this override with nothing of its own to say (ticket 154):
+/* Which leaves this override with nothing of its own to say:
    the bleeding variant above it differed only by the inset terms, and
    those are gone. Kept as a rule rather than deleted, because the
    specificity is what beats `.screen > .screen-header > .screen-field`'s
@@ -354,9 +322,7 @@
   min-height: var(--touch-target);
 }
 /* A deep screen's actions go on the back control's line rather than the
-   title's. A title at 48 that wraps overflows its own column - "Body
-   measurements" sets 330px wide in a 254px cell - and ran straight under the
-   two controls on the measurements screen (Alicja, 2026-09-09). The back
+   title's. A large title can wrap into its action controls. The back
    row is empty to the right of a 48px control, which is where an app bar
    puts its actions anyway. Only where there is a back control to share the
    line with: a door that carries actions and no back keeps them beside its
@@ -366,27 +332,42 @@
   grid-row: 1;
   grid-column: 2;
   justify-self: end;
-  /* The mirror of the back control's own pull: a glyph sits 13px inside a
-     48px target, so the box has to hang past the content edge for the glyph
-     to look aligned with the title under it. */
-  margin-right: calc(-1 * var(--space-3));
+  /* No pull past the content edge. It used to mirror the back control's -12, so the glyph
+     lined up with the title, but the hover box then hung 12px out past the field's inner
+     edge; its right edge sits on the content edge now. */
 }
 .screen-header-row.has-back-actions .screen-title { grid-column: 1 / -1; }
+/* Under 240px (200% zoom on a 390px phone, 155px of row) that line runs out: Lab results'
+   back control and three actions need 208px, so the back's target sat 24px deep under the
+   gear's. The actions take a line of their own under the back control instead, still at the
+   trailing edge, and wrap there if a screen ever brings more than that line holds. The line
+   is decided by the width alone, never by how many actions are drawn: a count-driven break
+   would move the row under them in one frame. So it keeps a target's height even while it
+   is empty. */
+@container app (max-width: 239px) {
+  .screen-header-row.has-back-actions .header-action {
+    grid-row: 2;
+    grid-column: 1 / -1;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    min-height: var(--touch-target);
+  }
+}
 .screen-title {
   flex: 1;
   min-width: 0;
   /* A title breaks inside a word rather than running out of its own box,
-     which is the same rule .kit-row-title takes for the same reason
-     (redesign ticket 14): `min-width: 0` above lets the column shrink, but
+     which is the same rule .kit-row-title takes for the same reason:
+     `min-width: 0` above lets the column shrink, but
      a single word wider than what is left has nowhere to wrap. At 195px -
      200% zoom on a 390px phone, which the accessibility floor covers - the
      48px title clipped on every deep screen in the app, measured on
      /coming-back and present on main. A title that already fits is
      untouched. */
   overflow-wrap: break-word;
-  /* A door's title and a deep screen's, at 48 (phase 10, rule 2): Outfit
-     at 800, tracked to -0.045em, set solid. A door that shows a title shows
-     it at this size and no other. Polish titles wrap rather than shrink. */
+  /* A door's title and a deep screen's, at 48: Outfit at 800, tracked to -0.045em, set
+     solid. A door that shows a title shows it at this size and no other. Polish titles wrap
+     rather than shrink. */
   font-family: var(--font-display);
   font-size: var(--text-4xl);
   font-weight: var(--weight-display);
@@ -402,13 +383,23 @@
   font-weight: var(--weight-medium);
   margin: var(--space-3) 0 0;
 }
+/* A step's header. A step has to fit the window, and the screen's field - 40 above a 48px
+   title - took 155 of a 640px window before the step said anything. The step's field keeps
+   the back control over the title and drops the room above it to 16, with the title at the
+   number size, still large type on the field (rule 7). The date line under it shares its
+   line with the step's progress. */
+.screen-header.is-compact .screen-field,
+.screen > .screen-header.is-compact > .screen-field {
+  padding-top: var(--space-4);
+  min-height: calc(var(--space-4) + var(--touch-target) + var(--space-4));
+}
+.screen-header.is-compact .screen-title { font-size: var(--text-3xl); }
 .header-action { display: flex; gap: var(--space-2); }
-/* What a door puts on the field under its title's line (rule 7, redesign
-   ticket 15): the Transition door's search box, Journal's month label and
-   controls. No margin of its own - both doors that fill the field hide
-   their title, so the slot is what the field's 40 above and 16 below are
-   measured to; a door that shows a title and fills the field too is the
-   case that would need one, and none does yet. */
+/* What a door puts on the field under its title's line: the Transition door's search box,
+   Journal's month label and controls. No margin of its own - both doors that fill the field
+   hide their title, so the slot is what the field's 40 above and 16 below are measured to;
+   a door that shows a title and fills the field too is the case that would need one, and
+   none does yet. */
 .screen-field-slot { min-width: 0; }
 /* The search box on the field is a block of the page's own colour, which is
    the whole of why the small type in it is legal there (rule 3 keeps small
@@ -420,30 +411,18 @@
   color: var(--text-2);
   /* The box's own boundary, in the field's ink. --outline is a mix of
      --text and it measured 1.07:1 to 1.58:1 against the lighter fields
-     (pansexual's yellow, agender's green, and --surface-2 under disguise),
+     (pansexual's yellow and agender's green),
      so on those the box had no edge a person could see and its fill is
      1.21:1 to 1.75:1 against the field - a control whose boundary is what
      says it is a control owes 3:1 against what is beside it. --field-ink is
-     the one ink measured against every field: 4.41:1 at worst
-     (DIRECTION.md's own table), 12.72:1 under disguise. */
+     the one ink measured against every field: 4.41:1 at worst. */
   border-color: var(--field-ink);
 }
-/* Focus is a ring inside the box, not a colour on its edge. The edge is
-   already the field's ink, so darkening it says nothing; and --focus-ring is
-   a mix of --accent, which is a member of the flag, so the standard ring
-   drawn 2px outside a control lands on the field and measures 1.02:1 there
-   on agender dark. Two pixels *inside*, it sits on the box's own --bg, where
-   it measures 6.26:1 at worst.
-
-   The ring goes on the box rather than on the input, which is the shape a
-   person sees as the control: on the input alone it drew a rectangle around
-   the middle third and read as three cells rather than one box. The clear
-   control keeps a ring of its own so a keyboard can tell the two apart, and
-   `.search-box:focus-within`'s accent border (screens.css) is overridden
-   here at a specificity that beats it. */
+/* Inset the focus ring 2px onto the box background for contrast. Draw it
+   around the whole search box and give the clear control its own ring. */
 .screen-field .search-box:focus-within {
   border-color: var(--field-ink);
-  outline: 2px solid var(--focus-ring);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: -2px;
 }
 .screen-field .search-input:focus-visible { outline: none; }
@@ -451,23 +430,21 @@
    nothing else, and would be the one control on the screen under the touch
    floor. The field draws its own instead (the button beside the input). */
 .screen-field .search-input::-webkit-search-cancel-button { display: none; }
-/* On the web the field is a banner across the column rather than a block
-   meeting the window's edges, so it takes the radius on all four corners.
-   Rule 7's chrome case takes its one platform branch here too (carpet 25):
-   Settings is reached by a gear in Today's foot on the phone, where back
-   means Today, and by a fifth row at the rail's foot on the desktop, where
-   a back control would point at nothing. Dropped rather than hidden, so
-   the control is out of the tab order and out of the accessibility tree in
-   the shell that has no answer for it - the same thing this query already
-   does to the bottom bar the rail replaces (`.app-nav`, app.css). */
+/* On the web the field is a banner across the column rather than a block meeting the
+   window's edges, so it takes the radius on all four corners. Rule 7's chrome case takes
+   its one platform branch here too: Settings is reached by a gear in Today's foot on the
+   phone, where back means Today, and by a fifth row at the rail's foot on the desktop,
+   where a back control would point at nothing. Dropped rather than hidden, so the control
+   is out of the tab order and out of the accessibility tree in the shell that has no answer
+   for it - the same thing this query already does to the bottom bar the rail replaces
+   (`.app-nav`, app.css). */
 @container app (min-width: 1024px) {
   .screen > .screen-header > .screen-field { border-radius: var(--r-block); }
   .screen-header.is-chrome .screen-back { display: none; }
 }
 
 
-/* The 48px floor for a control drawn smaller than that (after-release
-   ticket 18). A transparent box centred on the control grows its target
+/* The 48px floor for a control drawn smaller than that. A transparent box centred on the control grows its target
    to --touch-target on whichever axis is short and adds nothing on an axis
    that already clears it, so a chip that grows at 200% text stops reaching
    out once it is tall enough. Percentages in `inset` resolve against the
@@ -516,30 +493,27 @@
      `<a class="btn">` in the app - the journey export's own link, a day's
      "add another", an empty state whose one action is a destination - drew a
      browser underline through the middle of its label inside the pill. Found
-     on the rendered feature screens (phase 5 UX ticket 25), which is where
+     on the rendered feature screens, which is where
      the first primary link-CTA landed. */
   text-decoration: none;
   font-family: var(--font-body);
   font-size: var(--text-md);
   font-weight: var(--weight-bold);
   border: none; cursor: pointer;
-  /* Longhands because the press shares this rule with two properties
-     that are not the press; --ease-press in a shorthand would take all
-     three down on an old WebView. The mechanism is at --ease-press in
-     theme/base.css. filter has no curve of its own, same as before.
-     box-shadow left this list with ticket 37: .btn-primary was its one
-     consumer in the family and it takes no shadow now. Opacity is the
-     disabled state below: without it a button going disabled (a write in
-     flight, an undo with nothing left) dropped to 0.45 in one frame
-     (phase 14 ticket 18). */
+  /* Longhands because the press shares this rule with two properties that are not the
+     press; --ease-press in a shorthand would take all three down on an old WebView. The
+     mechanism is at --ease-press in theme/base.css. filter has no curve of its own, same as
+     before. box-shadow left this list with.btn-primary was its one consumer in the family
+     and it takes no shadow now. Opacity is the disabled state below: without it a button
+     going disabled (a write in flight, an undo with nothing left) dropped to 0.45 in one
+     frame. */
   transition-property: transform, background, filter, opacity;
   transition-duration: var(--dur-press), var(--dur-fast), var(--dur-fast), var(--dur-fast);
   transition-timing-function: var(--ease-press), var(--ease-out), ease, var(--ease-out);
 }
-/* The wide depth itself - which is the 0.97 chosen on a Pixel 10a by ticket
-   29, after the stuck-hover bug below was fixed - is set in press.css, the
-   one file allowed to name a depth token (ticket 15). This file only says
-   .btn presses; how deep is not this file's decision to restate. */
+/* The wide depth itself - which is the 0.97 chosen on a Pixel 10a, after the stuck-hover
+   bug below was fixed - is set in press.css, the one file allowed to name a depth token.
+   This file only says .btn presses; how deep is not this file's decision to restate. */
 /* What a control that cannot be pressed does instead, which until now was
    nothing: a disabled .btn was pixel-identical to a live one. Onboarding's
    Continue button is disabled until a preset is picked and looked pressable
@@ -549,53 +523,32 @@
 .btn:disabled { cursor: default; opacity: 0.45; }
 .icon-btn:disabled { cursor: default; opacity: 0.45; }
 /* Ink, the same pairing as .segment's active pill, the notice's icon square
-   and a tile's action button (DIRECTION.md rule 4): --text as the ground,
+   and a tile's action button: --text as the ground,
    --bg as the type. No box-shadow - the kit's one shadow belongs to the
    floating add button, not this control. */
 .btn-primary { background: var(--text); color: var(--bg); position: relative; overflow: hidden; }
-/* Behind a hover query because this rule sits after .btn:active and carries
-   the same specificity, so on a touch screen it wins. Chromium applies
-   :hover on tap and leaves it applied until something else is tapped, which
-   means from the second tap onwards this transform replaced the press
-   scale and the button stopped answering at all. Felt on a Pixel 10a before
-   it was traced. The add button escaped it by luck of ordering - its
-   :active is written after its :hover.
-
-   And `:not(:active)`, because the hover query fixed half of it. A pointer
-   that *can* hover is hovering at the moment it presses, so this rule went on
-   winning there and the app's primary button did not move at all under a
-   mouse - which is how it was found, on the sign-off page, on a laptop. The
-   lift now stops for the duration of the press instead of outranking it.
-
-   DIRECTION's tier 4 says no hover-dependent motion, so a pointer that
-   cannot hover losing this is the intended reading, not a fallback. The
-   other five hover transforms in these sheets have the same exposure and
-   are ticket 18's, not this ticket's. */
+/* Limit lift to hover-capable pointers and exclude :active.
+   Chromium can retain :hover after a touch, and this later
+   transform would override press scale. On mouse press the lift
+   must also yield to scale. */
 @media (hover: hover) {
   .btn-primary:hover:not(:active) {
     transform: translateY(-1px);
     filter: saturate(1.15);
   }
 }
-/* A block of the page, DIRECTION.md rule 4 as final-audit ticket 22
-   amended it (ADR-0093): no ground, the --outline edge every block draws,
-   --text type.
-   This was a pale --accent-soft tint, 1.08:1 from the page on trans light,
-   a tonal ground the rule does not sanction. The primary action keeps the
-   ink, so a secondary one is held by its line and spends no colour, since
-   colour is content in this direction. .btn-danger is the same block with
-   --danger type. */
+/* Secondary buttons use the page ground, a 1px --outline edge and
+   --text. Use --danger ink for a destructive action. The primary action
+   keeps the filled ink treatment. */
 .btn-soft { background: none; border: 1px solid var(--outline); color: var(--text); }
-/* --accent-ink, not --accent, and it is a contrast fix rather than a look
-   change: the two are the same hue and the ink is only pulled toward --text
-   until it clears the 4.5:1 small-text floor on all three surfaces in every
-   palette and theme (palettes.css, and palette-contrast.test.ts holds it
-   there). Raw --accent is sized to be sat on rather than read - on trans
-   light it is 4.38:1 against --bg, which is what setup's two ways past a
-   step measured at 16px/750 when redesign ticket 33 walked every step of
-   the flow through tests/setup-contrast.mjs. Every ghost button in the app
-   was under the floor on that pair; the token for accent-coloured text
-   already existed and this rule was not using it. */
+/* --accent-ink, not --accent, and it is a contrast fix rather than a look change: the two
+   are the same hue and the ink is only pulled toward --text until it clears the 4.5:1
+   small-text floor on all three surfaces in every palette and theme (palettes.css, and
+   palette-contrast.test.ts holds it there). Raw --accent is sized to be sat on rather than
+   read - on trans light it is 4.38:1 against --bg, which is what setup's two ways past a
+   step measured walked every step of the flow through tests/tools/setup-contrast.mjs. Every
+   ghost button in the app was under the floor on that pair; the token for accent-coloured
+   text already existed and this rule was not using it. */
 .btn-ghost { background: none; color: var(--accent-ink); }
 .btn-danger { background: none; border: 1px solid var(--outline); color: var(--danger); }
 .btn-block { width: 100%; }
@@ -608,37 +561,40 @@
    The intent was a slightly rounded ring on square things, and a square
    element getting a square ring is the right answer for that anyway. */
 :is(button, a, input, select, textarea, [tabindex]):focus-visible {
-  outline: 2px solid var(--focus-ring);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: 2px;
 }
 /* A screen's heading takes focus when the screen arrives, so a screen
    reader says where you are (navigation/arrivalFocus.ts). It is not a
    control and nothing can be done to it, so it wears no ring. */
 [data-arrival-focus]:focus-visible { outline: none; }
+/* A text field pressed with a finger or a mouse wears no ring and no coloured edge.
+   Chromium's:focus-visible matches a text field on every focus, tap included, so the ring
+   above could not tell a press from a Tab. pointerFocus.ts marks the document after a press
+   and clears it on Tab, so a keyboard keeps the ring and the edge cue exactly as drawn. The
+   caret is the answer to a press. Selects and buttons are not text fields and keep their
+   ring. */
+:root[data-input='pointer'] :is(input, textarea):focus-visible { outline: none; }
+:root[data-input='pointer'] :is(input, textarea).input:focus { border-color: var(--input-edge); }
+:root[data-input='pointer'] .search-box:focus-within { border-color: var(--outline); outline: none; }
+:root[data-input='pointer'] .screen-field .search-box:focus-within { border-color: var(--field-ink); }
 
 /* ---------- switch ---------- */
-/* One switch, and one accessibility contract for it. This was styled twice:
-   once for a hidden checkbox with `:checked` selectors, and once further down
-   the file for a button carrying aria-checked, each restating the checked and
-   focus rules. Only the button was ever built - Switch.svelte, on melt's
-   Toggle - so the checkbox half was a second contract with no markup behind
-   it, and its rules were the ones a reader hit first.
-
-   SH-101: the visible track is 28px tall and 44px wide, under the 48px
-   minimum, and it is the most repeated control in Settings. The hit area
-   grows to 48px in both directions without the track growing with it - it
-   used to grow in one, which left it 4px short across the axis a thumb
-   actually misses on.
-
-   It shrinks when touched like every other control its size. A switch is
-   tapped and released, not carried, so there is no reason for it to answer
-   differently from a button. */
+/* Switch.svelte uses a button with aria-checked. Extend its 44x28px track to a
+   48px hit target on both axes. Use compact press feedback for a tap. */
 .switch {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: var(--touch-target); min-height: var(--touch-target);
   border: none; background: none; padding: 0;
   cursor: pointer;
-  transition: transform var(--dur-press) var(--ease-press);
+  /* The browser's disabled-button colour is not drawn anywhere on a
+     switch, but it changed in one frame with the opacity below. */
+  color: inherit;
+  /* Opacity is the disabled state below. Without it a switch going disabled while a sheet
+     saves dropped to 0.45 in one frame, the yank .btn already fixed for itself. */
+  transition-property: transform, opacity;
+  transition-duration: var(--dur-press), var(--dur-fast);
+  transition-timing-function: var(--ease-press), var(--ease-out);
 }
 .switch-track {
   width: 44px; height: 28px; border-radius: var(--r-block);
@@ -662,23 +618,20 @@
 }
 .switch[aria-checked="true"] .switch-track { background: var(--accent); border-color: var(--accent); }
 .switch[aria-checked="true"] .switch-thumb { background: var(--on-accent); translate: 16px; }
-.switch:focus-visible .switch-track { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.switch:focus-visible .switch-track { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: 2px; }
 /* The one state a switch can be in without being off: the preference it
    holds cannot apply in this mode, so the control reads dimmed rather than
    merely unchecked. Same figure as .btn:disabled, for the same reason. */
 .switch:disabled { cursor: default; opacity: 0.45; }
 
 /* ---------- segmented ---------- */
-/* The positioning box: the chevron hints anchor to this rather than to the
-   scrolling track itself, so they stay put at the edge while the track
-   scrolls under them (Segmented.svelte). Carries the sizing this control
-   has always wanted - inline-flex hugs its content, and then `.field` - a
-   column flex box - stretched it to full width anyway, because a flex
-   item's default cross alignment is stretch. So every switcher in an
-   editor sheet drew a track far wider than the words in it (Alicja,
-   2026-08-26, on three separate screens). Named here rather than at each
-   call site: the control knows it wants to be the width of its own
-   segments. */
+/* The positioning box: the chevron hints anchor to this rather than to the scrolling track
+   itself, so they stay put at the edge while the track scrolls under them
+   (Segmented.svelte). Carries the sizing this control has always wanted - inline-flex hugs
+   its content, and then `.field` - a column flex box - stretched it to full width anyway,
+   because a flex item's default cross alignment is stretch. So every switcher in an editor
+   sheet drew a track far wider than the words in it. Named here rather than at each call
+   site: the control knows it wants to be the width of its own segments. */
 .segmented-wrap {
   position: relative;
   display: inline-flex;
@@ -690,10 +643,9 @@
   display: inline-flex; gap: var(--space-2);
   min-width: 0;
   background: var(--surface-2);
-  /* A square track (phase 10, rule 5): 8px around 6px segments, so the
-     corners stay concentric at a 3px inset. Both are raw on purpose: they
-     are derived from --r-block, and neither is on the radius or spacing
-     scale. */
+  /* A square track: 8px around 6px segments, so the corners stay concentric at a 3px inset.
+     Both are raw on purpose: they are derived from --r-block, and neither is on the radius
+     or spacing scale. */
   border-radius: 8px;
   padding: 3px;
   overflow-x: auto;
@@ -701,32 +653,11 @@
 }
 .segmented::-webkit-scrollbar { display: none; }
 
-/* The chevron and the fade under it, which are one device (phase 11
-   pre-production ticket 43). Pointer-events:none - it marks the track's
-   own edge, not a control of its own.
-
-   The chevron was meant to be "a fixed hint that never depends on how a
-   neighbouring label happens to break" and was not: it was drawn over the
-   bare track with nothing between it and whatever label the clip had left
-   underneath it, so at 390px the kind picker rendered "Garme>e" and the
-   affordance was legible only when the last visible label happened to stop
-   short of it. It paints above the track, which was never the problem -
-   what it had was no ground of its own.
-
-   So the fade moved off the track and onto this box, as its background.
-   The label runs out under the track's own colour instead of being masked
-   to transparent, and the chevron stands on that colour rather than on the
-   letters. One rule instead of two, and it is right on both edges at once:
-   the masks were written as an either/or pair (`can-scroll-end:not(
-   .can-scroll-start)`), so a track scrolled to the middle - both hints
-   showing - faded on neither.
-
-   The gradient reaches the track's colour well before the chevron's own
-   box, so what fades is the label and never the mark itself; the 4px of
-   transparent tail is what keeps the edge soft rather than a ruled line
-   (Alicja, 2026-08-28, on the severity picker: a fade that finishes before
-   the next label begins is "barely noticeable"). The corner radius is the
-   track's, so an opaque ground at the very edge does not square it off. */
+/* The chevron is an edge hint with pointer-events: none. Its background
+   fades clipped labels into the track colour before the chevron, keeping
+   the mark clear. Each edge draws its own fade so both work when
+   scrolled to the middle. A 4px transparent tail softens the edge and
+   the track's radius keeps the opaque corner rounded. */
 .segmented-hint {
   position: absolute;
   top: 0; bottom: 0;
@@ -734,7 +665,14 @@
   width: 26px;
   color: var(--text-2);
   pointer-events: none;
+  /* Faded in and out rather than added and removed: choosing a segment beside a chevron now scrolls the track clear
+     of it, which brings the opposite chevron in, and it used to land whole
+     in one frame. The width above is SCROLL_HINT_WIDTH in segmentedTrack.ts,
+     which a test holds to it. */
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out);
 }
+.segmented-hint.is-shown { opacity: 1; }
 .segmented-hint-start {
   left: 0; justify-content: flex-start; padding-left: 4px;
   background: linear-gradient(to right, var(--surface-2) 22px, transparent);
@@ -745,26 +683,11 @@
   background: linear-gradient(to left, var(--surface-2) 22px, transparent);
   border-radius: 0 8px 8px 0;
 }
-.segmented.can-scroll-start.can-scroll-end {
-  mask-image: linear-gradient(to right, transparent, black 14px, black calc(100% - 14px), transparent 100%);
-  -webkit-mask-image: linear-gradient(to right, transparent, black 14px, black calc(100% - 14px), transparent 100%);
-}
 
-/* A flex scroll container drops its trailing padding at the end of the
-   scroll, so the last segment ran flush into the track's rounded edge and
-   read as a label that did not fit its background (Alicja, 2026-08-26, on a
-   new hair-removal session and on side effects). A spacer the width of that
-   padding is the standard answer: it is content, so the scroll box includes
-   it.
-
-   Only on a track that actually scrolls (ticket 99 item 24, "last value
-   highlight in switcher doesn't reach the end of the bg"). On one that
-   fits - every compact track, and most of the rest - there is no end of a
-   scroll for the padding to be dropped at, and the spacer was simply an
-   extra flex item: 3px of it plus the 8px gap in front of it left 11px of
-   bare background after the last segment, against 3px of padding before
-   the first. The sliding pill matches its segment exactly, so that dead
-   strip is what read as the highlight stopping short of the end. */
+/* Add a trailing spacer only on scrolling tracks. Flex scrolling
+   can drop trailing padding, and the spacer restores it. On a
+   fitting track it would add 3px plus an 8px gap after the last
+   segment and leave the pill short of the edge. */
 .segmented.can-scroll::after {
   content: '';
   flex: 0 0 3px;
@@ -793,14 +716,12 @@ a.segment {
      short segment is a pill and the floor is still met for a one-letter
      one. The compact form overrides the inline padding and is untouched. */
   padding: 6px 18px; min-width: var(--touch-target); min-height: var(--touch-target);
-  /* A flex item shrinks by default, and this track is capped at the width of
-     the field it sits in - so five segments of prose were squeezed narrower
-     than their own words while `nowrap` kept the words at full width, and
-     "barely noticeable" ran out of its pill and across "mild" (Alicja,
-     2026-08-26, on a new hair-removal session). The track already scrolls;
-     what it needed was segments that keep their size so there is something
-     to scroll. The compact form sets `flex: 1` after this, deliberately:
-     that one divides a width it knows it fits in. */
+  /* A flex item shrinks by default, and this track is capped at the width of the field it
+     sits in - so five segments of prose were squeezed narrower than their own words while
+     `nowrap` kept the words at full width, and "barely noticeable" ran out of its pill and
+     across "mild". The track already scrolls; what it needed was segments that keep their
+     size so there is something to scroll. The compact form sets `flex: 1` after this,
+     deliberately: that one divides a width it knows it fits in. */
   flex: 0 0 auto;
   border-radius: var(--r-block);
   font: inherit; font-size: var(--text-sm); font-weight: var(--weight-medium);
@@ -812,9 +733,8 @@ a.segment {
      it - a shorthand naming that token stranded the other properties on an
      old WebView, and there is no longer a reason to name it here at all. */
   transition-property: background, color;
-  /* The pill's own duration (phase 10 rule 10, redesign ticket 25), so the
-     chosen label turns page-coloured on the frame the ink arrives under it.
-     On --dur-fast it turned 90ms early and sat unreadable on the track
+  /* The pill's own duration, so the chosen label turns page-coloured on the frame the ink
+     arrives under it. On --dur-fast it turned 90ms early and sat unreadable on the track
      while the pill was still on its way. */
   transition-duration: var(--dur-med), var(--dur-med);
   transition-timing-function: var(--ease-out), var(--ease-out);
@@ -826,7 +746,7 @@ a.segment {
    siblings whatever the order. */
 .segment { position: relative; }
 /* The label turns page-coloured on an ease-in while the pill arrives on an
-   ease-out (redesign ticket 25): the pill has covered most of its distance
+   ease-out: the pill has covered most of its distance
    by a third of the time, and a label that whitened on the same curve was
    light on the light track for the two frames before the ink reached its
    last letter ("365d" read "365"). Starting slow, the label is still dark
@@ -838,18 +758,16 @@ a.segment {
   color: var(--bg);
   transition-timing-function: var(--ease-out), cubic-bezier(0.7, 0, 0.84, 0);
 }
-/* The keyboard ring draws inside the segment, not 2px outside it. A segment
-   sits flush against its neighbours inside a pill track, so the default
-   offset ring drew around the chosen label and out past the track's own
-   rounded end - the "365d" ring of ticket 99 round 3 - and hugged a small
-   compact segment as a second ring inside the pill's, which read as two
-   controls. Chromium marks a click on a role="radio" focus-visible (arrow
-   keys are expected to work there), so this ring appeared for every mouse
-   pick, not only keyboard ones. Inside the segment's own box a keyboard
-   user still sees exactly which segment holds focus; the mouse just sees
-   the pill. */
+/* The keyboard ring draws inside the segment, not 2px outside it. A segment sits flush
+   against its neighbours inside a pill track, so the default offset ring drew around the
+   chosen label and out past the track's rounded end. It
+   hugged a small compact segment as a second ring inside the pill's, which read as two
+   controls. Chromium marks a click on a role="radio" focus-visible (arrow keys are expected
+   to work there), so this ring appeared for every mouse pick, not only keyboard ones.
+   Inside the segment's own box a keyboard user still sees exactly which segment holds
+   focus; the mouse just sees the pill. */
 .segment:focus-visible {
-  outline: 2px solid var(--focus-ring);
+  outline: var(--focus-ring-width) solid var(--focus-ring);
   outline-offset: -3px;
 }
 
@@ -862,35 +780,21 @@ a.segment {
    transition can go to 1.1 or come back from it, not both. Ending at the
    resting value keeps the reduced-motion clamp from stranding it stretched,
    which is why `scale: 1 1` is declared on the sliding state too. */
-/* Pinned by its two horizontal insets rather than placed by `translate` and
-   sized by `width` (2026-09-08). The two edges are no longer on the same
-   clock: the one nearer the destination sets off first and decelerates, the
-   one left behind waits --stagger-step and then gathers after it, so the
-   width in between is the live difference of two curves rather than a value
-   with a curve of its own - which no single transform can say, since a
-   translate moves both edges together. The navigation's own pill is the same
-   mechanic and app.css carries the long version of why, including what it
-   costs to animate a layout property and the cap that holds it.
-
-   Only the travelling axis is transitioned. A segment's height is the
-   track's, so top and bottom change when the control relaid out, and a
-   relayout is not a choice being made. */
+/* Animate horizontal insets independently. The leading edge sets off first.
+   The trailing edge waits --stagger-step. Leave height changes to layout. */
 .segment-pill {
   position: absolute;
   top: 3px; bottom: 3px;
   left: var(--seg-left, 0);
   right: var(--seg-right, 0);
   border-radius: var(--r-block);
-  /* Lifted off the track rather than being the app's other surface. On the
-     dark theme --surface and --surface-2 are two steps of near-black and the
-     pill disappeared into the control it sits in (Alicja, 2026-08-25: "the
-     colour of the switcher highlight in dark mode shouldn't be that close to
-     the bg colour - it blends"). Mixed toward the text so it lightens on
-     dark and darkens on light, which is the same direction on both. */
-  /* Inverted (phase 10, rule 4): the active segment is a block of ink
-     with the page's colour for its label, which is the same object on
-     both themes and never blends into the track the way an 11% mix did
-     on dark. */
+  /* Lifted off the track rather than being the app's other surface. On the dark theme
+     --surface and --surface-2 are two steps of near-black and the pill disappeared into the
+     control it sits in. Mixed toward the text so it lightens on dark and darkens on light,
+     which is the same direction on both. */
+  /* Inverted: the active segment is a block of ink with the page's colour for its label,
+     which is the same object on both themes and never blends into the track the way an 11%
+     mix did on dark. */
   background: var(--text);
   /* Hidden until it has been measured, the same gate .nav-pill has and for
      the same reason: pinned by insets, an unplaced pill is `left: 0;
@@ -909,58 +813,35 @@ a.segment {
     opacity var(--dur-fast) var(--ease-out);
 }
 .segment-pill.is-shown { opacity: 1; }
-/* A set of short labels - a range in days, a count of steps. The buttons
-   keep the 48dp press height Android asks for and the pill is drawn shorter
-   inside it, so the thing that slides is a pill crossing the set rather than
-   a dot moving between dots: six segments reading "7d" through "365d" are
-   about as wide as they are tall, and at that ratio --radius-pill draws a
-   circle. Phase 5 UX ticket 23. */
+/* A set of short labels - a range in days, a count of steps. The buttons keep the 48dp
+   press height Android asks for and the pill is drawn shorter inside it, so the thing that
+   slides is a pill crossing the set rather than a dot moving between dots: six segments
+   reading "7d" through "365d" are about as wide as they are tall, and at that ratio
+   --radius-pill draws a circle. */
 .segmented-wrap.is-compact { width: 100%; align-self: stretch; }
 .segmented.is-compact { display: flex; width: 100%; }
-/* An equal share of the width, but never less than the label needs
-   (phase 11 pre-production ticket 44). The compact form divides its track
-   between its segments, which is right while the labels fit and silently
-   wrong once one of them does not: a segment is `overflow: visible`, so a
-   label wider than its share paints outside its own pill, and the active
-   one paints in `var(--bg)` - page-coloured text on the page-coloured
-   track, which is a label with its last letters simply gone. Measured on
-   the voice screen, which four prose labels made the first control to
-   exceed the share at the reference width: "Recordings" is 76.2px against
-   69.5px of content box at 390px and 52px at 320px, so it was already
-   losing its last three letters before this ticket renamed anything.
-
-   `min-width: max-content` hands the overflow back to the track, which has
-   owned it all along - the non-compact form's own note above says the same
-   thing ("segments that keep their size so there is something to scroll"),
-   and the fade and the chevron that go with it are already built. `flex: 1`
-   still shares out whatever is left over, so a control whose labels fit is
-   laid out exactly as it was. Across the app that is all of them but two:
-   at 390px nothing overflows any more, and at 320px only this voice strip
-   and the roadmap's four tracks scroll - both of which were clipping their
-   last label at that width already. tests/voice-task-names.mjs sweeps every
-   compact control the app renders at both widths and holds that claim,
-   rather than leaving it as a sentence somebody measured once. */
+/* Compact segments share space with flex: 1. min-width: max-content keeps
+   long labels inside their pills and lets the track scroll. A clipped
+   active label can disappear against the track because its ink is --bg.
+   tests/guards/voice-task-names.mjs sweeps the compact controls at 390px and 320px. */
 /* `width: max-content` rather than `min-width`: the min-width is the
    segment's 48px floor, which `min-width: max-content` used to replace -
    "cm" came out 28px wide and "in" 21px in Settings, "7d" 40px on the
-   tallies (after-release ticket 18). As the flex basis, max-content still
+   tallies. As the flex basis, max-content still
    hands an overflowing label back to the track, and `flex-shrink: 0` keeps
    it from being squeezed under its words. */
 .segmented.is-compact .segment { flex: 1 0 auto; width: max-content; min-width: var(--touch-target); padding-inline: var(--space-1); }
-/* 5px, not 9px. The inset was tuned when the compact form carried six
-   segments across the full width, where the pill is wider than it is tall
-   whatever the inset. With three or six *short* labels the segments are wide
-   and the pill came out nearly square, which is the shape this control's own
-   note already rejects - "a circle sliding says nothing about the set it is
-   crossing" (Alicja, 2026-08-25, and again 2026-08-26 on two more screens:
-   "switcher highlight too short"). At 5px it is 38px in a 48px track, which
-   reads as a pill. */
+/* 5px, not 9px. The inset was tuned when the compact form carried six segments across the
+   full width, where the pill is wider than it is tall whatever the inset. With three or six
+   *short* labels the segments are wide and the pill came out nearly square, which is the
+   shape this control's own note already rejects - "a circle sliding says nothing about the
+   set it is crossing". At 5px it is 38px in a 48px track, which reads as a pill. */
 .segmented.is-compact .segment-pill { top: 5px; bottom: 5px; }
 
 /* At 200% zoom (about 195px of CSS viewport) the compact form's six labels
    overlap: each segment is told to share a width that no longer holds a
    word. Below 240px it stops being compact and scrolls, which is the shape
-   the control already has for a long set (ticket 07). */
+   the control already has for a long set. */
 @media (max-width: 240px) {
   .segmented-wrap.is-compact {
     width: auto;
@@ -982,18 +863,10 @@ a.segment {
    looked identical mid-tap, so a mistap on the active segment read as
    nothing happening at all. It presses to the compact depth like every other
    control its size, and it presses whether or not it is the active one. */
-/* A segment is the third control that answers a press without shrinking, and
-   like the other two it has to say why: the pill crossing the set is already
-   the response, and scaling the label as well is two answers to one press -
-   the words bounce under the finger while the highlight slides out from under
-   it (Alicja, 2026-08-25: "lose the text bounce effect when clicking on the
-   switcher - just leave the highlight animation").
-
-   The other two are in DIRECTION.md's tier 1: a slider thumb takes a ring
-   because a press on it is the start of a carry, and a row the width of the
-   screen fills with a wash because scaling a row moves the card it sits in.
-   What answers here is the colour the label already takes when it becomes
-   the active one, which the transition below still carries. */
+/* A segmented control answers a press with the moving pill and the
+   label's colour change. Scaling the label would make it bounce while
+   the pill is still travelling. A slider thumb answers with a ring,
+   and a full-width row answers with a wash. */
 .segment:active { color: var(--text); }
 
 /* ---------- inputs ---------- */
@@ -1011,20 +884,9 @@ a.segment {
 }
 .input:focus { border-color: var(--accent); outline: none; }
 
-/* ---------- a typed answer, on the rule ----------
-
-   Rule 13's third shape: the display face at 28 on a 3px bottom rule, no box
-   and no fill, the placeholder in the secondary ink. The person's name is
-   the first thing in the app set in the app's own voice, "and a passphrase
-   is the same shape with its characters hidden" - which is why this is here
-   rather than in onboarding's own block, where redesign ticket 33 first drew
-   it: setup asks for a name and an archive's password, and the gates ask for
-   a journal passphrase in three places (redesign ticket 34). One drawing, the
-   same argument the field and the pad already settle.
-
-   The recovery key is deliberately not this shape. It is a written-down
-   string being compared against the paper it was written on, so it keeps the
-   monospace box it was minted in (RecoveryKeyEntry.svelte). */
+/* Use a 28px display face on a 3px bottom rule for shared setup and gate
+   inputs. Mask passphrases. RecoveryKeyEntry uses a monospace box for
+   comparison with a written key. */
 .typed { position: relative; }
 .typed .field-label { display: block; margin-bottom: var(--space-2); }
 .rule-input {
@@ -1079,18 +941,16 @@ a.segment {
   .rule-input { font-size: var(--text-xl); }
 }
 
-/* The wrapper a group opens inside (`disclose`). It establishes a block
-   formatting context, and that is the whole of it: `disclose` sets
-   `overflow: hidden` while it runs, which stops the last field's
-   `margin-bottom` collapsing out of the wrapper - so the animation ran to a
-   height that contained the margin, then the inline styles came off, the
-   margin escaped, and the block below dropped another 16px. The group
-   expanded nicely and then jumped (Alicja, 2026-08-26, on a new tryout and
-   on a wear session).
+/* The wrapper a group opens inside (`disclose`). It establishes a block formatting context,
+   and that is the whole of it: `disclose` sets `overflow: hidden` while it runs, which
+   stops the last field's `margin-bottom` collapsing out of the wrapper - so the animation
+   ran to a height that contained the margin, then the inline styles came off, the margin
+   escaped, and the block below dropped another 16px. The group expanded nicely and then
+   jumped.
 
-   `flow-root` rather than `overflow: hidden` at rest: same containment, and
-   it does not clip anything that legitimately paints outside the box, like a
-   focus ring on the last field. */
+   `flow-root` rather than `overflow: hidden` at rest: same containment, and it does not
+   clip anything that legitimately paints outside the box, like a focus ring on the last
+   field. */
 .disclosed {
   display: flow-root;
 }
@@ -1117,6 +977,12 @@ a.segment {
   text-align: left;
   cursor: pointer;
 }
+/* Tier 1: a full-width row answers a press with the fill, as .kit-row does.
+   The toggles opt out of press.css's scale, which walked the chevron out
+   from under the finger. */
+.disclosure-toggle:active {
+  background: var(--role-wash);
+}
 .disclosure-chev {
   flex: 0 0 auto;
   display: grid;
@@ -1137,14 +1003,12 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
 .mood-picker { position: relative; }
 .mood-row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-1); --mood-lift: 34px; }
 .mood-btn {
-  /* --space-4, not --space-2, and the extra 8px is all ring (ticket 99 item
-     15, "mood icon text too close to the icon"). The face wears a 2px
-     outline at 3px offset, and an outline is painted outside the box
-     without taking any layout space, so 8px of gap was only 3px of visible
-     air. A picked face then scales to 1.18, which drops its own bottom
-     edge another ~4px and takes the scaled ring down with it - the label
-     ended up all but touching the ring it belongs to. 16px clears both and
-     leaves the row looking like a row again. */
+  /* --space-4, not --space-2, and the extra 8px is all ring. The face wears a 2px outline
+     at 3px offset, and an outline is painted outside the box without taking any layout
+     space, so 8px of gap was only 3px of visible air. A picked face then scales to 1.18,
+     which drops its own bottom edge another ~4px and takes the scaled ring down with it -
+     the label ended up all but touching the ring it belongs to. 16px clears both and leaves
+     the row looking like a row again. */
   flex: 1 0 48px; min-width: 48px; display: flex; flex-direction: column; align-items: center; gap: var(--space-4);
   background: none; border: none; cursor: pointer;
   padding: var(--space-2) 2px; border-radius: var(--r-block);
@@ -1154,33 +1018,16 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
      same trade the fan's faces make (QuickAdd). */
   touch-action: none;
 }
-/* One face for every surface (phase 5 ticket 31): the picker's 44px, quick
+/* One face for every surface: the picker's 44px, quick
    add's 34, a chip's 26, a day card's 22. The size arrives as --face-size,
    the mood's own colour as --face-mood and the ink drawn on it as
    --face-ink, all set by the component, so a surface asks for a size rather
    than getting a rule of its own here. */
-/* ---------- why these two are registered ----------
-
-   An unregistered custom property has no type, so it substitutes at
-   computed-value time and the properties reading it never interpolate: the
-   specified value of `scale` is still the same `var(--mood-mag, 1)` token
-   before and after, so nothing transitions and the face jumps to its new
-   size in one frame. Every transition written against these two - the
-   magnifier's, since phase 5 ticket 31, and the gaze's - has therefore never
-   run once, on any build, while reading correctly in the stylesheet.
-
-   Measured rather than reasoned: sampling the computed `scale` on a face
-   every 25ms while a pointer crossed the row gave 1 then 1.6 with nothing in
-   between, and 1.6 then 1 on the way out (Alicja, phase 9 carpet ticket 01:
-   "the scale appears immediately on hover, it has to have a fade in and fade
-   out"). Registering them gives each a type, which is what makes the
-   variable itself animatable; the transition then goes on the variable and
-   everything computed from it follows per frame.
-
-   Both inherit, because both are set on an ancestor of what reads them:
-   --mood-mag on the button, read by the face and its lift; --gaze on the
-   face, read by the eyes' outer group. A runtime without @property keeps
-   today's instant snap rather than breaking, which is the right way round. */
+/* Register --mood-mag and --gaze with types and transition the variables
+   directly. Unregistered substitutions leave scale's specified var()
+   unchanged and jump in one frame. Inherit --mood-mag from button to
+   face and lift, and --gaze from face to eyes. Without @property they
+   still update instantly. */
 @property --mood-mag {
   syntax: '<number>';
   inherits: true;
@@ -1212,13 +1059,10 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
      that doesn't set it, so every mood row gets the same grow-under-the-
      pointer answer for free the moment it starts setting the variable. */
   scale: var(--mood-mag, 1);
-  /* And rises with it, the lift the fan's card clip forced it to invent -
-     which turned out to be the whole of the look (Alicja, phase 5 ticket
-     99, screencast 2026-08-29: the fan is how the hover is supposed to
-     read, Home and the entry editor's picker were "wrong"). A face that
-     only swells in place reads as a zoom; one that comes up to the finger
-     reads as picked up. The lift's reach is the row's to set: the fan's
-     card clips at 20px, the bare rows answer with more. */
+  /* And rises with it, the lift the fan's card clip forced it to invent - which turned out
+     to be the whole of the look. A face that only swells in place reads as a zoom; one that
+     comes up to the finger reads as picked up. The lift's reach is the row's to set: the
+     fan's card clips at 20px, the bare rows answer with more. */
   translate: 0 calc((1 - var(--mood-mag, 1)) * var(--mood-lift, 20px));
   /* No `scale` or `translate` in this list any more. Both are computed from
      --mood-mag, which is the thing that transitions now, so naming them here
@@ -1227,28 +1071,19 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
      directly, and opacity because the dimming does. */
   transition: transform var(--dur-med) var(--ease-out), opacity var(--dur-fast);
 }
-/* Standalone scale/translate shipped in Chrome 104; the WebView floor is
-   Chrome 87 (capacitor.config.ts, [[fflate-is-the-repos-zip-reader]]'s same
-   gap) - seventeen versions short, so the whole magnifier silently did
-   nothing there. No hover/press growth on any device at or under that
-   floor is ticket 99 items 1 and 2's report, round two of the same "phase 5
-   ticket 99" bug above, this time in the property rather than the border.
-   transform is the one form every engine back to Chrome 1 reads, so the
-   fallback trades that for losing composition with .mood-btn.is-selected's
-   own transform below - which only an engine this old would ever notice. */
+/* Standalone scale/translate shipped in Chrome 104; the former WebView floor was Chrome 87
+   (capacitor.config.ts, [[fflate-is-the-repos-zip-reader]]'s same gap) - seventeen versions
+   short, so the magnifier did nothing there. The transform fallback
+   works on older WebViews, at the cost of composing with the selected
+   face's transform. */
 @supports not (scale: 1) {
   .mood-face {
     transform: translateY(calc((1 - var(--mood-mag, 1)) * var(--mood-lift, 20px))) scale(var(--mood-mag, 1));
     transition: transform var(--dur-fast) var(--ease-out), opacity var(--dur-fast);
   }
 }
-/* --outline (19% of --text) is a card's edge - a subtle line between two
-   already-similar surface tones. A mood face sits straight on the bare app
-   background instead, which is what ticket 99 item 2's regression report
-   caught: the intended border read as no border at all. It took the 30%
-   line for a while; phase 10 (rule 4) left the app two line strengths and
-   the disc takes --outline, since ticket 31's faces separate the five
-   steps by their drawing rather than by a ring. */
+/* The disc uses --outline. The face drawing distinguishes the five steps,
+   including when the edge is faint against the page background. */
 .mood-face-disc {
   fill: var(--face-mood);
   stroke: var(--outline);
@@ -1259,8 +1094,7 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
    steps 1 and 5 draw lids as one stroked path, at the mouth's own weight, so
    the whole face is one drawing at one weight (moodFace.ts says why the ends
    of the ramp are the two that differ). */
-/* In the step's own ink rather than the palette's --text (ticket 279,
-   ADR-0091): the deep end of a ramp is too dark for a dark ink, so each step
+/* In the step's own ink rather than the palette's --text: the deep end of a ramp is too dark for a dark ink, so each step
    says what it is drawn in. A theme or preset change moves the ink, and so
    does a Journal cell whose day changes step, so it crossfades on the
    block's own curve instead of swapping in a frame. Solid rather than the
@@ -1333,20 +1167,10 @@ textarea.input { resize: vertical; line-height: var(--leading-body); }
   0%, 92%, 100% { transform: scaleY(1); }
   95% { transform: scaleY(0.12); }
 }
-/* MO-001: the global reduce rule below clamps every animation's duration to
-   1ms, which turns an infinite loop into a restart-every-millisecond
-   flicker rather than stillness - a photosensitivity hazard, not a comfort
-   feature. These decorative loops stop outright instead; each rests on
-   a frame already inside its own keyframes (open eyes is face-blink's
-   resting frame with no transform applied at all, and eyes front is
-   face-glance's).
-
-   The gaze needs no rule of its own. Both rows return early under reduced
-   motion (moodMagnifier, QuickAdd), so --gaze never leaves the 0 MoodFace
-   writes for a face with nothing to look at, and the armed colour is the
-   whole answer - the same substitution the magnifier's scale makes. The
-   transition on it is left to base.css's 1ms clamp, which is correct for a
-   movement that has somewhere to arrive, and wrong only for a loop. */
+/* Stop decorative loops under reduced motion. The 1ms global clamp would
+   make a loop flicker. Rest the face with open eyes and a centred gaze.
+   Mood pickers skip gaze updates under reduced motion, so the arm colour
+   is the cue. The clamp still applies to finite transitions. */
 html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-eye { animation: none; }
 html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation: none; }
 @media (prefers-reduced-motion: reduce) {
@@ -1357,22 +1181,9 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
   stroke: var(--face-ink); stroke-width: 1.9; stroke-linecap: round; fill: none;
   transition: fill var(--dur-med) var(--ease-out), stroke var(--dur-med) var(--ease-out);
 }
-/* The ring sits OUTSIDE the circle, because every border inside the disc had
-   already failed: 1px of the app's darkest line disappears against a
-   coloured fill on the dark theme, at full strength, and the dimming rules
-   made it worse besides. Outside the circle nothing can sit on top of it.
-
-   It is drawn only on the face that was chosen (Alicja, phase 9 carpet
-   ticket 01: "remove the second stroke around them, that stroke should only
-   be around the CHOSEN icon"). A resting ring on all five was a second
-   stroke around a face that already carries one - the disc's own edge, which
-   ticket 99 put there - and five identical rings say nothing about which
-   face is picked, which is the only thing a ring here is for. Transparent
-   rather than absent so the ring arrives by taking a colour instead of by
-   changing the geometry, which would shift every face by 5px on pick.
-
-   Home's chips reached this answer first (kit.css, .kit-mood): the picker is
-   the surface that had drifted. */
+/* Show the ring only on the selected mood. Draw it outside
+   the disc so its fill cannot hide it. Keep the resting ring
+   transparent to avoid shifting faces by 5px when it appears. */
 .mood-btn .mood-face {
   /* The block's own corner, as a share of the box the svg is: 6.4 of 24
      (moodFace.ts's MOOD_BLOCK), so the ring keeps the face's shape at every
@@ -1380,13 +1191,17 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
   border-radius: 26.7%;
   outline: 2px solid transparent;
   outline-offset: 3px;
-  transition: outline-color var(--dur-fast) var(--ease-out);
+  /* The ring, the unpicked faces' dimming and the previous pick's scale back to 1 all take
+     the same beat. Without the last two they landed in one frame each. */
+  transition: outline-color var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out);
 }
+.mood-btn .mood-face-disc { transition: stroke var(--dur-fast) var(--ease-out); }
 .mood-btn.is-selected .mood-face { outline-color: var(--accent); }
 /* The unselected faces sit back at 55% - but the dimming lands on the
    disc's fill and the features only, never on the whole svg. */
 .mood-btn:not(.is-selected) .mood-face { opacity: 0.55; }
-/* As one object since ticket 279 (ADR-0091). The fill used to fade on its
+/* Dim the face as one object. The fill used to fade on its
    own and the features on their own, which compounds once a deep step draws
    in white: the fill fading toward a light page is the fill fading toward
    its ink, and teal light's step 5 came to 1.48:1. Dimming the whole face
@@ -1411,7 +1226,8 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
    and it only has to say "this one". */
 .mood-btn.is-selected .mood-face { transform: scale(1.18); animation: mood-pop var(--dur-slow) var(--ease-out); }
 @keyframes mood-pop {
-  0% { transform: scale(0.9); }
+  0% { transform: scale(1); }
+  15% { transform: scale(0.9); }
   55% { transform: scale(1.32); }
   100% { transform: scale(1.18); }
 }
@@ -1590,38 +1406,49 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
    alone that put a focus ring on the slider after every touch drag. The root
    is the tab stop, so the root having focus is what a ring means. */
 .slider-thumb:focus-visible { outline: none; }
-.slider:focus-visible .slider-thumb { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.slider:focus-visible .slider-thumb { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: 2px; }
 
 /* An unset slider's own drawing lives with the control (Slider.svelte), out
    of this first-load sheet: only an editor ever draws one. */
 .dim-slider.is-unset .dim-value { font-style: italic; color: var(--text-2); }
 
-/* Inset to the lane, so the two endpoint words line up under the two
-   positions the thumb can actually reach. */
-.dim-ends {
-  display: flex; justify-content: space-between;
-  padding: 0 var(--slider-inset);
-  font-size: var(--text-xs); color: var(--text-2); margin-top: 2px;
-}
-
 /* ---------- tags ---------- */
 .tag-group { margin-bottom: var(--space-4); }
-/* A group's name over its chips, in the field label's own type (after-release
-   28: one small-label style, sentence case, no letterspaced capitals). */
+/* A part of a new entry's step, named under the step's question.
+   A step carries one heading, its question, so the
+   parts under it - the scales, the mode - are named in the tag groups'
+   small label, with a part's link at the end of the same line. */
+.step-part {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: var(--space-5);
+}
+.step-part-name {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  letter-spacing: normal;
+  color: var(--text-2);
+}
+.step-part .kit-heading-action { margin-right: calc(-1 * var(--space-3)); }
+/* A group's name over its chips, in the field label's own type (one small-label style,
+   sentence case, no letterspaced capitals). */
 .tag-group-name { font-size: var(--text-sm); font-weight: var(--weight-bold); color: var(--text-2); display: block; margin-bottom: var(--space-2); }
 .tag-row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
-/* A region's slider slides in under the chip row it answers to (ticket 99);
+/* A region's slider slides in under the chip row it answers to;
    the margin rides the sliding element, so the gap is part of the motion
    instead of appearing with it. */
 .body-region-feeling { margin-top: var(--space-4); }
 .tag-chip-wrap { display: inline-flex; align-items: center; }
-/* Shrunk from .icon-btn's 48px hover circle (ticket 99 item 17): a 14px
-   glyph inline after a chip's label read as an oversized highlight the
-   moment the pointer neared it. 24px visual, 48px hit area restored by
-   ::after the same way .tag-chip already extends past its own pill. */
+/* Shrunk from .icon-btn's 48px hover circle: a 14px glyph inline after a chip's label read
+   as an oversized highlight the moment the pointer neared it. 24px visual, 48px hit area
+   restored by::after the same way .tag-chip already extends past its own pill. */
 .tag-chip-wrap .tag-info-btn {
   width: 24px; height: 24px;
-  margin-left: -6px;
+  margin-left: -4px;
   color: var(--text-2);
   position: relative;
 }
@@ -1630,20 +1457,23 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
   position: absolute;
   inset: -12px;
 }
-/* Ticket 30 measured this at 53.9x39, under PRODUCT.md's 48px floor, while
-   checking the controls it does own. What is fixed here is the floor, not the
-   chip: the pill stays 36px because a chip is a 36px pill in every reference
-   there is, and the target is extended past it by a transparent overlay the
-   way Material extends its own. Nothing about how the chip looks changes, and
-   how it looks is ticket 22's to decide. Same treatment as SH-101 gave the
-   switch, whose 28px track sits inside a 48px hit area. */
+/* The next chip, later in the row, covered 4 to 5px of that 48px extension
+   (a chip's own pill sits 8px off), so the button walked at 43 x 48. Raised
+   above its neighbours the extension is whole, and then it is the chips that
+   lose ground: the extension covers 4px of the chip it follows, 4px of the
+   chip after it and 18px of its own chip at the old -6px pull. That left the
+   shortest chip ("social", 69px) 46px of hit width, so the pull is -4px,
+   which leaves it 49px. The button sits 2px further right. */
+.tag-chip-wrap .tag-info-btn { z-index: 1; }
+/* The chip stays 36px tall. A transparent overlay extends its hit area
+   to the 48px floor, as on the switch with a 28px track. */
 .tag-chip {
   position: relative;
   display: inline-flex; align-items: center; gap: 5px;
   /* 14px across has no spacing token (it falls between --space-3 and
      --space-4), so it stays as drawn; 8px is --space-2. */
   padding: var(--space-2) 14px; min-height: 36px;
-  /* A tag is the one capsule left (phase 10, rule 5). */
+  /* A tag is the one capsule left. */
   border-radius: var(--radius-pill);
   border: 1.5px solid var(--outline);
   background: var(--surface);
@@ -1666,12 +1496,11 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
    in behind the name. Layered over a chip's base pill (.tag-chip here,
    EntryEditor's own .contextual-chip elsewhere) rather than owning one of
    its own - two chip pickers reaching for a presentation's colour is not
-   two chips, it is one modifier two pills opt into (phase 8 features
-   ticket 17). */
+   two chips, it is one modifier two pills opt into. */
 /* The ring takes the presentation's colour and keeps the pill's own
    1.5px, which is the kit's chip weight. It used to take --role-hairline
    whole, width and all, and a 1px ring beside every other 1.5px control
-   on the Journal read as a lighter kind of chip (ux-carpet ticket 280). */
+   on the Journal read as a lighter kind of chip. */
 .presentation-chip[data-kit-role] {
   border-color: color-mix(in oklab, var(--role-mark) 35%, transparent);
 }
@@ -1682,32 +1511,20 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
 }
 
 /* ---------- heat-map ---------- */
-/* The heat map's own squares moved to screens.css with the calendar
-   (phase 5 ticket 22), which is where the month grid now lives; .legend-swatch
+/* The heat map's own squares moved to screens.css with the calendar,
+   which is where the month grid now lives; .legend-swatch
    stayed here because three charts still draw one. */
 .legend-swatch { width: 16px; height: 16px; border-radius: var(--r-block); display: inline-block; }
 
-/* ---------- charts ---------- */
-.chart-gridline { stroke: var(--chart-grid); stroke-width: 1; stroke-dasharray: 2 4; }
-/* Invisible tap targets over the dots. `fill: transparent` rather than
-   `fill: none`, which would make them ignore pointer events entirely. */
-/* No outline in any focus state: a rectangle drawn around a point on a
-   scaled viewBox lands nowhere near the point. The ring is a stroke on the
-   hit circle itself, which scales with everything else. */
-.chart-hit { fill: transparent; cursor: pointer; outline: none; }
-.chart-hit:focus-visible { stroke: var(--focus-ring); stroke-width: 2; }
-
 /* ---------- sheets, toasts ---------- */
-/* Fixed rather than absolute, and against the app frame rather than the
-   real window: `.app-main` scrolls, and an `inset: 0` sized to a scrolling
-   ancestor is sized to its scrolled content, not the screen - a sheet's
-   scrim centred that way sat in the middle of the content instead of the
-   middle of what was actually on screen, and on a content column taller
-   than the viewport that middle could be scrolled out of view entirely
-   (Alicja, 2026-08-27: doesn't centre in Cycle or the wear log). `position:
-   fixed` fixes to the nearest ancestor with a transform, which `.app` in
-   app.css now is - so this still respects the phone-frame demo preview and
-   the walkthrough's own frame, not just the true window. */
+/* Fixed rather than absolute, and against the app frame rather than the real window:
+   `.app-main` scrolls, and an `inset: 0` sized to a scrolling ancestor is sized to its
+   scrolled content, not the screen - a sheet's scrim centred that way sat in the middle of
+   the content instead of the middle of what was actually on screen, and on a content column
+   taller than the viewport that middle could be scrolled out of view entirely. `position:
+   fixed` fixes to the nearest ancestor with a transform, which `.app` in app.css now is -
+   so this still respects the phone-frame demo preview and the walkthrough's own frame, not
+   just the true window. */
 .sheet-scrim {
   position: fixed; inset: 0; z-index: 40;
   display: flex; align-items: flex-end; justify-content: center;
@@ -1715,39 +1532,13 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
 /* The tint and the withdrawal it carries are a layer of the scrim's own now,
    `.sheet-scrim-tint` in Sheet.svelte - see the note there. */
 
-/* The withdrawal's blur half, missing from whatever sits in its own
-   scrolling region beside the one the scrim is inside (Sheet.svelte's own
-   `lockBackground` already marks every other top-level child `inert` while
-   a sheet is open - the rail on desktop, chiefly). backdrop-filter samples
-   what is visually behind the scrim, and a browser does not reliably
-   flatten two independently-scrolling regions into one bitmap for that
-   sampling - measured directly: the scrim's own rect spans the rail's too,
-   backdrop-filter is applied and reports as applied, and the rail still
-   rendered every icon and word in full sharpness under it (Alicja,
-   2026-08-27, "the blur effect looks bad on web" - confirmed on the
-   desktop rail specifically, screenshot against Cycle's edit sheet).
-   Blurring the rail's own pixels sidesteps needing backdrop-filter to see
-   across that boundary at all - this pseudo-element still samples only
-   what sits directly under it in the same element, never the scrim's
-   region. Same token as the scrim's own radius, so it reads as one
-   material rather than a second, undocumented blur.
+/* A scrim's backdrop blur may miss chrome in an independent scroll
+   region. Sheet marks background siblings inert. Blur the chrome
+   over its own pixels with this overlay and share the scrim's radius.
 
-   A crossfaded overlay rather than a filter on the bar itself (ux-carpet
-   232, Alicja's design call): the first pass put `filter: blur()` straight
-   on `[inert]` with no transition, which is right about the radius -
-   materials.css's own withdrawal states it never animates, because a
-   radius that changes re-blurs the region every frame - but wrong about
-   what that implies. A radius held constant is not a reason to skip
-   fading in the blur itself: it means the fade has to happen a different
-   way, on a second layer rather than on the filter. `filter` has no
-   opacity-only equivalent for a whole subtree, so this `::after` is that
-   second layer - a pre-blurred copy of exactly what sits under it, made
-   of nothing but its own constant backdrop-filter, which only ever fades
-   its *opacity* in. The sharp bar underneath never changes; the blurred
-   copy over it goes from invisible to fully covering across the scrim's
-   own `--dur-slow`, so what the eye reads is the bar softening, not
-   snapping. Full-frame overlays now mount beside the chrome in `.app`,
-   where their z-index covers it without moving the bar behind the screen. */
+   Keep the filter radius fixed and fade only opacity over --dur-slow
+   to avoid re-blurring each frame. Mount full-frame overlays beside
+   the chrome in .app so their stacking covers it without moving it. */
 /* Only these visible surfaces carry a withdrawal layer. The shell also
    marks a `display: contents` wrapper inert. Its absolutely positioned
    pseudo-element uses `.app` as its containing block and blurs the sheet
@@ -1780,36 +1571,26 @@ html[data-a11y-motion='reduce'] .mood-face.is-alive .mood-face-look { animation:
 /* The foot is a static flex item, and the blur layer above needs something
    to be absolute against. */
 [data-app-savebar][inert] { position: relative; }
+/* Reduced motion keeps the blurred layer and only shortens its fade to
+   the crossfade the scrim over it runs, which the 1ms clamp cannot reach.
+   It used to drop the layer outright, so the bar under an open sheet
+   looked different with the switch on. The radius
+   never moves, so there is nothing here for reduced motion to stop. */
 html[data-a11y-motion='reduce'] :is(.app-nav[inert], .app-rail[inert], [data-app-savebar][inert])::after {
-  opacity: 0;
-  backdrop-filter: none;
+  transition-duration: var(--dur-crossfade) !important;
 }
 @media (prefers-reduced-motion: reduce) {
   :is(.app-nav[inert], .app-rail[inert], [data-app-savebar][inert])::after {
-    opacity: 0;
-    backdrop-filter: none;
+    transition-duration: var(--dur-crossfade) !important;
   }
 }
-/* Carries the drag, so the sheet inside it keeps its transition's transform
-   to itself (Sheet.svelte). Sized to the sheet rather than to the scrim, or
-   it would swallow the backdrop taps that dismiss.
-
-   It also carries the height cap, and that is a fix rather than a
-   preference. `.sheet` asked for `max-height: 85%` and a percentage
-   resolves against the containing block's height - which is this element,
-   inserted between the scrim and the sheet when drag-to-dismiss was added,
-   and sized to its own content. An indefinite containing block makes a
-   percentage max-height no cap at all, so every sheet in the app grew to
-   whatever it held and `overflow-y: auto` never had anything to scroll
-   against: the effect-type list measured 4794px inside an 804px frame and
-   simply ran off the bottom (Alicja, 2026-08-26: "too long and takes the
-   whole screen with no ability to scroll"). The scrim is `inset: 0` and so
-   is definite; the cap belongs here, and the sheet stretches to it. */
-/* `position: relative` puts this in the same painting layer as the scrim's
-   tint, which is absolutely positioned and would otherwise paint over it
-   whatever the source order says - positioned elements paint after in-flow
-   ones. Caught on ticket 38's flipbook, where the settled sheet was blurred
-   and dimmed by the withdrawal that is supposed to be behind it. It shifts
+/* The wrapper carries drag so the sheet can animate its own transform.
+   Keep it sheet-width for backdrop taps. Apply the height cap here against
+   the definite scrim so the sheet's overflow has a scroll boundary. */
+/* `position: relative` puts this in the same painting layer as the scrim's tint, which is
+   absolutely positioned and would otherwise paint over it whatever the source order says -
+   positioned elements paint after in-flow ones. Caught on flipbook, where the settled sheet
+   was blurred and dimmed by the withdrawal that is supposed to be behind it. It shifts
    nothing: a flex item with no offsets stays where the layout put it. */
 .sheet-drag {
   position: relative;
@@ -1823,51 +1604,36 @@ html[data-a11y-motion='reduce'] :is(.app-nav[inert], .app-rail[inert], [data-app
 .sheet-drag:not(.is-dragging) {
   transition: transform var(--dur-med) var(--ease-out);
 }
-/* The floor a screen has, inside a sheet. The letter composer's "Seal it
-   away" sat flat against the anchor chips above it (Alicja, 2026-08-26), and
-   it is the same cause as on the screens: the blocks that nobody remembered
-   to space by hand end up flush.
+/* The floor a screen has, inside a sheet. The letter composer's "Seal it away" sat flat
+   against the anchor chips above it, and it is the same cause as on the screens: the blocks
+   that nobody remembered to space by hand end up flush.
 
-   Safe as an addition rather than a doubling because `.sheet` is a block
-   container and `.field` already carries a `margin-bottom` - adjacent
-   margins collapse, so a field followed by a field is still 16px apart and
-   only the pairs that had nothing between them move. */
+   Safe as an addition rather than a doubling because `.sheet` is a block container and
+   `.field` already carries a `margin-bottom` - adjacent margins collapse, so a field
+   followed by a field is still 16px apart and only the pairs that had nothing between them
+   move. */
 .sheet > * + * {
   margin-top: var(--space-4);
 }
 
 .sheet {
-  /* The skirt the settle needs. Coming up, a sheet runs past its mark and
-     comes back, the way the field's blind does (redesign ticket 38, ticket
-     28's curve) - and a sheet standing on the bottom edge that lifts off it
-     shows a strip of the page underneath. So the box extends past the edge
-     by the most the overshoot can ever be (blindSettle's OVERSHOOT_CAP, 8px)
-     and its bottom padding grows by the same amount, which leaves the
-     content exactly where it was. The negative margin is what keeps the
-     wrapper's own box on the edge, so nothing else moves either.
+  /* The skirt the settle needs. Coming up, a sheet runs past its mark and comes back, the
+     way the field's blind does - and a sheet standing on the bottom edge that lifts off it
+     shows a strip of the page underneath. So the box extends past the edge by the most the
+     overshoot can ever be (blindSettle's OVERSHOOT_CAP, 8px) and its bottom padding grows
+     by the same amount, which leaves the content exactly where it was. The negative margin
+     is what keeps the wrapper's own box on the edge, so nothing else moves either.
 
-     Zero on a wide window, below: there the scrim centres the sheet, so it
-     stands on nothing and has nothing to uncover. */
+     Zero on a wide window, below: there the scrim centres the sheet, so it stands on
+     nothing and has nothing to uncover. */
   --sheet-skirt: 8px;
   background: var(--surface);
   border-radius: var(--r-block) var(--r-block) 0 0;
   margin-bottom: calc(-1 * var(--sheet-skirt));
-  /* The bottom padding clears the floating bar, not just the system inset.
-     Found on ticket 35's renders: a sheet's last row sat under the bar at
-     every scroll position, so the end of a long sheet was a row nobody
-     could see the bottom of - and on the scales sheet that row is the way
-     to add a custom scale. Not new, and not this sheet's: the eight-preset
-     sheet it replaces ran under the bar the same way, and so does any sheet
-     with enough in it.
-
-     It has to be the sheet's own padding rather than the scrim's. The scrim
-     is `position: fixed` and bottom-aligns the sheet, so padding on it would
-     lift the sheet off the floor rather than give the sheet's own rows room
-     to scroll clear of the bar.
-
-     `--nav-clearance` is the token the scroll region and the editor's save
-     bar already agree on, so the three cannot drift, and it drops to the
-     no-bar value on a chromeless screen by itself. */
+  /* Pad the sheet itself with --nav-clearance so its last row can
+     scroll clear of the floating bar. Padding the fixed scrim would
+     raise the whole sheet. The shared token also adjusts when a
+     screen has no nav. */
   padding: var(--space-3) var(--space-5) calc(var(--nav-clearance) + var(--sheet-skirt));
   width: 100%;
   /* The cap itself is on .sheet-drag above, against the scrim, which is the
@@ -1881,52 +1647,53 @@ html[data-a11y-motion='reduce'] :is(.app-nav[inert], .app-rail[inert], [data-app
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  /* The bar's shadow, and a hairline, which is what quick add's fan already
-     does with the same problem: a sheet genuinely floats, so it casts the
-     app's one shadow rather than picking a second elevation for itself.
+  /* Use the bar's shadow and an outside 1px spread for the sheet edge.
+     At the 320px viewport floor the injection map needs all 280px of the
+     content box. A 1px border on both sides took the closest target centres
+     from 56px to 55.6px, below the 48px target plus 8px clearance.
 
-     It used to cast --shadow-3, the top of a three-step ramp, over a scrim
-     that had already darkened and blurred everything behind it - so the
-     heaviest shadow in the app was doing its work against a background that
-     was no longer there to be lifted off of (Alicja, on the screencast:
-     remove the popup's heavy shadow). base.css states the rule this breaks:
-     the redesign separates surfaces with a line, not a plane, and it has one
-     shadow. The line is what carries the sheet's own edge now, and the ramp
-     is left to the surfaces that still read as stacked planes.
-
-     The line is a second shadow layer rather than a `border`, because a
-     border takes layout width and there is none to take: at the 320px floor
-     the sheet's content box is exactly 280px, which is exactly the
-     injection map's `max-width`, so the figure sat on its own cap with no
-     slack. A 1px border narrowed it to 278 and scaled every dot's spacing
-     by 0.993 - the closest pair of touch targets went from 56px apart to
-     55.6, under the clearance a 48px target and its 8px gap need, and the
-     walkthrough caught it. An `outline` would also stay out of layout but
-     is a square ring around a radius on the WebView floor this ships to.
-
-     Outside the box and not `inset`, which is the difference between a line
-     and a line that is sometimes there. An inset shadow paints in the
-     background layer, and a scroll container's content is not clipped until
-     the padding box - so with `overflow-y: auto` here, rows scrolled up to
-     the top edge painted straight over it (measured: an entry card's mood
-     dot sitting on the line at scrollTop 400). A spread of 1px with no
-     offset draws the ring just outside the border box instead, where it
-     follows the same corners and nothing inside the sheet can reach it. */
+     WebView's outline does not follow this radius. An inset shadow also
+     lets scrolling content paint over the edge. The outside spread
+     follows the rounded box without changing its layout. */
   box-shadow: var(--shadow-float), 0 0 0 1px var(--outline);
+}
+/* A sheet whose picture gives way to what is around it. A 3:4 frame at the sheet's full width is taller than a small phone
+   has room for: at 360x640 the progress camera's frame pushed Take to y 839,
+   off the bottom of the screen, and the sheet scrolled to reach it. Inside
+   `.sheet-fit` the sheet becomes a column whose one shrinkable item is the
+   frame, so past the sheet's cap the frame narrows to keep its ratio and
+   the heading, notes and buttons keep their size and stay on screen. Below
+   the cap nothing changes: the frame is the full width, 3:4. */
+.sheet:has(> .sheet-fit) { display: flex; flex-direction: column; }
+.sheet > .sheet-fit {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 0;
+  display: flex;
+  flex-direction: column;
+  container-type: inline-size;
+}
+.sheet-fit > * { flex: none; }
+.sheet-fit .sheet-fit-frame {
+  flex: 0 1 auto;
+  min-height: 0;
+  height: calc(100cqw * 4 / 3);
+  max-width: 100%;
+  aspect-ratio: 3 / 4;
+  align-self: center;
 }
 .sheet-handle { width: 40px; height: 4px; border-radius: var(--r-block); background: var(--outline); margin: 0 auto var(--space-4); }
 
-/* Quick add's fan (phase 5 ticket 18, spec 04).
+/* Quick add's fan.
 
-   Anchored on the add control rather than floating in the middle of the
-   screen, because the gesture that reaches it starts there: the rows come
-   out from under the thumb and the thumb slides onto one. Everything here
-   is positioned against the same tokens the bar itself uses, so the fan and
-   the bar cannot drift apart the way a measured offset would.
+   Anchored on the add control rather than floating in the middle of the screen, because the
+   gesture that reaches it starts there: the rows come out from under the thumb and the
+   thumb slides onto one. Everything here is positioned against the same tokens the bar
+   itself uses, so the fan and the bar cannot drift apart the way a measured offset would.
 
-   The bar is lifted above the scrim while the fan is up. Dimming the
-   control the fan came out of would break the one thing the plus-to-cross
-   turn is saying, which is that this is still the same button. */
+   The bar is lifted above the scrim while the fan is up. Dimming the control the fan came
+   out of would break the one thing the plus-to-cross turn is saying, which is that this is
+   still the same button. */
 /* Above the toasts (z-index 50), which is not an arbitrary choice: a toast
    sits centred just above the bar, which is exactly where the fan opens, so
    at any lower layer a toast still on screen would take the taps and swallow
@@ -1935,7 +1702,7 @@ html[data-a11y-motion='reduce'] :is(.app-nav[inert], .app-rail[inert], [data-app
 .fan-scrim {
   position: absolute; inset: 0; z-index: 54;
   /* Keep CSS transitions disabled so Svelte's
-     transition controls opacity without CSS transition interference (ticket 105, 116). */
+     transition controls opacity without CSS transition interference. */
   transition: none;
 }
 /* The scrim remains during its outro after chooserOpen becomes false.
@@ -1978,11 +1745,6 @@ html[data-a11y-motion='reduce'] :is(.app-nav[inert], .app-rail[inert], [data-app
   overflow: hidden;
   will-change: transform, opacity;
 }
-/* One question asked twice: two halves of a row, split by the same hairline
-   that separates rows elsewhere. */
-.fan-card.is-pair { display: grid; grid-template-columns: 1fr 1fr; }
-.fan-card.is-pair .fan-item + .fan-item { border-left: 1px solid var(--hairline); }
-
 .fan-item {
   display: flex; align-items: center; gap: var(--space-3);
   width: 100%;
@@ -1994,43 +1756,26 @@ html[data-a11y-motion='reduce'] :is(.app-nav[inert], .app-rail[inert], [data-app
   font: inherit; font-weight: var(--weight-medium);
   text-align: left;
   cursor: pointer;
-  transition-property: background-color, color;
+  transition-property: background-color, color, opacity;
   transition-duration: var(--dur-fast);
   transition-timing-function: var(--ease-out);
 }
 .fan-item + .fan-item { border-top: 1px solid var(--hairline); }
+.fan-item:disabled { cursor: default; opacity: 0.55; }
 .fan-icon { display: grid; place-items: center; color: var(--accent); flex-shrink: 0; }
 .fan-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Armed: what happens if the finger comes up here. The same state a hover
    or a keyboard focus shows, because it answers the same question. */
 .fan-item.is-armed,
-.fan-item:hover,
+.fan-item:hover:not(:disabled),
 .fan-item:focus-visible {
   background: var(--accent);
   color: var(--on-accent);
 }
 .fan-item.is-armed .fan-icon,
-.fan-item:hover .fan-icon,
+.fan-item:hover:not(:disabled) .fan-icon,
 .fan-item:focus-visible .fan-icon { color: var(--on-accent); }
-
-/* A pair's halves stack their icon over the label, so the longer of two
-   labels that only mean anything together gets a second line rather than an
-   ellipsis: side by side at a phone's width there is about 90px of text
-   room per half, and "Correctly gendered" wants 145. */
-.fan-card.is-pair .fan-item {
-  flex-direction: column;
-  justify-content: center;
-  gap: 2px;
-  padding: var(--space-3) var(--space-2);
-  text-align: center;
-}
-.fan-card.is-pair .fan-label {
-  white-space: normal;
-  overflow: visible;
-  font-size: var(--text-sm);
-  line-height: 1.25;
-}
 
 /* The mood row is the bottom of the entry card, not a card of its own:
    picking a mood is how today's entry starts, so it belongs to the surface
@@ -2060,11 +1805,10 @@ html[data-a11y-motion='reduce'] :is(.app-nav[inert], .app-rail[inert], [data-app
 .fan-mood:hover,
 .fan-mood:focus-visible { background: var(--accent-soft); color: var(--on-accent-soft); }
 
-/* The mark travelling from the row you chose into the add control (phase 5
-   ticket 18, tier 3). Transform and opacity only, over the same
-   --dur-med/--ease-out every other tier-2 and tier-3 move in the app uses,
-   and it never takes a pointer event: the fan is already shut and the app
-   is already usable behind it. */
+/* The mark travelling from the row you chose into the add control. Transform and opacity
+   only, over the same --dur-med/--ease-out every other tier-2 and tier-3 move in the app
+   uses, and it never takes a pointer event: the fan is already shut and the app is already
+   usable behind it. */
 .fan-flight {
   position: absolute;
   z-index: 55;
@@ -2079,21 +1823,8 @@ html[data-a11y-motion='reduce'] :is(.app-nav[inert], .app-rail[inert], [data-app
   color: var(--on-accent);
   box-shadow: var(--shadow-float);
   pointer-events: none;
-  /* Delayed by exactly the fan's own exit, so it crosses an empty screen.
-     Stacked under the exit it was invisible - two things moving at once and
-     neither one read.
-
-     Two animations rather than one, because they want different curves and
-     a single declaration only has one. The travel decelerates on
-     --ease-out, which is what makes it read as an object being thrown; the
-     opacity runs linear, because --ease-out is steep enough at the front
-     that a fade sharing it is done inside the first fifth of the duration.
-     Measured, not guessed: on one curve the mark was fully opaque for about
-     30ms of a 240ms flight, which is a frame and a half.
-
-     --dur-slow, not --dur-med. This is tier 3, change within a screen, and
-     --dur-slow is that tier's duration - the earlier value was tier 2's,
-     borrowed from the navigation this is not. */
+  /* Wait for the fan to exit. Use --dur-slow with eased travel and a linear
+     fade. Easing opacity would make the mark disappear early in the flight. */
   animation:
     fan-flight-move var(--dur-slow) var(--ease-out) var(--dur-fast) both,
     fan-flight-fade var(--dur-slow) linear var(--dur-fast) both;
@@ -2180,13 +1911,6 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
 .sheet h3 { font-family: var(--font-display); font-weight: var(--weight-display); font-size: var(--text-xl); margin: 0 0 var(--space-4); }
 
 .toast {
-  /* Centred by its two insets and auto margins rather than by left: 50%
-     and a -50% translate (after-release 17, U2/UI-19). The translate was
-     the transform the arrival composes with, and at desktop width it
-     centred the toast on the window, 105px off the column it belongs to;
-     an inset can take the rail's width instead, and the right one the
-     scroll region's scrollbar gutter (+layout.svelte measures it). */
-  position: absolute; left: 0; right: var(--scroll-gutter, 0px); margin-inline: auto; bottom: var(--nav-clearance);
   transform: translateY(10px);
   background: var(--text); color: var(--bg);
   border-radius: var(--r-block);
@@ -2203,8 +1927,9 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
      spend the sheet gave up for a line below. A solid block over content
      with nothing beneath it is how Jobber and Riot Mobile draw the same
      thing (Mobbin, fifth pass). */
-  opacity: 0; transition: opacity var(--dur-med), transform var(--dur-med) var(--ease-out);
-  z-index: 50;
+  /* translate is the stack's own travel when a toast above or below
+     leaves (Toasts.svelte); transform stays the arrival's. */
+  opacity: 0; transition: opacity var(--dur-med), transform var(--dur-med) var(--ease-out), translate var(--dur-med) var(--ease-out);
   /* SF-002: nowrap let a longer translated string (Polish routinely runs
      longer than English) push past the viewport edge instead of wrapping. */
   max-width: min(92vw, 420px);
@@ -2216,10 +1941,9 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
   pointer-events: none;
 }
 .toast.is-open { opacity: 1; transform: none; }
-/* Measured at 48.3x32 by ticket 30, under the same floor and fixed the same
-   way. A toast is a single line and growing this to 48px would grow the toast
-   around it; the target grows instead. There is only ever one action in a
-   toast, so nothing neighbours it. */
+/* Measured at 48.3x32, under the same floor and fixed the same way. A toast is a single
+   line and growing this to 48px would grow the toast around it; the target grows instead.
+   There is only ever one action in a toast, so nothing neighbours it. */
 .toast-action {
   position: relative;
   pointer-events: auto;
@@ -2250,7 +1974,7 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
   background: rgb(0 0 0 / 0.35);
 }
 
-/* ---------- photo alignment review (ticket 12) ---------- */
+/* ---------- photo alignment review ---------- */
 .onion-frame {
   position: relative;
   width: 100%; aspect-ratio: 3 / 4;
@@ -2301,52 +2025,10 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
    glyph itself keeps its size; this only grows the surrounding hit area. */
 .notice .icon-btn { width: var(--touch-target); height: var(--touch-target); color: inherit; }
 
-/* ---------- flag sun (ticket 19, DIRECTION.md's tier 0) ----------
-   Replaces the pride aurora above: one concentric ring per stripe instead
-   of a blurred wash, Home-only (ADR-0035). `.sun` is a zero-size point
-   pinned to the screen's top right corner; each ring centres on that same
-   point via translate(-50%, -50%) and is sized/coloured per-instance
-   through --d/--c, set inline by FlagSun.svelte from --motif-stripes.
-
-   The corner is the field's own, and on the two screens that draw a sun
-   the field no longer bleeds past the window inset (carpet ticket 154), so
-   that corner is clear of the status bar. It was not before: Android draws
-   the bar's icons in one tint over whatever the app painted, and at the
-   bar's right end they crossed two to four rings. Every palette puts a
-   light band within the first 130px of the corner, so on trans the signal
-   bars and the battery sat on the white stripe and were gone (Alicja,
-   2026-09-21: "when there are icons in top right corner, it blend with
-   them and makes them unreadable").
-
-   The mark is the corner sun at centre 0 (pre-production ticket 38, round
-   three), so the centre may not move off a corner to solve that. Moving
-   the corner is what this rule's `top: 0` now means: the field starts
-   below the inset on those screens, and the band above it is the page's
-   own colour rather than the flag's.
-
-   Confined to Home's field on purpose: that block is already the app's
-   one deliberately-stacked surface (position: relative; z-index: 1), so
-   the sun's negative z-index only has to beat its own siblings, and can
-   never end up in front of a later .card the way the aurora's did
-   (ADR-0035's "Consequences": a positioned element paints over a static
-   sibling regardless of DOM order, however z-index reads).
-
-   The rings are seamed (phase 10, DIRECTION.md rule 8 as Alicja settled it
-   on ticket 23's renders, 2026-09-07): the bands touch, with no gap of the
-   ground between them, and each ring carries a 3px black edge - #000,
-   never a theme-mixed line, which on a dark page around a dark band reads
-   as nothing, and that is the second half of the rule. The first render
-   had 5px gaps in the ground's colour between the bands and a 1px seam,
-   and she asked for the opposite: a fatter stroke and no emptiness. The
-   seam is a border inside the ring's own box, so the diameters flagSun.ts
-   computes do not change and flagSun.test.ts still holds every ring to
-   --motif-stripes; a band is its ring minus the next ring in, and the
-   stroke sits on the outer edge of each. Bisexual's doubled stops read as
-   one band with a line through it, which is the flag's own 2:1:2.
-
-   --sun-scale is how the sun shrinks on a narrow screen (0.82 below 360px,
-   0.6 below 240px, set by Home's field); the point it scales about is the
-   corner it is pinned to, since the element has no size of its own. */
+/* FlagSun sets ring diameters and colours from --motif-stripes. Centre the
+   rings at the field corner below the top inset. Keep their borders inside
+   the diameters and the rings behind content. Doubled bisexual stops keep
+   2:1:2 proportions. Scale from the same corner on narrow screens. */
 .sun {
   position: absolute; top: 0; right: 0; width: 0; height: 0;
   z-index: -1;
@@ -2355,40 +2037,36 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
 }
 .sun i {
   position: absolute; top: 0; left: 0; display: block; border-radius: 50%;
-  /* Each ring closes and opens on its own inside a door change (redesign
-     ticket 28). The name is per side and per ring (fieldBlind.ts); this is
+  /* Each ring closes and opens on its own inside a door change. The name is per side and per ring (fieldBlind.ts); this is
      what one rule can say to all of them. */
   view-transition-class: sun-ring;
   width: var(--d); height: var(--d); background: var(--c);
   box-sizing: border-box;
   border: 3px solid #000;
   transform: translate(-50%, -50%);
-  /* The corner, which is where the ring's centre sits once translated, is
-     the point both animations scale about (ux-carpet 227). ring-in scales
-     through the individual `scale` property and breathe through
-     `transform`, because Chromium will not run an animation on the
-     compositor beside another that animates the same property: while both
-     were `transform`, breathe ran on the main thread and re-rastered every
-     ring on every frame, forever - about 300 raster tasks a second on an
-     idle Home. `scale` is applied after `transform`, about this origin, so
-     with the origin at 0 0 a ring still grows out of the corner; breathe's
-     keyframes put their scale first for the same reason. At rest the
-     matrix is exactly what it was. */
+  /* The corner, which is where the ring's centre sits once translated, is the point both
+     animations scale about. ring-in scales through the individual `scale` property and
+     breathe through `transform`, because Chromium will not run an animation on the
+     compositor beside another that animates the same property: while both were `transform`,
+     breathe ran on the main thread and re-rastered every ring on every frame, forever -
+     about 300 raster tasks a second on an idle Home. `scale` is applied after `transform`,
+     about this origin, so with the origin at 0 0 a ring still grows out of the corner;
+     breathe's keyframes put their scale first for the same reason. At rest the matrix is
+     exactly what it was. */
   transform-origin: 0 0;
-  /* The ring's own copy of .home-field's overflow: hidden clip (Alicja,
-     2026-09-10: "the sun overlaps on web"). A view transition promotes a
-     named element into its own top-layer group, which is no longer a
-     descendant of the field that clips it the rest of the time - so the
-     full disc, up to 350px (flagSun.ts's SUN_OUTER) against the quarter
-     normally visible, painted over whatever screen it was leaving or
-     arriving on. The centre is the field's corner point (.sun's own
-     top:0;right:0), so the quarter closest to the field's content is
-     exactly the box this keeps - the same shape the ancestor clip already
-     produces, carried on the ring itself so it survives being promoted. */
+  /* The ring's own copy of .home-field's overflow: hidden clip. A view transition promotes a
+     named element into its own top-layer group, which is no longer a descendant of the
+     field that clips it the rest of the time - so the full disc, up to 350px (flagSun.ts's
+     SUN_OUTER) against the quarter normally visible, painted over whatever screen it was
+     leaving or arriving on. The centre is the field's corner point (.sun's own
+     top:0;right:0), so the quarter closest to the field's content is exactly the box this
+     keeps - the same shape the ancestor clip already produces, carried on the ring itself
+     so it survives being promoted. */
   clip-path: inset(50% 50% 0 0);
   animation:
     ring-in var(--dur-authored) cubic-bezier(0.2, 0.7, 0.3, 1) var(--in-delay) both,
     breathe var(--dur-breathe) ease-in-out var(--breathe-delay) infinite;
+  animation-play-state: running, var(--sun-breathe-state, running);
 }
 @keyframes ring-in {
   from { scale: 0; }
@@ -2398,7 +2076,7 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
   0%, 100% { transform: scale(1) translate(-50%, -50%); }
   50% { transform: scale(var(--sun-breathe-scale)) translate(-50%, -50%); }
 }
-/* Arrived at through a door rather than opened cold (redesign ticket 28):
+/* Arrived at through a door rather than opened cold:
    the rings' own entrance is dropped and the breathing kept, because the
    navigation is drawing the arrival - each ring is its own view transition
    group and opens from nothing on the door's clock, outermost first. The
@@ -2411,6 +2089,7 @@ html[data-a11y-motion='reduce'] .fan-flight { display: none; }
      what breathe ends on is the identity scale written out. */
   transform: scale(1) translate(-50%, -50%);
   animation: breathe var(--dur-breathe) ease-in-out var(--breathe-delay) infinite;
+  animation-play-state: var(--sun-breathe-state, running);
 }
 /* MO-001: the global reduce rule clamps every animation's duration to 1ms,
    which turns breathe's infinite loop into a restart-every-millisecond
@@ -2512,16 +2191,12 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
   display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3);
   width: 100%; max-width: 280px; margin: 0 auto;
 }
-/* Flat with an outline, not a plane with a shadow. DIRECTION.md's decision
-   2 gives the whole app one shadow and it belongs to the floating nav bar;
-   twelve elevated keys on a screen with no chrome were the loudest place
-   the old language survived. */
-/* 56, which is rule 13's number for a key and the same block the flag
-   picker and a row's icon are drawn at (redesign ticket 33). It was 62,
-   from before the phase had a block size; the six pixels a row are 24 off
-   the pad's height, which is what the short form below needs to give back.
-   One drawing, in setup and in every gate: this is the rule ticket 33 and
-   ticket 34 agree on rather than each keeping one. */
+/* Keys use a flat fill and an outline. The floating nav owns the shadow. */
+/* 56, which is rule 13's number for a key and the same block the flag picker and a row's
+   icon are drawn at. It was 62, from before the phase had a block size; the six pixels a
+   row are 24 off the pad's height, which is what the short form below needs to give back.
+   One drawing, in setup and in every gate: this is the rule and agree on rather than each
+   keeping one. */
 .pin-key {
   height: 56px; border-radius: var(--r-block);
   border: 1px solid var(--outline); background: var(--surface);
@@ -2529,10 +2204,15 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
   letter-spacing: var(--display-track); color: var(--text);
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
+  /* press.css's default names transform only; the dimmed lockout state below fades rather
+     than cutting. */
+  transition-property: transform, opacity;
+  transition-duration: var(--dur-press), var(--dur-fast);
+  transition-timing-function: var(--ease-press), var(--ease-out);
 }
 .pin-key:hover { background: var(--surface-2); }
 /* A 62px key is a compact control, so it takes the default depth every
-   button gets from press.css now (ticket 15) - there is no reason left to
+   button gets from press.css now - there is no reason left to
    write that down here a second time. */
 .pin-key.is-ghost { background: none; border-color: transparent; }
 .pin-key.is-ghost:hover { background: var(--surface-2); }
@@ -2549,20 +2229,17 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
   .pin-pad { gap: var(--space-2); }
   .pin-dots { gap: var(--space-3); margin: var(--space-3) 0 var(--space-2); }
 }
-/* Holds its line whether or not there is anything to say, so the pad does
-   not jump down the screen on a wrong PIN.
+/* Holds its line whether or not there is anything to say, so the pad does not jump down the
+   screen on a wrong PIN.
 
-   20 under the pad rather than sitting against it (rule 1's gap between
-   blocks; Alicja, round one: "'the pin is not right' and the number of
-   retries notice must be a little bit further from the numpad"). Where the
-   wait's own rail is between them the rail takes that 20 and the line closes
-   up to 12 behind it, so the pair still reads as one answer rather than as
-   two things under the pad. */
-.pin-status { min-height: 1.25rem; text-align: center; color: var(--danger); margin: var(--space-5) 0 var(--space-3); }
+   20 under the pad rather than sitting against it. Where the wait's own rail is between
+   them the rail takes that 20 and the line closes up to 12 behind it, so the pair still
+   reads as one answer rather than as two things under the pad. */
+.pin-status { display: grid; align-items: center; min-height: 1.25rem; text-align: center; color: var(--danger); margin: var(--space-5) 0 var(--space-3); }
+.pin-status > span { grid-area: 1 / 1; }
 .pin-wait + .pin-status { margin-top: var(--space-3); }
 
-/* A failed reset, inside the sheet that asked for it (after-release ticket
-   09). Spaced by padding rather than margin, so the line's own disclose
+/* A failed reset, inside the sheet that asked for it. Spaced by padding rather than margin, so the line's own disclose
    travels the space it takes instead of the space arriving in one frame. */
 .reset-failed { color: var(--danger); margin: 0; padding-top: var(--space-3); }
 
@@ -2570,25 +2247,24 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
 .muted { color: var(--text-2); }
 .small { font-size: var(--text-sm); }
 .spread { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
-/* `.field` is a column and `.spread` means "at either end of one line", so
-   the two together spread the label and its control down the box and
-   centred them across it - a switch under its own label, in the middle of
-   the sheet (Alicja, 2026-08-26, on the wear editor's reminder: "very
-   poorly placed, centered"). The pair only ever means a row. */
+/* `.field` is a column and `.spread` means "at either end of one line", so the two together
+   spread the label and its control down the box and centred them across it - a switch under
+   its own label, in the middle of the sheet. The pair only ever means a row. */
 .field.spread { flex-direction: row; }
 .stack-3 > * + * { margin-top: var(--space-3); }
 
 /* ---------- desktop adaptation (container query on .app-viewport) ---------- */
 @container app (min-width: 1024px) {
-  /* Centred over the content column, not the whole app: the rail takes the
-     left of the frame the scrim is fixed to, so a plain centre across the
-     full inset put a sheet in the gap between rail and column - visually
-     off-centre from what it is editing (phase 5 ticket 99 item 13). The
-     padding reserves the rail's own width, rail plus the left inset it has
-     already taken from the scroll region, and the sheet centres in what is
-     left - the same strip .screen centres in, so the two share one axis. */
-  .sheet-scrim {
-    align-items: center;
+  /* Centred over the content column, not the whole app: the rail takes the left of the
+     frame the scrim is fixed to, so a plain centre across the full inset put a sheet in the
+     gap between rail and column - visually off-centre from what it is editing. The padding
+     reserves the rail's own width, rail plus the left inset it has already taken from the
+     scroll region, and the sheet centres in what is left - the same strip .screen centres
+     in, so the two share one axis. */
+  .sheet-scrim { align-items: center; }
+  /* Only while there is a rail. A gate draws none and centres on the whole window, and a
+     sheet over it padded for the missing rail sat 110px right of the gate. */
+  .app:has(.app-rail) .sheet-scrim {
     padding-left: calc(var(--rail-width) + var(--inset-left));
   }
   .sheet { border-radius: var(--r-block); --sheet-skirt: 0px; }
@@ -2596,9 +2272,6 @@ html[data-a11y-motion='reduce'] .pin-wait { display: none; }
      a wide Segmented inside a sheet was the thing that kept running out of
      room at 520px. */
   .sheet-drag { max-width: calc(var(--content-max) + 2 * var(--space-5)); }
-  /* Its left inset, the rail's width, is set by +layout.svelte, the one
-     file that knows whether a rail is drawn. */
-  .toast { bottom: var(--space-6); }
 }
 
 
@@ -2645,7 +2318,6 @@ html[data-a11y-motion='reduce'] .skeleton::after {
   padding: var(--space-4);
   display: flex; align-items: flex-start; gap: var(--space-3);
 }
-.skeleton-dot { width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0; }
 .skeleton-lines { display: flex; flex-direction: column; gap: var(--space-2); flex: 1; }
 .skeleton-line { height: 12px; border-radius: var(--r-block); display: block; }
 .skeleton-line.is-short { width: 40%; }
@@ -2661,19 +2333,8 @@ html[data-a11y-motion='reduce'] .skeleton::after {
 
 .skeleton-line:only-child { margin: var(--space-2) 0; }
 
-/* ---------- the dropdown's own list ----------
-
-   A `<select>` is the right control here and the reasoning has not changed:
-   Android opens its own picker, and a keyboard, a screen reader and the
-   system font scale all get what they expect. What that left was a styled
-   pill that opened an unstyled list - "they look very barebones (the
-   expanded list, just the pill is nice)" (Alicja, 2026-08-26).
-
-   `appearance: base-select` is how a select keeps every one of those
-   guarantees and still takes the app's own surfaces. Behind `@supports`
-   because it is recent: where it is missing the browser opens the list it
-   always did, which is the correct control drawn plainly rather than a
-   broken one. Nothing here changes what the closed control looks like. */
+/* Keep the native select for platform accessibility. Apply base-select
+   inside @supports so browsers with that feature can style the open list. */
 @supports (appearance: base-select) {
   select.input,
   .kit-chart-pick select {
@@ -2697,13 +2358,12 @@ html[data-a11y-motion='reduce'] .skeleton::after {
     overflow-y: auto;
   }
 
-  /* A hairline between rows, and none above the first, which is how every
-     other list in the app is divided (Alicja, 2026-08-26). 40px rather than
-     the 48px touch floor: the floor belongs to a control you aim at on a
-     screen full of other controls, and this is a list that has taken over
-     the screen and is dismissed by the next tap wherever it lands. Tighter
-     was the other half of the ask, and the row's height is where the slack
-     was - the type and the tick beside it are unchanged. */
+  /* A hairline between rows, and none above the first, which is how every other list in the
+     app is divided. 40px rather than the 48px touch floor: the floor belongs to a control
+     you aim at on a screen full of other controls, and this is a list that has taken over
+     the screen and is dismissed by the next tap wherever it lands. Tighter was the other
+     half of the ask, and the row's height is where the slack was - the type and the tick
+     beside it are unchanged. */
   select.input option,
   .kit-chart-pick select option {
     display: flex;

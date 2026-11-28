@@ -12,7 +12,7 @@ async function journalWithFiles() {
   return { files, journal };
 }
 
-/* journal.videos.inJournal (ticket 22): the one query that lists video notes
+/* journal.videos.inJournal: the one query that lists video notes
    across entries, voice.inJournal's twin - entry-only, so there is no owner
    name to carry alongside the date. */
 
@@ -45,7 +45,7 @@ test('a journal with no video notes yields an empty list, not a broken join', as
   assert.deepEqual(await journal.videos.inJournal(), []);
 });
 
-test("a trashed entry's video note drops out of inJournal (phase 5 ticket 19)", async () => {
+test("a trashed entry's video note drops out of inJournal", async () => {
   const { journal } = await journalWithFiles();
   const kept = await journal.entries.upsertEntry({
     epochDay: 20000,

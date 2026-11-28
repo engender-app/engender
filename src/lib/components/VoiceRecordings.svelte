@@ -1,32 +1,12 @@
 <script lang="ts">
-  /* The memo browser, as a tab of the voice screen (phase 11 ticket 17). It
-     was its own screen at /media/voice/memos (phase 8 features ticket 11) -
-     the render showed two rows and 520px of black rather than the grid with
-     compare and export ADR-0036's media grouping pictured, so this is a
-     presentation merge and not a change of what a memo is: it stays entry
-     content, recorded in the editor and attached to the entry
-     (voiceRecordings.ts), and this component still owns no records,
-     registers no archive section, and deletes nothing. `/media/voice/memos`
-     redirects here.
+  /* This tab reads entry-attached memos via journal.voice.inJournal(). Recording and
+     deletion stay with the entry. The tab owns no records or archive section.
 
-     It reads back `journal.voice.inJournal()`, built for ticket 25's voice
-     compare picker and never called until ticket 11 - that comparison was
-     cut from the voice screen before it shipped (ticket 09's own note),
-     leaving the query with no caller until the memo browser gave it one.
-
-     Playback is VoicePlayer's own transport (ticket 46), which is the app's
-     rather than the browser's. It cannot sit inside the row's own link to
-     the entry (a button inside an anchor is not markup a browser can
-     resolve, the same reasoning ListRow's own `action` slot states), so each
-     row is a plain, non-pressable container holding both real controls: the
-     player, and a small link through to the entry.
-
-     The tab opens by saying what is true now (DIRECTION rule 16): how many
-     recordings there are and how long they run altogether. The total is the
-     players' own durations as they arrive - a recording's length is not
-     stored, being derivable from the file (ADR-0010), and the row is already
-     loading that file's metadata to play it. It counts up rather than
-     landing, because a number that changes is a number that moves. */
+     Keep VoicePlayer and the entry link as siblings to avoid nesting a button inside an
+     anchor. The tab starts with count and total duration. Sum durations as players load
+     file metadata because duration is derived from the file (ADR-0010). */
+  import { page } from '$app/state';
+  import { withListReturn } from '$lib/navigation/sourceRecord';
   import { m } from '$lib/paraglide/messages';
   import { SvelteMap } from 'svelte/reactivity';
   import { liveList } from '$lib/data/live/journal.svelte';
@@ -77,7 +57,7 @@
                 </span>
                 <a
                   class="icon-btn"
-                  href={`/entry/${r.entryId}`}
+                  href={withListReturn(`/entry/${r.entryId}`, page.url)}
                   data-open-entry={r.id}
                   aria-label={m.vm_open_entry_aria({
                     date: fmtDay(r.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })
@@ -101,7 +81,6 @@
         key="voice-memos-empty"
         role={roleAt(activeFlag.roles, 0)}
         title={m.vm_empty_title()}
-        text={m.vm_empty_body()}
       />
     {/snippet}
   </ReadGate>
@@ -115,13 +94,12 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* Two lines: the day it belongs to with the way through to it, and the
-     transport under them across the row's whole width. The leading mic
-     square this row used to carry went with ticket 46 - the play control
-     says what the row holds, and 36px of icon was 36px the waveform wanted.
-     The row's main span is still a static container rather than a link: the
-     entry link and the player are the two real controls (kit.css's own note
-     on .kit-row.is-split makes the same split for a different pair). */
+  /* Two lines: the day it belongs to with the way through to it, and the transport under
+     them across the row's whole width. The leading mic square this row used to carry went -
+     the play control says what the row holds, and 36px of icon was 36px the waveform
+     wanted. The row's main span is still a static container rather than a link: the entry
+     link and the player are the two real controls (kit.css's own note on .kit-row.is-split
+     makes the same split for a different pair). */
   .memo-row-body {
     flex: 1;
     min-width: 0;

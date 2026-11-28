@@ -1,23 +1,7 @@
 <script lang="ts">
-  /* On this day, as a block (phase 11 ticket 07): however many of the three
-     lookbacks - a month, six months, a year - clear the good-day bar today,
-     each as its heading, the whole day one tap away, the day's entries, its
-     letters and its photos. It was the whole of `/on-this-day`; it draws in
-     two places now - opened in place under the Look back door's tile, and
-     on that route, which stays because a notification deep-links to it
-     with `?lookback=` (ADR-0028).
-
-     A lookback that does not clear the bar is left out entirely rather than
-     shown with a caveat (CONTEXT: Good day is an absolute rule, not a
-     suggestion). It shows what was written: the screen this grew out of
-     used to show three stat tiles and a mood chart and never a word anyone
-     wrote. The photos come off the entries, so what is shown is every photo
-     from that day.
-
-     The preference is read inside the query, before the first await, so
-     that turning on-this-day off stops the reads themselves. Up to three
-     good-day checks, up to three per-day entry reads, and the one letters
-     read, all bounded by the day or by the letters read's own limit. */
+  /* On this day draws qualifying days, letters and photos on Look back and
+     its own route. Journal bounds limit annual checks; resurfacing consent
+     removes muted days before any good-day or entry read. */
   import { scrollBehavior } from '$lib/motion/tokens';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
@@ -27,6 +11,7 @@
   import { liveList } from '$lib/data/live/journal.svelte';
   import { tablesReadBy } from '$lib/data/live/writes';
   import { prefs } from '$lib/data/prefs/store.svelte';
+  import { surfaceOn } from '$lib/unprompted/registry';
   import { entryMarks } from '$lib/data/recentEntries';
   import { entryTags } from '$lib/data/vocabulary/entryTags';
   import { entryPresentation } from '$lib/data/vocabulary/entryPresentation';
@@ -47,16 +32,12 @@
   let {
     scrollTo = null
   }: {
-    /** The lookback a notification named (`?lookback=`), scrolled to once
-        the days have landed. Scrolled to rather than the only thing shown:
-        the other qualifying lookbacks stay on the page. */
+    /** Optional section named by a pinned launch route. */
     scrollTo?: string | null;
   } = $props();
 
   const today = $derived(currentDay());
-  const candidates = $derived(onThisDayCandidates(today));
-
-  const LOOKBACK_TITLE: Record<OnThisDayLookback, () => string> = {
+  const LOOKBACK_TITLE: Record<'year' | 'sixMonths' | 'month', () => string> = {
     year: () => m.on_this_day_year_title(),
     sixMonths: () => m.on_this_day_six_months_title(),
     month: () => m.on_this_day_month_title()
@@ -65,24 +46,26 @@
   interface QualifyingDay {
     key: OnThisDayLookback;
     epochDay: number;
+    /** Whole years back, set on the annual anniversaries past the first. */
+    years?: number;
     entries: Entry[];
     /* Letters this lookback resurfaces - written that day, or unlocked that
-       day (phase 5 deepening ticket 13). Sealed ones are already out. */
+       day. Sealed ones are already out. */
     letters: RetrospectiveLetter[];
   }
 
-  /* Seeded with the two reads made after an await (the good-day check and
-     the day's entries), so the first run does not discover them late and
-     start again from the top, the same round trip OnThisDayHomeCard saves. */
+  /* Seed reads made after the first await to avoid a duplicate query. */
   let daysQuery = liveList(async (j) => {
-    if (!prefs.onThisDayEnabled) return [];
+    if (!surfaceOn(prefs.surfaceOverrides, 'on-this-day')) return [];
     // Read before the first await, so the query re-runs when the day changes.
     const asOf = today;
-    const lookbacks = candidates;
-    const [letters, consent] = await Promise.all([
+    const [letters, consent, bounds] = await Promise.all([
       j.letters.getLetters(LETTER_RETROSPECTIVE_LIMIT),
-      resurfacing('on-this-day', j)
+      resurfacing('on-this-day', j),
+      j.eras.getJournalBounds()
     ]);
+    const earliest = Math.min(bounds?.firstEpochDay ?? asOf, ...letters.map((letter) => letter.epochDay));
+    const lookbacks = onThisDayCandidates(asOf, earliest);
     const results = await Promise.all(
       consent.allowedDays(lookbacks).map(async (c): Promise<QualifyingDay | null> => {
         const dayLetters = onThisDayLetters(letters, c.epochDay, asOf);
@@ -91,6 +74,7 @@
         return {
           key: c.key,
           epochDay: c.epochDay,
+          years: c.years,
           entries: good ? await j.entries.entriesForDay(c.epochDay) : [],
           letters: dayLetters
         };
@@ -102,7 +86,7 @@
   let days = $derived(
     daysQuery.rows.map((d) => ({
       ...d,
-      title: LOOKBACK_TITLE[d.key](),
+      title: d.years !== undefined ? m.on_this_day_years_title({ years: m.n_years({ n: d.years }) }) : LOOKBACK_TITLE[d.key as 'year' | 'sixMonths' | 'month'](),
       date: fmtDayBar(d.epochDay, today),
       photos: d.entries.flatMap((entry) => entry.photos)
     }))
@@ -118,7 +102,7 @@
     document.getElementById(`on-this-day-${scrollTo}`)?.scrollIntoView({ behavior: scrollBehavior(), block: 'start' });
   });
 
-  /* Latched: a reserve must not put its placeholder back (ux-carpet ticket 205). */
+  /* Latched: a reserve must not put its placeholder back. */
   let onThisDayRevealed = $state(false);
   $effect.pre(() => {
     if (!onThisDayRevealed && (!daysQuery.loading)) onThisDayRevealed = true;
@@ -127,7 +111,7 @@
   const onThisDayRemember = (px: number) => rememberReserve('on-this-day', px);
 </script>
 
-<!-- Held at last visit's height until the look-back has answered, then faded in (ux-carpet ticket 211): the days cut in at full opacity over the skeleton. -->
+<!-- Held at last visit's height until the look-back has answered, then faded in: the days cut in at full opacity over the skeleton. -->
 <ReadReserve ready={onThisDayRevealed} estimate={onThisDayEstimate} onrest={onThisDayRemember}>
   {#if !days.length}
     <Notice icon="info" key="on-this-day-none" title={m.on_this_day_none_title()} text={m.on_this_day_none_body()} />

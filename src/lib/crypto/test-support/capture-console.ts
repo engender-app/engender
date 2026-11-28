@@ -1,6 +1,6 @@
-/* Shared by tests proving key material is never logged (ticket 12's
-   acceptance) - patches console.log/warn/error for the duration of `fn`
-   and returns every argument list passed to any of them, joined to text. */
+/* Shared by tests proving key material is never logged - patches console.log/warn/error for
+   the duration of `fn` and returns every argument list passed to any of them, joined to
+   text. */
 
 const PATCHED_METHODS = ['log', 'warn', 'error', 'debug', 'info', 'trace'] as const;
 

@@ -1,5 +1,5 @@
 /* What the `.daylio` source accepts, what it refuses, and what it
-   produces (phase 7 ticket 09).
+   produces.
 
    The failure cases are the bulk of this file on purpose. The format is
    undocumented by its vendor and its version number does not move when
@@ -178,14 +178,10 @@ test('HTML in a note is converted, including a list', async () => {
   assert.equal(entryOn(result, '2026-02-25').note, '- bloods\n- call the clinic');
 });
 
-test('a writing template arrives as an entry template, its HTML body converted', async () => {
+test('a writing template is named as skipped, not imported', async () => {
   const result = await preview();
 
-  assert.equal(result.templateCount, 1);
-  assert.deepEqual(
-    result.journal.entryTemplates.map((template) => ({ name: template.name, noteScaffold: template.noteScaffold })),
-    [{ name: 'Evening', noteScaffold: 'What happened today?\nHow did it feel?' }]
-  );
+  assert.deepEqual(result.skipped.filter((skip) => skip.kind === 'templates'), [{ kind: 'templates', count: 1 }]);
 });
 
 /* Tags and groups: the person's own groups, not one invented "imported"
@@ -247,6 +243,30 @@ test('assets resolve by checksum under photos and audio alike', async () => {
   const byName = new Map(result.assets.map((asset) => [asset.fileName, asset]));
   assert.deepEqual(await byName.get(entry.photos[0].fileName)!.read(), PHOTO_BYTES);
   assert.deepEqual(await byName.get(entry.recordings[0].fileName)!.read(), AUDIO_BYTES);
+});
+
+test.each([false, true])('normalised asset aliases retain the first raw member (leading slash first: %s)', async leadingFirst => {
+  const files = daylioAssetFiles();
+  const photo = files[0];
+  const plain = photo.name.slice(1);
+  const aliases = [
+    { ...photo, name: leadingFirst ? photo.name : plain },
+    { ...photo, name: leadingFirst ? plain : photo.name, bytes: MILESTONE_PHOTO_BYTES }
+  ];
+  const result = await daylioBackupPreview(await makeDaylioBackup(daylioPayload(), [...aliases, ...files.slice(1)]), emptyArchiveJournal(), naming);
+  const attachment = entryOn(result, '2026-01-15').photos[0];
+  assert.deepEqual(await result.assets.find(asset => asset.fileName === attachment.fileName)!.read(), PHOTO_BYTES);
+});
+
+test('asset checksum suffixes containing slashes retain first-match identity and content', async () => {
+  const payload = daylioPayload();
+  (payload.assets as Record<string, unknown>[])[0].checksum = `nested/${PHOTO_CHECKSUM}`;
+  const files = daylioAssetFiles();
+  files[0].name = files[0].name.replace(PHOTO_CHECKSUM, `nested/${PHOTO_CHECKSUM}`);
+  files.push({ ...files[0], name: `/assets/photos/later/nested/${PHOTO_CHECKSUM}`, bytes: MILESTONE_PHOTO_BYTES });
+  const result = await daylioBackupPreview(await makeDaylioBackup(payload, files), emptyArchiveJournal(), naming);
+  const attachment = entryOn(result, '2026-01-15').photos[0];
+  assert.deepEqual(await result.assets.find(asset => asset.fileName === attachment.fileName)!.read(), PHOTO_BYTES);
 });
 
 test('a milestone photo resolves through assetId, from a deflated member', async () => {
@@ -422,7 +442,8 @@ test('the preview names what it skipped', async () => {
     { kind: 'preferences', count: 1 },
     { kind: 'reminders', count: 1 },
     // Both of Daylio's records about goals: one success week, one goal entry.
-    { kind: 'statistics', count: 2 }
+    { kind: 'statistics', count: 2 },
+    { kind: 'templates', count: 1 }
   ]);
 });
 
@@ -655,7 +676,6 @@ test('re-importing what the journal already holds adds nothing', async () => {
   assert.equal(second.milestoneCount, 0);
   assert.equal(second.newTagCount, 0);
   assert.equal(second.photoCount, 0);
-  assert.equal(second.templateCount, 0);
   assert.equal(second.dimensionCount, 0);
 });
 

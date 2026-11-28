@@ -1,4 +1,4 @@
-/* The platform side of a boot (phase 5 audit ticket 14): what each step the
+/* The platform side of a boot: what each step the
    reducer asks for actually asks of the disk, the keystore and the browser,
    and what it says back.
 
@@ -13,13 +13,16 @@
    throws into a failed boot, which is what the four sequences this replaced
    each ended in. */
 
-import { androidJournalIsPlaintext } from '../data/sqlite/android-driver';
+import { inspectAndroidJournal } from '../data/sqlite/android-driver';
 import { setupJournalPassphrase, unlockJournalPassphrase } from '../data/journal-passphrase';
-import { readKeystoreSource } from '../data/keystore-file';
+import { readKeystoreSource, readKeystoreSourceForBoot } from '../data/keystore-file';
+import { authenticateCredentials } from '../data/credential-ownership';
+import { webJournalPresent } from '../data/journal-presence';
 import { surveyAndroid } from './android-survey';
 import {
   deviceBoundJournalExists,
   DeviceBoundKeyUnavailableError,
+  removeDeviceBoundJournal,
   unlockDeviceBoundJournal
 } from '../data/device-bound-journal';
 import { JOURNAL_DATABASE, legacyStoragePresent } from '../data/legacy-journal';
@@ -28,6 +31,19 @@ import { androidKeystore } from '../lock/keystore-bridge';
 import type { BootEffect, BootEvent } from './boot-machine';
 
 type BootDispatch = (event: BootEvent) => void;
+
+/** Sweep only after authentication, under the same owner as mode changes.
+    Another tab may have completed a move back to device-bound mode since
+    the survey, so its current keystore decides whether this wrap is stale. */
+export async function sweepDeviceBoundAfterSecretUnlock(current: () => void = () => {}): Promise<void> {
+  await authenticateCredentials(async () => {
+    current();
+    const secretSource = await readKeystoreSource();
+    current();
+    if (secretSource !== null) await removeDeviceBoundJournal();
+    current();
+  });
+}
 
 /** Everything the reducer can ask for that needs no rune and no open journal. */
 type PlatformEffect = Extract<
@@ -46,26 +62,30 @@ type PlatformEffect = Extract<
 export async function performPlatformEffect(effect: PlatformEffect, dispatch: BootDispatch): Promise<void> {
   switch (effect.type) {
     case 'survey-web': {
-      const keystoreSecretSource = await readKeystoreSource();
-      const deviceBoundKeystoreExists = await deviceBoundJournalExists();
-      dispatch({
-        type: 'web-surveyed',
-        keystoreSecretSource,
-        deviceBoundKeystoreExists,
-        legacyStoragePresent: await legacyStoragePresent()
+      // Empty-journal cache cleanup must share ownership with setup and reset.
+      await authenticateCredentials(async () => {
+        const keystoreSecretSource = await readKeystoreSourceForBoot();
+        const deviceBoundKeystoreExists = await deviceBoundJournalExists();
+        dispatch({
+          type: 'web-surveyed',
+          keystoreSecretSource,
+          deviceBoundKeystoreExists,
+          legacyStoragePresent: await legacyStoragePresent(),
+          journalPresent: keystoreSecretSource === null && !deviceBoundKeystoreExists && await webJournalPresent()
+        });
       });
       return;
     }
 
-    /* Android takes none of the web's survey (ticket 11): OPFS and the
+    /* Android takes none of the web's survey: OPFS and the
        conversion marker are about a web install that predated the keystore,
        and a phone has neither - this is the first build that runs on one. */
     case 'survey-android': {
       /* All three at once (android-survey.ts says why). */
       const survey = await surveyAndroid({
-        readKeystoreSource,
+        readKeystoreSource: readKeystoreSourceForBoot,
         keystoreStatus: () => androidKeystore.status(),
-        journalIsPlaintext: () => androidJournalIsPlaintext(JOURNAL_DATABASE)
+        inspectJournal: () => inspectAndroidJournal(JOURNAL_DATABASE)
       });
       dispatch({ type: 'android-surveyed', ...survey });
       return;
@@ -85,9 +105,8 @@ export async function performPlatformEffect(effect: PlatformEffect, dispatch: Bo
         dispatch({ type: 'device-key-unavailable' });
         return;
       }
-      /* Nobody authenticated for this one - the browser handed the key over
-         because the device is the device. App lock still has its question to
-         ask (ADR-0014). */
+      /* Nobody authenticated for this one - the browser handed the key over because the
+         device is the device. App lock still has its question to ask. */
       dispatch({ type: 'key-obtained', dataKey, accessMode: 'device-bound', unlocked: false });
       return;
     }
@@ -118,8 +137,7 @@ export async function performPlatformEffect(effect: PlatformEffect, dispatch: Bo
     setup wall.
 
     `__DEMO__` is a compile-time constant, so the guard makes everything below
-    it dead code a production build drops, fixed passphrase included (ticket
-    05). The reducer emits none of these effects outside a demo build either;
+    it dead code a production build drops, fixed passphrase included. The reducer emits none of these effects outside a demo build either;
     the guard is what keeps them out of the bundle. */
 async function performDemoEffect(
   effect: Extract<PlatformEffect, { type: 'demo-setup' | 'demo-unlock' }>,
@@ -129,13 +147,11 @@ async function performDemoEffect(
   const DEMO_PASSPHRASE = 'demo';
 
   switch (effect.type) {
-    /* `unlocked: true`, unlike the two real setup paths, because nobody
-       typed anything and nobody should have to. Until ticket 53 the casual-
-       access gate read `prefs.pinHash`, which a demo journal never has, so
-       `false` here reached no gate. It reads the access mode now - and a
-       demo journal is in passphrase mode - so `false` would land every demo
-       boot on a lock screen asking for a passphrase the reviewer was never
-       given. */
+    /* `unlocked: true`, unlike the two real setup paths, because nobody typed anything and
+       nobody should have to. the casual- access gate read `prefs.pinHash`, which a demo
+       journal never has, so `false` here reached no gate. It reads the access mode now -
+       and a demo journal is in passphrase mode - so `false` would land every demo boot on a
+       lock screen asking for a passphrase the reviewer was never given. */
     case 'demo-setup':
       dispatch({
         type: 'key-obtained',
@@ -155,7 +171,7 @@ async function performDemoEffect(
         dispatch({ type: 'demo-unlock-failed' });
         return;
       }
-      dispatch({ type: 'key-obtained', dataKey, accessMode: 'passphrase', unlocked: true });
+      dispatch({ type: 'key-obtained', dataKey, accessMode: 'passphrase', unlocked: true, secretAuthenticated: true });
       return;
     }
   }

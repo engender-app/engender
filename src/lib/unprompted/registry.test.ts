@@ -1,4 +1,4 @@
-/* The registry two screens render (phase 6 tickets 02 and 04): every kind
+/* The registry two screens render: every kind
    the app may show or fire unprompted is a row here, and a later ticket adds
    an entry to this array rather than new markup. Held at the level a module
    with no DOM can be: what is listed, in which of the two views, under which
@@ -10,44 +10,55 @@ import {
   NOTIFICATION_ROWS,
   SURFACE_ROWS,
   UNPROMPTED_ROWS,
+  surfaceOn,
   unpromptedQuiet,
-  unregisteredKinds
+  unregisteredKinds,
+  withSurface
 } from './registry.ts';
 import type { AreaStates } from '../data/areaState.ts';
 
-const surfaceKeys = SURFACE_ROWS.map((row) => row.surface!.prefKey);
+const surfaceKeys = SURFACE_ROWS.map((row) => row.key);
 const notifyKeys = NOTIFICATION_ROWS.map((row) => row.notify!.prefKey);
 
 describe('the unprompted registry', () => {
   it('lists every kind that shows something in the app of its own', () => {
     expect(surfaceKeys).toEqual([
-      'wearTimerEnabled',
-      'dosePanelEnabled',
-      'readyLetterEnabled',
-      'surgeryCountdownEnabled',
-      'safeSpaceNudgeEnabled',
-      'stockNoticeEnabled',
-      'activeTryoutTileEnabled',
-      'patchScheduleTileEnabled',
-      'voiceBenchmarkNudgeEnabled',
-      'pauseActiveBannerEnabled',
-      'hairRemovalRecoveryEnabled',
-      'measurementsNudgeEnabled',
-      'appointmentTodayEnabled',
-      'wrappedEnabled',
-      'onThisDayEnabled',
-      'revisitEnabled'
+      'wear-timer',
+      'dose-panel',
+      'ready-letter',
+      'surgery-countdown',
+      'safe-space-nudge',
+      'stock-notice',
+      'wrapped',
+      'on-this-day'
     ]);
   });
 
-  it('names a real, boolean preference for every switch either view draws', () => {
-    for (const key of [...surfaceKeys, ...notifyKeys]) {
+  it('names a real, boolean preference for every switch the notifications view draws', () => {
+    for (const key of notifyKeys) {
       expect(typeof PREFERENCE_DEFAULTS[key as PreferenceKey]).toBe('boolean');
     }
   });
 
-  it('defaults every surface to on, on a fresh install', () => {
-    for (const key of surfaceKeys) expect(PREFERENCE_DEFAULTS[key as PreferenceKey]).toBe(true);
+  it('defaults every surface to on, on a fresh install, with no stored override', () => {
+    for (const row of SURFACE_ROWS) {
+      expect(row.surface.defaultOn, row.key).toBe(true);
+      expect(surfaceOn(PREFERENCE_DEFAULTS.surfaceOverrides, row.key), row.key).toBe(true);
+    }
+  });
+
+  it('reads a surface off the map, and falls back to the registry default', () => {
+    expect(surfaceOn({ 'wear-timer': false }, 'wear-timer')).toBe(false);
+    expect(surfaceOn({ 'wear-timer': false }, 'dose-panel')).toBe(true);
+    expect(surfaceOn({ 'no-such-kind': false }, 'dose-panel')).toBe(true);
+  });
+
+  it('stores only what differs from the default, and leaves other entries alone', () => {
+    const off = withSurface({ 'dose-panel': false }, 'wear-timer', false);
+    expect(off).toEqual({ 'dose-panel': false, 'wear-timer': false });
+    const back = withSurface(off, 'wear-timer', true);
+    expect(back).toEqual({ 'dose-panel': false });
+    expect(off).toEqual({ 'dose-panel': false, 'wear-timer': false });
   });
 
   it('gives every row a key of its own, for the walkthrough handle', () => {
@@ -57,8 +68,10 @@ describe('the unprompted registry', () => {
   it('says something about every row, in whichever view draws it', () => {
     for (const row of UNPROMPTED_ROWS) {
       expect(row.title(), row.key).toBeTruthy();
-      if (row.surface) expect(row.surface.subtitle(), row.key).toBeTruthy();
-      if (row.notify) expect(row.notify.subtitle(), row.key).toBeTruthy();
+      // A subtitle is earned, not standard (subtext audit, 2026-11-05):
+      // a row may have none, but one it has is never empty.
+      if (row.surface?.subtitle) expect(row.surface.subtitle(), row.key).toBeTruthy();
+      if (row.notify?.subtitle) expect(row.notify.subtitle(), row.key).toBeTruthy();
     }
   });
 
@@ -74,15 +87,13 @@ describe('the unprompted registry', () => {
   });
 });
 
-describe('the notifications view (ticket 04)', () => {
-  it('lists all six producers, the export failure notice included', () => {
+describe('the notifications view', () => {
+  it('lists four producers, the export failure notice included', () => {
     /* The ticket's own count. Before this the four below decided for
        themselves: reminders and the check-in through AlarmManager, the wear
        prompt as a reminder row nobody had a switch for, and the failure
        notice with no settings home at all. */
     expect(NOTIFICATION_ROWS.map((row) => row.key)).toEqual([
-      'wrapped',
-      'on-this-day',
       'reminders',
       'check-in',
       'wear-elapsed',
@@ -90,19 +101,9 @@ describe('the notifications view (ticket 04)', () => {
     ]);
   });
 
-  it('keeps wrapped and on-this-day on the preference keys they already had', () => {
-    // Grandfathered, per the admission rule: a milestone about consent does
-    // not silently withdraw behaviour people already chose.
-    const notifyKeyOf = (key: string) => NOTIFICATION_ROWS.find((row) => row.key === key)?.notify?.prefKey;
-    expect(notifyKeyOf('wrapped')).toBe('wrappedNotificationsEnabled');
-    expect(notifyKeyOf('on-this-day')).toBe('onThisDayNotificationsEnabled');
-    expect(PREFERENCE_DEFAULTS.wrappedNotificationsEnabled).toBe(false);
-    expect(PREFERENCE_DEFAULTS.onThisDayNotificationsEnabled).toBe(false);
-  });
-
   it('reuses the check-in preference rather than stacking a second switch on it', () => {
     /* `checkInEnabled` is the check-in, and it already carried its time and
-       its affirmation pool. A `checkInNotificationsEnabled` beside it would
+       its prompt. A `checkInNotificationsEnabled` beside it would
        be a switch that can only ever contradict the one next to it. */
     expect(NOTIFICATION_ROWS.find((row) => row.key === 'check-in')?.notify?.prefKey).toBe('checkInEnabled');
   });
@@ -111,10 +112,8 @@ describe('the notifications view (ticket 04)', () => {
     expect(
       NOTIFICATION_ROWS.map((row) => [row.key, row.notify?.channel])
     ).toEqual([
-      ['wrapped', 'retrospective'],
-      ['on-this-day', 'retrospective'],
       ['reminders', 'reminders'],
-      // A wear prompt is an ordinary Reminder row (CONTEXT.md), so it
+      // A wear prompt is an ordinary Reminder row, so it
       // arrives on the reminder channel rather than one of its own.
       ['check-in', 'checkIn'],
       ['wear-elapsed', 'reminders'],
@@ -131,7 +130,7 @@ describe('the notifications view (ticket 04)', () => {
     for (const row of NOTIFICATION_ROWS) expect(row.notify?.disguised, row.key).toBe(true);
   });
 
-  it('defaults the two scheduled-by-you kinds on and the two retrospectives off', () => {
+  it('defaults the two scheduled-by-you kinds on and the check-in opt-in', () => {
     /* Reminders and the wear prompt already fire today for anyone who set
        one up, so a switch defaulting to off would silently stop them on
        update. The failure notice defaults on for the other half of the
@@ -157,28 +156,21 @@ describe('the notifications view (ticket 04)', () => {
     }
   });
 
-  /* Phase 8 features ticket 04: the cascade. An area that is hidden or
-     finished takes its tiles and its notifications with it, and this is the
-     list that says which are whose. */
+  /* The cascade. An area that is hidden or finished takes its tiles and its notifications
+     with it, and this is the list that says which are whose. */
 
-  it('names an area for the six kinds that belong to one, and none for the rest', () => {
+  it('names an area for the two kinds that belong to one, and none for the rest', () => {
     const withArea = UNPROMPTED_ROWS.filter((row) => row.area !== null).map((row) => [row.key, row.area]);
 
     expect(withArea).toEqual([
       ['wear-timer', 'wearSessions'],
-      ['voice-benchmark-nudge', 'voiceBenchmarks'],
-      ['hair-removal-recovery', 'hairRemovalSessions'],
-      ['measurements-nudge', 'measurements'],
-      ['appointment-today', 'appointments'],
       ['wear-elapsed', 'wearSessions']
     ]);
   });
 
   it('silences a kind when its area is finished, and leaves the others talking', () => {
-    const states: AreaStates = { measurements: { hidden: false, finishedEpochDay: 19900, suspendedEpochDay: null } };
-
-    expect(unpromptedQuiet('measurements-nudge', states, 20000)).toBe(true);
-    expect(unpromptedQuiet('wear-timer', states, 20000)).toBe(false);
+    const states: AreaStates = { wearSessions: { hidden: false, finishedEpochDay: 19900, suspendedEpochDay: null } };
+    expect(unpromptedQuiet('wear-timer', states, 20000)).toBe(true);
     expect(unpromptedQuiet('ready-letter', states, 20000)).toBe(false);
   });
 

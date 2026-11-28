@@ -12,12 +12,11 @@ describe('Notice component contract', () => {
     expect(noticeFile).toContain('navigating.to !== null');
   });
 
-  /* Ticket 104: A Svelte transition is local by default and plays only when
-     the block it is written in is created or destroyed. A notice is wrapped in
-     its caller's `{#if}`, which is a parent block, so a local transition was
-     skipped when unmounted by its caller, teleporting following rows in a
-     single frame. `|global` ensures the collapse plays when its parent block
-     unmounts. */
+  /* A Svelte transition is local by default and plays only when the block it is written in
+     is created or destroyed. A notice is wrapped in its caller's `{#if}`, which is a parent
+     block, so a local transition was skipped when unmounted by its caller, teleporting
+     following rows in a single frame. `|global` ensures the collapse plays when its parent
+     block unmounts. */
   it('tells the transition globally, since what removes a notice is its caller', () => {
     expect(noticeFile).not.toMatch(/transition:collapse=\{/);
   });

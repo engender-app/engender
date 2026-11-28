@@ -1,39 +1,16 @@
-/* The mirrored half of ADR-0004: gender dimensions, tag groups, milestones
-   and the rest of the vocabulary, held in reactive state and read
-   synchronously.
+/* Mirror bounded reference data in reactive memory for synchronous reads (ADR-0004).
+   Editors, cards and Home need these few dozen rows without putting a loading state on the
+   whole app. Keep the rune-free journal facade below the mirror (ADR-0017).
 
-   All of them are bounded at tens of rows, are never paginated, and are
-   needed by nearly every component - the entry editor wants the ticked
-   scales and the visible tag groups, every entry card wants tag labels,
-   Home wants milestones. Querying them asynchronously would put a loading
-   state on the whole app rather than on the four screens that read entry
-   data.
-
-   The mirror sits above the journal rather than inside it because the journal
-   is rune-free (ADR-0017): it returns plain async results, and every piece of
-   reactive state lives here.
-
-   It is a mirror, not a second source of truth. It is filled from SQLite at
-   boot and re-read from SQLite after any write that touches it, so a screen
-   cannot end up showing a tag the table does not have. The refresh is one
-   round trip behind the write it follows - a renamed tag is visibly stored
-   before it is visibly renamed - which is the same shape the preference
-   store's cache already has.
-
-   What things are *called* is not here: a built-in stores a key and its
-   wording comes from the message catalogue, which needs paraglide, which the
-   layer below cannot import (ADR-0016). This module answers "which rows" and
-   vocabulary.ts answers "called what". */
+   Fill the mirror from SQLite at boot and refresh it one round trip after writes to its
+   tables. vocabulary.ts resolves catalogue labels from keys above the Paraglide boundary. */
 
 import { metricKey } from '../prefs/catalogue';
 import { prefs } from '../prefs/store.svelte';
 import type {
-  Affirmation,
   BodyRegion,
   EffectCategory,
-  EntryTemplate,
   GenderDimension,
-  MeasurementType,
   Milestone,
   PersonalEffectCatalogEntry,
   Presentation,
@@ -48,37 +25,28 @@ const mirror = $state<{
   dimensions: GenderDimension[];
   tagGroups: TagGroup[];
   milestones: Milestone[];
-  affirmations: Affirmation[];
   bodyRegions: BodyRegion[];
-  measurementTypes: MeasurementType[];
   effectCategories: EffectCategory[];
   personalEffectTypes: PersonalEffectCatalogEntry[];
   presentations: Presentation[];
-  entryTemplates: EntryTemplate[];
 }>({
   dimensions: [],
   tagGroups: [],
   milestones: [],
-  affirmations: [],
   bodyRegions: [],
-  measurementTypes: [],
   effectCategories: [],
   personalEffectTypes: [],
-  presentations: [],
-  entryTemplates: []
+  presentations: []
 });
 
 type MirrorSlice =
   | 'dimensions'
   | 'tagGroups'
   | 'milestones'
-  | 'affirmations'
   | 'bodyRegions'
-  | 'measurementTypes'
   | 'effectCategories'
   | 'personalEffectTypes'
-  | 'presentations'
-  | 'entryTemplates';
+  | 'presentations';
 
 /** The read that fills each slice. A slice refreshes on exactly the tables
     that read declares in writes.ts - the declaration writes.sql.test.ts
@@ -92,13 +60,10 @@ const SLICE_READS: Record<MirrorSlice, [area: string, operation: string]> = {
   dimensions: ['dimensions', 'getDimensions'],
   tagGroups: ['tags', 'getTagGroups'],
   milestones: ['milestones', 'getMilestones'],
-  affirmations: ['affirmations', 'getAffirmations'],
   bodyRegions: ['bodyRegions', 'getBodyRegions'],
-  measurementTypes: ['measurements', 'getMeasurementTypes'],
   effectCategories: ['effectCategories', 'getEffectCategories'],
   personalEffectTypes: ['personalEffects', 'getEffectTypes'],
-  presentations: ['presentations', 'getPresentations'],
-  entryTemplates: ['entryTemplates', 'getEntryTemplates']
+  presentations: ['presentations', 'getPresentations']
 };
 
 let registered = false;
@@ -111,7 +76,7 @@ let hydrated = $state(false);
     mirror (rather than one reached by tapping through an already-booted
     app), the route's own component tree mounts and paints before this
     promise settles regardless: SvelteKit hydrates the shell on its own
-    schedule, not gated on `boot()`. `ready` (ticket 152/162) is the signal
+    schedule, not gated on `boot()`. `ready` is the signal
     a screen needs to tell "genuinely nothing here yet" apart from "still
     loading" during that window, the same distinction a `liveList` gets for
     free from its own query and this mirror does not. */
@@ -124,47 +89,36 @@ export async function hydrateReference(journal: Journal, current: () => void = (
     dimensions,
     tagGroups,
     milestones,
-    affirmations,
     bodyRegions,
-    measurementTypes,
     effectCategories,
     personalEffectTypes,
-    presentations,
-    entryTemplates
+    presentations
   ] = await Promise.all([
     journal.dimensions.getDimensions(),
     journal.tags.getTagGroups(),
     journal.milestones.getMilestones(),
-    journal.affirmations.getAffirmations(),
     journal.bodyRegions.getBodyRegions(),
-    journal.measurements.getMeasurementTypes(),
     journal.effectCategories.getEffectCategories(),
     journal.personalEffects.getEffectTypes(),
-    journal.presentations.getPresentations(),
-    journal.entryTemplates.getEntryTemplates()
+    journal.presentations.getPresentations()
   ]);
   current();
   mirror.dimensions = dimensions;
   mirror.tagGroups = tagGroups;
   mirror.milestones = milestones;
-  mirror.affirmations = affirmations;
   mirror.bodyRegions = bodyRegions;
-  mirror.measurementTypes = measurementTypes;
   mirror.effectCategories = effectCategories;
   mirror.personalEffectTypes = personalEffectTypes;
   mirror.presentations = presentations;
-  mirror.entryTemplates = entryTemplates;
   hydrated = true;
 
   if (registered) return;
   registered = true;
-  /* Re-read through the facade rather than the handle this first hydrate
-     was given (after-release ticket 10, audit L02-09). The listener is bound
-     once per page, and the handle is not: a web lock closes the database
-     and the unlock opens a new one, so a refresh bound to the first handle
-     re-read a closed journal, failed, and left the vocabulary stale. The
-     facade is always the journal open now, and a refresh asked for while
-     it is locked waits for the reopen. */
+  /* Re-read through the facade rather than the handle this first hydrate was given. The
+     listener is bound once per page, and the handle is not: a web lock closes the database
+     and the unlock opens a new one, so a refresh bound to the first handle re-read a closed
+     journal, failed, and left the vocabulary stale. The facade is always the journal open
+     now, and a refresh asked for while it is locked waits for the reopen. */
   onTablesWritten((tables) => {
     const slices = new Set(
       (Object.keys(SLICE_READS) as MirrorSlice[]).filter((slice) =>
@@ -176,7 +130,7 @@ export async function hydrateReference(journal: Journal, current: () => void = (
   });
 }
 
-/** The lock's half (after-release ticket 10): tag, milestone and template
+/** The lock's half: tag and milestone
     names are journal content, and a locked web journal keeps none of it in
     the page. Nothing reads the mirror behind the lock - every screen that
     does is unmounted - and the unlock hydrates it again before the app
@@ -191,13 +145,10 @@ async function refresh(journal: Journal, slices: Set<string>): Promise<void> {
     if (slices.has('dimensions')) mirror.dimensions = await journal.dimensions.getDimensions();
     if (slices.has('tagGroups')) mirror.tagGroups = await journal.tags.getTagGroups();
     if (slices.has('milestones')) mirror.milestones = await journal.milestones.getMilestones();
-    if (slices.has('affirmations')) mirror.affirmations = await journal.affirmations.getAffirmations();
     if (slices.has('bodyRegions')) mirror.bodyRegions = await journal.bodyRegions.getBodyRegions();
-    if (slices.has('measurementTypes')) mirror.measurementTypes = await journal.measurements.getMeasurementTypes();
     if (slices.has('effectCategories')) mirror.effectCategories = await journal.effectCategories.getEffectCategories();
     if (slices.has('personalEffectTypes')) mirror.personalEffectTypes = await journal.personalEffects.getEffectTypes();
     if (slices.has('presentations')) mirror.presentations = await journal.presentations.getPresentations();
-    if (slices.has('entryTemplates')) mirror.entryTemplates = await journal.entryTemplates.getEntryTemplates();
   } catch (error) {
     // The write itself succeeded; only the re-read failed. Keeping the stale
     // rows beats emptying the vocabulary out from under the screen.
@@ -213,7 +164,7 @@ export const reference = {
       screen that reads an empty slice as "genuinely nothing here" (rather
       than putting it behind its own `liveList`) needs this to tell that
       state apart from "not hydrated yet" on a cold navigation straight to
-      it (ticket 152/162). */
+      it. */
   get ready(): boolean {
     return hydrated;
   },
@@ -228,25 +179,10 @@ export const reference = {
     return mirror.milestones;
   },
 
-  /** Every affirmation line, hidden built-ins included - what the settings
-      screen manages (CONTEXT: "Hidden"). */
-  get affirmations(): Affirmation[] {
-    return mirror.affirmations;
-  },
-
-  /** The lines the check-in's pool may draw from: hidden ones removed, the
-      same "not hidden" filter `visibleTagGroups` already applies to tags.
-      Language is not filtered here - that needs the active locale, and this
-      module stays free of paraglide (ADR-0016) - vocabulary.ts narrows it
-      further. */
-  get visibleAffirmations(): Affirmation[] {
-    return mirror.affirmations.filter((a) => !a.hidden);
-  },
-
   /** Every body region an entry can log an intensity against, hidden ones
       included - what an entry card or the trend chart resolves a logged
       region's key against, so a region hidden after being logged still
-      shows and charts (CONTEXT: "Hidden"). */
+      shows and charts. */
   get bodyRegions(): BodyRegion[] {
     return mirror.bodyRegions;
   },
@@ -258,21 +194,15 @@ export const reference = {
     return mirror.bodyRegions.filter((r) => !r.hidden);
   },
 
-  /** Every measurement type, hidden ones included - what the measurements
-      settings screen manages (phase 5 ticket 29, CONTEXT: "Hidden"). */
-  get measurementTypes(): MeasurementType[] {
-    return mirror.measurementTypes;
-  },
-
-  /** All five (or six) effect categories, in seed order (phase 5 ticket 41,
-      CONTEXT: "Effect category") - what the effects settings screen manages. */
+  /** All five (or six) effect categories, in seed order - what the effects settings screen
+      manages. */
   get effectCategories(): EffectCategory[] {
     return mirror.effectCategories;
   },
 
   /** Every personal-effect catalogue entry, hidden ones and every tier
       included - what the effects settings screen manages
-      (CONTEXT: "Hidden", "Personal effect"). */
+. */
   get personalEffectTypes(): PersonalEffectCatalogEntry[] {
     return mirror.personalEffectTypes;
   },
@@ -290,8 +220,7 @@ export const reference = {
     );
   },
 
-  /** The milestone the journey anchor preference points at (phase 5 ticket
-      25), or null when no anchor is set or it names a milestone this install
+  /** The milestone the journey anchor preference points at, or null when no anchor is set or it names a milestone this install
       no longer has. Unset is a legitimate resting state here, not a gap to
       paper over - the same answer `activeDimensions` gives an empty tick
       list. */
@@ -299,8 +228,7 @@ export const reference = {
     return mirror.milestones.find((mi) => mi.id === prefs.journeyAnchorMilestoneId) ?? null;
   },
 
-  /** The scales the entry screen offers: the ticked ones (phase 5 ticket
-      35), in catalogue order, skipping keys no dimension carries.
+  /** The scales the entry screen offers: the ticked ones, in catalogue order, skipping keys no dimension carries.
 
       Filtered from the catalogue rather than mapped over the stored list, so
       the order sliders appear in is the order the scales are defined in and
@@ -318,22 +246,9 @@ export const reference = {
     return mirror.dimensions.filter((d) => ticked.has(d.key));
   },
 
-  /** What Home, the calendar and the stats screen colour by: the stored
-      metric, or mood when it names a scale that is not ticked.
-
-      Resolved on the way out rather than corrected on the way in, which is
-      `journeyAnchor`'s rule directly above and for the same reason: a
-      preference naming something this install does not offer is answered
-      with the resting state, not rewritten. Unticking the scale Home was
-      coloured by therefore drops Home back to mood, and ticking it again
-      brings the choice back rather than having quietly spent it.
-
-      Without this the metric could name a scale its own picker did not
-      list, since every picker offers `activeDimensions` and only this read
-      knew otherwise. A narrower version of that predates ticket 35 -
-      switching to a preset that dropped your metric did it too - but
-      unticking every scale makes it certain rather than possible, and
-      "it must not read as broken" is that ticket's floor. */
+  /** Use the stored metric when its scale is active. Fall back to mood on read
+      when that scale is unticked. Keep the preference so reticking it restores
+      the same metric to Home, calendar and Look back. */
   get activeMetric(): string {
     const key = metricKey(prefs);
     return this.activeDimensions.some((d) => d.key === key) ? key : 'mood';
@@ -362,7 +277,7 @@ export const reference = {
 
   /** Every presentation, most-recently-used first (presentations.ts),
       hidden ones included - what the management screen under /more offers
-      (CONTEXT: "Hidden"). */
+. */
   get presentations(): Presentation[] {
     return mirror.presentations;
   },
@@ -371,18 +286,5 @@ export const reference = {
       same "not hidden" filter `visibleTagGroups` already applies to tags. */
   get visiblePresentations(): Presentation[] {
     return mirror.presentations.filter((p) => !p.hidden);
-  },
-
-  /** Every entry template, hidden ones included (phase 6 ticket 07,
-      CONTEXT: "Hidden") - what the editing screen manages. */
-  get entryTemplates(): EntryTemplate[] {
-    return mirror.entryTemplates;
-  },
-
-  /** What the entry editor's "use template" sheet offers: hidden templates
-      removed, the same "not hidden" filter `visibleTagGroups` already
-      applies to tags. */
-  get visibleEntryTemplates(): EntryTemplate[] {
-    return mirror.entryTemplates.filter((t) => !t.hidden);
   }
 };

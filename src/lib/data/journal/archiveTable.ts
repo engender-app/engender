@@ -1,22 +1,6 @@
-/* What a flat data area declares about its table, once (ADR-0027, phase 5
-   ticket 13).
-
-   Before this, the column list of an area like `size_record` was written out
-   four times: the SELECT in archiveRead.ts, the row-to-field map right
-   below it, the INSERT list in archiveApply.ts and the value list right
-   below that - plus a DELETE in restore.ts naming the table a fifth time.
-   Nothing checked the five against each other, and five of the nineteen edit
-   sites a new flat area cost were that column list retyped.
-
-   One descriptor now feeds all of it: readFlatTable() reads the rows out,
-   applyFlatTable() writes them back, and the registry derives the section's
-   discard statement from `table`.
-
-   A descriptor is not a policy language, and it is deliberately no wider
-   than the areas that fit it. What it cannot say - a child table, a rowid
-   resolved against another section, an UPDATE branch for a built-in row a
-   Replace overwrites in place - stays a hand-written pair of functions, with
-   its reasoning where the behaviour is. */
+/* A flat table descriptor feeds the archive read, apply and
+   discard paths (ADR-0027). Keep child tables, cross-section
+   rowids and in-place built-in updates in explicit handlers. */
 
 /** How one column travels. The bare string is the common case: the field it
     is read into and written out of, straight through.
@@ -32,12 +16,12 @@ export type FlatColumn<Row> =
         field: Field;
         /** A 0/1 integer column that travels as a boolean. */
         bool?: true;
-        /** What the column is written from when the archive does not carry the
-            field at all - a row written by a build from before the field
-            existed. Binding `undefined` is not a soft failure: node:sqlite
-            refuses it with a raw driver error, so a field added after an area
-            shipped needs this. */
-        whenAbsent?: Row[Field];
+        /** What the column is written from when the archive does not carry the field at all
+            - a row written by a build from before the field existed. Binding `undefined` is
+            not a soft failure: node:sqlite refuses it with a raw driver error, so a field
+            added after an area shipped needs this. A function is asked with the row, for a
+            field whose old value is inferred from the row's other fields. */
+        whenAbsent?: Row[Field] | ((row: Row) => Row[Field]);
         /** What a NULL in the column is read as, where the wire type is
             narrower than the column - a nullable TEXT that travels as a
             string. */

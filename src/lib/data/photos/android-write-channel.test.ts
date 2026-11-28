@@ -29,9 +29,9 @@ describe('writeOverChannel', () => {
     expect(writeOverChannel('a.jpg', 'photos', new Uint8Array([1]))).toBeNull();
   });
 
-  /* The whole point of ticket 19: the bytes cross as a real ArrayBuffer, not
-     a base64 string, so a test that only checked the ack would miss a
-     regression that quietly re-encoded them along the way. */
+  /* The whole point of the bytes cross as a real ArrayBuffer, not a base64 string, so a
+     test that only checked the ack would miss a regression that quietly re-encoded them
+     along the way. */
   test('carries the header and the exact bytes to the native side, and resolves on ok', async () => {
     const seen = fakeNativeChannel((bytes) => {
       expect(bytes).toEqual(new Uint8Array([1, 2, 3]));

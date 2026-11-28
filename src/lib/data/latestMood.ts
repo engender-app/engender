@@ -1,6 +1,5 @@
-/* The mood Today rings once something is logged today (after-release 06,
-   UX-16): the latest of the day's entries that carries one, and when it
-   was logged. Rune-free so the node tier can hold the rule. */
+/* The mood Today rings once something is logged today: the latest of the day's entries that
+   carries one, and when it was logged. Rune-free so the node tier can hold the rule. */
 
 export type LoggedMood = { mood: number; timestamp: number };
 

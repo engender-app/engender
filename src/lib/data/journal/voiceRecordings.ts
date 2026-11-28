@@ -1,18 +1,18 @@
-/* Voice recording staging (ticket 24, CONTEXT: "Voice recording"). Entry-only,
-   unlike photos.ts: ticket 24 excludes milestones, so there is one owner
-   column and no owner to resolve - the caller (entries.ts) already holds a
-   real entry id by the time it stages a recording, the same way it already
-   holds one when it stages a photo.
+/* Voice recording staging. Entry-only, unlike photos.ts: excludes milestones, so there is
+   one owner column and no owner to resolve - the caller (entries.ts) already holds a real
+   entry id by the time it stages a recording, the same way it already holds one when it
+   stages a photo.
 
-   The same file-before-row / row-before-file ordering photos.ts's header
-   states applies here, over the same injected PhotoFileStore: a recording is
-   exactly the kind of binary blob that store already exists to carry, so
-   this reuses it rather than standing up a second one. No thumbnail and
-   no normalize() step (out of scope: no client-side audio effects) - a
-   recording is the bytes MediaRecorder produced, written through as-is. */
+   The same file-before-row / row-before-file ordering photos.ts's header states applies
+   here, over the same injected PhotoFileStore: a recording is exactly the kind of binary
+   blob that store already exists to carry, so this reuses it rather than standing up a
+   second one. No thumbnail and no normalize() step (out of scope: no client-side audio
+   effects) - a recording is the bytes MediaRecorder produced, written through as-is. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import { afterCommit } from '../sqlite/transactor';
+import { unownedNames } from './fileOwnership';
+import { markOrphanSweepDue } from '../sqlite/orphan-sweep-schedule';
 import type { VoiceRecording } from '../types';
 import { voiceFileName } from '../voiceRecordings/names';
 import type { PhotoFileStore } from '../photos/photo-file-store';
@@ -22,8 +22,8 @@ type RecordingRow = { uuid: string; file_path: string };
 
 export type StagedRecording = { id: string; fileName: string };
 
-/** A recording placed in time, for the memo browser (ticket 11). Entry-only
-    (CONTEXT: "Voice recording"), so unlike DatedPhoto there is no owner name
+/** A recording placed in time, for the memo browser. Entry-only
+, so unlike DatedPhoto there is no owner name
     to carry - a recording's date is always its entry's epoch day, no
     COALESCE needed. `entryId` is the way through to it (a memo is entry
     content and owns no screen of its own). */
@@ -33,18 +33,16 @@ interface DatedRecording extends VoiceRecording {
 }
 
 export interface VoiceArea {
-  /** Every recording in the journal, newest first, with the entry each one
-      belongs to (ticket 11's memo browser). Built for ticket 25's voice
-      compare picker, which was cut before shipping (ticket 09) - this is
-      its first caller. */
+  /** Every recording in the journal, newest first, with the entry each one belongs to.
+      Built for voice compare picker, which was cut before shipping - this is its first
+      caller. */
   inJournal(): Promise<DatedRecording[]>;
-  /** The day of the most recent memo, at or before `todayEpochDay`, or null
-      where there is none (phase 11 ticket 17). Its own method rather than a
-      `journal/lastWrite.ts` entry: a memo is entry content with no archive
-      section of its own (ADR-0036), so it has no `ArchiveSectionName` to be
-      registered under there - `hubRows.ts`'s `voice-benchmark` row is this
-      read's only caller, folding it in beside the benchmark's own last
-      write to report whichever is later. */
+  /** The day of the most recent memo, at or before `todayEpochDay`, or null where there is
+      none. Its own method rather than a `journal/lastWrite.ts` entry: a memo is entry
+      content with no archive section of its own, so it has no `ArchiveSectionName` to be
+      registered under there - `hubRows.ts`'s `voice-benchmark` row is this read's only
+      caller, folding it in beside the benchmark's own last write to report whichever is
+      later. */
   lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
 }
 
@@ -77,12 +75,13 @@ export async function recordingsByEntry(
 /** Deletes every file the given recording rows owned. Called after the rows
     are gone, mirroring photos.ts's removeFilesOf: a failure here must not
     resurrect them, and what it leaves behind is the sweep's to reclaim. */
-async function removeRecordingFiles(files: PhotoFileStore, rows: { file_path: string }[]): Promise<void> {
-  for (const row of rows) await files.remove(row.file_path);
+async function removeRecordingFiles(files: PhotoFileStore, names: string[]): Promise<void> {
+  for (const name of names) await files.remove(name);
 }
 
 export async function removeRecordingFilesOf(driver: SqliteDriver, files: PhotoFileStore, rows: { file_path: string }[]): Promise<void> {
-  await afterCommit(driver, () => removeRecordingFiles(files, rows));
+  const names = await unownedNames(driver, rows.map((row) => row.file_path));
+  await afterCommit(driver, () => removeRecordingFiles(files, names), markOrphanSweepDue);
 }
 
 /** Best-effort cleanup after an owner save has committed, the same reasoning
@@ -94,11 +93,12 @@ export async function removeRecordingFilesAfterCommit(
   files: PhotoFileStore,
   rows: { file_path: string }[]
 ): Promise<void> {
+  const names = await unownedNames(driver, rows.map((row) => row.file_path));
   await afterCommit(driver, async () => {
     try {
-      await removeRecordingFiles(files, rows);
+      await removeRecordingFiles(files, names);
     } catch {
-      // sweepOrphanPhotos() owns retries.
+      markOrphanSweepDue();
     }
   });
 }
@@ -139,7 +139,7 @@ export function makeVoiceArea(driver: SqliteDriver): VoiceArea {
   return {
     async inJournal() {
       // Excludes a trashed entry's recordings the same way every other
-      // entry-owned read does (phase 5 ticket 19). Newest entry first;
+      // entry-owned read does. Newest entry first;
       // several recordings on one entry keep their own attach order.
       const rows = await driver.query<RecordingRow & { epoch_day: number; entry_id: number }>(
         `SELECT v.uuid, v.file_path, v.entry_id AS entry_id, e.epoch_day AS epoch_day

@@ -1,10 +1,9 @@
 <script lang="ts">
-  /* The add-photo day prompt (ticket 47, ADR-0008/0015): the entry editor's
-     and the milestone editor's own add-photo flows opened the identical
-     sheet - a title, a hint, one Day field, Save and Skip - differing only
-     in what "day" and "save"/"skip" mean to each caller's own draft. Shared
-     here rather than repeated a third time the next screen grows an
-     add-photo flow of its own. */
+  /* The add-photo day prompt (ADR-0008/0015): the entry editor's and the milestone editor's
+     own add-photo flows opened the identical sheet - a title, a hint, one Day field, Save
+     and Skip - differing only in what "day" and "save"/"skip" mean to each caller's own
+     draft. Shared here rather than repeated a third time the next screen grows an add-photo
+     flow of its own. */
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import Field from '$lib/components/kit/Field.svelte';
@@ -28,7 +27,7 @@
     fieldId: string;
     /** What Skip falls back to, in the caller's own terms. Required: a
         shared line had to name both owners, which read oddly inside an
-        entry and inside a milestone alike (audits UX-05 and UX-13). */
+        entry and inside a milestone alike. */
     hint: string;
     /** Whatever the caller's own day means: bake it into the picked photo,
         write it to a stored one, whichever the flow this sheet interrupts
@@ -44,17 +43,17 @@
   {#if open}
     <h3>{m.photo_day_prompt_title()}</h3>
     <p class="muted small" style="margin-bottom:var(--space-4)">{hint}</p>
-    <Field label={m.photo_day_label()} id={fieldId}>
+    <Field label={m.day_label()} id={fieldId}>
       {#snippet children(id)}
         <DatePicker name={fieldId} bind:value={day} {id} />
       {/snippet}
     </Field>
     <div class="stack-3">
       <button class="btn btn-primary press" data-photo-day-save onclick={onSave}>
-        <span>{m.photo_day_prompt_save()}</span>
+        <span>{m.save()}</span>
       </button>
       <button class="btn btn-ghost press" data-photo-day-skip onclick={onSkip}>
-        <span>{m.photo_day_prompt_skip()}</span>
+        <span>{m.skip()}</span>
       </button>
     </div>
   {/if}

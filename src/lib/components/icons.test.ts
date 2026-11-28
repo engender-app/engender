@@ -1,11 +1,11 @@
 /* icon() builds an SVG string that Icon.svelte renders through {@html}, one
-   of two such sinks in the app alongside Mark.svelte's (phase 5 ticket 03).
+   of two such sinks in the app alongside Mark.svelte's.
    Every call site passes literals today and `name` is looked up in a fixed
    map, so nothing here was injectable - but it was one dynamic caller away
    from being so, and a sink that is only safe because of who calls it needs
    a test rather than a habit.
 
-   The geometry of the marks themselves is tests/icon-geometry.test.ts. */
+   The geometry of the marks themselves is tests/node/ui/icon-geometry.test.ts. */
 import { describe, expect, test } from 'vitest';
 import { icon } from './icons';
 

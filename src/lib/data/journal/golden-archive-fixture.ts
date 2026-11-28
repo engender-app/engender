@@ -1,7 +1,7 @@
 /* What archive-golden.test.ts and archive-golden-merge.test.ts both build on:
    the fixture's paths, the password and cheap KDF it was packed with, a
    journal with something in every section, and the two ways to change what
-   is committed (ADR-0027, ticket 12).
+   is committed (ADR-0027).
 
    `everySection()` lives here rather than in either test file because both
    need it - the golden test packs a fresh one when GOLDEN_ARCHIVE=rebuild
@@ -58,25 +58,21 @@ export async function builtInsOnlyDevice(): Promise<{ driver: SqliteDriver; jour
   return { driver, journal };
 }
 
-/** Devices that reconciled before phase 5 ticket 35 kept eight built-in
-    preset rows (reconcile.ts's own history says why it stopped: the picker
-    they backed is gone and nothing reads them any more). A fresh journal
-    never gets them - there is no public API left that makes a built-in
-    preset row, `addPreset` only ever makes a custom one - so this seeds them
-    the same way reconcile once did, directly. Without it, `everySection()`
-    can only ever produce one preset row, and the fixture loses the built-in
-    shape `readPresets`/`applyPresets` still have to carry for a device that
-    reconciled before ticket 35. */
+/** Devices that reconciled kept eight built-in preset rows (reconcile.ts's own history says
+    why it stopped: the picker they backed is gone and nothing reads them any more). A fresh
+    journal never gets them - there is no public API left that makes a built-in preset row,
+    `addPreset` only ever makes a custom one - so this seeds them the same way reconcile
+    once did, directly. Without it, `everySection()` can only ever produce one preset row,
+    and the fixture loses the built-in shape `readPresets`/`applyPresets` still have to
+    carry for a device that reconciled. */
 
 /** A journal with something in all 36 sections, and the customizations that
     make the vocabulary ones more than the built-ins: a custom dimension in a
     custom preset, a custom group with a tag of its own, a custom tag inside a
     built-in group, a renamed and a hidden built-in tag, a hidden dimension, a
-    hidden affirmation, a custom body region logged on the entry alongside a
-    built-in one, a custom measurement type alongside a hidden built-in one,
-    a disabled effect category, a custom effect type alongside a hidden
-    built-in one, and an authored entry template carrying a custom tag, a
-    custom dimension value, a note scaffold and a presentation. Built by
+    custom body region logged on the entry alongside a built-in one, a
+    disabled effect category, a custom effect type alongside a hidden
+    built-in one. Built by
     `everySectionDevice` below, which is the same thing with the connection
     handed back too. */
 export const everySection = async (): Promise<Journal> => (await everySectionDevice()).journal;

@@ -16,6 +16,12 @@ import {
 } from './stockProjection';
 import { epochDayFromTimestamp, startOfDayTimestamp } from './epochDay';
 import type { DoseEvent, RegimenEpisode } from './types';
+import { NO_ACKNOWLEDGEMENTS, type AcknowledgementStore, type Acknowledgements } from './acknowledgements';
+
+function memoryAcknowledgements(): AcknowledgementStore {
+  let value: Acknowledgements = NO_ACKNOWLEDGEMENTS;
+  return { read: () => value, write: (next) => (value = next) };
+}
 
 const DAY_0 = 20000;
 
@@ -23,6 +29,7 @@ function episode(overrides: Partial<RegimenEpisode> = {}): RegimenEpisode {
   return {
     id: 'ep-1',
     drug: 'estradiol valerate',
+    drugClass: 'hrt',
     ester: 'valerate',
     dose: 4,
     doseUnit: 'mg',
@@ -70,9 +77,9 @@ test('a skipped dose consumes nothing', () => {
 });
 
 test('an auto-logged dose consumes exactly as a hand-logged one does, and a corrected one consumes nothing', () => {
-  /* Phase 11 ticket 11: the projection asks what happened, and a dose a
-     schedule wrote on the person's standing instruction happened. Marking
-     one skipped takes it back out, the same way any skipped dose is out. */
+  /* The projection asks what happened, and a dose a schedule wrote on the person's standing
+     instruction happened. Marking one skipped takes it back out, the same way any skipped
+     dose is out. */
   const stock = { drug: 'estradiol valerate', quantity: 10, unit: 'vials', recordedEpochDay: DAY_0 };
   const written = [dose(DAY_0 + 1, { source: 'schedule' }), dose(DAY_0 + 3, { source: 'schedule' })];
 
@@ -117,11 +124,10 @@ test('a dose logged under a different drug does not count, even in a matching ep
 });
 
 test('a drug-less dose left ambiguous by two concurrent episodes of different drugs consumes no stock, and is counted excluded (case 4)', () => {
-  /* The bug ticket 38 exists to close: before concurrency was representable,
-     a route/window match alone was enough to consume the wrong drug's stock.
-     Two concurrent episodes for different drugs, and a dose naming no drug
-     of its own, must not deplete either stock - and the exclusion must be
-     counted, not silently dropped. */
+  /* The bug exists to close: before concurrency was representable, a route/window match
+     alone was enough to consume the wrong drug's stock. Two concurrent episodes for
+     different drugs, and a dose naming no drug of its own, must not deplete either stock -
+     and the exclusion must be counted, not silently dropped. */
   const stock = { drug: 'estradiol valerate', quantity: 10, unit: 'vials', recordedEpochDay: DAY_0 };
   const episodes = [episode({ startEpochDay: DAY_0 }), episode({ id: 'ep-2', drug: 'spironolactone', startEpochDay: DAY_0 })];
   const doses = [dose(DAY_0 + 1)];
@@ -225,27 +231,6 @@ test('a stock entry younger than the trailing window is not padded with days bef
   assert.equal(projection.dailyRate, 1);
 });
 
-class MockStorage implements Storage {
-  private data = new Map<string, string>();
-  get length() {
-    return this.data.size;
-  }
-  clear() {
-    this.data.clear();
-  }
-  getItem(key: string) {
-    return this.data.get(key) ?? null;
-  }
-  key(index: number) {
-    return Array.from(this.data.keys())[index] ?? null;
-  }
-  removeItem(key: string) {
-    this.data.delete(key);
-  }
-  setItem(key: string, value: string) {
-    this.data.set(key, value);
-  }
-}
 
 test('isStockDepletingSoon returns true when runOutEpochDay is within threshold (<= 7 days)', () => {
   const asOf = DAY_0 + 10;
@@ -346,8 +331,7 @@ test('depletingStocks gates and sorts on reorderByEpochDay when a row carries on
   const items = [
     {
       // Run-out is 50 days out, ample by itself - but a 45-day lead time
-      // pulls the reorder day inside the window, which is the whole point
-      // of ticket 16.
+      // pulls the reorder day inside the warning window.
       entry: { id: 's-lead', drug: 'estradiol valerate', quantity: 100, unit: 'mg', recordedEpochDay: DAY_0, reminderEverCreated: false, reminderDismissed: false },
       projection: { remaining: 50, dailyRate: 1, runOutEpochDay: asOf + 50, excludedDoses: 0 },
       reorderByEpochDay: asOf + 5
@@ -378,42 +362,35 @@ test('depletingStocks gates and sorts on reorderByEpochDay when a row carries on
 });
 
 test('snoozeStockNotice suppresses notice for 24 hours and expires afterwards', () => {
-  const storage = new MockStorage();
+  const store = memoryAcknowledgements();
   const now = 1700000000000;
 
-  assert.equal(isStockNoticeSnoozed(now, storage), false);
+  assert.equal(isStockNoticeSnoozed(store, now), false);
 
-  snoozeStockNotice(now, storage);
-  assert.equal(isStockNoticeSnoozed(now, storage), true);
-  assert.equal(isStockNoticeSnoozed(now + 12 * 3600_000, storage), true);
-  assert.equal(isStockNoticeSnoozed(now + 24 * 3600_000 - 100, storage), true);
+  snoozeStockNotice(store, now);
+  assert.equal(isStockNoticeSnoozed(store, now), true);
+  assert.equal(isStockNoticeSnoozed(store, now + 12 * 3600_000), true);
+  assert.equal(isStockNoticeSnoozed(store, now + 24 * 3600_000 - 100), true);
 
   // 24 hours elapsed -> un-snoozed
-  assert.equal(isStockNoticeSnoozed(now + 24 * 3600_000 + 1, storage), false);
+  assert.equal(isStockNoticeSnoozed(store, now + 24 * 3600_000 + 1), false);
 
   // Clear snooze
-  snoozeStockNotice(now, storage);
-  assert.equal(isStockNoticeSnoozed(now, storage), true);
-  clearStockNoticeSnooze(storage);
-  assert.equal(isStockNoticeSnoozed(now, storage), false);
+  snoozeStockNotice(store, now);
+  assert.equal(isStockNoticeSnoozed(store, now), true);
+  clearStockNoticeSnooze(store);
+  assert.equal(isStockNoticeSnoozed(store, now), false);
 });
 
-test('a snooze written under the pre-rename key still reads as snoozed, migrated onto the engender- key', () => {
-  /* Audit finding S3: the key used to be stock_notice_snooze_until,
-     unprefixed, so a reset's engender- sweep left it behind. Renaming it
-     must not also throw away a snooze someone already set. */
-  const storage = new MockStorage();
-  const now = 1700000000000;
-  storage.setItem('stock_notice_snooze_until', String(now + 3600_000));
-
-  assert.equal(isStockNoticeSnoozed(now, storage), true);
-  assert.equal(storage.getItem('stock_notice_snooze_until'), null);
-  assert.equal(storage.getItem('engender-stock-notice-snooze-until'), String(now + 3600_000));
+test('the snooze is the stock-notice tile in the acknowledgements, not a key of its own', () => {
+  /* It used to be a plaintext localStorage key; the first unlock moves an old one over
+     (acknowledgements.test.ts). */
+  const store = memoryAcknowledgements();
+  snoozeStockNotice(store, 1700000000000);
+  assert.deepEqual(store.read().snoozes, { 'stock-notice': 1700000000000 + 24 * 3600_000 });
 });
 
-
-/* projectEveryStock, the path the stock area takes (phase 8 audit ticket
-   26). Driven with a counter that answers from an in-memory dose list, so
+/* projectEveryStock, the path the stock area takes. Driven with a counter that answers from an in-memory dose list, so
    the windowing and the summing get tested without a database, and the
    figures can be held against projectStock, which counts the same doses the
    old way. */
@@ -511,9 +488,8 @@ test('reorderByEpochDay is null when there is no run-out day to project from, le
   assert.equal(reorderByEpochDay(null, null), null);
 });
 
-/* Doses per unit (after-release ticket 01, L03-04). Stock used to subtract
-   one unit per dose whatever the unit was, so two vials of injectable
-   estradiol ran out after two doses. */
+/* Doses per unit. Stock used to subtract one unit per dose whatever the unit was, so two
+   vials of injectable estradiol ran out after two doses. */
 
 test('two vials at five doses per vial last ten doses, and project the run-out from that', () => {
   const stock = { drug: 'estradiol valerate', quantity: 2, unit: 'vials', recordedEpochDay: DAY_0, dosesPerUnit: 5 };

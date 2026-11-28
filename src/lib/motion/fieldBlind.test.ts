@@ -86,7 +86,7 @@ describe('the blind, carried across a navigation', () => {
   /* The name has to be handed over rather than written as a rule: after the
      navigation completes the outgoing screen can still be in the DOM, and a
      rule that names both blinds at the new capture names two elements at
-     once, which aborts the whole transition (redesign ticket 25). */
+     once, which aborts the whole transition. */
   it('hands the name to the incoming blind at the swap, never holding both', () => {
     const before = el();
     const after = el();
@@ -212,10 +212,9 @@ describe('the blind, carried across a navigation', () => {
     ]);
   });
 
-  /* Ticket 285 reverses ux-carpet 241's lifting: the blind, the printed parts
-     and the rings are all nested in the field's group, so its overflow clip
-     cuts every one of them at the painted edge (a ring 21px past Settings'
-     field, type past the blue). The z-order 241 wanted - rings over titles
+  /* Lifting: the blind, the printed parts and the rings are all nested in the field's
+     group, so its overflow clip cuts every one of them at the painted edge (a ring 21px
+     past Settings' field, type past the blue). The z-order 241 wanted - rings over titles
      over blind - now holds inside that group (app.css z-index 5, 4, 3). */
   it('nests the blind, the printed parts and the rings under the field group', () => {
     const blind = el();
@@ -294,11 +293,9 @@ describe("the sun across setup's handover", () => {
   });
 
   it('leaves them unnamed where the sun is the same object at the same size', () => {
-    /* Redesign ticket 33: setup's sun has grown to exactly the scale Home
-       draws it at, so naming it would close and reopen the app's own mark
-       at the moment the app opens. Unnamed, it stays inside each screen's
-       snapshot, and two identical images crossfading is a sun standing
-       still. */
+    /* Setup's sun has grown to exactly the scale Home draws it at, so naming it would close
+       and reopen the app's own mark at the moment the app opens. Unnamed, it stays inside
+       each screen's snapshot, and two identical images crossfading is a sun standing still. */
     const rings = [el(), el()];
     const { as } = fakeDocument([field({ height: 100, rings })]);
     carryBlind(as, { holdSun: true });
@@ -339,7 +336,7 @@ describe('one sun across Today and Settings', () => {
   });
 });
 
-/* A navigation that lands on one still running (ticket 285). The DOM is the
+/* A navigation that lands on one still running. The DOM is the
    earlier navigation's destination and the earlier transition is skipped the
    instant the new one starts, so the edge, the faded-in type and the opened
    rings jump to their resting state unless the new carry starts from what

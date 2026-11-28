@@ -1,6 +1,5 @@
-/* F-Droid rebuild attempt for ticket 18: build the public-source Android
-   release path twice, compare bytes, and write a report whether or not the
-   bytes match. */
+/* F-Droid rebuild attempt for build the public-source Android release path twice, compare
+   bytes, and write a report whether or not the bytes match. */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -59,8 +58,12 @@ const lines = [
   `- Second build SHA256: ${digestTwo ?? 'n/a'}`,
   `- Note: ${notes}`,
   '',
-  'F-Droid signs rebuilt artifacts with its own key, so update compatibility',
-  'with APKs signed by this repository is not expected.'
+  'Scope: two local unsigned Gradle builds reuse the same prepared web assets.',
+  'This does not prove a clean F-Droid rebuild matches the published signed APK.',
+  'The planned F-Droid route preserves the GitHub APK developer signature after',
+  'reproducible-build verification. Channel switching remains unverified until',
+  'that verification and installed-update checks in both directions pass.',
+  'Play retains its separate signing key and update channel.'
 ];
 
 writeFileSync(REPORT_PATH, `${lines.join('\n')}\n`);

@@ -1,20 +1,11 @@
 <script lang="ts">
-  /* A margin note: a visibly later layer under the entry it annotates
-     (phase 8 features ticket 07, CONTEXT: "Margin note").
-
-     Journal-aware, unlike DayEntry.svelte around it: this is the caller
-     that knows, the way EntryDays.svelte already is for tags and marks.
-     `notes` still arrives pre-fetched rather than read here - the caller
-     batches `journal.marginNotes.forEntries` once for a whole page
-     (marginNotes.ts's own reasoning: one query, not one per row) and hands
-     this component only the entry it belongs to.
-
-     The rendering is the feature (the ticket's own words): its own date on
-     every note, its own indentation, its own type - nothing here may read
-     like a second paragraph of the entry above it. `edit`/`add` write
-     straight through the journal (ADR-0044: validated by `marginNotes.add`
-     before anything is written, and there is only ever the one insert to
-     make - no second write for a transaction to wrap). */
+  import { collapse } from '$lib/motion/reveal';
+  import { offerUndo, undoable } from '$lib/stores/deleteUndo';
+  import type { UndoableDelete } from '$lib/data/journal/undoableDelete';
+  import { journalTextAutocomplete } from '$lib/platform';
+  /* Render a dated, indented margin note below its entry. The caller reads notes for a page
+     in one batch. The component writes through the journal, where marginNotes.add validates
+     its insert. */
   import { m } from '$lib/paraglide/messages';
   import { deleter, writer } from '$lib/stores/attempt.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
@@ -25,6 +16,8 @@
   import Icon from './Icon.svelte';
   import Sheet from './Sheet.svelte';
   import ConfirmDeleteSheet from './kit/ConfirmDeleteSheet.svelte';
+  import DiscardSheet from './kit/DiscardSheet.svelte';
+  import { leaveGuard } from './kit/leaveGuard.svelte';
 
   let {
     entryId,
@@ -33,10 +26,9 @@
   }: {
     entryId: number;
     notes: MarginNote[];
-    /** Off in a list of hits (audit UX-11): "Add a margin note" under every
-        result was 29 rows of the same words for one search, and about two
-        and a half results fitted a screen. A note is added from the
-        entry's own day, where this stays on. */
+    /** Off in a list of hits: "Add a margin note" under every result was 29 rows of the
+        same words for one search, and about two and a half results fitted a screen. A note
+        is added from the entry's own day, where this stays on. */
     addable?: boolean;
   } = $props();
 
@@ -57,10 +49,14 @@
     composeOpen = true;
   }
 
-  /* One note per tap: a double tap used to add two (after-release 06). The
-     sheet closes once the note is stored, and stays open with a toast when
-     it is not. */
+  /* One note per tap: a double tap used to add two. The sheet closes once the note is
+     stored, and stays open with a toast when it is not. */
   const saving = writer();
+  const guard = leaveGuard({
+    holding: () => composeOpen && composeText !== (editing?.text ?? ''),
+    busy: () => composeOpen && saving.busy,
+    onDiscard: () => { composeOpen = false; }
+  });
   async function save() {
     const text = composeText.trim();
     if (!text) return;
@@ -78,16 +74,17 @@
   async function confirmDelete() {
     if (!deleting) return;
     const id = deleting.id;
-    if (!(await removing.run(() => journal.marginNotes.remove(id)))) return;
+    let deletion: UndoableDelete | undefined;
+    if (!(await removing.run(async () => { deletion = await undoable((j) => j.marginNotes.remove(id)); }))) return;
     deleting = null;
-    toast(m.record_deleted(), { kind: 'record-deleted' });
+    offerUndo(deletion!, m.record_deleted());
   }
 </script>
 
 {#if notes.length}
   <div class="margin-note-list">
     {#each notes as note (note.id)}
-      <div class="margin-note" data-margin-note={note.id}>
+      <div transition:collapse class="margin-note" data-margin-note={note.id}>
         <button class="margin-note-open" data-margin-note-edit onclick={() => openEdit(note)}>
           <span class="margin-note-date">{fmtDay(note.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
           <span class="margin-note-text">{note.text}</span>
@@ -112,9 +109,14 @@
   </button>
 {/if}
 
-<Sheet busy={saving.busy} bind:open={composeOpen} title={editing ? m.margin_note_edit_sheet() : m.margin_note_add_sheet()}>
+<Sheet
+  busy={saving.busy}
+  bind:open={composeOpen}
+  title={editing ? m.margin_note_edit_sheet() : m.margin_note_add_sheet()}
+  onRequestClose={() => guard.request(() => { composeOpen = false; })}
+>
   <h3>{editing ? m.margin_note_edit_sheet() : m.margin_note_add_sheet()}</h3>
-  <textarea
+  <textarea autocomplete={journalTextAutocomplete()}
     class="input"
     rows="4"
     style="margin-top:var(--space-3)"
@@ -129,16 +131,18 @@
       data-margin-note-save
       onclick={save}
     >
-      <span>{m.margin_note_save()}</span>
+      <span>{m.save()}</span>
     </button>
   </div>
 </Sheet>
+
+<DiscardSheet {guard} />
 
 <ConfirmDeleteSheet
   open={deleting !== null}
   title={m.margin_note_delete_sheet()}
   question={m.margin_note_delete_q()}
-  confirmLabel={m.margin_note_delete()}
+  confirmLabel={m.delete()}
   cancelLabel={m.keep_it()}
   confirmAttrs={{ 'data-confirm-delete-margin-note': '' }}
   onConfirm={confirmDelete}

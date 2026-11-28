@@ -96,8 +96,7 @@ public class ReminderQuietHoursResyncTest {
     @Test public void checkInResyncRespectsPausesOnOriginalAndDeliveryDays() throws Exception {
         int today = (int) HELD.toLocalDate().toEpochDay();
         for (int day : new int[] { today - 1, today }) {
-            JSONObject payload = payload().put("journalingPauses", new JSONArray().put(new JSONObject()
-                .put("startEpochDay", day).put("endEpochDay", day)));
+            JSONObject payload = payload().put("checkInPausedThrough", day);
             assertEquals(HELD.plusDays(day == today ? 2 : 1),
                 ReminderPlanner.nextCheckIn(payload, HELD.withHour(0)));
         }

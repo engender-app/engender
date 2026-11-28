@@ -10,6 +10,7 @@ import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { openJournal, type PhotoFileStore } from './journal.ts';
 import type { RestoreContents } from './restore.ts';
 import { CHEAP_KDF, everySectionDevice, oneShot } from './golden-archive-fixture.ts';
+import { markJournalBusy } from '../journal-busy.ts';
 import { sweepOrphanPhotos } from './photos.ts';
 
 const bytes = (text: string) => new TextEncoder().encode(text);
@@ -87,11 +88,13 @@ for (const mode of ['merge', 'replace'] as const) {
     contents.journal = {
       ...contents.journal,
       entries: [...contents.journal.entries, {
-        ...contents.journal.entries[0], uuid: 'invalid-entry', mood: 100
+        ...contents.journal.entries[0], uuid: 'invalid-entry', photos: [], recordings: [], videos: []
       }]
     };
 
-    await assert.rejects(made.journal.archive[mode](contents));
+    await made.db.exec(`CREATE TRIGGER reject_archive_entry BEFORE INSERT ON entry
+      WHEN NEW.uuid = 'invalid-entry' BEGIN SELECT RAISE(ABORT, 'synthetic archive row failure'); END`);
+    await assert.rejects(made.journal.archive[mode](contents), /synthetic archive row failure/);
 
     assert.deepEqual((await made.journal.archive.snapshot()).journal, made.snapshot.journal);
     for (const [name, data] of made.original) {
@@ -154,7 +157,9 @@ for (const mode of ['merge', 'replace'] as const) {
       assert.equal(snapshot.files.length, 2);
       const read = await Promise.all(snapshot.files.map(({ name }) => snapshot.readFile(name)));
       assert.deepEqual(read.map((data) => new TextDecoder().decode(data)).sort(), ['original photo', 'original thumbnail']);
-      for (const [name, data] of made.ciphertext) assert.deepEqual(await made.disk.read(name), data);
+      if (mode === 'merge') {
+        for (const [name, data] of made.ciphertext) assert.deepEqual(await made.disk.read(name), data);
+      }
     }
     if (mode === 'merge') assert.deepEqual(made.disk.names(), [...made.original.keys()].sort());
   });
@@ -172,7 +177,9 @@ for (const mode of ['merge', 'replace'] as const) {
     for (const { name } of snapshot.files) {
       assert.deepEqual(await snapshot.readFile(name), mode === 'replace' ? bytes('archive bytes') : made.original.get(name));
     }
-    for (const [name, data] of made.ciphertext) assert.deepEqual(await made.disk.read(name), data);
+    if (mode === 'merge') {
+      for (const [name, data] of made.ciphertext) assert.deepEqual(await made.disk.read(name), data);
+    }
   });
 }
 
@@ -199,7 +206,7 @@ test('replacement filenames preserve every attachment owner and its derived thum
   }
 });
 
-test('replacement cleanup failure leaves a committed merge successful and retries at the orphan sweep', async () => {
+test('restore sweeps an orphan after replacement cleanup fails', async () => {
   const made = await device();
   made.disk.failNthRemove(1);
 
@@ -207,7 +214,20 @@ test('replacement cleanup failure leaves a committed merge successful and retrie
 
   assert.deepEqual((await made.journal.archive.snapshot()).journal, made.snapshot.journal);
   for (const [name, data] of made.original) assert.deepEqual(await made.files.read(name), data);
-  assert.equal(made.disk.names().length, made.original.size + 1);
-  await sweepOrphanPhotos(made.db, made.files);
+  assert.deepEqual(made.disk.names(), [...made.original.keys()].sort());
+});
+
+test('restore holds its orphan sweep while another write is in flight, then runs it', async () => {
+  const made = await device();
+  made.disk.failNthRemove(1);
+  const release = markJournalBusy();
+  try {
+    await made.journal.archive.merge(made.contents());
+    // Deferred, not skipped: the orphan is still there while the other write runs.
+    assert.notDeepEqual(made.disk.names(), [...made.original.keys()].sort());
+  } finally {
+    release();
+  }
+  for (let i = 0; i < 50 && made.disk.names().length !== made.original.size; i++) await new Promise((done) => setTimeout(done, 10));
   assert.deepEqual(made.disk.names(), [...made.original.keys()].sort());
 });

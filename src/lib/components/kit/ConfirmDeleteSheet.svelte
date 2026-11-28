@@ -1,9 +1,8 @@
 <script lang="ts">
-  /* The delete-confirm shape every record-logging settings screen repeated:
-     a question, an optional hint line, a danger button and a ghost one
-     (phase 5 UX ticket 39a). The component takes every string as a prop -
-     it does not own copy, since a screen's own wording (and whether it has
-     a hint at all) is its business. */
+  /* The delete-confirm shape every record-logging settings screen repeated: a question, an
+     optional hint line, a danger button and a ghost one. The component takes every string
+     as a prop - it does not own copy, since a screen's own wording (and whether it has a
+     hint at all) is its business. */
   import { m } from '$lib/paraglide/messages';
   import Sheet from '$lib/components/Sheet.svelte';
   import { collapse } from '$lib/motion/reveal';
@@ -19,7 +18,8 @@
     onCancel,
     confirmAttrs = {},
     busy = false,
-    failed = false
+    failed = false,
+    onClosed
   }: {
     open: boolean;
     title: string;
@@ -45,10 +45,12 @@
     busy?: boolean;
     /** The last delete failed; the record is still there. */
     failed?: boolean;
+    /** Sheet's own onClosed: the moment the screen can take focus back. */
+    onClosed?: () => void;
   } = $props();
 </script>
 
-<Sheet {open} {title} onClose={onCancel} {busy}>
+<Sheet {open} {title} onClose={onCancel} {onClosed} {busy}>
   <h3>{question}</h3>
   {#if hint}
     <p class="muted small" style="margin-bottom:var(--space-4)">{hint}</p>
@@ -57,15 +59,13 @@
     <p class="notice notice-danger" role="alert" data-delete-failed transition:collapse>{m.record_delete_failed()}</p>
   {/if}
   <div class="stack-3">
-    <!-- The kit's own handle, beside whatever the screen already named its
-         danger button (ADR-0029, the contract Notice and ListRow keep). The
-         cancel button keeps the nothing it had on all sixteen screens - no
-         flow grips it, and this ticket is not the place to widen what the
-         walkthrough can reach.
+    <!-- The kit's own handle, beside whatever the screen already named its danger button
+         (the contract Notice and ListRow keep). The cancel button keeps the nothing it had
+         on all sixteen screens - no flow grips it, and this ticket is not the place to
+         widen what the walkthrough can reach.
 
-         Spelled `=""` rather than left bare: an element carrying a spread
-         serializes a bare attribute as "true", and the screens this replaces
-         wrote theirs bare, which is "". -->
+         Spelled `=""` rather than left bare: an element carrying a spread serializes a bare
+         attribute as "true", and the screens this replaces wrote theirs bare, which is "". -->
     <button class="btn btn-danger" data-confirm-delete="" {...confirmAttrs} disabled={busy} aria-busy={busy} onclick={onConfirm}>
       <span>{confirmLabel}</span>
     </button>

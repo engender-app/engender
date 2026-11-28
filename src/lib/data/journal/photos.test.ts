@@ -34,7 +34,7 @@ test('attaching a photo writes both files and one row, and reads back', async ()
   const photos = (await journal.entries.getEntry(entryId))!.photos;
   assert.equal(photos.length, 1);
   assert.equal(photos[0].id, id);
-  // The stored name is the opaque uuid.jpg of ticket 11, not a label and
+  // The stored name is the opaque uuid.jpg of, not a label and
   // not whatever the picker called the original.
   assert.equal(photos[0].fileName, `${id}.jpg`);
   assert.deepEqual(files.names(), [`${id}-thumb.jpg`, `${id}.jpg`]);
@@ -134,7 +134,7 @@ test('removing a photo drops the row and both its files', async () => {
 });
 
 test('deleting an entry leaves its photo files alone - they go with it to trash, not to removeFilesOf', async () => {
-  // Phase 5 ticket 19: deleteEntry moves the entry to trash rather than
+  // DeleteEntry moves the entry to trash rather than
   // removing it, so a restore within the window has its files to give back.
   // purgeExpiredTrash (entries.test.ts) is what eventually takes them.
   const { files, journal } = await journalWithFiles();
@@ -221,7 +221,7 @@ test('the sweep is a no-op on an empty journal and an empty store', async () => 
   assert.deepEqual(files.names(), []);
 });
 
-test('the sweep keeps a referenced voice recording, which shares this store (ticket 24)', async () => {
+test('the sweep keeps a referenced voice recording, which shares this store', async () => {
   const { db, files, journal } = await journalWithFiles();
   const entryId = await anEntry(journal);
   await journal.entries.upsertEntry({ id: entryId, attachRecordings: [new Uint8Array([9])] });
@@ -241,11 +241,10 @@ test('the sweep reclaims a voice recording file no row references', async () => 
   assert.deepEqual(files.names(), []);
 });
 
-/* Phase 8 features ticket 52. The sweep's table list is what `referenced`
-   is built from, so `document` missing from it is not a leak - it is every
-   stored diagnosis deleted on the next boot. Both halves are asserted
-   because only the first one fails if the entry is taken back out. */
-test('the sweep keeps a document, which shares this store (ticket 52)', async () => {
+/* The sweep's table list is what `referenced` is built from, so `document` missing from it
+   is not a leak - it is every stored diagnosis deleted on the next boot. Both halves are
+   asserted because only the first one fails if the entry is taken back out. */
+test('the sweep keeps a document, which shares this store', async () => {
   const { db, files, journal } = await journalWithFiles();
   const id = await journal.documents.addDocument({ epochDay: 19000, title: 'Diagnosis' }, shot('d', 'D'));
   const stored = (await journal.documents.getDocument(id))!;
@@ -267,21 +266,19 @@ test('the sweep reclaims a deleted document’s files', async () => {
   assert.deepEqual(files.names(), []);
 });
 
-/* Phase 8 features tickets 53 and 55. A PDF document's two files are not
-   an image's two: the page beside it is drawn by the renderer at import
-   and its name is spelled off the `.pdf`, so a blanket filesOf() would
-   name the document itself twice and leave the real page unreferenced -
-   which is the sweep reclaiming a live row's first page. documentFilesOf()
-   is what tells the two kinds apart, and the pair below covers both halves
-   of it: a page that exists is kept, and a PDF the renderer could not read
-   has one file and no phantom second name. */
+/* A PDF document's two files are not an image's two: the page beside it is drawn by the
+   renderer at import and its name is spelled off the `.pdf`, so a blanket filesOf() would
+   name the document itself twice and leave the real page unreferenced - which is the sweep
+   reclaiming a live row's first page. documentFilesOf() is what tells the two kinds apart,
+   and the pair below covers both halves of it: a page that exists is kept, and a PDF the
+   renderer could not read has one file and no phantom second name. */
 const pdfDocument = (thumb: Uint8Array | null) => ({
   pdfBytes: new Uint8Array([...'%PDF-1.4'].map((c) => c.charCodeAt(0))),
   thumb
 });
 const drawnPage = new Uint8Array([...'its first page'].map((c) => c.charCodeAt(0)));
 
-test('the sweep keeps a PDF document’s file and the page drawn at import (ticket 55)', async () => {
+test('the sweep keeps a PDF document’s file and the page drawn at import', async () => {
   const { db, files, journal } = await journalWithFiles();
   const id = await journal.documents.addDocument({ epochDay: 19000, title: 'Diagnosis' }, pdfDocument(drawnPage));
   const stored = (await journal.documents.getDocument(id))!;
@@ -313,7 +310,7 @@ test('the sweep reclaims a deleted PDF document’s file and its page', async ()
 
 test('mood cannot be cleared from an entry even with a photo still on it', async () => {
   const { journal } = await journalWithFiles();
-  // Mood is required unconditionally now (ticket 04): a photo does not
+  // Mood is required unconditionally now: a photo does not
   // exempt an entry from carrying one, so clearing it is rejected even
   // though the photo remains.
   const entryId = await journal.entries.upsertEntry({ epochDay: 20001, mood: 3 });
@@ -326,7 +323,7 @@ test('mood cannot be cleared from an entry even with a photo still on it', async
   assert.equal(entry?.photos.length, 1);
 });
 
-/* One query for the Progress screen (ticket 08, ADR-0008): entry photos and
+/* One query for the Progress screen (ADR-0008): entry photos and
    milestone photos are rows in the same table, so the screen that shows
    every photo in the journal chronologically is a query, not a union
    assembled in JavaScript. */
@@ -356,7 +353,7 @@ test('starred photos hide trashed entries, return on restore, and keep milestone
     await journal.photos.setStarred(entryPhoto, true);
     await journal.photos.setStarred(milestonePhoto, true);
 
-    const starredIds = async () => (await journal.photos.starredPhotos()).map((photo) => photo.id);
+    const starredIds = async () => (await journal.photos.inJournal()).filter((photo) => photo.starred).map((photo) => photo.id);
     assert.deepEqual(await starredIds(), [milestonePhoto, entryPhoto]);
     await journal.entries.deleteEntry(entryId);
     assert.deepEqual(await starredIds(), [milestonePhoto]);
@@ -367,7 +364,7 @@ test('starred photos hide trashed entries, return on restore, and keep milestone
   }
 });
 
-test('an override takes precedence over the owner day in both inJournal and starredPhotos (ticket 47)', async () => {
+test('an override takes precedence over the owner day in inJournal', async () => {
   const { journal } = await journalWithFiles();
   const entryId = await journal.entries.upsertEntry({ epochDay: 20100, mood: 4 });
   const id = await journal.photos.attach({ entryId }, shot('e', 't'));
@@ -376,12 +373,10 @@ test('an override takes precedence over the owner day in both inJournal and star
   await journal.photos.setEpochDayOverride(id, 19000);
 
   assert.equal((await journal.photos.inJournal())[0].epochDay, 19000);
-  assert.equal((await journal.photos.starredPhotos())[0].epochDay, 19000);
 
   await journal.photos.setEpochDayOverride(id, null);
 
   assert.equal((await journal.photos.inJournal())[0].epochDay, 20100, 'clearing the override reverts to the inherited day');
-  assert.equal((await journal.photos.starredPhotos())[0].epochDay, 20100, 'clearing the override reverts to the inherited day');
 });
 
 test('setEpochDayOverride throws on an unknown id, the same way setStarred does', async () => {
@@ -405,7 +400,7 @@ test('a journal with no photos yields an empty list, not a broken join', async (
   assert.deepEqual(await journal.photos.inJournal(), []);
 });
 
-test("a trashed entry's photo drops out of inJournal; a milestone's is unaffected (phase 5 ticket 19)", async () => {
+test("a trashed entry's photo drops out of inJournal; a milestone's is unaffected", async () => {
   const { journal } = await journalWithFiles();
   const entryId = await journal.entries.upsertEntry({ epochDay: 20100, mood: 4 });
   const milestoneId = await journal.milestones.upsertMilestone({ name: 'HRT start', epochDay: 20000 });
@@ -420,7 +415,7 @@ test("a trashed entry's photo drops out of inJournal; a milestone's is unaffecte
 });
 
 /* Saving an entry is one action (PRD F1), and a photo on its own is enough
-   content for one (CONTEXT: "Entry"). So the photos picked in the editor
+   content for one. So the photos picked in the editor
    arrive with the save rather than in a second call after it - otherwise a
    photo-only entry is rejected as empty on the way to being given its
    photo. */
@@ -469,31 +464,10 @@ test('setStarred toggles a photo and throws on an unknown id', async () => {
   await assert.rejects(journal.photos.setStarred('no-such-id', true), /unknown photo/);
 });
 
-test('starredPhotos lists only starred photos, oldest first, entry and milestone alike', async () => {
-  const { journal } = await journalWithFiles();
-  const entryId = await journal.entries.upsertEntry({ epochDay: 20100, mood: 4 });
-  const milestoneId = await journal.milestones.upsertMilestone({ name: 'HRT start', epochDay: 20000 });
-
-  const entryPhoto = await journal.photos.attach({ entryId }, shot('e1', 't1'));
-  const milestonePhoto = await journal.photos.attach({ milestoneId }, shot('m1', 't1'));
-  await journal.photos.attach({ entryId }, shot('e2', 't2')); // never starred - excluded
-
-  assert.deepEqual(await journal.photos.starredPhotos(), []);
-
-  await journal.photos.setStarred(milestonePhoto, true);
-  await journal.photos.setStarred(entryPhoto, true);
-
-  assert.deepEqual(
-    (await journal.photos.starredPhotos()).map((p) => p.id),
-    [milestonePhoto, entryPhoto]
-  );
-});
-
 test('the sweep declines to run while a journal write is in flight', async () => {
-  /* Its precondition, enforced since phase 5 audit ticket 02 moved it off
-     boot's critical path (photos.ts): it reads the rows and then lists the
-     files, so a photo attached across that gap would look like an orphan and
-     lose its bytes. What it does not reclaim, the next boot does. */
+  /* Its precondition, enforced moved it off boot's critical path (photos.ts): it reads the
+     rows and then lists the files, so a photo attached across that gap would look like an
+     orphan and lose its bytes. What it does not reclaim, the next boot does. */
   const { db, files } = await journalWithFiles();
   await files.write('99999999-dead-4000-8000-000000000000.webm', new Uint8Array([9]));
 

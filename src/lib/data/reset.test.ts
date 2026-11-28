@@ -1,6 +1,8 @@
 import { test, expect } from 'vitest';
 import { androidResetTargets, clearBrowserMirrors, wipeAndroidJournalFiles, wipeLocalData, type LocalDataTargets } from './reset.ts';
-import { RECOVERY_KEY_FILE } from './recovery-key-file.ts';
+import { PENDING_RECOVERY_KEY_FILE, RECOVERY_KEY_FILE } from './recovery-key-file.ts';
+import { KEYSTORE_FILE } from './keystore-file.ts';
+import { DEVICE_BOUND_FILE } from './journal-initialization.ts';
 import { BOOT_ACCESS_MODE_KEY, BOOT_CACHE_KEY } from './prefs/boot-cache.ts';
 import type { ListableDirectory } from './photos/opfs-file-store.ts';
 
@@ -58,11 +60,11 @@ test('closes the database, empties its storage, then drops the mirror', async ()
   await wipeLocalData(deps);
 
   expect(log).toEqual([
+    'clear mirrors',
     'close',
     'remove engender.sqlite3 (recursive)',
     'remove engender.sqlite3.pre-migration-backup (recursive)',
     'remove photos (recursive)',
-    'clear mirrors',
     'clear cache'
   ]);
 });
@@ -74,13 +76,12 @@ test('a database that will not close is no reason to leave the data', async () =
   expect(log).toContain('clear cache');
 });
 
-/* The recovery key is swept by the same recursive walk and by no line of
-   its own (ADR-0054, ticket sec-01), which is worth a test precisely
-   because there is nothing in reset.ts naming it: a reset that left the
-   file behind would leave a written key that opens a journal the person
-   asked to be rid of - and, once a new journal is set up on the same
-   device, a stale wrap sitting next to it. Whoever narrows this sweep to a
-   list of known names has to fail here. */
+/* The recovery key is swept by the same recursive walk and by no line of its own
+   (ADR-0054), which is worth a test precisely because there is nothing in reset.ts naming
+   it: a reset that left the file behind would leave a written key that opens a journal the
+   person asked to be rid of - and, once a new journal is set up on the same device, a stale
+   wrap sitting next to it. Whoever narrows this sweep to a list of known names has to fail
+   here. */
 test('a reset takes the recovery key with everything else under the root', async () => {
   const { deps, log } = targets({
     entries: ['engender.sqlite3', 'keystore.json', RECOVERY_KEY_FILE, '.opfs-sahpool']
@@ -93,7 +94,7 @@ test('a reset takes the recovery key with everything else under the root', async
 
 test('a reset during an interrupted conversion takes the plaintext journal and the marker too', async () => {
   /* The one path where "everything under the root" is doing real work
-     rather than being tidy (ticket 10): mid-conversion the root holds the
+     rather than being tidy: mid-conversion the root holds the
      plaintext journal, the keystore for a journal that does not exist yet
      and the marker saying how far it got. Leaving any of them would hand
      the next boot either readable entries the person asked to be rid of,
@@ -124,7 +125,7 @@ test('storage that will not empty fails loudly, with the mirror left alone', asy
 });
 
 test('a platform with storage of its own has it wiped too, after the close', async () => {
-  /* Android (ticket 13): the journal and the Keystore-wrapped data key live
+  /* Android: the journal and the Keystore-wrapped data key live
      in app-private storage, which the OPFS root does not reach. A reset that
      emptied only OPFS would leave the whole journal behind. */
   const { deps, log } = targets({ platform: true });
@@ -209,10 +210,9 @@ test('a completed reset leaves no key of this app behind in localStorage', async
 });
 
 test('the sweep takes every key the app actually writes, boot mirror excepted', () => {
-  /* Audit finding S3: stock_notice_snooze_until matched neither the
-     engender- prefix nor the letter_tile_snooze_until exception, so it
-     rode out a reset. Named here by the five keys the app is known to
-     write to localStorage, so a future stray write fails this the same
+  /* stock_notice_snooze_until matched neither the engender- prefix nor the
+     letter_tile_snooze_until exception, so it rode out a reset. Named here by the five keys
+     the app is known to write to localStorage, so a future stray write fails this the same
      way stock_notice_snooze_until did. */
   const storage = fakeStorage({
     'engender-entry-draft': '{"note":"first day on the patch"}',
@@ -245,8 +245,8 @@ test('the sweep leaves the boot mirror for clearBootCache to take last', async (
   expect(storage.getItem(BOOT_ACCESS_MODE_KEY)).not.toBeNull();
 });
 
-/* ux-carpet 214: the photos went nowhere on a start-over. They are sealed
-   under the data key, so they go with the database, before the key. */
+/* The photos went nowhere on a start-over. They are sealed under the data key, so they go
+   with the database, before the key. */
 test('the Android wipe takes the database and the photos before the key', async () => {
   const log: string[] = [];
   await wipeAndroidJournalFiles({
@@ -271,13 +271,12 @@ test('photos that will not delete keep the key, so the reset can be retried', as
   expect(log).toEqual(['database']);
 });
 
-/* Phase 14 ticket 15: Settings' Delete everything reaches resetApp on
-   Android too, where a journal in Unlocked mode has no gate. What resetApp
-   hands wipeLocalData there is built here, so the wiring is checked against
-   fake bridges: the database, the photo files, the data key, and the
-   device-reset plugin that takes the preference files and the alarms
-   scheduled off them (one native call; the files and alarms behind it are
-   the plugin's own, android/app/.../reset/DeviceResetPlugin.java). */
+/* Settings' Delete everything reaches resetApp on Android too, where a journal in Unlocked
+   mode has no gate. What resetApp hands wipeLocalData there is built here, so the wiring is
+   checked against fake bridges: the database, the photo files, the data key, and the
+   device-reset plugin that takes the preference files and the alarms scheduled off them
+   (one native call; the files and alarms behind it are the plugin's own,
+   android/app/.../reset/DeviceResetPlugin.java). */
 test('on Android the reset reaches every native store through its bridge', async () => {
   const log: string[] = [];
   const bridge = (name: string) => async () => {
@@ -300,5 +299,22 @@ test('on Android the reset reaches every native store through its bridge', async
     clearBrowserMirrors: () => log.push('mirrors'),
     clearBootCache: () => log.push('boot cache')
   });
-  expect(log).toEqual(['close', 'delete database', 'delete photos', 'erase key', 'wipe prefs and alarms', 'mirrors', 'boot cache']);
+  expect(log).toEqual(['mirrors', 'close', 'delete database', 'delete photos', 'erase key', 'wipe prefs and alarms', 'boot cache']);
 });
+
+
+test('ordinary mirrors leave before asynchronous deletion, while the boot mirror stays until success', async () => {
+  const { deps, log } = targets();
+  await wipeLocalData(deps);
+  expect(log.indexOf('clear mirrors')).toBeLessThan(log.indexOf('remove engender.sqlite3 (recursive)'));
+  expect(log.at(-1)).toBe('clear cache');
+});
+
+test.each([KEYSTORE_FILE, DEVICE_BOUND_FILE, RECOVERY_KEY_FILE, PENDING_RECOVERY_KEY_FILE])(
+  'failed data removal preserves %s even when the directory lists it first', async (credential) => {
+    const { deps, log } = targets({ entries: [credential, 'photos'], removeFails: 'photos' });
+    await expect(wipeLocalData(deps)).rejects.toThrow('still open');
+    expect(log).not.toContain(`remove ${credential} (recursive)`);
+    expect(log).not.toContain('clear cache');
+  }
+);

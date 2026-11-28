@@ -1,5 +1,4 @@
-/* The long-journal probe puts the app's origin back the way it found it
-   (ux-carpet 216). */
+/* The long-journal probe puts the app's origin back the way it found it. */
 
 import assert from 'node:assert/strict';
 import { test } from 'vitest';

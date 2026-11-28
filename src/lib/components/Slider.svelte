@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* The app's one slider (phase 5 ticket 30).
+  /* The app's one slider.
 
      There used to be two: a native input[type="range"] whose thumb was 26px
      in Chromium and 20px in Gecko, and this hand-built one. Both are now
@@ -70,25 +70,14 @@
     onValueChange: (v) => onInput(snapToStop(v, min, max, scale.step)),
   });
 
-  /* Melt registers its own window pointermove/pointerup pair inside the `root`
-     getter (melt/builders/Slider, via runed's useEventListener, which is an
-     $effect), so their lifetime belongs to whoever reads that getter. Read
-     only from the template's spread, they are torn down and re-attached on
-     every value change - and a release that lands before Svelte's next flush
-     finds no pointerup listener at all. Melt's mouse-down flag is a plain
-     field rather than state, so nothing else ever clears it, and from that
-     moment the control commits on every window pointermove for the rest of
-     the screen's life: the thumb follows the pointer with nothing held, and
-     two sliders that have both been touched end up on one value, whichever of
-     them the finger last moved past. Reported on 2026-08-25 as "two sliders
-     lock onto each other"; measured as a slider walking 20 to 85 to 90 with
-     the button up.
+  /* Melt registers window pointermove and pointerup inside its root
+     getter. A template-only read reattaches listeners on value
+     changes and can miss a release before Svelte's next flush. The
+     plain mouse-down flag then stays set and commits later moves.
 
-     So the getter is read once here instead, untracked, which gives the pair
-     the component's lifetime. The template still spreads it - that is where
-     the attributes come from and they have to stay reactive - and the
-     duplicate registration is harmless, because a commit is the same value
-     computed twice from the same event. */
+     Read root untracked once to keep listeners for this component's
+     lifetime. Keep the reactive template spread for attributes.
+     Duplicated handlers compute the same value from the event. */
   $effect(() => {
     untrack(() => slider.root);
   });
@@ -175,17 +164,15 @@
 </div>
 
 <style>
-  /* An unset slider (ticket 31). The thumb has to rest somewhere, and where
-     it rests is not a value anyone logged - on a body region both axes start
-     this way, so a mid-track thumb would otherwise read as a middling score.
-     Ticket 31 dimmed it; dimmed, a half-filled track beside a "-" still read
-     as a value (audit UX-17), so the thumb and the fill are not drawn at all
-     until the first touch, and fade in under the finger when it lands, over
-     240ms in-out: at 150ms ease-out the first frame took 44% of the fade.
-     The groove and the ruler stay: they are the control, and the scale is
-     true whether or not there is a value on it yet. Here rather than in
-     components.css with the rest of the slider, because that sheet is part
-     of the first load and only an editor draws an unset scale. */
+  /* An unset slider. The thumb has to rest somewhere, and where it rests is not a value
+     anyone logged - on a body region both axes start this way, so a mid-track thumb would
+     otherwise read as a middling score. Even dimmed, a half-filled track still
+     looks like a value. Hide the thumb and fill until the first
+     touch and fade them in over 240ms in-out: at 150ms ease-out
+     the first frame took 44% of the fade. The groove and the ruler stay: they are the
+     control, and the scale is true whether or not there is a value on it yet. Here rather
+     than in components.css with the rest of the slider, because that sheet is part of the
+     first load and only an editor draws an unset scale. */
   .slider-fill { transition: opacity var(--dur-med) var(--ease-in-out); }
   .slider-thumb {
     transition: box-shadow var(--dur-fast) var(--ease-out), opacity var(--dur-med) var(--ease-in-out);

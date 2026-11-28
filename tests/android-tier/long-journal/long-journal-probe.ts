@@ -1,4 +1,4 @@
-/* The Android ten-year benchmark (phase 2 ticket 20).
+/* The Android ten-year benchmark.
 
    The web half of this measurement lives in tests/long-journal/probe.ts and runs
    under headless Chrome with OPFS and the web SQLite driver. This probe is the
@@ -25,8 +25,9 @@ import { appPrivatePhotoFiles } from '../../../src/lib/data/photos/android-file-
 import { thumbFileName } from '../../../src/lib/data/photos/names.ts';
 import { addJournalPassphrase, unlockJournalPassphrase } from '../../../src/lib/data/journal-passphrase.ts';
 import { sweepOrphanPhotos } from '../../../src/lib/data/journal/photos.ts';
-import { generateLongJournal, ONE_YEAR_IN_DAYS, TEN_YEARS_IN_DAYS } from '../../long-journal/generate.ts';
+import { generateLongJournal, ONE_YEAR_IN_DAYS, TEN_YEARS_IN_DAYS, type LongJournalSummary } from '../../long-journal/generate.ts';
 import { compareJournalSizes } from '../../long-journal/scaling.ts';
+import { prepareMountedLookBack } from '../../long-journal/mount-look-back.svelte';
 import { measureLongJournal } from '../../long-journal/measure.ts';
 import type { NormalizedPhoto } from '../../../src/lib/data/journal/photos.ts';
 import type { Measurement } from '../../long-journal/measure.ts';
@@ -203,9 +204,25 @@ async function run(days: number) {
   const journal = openJournal(booted.driver, files);
   await journal.reconcileBuiltIns();
 
+  const beforeEntries = await journal.entries.countAll();
+  if (beforeEntries !== 0) throw new Error(`fixture must start empty: ${beforeEntries} entries`);
+  // WebView defers idle canvas encoding. Keep fixture setup active, then stop
+  // before any scored work; the photo encoder and its bytes remain unchanged.
+  let setupFrames = 0;
+  let frame = 0;
+  const animateSetup = () => { setupFrames++; frame = requestAnimationFrame(animateSetup); };
+  frame = requestAnimationFrame(animateSetup);
   const startedAt = performance.now();
-  const summary = await generateLongJournal(journal, { days, makePhoto: photoMaker() });
+  let summary: LongJournalSummary;
+  try {
+    summary = await generateLongJournal(journal, { days, makePhoto: photoMaker() });
+  } finally { cancelAnimationFrame(frame); }
   const generatedInMs = Math.round(performance.now() - startedAt);
+  const stoppedSetupFrames = setupFrames;
+  const afterEntries = await journal.entries.countAll();
+  if (afterEntries !== summary.entries) throw new Error(`fixture count differs: ${afterEntries} != ${summary.entries}`);
+  const fixtureIntegrity = { beforeEntries, afterEntries, setupFrames: stoppedSetupFrames };
+  console.info(`LongJournal fixture ready: ${JSON.stringify({ days, generatedInMs, ...fixtureIntegrity })}`);
 
   await addJournalPassphrase(PROBE_DATA_KEY, PROBE_PASSPHRASE);
   await booted.driver.close();
@@ -239,8 +256,7 @@ async function run(days: number) {
 
   /* Over the recording adapter, so the mount budgets mean the same thing
      here as they do on desktop: the same statements counted the same way,
-     with the Capacitor bridge underneath instead of a worker (phase 8
-     audit ticket 01). */
+     with the Capacitor bridge underneath instead of a worker. */
   const recorder = recordingDriver(reopened.driver);
   const reopenedJournal = openJournal(recorder.driver, reopenedFiles);
   const rowsBeforeSweep = await reopenedJournal.photos.inJournal();
@@ -293,7 +309,8 @@ async function run(days: number) {
   const measurements = await measureLongJournal(reopenedJournal, reopenedFiles, {
     today: summary.lastEpochDay,
     summary,
-    recorder
+    recorder,
+    prepareLookBack: (journal, today) => prepareMountedLookBack(journal, today, recorder)
   });
 
   reopenedJournal.archive.snapshot = originalSnapshot;
@@ -302,14 +319,15 @@ async function run(days: number) {
     ? await measureAutomaticBackup(snapshot, days)
     : { state: 'not-run', reason: 'Automatic backup measurement requires disposable emulator opt-in' };
   await reopened.driver.close();
-  return { summary, measurements: [...startup, ...measurements], generatedInMs, photoBytes, automaticBackup };
+  if (setupFrames !== stoppedSetupFrames) throw new Error('fixture animation continued during measurements');
+  return { summary, measurements: [...startup, ...measurements], generatedInMs, photoBytes, automaticBackup,
+    fixtureIntegrity: { ...fixtureIntegrity, setupFramesAfterMeasurements: setupFrames } };
 }
 
-/* The probe shares the app's origin, so it hands the origin back before it
-   reports (origin-snapshot.ts, ux-carpet 216): the Java test ends the moment
-   the result appears. A restore that fails is reported as the run's error,
-   because a phone left holding the probe's keystore is worse than a failed
-   benchmark. */
+/* The probe shares the app's origin, so it hands the origin back before it reports
+   (origin-snapshot.ts): the Java test ends the moment the result appears. A restore that
+   fails is reported as the run's error, because a phone left holding the probe's keystore
+   is worse than a failed benchmark. */
 async function main() {
   const restoreOrigin = await snapshotOrigin(
     (await navigator.storage.getDirectory()) as unknown as OriginDirectory,

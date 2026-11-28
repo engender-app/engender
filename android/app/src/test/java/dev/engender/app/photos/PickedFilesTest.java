@@ -20,24 +20,47 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * The token store between a pick and whichever transport reads its bytes
- * (phase 9 audit ticket 06). Pure logic, so a JVM test rather than an
- * instrumented one - {@code PhotoPickChannelTest} is where the channel that
- * redeems these tokens meets a real WebView.
+ * The token store between a pick and whichever transport reads its bytes.
+ * Pure logic, so a JVM test rather than an instrumented one - {@code
+ * PhotoPickChannelTest} is where the channel that redeems these tokens meets
+ * a real WebView.
  *
- * <p>The chunked half is phase 9 audit ticket 14's: the base64 fallback
- * hands a picked file back a piece at a time, so unlike {@link
- * PickedFiles#take} its entry has to survive between bridge calls. What
- * these check is the lifetime that follows from that - when the stream is
- * opened, when it is closed, and that nothing can read a token twice.
+ * <p>The base64 fallback returns a picked file one
+ * piece at a time, so unlike {@link PickedFiles#take} its entry has to
+ * survive between bridge calls. What these check is the lifetime that follows
+ * from that - when the stream is opened, when it is closed, and that nothing
+ * can read a token twice.
  */
 public class PickedFilesTest {
+
+    /** The photo ceiling is 50 MiB: exactly that reads, one byte more is refused. */
+    @Test
+    public void photoChannelAcceptsExactlyTheCeilingAndRefusesOneByteMore() throws Exception {
+        long ceiling = 50L * 1024 * 1024;
+        assertEquals(ceiling, PhotoPickChannel.readFully(PhotoPickChannel.limit(zeros(ceiling), ceiling)).length);
+        IOException refused = assertThrows(IOException.class,
+            () -> PhotoPickChannel.readFully(PhotoPickChannel.limit(zeros(ceiling + 1), ceiling)));
+        assertEquals("too-large", refused.getMessage());
+    }
+
+    private static InputStream zeros(long length) {
+        return new InputStream() {
+            long remaining = length;
+            @Override public int read() { return remaining-- > 0 ? 0 : -1; }
+            @Override public int read(byte[] buffer, int offset, int count) {
+                if (remaining <= 0) return -1;
+                int read = (int) Math.min(remaining, count);
+                remaining -= read;
+                return read;
+            }
+        };
+    }
 
     @Test
     public void photoChannelAcceptsThirtyMiB() throws Exception {
         byte[] photo = new byte[30 * 1024 * 1024];
         assertEquals(photo.length, PhotoPickChannel.readFully(
-            PhotoPickChannel.limit(new ByteArrayInputStream(photo), 32L * 1024 * 1024)).length);
+            PhotoPickChannel.limit(new ByteArrayInputStream(photo), 50L * 1024 * 1024)).length);
     }
 
     @Test
@@ -136,7 +159,7 @@ public class PickedFilesTest {
         assertFalse(opened[0]);
     }
 
-    /* ---- the chunked read (phase 9 audit ticket 14) ---- */
+    /* ---- the chunked read ---- */
 
     /** The shape the base64 fallback needs: a buffer's worth per call until
         a short read says the file is finished. A short read rather than a
@@ -387,4 +410,32 @@ public class PickedFilesTest {
         assertTrue(next.closed);
     }
 
+
+    @Test
+    public void aTokenReadWhileTheAppWasLockingCanBeTakenBackOnce() throws Exception {
+        PickedFiles.hold(Collections.<PickedFiles.Source>emptyList());
+        List<String> tokens = PickedFiles.hold(Collections.singletonList(PickedFiles.ofBytes(new byte[] {1, 2, 3})));
+        String token = tokens.get(0);
+        byte[] buffer = new byte[16];
+        assertEquals(3, PickedFiles.readChunk(token, buffer));
+        assertEquals("read to the end: the token is spent", -1, PickedFiles.readChunk(token, buffer));
+
+        assertTrue(PickedFiles.reopen(token));
+        assertFalse("only once", PickedFiles.reopen(token));
+        assertEquals(3, PickedFiles.readChunk(token, buffer));
+        assertArrayEquals(new byte[] {1, 2, 3}, Arrays.copyOf(buffer, 3));
+    }
+
+    @Test
+    public void aNextPickAndAResetForgetWhatWasTakenBack() throws Exception {
+        String old = PickedFiles.hold(Collections.singletonList(PickedFiles.ofBytes(new byte[] {9}))).get(0);
+        assertNotNull(PickedFiles.take(old));
+        PickedFiles.hold(Collections.<PickedFiles.Source>emptyList());
+        assertFalse(PickedFiles.reopen(old));
+
+        String again = PickedFiles.hold(Collections.singletonList(PickedFiles.ofBytes(new byte[] {9}))).get(0);
+        assertNotNull(PickedFiles.take(again));
+        PickedFiles.clear();
+        assertFalse(PickedFiles.reopen(again));
+    }
 }

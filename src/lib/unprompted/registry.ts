@@ -1,62 +1,13 @@
-/* Every kind the app may show or fire unprompted (phase 6 tickets 02 and
-   04): a live tile (CONTEXT.md), the stock notice, wrapped and on-this-day,
-   and - since ticket 04 - the four producers that used to answer to nobody
-   in common, namely reminders, the daily check-in, a wear session's elapsed
-   prompt and the auto-export failure notice. Era mutes fold in at ticket
-   05; insight rows at 06 - each of those becomes one array entry below
-   rather than a fifth place deciding for itself.
+/* Register everything the app can show or send unprompted. Today edits live tiles, and
+   Settings handles other surface switches and notifications. Each switch applies to the
+   whole kind. A running session keeps its real-time surface.
 
-   The list is the point: each of the two views draws one row per entry and
-   nothing else, so a later ticket adds its kind here - one array entry, no
-   new markup - the same way archiveSections.ts is a registry rather than a
-   hand-maintained list. Titles and subtitles are keyless functions over the
-   message catalogue for the same reason the More hub's HubRow is: the
-   swatch names translate with everything else.
+   Only a scheduled time or a failure can prompt a notification. Reminders, check-in and
+   wear-elapsed are scheduled. Export failure reports an error. Insights and offers wait
+   inside the app.
 
-   One list, read by the surfaces that arrange what is on it. Deepening
-   ticket 09 merged the two views this list was written for into
-   `/settings/notifications`, and phase 11 ticket 04 took the thirteen live
-   tiles off that screen again and onto Today's own editor, which is the
-   page they draw on: a front page curated in two places is two curation
-   surfaces for one screen. So a `surface` row is switched either in the
-   editor (`isLiveTileKind`) or on that screen, and every `notify` row is
-   switched on that screen. Someone asking "stop buzzing my phone" and
-   someone asking "stop showing me this" are still different people in
-   different moments; what changed is where the second one is standing.
-
-   A row switches its kind off for good, never one true instance (a running
-   session cannot be hidden while it runs) - ADR-0039's amendment holds the
-   line, and the tile tickets read these keys as one gate on top of their
-   own data trigger.
-
-   ## The admission rule (phase 6 ticket 04)
-
-   **A notification requires that the person scheduled this specific thing
-   for a specific time, or that something failed. Everything else surfaces
-   in the app and waits.**
-
-   Written down here because its whole value is that the next feature has to
-   argue with it: a kind that wants a `notify` below has to say which half
-   of the rule admits it. What the six firing rows claim today:
-
-   - `reminders`, `check-in`, `wear-elapsed` - scheduled, for a time the
-     person themselves set (a rule, a check-in time, an hour count on a wear
-     session).
-   - `export-failure` - something failed, and nothing was saved.
-   - `wrapped`, `on-this-day` - **grandfathered.** Neither passes the rule:
-     both are content offers the app decides are due. They keep their
-     existing opt-in toggles and behaviour because a milestone about consent
-     should not silently withdraw behaviour people already chose, not
-     because the rule admits them.
-
-   Applied honestly to what phase 6 adds, the rule admits nothing new: the
-   appointment debrief offer, insights and the flourish are all in-app. That
-   is the expected outcome rather than a sign a ticket is incomplete.
-
-   Quiet hours is the one cross-class rule (quietHours.ts), not a field per
-   row: a notification due inside the window is held until the window ends,
-   never dropped. Disguise is the other - `hideNotificationTitles` covers
-   every row that has a `notify`, which `disguised: true` makes a type rule. */
+   Quiet hours delay notifications until the window ends. Disguise hides titles for every
+   notification kind, enforced by its type. */
 /* Relative rather than $lib: registry.test.ts imports this file on the node
    tier, where no $lib alias exists - the one svelte-kit-ism the tests can't
    follow (see vitest.config.ts). */
@@ -81,83 +32,46 @@ export type UnpromptedKind =
   | 'surgery-countdown'
   | 'safe-space-nudge'
   | 'stock-notice'
-  | 'active-tryout-tile'
-  | 'patch-schedule-tile'
-  | 'voice-benchmark-nudge'
-  | 'pause-active-banner'
-  | 'hair-removal-recovery'
-  | 'measurements-nudge'
-  | 'appointment-today'
   | 'wrapped'
   | 'on-this-day'
-  | 'revisit'
   | 'reminders'
   | 'check-in'
   | 'wear-elapsed'
   | 'export-failure';
 
-/** Which Android notification channel a firing kind uses. Reminders, the
-    check-in and a wear session's elapsed prompt share the two fixed channels
-    android-bridge.ts declares - a wear prompt is an ordinary Reminder row
-    (CONTEXT.md), so it arrives on the reminder channel rather than one of its
-    own. Wrapped and on-this-day each name a channel after their own title
-    (retrospective-notifications-scheduler.ts); `retrospective` covers both
-    here, since what varies between them is the channel's display name, not
-    its category. `exportFailure` is AutoExportPlugin's own. */
-type NotificationChannel = 'reminders' | 'checkIn' | 'retrospective' | 'exportFailure';
+/** Android channels used by remaining notification producers. */
+type NotificationChannel = 'reminders' | 'checkIn' | 'exportFailure';
 
 export interface UnpromptedRow {
-  /** Stable handle for the walkthrough (ADR-0029) - never the title, which
-      is copy. */
+  /** Stable handle for the walkthrough - never the title, which is copy. */
   key: UnpromptedKind;
   /** What the kind is. Shared by both views: a row on one screen and a row
       on the other are the same kind, and calling it two things would be the
       "two registries" this file exists not to be. */
   title: () => string;
-  /** Which area this kind talks about, or null where it talks about none
-      (phase 8 features ticket 04, ADR-0052).
-
-      An area that is hidden or finished goes quiet, and this is the field
-      that says what "for that area" means - one declaration per kind, on the
-      list that already holds every kind, rather than a second list of tiles
-      and notifications kept somewhere else and silently missing the next one.
-      `unpromptedQuiet` below is what reads it.
-
-      Required, and nullable rather than optional, so a kind added here has to
-      decide. Null is a real answer for most of them: a letter unlocking, a
-      journaling pause, an export that failed and the two retrospectives are
-      about the journal as a whole, and `entries` is not finishable.
-
-      A row's `prefKey` is untouched by any of this. Whether a kind of prompt
-      talks is a different question from whether an area is on, and this is a
-      switch above the preferences rather than a replacement for them.
-
-      Checked 2026-09-05 (features ticket 35) against the worry that
-      `prefs/catalogue.ts`'s `*Enabled` booleans are a second, boolean-shaped
-      answer to what this field already answers: they are not. Five rows
-      carry a non-null area today - `wear-timer` and `wear-elapsed` both
-      name `wearSessions`, so it is five booleans across four areas, not
-      four - and every other `*Enabled` boolean fronts a record that cannot
-      be an area at all (its own reason lives on its row above). ADR-0039's
-      amendment is why the boolean survives alongside the cascade rather than
-      being replaced by it: a kind's toggle means "never show me this kind,"
-      not "hide the one instance that's currently true," and folding it into
-      `unpromptedQuiet` would delete that distinction. This field being
-      required rather than optional already forces the next kind to answer
-      the same question, so no separate exhaustiveness guard is needed for
-      it either. Nothing changed as a result of this check - see ticket 35's
-      Outcome. */
+  /**
+   * Name the area whose hidden or finished state quiets this kind (ADR-0052).
+   * Use null for kinds that concern the journal as a whole, such as export
+   * failure or the retrospectives. The field is required so every new kind
+   * makes that choice.
+   *
+   * unpromptedQuiet applies the area rule on top of each kind's own
+   * preference. Hiding an area does not change its surfaceOverrides or
+   * notification switch.
+   */
   area: HideableArea | null;
-  /** Present when this kind shows something in the app of its own, carrying
-      the preference its switch writes and the subtitle saying what it puts
-      in front of you. The switch is in Today's editor for a live tile and on
-      `/settings/notifications` for everything else (ticket 04). Absent is "shows
-      nothing in the app of its own": the four producers ticket 04 folded in
-      all fire and none surfaces. */
-  surface?: { subtitle: () => string; prefKey: BooleanPrefKey };
+  /** Present when this kind shows something in the app of its own, carrying a subtitle
+      saying what it puts in front of you where the title does not already say it, and
+      whether it shows until the person says otherwise (`defaultOn`). The switch is one
+      entry in the `surfaceOverrides` preference, keyed by this row's key, and sits in
+      Today's editor for a live tile and on `/settings/notifications` for everything else.
+      Absent is "shows nothing in the app of its own": the four producers folded in all fire
+      and none surfaces. */
+  surface?: { subtitle?: () => string; defaultOn: boolean };
   /** Present when this kind may become a notification, and what firing
       means: the preference the notifications view's switch writes, the
-      subtitle saying *when* it fires, which channel it fires on, and
+      subtitle saying *when* it fires (only where the title leaves that
+      open), which channel it fires on, and
       `disguised: true`, the literal type being the enforcement: every
       notification is covered by `hideNotificationTitles`, so a row cannot
       declare otherwise. Absent is "never
@@ -165,7 +79,7 @@ export interface UnpromptedRow {
       answer the admission rule above. A `notify` with no `channel` does not
       compile - see `UNPROMPTED_ROWS` below. */
   notify?: {
-    subtitle: () => string;
+    subtitle?: () => string;
     prefKey: BooleanPrefKey;
     channel: NotificationChannel;
     disguised: true;
@@ -184,126 +98,56 @@ const ROWS = [
     key: 'wear-timer',
     area: 'wearSessions',
     title: () => m.tile_wear_title(),
-    surface: { subtitle: () => m.tile_wear_sub(), prefKey: 'wearTimerEnabled' }
+    surface: { defaultOn: true }
   },
   {
     key: 'dose-panel',
     // a dose is an event inside a regimen episode, and an episode carries its own end day.
     area: null,
     title: () => m.tile_dose_title(),
-    surface: { subtitle: () => m.tile_dose_sub(), prefKey: 'dosePanelEnabled' }
+    surface: { subtitle: () => m.tile_dose_sub(), defaultOn: true }
   },
   {
     key: 'ready-letter',
     // a letter is sealed and then unlocked, which is its whole lifecycle.
     area: null,
     title: () => m.tile_letter_title(),
-    surface: { subtitle: () => m.tile_letter_sub(), prefKey: 'readyLetterEnabled' }
+    surface: { defaultOn: true }
   },
   {
     key: 'surgery-countdown',
     // a procedure has its own date and its own recovery window.
     area: null,
     title: () => m.tile_surgery_title(),
-    surface: { subtitle: () => m.tile_surgery_sub(), prefKey: 'surgeryCountdownEnabled' }
+    surface: { subtitle: () => m.tile_surgery_sub(), defaultOn: true }
   },
   {
     key: 'safe-space-nudge',
     // a crisis surface, and being done needing it is not a thing to record.
     area: null,
     title: () => m.tile_safe_space_title(),
-    surface: { subtitle: () => m.tile_safe_space_sub(), prefKey: 'safeSpaceNudgeEnabled' }
+    surface: { subtitle: () => m.tile_safe_space_sub(), defaultOn: true }
   },
   {
     key: 'stock-notice',
     // a running count of what is in the drawer, not a series to stop adding to.
     area: null,
     title: () => m.tile_stock_title(),
-    surface: { subtitle: () => m.tile_stock_sub(), prefKey: 'stockNoticeEnabled' }
-  },
-  {
-    key: 'active-tryout-tile',
-    // a tryout carries its own end day.
-    area: null,
-    title: () => m.tile_active_tryout_title(),
-    surface: { subtitle: () => m.tile_active_tryout_sub(), prefKey: 'activeTryoutTileEnabled' }
-  },
-  {
-    key: 'patch-schedule-tile',
-    // the dose log again, for the same reason as the dose panel.
-    area: null,
-    title: () => m.tile_patch_schedule_title(),
-    surface: { subtitle: () => m.tile_patch_schedule_sub(), prefKey: 'patchScheduleTileEnabled' }
-  },
-  {
-    key: 'voice-benchmark-nudge',
-    area: 'voiceBenchmarks',
-    title: () => m.tile_voice_benchmark_title(),
-    surface: { subtitle: () => m.tile_voice_benchmark_sub(), prefKey: 'voiceBenchmarkNudgeEnabled' }
-  },
-  {
-    key: 'pause-active-banner',
-    // a journaling pause already carries the day it started and the day it ended.
-    area: null,
-    title: () => m.tile_pause_active_title(),
-    surface: { subtitle: () => m.tile_pause_active_sub(), prefKey: 'pauseActiveBannerEnabled' }
-  },
-  {
-    key: 'hair-removal-recovery',
-    area: 'hairRemovalSessions',
-    title: () => m.tile_hair_removal_title(),
-    surface: { subtitle: () => m.tile_hair_removal_sub(), prefKey: 'hairRemovalRecoveryEnabled' }
-  },
-  {
-    key: 'measurements-nudge',
-    area: 'measurements',
-    title: () => m.tile_measurements_title(),
-    surface: { subtitle: () => m.tile_measurements_sub(), prefKey: 'measurementsNudgeEnabled' }
-  },
-  {
-    key: 'appointment-today',
-    // appointments is its own hideable series (hubRows.ts): hiding it takes
-    // this tile with it the same way hiding wearSessions takes wear-timer.
-    area: 'appointments',
-    title: () => m.tile_appointment_title(),
-    surface: { subtitle: () => m.tile_appointment_sub(), prefKey: 'appointmentTodayEnabled' }
+    surface: { defaultOn: true }
   },
   {
     key: 'wrapped',
     // the journal as a whole, and `entries` is not finishable.
     area: null,
     title: () => m.wrapped(),
-    surface: { subtitle: () => m.wrapped_settings_sub(), prefKey: 'wrappedEnabled' },
-    notify: {
-      subtitle: () => m.wrapped_notify_sub(),
-      prefKey: 'wrappedNotificationsEnabled',
-      channel: 'retrospective',
-      disguised: true
-    }
+    surface: { subtitle: () => m.wrapped_settings_sub(), defaultOn: true }
   },
   {
     key: 'on-this-day',
     // the journal as a whole, for the same reason.
     area: null,
     title: () => m.on_this_day(),
-    surface: { subtitle: () => m.on_this_day_settings_sub(), prefKey: 'onThisDayEnabled' },
-    notify: {
-      subtitle: () => m.on_this_day_notify_sub(),
-      prefKey: 'onThisDayNotificationsEnabled',
-      channel: 'retrospective',
-      disguised: true
-    }
-  },
-  {
-    key: 'revisit',
-    // an entry someone already wrote, on the day they chose to see it again.
-    area: null,
-    title: () => m.tile_revisit_title(),
-    surface: { subtitle: () => m.tile_revisit_sub(), prefKey: 'revisitEnabled' }
-    // No `notify`: phase 8 features ticket 08 is explicit that this
-    // registers no new notification machinery - the arrival offers in the
-    // app and never mints anything (ADR-0045), the same reason a ready
-    // letter carries no `notify` either.
+    surface: { subtitle: () => m.on_this_day_settings_sub(), defaultOn: true }
   },
   {
     key: 'reminders',
@@ -311,7 +155,6 @@ const ROWS = [
     area: null,
     title: () => m.reminders(),
     notify: {
-      subtitle: () => m.notif_reminders_sub(),
       prefKey: 'remindersEnabled',
       channel: 'reminders',
       disguised: true
@@ -346,7 +189,6 @@ const ROWS = [
     area: null,
     title: () => m.notif_export_failure_title(),
     notify: {
-      subtitle: () => m.notif_export_failure_sub(),
       prefKey: 'exportFailureNoticeEnabled',
       channel: 'exportFailure',
       disguised: true
@@ -361,7 +203,7 @@ const ROWS = [
    compile. */
 type Unregistered = Exclude<UnpromptedKind, (typeof ROWS)[number]['key']>;
 type AssertNoneUnregistered<Missing extends never> = Missing;
-export type EveryKindRegistered = AssertNoneUnregistered<Unregistered>;
+type EveryKindRegistered = AssertNoneUnregistered<Unregistered>;
 
 /* This assignment is where a row that fires without declaring a channel
    stops compiling, and it matters for a sharper reason than tidiness:
@@ -380,8 +222,39 @@ const ROW_OF = Object.fromEntries(UNPROMPTED_ROWS.map((row) => [row.key, row])) 
   UnpromptedRow
 >;
 
+/** A kind that shows something in the app of its own, and so has a switch in
+    `surfaceOverrides`. Read off `ROWS` rather than typed out again, like
+    `UNPROMPTED_KINDS` below. */
+export type SurfaceKind = Extract<(typeof ROWS)[number], { surface: unknown }>['key'];
+
+/** Whether a surface is on, given the stored `surfaceOverrides`: the person's
+    answer when they gave one, the registry's `defaultOn` otherwise. A
+    pure function over the map so the node tier and a template read it the
+    same way. */
+export function surfaceOn(overrides: Readonly<Partial<Record<string, boolean>>>, kind: SurfaceKind): boolean {
+  const stored = overrides[kind];
+  if (typeof stored === 'boolean') return stored;
+  return ROW_OF[kind].surface!.defaultOn;
+}
+
+/** The map after a person turns one surface on or off. Holds only answers
+    that differ from the default, so setting a surface back to its default
+    takes its entry away, and entries for other kinds (including ones this
+    build does not know) are carried over untouched. A new object each time,
+    which is what the preference store needs to see a write. */
+export function withSurface(
+  overrides: Readonly<Partial<Record<string, boolean>>>,
+  kind: SurfaceKind,
+  on: boolean
+): Partial<Record<string, boolean>> {
+  const next = { ...overrides };
+  if (on === ROW_OF[kind].surface!.defaultOn) delete next[kind];
+  else next[kind] = on;
+  return next;
+}
+
 /** Whether a kind should stay silent because the area it talks about is
-    hidden or finished (phase 8 features ticket 04, ADR-0052).
+    hidden or finished (ADR-0052).
 
     The cascade, in one line and read from the registry itself. A tile, a
     notification and anything else that grows a row here all pass through this
@@ -400,18 +273,20 @@ export function unpromptedQuiet(kind: UnpromptedKind, states: AreaStates, todayE
     longer optional. Without these two, both screens read `row.surface!` and
     `row.notify!` on every line, which is a non-null assertion standing in
     for a filter that already ran. */
-export type SurfaceRow = UnpromptedRow & { surface: NonNullable<UnpromptedRow['surface']> };
+export type SurfaceRow = UnpromptedRow & { key: SurfaceKind; surface: NonNullable<UnpromptedRow['surface']> };
+
+/** Narrows a row to one with a switch in `surfaceOverrides`, key included. */
+export function isSurfaceRow(row: UnpromptedRow): row is SurfaceRow {
+  return row.surface !== undefined;
+}
 type NotificationRow = UnpromptedRow & { notify: NonNullable<UnpromptedRow['notify']> };
 
 /** The surfaces view's rows, in registry order. */
-export const SURFACE_ROWS: readonly SurfaceRow[] = UNPROMPTED_ROWS.filter(
-  (row): row is SurfaceRow => row.surface !== undefined
-);
+export const SURFACE_ROWS: readonly SurfaceRow[] = UNPROMPTED_ROWS.filter(isSurfaceRow);
 
 /** The notifications view's rows, in registry order - every kind that may
     reach the phone rather than only the app. */
-/* NOTIFICATION_ROWS stays exported only for its own test (AU-09 test-only
-   review). */
+/* NOTIFICATION_ROWS stays exported only for its own test. */
 export const NOTIFICATION_ROWS: readonly NotificationRow[] = UNPROMPTED_ROWS.filter(
   (row): row is NotificationRow => row.notify !== undefined
 );
@@ -423,9 +298,8 @@ export const NOTIFICATION_ROWS: readonly NotificationRow[] = UNPROMPTED_ROWS.fil
     what today's registry actually holds for `unregisteredKinds` to check a
     *shortened copy* against, not stand as its own independent source of
     truth - that job is `UnpromptedKind`'s. */
-/* UNPROMPTED_KINDS stays exported only for liveTiles.grid.test.ts,
-   home-surfaces.test.ts, which cross-check against it (AU-09 test-only
-   review). */
+/* UNPROMPTED_KINDS stays exported only for liveTiles.grid.test.ts, home-contracts.ts, which
+   cross-check against it. */
 export const UNPROMPTED_KINDS: readonly UnpromptedKind[] = ROWS.map((row) => row.key);
 
 /** The runtime half of `EveryKindRegistered`: which kinds a given list of
@@ -433,8 +307,7 @@ export const UNPROMPTED_KINDS: readonly UnpromptedKind[] = ROWS.map((row) => row
     rather than against the list's own contents - so registry.test.ts can
     show the completeness rule actually failing on a named, shortened
     registry, not only assert that it never does. */
-/* unregisteredKinds stays exported only for its own test (AU-09 test-only
-   review). */
+/* unregisteredKinds stays exported only for its own test. */
 export function unregisteredKinds(rows: readonly Pick<UnpromptedRow, 'key'>[]): UnpromptedKind[] {
   const present = new Set(rows.map((row) => row.key));
   return UNPROMPTED_KINDS.filter((kind) => !present.has(kind));

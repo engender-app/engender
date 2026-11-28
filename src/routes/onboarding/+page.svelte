@@ -1,45 +1,28 @@
 <script lang="ts">
   import { rovingRadio } from '$lib/components/rovingRadio';
-  /* The first run (F16), rebuilt for phase 5 ticket 26.
+  import { paletteNameFit } from '$lib/components/paletteNameFit';
+  /* onboarding/steps.ts owns the order and skip rules. Each setting can be
+     skipped without writing over its stored default. Every step offers direct
+     entry to the app. The permissions step mentions daily check-in
+     notifications, whose switch lives on the reminders screen.
 
-     Five settings, one pass. What a person had to leave here and go and find
-     afterwards was the flag, which is the app's whole look and something
-     someone decides in the first minute and almost never revisits. So the
-     flow is welcome, name, flag, scales, areas, lock, permissions, finish,
-     and the order and the skip rules live in $lib/onboarding/steps.ts rather
-     than in a run of `step === 3` comparisons here. The daily check-in used
-     to be the last question and is not asked here any more (phase 10
-     redesign ticket 31): the permissions step names it as one of the things
-     a notification is for, and the switch stays on the reminders screen.
+     The sun grows to Home's exact size over the flow and redraws its rings
+     when the flag changes. Onboarding runs before
+     unlock, so disguise keeps the neutral field and hides the sun. */
 
-     Two rules the user set for this ticket, and they are why the foot of
-     every step looks the way it does. Every step that stores something
-     carries its own Skip, and skipping means the stored default is left
-     exactly as it was rather than overwritten with nothing. And every step
-     carries a way straight into the app, because someone who opened a diary
-     to write in it should never have to answer six questions first.
-
-     The sun (DIRECTION.md, tier 0). Home's flag is the app's one authored
-     moment, and this screen is where it is assembled: it starts as a small
-     quarter in the corner and grows by one step's worth per step, arriving
-     at exactly the size Home draws it a moment later. Picking a flag redraws
-     it, ring by ring, in the new stripes. That is the whole of this screen's
-     tier-0 budget and it is spent on the one element that carries identity,
-     which is the same argument the sun already made on Home.
-
-     Under disguise there is no sun at all, the same answer ADR-0035 gives
-     everywhere else: a crisp flag is not deniable at a glance, and this
-     screen is not an exception to that just because it comes first. */
-
-  import { goto } from '$app/navigation';
+  import { afterNavigate, pushState } from '$app/navigation';
   import { page } from '$app/state';
-  import { untrack } from 'svelte';
+  import { onMount, untrack } from 'svelte';
+  import { registerSetupBack } from '$lib/onboarding/back';
   import { m } from '$lib/paraglide/messages';
   import { isAndroid } from '$lib/platform';
-  import { flushPreferences, prefs, setPreferenceDurably } from '$lib/data/prefs/store.svelte';
+  import { chooseLanguage, flushPreferences, prefs, setPreferenceDurably, type AppLanguage } from '$lib/data/prefs/store.svelte';
+  import { getLocale } from '$lib/paraglide/runtime';
+  import { playOpening } from '$lib/onboarding/opening';
+  import { appWordmark } from '$lib/disguise/identity';
   import { fieldPart } from '$lib/motion/navigation';
   import { blindEdge } from '$lib/motion/stepBlind';
-  import { EASE_OUT_CSS, crossfadeDuration, motionDuration } from '$lib/motion/tokens';
+  import { EASE_OUT_CSS, crossfadeDuration, isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import { replaceRoute } from '$lib/navigation/smart-back';
   import { bootState, submitAccessModeSetup } from '$lib/stores/boot.svelte';
   import { needsOnboardingAccessMode } from '$lib/stores/boot-state';
@@ -57,8 +40,7 @@
     stepAfter,
     stepBefore,
     stepIndex,
-    sunGrowth,
-    measurementsHiddenOnSetup,
+    stepSun,
     type OnboardingStep
   } from '$lib/onboarding/steps';
   import type { PickedArchive } from '$lib/data/archive/pick';
@@ -72,20 +54,15 @@
   import { importFailureMessage, verifyFailureMessage } from '$lib/data/vocabulary/archiveErrorLabels';
   import { createProgress } from '$lib/components/progress.svelte';
   import { wipe } from '$lib/motion/reveal';
-  import { todayEpochDay } from '$lib/data/epochDay';
-  import { currentDay } from '$lib/stores/today.svelte';
-  import { DEFAULT_ONBOARDING_AREAS } from '$lib/data/pinnedRows';
-  import { AREA_GROUPS } from '$lib/data/areaGroups';
   import { journal, liveQuery } from '$lib/data/live/journal.svelte';
-  import { areasHidden } from '$lib/data/areaState';
   import { cycleTrackingVisible } from '$lib/data/cycleTracking';
+  import { featureAreas, type HubRow, type HubRowKey } from '$lib/data/hubRows';
+  import { DEFAULT_MODULES, firstRunModuleWrites } from '$lib/onboarding/features';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
-  import { hubSectionRoleIndex, hubSections, type HubSection } from '$lib/data/hubRows';
-  import { hubGroupHeading, hubRowTitle, hubRowLine } from '$lib/data/vocabulary/hubLabels';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
-  import { roleAt } from '$lib/theme/roles';
   import FlagSun from '$lib/components/FlagSun.svelte';
   import ScaleChecklist from '$lib/components/ScaleChecklist.svelte';
+  import FeatureVisibilityList from '$lib/components/FeatureVisibilityList.svelte';
   import { firstRunScales } from '$lib/onboarding/firstRunScales';
   import Icon from '$lib/components/Icon.svelte';
   import Switch from '$lib/components/Switch.svelte';
@@ -98,9 +75,10 @@
   import PermissionList from '$lib/components/PermissionList.svelte';
 
   import { PALETTES } from '$lib/theme/paletteChoices';
+  import { changePalette, isAppearancePending } from '$lib/motion/paletteChange';
 
   const restoreOnEntry = untrack(() => page.url.searchParams.get('restore') === '1');
-  /* Settings' "Delete everything" lands here (phase 14 ticket 15). The
+  /* Settings' "Delete everything" lands here. The
      wipe cannot be undone, so its result stays on the welcome as a line
      rather than a toast that fades. */
   const erasedOnEntry = untrack(() => page.url.searchParams.get('erased') === '1');
@@ -142,84 +120,55 @@
       : [...tickedScales, key];
   }
 
-  /* Null until touched, `scales`' own reason: Skip has to mean "leave
-     `onboardingAreas` alone" rather than "store nothing" (phase 10 redesign
-     ticket 22). Reads `prefs.onboardingAreas` rather than
-     `DEFAULT_ONBOARDING_AREAS` directly for the same reason `tickedScales`
-     reads `prefs.activeScales` - a first run reached a second time meets
-     whatever it answered last time, not the app's own default. */
-  let areas = $state<string[] | null>(null);
-  let tickedAreas = $derived(areas ?? prefs.onboardingAreas ?? (DEFAULT_ONBOARDING_AREAS as readonly string[]));
-  let measurementsChoice = $state<boolean | null>(null);
   let genitalEffectsChoice = $state<boolean | null>(null);
+  let sexualEffectsChoice = $state<boolean | null>(null);
   let cycleChoice = $state<boolean | null>(null);
+  let restoring = $state(restoreOnEntry);
+  let moduleChoices = $state<HubRowKey[] | null>(null);
   let cycleEpisodes = liveQuery((j) => j.regimen.getEpisodes());
-  let cycleShown = $derived(cycleChoice ?? cycleTrackingVisible(cycleEpisodes.value ?? [], Date.now(), prefs.cycleTrackingEnabled, prefs.cycleTrackingChoice));
-  let measurementStates = liveQuery((j) => j.areaStates.getAreaStates());
-  let measurementsShown = $derived(
-    measurementsChoice ?? (prefs.onboarded && measurementStates.value !== undefined
-      ? !areasHidden(AREA_GROUPS.measurements, measurementStates.value)
-      : false)
-  );
-  let genitalEffectsShown = $derived(
-    genitalEffectsChoice ?? vocabulary.effectCategories.find((category) => category.key === 'genital_sexual')?.enabled ?? false
-  );
+  let cycleShown = $derived(cycleChoice ?? (restoring || prefs.onboarded
+    ? cycleTrackingVisible(cycleEpisodes.value ?? [], Date.now(), prefs.cycleTrackingChoice)
+    : false));
+  /* Stored state once there is a journal to read it from, off before. */
+  const effectCategoryOn = (key: string) => restoring || prefs.onboarded
+    ? vocabulary.effectCategories.find((category) => category.key === key)?.enabled ?? false
+    : false;
+  let genitalEffectsShown = $derived(genitalEffectsChoice ?? effectCategoryOn('genital'));
+  let sexualEffectsShown = $derived(sexualEffectsChoice ?? effectCategoryOn('sexual'));
 
-  function toggleArea(key: string) {
-    areas = tickedAreas.includes(key)
-      ? tickedAreas.filter((k) => k !== key)
-      : [...tickedAreas, key];
+  /* Null until the features step is touched, which reads as the default
+     set both here and in complete() - so the step opens with what a skip
+     would keep. */
+  let tickedModules = $derived(moduleChoices ?? DEFAULT_MODULES);
+
+  function moduleEnabled(row: HubRow): boolean {
+    return tickedModules.includes(row.key);
   }
 
-  /* The hub's own groups and rows, exactly as `hubRows.ts` and `hubLabels.ts`
-     hand them to the More hub - so this step is the same list under the same
-     headings, met once here and once more on the hub (the ticket's own
-     phrase). Passed a bare, empty reading rather than a real one: nobody has
-     written anything or hidden an area yet on a first run, which resolves
-     every row to its standing "what is behind it" line, `hubRowLine`'s
-     `not-yet` case - the same line the hub shows a fresh journal. Hosted rows
-     (seven of the twenty-seven) are not `hubSections`' business and so do not
-     appear here either; pinning one of them is ticket 14's screen, which
-     `pinnedRows.ts` already notes it inherits.
+  function chooseModule(row: HubRow, enabled: boolean) {
+    moduleChoices = enabled
+      ? [...tickedModules, row.key]
+      : tickedModules.filter((key) => key !== row.key);
+  }
 
-     Support and Media are left off (Alicja, on the sign-off renders):
-     neither is something a person tracks. Support fronts Safe space and a
-     resource list, and Media fronts what an entry carries rather than a
-     practice of its own - a photo, a recording, a document, all attached to
-     something written rather than kept on their own dated stream. Filtered
-     here rather than in `hubSections` itself, which the More hub still
-     draws whole: this is a question about what to track, and the hub is
-     navigation to everything regardless. */
-  const TRACKABLE_GROUPS = new Set<HubSection['key']>(['health', 'transition']);
-  const today = $derived(currentDay());
-  let sections = $derived(
-    hubSections({ todayEpochDay: today, lastWrites: {}, states: {}, forward: {} }).filter((section) =>
-      TRACKABLE_GROUPS.has(section.key)
-    )
-  );
-
-  /* The lock step's own answer once a mode is set up: when that mode's
-     secret is asked for again (lock-timing ticket 01). A minute is offered
-     rather than the catalogue's restart, which is only the default because
-     it is what an old journal's "off" meant. Null after a Skip, which writes
-     nothing and so leaves the restart. */
+  /* The lock step's own answer once a mode is set up: when that mode's secret is asked for
+     again. A minute is offered rather than the catalogue's restart, which is only the
+     default because it is what an old journal's "off" meant. Null after a Skip, which
+     writes nothing and so leaves the restart. */
   let lockAfter = $state<LockAfter | null>('one-minute');
 
-  /* Setup's last answer (ADR-0079, phase 10 redesign ticket 32). Held like
-     every other one and never read back off `prefs`, which matters more
-     here than anywhere else in the flow: assigning `prefs.disguise` is what
-     flips the Android launcher alias, and that closes the app. So this
-     starts at false rather than at the stored value - a first run has
-     nothing stored to disagree with, and the demo's own first-run control
-     is the only way to reach setup with it already on, where the answer
-     someone gives here is still the answer. complete() applies it, last. */
+  /* Setup's last answer. Held like every other one and never read back off `prefs`, which
+     matters more here than anywhere else in the flow: assigning `prefs.disguise` is what
+     flips the Android launcher alias, and that closes the app. So this starts at false
+     rather than at the stored value - a first run has nothing stored to disagree with, and
+     the demo's own first-run control is the only way to reach setup with it already on,
+     where the answer someone gives here is still the answer. complete() applies it, last. */
   let disguise = $state(false);
 
-  /* The access-mode module's own working state (ticket 53's four modes,
-     wired in at this one step by ticket 54). Local to this step rather than
-     read off the gate: on a brand new install this page is what renders
-     while `bootState` is still `needs-setup`, not JournalGate, so there is
-     no other screen's state to share. */
+  /* The access-mode module's own working state. Local to this step rather than read off the
+     gate: on a brand new install this page is what renders while `bootState` is still
+     `needs-setup`, not JournalGate, so there is no other screen's state to share. */
+  let accessSetup: { back(): void } | undefined = $state();
   let accessChosen = $state<AccessSetupMode | null>(null);
   let accessBusy = $state(false);
   let accessError = $state('');
@@ -246,7 +195,7 @@
      visit would otherwise "restore" the pick made on the first. */
   const paletteOnEntry = prefs.palette;
 
-  /* Somebody on a new phone who already has an archive (ticket 36). The
+  /* Somebody on a new phone who already has an archive. The
      restore's own working state: which file, which password, whether it has
      been proved to open, and what to say if it has not.
 
@@ -259,7 +208,6 @@
      this device is touched, and the way out of them is the way in reversed.
      This flag is what says the file on screen is the one that was proved:
      picking another file or editing the password puts it back to false. */
-  let restoring = $state(restoreOnEntry);
   let picked = $state.raw<PickedArchive | null>(null);
   let archivePass = $state('');
   let archiveReady = $state(false);
@@ -273,18 +221,62 @@
   let setupError = $state('');
   const archiveProgress = createProgress();
 
-  /* One flow for everybody (ADR-0079): setup does not vary by disguise,
-     and steps.ts says why the shorter flow it used to offer went. It does
-     vary by whether a journal is being restored, which is a different axis
-     and the one thing an archive can actually answer for a person: the steps
-     whose answers it carries are dropped rather than asked and overwritten
-     (ticket 36, steps.ts). */
+  /* One flow for everybody: setup does not vary by disguise, and steps.ts says why the
+     shorter flow it used to offer went. It does vary by whether a journal is being
+     restored, which is a different axis and the one thing an archive can actually answer
+     for a person: the steps whose answers it carries are dropped rather than asked and
+     overwritten (steps.ts). */
   let steps = $derived(restoring ? restoreSteps() : onboardingSteps());
   let index = $derived(stepIndex(steps, step));
-  let growth = $derived(sunGrowth(index, steps.length));
+  let growth = $derived(stepSun(step, steps));
 
-  /* Whether this step is the forced choice rather than the toggle under it
-     (ticket 54): true from the moment the flow reaches the lock step until
+  /* The welcome is the hero: the field most of
+     a phone tall with the sun large in its corner and the wordmark on it,
+     and "Set up the app" collapses it into the first question. */
+  let hero = $derived(step === 'welcome');
+
+  /* The welcome's language switch. The labels are Settings' own options,
+     which name each language in itself; the visible text is the code.
+     Picking one reloads the page (setLocale), back onto this welcome, and
+     chooseLanguage holds the choice across that reload when there is no
+     journal yet to write it to. */
+  const LANGUAGES = [
+    ['pl', 'Polski'],
+    ['en', 'English']
+  ] as const;
+  const locale = getLocale();
+  function pickLanguage(code: AppLanguage) {
+    if (code !== locale) void chooseLanguage(code);
+  }
+
+  /* The opening ($lib/onboarding/opening.ts) plays on a cold load of the
+     welcome and never again in the same page: the back arrow returning here
+     is a step change, not a mount. Not inside a door change either, where
+     the navigation draws the arrival (FlagSun's `carried`), and not on a
+     setup entered at the restore step. */
+  const opens =
+    untrack(() => step === 'welcome') &&
+    typeof document !== 'undefined' &&
+    !('nav' in document.documentElement.dataset);
+  let frame: HTMLElement | undefined = $state();
+  /* The first sun drawn is the opening's: its CSS entrance gives way to the
+     opening's own (the stylesheet below). Marked once and never unmarked,
+     since taking the class off would restart the CSS entrance; a flag
+     picked later redraws a new sun with the entrance it always had. */
+  let openingSunDrawn = !opens;
+  function openingSun(node: HTMLElement) {
+    if (openingSunDrawn) return;
+    openingSunDrawn = true;
+    node.classList.add('is-opening');
+    node.dataset.openingSun = '';
+  }
+  onMount(() => {
+    if (!opens || !frame) return;
+    return playOpening(frame, { reduced: isReducedMotion() });
+  });
+
+  /* Whether this step is the forced choice rather than the toggle under it:
+     true from the moment the flow reaches the lock step until
      a mode is actually set up, which is the one stretch with no Skip, no
      back arrow and no "leave setup" - the same hard-gate rule JournalGate
      already holds a returning install to, here because reading `bootState`
@@ -339,41 +331,114 @@
     return () => clearTimeout(done);
   });
 
-  /** Which of the two suns paints on top, for as long as the redraw takes.
-
-      A keyed block's outgoing element and its incoming one are both in the
-      DOM together and the order they sit in is the framework's business, not
-      this screen's - so the layer is stated rather than inferred. Written as
-      a transition because that is the only thing here that holds a
-      declaration for exactly the length of a change and then lets go of it.
-
-      The length is the sun's own entrance: its outermost ring is the widest
-      and is drawn first, so once --dur-authored is up it covers everything
-      underneath and the flag below it can go. Read per call rather than
-      held, because the token is a stylesheet value and not state - and zero
-      under reduced motion, where the rings are simply there and there is
-      nothing to cover. */
+  /** Paint the incoming sun over the outgoing one until its outer ring covers
+      it. Read --dur-authored at each transition. Reduced motion needs no hold. */
   function layer(_node: Element, params: { z: number }) {
     return { duration: motionDuration('--dur-authored'), css: () => `z-index: ${params.z}` };
   }
 
+  function previousStep(): boolean {
+    if (setupBusy || archiveBusy || accessBusy) return true;
+    if (awaitingAccessMode) {
+      accessSetup?.back();
+      return true;
+    }
+    if (step === 'welcome') return false;
+    if (step === 'restore') abandonRestore();
+    else go(stepBefore(steps, step));
+    return true;
+  }
+
+  let historyArmed = false;
+  let finishHistory: (() => Promise<void>) | undefined;
+  afterNavigate(() => {
+    if (historyArmed) return;
+    // Wait for the initial router entry, including a direct setup address.
+    pushState('', {});
+    historyArmed = true;
+  });
+  onMount(() => {
+    let active = true;
+    let finishing = false;
+    const popped = () => queueMicrotask(() => {
+      if (!active) return;
+      if (finishing) return;
+      previousStep();
+      pushState('', {});
+    });
+    window.addEventListener('popstate', popped);
+    const unregister = registerSetupBack(previousStep);
+    finishHistory = () => new Promise<void>((resolve) => {
+      finishing = true;
+      // Registered after the router, so it settles the pop before we navigate.
+      window.addEventListener('popstate', () => queueMicrotask(resolve), { once: true });
+      history.back();
+    });
+    return () => {
+      active = false;
+      unregister();
+      window.removeEventListener('popstate', popped);
+      finishHistory = undefined;
+      clearTimeout(collapseDone);
+    };
+  });
+
+  /* Out of the welcome, the sun shrinks on the closing curve stepBlind gives a shrinking
+     field, so the two travel as one. On its own transition's ease-out it was at 0.67 of its
+     size while the edge had travelled a third of the way, and the two read as two things.
+     Every way out of the welcome goes through here. */
+  let collapsing = $state(false);
+  let collapseDone: ReturnType<typeof setTimeout> | undefined;
+  /* The field's box drops to the first step's height in one layout while
+     its painted edge travels there, and .step-field cuts everything 120px
+     past its box (components.css, overflow-clip-margin), which is room for
+     every other step's close. The welcome's is 355px on a phone, so for the
+     first frames the paint, the sun and the wordmark were cut at 367px: the
+     field's edge jumped 235px and the wordmark vanished in one frame. For the length of this
+     close the margin is the hero's own height, which is more than the close
+     can travel. Written from here in pixels because Chromium takes no calc()
+     in overflow-clip-margin. */
+  let field: HTMLElement | undefined = $state();
+  let collapseMargin = $state<string | null>(null);
   function go(to: OnboardingStep) {
+    if (step === 'welcome' && to !== 'welcome') {
+      collapsing = true;
+      collapseMargin = field ? `${field.offsetHeight}px` : null;
+      clearTimeout(collapseDone);
+      /* Let go the moment the edge lands. While the margin stands, the
+         paint (a window tall) counts as the frame's overflow, and holding
+         it for a fixed 580ms left the first step 17 to 20px "clipped" when
+         measured at 500ms (walkthrough setup no-scroll, 360x640 and
+         390x844). The timer is only the backstop for an edge that does not
+         transition, under reduced motion or when nothing moved. */
+      const host = field?.parentElement;
+      const release = () => {
+        clearTimeout(collapseDone);
+        host?.removeEventListener('transitionend', landed);
+        collapsing = false;
+        collapseMargin = null;
+      };
+      const landed = (event: TransitionEvent) => {
+        if (event.target === host && event.propertyName === '--blind-edge') release();
+      };
+      host?.addEventListener('transitionend', landed);
+      collapseDone = setTimeout(release, motionDuration('--dur-slow') + 200);
+    }
     step = to;
   }
 
-  /* Each step's question takes focus as it arrives, so a screen reader
-     says the new step and a keyboard starts from it (audit A11Y-12). Focus
-     used to stay on Continue, which said nothing, and on the two steps
-     whose Continue is a different button it fell to the body.
+  /* Each step's question takes focus as it arrives, so a screen reader says the new step
+     and a keyboard starts from it. Focus used to stay on Continue, which
+     said nothing, and on the two steps whose Continue is a different button it fell to the
+     body.
 
-     The first question is left to the layout, which focuses a screen's
-     heading when the screen arrives (navigation/arrivalFocus.ts). A frame
-     later rather than on mount, so the question's entrance has started
-     before focus asks for a layout (ticket 115's Android teleport).
+     The first question is left to the layout, which focuses a screen's heading when the
+     screen arrives (navigation/arrivalFocus.ts). A frame later rather than on mount, so the
+     question's entrance has started before focus asks for a layout.
 
-     The id is how the name field is named by its question. The question is
-     keyed, so for the length of a change two of them are in the document,
-     and the arriving one takes the id from the leaving one. */
+     The id is how the name field is named by its question. The question is keyed, so for
+     the length of a change two of them are in the document, and the arriving one takes the
+     id from the leaving one. */
   const QUESTION_ID = 'ob-question';
   let questionsArrived = 0;
   function questionArrives(node: HTMLElement) {
@@ -392,8 +457,8 @@
     return () => cancelAnimationFrame(frame);
   }
 
-  /* The question, and it is the whole of what a step says at display size
-     (DIRECTION.md rule 12). Read off a table rather than written into ten
+  /* The question, and it is the whole of what a step says at display size.
+     Read off a table rather than written into ten
      branches of markup, because the field holds one question wherever the
      flow is and the markup should say that once.
 
@@ -408,7 +473,6 @@
     flag: m.ob_flag_title,
     scales: m.ob_track_title,
     features: m.ob_features_title,
-    areas: m.ob_areas_title,
     lock: m.ob_lock_title,
     permissions: m.ob_perms_title,
     disguise: m.ob_disguise_title,
@@ -416,7 +480,8 @@
   };
 
   /* One line under the field: what the answer does. The welcome is the one
-     step whose slot holds two paragraphs and it renders them itself. */
+     step whose slot holds two paragraphs and it renders them itself; lock
+     and done have none, since their question already says it. */
   const LINE: Record<OnboardingStep, () => string> = {
     welcome: () => '',
     restore: m.ob_restore_body,
@@ -424,11 +489,10 @@
     flag: m.ob_flag_body,
     scales: m.ob_track_body,
     features: m.ob_features_body,
-    areas: m.ob_areas_body,
-    lock: m.ob_lock_body,
+    lock: () => '',
     permissions: m.ob_perms_body,
     disguise: m.ob_disguise_body,
-    done: m.ob_done_body
+    done: () => ''
   };
 
   /* The welcome's second action. Quiet, and it changes the flow rather than
@@ -436,10 +500,10 @@
      journal already, which is the fact every later step reads. */
   function beginRestore() {
     restoring = true;
-    areas = null;
-    measurementsChoice = null;
     genitalEffectsChoice = null;
+    sexualEffectsChoice = null;
     cycleChoice = null;
+    moduleChoices = null;
     archiveError = '';
     archiveErrorKind = '';
     go('restore');
@@ -487,7 +551,7 @@
       picked = chosen.picked;
     } catch {
       archiveErrorKind = 'failed';
-      archiveError = m.imp_picker_failed();
+      archiveError = m.picker_failed();
     }
   }
 
@@ -516,18 +580,26 @@
     go(stepAfter(steps, 'restore'));
   }
 
+  /* The same bloom out of the sun as a flag picked in Settings. The
+     new colours grow from this field's sun with its rings on the edge,
+     where writing the preference alone cut the whole screen in one frame.
+     Skip's reset below stays a plain write, since it leaves the step. */
+  function pickPalette(key: string) {
+    if (prefs.palette !== key || isAppearancePending('palette')) changePalette(() => { prefs.palette = key; });
+  }
+
   function skip() {
     if (step === 'name') name = '';
     else if (step === 'flag') prefs.palette = paletteOnEntry;
     else if (step === 'scales') scales = null;
     else if (step === 'features') {
-      measurementsChoice = null;
       genitalEffectsChoice = null;
+      sexualEffectsChoice = null;
       cycleChoice = null;
-    } else if (step === 'areas') areas = null;
-    else if (step === 'lock') lockAfter = null;
+      moduleChoices = null;
+    } else if (step === 'lock') lockAfter = null;
     /* The permissions step is not in this list, and that is the whole of
-       what skipping it does (ticket 31). Its answers live in the OS rather
+       what skipping it does. Its answers live in the OS rather
        than in `prefs`, so there is no stored default for a Skip to protect:
        nothing was granted, nothing is revoked, and every row is still there
        under /settings/permissions. */
@@ -541,7 +613,7 @@
      writing them as one function is what stops the two drifting apart the
      way a second copy of this would.
 
-     Reachable only once the access mode is settled (ticket 54): that step
+     Reachable only once the access mode is settled: that step
      is what creates the keystore this function's writes need, so an early
      "leave setup" cannot call this directly - leave() below routes it
      through the lock step first, the same way the old app-lock toggle used
@@ -553,8 +625,8 @@
     setupError = '';
     const wasOnboarded = prefs.onboarded;
     try {
-      /* Restore precedes setup answers. A restored archive supplies its own
-         visibility unless this setup explicitly changed the area list. */
+      /* Restore precedes setup answers. The archive supplies its own
+         journal choices; setup still applies device-local choices. */
       if (restoring && archiveReady) {
         if (archiveBusy) return;
         archiveBusy = true;
@@ -574,23 +646,25 @@
         await archiveProgress.finish();
       }
 
-      /* The area state must land before `onboarded`, and all answers before
-         disguise can close the Android process. */
+      /* All answers must land before disguise can close the Android process. */
       await completeSetup({
         async writeAnswers() {
-          const hidden = measurementsHiddenOnSetup(measurementsChoice, wasOnboarded, restoring && archiveReady);
-          if (hidden !== null) await journal.areaStates.setAreasHidden(AREA_GROUPS.measurements, hidden);
-          if (genitalEffectsChoice !== null) {
-            await journal.effectCategories.setCategoryEnabled('genital_sexual', genitalEffectsChoice);
+          const firstRun = !restoring && !wasOnboarded;
+          const modules = firstRunModuleWrites(restoring, wasOnboarded, moduleChoices);
+          if (modules.length > 0) {
+            await journal.areaStates.setAreasHidden(modules.filter(({ hidden }) => hidden).flatMap(({ row }) => featureAreas(row)), true);
+            await journal.areaStates.setAreasHidden(modules.filter(({ hidden }) => !hidden).flatMap(({ row }) => featureAreas(row)), false);
+          }
+          if (firstRun || genitalEffectsChoice !== null) {
+            await journal.effectCategories.setCategoryEnabled('genital', genitalEffectsChoice ?? false);
+          }
+          if (firstRun || sexualEffectsChoice !== null) {
+            await journal.effectCategories.setCategoryEnabled('sexual', sexualEffectsChoice ?? false);
           }
           if (!restoring && !wasOnboarded) prefs.cycleTrackingChoice = cycleChoice ?? false;
           else if (cycleChoice !== null) prefs.cycleTrackingChoice = cycleChoice;
-          /* New journals store the three pre-ticked areas, preserving older
-             journals whose null answer meant four default pins. */
           if (name.trim()) prefs.name = name.trim();
           if (scales) prefs.activeScales = scales;
-          if (areas) prefs.onboardingAreas = areas;
-          else if (!wasOnboarded && !restoring) prefs.onboardingAreas = [...DEFAULT_ONBOARDING_AREAS];
           /* Only where the question was asked: a mode with no secret
              shows none, and a timing it never saw should not be waiting
              for a mode that has one. */
@@ -600,7 +674,10 @@
         flushWrites: flushPreferences,
         disguise,
         turnOnDisguise: () => setPreferenceDurably('disguise', true),
-        leaveSetup: () => void goto(onboardingDestination())
+        leaveSetup: async () => {
+          await finishHistory?.();
+          await replaceRoute(onboardingDestination());
+        }
       });
     } catch (error) {
       archiveBusy = false;
@@ -612,8 +689,7 @@
   }
 
   /* "Leave setup", from any step before the finish. Detours through the
-     lock step first when the access mode has not been chosen yet (ticket
-     54): complete()'s writes need the keystore that step is the only place
+     lock step first when the access mode has not been chosen yet: complete()'s writes need the keystore that step is the only place
      that creates, so there is nowhere else for an early leave to go. Once a
      mode is chosen boot leaves this state on its own, and a second "leave
      setup" from the lock step reaches complete() directly. */
@@ -632,19 +708,11 @@
   }
 </script>
 
-<!-- The step (DIRECTION.md rule 12, redesign ticket 33). Four parts, in
-     this order and no other: the field with the sun and the question on it,
-     one line under it on the page, the answers, and the foot.
-
-     The frame is fixed and the answers are the one thing in it that may
-     scroll (rule 14). Before this ticket setup was a plain column inside
-     the app's own scroll region, so a step with nine rows on it carried the
-     question and the foot off the top of the window with them - measured at
-     571px of overflow on the permissions step and 964 on the areas step
-     (ticket 31). Now the screen is exactly the window, the answers have
-     their own region, and the question and the foot cannot move at all. -->
-<div class="screen screen-setup" data-setup-frame style={`--step-grow:${growth}`}>
-  <div class="setup step-field-host">
+<!-- The step has a field with the sun and question, one line below it,
+     an answer region and a footer. Only the answers scroll, so the field
+     and footer stay in view on long steps. -->
+<div class="screen screen-setup" data-setup-frame style={`--step-grow:${growth}`} bind:this={frame}>
+  <div class="setup step-field-host" class:is-hero={hero} class:is-collapsing={collapsing}>
     <!-- The field. Its height is the sun's reach at this step plus the
          question, so it comes down one step's worth per step with the
          question riding on it, and that edge is rule 10's blind on this
@@ -653,20 +721,23 @@
          access-mode step walks to its pad, when a question re-wraps and
          when a raised keyboard drops the flow into its short form, and
          each of those has to travel rather than jump. -->
-    <div class="setup-field step-field" data-setup-field use:blindEdge>
-      <!-- The paint, split from the box that measures it (ticket 28's
-           mechanism, and the same reason): what draws the field's colour is
-           a block a window tall whose bottom edge is a clip, so the edge
-           can move without a frame ever deforming the two bottom corners.
-           The sun is inside the clip because it is painted on the field
-           too - at every step the sun's reach is under the field's own
-           edge, so the clip never cuts it. -->
-      <!-- `data-field-blind`, so this block is the blind on a navigation as
-           well as the paint on a step change (ticket 28's mechanism): the
-           name is handed to it for the outgoing capture and setup's edge
-           travels to Home's rather than fading out while another field
-           appears. The attribute is what $lib/motion/fieldBlind looks for;
-           the shape is this file's own. -->
+    <div
+      class="setup-field step-field"
+      data-setup-field
+      use:blindEdge
+      bind:this={field}
+      style:overflow-clip-margin={collapseMargin}
+    >
+      <!-- The paint, split from the box that measures it: what draws the field's colour is
+           a block a window tall whose bottom edge is a clip, so the edge can move without a
+           frame ever deforming the two bottom corners. The sun is inside the clip because
+           it is painted on the field too - at every step the sun's reach is under the
+           field's own edge, so the clip never cuts it. -->
+      <!-- `data-field-blind`, so this block is the blind on a navigation as well as the
+           paint on a step change: the name is handed to it for the outgoing capture and
+           setup's edge travels to Home's rather than fading out while another field
+           appears. The attribute is what $lib/motion/fieldBlind looks for; the shape is
+           this file's own. -->
       <div class="setup-paint step-field-paint" data-field-blind>
         <!-- The flag being left, on top of the flag arriving and under the
              sun, wiping off towards the far corner: the new colour is
@@ -704,7 +775,7 @@
                  widest and is drawn first, so it covers what is underneath
                  as it opens and no gap of page can show through. -->
             {#key prefs.palette}
-              <div class="setup-sun-draw" in:layer={{ z: 1 }} out:layer={{ z: 0 }}>
+              <div class="setup-sun-draw" in:layer={{ z: 1 }} out:layer={{ z: 0 }} {@attach openingSun}>
                 <FlagSun />
               </div>
             {/key}
@@ -713,25 +784,52 @@
       </div>
 
       <!-- The back control, top left, in the field's own ink. Absent on the
-           welcome and wherever a step has no way back (rule 12). -->
+           welcome and wherever a step has no way back (rule 12). The
+           welcome has the language switch in its place, and the two cross
+           in one cell as the field collapses into the first step. -->
       <div class="setup-head">
-        {#if step !== 'welcome' && !awaitingAccessMode}
+        {#if hero}
+          <div
+            class="setup-lang"
+            role="radiogroup"
+            aria-label={m.language()}
+            data-opening="sign"
+            use:rovingRadio={{ selectOnArrow: false }}
+            in:fieldPart
+            out:fieldPart
+          >
+            {#each LANGUAGES as [code, name] (code)}
+              <button
+                role="radio"
+                aria-checked={code === locale}
+                aria-label={name}
+                lang={code}
+                data-language-pick={code}
+                onclick={() => pickLanguage(code)}
+              >
+                {code.toUpperCase()}
+              </button>
+            {/each}
+          </div>
+        {:else if !awaitingAccessMode}
           <!-- NAV-006: onboarding had no way back between steps at all, so
                a typo in the name could only be finished past. Absent while
                awaitingAccessMode for the same reason Skip and "leave setup"
-               are (ticket 54): a step back from here would be a way past
+               are: a step back from here would be a way past
                choosing an access mode, and there is none. -->
           <!-- A step back off the restore step is giving up on the restore,
                not walking to the step before it: the step before it is the
                welcome, and arriving there still in the restore flow would
                leave its primary button pointing back at the file picker
-               instead of at a new setup (ticket 36). -->
+               instead of at a new setup. -->
           <button
             class="icon-btn press"
             data-back
             data-field-part
             aria-label={m.back()}
-            onclick={() => (step === 'restore' ? abandonRestore() : go(stepBefore(steps, step)))}
+            onclick={previousStep}
+            in:fieldPart
+            out:fieldPart
           >
             <Icon name="arrowLeft" />
           </button>
@@ -751,19 +849,35 @@
                the field and rides its edge, fading where it stands, rather
                than being part of the screen's own crossfade. Between steps
                it is the two transitions below that move it - one mechanism
-               per kind of change, both reading one set of numbers. -->
-          <h1
-            class="setup-title"
-            data-setup-question
+               per kind of change, both reading one set of numbers.
+
+               The welcome prints the wordmark instead of its question:
+               "Welcome!" stays the heading a screen reader
+               lands on, and the name of the app is what the eye does. -->
+          <div
+            class="setup-ask-part"
             data-field-part
-            tabindex="-1"
-            data-arrival-focus
-            {@attach questionArrives}
             in:fieldPart={{ printed: true }}
             out:fieldPart={{ printed: true }}
           >
-            {question}
-          </h1>
+            <h1
+              class="setup-title"
+              class:visually-hidden={hero}
+              data-setup-question
+              tabindex="-1"
+              data-arrival-focus
+              {@attach questionArrives}
+            >
+              {question}
+            </h1>
+            {#if hero}
+              <p class="setup-wordmark" data-opening="mark">{appWordmark(prefs.disguise, m.app_name(), m.disguise_name())}</p>
+              <!-- The dictionary entry spells the app's name, so under the
+                   disguise, whose name is on the field instead, it is left
+                   out rather than signed under the wrong word. -->
+              {#if !prefs.disguise}<p class="setup-def" data-opening="sign">{m.ob_welcome_def()}</p>{/if}
+            {/if}
+          </div>
         {/key}
       </div>
     </div>
@@ -786,9 +900,10 @@
                  same slot with the dictionary line above it. -->
             {#if step === 'welcome'}
               {#if erasedOnEntry}<p class="setup-line is-result" role="status" data-erased-result use:erasedArrival>{m.reset_done()}</p>{/if}
-              <p class="setup-def">{m.ob_welcome_def()}</p>
-              <p class="setup-line is-pitch">{m.ob_welcome_body()}</p>
-            {:else if line}
+              <!-- What the app is, and only that: the privacy promise that stood under it
+                   made the screen too busy. -->
+              <p class="setup-line is-pitch" data-opening="line">{m.ob_welcome_what({ appName: appWordmark(prefs.disguise, m.app_name(), m.disguise_name()) })}</p>
+            {:else if line && step !== 'features'}
               <p class="setup-line">{line}</p>
             {/if}
 
@@ -796,7 +911,7 @@
                  has for what it is: a row in a flush list, a block, a
                  typed answer on a rule, or a key. This region is the only
                  thing on a step that scrolls. -->
-            <div class="setup-answers" data-setup-answers>
+            <div class="setup-answers" class:has-feature-line={step === 'features'} data-setup-answers>
               {#if step === 'restore'}
                 <!-- The file is a block (rule 13): an outline while there is
                      nothing in it, solid once there is, and the change
@@ -804,8 +919,7 @@
                      its own left edge rather than fading up, which is what
                      every block in this app does when it arrives (rule 10).
 
-                     Out of the default press, and DIRECTION's tier 1 says
-                     why: a surface the width of the screen fills with a
+                     Skip the default press scale. A full-width control uses a
                      wash, because scaling one moves everything beside it.
                      0.94 on a 358px block walks each edge 10.7px inward
                      with the question and the rule holding still, which
@@ -828,7 +942,7 @@
                            the first pick, so the whole clip was dead on the
                            one tap it exists for. Caught by reading
                            clip-path per animation frame off the built app
-                           (`npm run gallery:restore`), which sampled `none`
+                           (`tests/tools/restore-gallery.mjs`), which sampled `none`
                            for the length of the scene. -->
                       <span class="setup-file-name" in:wipe|global data-restore-file>
                         {picked.name}
@@ -844,7 +958,7 @@
                      rule draws itself in from the left on focus, which is
                      what a 3px rule does everywhere else in the app. -->
                 <div class="typed">
-                  <label class="field-label" for="ob-restore-pass">{m.exp_password_label()}</label>
+                  <label class="field-label" for="ob-restore-pass">{m.backup_password_label()}</label>
                   <input
                     class="rule-input"
                     type="password"
@@ -876,7 +990,7 @@
                      by screens.css's .palette-grid the same way Settings
                      draws it: four across, the name under it on the page,
                      the chosen one framed in the section rule's 3px. -->
-                <div class="palette-grid setup-flags" role="radiogroup" use:rovingRadio aria-label={m.colour_palette()}>
+                <div class="palette-grid setup-flags" role="radiogroup" use:rovingRadio use:paletteNameFit aria-label={m.colour_palette()}>
                   {#each PALETTES as [key, label] (key)}
                     <button
                       class="palette-swatch"
@@ -884,7 +998,7 @@
                       role="radio"
                       aria-checked={prefs.palette === key}
                       data-palette-pick={key}
-                      onclick={() => (prefs.palette = key)}
+                      onclick={() => pickPalette(key)}
                     >
                       <span class="swatch-preview" data-swatch={key}></span>
                       <span class="swatch-name">{label()}</span>
@@ -903,70 +1017,38 @@
                   offered={vocabulary.ready ? undefined : firstRunScales()}
                 />
               {:else if step === 'features'}
-                <!-- Their own step since after-release 17 (UX-09), and
-                     before the pins, so the pins step offers only what is
-                     switched on here. -->
+                <p class="setup-line setup-feature-line">{line}</p>
+                <FeatureVisibilityList
+                  {moduleEnabled}
+                  onModuleChange={chooseModule}
+                />
+                <h2 class="setup-feature-heading">{m.feature_filters_title()}</h2>
                 <ListCard>
-                  <ListRow
-                    key="feature-measurements"
-                    title={m.measurements_and_sizes()}
-                    checked={measurementsShown}
-                    chevron={false}
-                    onclick={() => (measurementsChoice = !measurementsShown)}
-                  />
                   <ListRow
                     key="feature-genital-effects"
                     title={m.feature_genital_effects()}
+                    subtitle={m.feature_genital_effects_sub()}
                     checked={genitalEffectsShown}
                     chevron={false}
                     onclick={() => (genitalEffectsChoice = !genitalEffectsShown)}
                   />
                   <ListRow
+                    key="feature-sexual-effects"
+                    title={m.feature_sexual_effects()}
+                    subtitle={m.feature_sexual_effects_sub()}
+                    checked={sexualEffectsShown}
+                    chevron={false}
+                    onclick={() => (sexualEffectsChoice = !sexualEffectsShown)}
+                  />
+                  <ListRow
                     key="feature-cycle-tracking"
                     title={m.cycle_tracking_toggle_title()}
+                    subtitle={m.feature_cycle_tracking_sub()}
                     checked={cycleShown}
                     chevron={false}
                     onclick={() => (cycleChoice = !cycleShown)}
                   />
                 </ListCard>
-              {:else if step === 'areas'}
-                <!-- The hub's own groups and rows, ticked rather than tapped
-                     through - the flag step and the scales step both already
-                     solved "a list you tick" on this screen, so this is that
-                     shape again rather than a new one.
-
-                     A group inside the list is named by a caption at 15/600
-                     and never by the 28px section rule (rule 12): a step has
-                     one heading and it is the question.
-
-                     The list is the choice and nothing stands above it
-                     (after-release 17, UX-09): a "Today preview" of the
-                     rows this would pin sat over it, with a pencil row that
-                     looked tappable and was not, and pushed the first real
-                     choice below Continue at 390px. -->
-                <div class="setup-areas" role="group" aria-label={m.ob_areas_title()}>
-                  {#each sections as section (section.key)}
-                    <p class="setup-caption" data-setup-caption>{hubGroupHeading(section.key)}</p>
-                    <ListCard role={roleAt(activeFlag.roles, hubSectionRoleIndex(section.key))}>
-                      {#each section.rows.filter((row) => row.spec.key !== 'measurements' || measurementsShown) as row (row.spec.key)}
-                        <!-- The clock handed to `hubRowLine` is inert here: these rows are
-                             drawn from an empty reading, so none of them can be counting
-                             up and the one line that reads a clock is unreachable. Same
-                             case as `HostedRows.svelte`. -->
-                        <ListRow
-                          key={`area-${row.spec.key}`}
-                          icon={row.spec.icon}
-                          title={hubRowTitle(row.spec.key)}
-                          subtitle={hubRowLine(row.spec.key, row.line, today, Date.now())}
-                          checked={tickedAreas.includes(row.spec.key)}
-                          chevron={false}
-                          onclick={() => toggleArea(row.spec.key)}
-                          data-hub-section={section.key}
-                        />
-                      {/each}
-                    </ListCard>
-                  {/each}
-                </div>
               {:else if step === 'lock'}
                 <!-- The module and the question after it cross rather than
                      swap: the module leaves on the frame the keystore is
@@ -976,26 +1058,10 @@
                   {#key awaitingAccessMode}
                     <div class="setup-lock-part" in:fieldPart out:fieldPart>
                       {#if awaitingAccessMode}
-                        <!-- The app-lock toggle that used to head this list is
-                             gone with the gate it turned on (ticket 53): how the
-                             journal opens is now one choice made in the security
-                             module, and a PIN is one of its access modes rather
-                             than a switch here.
-
-                             On a brand new install this module is what a person
-                             meets on reaching this step (ticket 54) - the same
-                             AccessModeSetup component Settings uses, wired in at
-                             this one point in the flow because this is the one
-                             step that actually creates the keystore.
-
-                             It carries its own forward and back, which is the one
-                             place setup's foot is not the way on (named in the
-                             ticket): those controls drive a state machine inside
-                             the module that four screens share, and the module's
-                             own title is this step's question while it does. What
-                             this screen does is give them the foot's drawing, so
-                             the eye meets the same shape it has met nine times. -->
+                        <!-- AccessModeSetup creates the keystore and owns this step's question and navigation.
+                             Style its controls as the setup footer so the shared module fits the flow. -->
                         <AccessModeSetup
+                          bind:this={accessSetup}
                           purpose="setup"
                           busy={accessBusy}
                           error={accessError}
@@ -1018,8 +1084,7 @@
                   {/key}
                 </div>
               {:else if step === 'permissions'}
-                <!-- Where the daily check-in used to be asked about (ticket
-                     31). The nudge is not a question setup asks any more: it
+                <!-- Where the daily check-in used to be asked about. The nudge is not a question setup asks any more: it
                      is one of the reasons under the notification row here,
                      and the switch itself stays on the reminders screen.
                      What this step does instead is name everything the app
@@ -1033,20 +1098,8 @@
                      something close. -->
                 <PermissionList asksOnly />
               {:else if step === 'disguise'}
-                <!-- A row with a switch, drawn as every other answer in the
-                     flow is (rule 13), and carrying the platform's own
-                     consequence as its reason rather than as a paragraph
-                     above it. On Android that reason is the one this step
-                     owes most: the app closes for a moment, because it does.
-
-                     The row is the last thing setup asks and the switch is
-                     held, not applied - `prefs.disguise` is untouched until
-                     complete(). Setup's own look does not answer it either
-                     (rule 12): the sun keeps growing and the field keeps its
-                     colour right through the finish. What does answer is the
-                     preview below, which is the one place a person can see
-                     what they are turning on before it is outside the app
-                     and too late to be surprised by. -->
+                <!-- Keep the disguise choice local until complete(). Only the preview shows
+                     the choice during setup. Tell Android users the app briefly closes. -->
                 <ListCard>
                   <ListRow
                     static
@@ -1063,7 +1116,7 @@
                     {/snippet}
                   </ListRow>
                 </ListCard>
-                <!-- Settings' block, not a second one (ticket 32): a preview
+                <!-- Settings' block, not a second one: a preview
                      of the launcher that disagreed with the launcher would
                      be worse than none, and two copies is how that
                      happens. -->
@@ -1091,12 +1144,11 @@
          step side by side under it. Three controls, two lines, above a
          hairline, and it does not move between steps (rule 12) - it is
          outside the box that rides the edge for exactly that reason. -->
-    <div class="setup-foot" data-setup-foot>
+    <div class="setup-foot" data-setup-foot data-opening="foot">
       {#if setupError}<p class="setup-status" role="alert">{setupError}</p>{/if}
       {#if awaitingAccessMode}
-        <!-- The module above carries its own submit action, and there is no
-             other way past it (ticket 54, matching AccessModeSetup's own
-             "no Skip anywhere" rule). -->
+        <!-- The module above carries its own submit action, and there is no other way past
+             it. -->
       {:else if step === 'done'}
         <!-- On a restored first run this button is the restore: it fills
              left to right with the operation's own progress rather than
@@ -1145,11 +1197,10 @@
       {#if !awaitingAccessMode}
         <div class="setup-outs">
           {#if step === 'welcome'}
-            <!-- The second action, on the outs line where Skip and "straight
-                 to the app" already live, so it is quiet by being where the
-                 quiet controls are rather than by being a smaller version of
-                 the primary (ticket 36: it must not compete). A person with
-                 no archive reads one word of it and carries on. -->
+            <!-- The second action, on the outs line where Skip and "straight to the app"
+                 already live, so it is quiet by being where the quiet controls are rather
+                 than by being a smaller version of the primary. A person with no archive
+                 reads one word of it and carries on. -->
             <button class="btn btn-ghost" data-restore-start onclick={beginRestore}>
               <span>{m.ob_have_backup()}</span>
             </button>
@@ -1182,27 +1233,12 @@
 </div>
 
 <style>
-  /* Setup wears the field (DIRECTION.md rules 12 to 14, redesign ticket
-     33). What stood here was chrome from before the kit existed: a column
-     inside the app's own scroll region, a bespoke `.setup-head` reserving
-     room for a sun that hung off the window's corner behind the text, a
-     title on the page rather than on a field, and steps that crossed on a
-     shared axis nothing else in the app uses any more.
+  /* Setup uses the field with a fixed footer.
+     Only the answer region scrolls. Field height follows the sun and
+     question at each step, with its contents riding the edge.
 
-     Three things are true of every step now. The screen is exactly the
-     window and cannot scroll; the answers have a region of their own and
-     are the only thing in the frame that can. The field's height is the
-     sun's reach at this step plus the question, so the edge comes down one
-     step's worth per step and everything printed on it or standing under it
-     rides down with it. And the foot is outside the ride, so it is in the
-     same place on all ten steps.
-
-     `--blind-edge` is where the field's bottom edge is, in pixels. It is
-     registered rather than left as a plain custom property for the reason
-     every var()-driven animation in this app has to be: an unregistered
-     property has no type, so it cannot be interpolated, and a transition
-     naming it would jump. Registered as a length, it animates, and the
-     clip below reads it per frame. */
+     Register --blind-edge as a length so it interpolates and the clip
+     can follow it each frame. An untyped custom property would jump. */
   .screen-setup {
     height: 100%;
     min-height: 0;
@@ -1214,6 +1250,10 @@
        must not be able to disagree: a sun grown without the room under it
        grown too is a flag with a question inside it. */
     --sun-mult: 1;
+    /* Queried by the welcome's hero (below). The frame is exactly the
+       window's height by its own rule, so containing its size changes
+       nothing about how it is laid out. */
+    container: setup-frame / size;
   }
   .screen-setup > .setup {
     /* .screen's own 20px rhythm between blocks has nothing to space here:
@@ -1243,22 +1283,10 @@
   }
   /* ---------- the field ---------- */
 
-  /* Picking a flag changes what colour the field is, and a state change
-     moves (ADR-0078). Measured on the first flipbook: the whole field went
-     from trans pink to agender green between two frames while the sun was
-     still redrawing ring by ring underneath, so the loudest surface on the
-     screen was the one thing that teleported.
-
-     What moves is the flag being left: it lies over the flag arriving and
-     wipes off towards the far corner, so the new colour is uncovered from
-     the sun's corner outwards on the sun's own clock. First in the paint's
-     DOM order and so under the sun, which keeps drawing over both.
-
-     The rest of the palette still arrives in one frame - the accent under
-     Skip, a tick's fill, a row's icon block - because `--accent` and the
-     role colours are published on <html> and nothing in the app transitions
-     them. That is the cohesion sweep's to answer (ticket 20) rather than a
-     step's; what this rule owns is the surface this step is about. */
+  /* Lay the outgoing flag paint over its replacement and wipe
+     toward the far corner on the sun's clock. Put it
+     before the sun in the DOM so the rings remain above both.
+     Accent and role tokens on html still switch immediately. */
   .setup-paint-was {
     position: absolute;
     inset: 0;
@@ -1303,28 +1331,27 @@
     transition-duration: var(--dur-slow);
     transition-timing-function: var(--ease-out);
   }
+  .setup.is-collapsing .setup-sun :global(.sun) {
+    transition-timing-function: var(--ease-out-soft);
+  }
 
-  /* The sun's room, which is also the back control's row. Reserved as the
-     sun's reach at this step rather than at full size: the reserve is what
-     the field's height is made of, so reserving the finish's 175px from the
-     first step would make every step's field the tallest one's.
-
-     Home gained --space-7 of room under its disc in carpet ticket 154 and
-     this did not, though the ticket first added it here too. The two are
-     not the same shape: Home's field bottom edge *is* this reserve, with
-     the wordmark sitting on it, so without the room the innermost ring
-     lands 6px off that edge and touches it at the breathing loop's
-     midpoint. Here the question sits below the reserve, so the disc never
-     reaches the field's own bottom edge and there is nothing to hold it
-     off. Adding it anyway cost a step 32px of a budget rule 14 measures:
-     the walkthrough caught the disguise step's foot intercepting clicks
-     on the switch above it, because a step may not scroll and the
-     answers had nowhere left to go. */
+  /* Reserve only this step's sun reach because it sets the field
+     height. The question below it already clears the disc. Home's
+     additional --space-7 would take 32px from the answers and can
+     push the disguise switch under the fixed foot. */
   .setup-head {
     position: relative;
     /* Keep Back above questions that cross its target during a step change. */
     z-index: 2;
     min-height: calc(175px * var(--step-grow, 1) * var(--sun-mult, 1));
+    /* One cell, so the welcome's language switch and the back control
+       that replaces it cross where they stand rather than stacking. */
+    display: grid;
+    align-content: start;
+    justify-items: start;
+  }
+  .setup-head > * {
+    grid-area: 1 / 1;
   }
   .setup-head .icon-btn {
     color: inherit;
@@ -1347,7 +1374,7 @@
     color: var(--field-ink);
     text-wrap: balance;
     /* A 48px word is wider than a 195px window at 200% zoom, which is where
-       every title in the app took this rule (ticket 35). */
+       every title in the app took this rule. */
     overflow-wrap: break-word;
   }
 
@@ -1380,22 +1407,14 @@
 
   /* One line under the field, on the page, 12 below the edge: what the
      answer does, at 15/600 in the secondary ink (rules 2 and 12). Never a
-     paragraph - the welcome's pitch is the flow's one exception and it sits
-     in this slot under the dictionary line. */
-  .setup-line,
-  .setup-def {
+     paragraph - the welcome's line under its wordmark is the flow's one exception. */
+  .setup-line {
     margin: var(--space-3) 0 0;
     font-size: var(--text-sm);
     font-weight: var(--weight-medium);
     color: var(--text-2);
   }
-  /* The app's name, read back as the word it is. Italic so it sits between
-     the question and the pitch as an aside rather than as a second line of
-     the same voice. */
-  .setup-def {
-    font-style: italic;
-  }
-  /* What a wipe from Settings left behind (phase 14 ticket 15): a result
+  /* What a wipe from Settings left behind: a result
      rather than a description, so it reads in the text colour above the
      welcome's own muted lines. */
   .setup-line.is-result {
@@ -1406,20 +1425,187 @@
     font-weight: var(--weight-regular);
     line-height: var(--leading-body);
   }
+  /* A measure for reading, which the 640px column on a desktop is not. */
+  .setup-line.is-pitch {
+    max-width: 60ch;
+  }
+
+  /* ---------- the welcome ----------
+
+     The app's first screen, so the field is its hero: most of a phone
+     tall, the sun large in its corner (steps.ts, WELCOME_SUN) and the
+     wordmark on its bottom edge. The field takes whatever the line
+     and the foot leave, up to 70% of the frame, which is 60 to 70% on a
+     phone; everything under it is its own height. "Set up the app" takes
+     the class off, the field's box drops to the first step's in one
+     layout, and stepBlind travels the painted edge up to it on the same
+     clock as every step change, while the sun shrinks on its own
+     transition: one object moving, never a cut. */
+  .setup.is-hero > .setup-field {
+    flex: 1 1 auto;
+    max-height: 70%;
+    display: flex;
+    flex-direction: column;
+  }
+  /* The head grows into the room and asks for none of it. Its own floor is
+     the sun's reach (175px x the scale), which on the welcome made the
+     field's smallest size 224 to 280px plus the wordmark, and a frame that
+     could not give that much pushed the foot past its bottom: 35px at
+     390x844 under the demo bar, 84px with the window at 360. The
+     walkthrough then hit the scroll region instead of "Set up the app".
+     The field now gives way first, and the sun is sized to the frame below
+     so the room it leaves is still room for it. */
+  .setup.is-hero .setup-head {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  .setup.is-hero > .step-field-below,
+  .setup.is-hero .setup-stage {
+    flex: 0 0 auto;
+  }
+  /* With one line under the field, a tall frame has room left over once
+     the field reaches its 70%: it goes above the foot, which stays on the
+     window's bottom edge as it does on every step (rule 12). */
+  .setup.is-hero > .setup-foot {
+    margin-top: auto;
+  }
+  /* Nothing is asked on the welcome, and the empty region's 20px of margin
+     is room the field needs on a short frame. */
+  .setup.is-hero .setup-answers {
+    display: none;
+  }
+  /* The hero sun keeps clear of the language switch on a narrow phone and
+     of the wordmark on a short frame. Its reach is the corner's quarter,
+     and the field is what the line and the foot leave of the frame,
+     so the steps go by the frame's own height (the demo bar and a raised
+     keyboard both take from it, and neither shows in a media query). */
+  @media (max-width: 399px) {
+    .setup.is-hero {
+      --sun-mult: 0.8;
+    }
+  }
+  /* Each step keeps the quarter's reach under where the wordmark starts,
+     measured with the larger text setting on at 412, 390, 360 and 320
+     wide. */
+  @container setup-frame (max-height: 759px) {
+    .setup.is-hero {
+      --sun-mult: 0.85;
+    }
+  }
+  @container setup-frame (max-height: 699px) {
+    .setup.is-hero {
+      --sun-mult: 0.65;
+    }
+  }
+  @container setup-frame (max-height: 639px) {
+    .setup.is-hero {
+      --sun-mult: 0.45;
+    }
+  }
+  @container setup-frame (max-height: 559px) {
+    .setup.is-hero {
+      --sun-mult: 0.25;
+    }
+  }
+  /* A window under 480px (a raised keyboard, or a phone held sideways) has
+     no room for a display-size wordmark and its signature: the name drops
+     to the short form's question size beside the language switch, on one
+     row, and the dictionary line is left out, so the line and the
+     foot still fit (at 390x360 with larger text the stacked field left the
+     frame 24px short). */
+  @container setup-frame (max-height: 479px) {
+    .setup.is-hero > .setup-field {
+      flex-direction: row;
+      align-items: center;
+      gap: var(--space-4);
+    }
+    .setup.is-hero .setup-head {
+      flex: none;
+    }
+    .setup.is-hero .setup-wordmark {
+      font-size: var(--text-xl);
+      letter-spacing: var(--display-track);
+      line-height: var(--leading-display);
+    }
+    .setup.is-hero .setup-def {
+      display: none;
+    }
+  }
+
+  /* The name of the app at display size, in the field's ink: the same
+     treatment as a question (rule 2), one size up, because on this screen
+     it is the headline. The disguise name when the disguise is on. */
+  .setup-wordmark {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(3.5rem, 19vw, 6rem);
+    font-weight: var(--weight-display);
+    letter-spacing: -0.045em;
+    line-height: 0.9;
+    overflow-wrap: break-word;
+  }
+  /* The dictionary line, signed under the wordmark: small, italic, in the
+     field's own ink. */
+  .setup-def {
+    margin: var(--space-3) 0 0;
+    font-size: var(--text-sm);
+    font-style: italic;
+    font-weight: var(--weight-medium);
+    /* "istnienia." alone on the second line at 412px otherwise. */
+    text-wrap: pretty;
+  }
+
+  /* Use a 2px inset stroke in field ink for the first step's
+     language pill. The ink clears the 3:1 boundary floor and
+     measured 9.59:1 on trans in both themes. A border would
+     reduce the two controls' height to 44px. The inset stroke
+     preserves each half's minimum 48px square. */
+  .setup-lang {
+    display: flex;
+    border-radius: 999px;
+    box-shadow: inset 0 0 0 2px currentColor;
+  }
+  .setup-lang button {
+    min-width: var(--touch-target);
+    min-height: var(--touch-target);
+    padding: 0 var(--space-3);
+    border: 0;
+    border-radius: 999px;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-bold);
+    letter-spacing: 0.06em;
+  }
+  .setup-lang button[aria-checked='true'] {
+    background: var(--field-ink);
+    color: var(--field);
+  }
+
+  /* The first sun's CSS entrance gives way to the opening's own, which
+     draws the rings from the corner outwards after the first frame has
+     left ($lib/onboarding/opening.ts). The breathing stays. Not under
+     reduced motion, where the rings have no animation at all and naming
+     the loop here would bring it back as a 1ms strobe. */
+  @media (prefers-reduced-motion: no-preference) {
+    :global(html:not([data-a11y-motion='reduce'])) .setup-sun-draw:global(.is-opening .sun i) {
+      animation-name: none, breathe;
+    }
+  }
 
   /* The answers, 20 under the line, and the one region on a step that may
      scroll (rule 14). It bleeds to the screen's edges and pads back in: a
      region that scrolls clips on both axes, so a block reaching past the
      content edge inside it would be cut. */
-  /* 4px of the 20 above moved inside the scroller (after-release 17,
-     U16): the name field sits at the region's very top, and its focus
-     ring - 2px drawn 2px out - was cut off along its top edge by the
+  /* 4px of the 20 above moved inside the scroller: the name field sits at the region's very
+     top, and its focus ring - 2px drawn 2px out - was cut off along its top edge by the
      scroller's own clip. The content lands where it did. */
   .setup-answers {
     flex: 1 1 0;
     min-height: 0;
-    margin: calc(var(--space-5) - 4px) calc(-1 * var(--space-5)) 0;
-    padding: 4px var(--space-5) 0;
+    margin: calc(var(--space-5) - 4px) calc(-1 * var(--screen-inset)) 0;
+    padding: 4px var(--screen-inset) 0;
     overflow-y: auto;
     overscroll-behavior: contain;
   }
@@ -1429,35 +1615,24 @@
   .setup-answers > * + * {
     margin-top: var(--space-5);
   }
-
-  /* A group inside a list is named by a caption at 15/600, never by the
-     28px section rule, which a step may not carry at all (rule 12): a step
-     has one heading and it is the question. The permissions step names its
-     own two groups this way and this is that same drawing. */
-  .setup-caption {
-    margin: var(--space-5) 0 var(--space-2);
-    font-size: var(--text-sm);
-    font-weight: var(--weight-medium);
-    color: var(--text-2);
+  .setup-answers.has-feature-line {
+    margin-top: var(--space-3);
+    padding-top: 0;
   }
-  .setup-caption:first-child {
+  .setup-feature-line {
     margin-top: 0;
   }
-  .setup-areas {
-    display: flex;
-    flex-direction: column;
+  /* A new group after the features, so it stands well clear of the last feature row: 40
+     above, the section rhythm's own gap. */
+  .setup-feature-heading {
+    margin-top: var(--space-8);
+    margin-bottom: 0;
+    font-size: var(--text-md);
   }
 
-  /* Every answer that carries a block arrives as one: it clips open from
-     its own left edge, one --stagger-step per row and capped at the
-     seventh, with the words beside it cutting (rule 10, ADR-0078; the
-     agenda's day block and the return moment's rows are the same movement
-     at the same size). The whole run waits --dur-fast, which is the length
-     of the outgoing step's fade: no frame carries two steps' answers, so
-     none can carry two steps' blocks either.
-
-     :global because these squares are drawn inside ListRow and Check, where
-     a scoped selector would never reach them. */
+  /* Answer blocks clip from the left and stagger up to row seven. Text
+     cuts. Wait --dur-fast for the outgoing answers to fade first.
+     Use :global to reach the blocks inside ListRow and Check. */
   .setup-answers :global(.kit-row-ico),
   .setup-answers :global(.kit-check),
   .setup-flags .swatch-preview {
@@ -1528,12 +1703,11 @@
      (rule 13). The person's name is the first thing in the app set in the
      app's own voice. A passphrase is the same shape with its characters
      hidden. */
-  /* The rule-shaped input, its label and the rule that draws itself in on
-     focus are `.typed`/`.rule-input` in components.css since redesign ticket
-     34: the gates ask for a passphrase on the same shape, and rule 13 says
-     they are one drawing. */
+  /* The rule-shaped input, its label and the rule that draws itself in on focus are
+     `.typed`/`.rule-input` in components.the gates ask for a passphrase on the same shape,
+     and rule 13 says they are one drawing. */
 
-  /* ---------- the restore step (ticket 36) ---------- */
+  /* ---------- the restore step ---------- */
 
   /* The block. An outline while it is empty and a solid surface once it
      holds a file, so the tap has something to answer with beyond a filename
@@ -1605,7 +1779,7 @@
 
   /* The module carries its own intro paragraph, its own forward control and
      its own way back, because those drive a state machine four screens
-     share (ticket 30). Inside setup the intro is the step's line and is
+     share. Inside setup the intro is the step's line and is
      rendered there, so the module's copy of it is not drawn twice; the
      controls keep the foot's drawing, which is the one place on the flow
      where the way on is not in the foot itself. Named in the ticket. */
@@ -1637,26 +1811,19 @@
     justify-content: space-between;
     gap: var(--space-2);
   }
+  /* Colour joins .btn's list here because picking a flag changes --accent-ink under these
+     words: without it Skip and "straight to the app" changed colour in one frame while the
+     field beside them wiped. Text, so the sRGB mix the field avoids is not visible at this
+     size. */
   .setup-outs .btn {
     padding: 0 var(--space-3);
+    transition-property: transform, background, filter, opacity, color;
+    transition-duration: var(--dur-press), var(--dur-fast), var(--dur-fast), var(--dur-fast), var(--dur-authored);
+    transition-timing-function: var(--ease-press), var(--ease-out), ease, var(--ease-out), var(--ease-out);
   }
 
-  /* ---------- the short form (rule 14) ----------
-
-     Under 640px tall, which is what a raised keyboard leaves on any phone
-     and what a 320px phone has at rest: the field drops to the back
-     control's row plus the question at 21 and the sun draws at 0.6 of its
-     step scale. The answers do not change - the whole point of the short
-     form is that the room comes out of the frame rather than out of what is
-     being asked.
-
-     Rule 14 also says the foot's second line drops to 40px, and that one is
-     not built: 40 is under `--touch-target`, which is Android's 48dp floor
-     and the stricter of the two platforms this ships on. Measured at
-     320x568, the two ways past a step were 56.8x40 and 166.9x40. The rule
-     was written off a sheet rather than against the floor, and the eight
-     pixels it was buying come out of a region that already scrolls on the
-     steps where they were needed. */
+  /* Below 640px, shrink the frame to leave room for answers. Use a 21px question
+     and scale the sun to 0.6. Keep footer controls at the 48dp touch floor. */
   @media (max-height: 639px) {
     .screen-setup {
       --sun-mult: 0.6;
@@ -1695,6 +1862,10 @@
      because there are no window edges to bleed to any more - the column has
      its own. */
   @container app (min-width: 1024px) {
+    /* A 640px column has room for a larger quarter than a phone. */
+    .setup.is-hero {
+      --sun-mult: 1.25;
+    }
     .setup {
       max-width: 640px;
       --blind-edge: calc(var(--space-6) + 175px * var(--step-grow, 1) * var(--sun-mult, 1) + 78px);
@@ -1705,6 +1876,15 @@
     }
     .setup-paint {
       clip-path: inset(0 0 calc(100% - var(--blind-edge)) 0 round var(--r-block));
+    }
+    /* screens.css sets the flags eight across here, so a row of the grid is
+       eight: the fifth to eighth arrive with the first four, the second
+       eight together after them. */
+    .setup-flags .palette-swatch:nth-child(n + 5) {
+      --row-index: 0;
+    }
+    .setup-flags .palette-swatch:nth-child(n + 9) {
+      --row-index: 1;
     }
   }
 </style>

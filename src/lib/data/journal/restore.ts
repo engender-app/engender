@@ -1,82 +1,33 @@
-/* Reading an archive back into the journal: Replace and Merge (ticket 14,
-   ADR-0011, PRD F14). The inverse of archive.ts's snapshot, and part of the
-   same area - one journal operation each, so no caller holds a transaction
-   and no caller sequences the areas itself (ADR-0017). It sits in its own
-   file because the two halves share nothing but the wire format and the
-   section registry: one reads every table out by travelling identity, this
-   one writes every table back. Which sections there are, and which of them
-   have to be written before which, is archiveSections.ts's (ADR-0027); the
-   per-section writes are in archiveApply.ts.
-
-   The order of operations is the whole ticket:
-
-     1. Write every file the archive carries. Existing names get fresh
-        replacements, including their derived thumbnails, so re-importing
-        an archive cannot overwrite bytes the current journal still owns.
-     2. In one transaction: reconcile the built-in vocabulary,
-        unconditionally and first, then swap the journal. Key identity makes
-        the reconcile idempotent, and it runs before either mode applies
-        because a Replace must not be able to leave the journal short of a
-        built-in the archive's own rows reference. It is inside the same
-        transaction so that a failure leaves the database exactly as it was,
-        rather than as the next boot would have made it.
-
-   An import from another app (`commitImport` below) adds two things to that
-   same transaction rather than after it: the counts it will report, measured
-   either side of the apply, and the import_log row that records them. That
-   is the whole of pre-production audit A1. Taking either afterwards meant a
-   failure there rejected an import whose rows were already committed, so the
-   person saw a failure message over data that was really on disk, the
-   history had no record of it, and nothing invalidated the live reads still
-   showing the old journal - with "import the file again" as the obvious and
-   duplicating next move. Nothing fallible may run between the commit and the
-   resolved promise, because that promise is what the write registry treats
-   as permission to announce the tables (live/writes.ts).
-
-   Nothing here deletes an existing file (ADR-0011). Unpublished replacements
-   are removed when proven unowned; an uncertain transaction or interrupted
-   cleanup leaves them for the boot sweep. Other new files also wait for that
-   sweep. Deleting existing files up front would mean a failure part way leaves the
-   user with neither their old photos nor the new ones, on a device that by
-   design has no other copy.
-
-   Merge adds what this device does not have and leaves matched rows alone,
-   matching by uuid for the user's own rows and by key for built-ins
-   (ADR-0002) - so re-importing the same archive changes nothing. Skip-
-   existing rather than last-write-wins, because LWW needs trustworthy clocks
-   across two devices with no sync protocol and its failure mode is silent: a
-   fix made on this device would vanish under an older archive.
-
-   Replace discards this device's journal rows and installs the archive's,
-   then writes the archive's state onto the built-in rows it kept. Which rows
-   it discards is the registry's too, in the reverse of the order the inserts
-   run in (ADR-0027): until phase 5 ticket 13 that was 51 statements
-   hand-ordered in this file, the one list around here the registry did not
-   derive. Preferences are not the journal's (ADR-0003) and nothing here
-   touches the pref table, which is what leaves the PIN, the app-lock flags
-   and the disguise settings in place through the most destructive path in
-   the app.
-
-   What the rows contain is validated by the schema as they are written, which
-   is why every insert is inside the transaction: a value the columns refuse -
-   a reminder with no rule, an entry with no day - rolls the whole import back
-   and leaves the journal as it was. Only the payload's shape is checked up
-   front, because a section that is not an array would otherwise fail as a
-   TypeError that reads like a bug in this file rather than like a damaged
-   file on disk. */
+/* Restore validated rows through the journal facade (ADR-0011, ADR-0017).
+   Stage files under fresh names before the transaction. Reconcile built-ins
+   first and order writes through archiveSections.ts (ADR-0027). Replace deletes
+   in reverse order and applies portable prefs only on full restore (ADR-0003).
+   Merge matches UUIDs or built-in keys. Latest edit or deletion wins. Keep
+   timestamp ties and preferences on the destination (ADR-0098).
+   Record external import counts in the transaction. Return success without
+   further database work. Remove only proven-unowned staged files, and leave
+   interrupted cleanup to the orphan sweep. */
 
 import { CorruptArchiveError, UnsupportedArchiveError } from '../archive/container';
 import { openArchive } from '../archive/pack';
-import type { ArchiveJournal } from '../archive/payload';
+import type { ArchiveJournal, PortablePreferences } from '../archive/payload';
+import { restorePortablePreferencesWithin } from '../prefs/preferences';
+import type { PreferenceValues } from '../prefs/catalogue';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { PhotoFileStore } from '../photos/photo-file-store';
-import { filesOf } from '../photos/names';
+import { filesOf, isStorableFileName } from '../photos/names';
 import { documentFilesOf } from './documents';
-import { readFileOwnership } from './fileOwnership';
+import { archiveFileNames, assertArchiveFileOwnership, readCleanupFileNames } from './fileOwnership';
+import { journalIsBusy, waitForJournalIdle } from '../journal-busy';
+import { markOrphanSweepDue } from '../sqlite/orphan-sweep-schedule';
+import { sweepOrphanPhotos } from './photos';
 import { mintUuid } from './support';
 import { reconcileBuiltInsWithin } from './reconcile';
-import { aliasLegacyConsults, recordImport } from './archiveApply';
-import { applyArchiveJournal, discardStatements, ARCHIVE_SECTION_NAMES } from './archiveSections';
+import { recordImport } from './archiveApply';
+import { applyArchiveJournal, discardStatements, ARCHIVE_SECTION_NAMES, ARCHIVE_SECTIONS, DROPPED_ARCHIVE_SECTION_NAMES, emptyArchiveJournal } from './archiveSections';
+import { assertArchiveReferences, assertArchiveRows } from './archiveRowValidation';
+import { DROPPED_TRYOUT_KINDS } from '../rowValues';
+import { splitArchivedEffectCategories } from '../sqlite/effect-category-split-migration';
 
 export type RestoreMode = 'replace' | 'merge';
 
@@ -86,17 +37,22 @@ export type RestoreMode = 'replace' | 'merge';
     of images. */
 export interface RestoreContents {
   journal: ArchiveJournal;
+  /** Portable preferences travel with a full Archive. Row-only callers omit
+      this property; an older Archive may provide undefined preferences. */
+  preferences?: Partial<PortablePreferences> | null;
+  /** Capture authoritative values while Replace still owns its transaction.
+      The caller publishes them only after this operation commits. */
+  onPreferencesPrepared?(values: PreferenceValues): void;
   files: AsyncIterable<{ name: string; bytes: Uint8Array }>;
   /** How many files that stream will deliver, when the caller knows - the
       manifest inside the payload says so, and an importer that has opened
-      the archive is holding it (phase 9 audit ticket 11). Left out by a
+      the archive is holding it. Left out by a
       caller that is synthesising files rather than replaying an archive's,
       which only costs the progress report its denominator. */
   fileCount?: number;
 }
 
-/** Which half of a restore is running and how far through it is (phase 9
-    audit ticket 11, ADR-0070).
+/** Which half of a restore is running and how far through it is.
 
     Two stages rather than one number, because they are separately long and
     separately countable: the photos arrive one at a time off the archive's
@@ -104,7 +60,7 @@ export interface RestoreContents {
     transaction. One combined fraction would need a weighting between them
     that nothing here knows, and a bar that sat at 100% through the whole
     row half would be the "the bar lied" failure the ADR is about. */
-export type RestoreStage = 'files' | 'rows';
+type RestoreStage = 'files' | 'rows';
 
 export interface RestoreProgress {
   stage: RestoreStage;
@@ -115,14 +71,13 @@ export interface RestoreProgress {
 }
 
 export type OnRestoreProgress = (progress: RestoreProgress) => void;
-/** Chosen for what it does on Android since ticket 19: writes there used to
-    cross the Capacitor plugin-call queue, which serializes one call at a
-    time, so this bought nothing - eight in flight were eight queued. The
-    write channel that replaced that call runs each write on its own worker
-    thread, so this number now controls real concurrent disk I/O rather than
-    a queue depth nothing drained faster for. Kept at 8 rather than raised:
-    that is what the re-measured archive-restore-files baseline reflects,
-    and moving it would need a baseline of its own. */
+/** Chosen for what it does on Android since writes there used to cross the Capacitor
+    plugin-call queue, which serializes one call at a time, so this bought nothing - eight
+    in flight were eight queued. The write channel that replaced that call runs each write
+    on its own worker thread, so this number now controls real concurrent disk I/O rather
+    than a queue depth nothing drained faster for. Kept at 8 rather than raised: that is
+    what the re-measured archive-restore-files baseline reflects, and moving it would need a
+    baseline of its own. */
 const FILE_WRITE_CONCURRENCY = 8;
 
 function replacementFileName(name: string): string {
@@ -152,7 +107,7 @@ function replacementNames(journal: ArchiveJournal, existing: Set<string>, names:
       videos: (entry.videos ?? []).map((row) => ({ ...row, fileName: single(row.fileName) }))
     })),
     milestones: journal.milestones.map((row) => ({ ...row, photo: row.photo ? photos([row.photo])[0] : null })),
-    hairPhotos: photos(journal.hairPhotos),
+    progressPhotos: photos(journal.progressPhotos),
     hairRemovalSessions: journal.hairRemovalSessions.map((row) => ({ ...row, photos: photos(row.photos) })),
     procedures: journal.procedures.map((row) => ({ ...row, photos: photos(row.photos) })),
     tryouts: journal.tryouts.map((row) => ({ ...row, photos: photos(row.photos) })),
@@ -166,7 +121,7 @@ function replacementNames(journal: ArchiveJournal, existing: Set<string>, names:
 
 async function writeArchiveFiles(
   files: PhotoFileStore,
-  source: RestoreContents['files'],
+  source: AsyncIterable<{ name: string; bytes: Uint8Array; skipped?: boolean }>,
   fileCount: number,
   onProgress?: OnRestoreProgress
 ): Promise<void> {
@@ -200,6 +155,12 @@ async function writeArchiveFiles(
   try {
     for await (const file of source) {
       throwIfFailed();
+      if (file.skipped) {
+        // Counted as done so the bar still reaches the manifest's total.
+        written += 1;
+        onProgress?.({ stage: 'files', done: written, total: fileCount });
+        continue;
+      }
       schedule(file.name, file.bytes);
       if (inFlight.size >= FILE_WRITE_CONCURRENCY) await Promise.race(inFlight);
       throwIfFailed();
@@ -212,21 +173,20 @@ async function writeArchiveFiles(
   }
 }
 
-/** What an import from another app reports and records, settled inside the
-    transaction that writes its rows (audit A1, module header).
+/** What an import from another app reports and records, settled inside the transaction that
+    writes its rows (module header).
 
-    `counting` names each number the result carries and the SQL tables whose
-    growth across the apply is that number: `{ entries: ['entry'] }` comes
-    back as `{ entries: 12 }`. Measured rather than taken from the preview,
-    though a preview is defined as the exact work a commit performs: the
-    preview resolves against a snapshot read before the person confirmed, and
-    a row added in between turns one of its "new" rows into one the merge
-    skips. The audit's word for the number a commit hands back is "truthful",
-    and a measurement of the rows that landed is the only thing that stays
-    true across that window.
+    `counting` names each number the result carries and the SQL tables whose growth across
+    the apply is that number: `{ entries: ['entry'] }` comes back as `{ entries: 12 }`.
+    Measured rather than taken from the preview, though a preview is defined as the exact
+    work a commit performs: the preview resolves against a snapshot read before the person
+    confirmed, and a row added in between turns one of its "new" rows into one the merge
+    skips. The audit's word for the number a commit hands back is "truthful", and a
+    measurement of the rows that landed is the only thing that stays true across that
+    window.
 
-    The table names are this module's callers' own literals, never anything
-    an archive carried. */
+    The table names are this module's callers' own literals, never anything an archive
+    carried. */
 export interface ImportCommit {
   /** The history row's source, named by the source registry rather than
       spelled a second time here (archive/sources.ts). */
@@ -244,11 +204,10 @@ export async function restoreArchive(
   await restoreWithin(driver, files, mode, contents, onProgress);
 }
 
-/** A Merge that also measures what it added and writes the import history
-    for it, all inside the one transaction (audit A1). Returns the counts by
-    the names `commit.counting` gave them - the same object the history row
-    keeps, so the result a screen shows and the record settings shows cannot
-    describe two different imports. */
+/** A Merge that also measures what it added and writes the import history for it, all
+    inside the one transaction. Returns the counts by the names `commit.counting` gave them
+    - the same object the history row keeps, so the result a screen shows and the record
+    settings shows cannot describe two different imports. */
 export async function commitImport(
   driver: SqliteDriver,
   files: PhotoFileStore,
@@ -267,31 +226,53 @@ async function restoreWithin(
   onProgress?: OnRestoreProgress,
   commit?: ImportCommit
 ): Promise<Record<string, number>> {
-  const original = aliasLegacyConsults(contents.journal);
-  assertRestorable(original);
-  const existing = new Set(await files.list());
+  const original = restorableJournal(contents.journal, commit !== undefined);
+  const existing = new Set([...await readCleanupFileNames(driver), ...await files.list()]);
   const replacements = new Map<string, string>();
   const journal = replacementNames(original, existing, replacements);
+  // Read from the journal as delivered: delivered file names are the archive's own, before any renaming below.
+  const claimed = archiveFileNames(original);
+  // Every path this restore creates, so a failure can remove all of them and nothing else.
   const staged = new Set<string>();
   const stagedFiles = async function* () {
     for await (const file of contents.files) {
-      // Even an unreferenced archive file must never overwrite an existing file.
+      if (!isStorableFileName(file.name)) throw new CorruptArchiveError('the archive names a file the app cannot store');
+      // No row owns it, so nothing would ever read or delete it. The stream is still drained, tag checks included.
+      if (!claimed.has(file.name)) {
+        yield { name: file.name, bytes: file.bytes, skipped: true };
+        continue;
+      }
+      // Even a file the archive owns must never overwrite an existing file.
       if (!replacements.has(file.name) && existing.has(file.name)) {
         replacements.set(file.name, replacementFileName(file.name));
       }
       const name = replacements.get(file.name) ?? file.name;
-      if (name !== file.name) staged.add(name);
+      staged.add(name);
       yield { name, bytes: file.bytes };
     }
   };
   let unpublished = staged;
   let added: Record<string, number> = {};
+  // Set once the transaction has been asked for; see the finally below.
+  let transacting = false;
+  let uncertain = false;
+  let rowsFailure: unknown;
+  // Remembers what the rows themselves threw, to tell it from a lost reply.
+  const rowsFailing = <T>(work: (scope: SqliteDriver) => Promise<T>) => async (scope: SqliteDriver) => {
+    try { return await work(scope); } catch (error) { rowsFailure = error; throw error; }
+  };
   try {
+    /* Due before the first file lands, not in the finally below: a process killed or a
+       power cut between the file writes and the transaction never reaches the finally, and
+       the staged files would stay unreferenced until the next Merge or the weekly stamp (47
+       of them after every cut). The stamp is what boot housekeeping reads on the next open. */
+    markOrphanSweepDue();
     await writeArchiveFiles(files, stagedFiles(), contents.fileCount ?? 0, onProgress);
     // Once rows can own these files, a rejection cannot prove rollback.
-    // Keep replacements until ownership is known or the boot sweep runs.
+    // Keep replacements until ownership is known or the post-restore sweep runs.
     unpublished = new Set();
-    await driver.transaction(async (driver) => {
+    transacting = true;
+    await driver.transaction(rowsFailing(async (driver) => {
       // Seeding first, unconditionally, and inside this transaction with
       // everything else (reconcile.ts explains the second entry point).
       await reconcileBuiltInsWithin(driver);
@@ -306,19 +287,47 @@ async function restoreWithin(
       await applyArchiveJournal({ driver, mode, journal, ts: Date.now() }, undefined, (done, total) =>
         onProgress?.({ stage: 'rows', done, total })
       );
+      if (mode === 'replace' && 'preferences' in contents) {
+        const preferences = await restorePortablePreferencesWithin(driver, contents.preferences);
+        contents.onPreferencesPrepared?.(preferences);
+      }
       if (commit && before) {
         const after = await countRows(driver, commit.counting);
         added = Object.fromEntries(Object.keys(before).map((name) => [name, after[name] - before[name]]));
         await recordImport(driver, commit.source, added);
       }
       if (staged.size > 0) {
-        const owned = new Set((await readFileOwnership(driver, 'cleanup')).names);
+        const owned = new Set(await readCleanupFileNames(driver));
         unpublished = new Set([...staged].filter((name) => !owned.has(name)));
       }
-    });
+    }));
+  } catch (error) {
+    /* The error the rows themselves raised comes back unchanged: the worker
+       answered with a ROLLBACK, so the outcome is known. Anything else from
+       a transaction that was asked for is not: a COMMIT or ROLLBACK whose
+       reply never came (ended only by a dispose), or a ROLLBACK that was
+       itself refused (the transactor wraps the rows' error in an
+       AggregateError), which may have left the transaction open. */
+    uncertain = transacting && !(rowsFailure !== undefined && error === rowsFailure);
+    // A rollback the rows' own error proves leaves nothing to own the files.
+    if (transacting && !uncertain) unpublished = staged;
+    throw error;
   } finally {
     // Cleanup cannot turn a committed restore into a reported failure.
     await Promise.allSettled([...unpublished].map(async (name) => files.remove(name)));
+    const sweep = () => sweepOrphanPhotos(driver, files).catch((error) => {
+      console.warn('post-restore orphan sweep failed', error);
+    });
+    /* Not awaited when the transaction's outcome is uncertain: a COMMIT or ROLLBACK reply
+       that was lost leaves the transaction open on the worker, a sweep query queues behind
+       it, and the lock that waits for this restore to settle never closes the driver
+       (pending 60 s after the lock). The sweep runs alongside when the journal answers, and
+       when it never does, the due stamp set above leaves it to the next open. A failure the
+       rows raised was answered by a ROLLBACK, so its sweep is awaited as before. */
+    // The live journal's write guard covers this call until it returns.
+    if (journalIsBusy()) void waitForJournalIdle().then(sweep);
+    else if (uncertain) void sweep();
+    else await sweep();
   }
   return added;
 }
@@ -344,7 +353,7 @@ async function countRows(
   return counted;
 }
 
-/** The backup health drill (ticket 28): proves a chosen archive still
+/** The backup health drill: proves a chosen archive still
     decrypts and parses, without a driver or a file store to write into -
     the signature is the guarantee that the live journal cannot be touched.
     Draining `files` to the end is not incidental: it is what forces every
@@ -357,7 +366,8 @@ export async function verifyArchive(
   onProgress?: (done: number, total: number) => void
 ): Promise<void> {
   const { payload, files } = await openArchive(source, password);
-  assertRestorable(aliasLegacyConsults(payload.journal));
+  // Called for its refusals only: it throws on an unrestorable journal, and the result is not needed.
+  restorableJournal(payload.journal);
 
   /* One stage, so a pair rather than a RestoreProgress: the whole drill is
      the drain, and the manifest already says how many files that is. */
@@ -367,22 +377,52 @@ export async function verifyArchive(
   while (!(await iterator.next()).done) onProgress?.((done += 1), total);
 }
 
-/** Reject unknown sections before writing any files or rows, even when the
-    archive declares a known format version. Ignoring a section would silently
-    lose the data it carries. Known sections must be arrays before their apply
-    functions can read them. */
-function assertRestorable(journal: ArchiveJournal): void {
+/** Reject unknown sections before writing any files or rows. A removed section
+    has no owner and its rows are discarded. Absent known sections read empty. */
+function restorableJournal(journal: ArchiveJournal, externalImport = false): ArchiveJournal {
+  if (!journal || typeof journal !== 'object' || Array.isArray(journal)) {
+    throw new CorruptArchiveError("the archive's journal is not readable");
+  }
   for (const section of Object.keys(journal ?? {})) {
-    // ADR-0037 retired this known pre-release section and deliberately drops it.
-    if (section !== 'doubtEntries' && !(ARCHIVE_SECTION_NAMES as readonly string[]).includes(section)) {
+    if (!DROPPED_ARCHIVE_SECTION_NAMES.includes(section) && !(ARCHIVE_SECTION_NAMES as readonly string[]).includes(section)) {
       throw new UnsupportedArchiveError('newer-version', 'the archive was made by a newer version of the app');
     }
   }
-  for (const section of ARCHIVE_SECTION_NAMES) {
-    if (!Array.isArray(journal?.[section])) {
+  for (const { name } of ARCHIVE_SECTIONS) {
+    const section = name as keyof ArchiveJournal;
+    if (journal?.[section] !== undefined && !Array.isArray(journal[section])) {
       throw new CorruptArchiveError(`the archive's ${section} are not readable`);
     }
   }
+  const complete = emptyArchiveJournal();
+  for (const section of ARCHIVE_SECTION_NAMES) (complete as unknown as Record<string, unknown[]>)[section] = journal[section] ?? [];
+  complete.areaStates = complete.areaStates.filter((row) => !DROPPED_ARCHIVE_SECTION_NAMES.includes(row?.area));
+  // A felt-sense reading an older archive hung off a milestone, which no
+  // longer holds any: dropped, not converted.
+  complete.feltSenseEntries = complete.feltSenseEntries.filter((row) => {
+    const legacy = row as unknown as { tryoutId?: unknown; milestoneId?: unknown } | null;
+    return !(legacy && legacy.tryoutId == null && legacy.milestoneId != null);
+  });
+  for (const { name, flatTable } of ARCHIVE_SECTIONS) {
+    const section = name as keyof ArchiveJournal;
+    assertArchiveRows(section, complete[section], flatTable);
+  }
+  // An archive written before version 121 still names 'genital_sexual'.
+  const split = splitArchivedEffectCategories(complete.effectCategories, complete.personalEffectTypes);
+  complete.effectCategories = split.categories;
+  complete.personalEffectTypes = split.types;
+  assertArchiveReferences(complete, externalImport);
+  assertArchiveFileOwnership(complete);
+  const dropped = new Set(complete.tryouts
+    .filter((row) => (DROPPED_TRYOUT_KINDS as readonly string[]).includes(row.kind))
+    .map((row) => row.id));
+  if (dropped.size === 0) return complete;
+  return {
+    ...complete,
+    tryouts: complete.tryouts.filter((row) => !dropped.has(row.id)),
+    feltSenseEntries: complete.feltSenseEntries.filter((row) => !row.tryoutId || !dropped.has(row.tryoutId)),
+    milestones: complete.milestones.map((row) => dropped.has(row.tryoutId ?? '') ? { ...row, tryoutId: null } : row)
+  };
 }
 
 /** Every journal row this device has, gone: one operation, ordered by the

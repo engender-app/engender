@@ -1,19 +1,7 @@
-/* What the timeline draws, in order (phase 5 UX ticket 23).
-
-   The screen shows milestones past and future on one rail, with the long
-   empty stretches compressed and a marker for where today falls between
-   them. All three of those are calendar arithmetic over a list that is
-   already sorted, which is exactly the kind of rule that is easy to get
-   almost right in markup and never notice - the version this replaces
-   inserted the today marker only between two milestones, so a journal whose
-   milestones are all still ahead drew a timeline of the future with no
-   present on it.
-
-   Milestones are mirrored (ADR-0004), so this takes them as an array and
-   there is no query here. Today arrives as an argument, the same rule the
-   rest of the date arithmetic follows. Nothing here formats anything: a
-   gap's duration and a milestone's status are written against the active
-   locale by the screen. */
+/* Build the timeline from sorted milestones and an explicit today. Include
+   today even when every milestone is in the future. Compress long empty
+   spans. Milestones arrive from the mirror (ADR-0004) and the screen formats
+   the results for the locale. */
 
 import type { Milestone } from './types';
 
@@ -24,8 +12,7 @@ import type { Milestone } from './types';
     typical gaps - a few months between a first appointment and a first dose
     - stay as ordinary spacing. Carried over from the screen this replaces
     rather than re-chosen. */
-/* TIMELINE_GAP_DAYS stays exported only for its own test (AU-09 test-only
-   review). */
+/* TIMELINE_GAP_DAYS stays exported only for its own test. */
 export const TIMELINE_GAP_DAYS = 420;
 
 export type TimelineItem =
@@ -51,11 +38,9 @@ export function timelineItems(milestones: Milestone[], todayEpochDay: number): T
   for (const milestone of milestones) {
     const future = milestone.epochDay > todayEpochDay;
     if (future && !markedToday) {
-      /* Today inside a long stretch splits it (after-release 27, audit
-         L03-15): the part already behind is drawn before the marker and
-         measured to today, so the marker is not put in front of a quiet
-         stretch it is in the middle of. Each side compresses on its own
-         length. */
+      /* Today inside a long stretch splits it: the part already behind is drawn before the
+         marker and measured to today, so the marker is not put in front of a quiet stretch
+         it is in the middle of. Each side compresses on its own length. */
       if (previousDay !== null) {
         if (todayEpochDay - previousDay > TIMELINE_GAP_DAYS) {
           out.push({ kind: 'gap', id: 'gap-before-today', fromEpochDay: previousDay, toEpochDay: todayEpochDay });

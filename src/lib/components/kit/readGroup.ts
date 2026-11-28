@@ -1,26 +1,10 @@
-/* A set of components that each answer their own read, held back together
-   until every one of them has (ux-carpet ticket 190).
+/* Hold one placeholder until every reading decides whether it has a tile,
+   then fade in the group. Drawing queries as they answer lets a late tile
+   shift an already-painted grid.
 
-   The Look back door's reading grid is nine components, each reading its
-   own query and each deciding for itself whether it has a tile. Drawn as
-   they answered, whichever landed a tick after its neighbours was inserted
-   between them, and the tiles after it jumped a cell in one frame - a grid
-   reflow no transition can carry, because the grid is not a keyed list.
-   Home's fold is the same shape, and Alicja's call for it (ticket 183) is
-   the one this implements: hold a placeholder until every read behind the
-   group has answered, then fade the whole group in at once.
-
-   The members are the components themselves rather than a list the screen
-   keeps, because only a reading knows which of its reads decide whether it
-   draws anything. A member calls `joinReadGroup` once, at init, with a
-   getter saying whether that decision is final; outside a group the call
-   does nothing, so the same component drawn anywhere else is unchanged.
-
-   One-way, the way a read's own `loading` is (readState.ts): once open, a
-   group stays open. A member that mounts later - a tile a span change
-   brings in, a resurfacing card switched on in Settings - arrives through
-   its own panel transition, and must not send an already-drawn grid back
-   behind its placeholder. */
+   Each member calls joinReadGroup at initialization with its readiness
+   getter. The call is a no-op outside a group. Once revealed, keep the
+   group open; later readings enter with their own transitions. */
 import { untrack } from 'svelte';
 
 /** The part of a group that has to be reactive: who has joined, and

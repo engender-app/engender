@@ -1,4 +1,4 @@
-/* The deferred-area seam itself (phase 9 audit ticket 03): that a facade
+/* The deferred-area seam itself: that a facade
    built from a list of names answers to all of them, loads nothing until one
    is called, and builds the area exactly once however many calls arrive.
 
@@ -16,10 +16,6 @@ import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { deferredArea } from './deferredArea.ts';
 import { openJournal } from './journal.ts';
 import { makeArchiveArea, type ArchiveArea } from './archive.ts';
-import { makeHormoneCurveArea } from './hormoneCurve.ts';
-import { makeDosesArea } from './doses.ts';
-import { makeRegimenArea } from './regimen.ts';
-import { makeLabsArea } from './labs.ts';
 
 interface Counter {
   add(n: number): Promise<number>;
@@ -27,7 +23,7 @@ interface Counter {
 }
 
 /** An area whose construction is observable, and which holds state across
-    calls the way hormoneCurve's two model caches do. */
+    calls to the same area do. */
 function countingArea() {
   let built = 0;
   const load = async () => {
@@ -68,7 +64,7 @@ test('a call passes its arguments through and answers with what the area answere
 /* The reason the area is memoized rather than the import: a dynamic import
    already resolves from the module loader's cache (archive.ts says the same
    about `restore`), but calling the factory again would hand back a second
-   area with empty caches - hormoneCurve's two model memos are exactly that. */
+   area with empty caches. */
 test('the area is built once however many calls arrive, including concurrent ones', async () => {
   const { load, builds } = countingArea();
   const area = deferredArea<Counter>(load)(['add', 'total']);
@@ -105,25 +101,12 @@ test('a load that failed is retried rather than remembered', async () => {
    failing test, and the whole point of the facade is that everything above
    it - writes.ts's classification walk first of all - sees the same set of
    methods it would have seen eagerly. */
-test('every method of the eager archive and hormoneCurve areas is on the deferred facade', async () => {
+test('every method of the eager archive area is on the deferred facade', async () => {
   const driver = await migratedDb();
   const files = fakeFileStore();
   const journal = openJournal(driver, files);
-
-  const regimen = makeRegimenArea(driver);
-  const doses = makeDosesArea(driver, regimen);
-  const eager = {
-    archive: makeArchiveArea(driver, files),
-    hormoneCurve: makeHormoneCurveArea(doses, regimen, makeLabsArea(driver, regimen))
-  };
-
-  for (const [name, area] of Object.entries(eager)) {
-    assert.deepEqual(
-      Object.keys(journal[name as keyof typeof eager]).sort(),
-      Object.keys(area).sort(),
-      `journal.${name}`
-    );
-  }
+  const eager = makeArchiveArea(driver, files);
+  assert.deepEqual(Object.keys(journal.archive).sort(), Object.keys(eager).sort());
 });
 
 /* The proof that the check above can fail, run through the same assertion

@@ -1,11 +1,11 @@
-/* The checklists area, exercised through the driver interface (ticket 05):
+/* The checklists area, exercised through the driver interface:
    standalone and owned checklists sharing one schema, add/edit/check/
    uncheck/delete/reorder, loud failures on unknown ids, idempotent deletes. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { journalWithBuiltIns, UUID_PATTERN } from './test-support.ts';
-import { debriefOfferVisible } from '../vocabulary/entryTemplates.ts';
+import { debriefOfferVisible } from '../vocabulary/debriefOffer.ts';
 
 test('a standalone checklist starts empty with no owner', async () => {
   const { journal } = await journalWithBuiltIns();
@@ -185,20 +185,17 @@ test('getDebriefState reads everything the offer predicate needs in one call', a
 });
 
 test('a journal with no most recent past appointment gets no debrief offer', async () => {
-  /* Phase 8 features ticket 49 item 6, rekeyed by ticket 58. Both halves of
-     the gate are already tested apart - `getDebriefState` answers a null
-     appointment id with itemCount/dismissed/debriefEntryId that all read
-     as "nothing recorded" above, and `debriefOfferVisible` answers false
-     to a null id in entryTemplates.test.ts - but nothing joined them, so
-     nothing would notice a read that started defaulting the id, or a
-     predicate that stopped checking it. The claim being kept is persona
-     2's: a clinician-facing surface must not describe someone who has
-     never had a clinician.
+  /* Both halves of the gate are already tested apart - `getDebriefState`
+     answers a null appointment id with itemCount/dismissed/debriefEntryId that all read as
+     "nothing recorded" above, and `debriefOfferVisible` answers false to a null id in
+     debriefOffer.test.ts - but nothing joined them, so nothing would notice a read that
+     started defaulting the id, or a predicate that stopped checking it. The claim being
+     kept is persona 2's: a clinician-facing surface must not describe someone who has never
+     had a clinician.
 
-     Adding a prep question is deliberately not enough. Somebody can write
-     down what they want to ask long before they have anywhere to ask it,
-     and the offer stays silent until an appointment is actually on
-     record. */
+     Adding a prep question is deliberately not enough. Somebody can write down what they
+     want to ask long before they have anywhere to ask it, and the offer stays silent until
+     an appointment is actually on record. */
   const { journal } = await journalWithBuiltIns();
 
   assert.equal(debriefOfferVisible(await journal.checklists.getDebriefState(null)), false);
@@ -235,20 +232,39 @@ test('recordDebriefEntry links an entry to the appointment it names', async () =
   assert.equal(await journal.checklists.getDebriefEntryId('appt-1'), entryId);
 });
 
-test('recordDebriefEntry creates the standalone checklist when there is none yet', async () => {
-  /* The link is state about the standalone checklist, so it needs a row to
-     live in, and until ticket 58 the retired `setAppointmentDate` was what
-     created one. Nothing in the app reaches here without a prep question
-     already standing - the offer requires `itemCount > 0` - but the demo
-     seed does (journal-seed.ts), and a silent zero-row UPDATE is the kind
-     of thing that shows up as a persona whose debrief simply isn't there.
-     `setDebriefDismissed`, the other writer of a debrief column, has
-     created on first use all along. */
+test('recordDebriefEntry needs no checklist and makes none', async () => {
+  /* The link lives in appointment_debrief, keyed by the appointment, so it no
+     longer needs a standalone checklist to hang on. The demo seed writes one
+     into a journal with no prep list at all (journal-seed.ts), and the prep
+     list must not appear as a side effect. */
   const { journal } = await journalWithBuiltIns();
   const entryId = await journal.entries.upsertEntry({ epochDay: 19801, mood: 3 });
   await journal.checklists.recordDebriefEntry(entryId, 'appt-1');
+  await journal.checklists.setDebriefDismissed('appt-2');
 
   assert.equal(await journal.checklists.getDebriefEntryId('appt-1'), entryId);
+  assert.equal((await journal.checklists.getDebriefState('appt-2')).dismissed, true);
+  assert.equal(await journal.checklists.getStandaloneChecklist(), undefined);
+});
+
+test('the debriefs of two appointments are kept apart, not overwritten by the later one', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const first = await journal.entries.upsertEntry({ epochDay: 19801, mood: 3 });
+  const second = await journal.entries.upsertEntry({ epochDay: 19900, mood: 4 });
+  await journal.checklists.recordDebriefEntry(first, 'appt-1');
+  await journal.checklists.recordDebriefEntry(second, 'appt-2');
+  await journal.checklists.setDebriefDismissed('appt-1');
+
+  assert.equal(await journal.checklists.getDebriefEntryId('appt-1'), first);
+  assert.equal(await journal.checklists.getDebriefEntryId('appt-2'), second);
+  assert.equal((await journal.checklists.getDebriefState('appt-1')).dismissed, true);
+  assert.equal((await journal.checklists.getDebriefState('appt-2')).dismissed, false);
+
+  // Linking again moves the link and keeps the dismissal.
+  const third = await journal.entries.upsertEntry({ epochDay: 19802, mood: 2 });
+  await journal.checklists.recordDebriefEntry(third, 'appt-1');
+  assert.equal(await journal.checklists.getDebriefEntryId('appt-1'), third);
+  assert.equal((await journal.checklists.getDebriefState('appt-1')).dismissed, true);
 });
 
 test('a dismissal or entry link recorded for one appointment does not answer for another', async () => {

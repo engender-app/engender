@@ -27,8 +27,7 @@ interface AndroidAutoExportDeps {
   now?(): number;
   scheduled?: boolean;
   recordBackup(at: number): void;
-  /** How far the pack has got, and a way to stop it (phase 9 audit ticket
-      11). Passed by the export screen's "Back up now"; the scheduler
+  /** How far the pack has got, and a way to stop it. Passed by the export screen's "Back up now"; the scheduler
       leaves it out, since nobody is watching a background run. */
   watch?: PackWatch;
 }
@@ -78,8 +77,20 @@ async function disable(status: AutoExportStatus) {
   await androidAutoExport.configure({ enabled: false, schedule: status.schedule });
 }
 
+async function nextArchivePiece(body: AsyncGenerator<Uint8Array>, signal?: AbortSignal) {
+  if (!signal) return body.next();
+  signal.throwIfAborted();
+  let stop!: () => void;
+  const aborted = new Promise<never>((_resolve, reject) => {
+    stop = () => reject(signal.reason);
+    signal.addEventListener('abort', stop, { once: true });
+  });
+  try { return await Promise.race([body.next(), aborted]); }
+  finally { signal.removeEventListener('abort', stop); }
+}
+
 /* Writes the file and says what happened. Whether a failure also reaches the
-   phone is not decided here any more (phase 6 ticket 04): it used to take a
+   phone is not decided here any more: it used to take a
    `trigger` argument whose only job was to gate `notifyFailure`, and the
    notice now answers to the unprompted registry - a preference, quiet hours
    and the disguise - which is the auto-export scheduler's business, since the
@@ -126,7 +137,10 @@ export async function runAndroidAutoExport(
     const digest = await createSHA256();
     ({ transferId } = await androidAutoExport.beginBackup({ fileName, snapshotAt: source.snapshotAt ?? writtenAt, scheduled: deps.scheduled ?? false }));
     let byteLength = 0;
-    for await (const piece of body) {
+    while (true) {
+      const next = await nextArchivePiece(body, deps.watch?.signal);
+      if (next.done) break;
+      const piece = next.value;
       deps.watch?.signal?.throwIfAborted();
       digest.update(piece);
       await androidAutoExport.appendBackup({ transferId, offset: byteLength, base64: toBase64(piece) });
@@ -148,7 +162,7 @@ export async function runAndroidAutoExport(
     deps.recordBackup(source.snapshotAt ?? writtenAt);
     return { outcome: 'ok', writtenAt: finished.writtenAt };
   } catch (error) {
-    /* A stopped pack is an answer, not a failure (ADR-0070): no completed archive
+    /* A stopped pack is an answer, not a failure: no completed archive
        reached the folder and nothing was stamped, so the screen has
        nothing to apologise for and disabling the schedule on it would be
        wrong. Checked before the reason strings below, because an
@@ -161,6 +175,8 @@ export async function runAndroidAutoExport(
     }
     return { outcome: 'failed', reason };
   } finally {
+    // A pending read can finish later; it no longer owns native delivery.
+    void body.return(undefined).catch(() => {});
     if (transferId) await androidAutoExport.abortBackup({ transferId }).catch(() => {});
   }
 }

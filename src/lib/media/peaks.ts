@@ -1,21 +1,7 @@
-/* The waveform's bars (ticket 46).
-
-   A recording's scrub track is a waveform because a person looking for the
-   moment they said something scans a shape, not a bar. The shape has to be
-   the recording's own: a decorative waveform that does not move with the
-   audio is worse than a plain bar, because it says something and the thing
-   it says is false.
-
-   So a bar is the root-mean-square amplitude of the slice of the recording
-   it stands over, normalised to the loudest bar. Normalised, because a
-   recording made at arm's length would otherwise draw as a flat line and a
-   waveform nobody can read is the same as no waveform; relative heights
-   inside one recording are untouched by the scaling, so the shape stays
-   this recording's shape. Two recordings are not comparable to each other
-   by bar height, which is not a reading anyone takes off a scrub track.
-
-   The samples come from `decodeToMono` (audio/decode.ts) at the peaks rate,
-   which is where the cost is - see the measurement in the ticket. */
+/* Build scrub bars from root-mean-square amplitude of decoded mono
+   slices. Normalize to the loudest bar so quiet recordings still show
+   their shape. Heights represent relative amplitude within one
+   recording. decodeToMono does the decode at the peaks rate. */
 
 import { forgetOnLock } from '../lock/forget-content';
 
@@ -63,9 +49,43 @@ export function peaksFromSamples(samples: Float32Array, buckets: number): Float3
   return bars;
 }
 
-/** A bar and the gap after it, in CSS pixels. Two and two: thinner than the
-    2px the chart ink rule gives a series (DIRECTION rule 9) would not survive
-    a phone, and wider spends a 110px track on eight bars. */
+/**
+ * The same bars as `peaksFromSamples` of the channels' mean, without ever
+ * making that mean: each sample is mixed where it is read, so a decoded
+ * recording is walked once and no array the length of the recording is
+ * allocated for it.
+ */
+export function peaksFromChannels(channels: readonly Float32Array[], buckets: number): Float32Array {
+  const bars = new Float32Array(Math.max(0, buckets));
+  const length = channels[0]?.length ?? 0;
+  if (bars.length === 0 || length === 0) return bars;
+
+  const per = length / bars.length;
+  const count = channels.length;
+  let loudest = 0;
+  for (let bar = 0; bar < bars.length; bar++) {
+    const from = Math.floor(bar * per);
+    const to = Math.max(from + 1, Math.floor((bar + 1) * per));
+    let sum = 0;
+    let n = 0;
+    for (let i = from; i < to && i < length; i++) {
+      let mixed = 0;
+      for (let c = 0; c < count; c++) mixed += channels[c][i] / count;
+      sum += mixed * mixed;
+      n++;
+    }
+    const rms = n === 0 ? 0 : Math.sqrt(sum / n);
+    bars[bar] = rms;
+    if (rms > loudest) loudest = rms;
+  }
+
+  if (loudest <= 1e-6) return new Float32Array(bars.length);
+  for (let bar = 0; bar < bars.length; bar++) bars[bar] = Math.min(1, bars[bar] / loudest);
+  return bars;
+}
+
+/** A 2px bar and a 2px gap. The series stays legible on a phone without
+    spending the 110px track on too few bars. */
 const BAR_PITCH = 4;
 
 /** Bars a track this wide can carry. The floor is what a track squeezed
@@ -143,7 +163,7 @@ export async function peaksFor(
 }
 
 /** Drops everything remembered: a lock takes the bars with the rest of
-    the journal (after-release ticket 10), and the tests start clean. */
+    the journal, and the tests start clean. */
 export function forgetPeaks(): void {
   cached.clear();
   inFlight.clear();

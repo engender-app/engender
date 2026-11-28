@@ -1,34 +1,15 @@
 <script lang="ts">
-  /* The date picker's body (phase 12 pickers, ticket 01), the same in the
-     phone's sheet and the desktop's popover (PickerHost.svelte).
+  /* PickerHost shares this date picker between the phone sheet and the desktop
+     popover. The track contains the visible month and two neighbours, all six
+     weeks tall. A drag settles one month over or springs back. At rest,
+     promote the neighbour and reset the offset in the same flush to keep the
+     painted month still. A distant jump preloads its destination in the
+     neighbour's slot. Beyond a bound, rubberBand stretches the track.
 
-     **One surface, three months on it.** The grid is a track of three
-     months side by side - the one shown and its neighbours - and the track
-     is what moves: under a finger it follows the finger, and on release it
-     settles a whole month over or springs back (datePicker.ts's
-     settleStep). When it lands, the neighbour it came to rest on becomes
-     the shown month and the track goes back to zero in the same flush, so
-     the month that is on screen never leaves it and nothing re-renders
-     under the eye - which is what a flatpickr grid, rebuilt on every
-     month change, could never do. Every month is six weeks tall, so the
-     surface does not change height between them either.
-
-     A jump further than one month (Today, the month drum, Shift+PageDown)
-     puts the destination into the neighbour's place off screen and travels
-     one month's width to it. Past a bound there is no neighbour, and the
-     track stretches instead of moving (rubberBand) and springs back.
-
-     **Grabbing a moving track.** A finger, a key or a button that arrives
-     while the track is settling does not wait for it or cut it short: the
-     settle is stopped where it has got to, and if it was already past half
-     way the months are rebased by one (the neighbour becomes the shown
-     month, and the track moves back by a width). Both are the same picture,
-     so the new movement starts from exactly what was painted.
-
-     The title turns sideways on the drum the year uses (motion/drum.ts),
-     at the moment the month is decided rather than when the track lands,
-     and tapping it lays MonthJump over the grid - content crossfading on a
-     surface that keeps its height, since the grid stays in flow under it. */
+     A new gesture or control stops a running settle at its painted position.
+     Past halfway, rebase the months and offset by one width to preserve that
+     position. The title drum starts when the month is chosen. MonthJump
+     crossfades over the grid, which stays in flow to hold the picker's height. */
   import { flushSync, tick } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { fmtDay, fmtMonthYear } from '$lib/data/dates';
@@ -39,7 +20,7 @@
   import Icon from './Icon.svelte';
   import MonthJump from './MonthJump.svelte';
   import { registerOverlayRegion } from './overlayLock';
-  import { dayInMonth, dayStep, keyMonth, keyYear, monthCells, monthKey, monthOfDay, parseIsoDate, rubberBand, settleStep } from './datePicker';
+  import { dayInMonth, dayStep, keyMonth, keyYear, monthCells, monthKey, monthOfDay, parseIsoDate, pickerRange, rubberBand, settleStep } from './datePicker';
 
   let {
     value,
@@ -67,14 +48,15 @@
   const WHEEL_QUIET = 120;
   const WHEEL_DEAF = 160;
 
-  let minDay = $derived(min ? parseIsoDate(min) : null);
-  let maxDay = $derived(max ? parseIsoDate(max) : null);
-  let firstKey = $derived(minDay === null ? -Infinity : monthOfDay(minDay));
-  let lastKey = $derived(maxDay === null ? Infinity : monthOfDay(maxDay));
+  let range = $derived(pickerRange(min, max, today));
+  let minDay = $derived(range.first);
+  let maxDay = $derived(range.last);
+  let firstKey = $derived(monthOfDay(minDay));
+  let lastKey = $derived(monthOfDay(maxDay));
   let selected = $derived(value ? parseIsoDate(value) : null);
 
-  const inRange = (day: number) => (minDay === null || day >= minDay) && (maxDay === null || day <= maxDay);
-  const clampDay = (day: number) => Math.min(Math.max(day, minDay ?? day), maxDay ?? day);
+  const inRange = (day: number) => day >= minDay && day <= maxDay;
+  const clampDay = (day: number) => Math.min(Math.max(day, minDay), maxDay);
 
   /* The day the keyboard is on. The picker is mounted per opening, so this
      starts on the chosen day, or today, each time. */
@@ -622,7 +604,7 @@
     .dp-title:hover { background: var(--surface-2); }
   }
   .dp-title:focus-visible {
-    outline: 2px solid var(--focus-ring);
+    outline: var(--focus-ring-width) solid var(--focus-ring);
     outline-offset: -2px;
   }
 
@@ -734,7 +716,7 @@
     pointer-events: none;
   }
   .dp-day:focus-visible {
-    outline: 2px solid var(--focus-ring);
+    outline: var(--focus-ring-width) solid var(--focus-ring);
     outline-offset: -6px;
   }
 

@@ -1,12 +1,21 @@
 /* The batch half of scroll-region only. The scroll half reads and writes a
    real element and belongs to the browser tier; these two functions hold a
    map and touch no document, which is the whole reason they are testable
-   here (phase 8 features ticket 66). `hashRowId` joins them for the same
-   reason (ticket 67): called with an explicit hash, it touches no `location`
+   here. `hashRowId` joins them for the same
+   reason: called with an explicit hash, it touches no `location`
    either. */
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { hashRowId, rememberBatches, rememberScroll, restoredBatches, savedScroll } from './scroll-region';
+import {
+  claimScrollHold,
+  hashRowId,
+  holdScroll,
+  rememberBatches,
+  rememberScroll,
+  restoreScroll,
+  restoredBatches,
+  savedScroll
+} from './scroll-region';
 
 describe('batches remembered per screen', () => {
   it('starts a screen nobody has grown at one batch', () => {
@@ -59,9 +68,18 @@ describe('hashRowId', () => {
   it('decodes a percent-encoded id the same way getElementById would need it', () => {
     expect(hashRowId('#a%20b')).toBe('a b');
   });
+
+  /* A link anyone can send: a bare `%`, a bad escape or a cut-off UTF-8 sequence made
+     decodeURIComponent throw inside the doses, labs and regimen screens' setup, and the
+     screen failed to draw. */
+  it('is null for a malformed escape rather than throwing', () => {
+    expect(hashRowId('#%')).toBeNull();
+    expect(hashRowId('#%ZZ')).toBeNull();
+    expect(hashRowId('#%E2%82')).toBeNull();
+  });
 });
 
-/* What the transition asks before the region has got anywhere (ticket 285):
+/* What the transition asks before the region has got anywhere:
    where a screen was left, which is where the eased restore is about to take
    it. rememberScroll reads the one element, so it is stubbed. */
 describe('savedScroll', () => {
@@ -100,5 +118,68 @@ describe('savedScroll', () => {
     rememberScroll('/b');
     expect(savedScroll('/a', 'popstate')).toBe(120);
     expect(savedScroll('/b', 'popstate')).toBe(340);
+  });
+});
+
+/* A screen rewriting its own address in place:
+   opening a photo half way down the library sent the grid back to its first
+   row, because the restore after every navigation read a `goto` as a screen
+   to open at the top. The region is stubbed at 500px; a restore that goes
+   to the top writes 0 straight into it. */
+describe('a navigation held still by replaceRoute', () => {
+  const origin = 'http://localhost';
+  const at = (path: string) => new URL(path, origin);
+  let el: { scrollTop: number };
+  const restore = (path: string, type = 'goto') => {
+    restoreScroll(at(path), type);
+    return el.scrollTop;
+  };
+  beforeEach(() => {
+    el = { scrollTop: 500 };
+    (globalThis as Record<string, unknown>).document = { querySelector: () => el };
+    claimScrollHold(null);
+  });
+  afterEach(() => {
+    delete (globalThis as Record<string, unknown>).document;
+  });
+
+  it('leaves the region where it was', () => {
+    holdScroll('/media/photos?photo=a');
+    claimScrollHold(at('/media/photos?photo=a'));
+    expect(restore('/media/photos?photo=a')).toBe(500);
+    /* Restored twice per navigation - before a view transition's capture
+       and again after it settles - and held both times. */
+    expect(restore('/media/photos?photo=a')).toBe(500);
+  });
+
+  it('takes a URL object the way replaceRoute is handed one', () => {
+    holdScroll(at('/media/photos?source=hair'));
+    claimScrollHold(at('/media/photos?source=hair'));
+    expect(restore('/media/photos?source=hair')).toBe(500);
+  });
+
+  it('still opens an ordinary goto at the top', () => {
+    expect(restore('/media/photos')).toBe(0);
+  });
+
+  it('is dropped by a navigation to somewhere else, which opens at the top', () => {
+    holdScroll('/media/photos?photo=a');
+    claimScrollHold(at('/more'));
+    expect(restore('/more')).toBe(0);
+    claimScrollHold(at('/media/photos?photo=a'));
+    expect(restore('/media/photos?photo=a', 'goto')).toBe(0);
+  });
+
+  it('holds one navigation only: the next one to start spends it', () => {
+    holdScroll('/media/photos');
+    claimScrollHold(at('/media/photos'));
+    expect(restore('/media/photos')).toBe(500);
+    claimScrollHold(at('/media/photos'));
+    expect(restore('/media/photos', 'link')).toBe(0);
+  });
+
+  it('counts only once its own navigation has started', () => {
+    holdScroll('/media/photos?photo=a');
+    expect(restore('/media/photos?photo=a')).toBe(0);
   });
 });

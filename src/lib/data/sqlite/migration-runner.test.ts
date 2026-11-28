@@ -1,8 +1,7 @@
-/* Unit tests for the migration runner (ADR-0006). Part of the Node tier
-   (ticket 03); run with `npm test`. No production SQLite driver exists yet
-   (ticket 04); node:sqlite's DatabaseSync stands in as a real, synchronous
-   MigrationDb for these tests only. The fake file-ops object stands in for
-   ticket 04's OPFS/Capacitor file copy. */
+/* Unit tests for the migration runner (ADR-0006). Part of the Node tier; run with `npm
+   test`. No production SQLite driver exists yet; node:sqlite's DatabaseSync stands in as a
+   real, synchronous MigrationDb for these tests only. The fake file-ops object stands in
+   for OPFS/Capacitor file copy. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
@@ -11,6 +10,8 @@ import {
   SchemaTooNewError,
   Fts5UnavailableError,
   InterruptedRestoreError,
+  JournalBelowBaselineError,
+  JournalBetweenStepsError,
   assertFts5Available
 } from './migration-runner.ts';
 import type { MigrationDb, MigrationFileOps, Migration } from './migration-runner.ts';
@@ -24,15 +25,16 @@ import { capturedConsoleOutput } from '../../crypto/test-support/capture-console
 /** One step, enough for the runner to have something pending. */
 const migrationsFixture: Migration[] = [{ version: 1, sql: 'CREATE TABLE widget (id INTEGER PRIMARY KEY);' }];
 
-function makeFts5UnavailableDb(): MigrationDb {
+function makeFts5UnavailableDb(error = new Error('no such module: fts5')): MigrationDb {
   return {
-    exec() {
-      throw new Error('no such module: fts5');
+    exec(sql) {
+      if (/CREATE\s+VIRTUAL\s+TABLE[\s\S]*\bUSING\s+fts5\b/i.test(sql)) throw error;
     },
     getUserVersion() {
       throw new Error('getUserVersion should not be called when FTS5 is unavailable');
     },
     async query() { return []; },
+    async run() { throw new Error('run should not be called when FTS5 is unavailable'); },
     setUserVersion() {},
     transaction(fn) {
       return fn(this);
@@ -185,11 +187,11 @@ test('applies out-of-order pending migrations in ascending version order', async
 });
 
 test('a copy left by a failed migration is not written over by the retry', async () => {
-  /* Ticket 04. The retry's copy would be taken from a database the failed
-     attempt has already been at, and if the file is damaged the copy cannot
-     be written at all - so overwriting spends the one recovery point to make
-     a worse one, or destroys it and makes none. ADR-0006 keeps the copy until
-     a boot comes up clean; a boot that finds migrations pending is not one. */
+  /* The retry's copy would be taken from a database the failed attempt has already been at,
+     and if the file is damaged the copy cannot be written at all - so overwriting spends
+     the one recovery point to make a worse one, or destroys it and makes none. ADR-0006
+     keeps the copy until a boot comes up clean; a boot that finds migrations pending is not
+     one. */
   const db = makeDb();
   const fileOps = makeFileOpsSpy({ copyExists: true });
   /* At v1 with v2 pending, which is what a retry after a failed later step
@@ -262,12 +264,43 @@ test('a first run with no copy beside it is not mistaken for an interrupted rest
 
 test('assertFts5Available resolves against a build that has FTS5 compiled in', async () => {
   const db = makeDb();
-  await assert.doesNotReject(() => assertFts5Available(db));
+  try {
+    const schemaVersion = db.raw.prepare('PRAGMA main.schema_version').get();
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await assert.doesNotReject(() => assertFts5Available(db));
+      assert.deepEqual(await db.query("SELECT name FROM sqlite_temp_schema WHERE name GLOB '__fts5_probe*'"), []);
+      assert.deepEqual(db.raw.prepare('PRAGMA main.schema_version').get(), schemaVersion);
+    }
+  } finally { await db.close(); }
 });
 
 test('assertFts5Available fails loudly with a distinct error when FTS5 is missing', async () => {
   await assert.rejects(() => assertFts5Available(makeFts5UnavailableDb()), Fts5UnavailableError);
 });
+
+test('assertFts5Available recognizes a direct FTS5 error without a space after the colon', async () => {
+  const cause = new Error('no such module:fts5');
+  await assert.rejects(() => assertFts5Available(makeFts5UnavailableDb(cause)), (error: unknown) => {
+    assert.ok(error instanceof Fts5UnavailableError);
+    assert.equal(error.cause, cause);
+    assert.match(error.message, /no such module:fts5/);
+    return true;
+  });
+});
+
+test.each(['no such module: fts5', 'no such module:fts5'])(
+  'assertFts5Available recognizes a driver cause saying %s', async (message) => {
+    const cause = new Error('native query failed', { cause: new Error(message) });
+    await assert.rejects(() => assertFts5Available(makeFts5UnavailableDb(cause)), (error: unknown) => {
+      assert.ok(error instanceof Fts5UnavailableError);
+      assert.equal(error.name, 'Fts5UnavailableError');
+      assert.equal(error.cause, cause);
+      assert.match(error.message, /FTS5 is not available/);
+      assert.match(error.message, /native query failed/);
+      return true;
+    });
+  }
+);
 
 test('runMigrations fails loudly on missing FTS5 before touching versions or file-copy hooks', async () => {
   const fileOps = makeFileOpsSpy();
@@ -288,6 +321,7 @@ test('assertFts5Available does not misclassify a locked database as missing FTS5
       throw new Error('should not be called');
     },
     async query() { return []; },
+    async run() { throw new Error('should not be called'); },
     setUserVersion() {},
     transaction(fn) {
       return fn(this);
@@ -305,9 +339,8 @@ test('assertFts5Available does not misclassify a locked database as missing FTS5
 });
 
 test('a journal already on the current schema never loads the migration list', async () => {
-  /* Phase 5 audit ticket 02: the list is 27KB of SQL text and every boot
-     used to parse it to decide it had nothing to do. A journal at the latest
-     version answers that with one integer comparison. */
+  /* The list is 27KB of SQL text and every boot used to parse it to decide it had nothing
+     to do. A journal at the latest version answers that with one integer comparison. */
   const db = makeDb();
   db.setUserVersion(1);
   const fileOps = makeFileOpsSpy();
@@ -418,4 +451,53 @@ test('a clean boot opens a journal with an orphan and logs the foreign key viola
   assert.equal((await db.query('PRAGMA foreign_keys'))[0].foreign_keys, 1);
   assert.equal((await db.query('SELECT parent_id FROM child'))[0].parent_id, 99);
   assert.equal(fileOps.cleanupCalls, 0, 'an orphan does not prove a recovery copy safe to retire');
+});
+
+/* row 15: the guard against a journal that sits between two steps of the chain, at each of
+   its edges. */
+const steppedChain: Migration[] = [
+  { version: 10, baseline: true, sql: 'CREATE TABLE widget (id INTEGER PRIMARY KEY);' },
+  { version: 12, sql: 'CREATE TABLE gadget (id INTEGER PRIMARY KEY);' }
+];
+
+test('a journal between two steps is refused with its version and the baseline named, before any copy', async () => {
+  const db = makeDb();
+  const fileOps = makeFileOpsSpy();
+  db.raw.exec('CREATE TABLE widget (id INTEGER PRIMARY KEY); PRAGMA user_version = 11');
+
+  await assert.rejects(() => runMigrations(db, fileOps, steppedChain), (error: unknown) => {
+    assert.ok(error instanceof JournalBetweenStepsError);
+    assert.equal(error.name, 'JournalBetweenStepsError');
+    assert.match(error.message, /version 11 lies between two steps .*baseline 10/);
+    return true;
+  });
+  assert.equal(fileOps.copyCalls, 0);
+  assert.equal(db.getUserVersion(), 11);
+});
+
+test('a journal on the baseline, or on a later step, is not between steps', async () => {
+  for (const [version, schema] of [[10, 'CREATE TABLE widget (id INTEGER PRIMARY KEY);'], [12, 'CREATE TABLE widget (id INTEGER PRIMARY KEY); CREATE TABLE gadget (id INTEGER PRIMARY KEY);']] as const) {
+    const db = makeDb();
+    db.raw.exec(`${schema} PRAGMA user_version = ${version}`);
+    await runMigrations(db, makeFileOpsSpy(), steppedChain);
+    assert.equal(db.getUserVersion(), 12);
+  }
+});
+
+test('an empty journal runs the baseline, and a chain with no baseline never refuses a gap', async () => {
+  const empty = makeDb();
+  await runMigrations(empty, makeFileOpsSpy(), steppedChain);
+  assert.equal(empty.getUserVersion(), 12);
+
+  const unmarked = makeDb();
+  unmarked.raw.exec('CREATE TABLE widget (id INTEGER PRIMARY KEY); PRAGMA user_version = 11');
+  await runMigrations(unmarked, makeFileOpsSpy(), steppedChain.map(({ baseline: _, ...step }) => step));
+  assert.equal(unmarked.getUserVersion(), 12);
+});
+
+test('a journal below the baseline is not reported as between steps', async () => {
+  const db = makeDb();
+  db.raw.exec('CREATE TABLE old (id INTEGER PRIMARY KEY); PRAGMA user_version = 9');
+  await assert.rejects(() => runMigrations(db, makeFileOpsSpy(), steppedChain), (error: unknown) =>
+    error instanceof JournalBelowBaselineError && !(error instanceof JournalBetweenStepsError));
 });

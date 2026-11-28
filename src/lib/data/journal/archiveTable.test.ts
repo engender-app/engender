@@ -1,4 +1,4 @@
-/* The flat descriptor itself (phase 5 ticket 13): that one declaration is
+/* The flat descriptor itself: that one declaration is
    enough to read an area's rows out, write them back and match the ones
    already there.
 
@@ -58,7 +58,7 @@ const reading = (driver: SqliteDriver): SectionRead =>
     photos: [],
     recordings: [],
     videos: [],
-    hairPhotos: [],
+    progressPhotos: [],
     hairRemovalPhotos: [],
     procedurePhotos: [],
     tryoutPhotos: [],
@@ -66,9 +66,9 @@ const reading = (driver: SqliteDriver): SectionRead =>
     documentFiles: []
   });
 
-const restoring = (driver: SqliteDriver) => ({
+const restoring = (driver: SqliteDriver, mode: 'replace' | 'merge' = 'replace') => ({
   driver,
-  mode: 'replace' as const,
+  mode,
   journal: {} as ArchiveJournal,
   ts: 7
 });
@@ -86,14 +86,15 @@ test('the declared columns are what the read carries, in the order it declares t
 
   const rows = await readFlatTable(MOON_PHASE, reading(driver));
 
+  // Each row's own `updated_at` travels after them.
   assert.deepEqual(rows, [
-    { id: 'm-1', epochDay: 20000, phase: 'waxing', waxing: true, note: '' },
-    { id: 'm-2', epochDay: 20007, phase: 'full', waxing: false, note: 'clear' }
+    { id: 'm-1', epochDay: 20000, phase: 'waxing', waxing: true, note: '', updatedAt: 1 },
+    { id: 'm-2', epochDay: 20007, phase: 'full', waxing: false, note: 'clear', updatedAt: 1 }
   ]);
-  assert.deepEqual(Object.keys(rows[0]), ['id', 'epochDay', 'phase', 'waxing', 'note']);
+  assert.deepEqual(Object.keys(rows[0]), ['id', 'epochDay', 'phase', 'waxing', 'note', 'updatedAt']);
 });
 
-test('the same declaration writes the rows back, stamped with the import clock', async () => {
+test('the same declaration writes the rows back, stamped with the import clock when the archive carries no stamp', async () => {
   const driver = await tableWithRows([]);
 
   await applyFlatTable(MOON_PHASE, [
@@ -106,19 +107,38 @@ test('the same declaration writes the rows back, stamped with the import clock',
   );
 });
 
-test('a row the identity column already holds is left as it is rather than duplicated', async () => {
-  const driver = await tableWithRows([['m-1', 20000, 'waxing', 1, 'as recorded here']]);
+test('a row carrying its own stamp keeps it rather than taking the import clock', async () => {
+  const driver = await tableWithRows([]);
 
   await applyFlatTable(MOON_PHASE, [
-    { id: 'm-1', epochDay: 20000, phase: 'gibbous', waxing: false, note: 'as the archive has it' },
-    { id: 'm-2', epochDay: 20007, phase: 'full', waxing: false, note: '' }
+    { id: 'm-1', epochDay: 20000, phase: 'waxing', waxing: true, note: 'thin', updatedAt: 5 } as MoonPhase
   ], restoring(driver));
 
+  assert.deepEqual((await landed(driver)).map((row) => row.updated_at), [5]);
+});
+
+/* A Merge: a row the identity column already
+   holds is never duplicated. The archive's copy is written over it when it is
+   the newer, and left out otherwise, including when it carries no stamp at
+   all. */
+test('a row the identity column already holds takes only a newer copy, and is never duplicated', async () => {
+  const driver = await tableWithRows([
+    ['m-1', 20000, 'waxing', 1, 'as recorded here'],
+    ['m-3', 20014, 'waning', 0, 'as recorded here']
+  ]);
+
+  await applyFlatTable(MOON_PHASE, [
+    { id: 'm-1', epochDay: 20000, phase: 'gibbous', waxing: false, note: 'as the archive has it', updatedAt: 2 } as MoonPhase,
+    { id: 'm-2', epochDay: 20007, phase: 'full', waxing: false, note: '' },
+    { id: 'm-3', epochDay: 20014, phase: 'new', waxing: false, note: 'unstamped' }
+  ], restoring(driver, 'merge'));
+
   assert.deepEqual(
-    (await landed(driver)).map((row) => [row.uuid, row.phase, row.note]),
+    (await landed(driver)).map((row) => [row.uuid, row.phase, row.note, row.updated_at]),
     [
-      ['m-1', 'waxing', 'as recorded here'],
-      ['m-2', 'full', '']
+      ['m-1', 'gibbous', 'as the archive has it', 2],
+      ['m-2', 'full', '', 7],
+      ['m-3', 'waning', 'as recorded here', 1]
     ]
   );
 });

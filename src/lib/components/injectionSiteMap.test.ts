@@ -17,19 +17,17 @@ import {
 
 const root = fileURLToPath(new URL('../../..', import.meta.url));
 
-/* The rotation map's geometry (phase 6 ticket 13).
+/* The rotation map's geometry.
 
-   These coordinates used to live inside InjectionSiteMap.svelte, where
-   nothing could check the claim its own comment made - that twelve touch
-   targets on a 280px figure stay far enough apart. They did not: two dots
-   sat 33.7px apart at 320px, so a fifth of each of six targets belonged to
-   a neighbour. Ticket 10 read that crowding as a reason to put recency in a
-   text list instead of on the dots, so this is the seam that let the ramp
-   onto the map.
+   These coordinates used to live inside InjectionSiteMap.svelte, where nothing could check
+   the claim its own comment made - that twelve touch targets on a 280px figure stay far
+   enough apart. They did not: two dots sat 33.7px apart at 320px, so a fifth of each of six
+   targets belonged to a neighbour. read that crowding as a reason to put recency in a text
+   list instead of on the dots, so this is the seam that let the ramp onto the map.
 
-   The box got shorter after that. At 280 by 560 the figure was taller than
-   the 500px window the sheet scrolls its content in, so no phone showed the
-   whole map, let alone the map and the list under it. */
+   The box got shorter after that. At 280 by 560 the figure was taller than the 500px window
+   the sheet scrolls its content in, so no phone showed the whole map, let alone the map and
+   the list under it. */
 describe('injection site map layout', () => {
   it('keeps every pair of sites a touch target and a gap apart', () => {
     const centres = INJECTION_SITES.map((site) => ({ key: site.key, ...siteCentre(site) }));
@@ -74,7 +72,7 @@ describe('injection site map layout', () => {
   });
 
   it('keeps every dot on the body rather than over the edge of it', () => {
-    // Ticket 48: the dots are placed against the shared silhouette now, and
+    // The dots are placed against the shared silhouette now, and
     // a dot that straddles a contour reads as a mistake wherever it is. What
     // has to be inside is the visible dot rather than the touch target,
     // which is invisible and may hang over an arm - and the whole of it

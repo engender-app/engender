@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
-const { pick, acceptDocumentFile, toast, FakeUnsupportedImageError, FakeDocumentRefusedError } = vi.hoisted(() => {
+const { pick, acceptDocumentFile, toast, androidPickedBytes, PickDeferredError, FakeUnsupportedImageError, FakeDocumentRefusedError } = vi.hoisted(() => {
+  class PickDeferredError extends Error {
+    constructor(readonly tokens: string[]) {
+      super('pick-deferred');
+    }
+  }
   class FakeUnsupportedImageError extends Error {
     readonly kind: 'heic' | 'unreadable';
     constructor(kind: 'heic' | 'unreadable') {
@@ -19,6 +24,8 @@ const { pick, acceptDocumentFile, toast, FakeUnsupportedImageError, FakeDocument
     pick: vi.fn(),
     acceptDocumentFile: vi.fn(),
     toast: vi.fn(),
+    androidPickedBytes: vi.fn(),
+    PickDeferredError,
     FakeUnsupportedImageError,
     FakeDocumentRefusedError
   };
@@ -26,7 +33,9 @@ const { pick, acceptDocumentFile, toast, FakeUnsupportedImageError, FakeDocument
 
 vi.mock('$lib/paraglide/messages', () => ({
   m: {
-    document_picker_failed: () => 'picker-failed',
+    picked_while_locked_added: () => 'added',
+    picked_while_locked_lost: () => 'lost',
+    picker_failed: () => 'picker-failed',
     photo_heic: () => 'heic',
     document_too_large: () => 'too-large',
     document_unsupported_file: () => 'unsupported'
@@ -40,11 +49,15 @@ vi.mock('../data/documents/accept', () => ({
 vi.mock('../data/photos/normalize', () => ({
   UnsupportedImageError: FakeUnsupportedImageError
 }));
+vi.mock('./lock.svelte', () => ({ isSessionLocked: () => false }));
 vi.mock('../data/photos/picker', () => ({
-  documentPicker: () => ({ pick })
+  documentPicker: () => ({ pick }),
+  androidPickedBytes,
+  PickDeferredError
 }));
 
-import { pickDocument } from './documentPicking';
+import { claimPendingDocument, pickDocument } from './documentPicking';
+import { dropPending } from './pendingPick';
 
 const ACCEPTED = { pdfBytes: new Uint8Array([1]), thumb: null };
 
@@ -125,5 +138,25 @@ describe('pickDocument', () => {
 
     expect(picked).toBeNull();
     expect(toast).toHaveBeenCalledWith('unsupported');
+  });
+});
+
+describe('a document that comes back while the app is locked', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    dropPending();
+    vi.stubGlobal('location', { pathname: '/media/documents' });
+  });
+
+  test('is kept by token and opens the import after the unlock', async () => {
+    pick.mockRejectedValue(new PickDeferredError(['tok']));
+    androidPickedBytes.mockResolvedValue(new Uint8Array([5]));
+    acceptDocumentFile.mockResolvedValue(ACCEPTED);
+
+    expect(await pickDocument('document')).toBeNull();
+    expect(androidPickedBytes).not.toHaveBeenCalled();
+
+    expect(await claimPendingDocument()).toBe(ACCEPTED);
+    expect(androidPickedBytes).toHaveBeenCalledWith('tok');
   });
 });

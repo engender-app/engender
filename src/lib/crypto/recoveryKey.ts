@@ -1,19 +1,16 @@
-/* The recovery key's own form (ADR-0054, ticket sec-01): the string a
-   person writes down, and the one thing that turns it back into a secret
-   the KDF can take.
+/* The recovery key's own form (ADR-0054): the string a person writes down, and the one
+   thing that turns it back into a secret the KDF can take.
 
-   Nothing here is cryptography - the wrap is `keystore.ts`'s, unchanged.
-   What this module owns is that a key can be read off paper by somebody
-   who is not a computer, and that a key typed slightly wrong is told apart
-   from a key that is simply not this journal's. Those are two different
-   sentences at the gate, and the check symbol is the only thing that can
-   distinguish them: a wrong key and a mistyped key both fail the wrap
-   identically (aesGcm.ts deliberately cannot tell a wrong key from
-   corruption), so a wrong-key message on a typo would send somebody
-   looking for different paper.
+   Nothing here is cryptography - the wrap is `keystore.ts`'s, unchanged. What this module
+   owns is that a key can be read off paper by somebody who is not a computer, and that a
+   key typed slightly wrong is told apart from a key that is simply not this journal's.
+   Those are two different sentences at the gate, and the check symbol is the only thing
+   that can distinguish them: a wrong key and a mistyped key both fail the wrap identically
+   (aesGcm.ts deliberately cannot tell a wrong key from corruption), so a wrong-key message
+   on a typo would send somebody looking for different paper.
 
-   Deliberately rune-free and DOM-free, so it runs in the Node tier next to
-   the rest of the pure model (ADR-0017). */
+   Deliberately rune-free and DOM-free, so it runs in the Node tier next to the rest of the
+   pure model (ADR-0017). */
 
 /** Crockford base32: the digits and the alphabet with I, L, O and U left
     out, so nothing in a written key can be confused for 1, 0 or a word. */
@@ -40,8 +37,7 @@ const GROUP_SIZE = 5;
 
 /** The canonical length: the data symbols and the check symbol, with no
     separators. This is the form the KDF sees. */
-/* RECOVERY_KEY_LENGTH stays exported only for its own test (AU-09 test-only
-   review). */
+/* RECOVERY_KEY_LENGTH stays exported only for its own test. */
 export const RECOVERY_KEY_LENGTH = DATA_SYMBOLS + 1;
 
 /** Thrown for a key that cannot be what was written down - a wrong length,
@@ -55,30 +51,16 @@ export class RecoveryKeyMistypedError extends Error {
   }
 }
 
-/* The check symbol makes the whole written key, read as a base-32 number
-   over all 25 of its symbols, divisible by 37. Two properties follow, and
-   both are why 37 rather than a sum or a smaller modulus:
+/* The full 25-symbol base-32 key is divisible by 37. A substitution
+   changes it by d × 32^i, with 1 ≤ |d| ≤ 31, so prime 37 cannot divide it.
+   A transposition of different symbols changes it by
+   (b − a) × (32^i − 32^j). The second factor vanishes modulo 37 only
+   when positions differ by a multiple of 36, beyond the key's length.
 
-   A single wrong symbol shifts the total by d x 32^i where d is at most 31
-   in either direction. 37 is prime and larger than 31, so that can never
-   land back on a multiple of 37. Every one-symbol slip is caught.
-
-   Swapping two symbols shifts it by (b - a) x (32^i - 32^j). The first
-   factor is never zero modulo 37 for the same reason; the second is zero
-   only when the positions are 36 apart, and a key is 25 long. So every
-   transposition is caught too, which a summed checksum catches none of.
-
-   The check symbol has to be inside the run for that second property to
-   hold at every position. Computing it over the 24 data symbols alone -
-   Crockford's own framing, and the first thing this module did - leaves
-   exactly one hole, because 32^18 is congruent to -1 modulo 37: swapping
-   the symbol at that one position with the check symbol always produced a
-   key that validated. The transposition test found it.
-
-   The remainder can be any of 37 values and the alphabet has 32, so
-   generation redraws when it cannot be written (`generateRecoveryKey`).
-   That conditions the key on a public property of itself and costs about a
-   fifth of one bit. */
+   Checking only the 24 data symbols left one undetected swap with the
+   check symbol because 32^18 ≡ −1 (mod 37). Cover all positions. Generation
+   redraws when one of the 37 remainders cannot fit the 32-symbol alphabet,
+   costing about a fifth of an entropy bit. */
 const CHECK_MODULUS = 37n;
 
 /** The symbols, read as one base-32 number, modulo 37. */

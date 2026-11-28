@@ -1,7 +1,7 @@
 /** The unit as a series key. Surrounding whitespace is an artefact of typing,
     so it goes. Nothing else does: deciding that `ng/dl` and `ng/dL` name the
     same unit is an interpretation this app does not make, and the one after
-    that would be converting between them (CONTEXT: "Analyte"). */
+    that would be converting between them. */
 export function normalizeUnit(unit: string): string {
   return unit.trim();
 }
@@ -11,10 +11,9 @@ export type PreferredLabUnits = Partial<Record<PreferredUnitAnalyte, string>>;
 
 export const PREFERRED_UNIT_ANALYTES: readonly PreferredUnitAnalyte[] = ['estradiol', 'testosterone'];
 
-/** Steroids only. Estradiol and testosterone convert by molar mass, a physical
-    constant. Prolactin, LH and FSH convert against an assay-specific
-    calibration standard instead, so they get no fixed factor here - see
-    ticket 14 (portability) and ADR-0026. */
+/** Steroids only. Estradiol and testosterone convert by molar mass, a physical constant.
+    Prolactin, LH and FSH convert against an assay-specific calibration standard instead, so
+    they get no fixed factor here - (ADR-0026). */
 export const ALLOWED_PREFERRED_UNITS: Record<PreferredUnitAnalyte, readonly string[]> = {
   estradiol: ['pg/mL', 'pmol/L'],
   testosterone: ['ng/dL', 'nmol/L']
@@ -22,10 +21,8 @@ export const ALLOWED_PREFERRED_UNITS: Record<PreferredUnitAnalyte, readonly stri
 
 /** The unit an analyte's allowlist is written around: the first of its allowed
     units, which every factor table below is expressed relative to. Named rather
-    than indexed at each call site, because "[0] means base" is a convention two
-    unrelated readers had to know - the canonicalizer and the hormone curve,
-    which draws in whatever unit its parameters were published in. */
-export function baseUnitFor(analyte: PreferredUnitAnalyte): string {
+    than indexed at each call site, so "[0] means base" stays in one place. */
+function baseUnitFor(analyte: PreferredUnitAnalyte): string {
   return ALLOWED_PREFERRED_UNITS[analyte][0];
 }
 
@@ -50,16 +47,14 @@ function canonicalUnitFor(analyte: PreferredUnitAnalyte, unit: string): string |
   return ALLOWED_PREFERRED_UNITS[analyte].find((allowed) => allowed.toLowerCase() === normalized) ?? null;
 }
 
-/* normalizePreferredUnitSelection stays exported only for its own test (AU-09
-   test-only review). */
+/* normalizePreferredUnitSelection stays exported only for its own test. */
 export function normalizePreferredUnitSelection(analyte: string, selectedUnit: string): string | null {
   const known = asAnalyte(analyte);
   if (!known) return null;
   return canonicalUnitFor(known, selectedUnit);
 }
 
-/* sanitizePreferredLabUnits stays exported only for its own test (AU-09
-   test-only review). */
+/* sanitizePreferredLabUnits stays exported only for its own test. */
 export function sanitizePreferredLabUnits(input: PreferredLabUnits): PreferredLabUnits {
   const sanitized: PreferredLabUnits = {};
   for (const analyte of PREFERRED_UNIT_ANALYTES) {

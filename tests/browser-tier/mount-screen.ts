@@ -2,6 +2,7 @@ import { flushSync, tick, type Component } from 'svelte';
 import type { Journal } from '$lib/data/journal/journal';
 import type { PreferenceValues } from '$lib/data/prefs/catalogue';
 import { prefs } from '$lib/data/prefs/store.svelte';
+import { withHasEntries } from '$lib/data/acknowledgements';
 import { refreshActiveFlag } from '$lib/theme/activeFlag.svelte';
 import { mountInto } from './mount';
 import { prepareScreenJournal } from './screen-journal';
@@ -15,7 +16,13 @@ import Entry from '../../src/routes/entry/[id]/+page.svelte';
 import NewEntry from '../../src/routes/entry/new/[day]/+page.svelte';
 import More from '../../src/routes/more/+page.svelte';
 import Stats from '../../src/routes/stats/+page.svelte';
+import StatsReading from '../../src/routes/stats/[reading]/+page.svelte';
+import Wrapped from '../../src/routes/wrapped/[cadence]/+page.svelte';
+import OnThisDay from '../../src/routes/on-this-day/+page.svelte';
+import Care from '../../src/routes/care/+page.svelte';
 import Milestones from '../../src/routes/transition/milestones/+page.svelte';
+import ProgressPhotos from '../../src/routes/transition/progress-photos/+page.svelte';
+import Tryouts from '../../src/routes/transition/tryouts/+page.svelte';
 import SafeSpace from '../../src/routes/doubt/+page.svelte';
 import GoodMoments from '../../src/routes/doubt/evidence/+page.svelte';
 import '$lib/theme/fonts.css';
@@ -45,11 +52,17 @@ function componentFor(route: string): Component {
     '/search': Search,
     '/more': More,
     '/stats': Stats,
+    '/care': Care,
+    '/on-this-day': OnThisDay,
     '/doubt': SafeSpace,
     '/doubt/evidence': GoodMoments,
-    '/transition/milestones': Milestones
+    '/transition/milestones': Milestones,
+    '/transition/progress-photos': ProgressPhotos,
+    '/transition/tryouts': Tryouts
   };
   if (routes[path]) return routes[path];
+  if (path.startsWith('/stats/')) return StatsReading;
+  if (path.startsWith('/wrapped/')) return Wrapped;
   if (path.startsWith('/entry/new/')) return NewEntry;
   if (path.startsWith('/entry/')) return Entry;
   if (path.startsWith('/day/')) return Day;
@@ -64,8 +77,8 @@ export async function mountScreen(route: string, fixture: ScreenFixture) {
   document.documentElement.dataset.moodPreset = prefs.moodPreset;
   document.documentElement.dataset.theme = prefs.theme === 'dark' ? 'dark' : 'light';
   document.documentElement.dataset.a11yMotion = prefs.a11yMotionReduce ? 'reduce' : 'full';
-  refreshActiveFlag(document, prefs.disguise);
-  localStorage.setItem('engender-has-entries', fixture.hasEntries === false ? '0' : '1');
+  refreshActiveFlag(document);
+  prefs.acknowledgements = withHasEntries(prefs.acknowledgements, fixture.hasEntries !== false);
   setScreenRoute(route);
   const target = document.createElement('div');
   target.className = 'app-viewport';

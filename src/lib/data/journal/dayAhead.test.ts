@@ -1,4 +1,4 @@
-/* The dayAhead registry (phase 8 features ticket 61, ADR-0067): that every
+/* The dayAhead registry (ADR-0067): that every
    archive section either earns a mark or is written down as deliberately
    earning none, that a mark never predates today even when the range asked
    for reaches back before it, and that each of the five kinds reads what the
@@ -321,9 +321,8 @@ test('selected kinds read only their own facts and preserve default marks', asyn
   assert.deepEqual(all.map((mark) => mark.kind), ['appointment', 'doseSlot', 'doseSlot']);
 });
 
-/* An episode's own span bounds its marks (after-release ticket 01, L01-09):
-   a planned end stops them, and an episode that starts later in the range
-   marks its days even though it is not active today. */
+/* An episode's own span bounds its marks: a planned end stops them, and an episode that
+   starts later in the range marks its days even though it is not active today. */
 async function weeklyFrom(journal: Awaited<ReturnType<typeof journalWithBuiltIns>>['journal'], startEpochDay: number, endEpochDay: number | null) {
   const episodeId = await journal.regimen.upsertEpisode({
     drug: 'testosterone',

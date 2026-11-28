@@ -1,8 +1,9 @@
-/* Letter sealed/unlocked status (phase 4 ticket 19, phase 5 ticket 01). */
+/* Letter sealed/unlocked status. */
 
 import assert from 'node:assert/strict';
 import { beforeEach, describe, it } from 'vitest';
 import type { Letter } from './types.ts';
+import { NO_ACKNOWLEDGEMENTS, type Acknowledgements, type AcknowledgementStore } from './acknowledgements.ts';
 import {
   clearLetterSnooze,
   getGreetedLetterIds,
@@ -16,33 +17,16 @@ import {
   unreadUnlockedLetters
 } from './letterStatus.ts';
 
-class MemoryStorage implements Storage {
-  private store = new Map<string, string>();
-  get length(): number {
-    return this.store.size;
-  }
-  clear(): void {
-    this.store.clear();
-  }
-  getItem(key: string): string | null {
-    return this.store.get(key) ?? null;
-  }
-  key(index: number): string | null {
-    return Array.from(this.store.keys())[index] ?? null;
-  }
-  removeItem(key: string): void {
-    this.store.delete(key);
-  }
-  setItem(key: string, value: string): void {
-    this.store.set(key, value);
-  }
+function memoryStore(): AcknowledgementStore {
+  let value: Acknowledgements = NO_ACKNOWLEDGEMENTS;
+  return { read: () => value, write: (next) => { value = next; } };
 }
 
 describe('letterStatus', () => {
-  let storage: MemoryStorage;
+  let storage: AcknowledgementStore;
 
   beforeEach(() => {
-    storage = new MemoryStorage();
+    storage = memoryStore();
   });
 
   it('a letter is sealed strictly before its unlock day', () => {
@@ -72,17 +56,17 @@ describe('letterStatus', () => {
     assert.equal(unread[1].id, 'let-1');
   });
 
-  it('tracks read letters in storage', () => {
+  it('tracks read letters in the acknowledgements', () => {
     assert.equal(getReadLetterIds(storage).size, 0);
     markLetterRead('let-1', storage);
     markLetterRead('let-2', storage);
     assert.deepEqual(Array.from(getReadLetterIds(storage)), ['let-1', 'let-2']);
   });
 
-  /* Ticket 45: a letter whose unlock day is today takes the whole screen
-     once, and only once. "Once" is a per-letter fact that has to survive a
-     reload, so it lives beside the read set rather than in component state,
-     and the arrival is refused for a letter already met either way. */
+  /* A letter whose unlock day is today takes the whole screen once, and only once. "Once"
+     is a per-letter fact that has to survive a reload, so it lives beside the read set
+     rather than in component state, and the arrival is refused for a letter already met
+     either way. */
   describe('the arrival', () => {
     const seal = (id: string, epochDay: number, unlockEpochDay: number) => ({
       id,
@@ -111,7 +95,7 @@ describe('letterStatus', () => {
       assert.equal(letterToGreet(letters, 500, new Set(['older']))?.id, 'newer');
     });
 
-    it('tracks greeted letters in storage, apart from the read ones', () => {
+    it('tracks greeted letters in the acknowledgements, apart from the read ones', () => {
       assert.equal(getGreetedLetterIds(storage).size, 0);
       markLetterGreeted('let-1', storage);
       assert.deepEqual(Array.from(getGreetedLetterIds(storage)), ['let-1']);
@@ -119,18 +103,18 @@ describe('letterStatus', () => {
     });
   });
 
-  it('handles 24h snooze in storage with virtual time', () => {
+  it('handles 24h snooze in the acknowledgements with virtual time', () => {
     const now = 1000000000;
-    assert.equal(isLetterSnoozed(now, storage), false);
+    assert.equal(isLetterSnoozed(storage, now), false);
 
-    snoozeLetterTile(now, storage);
-    assert.equal(isLetterSnoozed(now, storage), true);
-    assert.equal(isLetterSnoozed(now + 3600_000, storage), true); // 1h later
-    assert.equal(isLetterSnoozed(now + 86400_000 - 1, storage), true); // just under 24h
-    assert.equal(isLetterSnoozed(now + 86400_000 + 1, storage), false); // 24h and 1ms later
+    snoozeLetterTile(storage, now);
+    assert.equal(isLetterSnoozed(storage, now), true);
+    assert.equal(isLetterSnoozed(storage, now + 3600_000), true); // 1h later
+    assert.equal(isLetterSnoozed(storage, now + 86400_000 - 1), true); // just under 24h
+    assert.equal(isLetterSnoozed(storage, now + 86400_000 + 1), false); // 24h and 1ms later
 
-    snoozeLetterTile(now, storage);
+    snoozeLetterTile(storage, now);
     clearLetterSnooze(storage);
-    assert.equal(isLetterSnoozed(now, storage), false);
+    assert.equal(isLetterSnoozed(storage, now), false);
   });
 });

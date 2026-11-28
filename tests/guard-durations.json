@@ -1,15 +1,39 @@
 {
   "sources": {
+    "home-ambient-check": "Provisional 90-second estimate pending hosted measurement; two real 30-second idle deadlines",
+    "dose-amount-check": "Provisional 60-second estimate pending hosted measurement",
+    "margin-note-dismissal-check": "Provisional 60-second estimate pending hosted measurement",
+    "range-editors-check": "Provisional 120-second estimate pending hosted measurement; EN/PL Chromium proof on 2026-10-15",
+    "accessible-names-check": "Provisional 60-second estimate pending hosted measurement; EN/PL Chromium proof on 2026-10-15",
     "hosted": {
       "run": "https://github.com/engender-app/engender/actions/runs/37223138118",
       "revision": "07d8347caa92f7b0ab8a4fc0788f4d46497289c5",
       "headRevision": "47b0aeb8cd1bab8f3b1aebd26fa2143bae8105fa"
     },
-    "android-door-motion": "Local Fedora run on 2026-10-09, excluding build; tests/android-door-motion.mjs",
-    "settings-scroll-check": "Local Fedora run on 2026-10-11, excluding build; tests/settings-scroll-check.mjs",
-    "milestone-era-handoff-check": "Local Fedora run on 2026-10-12, excluding build; tests/milestone-era-handoff-check.mjs",
-    "hair-removal-interaction-check": "Local Fedora run on 2026-10-12, excluding build; tests/hair-removal-interaction-check.mjs",
-    "hair-progress-photo-actions": "Local Fedora run on 2026-10-12, excluding build; tests/hair-progress-photo-actions.mjs"
+    "android-door-motion": "Local Fedora run on 2026-10-09, excluding build; tests/guards/android-door-motion.mjs",
+    "settings-scroll-check": "Local Fedora run on 2026-10-11, excluding build; tests/guards/settings-scroll-check.mjs",
+    "milestone-era-handoff-check": "Local Fedora run on 2026-10-12, excluding build; tests/guards/milestone-era-handoff-check.mjs",
+    "hair-removal-interaction-check": "Local Fedora run on 2026-10-12, excluding build; tests/guards/hair-removal-interaction-check.mjs",
+    "feedback-concealment-check": "Provisional 30-second estimate pending hosted measurement; mounted Chromium proof on 2026-10-14",
+    "lock-leaves-nothing-check": "Provisional 90-second estimate pending hosted measurement; local Chromium dev-server proof on 2026-11-15",
+    "wear-entry-check": "Local Fedora run on 2026-10-14, excluding build; tests/guards/wear-entry-check.mjs",
+    "in-place-scroll-check": "Local Fedora run on 2026-10-15, dev server; tests/guards/in-place-scroll-check.mjs",
+    "deep-link-consumption-check": "Provisional 30-second estimate pending hosted measurement; mounted Chromium proof on 2026-10-15",
+    "entry-source-return-check": "Provisional 120-second estimate pending hosted measurement; local Chromium source-return proof",
+    "segmented-chosen-clear": "Local Fedora run on 2026-10-15, dev server; tests/guards/segmented-chosen-clear.mjs",
+    "milestone-era-label-clear": "Local Fedora run on 2026-10-15, dev server; tests/guards/milestone-era-label-clear.mjs",
+    "plane-date-labels-clear": "Local Fedora run on 2026-10-15, dev server; tests/guards/plane-date-labels-clear.mjs",
+    "toast-stack-check": "Local Fedora run on 2026-10-15, dev server; tests/guards/toast-stack-check.mjs",
+    "update-notice-check": "Local Fedora run on 2026-10-16, dev server; tests/guards/update-notice-check.mjs",
+    "recovery-key-replacement-check": "Local Fedora run on 2026-10-16, dev server; tests/guards/recovery-key-replacement-check.mjs",
+    "missing-access-recovery-check": "Local Fedora run on 2026-10-16, real OPFS/SQLite with six access-loss cases; tests/guards/missing-access-recovery-check.mjs",
+    "gate-flag-check": "Provisional 120-second estimate pending hosted measurement; 16 palettes x 2 themes with disguise on and off, then three rooms at 360x568",
+    "device-bound-writes": "Local measurement 2026-11-17, one passing run, pending hosted measurement",
+    "device-bound-cleanup-check": "Local measurement 2026-11-17, one passing run, pending hosted measurement",
+    "pin-credential-contention": "Local measurement 2026-11-17, one passing run, pending hosted measurement",
+    "restore-preferences-check": "Local measurement 2026-11-17, one passing run, pending hosted measurement",
+    "search-return-privacy": "Local measurement 2026-11-17, one passing run, pending hosted measurement",
+    "reset-restart-check": "Local measurement 2026-11-17, one passing run, pending hosted measurement"
   },
   "method": "Sum observed attempts, excluding builds; retain retry costs. Build estimates round the largest observed build cost up to whole seconds. demo-worker-startup uses a provisional 10-second estimate pending hosted measurement. pending-unlock-lock-check uses a provisional 60-second estimate pending hosted measurement. bfcache-journal-check uses a provisional 60-second estimate pending hosted measurement.",
   "builds": {
@@ -28,31 +52,38 @@
     "built 6/6": 51.0
   },
   "guards": {
+    "dose-amount-check": 60,
+    "margin-note-dismissal-check": 60,
+    "range-editors-check": 120,
+    "accessible-names-check": 60,
     "day-addresses": 45,
     "blind-edge-padding-check": 3.49,
+    "gate-flag-check": 120,
     "dilation-schedule-action": 15.38,
     "letters-ready-jump": 15.87,
     "body-map-selected-context": 18.99,
     "body-map-figure-yank": 12.37,
     "chart-tick-readout": 145.92,
     "year-days-list": 18.96,
+    "year-month-labels": 22.22,
     "voice-task-names": 70.88,
     "record-dismissal-check": 52.32,
     "letter-composition-check": 16.17,
     "recovery-key-departure-check": 9.57,
+    "recovery-key-replacement-check": [
+      18.46
+    ],
     "photo-browse-compare": 9.68,
     "photo-grid-batching": 114.33,
+    "in-place-scroll-check": 11.0,
     "photo-export": 26.11,
     "chosen-appointment": 8.88,
     "appointment-entry-check": 18.05,
     "content-before-dates-check": 56.83,
     "document-reader": 17.44,
     "empty-reflection": 33.46,
-    "hair-progress-photo-jump-check": 11.09,
-    "hair-progress-photo-actions": 17.99,
     "hair-removal-entry-check": 17.37,
     "hair-removal-recency-handoff-check": 9.69,
-    "measurements-sizes-jump-check": 13.65,
     "roadmap-tick-motion-check": 9.95,
     "search-filter-scope": 19.56,
     "mark-edge-fringe": 4.18,
@@ -61,10 +92,11 @@
     "breathing-frames": 76.6,
     "tryout-save-check": 30.47,
     "tryout-milestone-felt-check": 20,
+    "milestone-celebration-check": 30,
     "regimen-editor-check": 16.43,
     "document-import-check": 14.12,
     "lab-entry-check": 17.73,
-    "measurements-entry-check": 20.14,
+    "wear-entry-check": 6,
     "leave-lock-check": 11.66,
     "date-picker-check": 260.39,
     "date-picker-motion": 32.67,
@@ -75,7 +107,6 @@
     "dose-save-check": 19.95,
     "sheet-navigation-leftover-check": 14.06,
     "settings-scroll-check": 19.45,
-    "sheet-handoff-scroll-check": 8.71,
     "sheet-touch-drag-check": 9.04,
     "yank-sweep": 153.69,
     "tryout-form-check": 38.6,
@@ -88,12 +119,9 @@
     "calendar-month-a11y-check": 197.43,
     "quick-add-focus-check": 12,
     "chart-a11y-check": 228.26,
-    "tally-chip-row-yank": 57.84,
     "changes-methodology-check": 10.55,
-    "words-reading-scope-check": 9.67,
     "entry-pending-save": 118.44,
     "radio-groups-gallery": 68.68,
-    "roadmap-track-summary": 4.5,
     "prep-context-check": 48.49,
     "debrief-offer-check": 82.59,
     "home-fold-reserve": 233.82,
@@ -103,6 +131,7 @@
     "documents-rows-settle": 109.92,
     "tile-arrival-timing": 291.1,
     "home-idle-raster": 93.07,
+    "home-ambient-check": 90,
     "demo-worker-startup": 10,
     "boot-error-alone": 15.04,
     "restore-previous-journal": 41.98,
@@ -113,7 +142,23 @@
     "bfcache-journal-check": 60,
     "android-door-motion": 24.61,
     "milestone-era-handoff-check": 9.72,
-    "hair-removal-interaction-check": 90.71
+    "hair-removal-interaction-check": 90.71,
+    "feedback-concealment-check": 30,
+    "lock-leaves-nothing-check": 90,
+    "deep-link-consumption-check": 30,
+    "entry-source-return-check": 120,
+    "segmented-chosen-clear": 46.1,
+    "milestone-era-label-clear": 24.6,
+    "plane-date-labels-clear": 34.5,
+    "toast-stack-check": 12.2,
+    "update-notice-check": 9.9,
+    "missing-access-recovery-check": 37.2,
+    "device-bound-writes": 1,
+    "device-bound-cleanup-check": 17,
+    "pin-credential-contention": 438,
+    "restore-preferences-check": 70,
+    "search-return-privacy": 6,
+    "reset-restart-check": 403
   },
   "attempts": {
     "blind-edge-padding-check": [
@@ -137,6 +182,9 @@
     "year-days-list": [
       18.96
     ],
+    "year-month-labels": [
+      22.22
+    ],
     "voice-task-names": [
       70.88
     ],
@@ -156,6 +204,9 @@
     "photo-grid-batching": [
       114.33
     ],
+    "in-place-scroll-check": [
+      11.0
+    ],
     "photo-export": [
       26.11
     ],
@@ -174,20 +225,11 @@
     "empty-reflection": [
       33.46
     ],
-    "hair-progress-photo-jump-check": [
-      11.09
-    ],
-    "hair-progress-photo-actions": [
-      17.99
-    ],
     "hair-removal-entry-check": [
       17.37
     ],
     "hair-removal-recency-handoff-check": [
       9.69
-    ],
-    "measurements-sizes-jump-check": [
-      13.65
     ],
     "roadmap-tick-motion-check": [
       9.95
@@ -213,6 +255,9 @@
     "tryout-milestone-felt-check": [
       20
     ],
+    "milestone-celebration-check": [
+      30
+    ],
     "regimen-editor-check": [
       16.43
     ],
@@ -222,8 +267,8 @@
     "lab-entry-check": [
       17.73
     ],
-    "measurements-entry-check": [
-      20.14
+    "wear-entry-check": [
+      6
     ],
     "leave-lock-check": [
       11.66
@@ -255,9 +300,6 @@
     ],
     "settings-scroll-check": [
       19.45
-    ],
-    "sheet-handoff-scroll-check": [
-      8.71
     ],
     "sheet-touch-drag-check": [
       9.04
@@ -295,14 +337,8 @@
     "chart-a11y-check": [
       228.26
     ],
-    "tally-chip-row-yank": [
-      57.84
-    ],
     "changes-methodology-check": [
       10.55
-    ],
-    "words-reading-scope-check": [
-      9.67
     ],
     "entry-pending-save": [
       59.83,
@@ -311,9 +347,6 @@
     "radio-groups-gallery": [
       34.41,
       34.27
-    ],
-    "roadmap-track-summary": [
-      4.5
     ],
     "prep-context-check": [
       48.49
@@ -369,6 +402,24 @@
     "hair-removal-interaction-check": [
       58.47,
       32.24
+    ],
+    "segmented-chosen-clear": [
+      46.1
+    ],
+    "milestone-era-label-clear": [
+      24.6
+    ],
+    "plane-date-labels-clear": [
+      34.5
+    ],
+    "toast-stack-check": [
+      12.2
+    ],
+    "update-notice-check": [
+      9.9
+    ],
+    "missing-access-recovery-check": [
+      37.2
     ]
   }
 }

@@ -1,29 +1,8 @@
-/* The margin note area (phase 8 features ticket 07, ADR-0010, ADR-0027,
-   CONTEXT: "Margin note"). A note an entry's owner adds afterwards, on
-   rereading - its own table, its own day, never merged into the entry it
-   annotates.
+/* A margin note has its own table and day (ADR-0010, ADR-0027). Use the local entry rowid
+   (ADR-0002); only archiveRead.ts and archiveApply.ts resolve UUIDs for transfer.
 
-   Owned by an entry's rowid directly rather than by a travelling uuid, the
-   way `entry_body_region` is: an entry's domain identity already is its
-   rowid (`Entry.id`, ADR-0002's local half) everywhere this module's
-   callers speak of one, so there is no owner to resolve at write time the
-   way `feltSense.ts`'s `columnsFor` resolves a tryout or a milestone. Only
-   the archive, which travels by uuid, needs that resolution - see
-   archiveRead.ts's `readMarginNotes` and archiveApply.ts's
-   `applyMarginNotes`.
-
-   Batched by entry rather than read one at a time: `forEntries` is the one
-   read every caller uses, the same reasoning `photosByEntry` gives for its
-   own batching - a page of thirty entries must cost one query, not thirty.
-
-   `add` validates the owner before writing anything, which is what makes it
-   ADR-0044's shape (validate outside the transaction, write inside it) even
-   though there is only ever one row to write here: a margin note added from
-   a read surface is its own write, never bundled with the entry's, so
-   there is no second write for a transaction to wrap - the single INSERT is
-   already all-or-nothing, and what ADR-0044 actually asks of a new writer is
-   this ordering, not a `driver.transaction()` call with nothing else inside
-   it. */
+   forEntries batches a page in one query. add validates the owner before a single atomic
+   INSERT, independent of any entry write. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { MarginNote } from '../types';

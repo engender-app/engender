@@ -1,9 +1,7 @@
-/* Factor-impact correlation cards (phase 4 ticket 21): the area that
-   stitches stats' day averages and tag insights to the dose log
-   (correlationCards.ts owns the ranking math and is tested without a
-   driver). This is phase 4's deliberate reversal of phase 3's explicit
-   exclusion of correlation analysis - not scope drift slipping back in
-   unnoticed, a conscious re-decision the phase 4 spec records. */
+/* Factor-impact correlation cards: the area that stitches stats' day averages and tag
+   insights to the dose log (correlationCards.ts owns the ranking math and is tested without
+   a driver). This is deliberate reversal 's explicit exclusion of correlation analysis -
+   not scope drift slipping back in unnoticed, a conscious re-decision the spec records. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
@@ -123,7 +121,7 @@ test('batched metric inputs match independent reads with two statements regardle
 test('the cards ask for everything in one round, not the dimensions first', async () => {
   // Look back's tile grid waits for this read, and the worker answers one
   // query at a time: a second round after the dimensions came back put the
-  // cards' own two statements at the back of the queue (after-release 06
+  // cards' own two statements at the back of the queue (
   // follow-up, tile-arrival-timing).
   const { journal, db } = await journalWithBuiltIns();
   await journal.entries.upsertEntry({ epochDay: DAY_0, mood: 3, dims: { femininity: 40 } });

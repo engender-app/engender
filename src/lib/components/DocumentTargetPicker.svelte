@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* One picker for a document's link (phase 8 features ticket 56, ADR-0065):
+  /* One picker for a document's link (ADR-0065):
      all four kinds together, each in its own labelled section, so choosing a
      target is one sheet rather than a kind-picker feeding a second sheet.
      Clearing is the same sheet, not a separate control - a "remove the link"

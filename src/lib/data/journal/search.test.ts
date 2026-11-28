@@ -1,7 +1,6 @@
-/* Search (ticket 09, ADR-0005, PRD F19). The cases that carry this module
-   are the Polish ones: ł has no Unicode decomposition, so FTS5's own
-   remove_diacritics cannot reach it and the fold has to happen in app code
-   on both sides of the index. If these pass, the reason the fold exists is
+/* Search (ADR-0005). The cases that carry this module are the Polish ones: ł has no Unicode
+   decomposition, so FTS5's own remove_diacritics cannot reach it and the fold has to happen
+   in app code on both sides of the index. If these pass, the reason the fold exists is
    still true. */
 
 import { test } from 'vitest';
@@ -50,14 +49,13 @@ test('a word the fold does not cover is still found, by FTS5 folding it', async 
 });
 
 test('a Cyrillic word is found however either side was capitalised', async () => {
-  /* Phase 8 features ticket 49 item 4. The entry half of the answer, and it
-     was the half nobody had run: `fold.ts`'s table lists only Polish and
-     Western European letterforms, so the suspicion was that a Cyrillic note
-     fell through it. It does not, for two reasons that both have to hold -
-     JS `toLowerCase()` folds Cyrillic case on the way into `entry_fts`, and
-     FTS5's default `unicode61` tokenizer treats Cyrillic letters as token
-     characters rather than as separators. Written down as a test because
-     both are somebody else's defaults and neither is stated in this repo. */
+  /* Entry notes use the same text folding: `fold.ts`'s
+     table lists only Polish and Western European letterforms, so the suspicion was that a
+     Cyrillic note fell through it. It does not, for two reasons that both have to hold - JS
+     `toLowerCase` folds Cyrillic case on the way into `entry_fts`, and FTS5's default
+     `unicode61` tokenizer treats Cyrillic letters as token characters rather than as
+     separators. Written down as a test because both are somebody else's defaults and
+     neither is stated in this repo. */
   const { found } = await journalWithNotes(['Настя писала о смене имени', 'Юлія прийшла', 'nic po polsku']);
 
   assert.deepEqual(await found('настя'), ['Настя писала о смене имени']);
@@ -289,7 +287,7 @@ test('pagination and total count stay accurate with structured filters', async (
   assert.equal(total, 3);
 });
 
-/* Round trips, not milliseconds (ticket 07). Every driver call is one
+/* Round trips, not milliseconds. Every driver call is one
    serialized bridge crossing on Android (android-driver.ts), and a crossing
    costs tens of milliseconds whatever the SQL behind it does - so what makes
    search slow on a real phone is how many calls a page of hits takes, and

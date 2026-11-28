@@ -13,17 +13,16 @@ describe('BodyRegionInspectorSheet component contract', () => {
     expect(sheetFile).toContain('onClose');
   });
 
-  it('renders all four somatic breakdown tracks', () => {
+  it('renders surviving somatic breakdown tracks', () => {
     expect(sheetFile).toContain('data-track="trajectory"');
-    expect(sheetFile).toContain('data-track="measurements"');
     expect(sheetFile).toContain('data-track="photos"');
     expect(sheetFile).toContain('data-track="hair-removal"');
-    expect(sheetFile).toContain('data-track="hair-staging"');
+    expect(sheetFile).not.toContain('data-track="hair-staging"');
   });
 
   it('renders empty state when breakdown is empty', () => {
     expect(sheetFile).toContain('EmptyState');
-    expect(sheetFile).toContain('body_region_empty_title');
+    expect(sheetFile).toContain('empty_list_title');
     expect(sheetFile).toContain('body_region_empty_body');
   });
 
@@ -33,10 +32,9 @@ describe('BodyRegionInspectorSheet component contract', () => {
 });
 
 describe('/body-map page inspector wiring', () => {
-  /* Redesign ticket 40: the figure is the only region control on this
-     screen. The hotspots, the chips row and the picker in the first chart
-     card's header were four ways to make one choice, and all four opened
-     the sheet, so the map could not be browsed at all. */
+  /* The figure is the only region control on this screen. The hotspots, the chips row and
+     the picker in the first chart card's header were four ways to make one choice, and all
+     four opened the sheet, so the map could not be browsed at all. */
   it('has exactly one region control, which is the figure', () => {
     expect(pageFile).toContain('data-body-map-figure');
     expect(pageFile).toContain('<BodyRegionMap');

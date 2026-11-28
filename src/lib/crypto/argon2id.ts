@@ -1,17 +1,19 @@
-/* Argon2id key derivation (ticket 12), identical code on web and Android -
+/* Argon2id key derivation, identical code on web and Android -
    hash-wasm bundles its WASM as base64 rather than fetching it, so this
    introduces no runtime network request (Notes: re-verify once wired in,
    README claims and runtime behavior have diverged before). */
 
 import type { Argon2Params } from './params.ts';
 
-/* Argon2id runs in a worker where there is one (ux-carpet ticket 209): on
+/* Argon2id runs in a worker where there is one: on
    the main thread it held rendering for 64ms at full speed and 263ms at 4x
    CPU on every passphrase or PIN unlock, the demo's included. Same call,
    same parameters (ADR-0013) - argon2id.worker.ts - only another thread.
    Without a worker (the node tier, which tests this module) it runs here as
    it always did, and so does a derivation whose worker fails to start: a
-   slower unlock is better than none. */
+   slower unlock is better than none. A caller whose parameters come from an
+   untrusted file passes `mainThread: false` and gets an error instead:
+   where a worker exists, a header never buys work on the page's thread. */
 let prewarmed: Worker | null = null;
 let prewarmFailed = false;
 
@@ -39,8 +41,8 @@ export function prewarmArgon2(): void {
   };
 }
 
-/* The page's own copy is imported when it is needed, not with this module
-   (ux-carpet ticket 217): hash-wasm is ~33 KB of the first-load graph when
+/* The page's own copy is imported when it is needed, not with this module:
+hash-wasm is ~33 KB of the first-load graph when
    imported statically, and the page only runs it where no worker can start.
    The worker imports its own copy (argon2id.worker.ts), a chunk of its own.
    A chunk that fails to load throws out of deriveKey as itself, not as a
@@ -69,11 +71,16 @@ async function inThread(
 export async function deriveKey(
   password: string,
   salt: Uint8Array<ArrayBuffer>,
-  params: Argon2Params
+  params: Argon2Params,
+  options: { mainThread?: boolean } = {}
 ): Promise<Uint8Array<ArrayBuffer>> {
+  const workerRequired = options.mainThread === false && typeof Worker !== 'undefined';
   const worker = prewarmFailed ? null : prewarmed ?? argon2Worker();
   prewarmed = null;
-  if (!worker) return inThread(password, salt, params);
+  if (!worker) {
+    if (workerRequired) throw new Error('argon2id worker did not start');
+    return inThread(password, salt, params);
+  }
   const answer = await new Promise<{ ok: true; key: Uint8Array<ArrayBuffer> } | { ok: false; error?: string; loadFailed?: boolean }>(
     (resolve) => {
       worker.onmessage = (event) => resolve(event.data);
@@ -93,6 +100,7 @@ export async function deriveKey(
      that ran and failed is a real argon2id failure, and fails the same way
      the in-thread call would. */
   if ('loadFailed' in answer && answer.loadFailed) {
+    if (workerRequired) throw new Error(`argon2id worker did not start${answer.error ? `: ${answer.error}` : ''}`);
     console.warn('argon2id worker did not start; deriving on the main thread', answer.error);
     return inThread(password, salt, params);
   }

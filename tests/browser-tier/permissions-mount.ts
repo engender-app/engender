@@ -1,5 +1,4 @@
-/* Mounts the permission row in every state it can be in (phase 10 redesign
-   ticket 31).
+/* Mounts the permission row in every state it can be in.
 
    components.css is imported, unlike kit-mount.ts next door: the grant
    button is a `.btn`, which lives there, and press.css keys off the

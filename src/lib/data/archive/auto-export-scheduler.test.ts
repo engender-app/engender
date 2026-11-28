@@ -5,13 +5,29 @@ const {
   notifyFailure,
   runAndroidAutoExport,
   snapshot,
-  toast
+  toast,
+  runFolderSync,
+  merge,
+  preferenceState
 } = vi.hoisted(() => ({
+  runFolderSync: vi.fn(),
+  merge: vi.fn(),
   status: vi.fn(),
   notifyFailure: vi.fn(),
   runAndroidAutoExport: vi.fn(),
   snapshot: vi.fn(),
-  toast: vi.fn()
+  toast: vi.fn(),
+  preferenceState: {
+    lastBackupAt: null as number | null,
+    backupNoticeDismissed: true,
+    exportFailureNoticeEnabled: true,
+    heldExportFailureNotice: false,
+    lastExportFailureNotifiedAt: null as number | null,
+    hideNotificationTitles: false,
+    quietHoursEnabled: false,
+    quietHoursStart: '22:00',
+    quietHoursEnd: '07:00'
+  }
 }));
 
 vi.mock('$lib/platform', () => ({ isAndroid: () => true }));
@@ -20,27 +36,28 @@ vi.mock('$lib/paraglide/messages', () => ({
     exp_auto_reselect_needed: () => 'reselect',
     notif_export_failure_channel: () => 'Backups',
     notif_export_failure_notice_title: () => 'Scheduled backup failed',
-    notif_export_failure_notice_body: () => 'Nothing was saved.'
+    notif_export_failure_notice_body: () => 'Nothing was saved.',
+    exp_folder_merged_toast: () => 'merged from folder',
+    exp_folder_wrong_password_toast: () => 'folder wrong password',
+    exp_folder_failed_toast: () => 'folder failed'
   }
 }));
 vi.mock('$lib/stores/toasts.svelte', () => ({ toast }));
 vi.mock('$lib/data/prefs/store.svelte', () => ({
-  prefs: {
-    lastBackupAt: null as number | null,
-    backupNoticeDismissed: true,
-    /* The registry's own switches for this producer (phase 6 ticket 04), at
-       the defaults a journal that has never opened /settings/notifications
-       is on. */
-    exportFailureNoticeEnabled: true,
-    heldExportFailureNotice: false,
-    hideNotificationTitles: false,
-    quietHoursEnabled: false,
-    quietHoursStart: '22:00',
-    quietHoursEnd: '07:00'
-  }
+  prefs: preferenceState,
+  setPreferenceDurably: vi.fn(async (key: keyof typeof preferenceState, value: never) => {
+    preferenceState[key] = value;
+  })
 }));
 vi.mock('$lib/data/live/journal.svelte', () => ({
-  journal: { archive: { snapshot } }
+  journal: { archive: { snapshot, merge } }
+}));
+vi.mock('@capacitor/core', () => ({ Capacitor: { convertFileSrc: (path: string) => `https://localhost/_capacitor_file_${path}` } }));
+vi.mock('./folder-sync', () => ({
+  runFolderSync,
+  folderSyncReady: (status: { folderSync?: boolean; destinationUri?: string | null; hasPassword?: boolean }) =>
+    !!status.folderSync && !!status.destinationUri && !!status.hasPassword,
+  localFileBytes: vi.fn()
 }));
 vi.mock('./android-auto-export-bridge', () => ({
   androidAutoExport: {
@@ -49,13 +66,12 @@ vi.mock('./android-auto-export-bridge', () => ({
   }
 }));
 vi.mock('./android-auto-export', () => ({
-  isDue: vi.fn(),
   runAndroidAutoExport
 }));
 
 import { prefs } from '$lib/data/prefs/store.svelte';
-import { isDue } from './android-auto-export';
-import { startAutoExportScheduler, stopAutoExportScheduler } from './auto-export-scheduler';
+let startAutoExportScheduler: () => void;
+let stopAutoExportScheduler: () => Promise<void>;
 
 const flush = async () => {
   /* Fake timers don't advance for a dynamic import's own microtask hop
@@ -65,15 +81,15 @@ const flush = async () => {
   for (let i = 0; i < 12; i++) await Promise.resolve();
 };
 
-/* A real 2026 date rather than a few seconds past the epoch: quiet hours are
-   read off the local wall clock, so the cases below that care about the hour
-   set an explicit date, and `lastAttemptAt` is module state that outlives a
-   test - a later case landing in 1970 would look like a backup attempted 56
-   years in the future and be skipped by the minimum-gap check. */
+/* Quiet hours use local wall time, so each case starts on a real date. */
+let stopFreshScheduler: (() => Promise<void>) | undefined;
+
 let nowSeed = new Date(2026, 8, 1).getTime();
 
 describe('auto-export scheduler', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    vi.resetModules();
+    ({ startAutoExportScheduler, stopAutoExportScheduler } = await import('./auto-export-scheduler'));
     vi.useFakeTimers();
     nowSeed += 2_000_000;
     vi.setSystemTime(new Date(nowSeed));
@@ -94,24 +110,23 @@ describe('auto-export scheduler', () => {
       lastFailureAt: null,
       lastFailureReason: null
     });
-    snapshot.mockResolvedValue({ journal: { entries: [], dimensions: [], presets: [], tagGroups: [], milestones: [], labResults: [], measurements: [], sideEffects: [], reminders: [] }, files: [], readFile: async () => new Uint8Array() });
-    vi.mocked(isDue).mockReturnValue(true);
+    snapshot.mockResolvedValue({ journal: { entries: [], dimensions: [], presets: [], tagGroups: [], milestones: [], labResults: [], sideEffects: [], reminders: [] }, files: [], readFile: async () => new Uint8Array() });
     runAndroidAutoExport.mockResolvedValue({ outcome: 'ok', writtenAt: 10 });
     prefs.lastBackupAt = null;
     prefs.backupNoticeDismissed = true;
     prefs.exportFailureNoticeEnabled = true;
     prefs.heldExportFailureNotice = false;
+    prefs.lastExportFailureNotifiedAt = null;
     prefs.hideNotificationTitles = false;
     prefs.quietHoursEnabled = false;
   });
 
   afterEach(() => {
-    /* Carry the clock forward past whatever this case moved it to: the
-       scheduler's `lastAttemptAt` is module state that outlives a test, and a
-       later case landing before it reads as a backup attempted in the future
-       and is skipped by the minimum-gap check. */
+    // Quiet-hours cases may advance into another day.
     nowSeed = Math.max(nowSeed, Date.now());
     stopAutoExportScheduler();
+    stopFreshScheduler?.();
+    stopFreshScheduler = undefined;
     vi.unstubAllGlobals();
     vi.useRealTimers();
   });
@@ -123,6 +138,58 @@ describe('auto-export scheduler', () => {
     expect(status).toHaveBeenCalled();
     expect(snapshot).toHaveBeenCalled();
     expect(runAndroidAutoExport).toHaveBeenCalled();
+  });
+
+  describe('folder sync', () => {
+    const syncing = () => status.mockResolvedValue({
+      enabled: true, schedule: 'weekly', destinationUri: 'content://tree/backup', destinationLabel: 'backup',
+      hasPassword: true, nextDueAt: 0, lastSuccessAt: null, lastFailureAt: null, lastFailureReason: null,
+      folderSync: true
+    });
+
+    test('a newer archive in the folder is merged on open, before the backup, and the person is told', async () => {
+      syncing();
+      runFolderSync.mockResolvedValue({ outcome: 'merged', modifiedAt: 5 });
+      startAutoExportScheduler();
+      await flush();
+
+      expect(runFolderSync).toHaveBeenCalledTimes(1);
+      const [, deps] = runFolderSync.mock.calls[0];
+      await deps.merge({ journal: {} });
+      expect(merge).toHaveBeenCalledWith({ journal: {} });
+      expect(toast).toHaveBeenCalledWith('merged from folder', { kind: 'folder-sync' });
+      expect(runFolderSync.mock.invocationCallOrder[0]).toBeLessThan(runAndroidAutoExport.mock.invocationCallOrder[0]);
+    });
+
+    test('an archive that would not open is said once, in its own words', async () => {
+      syncing();
+      runFolderSync.mockResolvedValueOnce({ outcome: 'wrong-password', modifiedAt: 5 })
+        .mockResolvedValueOnce({ outcome: 'corrupt', modifiedAt: 6 });
+      startAutoExportScheduler();
+      await flush();
+      expect(toast).toHaveBeenLastCalledWith('folder wrong password', { kind: 'folder-sync' });
+      await stopAutoExportScheduler();
+      startAutoExportScheduler();
+      await flush();
+      expect(toast).toHaveBeenLastCalledWith('folder failed', { kind: 'folder-sync' });
+    });
+
+    test('nothing new in the folder, or folder sync off, says nothing', async () => {
+      syncing();
+      runFolderSync.mockResolvedValue({ outcome: 'none' });
+      startAutoExportScheduler();
+      await flush();
+      expect(runFolderSync).toHaveBeenCalledTimes(1);
+      expect(toast).not.toHaveBeenCalled();
+      expect(runAndroidAutoExport).toHaveBeenCalled();
+
+      await stopAutoExportScheduler();
+      runFolderSync.mockClear();
+      status.mockResolvedValue({ enabled: true, destinationUri: 'content://tree/backup', hasPassword: true, nextDueAt: 0, folderSync: false });
+      startAutoExportScheduler();
+      await flush();
+      expect(runFolderSync).not.toHaveBeenCalled();
+    });
   });
 
   test('overlapping startup and visibility checks write one backup', async () => {
@@ -141,8 +208,47 @@ describe('auto-export scheduler', () => {
     expect(runAndroidAutoExport).toHaveBeenCalledTimes(1);
   });
 
+  test('stop aborts packing and waits for transfer cleanup before reset can proceed', async () => {
+    let release!: () => void;
+    let signal!: AbortSignal;
+    let record!: (at: number) => void;
+    runAndroidAutoExport.mockImplementationOnce((_source, deps) => {
+      signal = deps.watch.signal;
+      record = deps.recordBackup;
+      return new Promise((resolve) => { release = () => resolve({ outcome: 'cancelled' }); });
+    });
+    startAutoExportScheduler();
+    await flush();
+    let stopped = false;
+    const stopping = stopAutoExportScheduler().then(() => { stopped = true; });
+    expect(signal.aborted).toBe(true);
+    record(123);
+    expect(prefs.lastBackupAt).toBeNull();
+    await flush();
+    expect(stopped).toBe(false);
+    release();
+    await stopping;
+    expect(notifyFailure).not.toHaveBeenCalled();
+    startAutoExportScheduler();
+    await flush();
+    expect(runAndroidAutoExport).toHaveBeenCalledTimes(2);
+  });
+
+  test('a stopped snapshot never starts packing or posts a failure', async () => {
+    let release!: () => void;
+    snapshot.mockImplementationOnce(() => new Promise((resolve) => {
+      release = () => resolve({ journal: {}, files: [], readFile: async () => new Uint8Array() });
+    }));
+    startAutoExportScheduler();
+    await flush();
+    const stopping = stopAutoExportScheduler();
+    release();
+    await stopping;
+    expect(runAndroidAutoExport).not.toHaveBeenCalled();
+    expect(notifyFailure).not.toHaveBeenCalled();
+  });
+
   test('does not repack an eligible stage before refresh window', async () => {
-    vi.mocked(isDue).mockReturnValue(false);
     status.mockResolvedValue({ enabled: true, destinationUri: 'content://tree/backup', hasPassword: true, stagedSnapshotAt: nowSeed, nextDueAt: nowSeed + 7 * 86400000 });
 
     startAutoExportScheduler();
@@ -162,7 +268,6 @@ describe('auto-export scheduler', () => {
   });
 
   test('prepares one stage before due when no encrypted snapshot is available', async () => {
-    vi.mocked(isDue).mockReturnValue(false);
     runAndroidAutoExport.mockResolvedValue({ outcome: 'staged' });
     startAutoExportScheduler();
     await flush();
@@ -172,7 +277,6 @@ describe('auto-export scheduler', () => {
   });
 
   test('refreshes an older stage once during final day before due', async () => {
-    vi.mocked(isDue).mockReturnValue(false);
     status.mockResolvedValue({ enabled: true, destinationUri: 'content://tree/backup', hasPassword: true,
       stagedSnapshotAt: nowSeed - 2 * 86400000, nextDueAt: nowSeed + 3600000 });
     runAndroidAutoExport.mockResolvedValue({ outcome: 'staged' });
@@ -215,7 +319,7 @@ describe('auto-export scheduler', () => {
   test('posts the failure notice, localized, when a scheduled run fails', async () => {
     /* The strings used to be English literals inside AutoExportPlugin, which
        made the one notification nobody could turn off also the one nobody
-       could read in Polish (phase 6 ticket 04). */
+       could read in Polish. */
     runAndroidAutoExport.mockResolvedValue({ outcome: 'failed', reason: 'destination-full' });
 
     startAutoExportScheduler();
@@ -333,5 +437,180 @@ describe('auto-export scheduler', () => {
     startAutoExportScheduler();
     await flush();
     expect(runAndroidAutoExport).toHaveBeenCalledTimes(2);
+  });
+
+  test('reports one native delivery failure across ticks and a fresh scheduler module', async () => {
+    const native = { enabled: true, destinationUri: 'content://tree/backup', hasPassword: true,
+      stagedSnapshotAt: null as number | null, nextDueAt: nowSeed,
+      lastFailureAt: null as number | null };
+    status.mockImplementation(async () => ({ ...native }));
+    runAndroidAutoExport.mockImplementationOnce(async () => {
+      native.lastFailureAt = nowSeed + 5;
+      native.stagedSnapshotAt = nowSeed;
+      return { outcome: 'failed', reason: 'destination-full' };
+    });
+
+    startAutoExportScheduler();
+    await flush();
+    expect(notifyFailure).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(15 * 60 * 1000);
+    await flush();
+    expect(runAndroidAutoExport).toHaveBeenCalledTimes(1);
+    expect(notifyFailure).toHaveBeenCalledTimes(1);
+    expect(prefs.lastExportFailureNotifiedAt).toBe(native.lastFailureAt);
+
+    stopAutoExportScheduler();
+    vi.resetModules();
+    const fresh = await import('./auto-export-scheduler');
+    stopFreshScheduler = fresh.stopAutoExportScheduler;
+    fresh.startAutoExportScheduler();
+    await flush();
+    expect(notifyFailure).toHaveBeenCalledTimes(1);
+  });
+
+  test.each(['success', 'destination change'])('a new failure after %s notifies again', async (change) => {
+    const native = { enabled: false, lastFailureAt: nowSeed as number | null,
+      lastSuccessAt: null as number | null, destinationUri: 'content://tree/backup' };
+    status.mockImplementation(async () => ({ ...native }));
+    startAutoExportScheduler();
+    await flush();
+    expect(notifyFailure).toHaveBeenCalledTimes(1);
+
+    native.lastFailureAt = null;
+    if (change === 'success') native.lastSuccessAt = nowSeed + 1;
+    else native.destinationUri = 'content://tree/new-backup';
+    await vi.advanceTimersByTimeAsync(15 * 60 * 1000);
+    await flush();
+    expect(notifyFailure).toHaveBeenCalledTimes(1);
+
+    expect(prefs.lastExportFailureNotifiedAt).toBeNull();
+    // Reusing a timestamp after a cleared native failure is still a new event.
+    native.lastFailureAt = nowSeed;
+    await vi.advanceTimersByTimeAsync(15 * 60 * 1000);
+    await flush();
+    expect(notifyFailure).toHaveBeenCalledTimes(2);
+    expect(prefs.lastExportFailureNotifiedAt).toBe(native.lastFailureAt);
+  });
+
+  test('holds one native failure across a cold module and posts once after quiet hours', async () => {
+    const quiet = new Date(nowSeed);
+    quiet.setHours(23, 30);
+    vi.setSystemTime(quiet);
+    prefs.quietHoursEnabled = true;
+    status.mockResolvedValue({ enabled: false, lastFailureAt: quiet.getTime() });
+    startAutoExportScheduler();
+    await flush();
+    expect(notifyFailure).not.toHaveBeenCalled();
+    expect(prefs.heldExportFailureNotice).toBe(true);
+
+    stopAutoExportScheduler();
+    vi.resetModules();
+    const fresh = await import('./auto-export-scheduler');
+    stopFreshScheduler = fresh.stopAutoExportScheduler;
+    const morning = new Date(quiet);
+    morning.setDate(morning.getDate() + 1);
+    morning.setHours(8, 0);
+    vi.setSystemTime(morning);
+    fresh.startAutoExportScheduler();
+    await flush();
+    expect(notifyFailure).toHaveBeenCalledTimes(1);
+    expect(prefs.heldExportFailureNotice).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(15 * 60 * 1000);
+    await flush();
+    expect(notifyFailure).toHaveBeenCalledTimes(1);
+  });
+
+  test('does not replay a native failure dropped while notices were off', async () => {
+    status.mockResolvedValue({ enabled: false, lastFailureAt: nowSeed });
+    prefs.exportFailureNoticeEnabled = false;
+    startAutoExportScheduler();
+    await flush();
+    stopAutoExportScheduler();
+    vi.resetModules();
+    const fresh = await import('./auto-export-scheduler');
+    stopFreshScheduler = fresh.stopAutoExportScheduler;
+    prefs.exportFailureNoticeEnabled = true;
+    fresh.startAutoExportScheduler();
+    await flush();
+    expect(notifyFailure).not.toHaveBeenCalled();
+  });
+
+  test('retries a native failure notice when posting rejects', async () => {
+    status.mockResolvedValue({ enabled: false, lastFailureAt: nowSeed });
+    notifyFailure.mockRejectedValueOnce(new Error('notification unavailable'));
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      startAutoExportScheduler();
+      await flush();
+      expect(prefs.lastExportFailureNotifiedAt).toBeNull();
+      await vi.advanceTimersByTimeAsync(15 * 60 * 1000);
+      await flush();
+      expect(notifyFailure).toHaveBeenCalledTimes(2);
+      expect(prefs.lastExportFailureNotifiedAt).toBe(nowSeed);
+    } finally {
+      logged.mockRestore();
+    }
+  });
+
+  test('a distinct native failure notifies after the device clock moves back', async () => {
+    const native = { enabled: false, lastFailureAt: nowSeed };
+    status.mockImplementation(async () => ({ ...native }));
+    startAutoExportScheduler();
+    await flush();
+    native.lastFailureAt -= 1000;
+    await vi.advanceTimersByTimeAsync(15 * 60 * 1000);
+    await flush();
+    expect(notifyFailure).toHaveBeenCalledTimes(2);
+    expect(prefs.lastExportFailureNotifiedAt).toBe(native.lastFailureAt);
+  });
+
+  test('a held native notice remains held if posting rejects', async () => {
+    const quiet = new Date(nowSeed);
+    quiet.setHours(23, 30);
+    vi.setSystemTime(quiet);
+    prefs.quietHoursEnabled = true;
+    status.mockResolvedValue({ enabled: false, lastFailureAt: quiet.getTime() });
+    startAutoExportScheduler();
+    await flush();
+    stopAutoExportScheduler();
+    const morning = new Date(quiet);
+    morning.setDate(morning.getDate() + 1);
+    morning.setHours(8, 0);
+    vi.setSystemTime(morning);
+    notifyFailure.mockRejectedValueOnce(new Error('notification unavailable'));
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      startAutoExportScheduler();
+      await flush();
+      expect(prefs.heldExportFailureNotice).toBe(true);
+      await vi.advanceTimersByTimeAsync(15 * 60 * 1000);
+      await flush();
+      expect(prefs.heldExportFailureNotice).toBe(false);
+      expect(notifyFailure).toHaveBeenCalledTimes(2);
+    } finally {
+      logged.mockRestore();
+    }
+  });
+
+  test('does not consume a native failure when its quiet-hours hold cannot persist', async () => {
+    const quiet = new Date(nowSeed);
+    quiet.setHours(23, 30);
+    vi.setSystemTime(quiet);
+    prefs.quietHoursEnabled = true;
+    status.mockResolvedValue({ enabled: false, lastFailureAt: quiet.getTime() });
+    const { setPreferenceDurably } = await import('$lib/data/prefs/store.svelte');
+    // The production setter logs a refused write and leaves its projection unchanged.
+    vi.mocked(setPreferenceDurably).mockImplementationOnce(async () => {});
+    startAutoExportScheduler();
+    await flush();
+    expect(prefs.heldExportFailureNotice).toBe(false);
+    expect(prefs.lastExportFailureNotifiedAt).toBeNull();
+    await vi.advanceTimersByTimeAsync(15 * 60 * 1000);
+    await flush();
+    expect(prefs.heldExportFailureNotice).toBe(true);
+    expect(prefs.lastExportFailureNotifiedAt).toBe(quiet.getTime());
+    expect(notifyFailure).not.toHaveBeenCalled();
   });
 });

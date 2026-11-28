@@ -20,6 +20,10 @@ export function setScreenRoute(route: string): void {
         ? { day: parts[3] }
         : parts[1] === 'entry'
           ? { id: parts[2] }
-          : {};
+          : parts[1] === 'stats' && parts[2]
+            ? { reading: parts[2] }
+            : parts[1] === 'wrapped'
+              ? { cadence: parts[2] }
+              : {};
   page.url = url;
 }

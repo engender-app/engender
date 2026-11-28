@@ -1,49 +1,24 @@
-/* The worker half of the encrypted web driver (ticket 09, ADR-0020):
-   SQLite3MultipleCiphers WASM over the synchronous OPFS SAHPool VFS,
-   wrapped in sqlite3mc's encryption shim. The exact open/key/VFS sequence
-   is the one the ticket 08 prototype proved out (prototype/encryption/web/
-   whole-db-worker.ts on the prototype/encryption-mechanism branch):
-   sqlite3mc refuses to encrypt on the async 'opfs' VFS and on a bare
-   'opfs-sahpool' - the pool VFS must be wrapped via sqlite3mc_vfs_create()
-   and the database opened through the wrapped name.
+/* Open SQLite3MultipleCiphers WASM over the worker's synchronous OPFS
+   SAHPool. Wrap the pool with sqlite3mc_vfs_create and open through
+   the wrapped name to enable encryption (ADR-0020). mc-driver.ts
+   communicates by message and no other module holds a database pointer.
 
-   A worker because SAHPool's synchronous access handles only exist in one,
-   and this file is the only place the wasm module, the pool or a database
-   pointer appear - mc-driver.ts talks to it in messages, everything above
-   talks to SqliteDriver (ADR-0017).
+   Handle messages in arrival order so statements wait while WASM opens.
+   Write migration copies with VACUUM INTO using a keyed destination
+   URI to keep copies encrypted (ADR-0006, ADR-0018). The pool API
+   handles cleanup of the opaque files.
 
-   Messages are handled strictly in arrival order through one promise
-   chain. The handlers after `open` are all synchronous, so this mostly
-   guards one case: a statement arriving while the wasm module is still
-   initializing must wait for it, not race it.
-
-   The pre-migration copy is VACUUM INTO a URI carrying the same hexkey,
-   so the copy is written through a pager keyed like the original's and is
-   ciphertext on disk (ADR-0006 + ADR-0018: coverage includes migration
-   copies). The wasm build has no sqlite3_backup_*, and the pool util's
-   importDb() insists on the plaintext SQLite magic an encrypted file does
-   not carry - VACUUM INTO is the copy mechanism that exists here. SAHPool
-   stores opaque pool files, so the cleanup goes through the pool util
-   rather than OPFS paths.
-
-   The pool's OPFS directory is namespaced per database name (ticket 11):
-   SAHPool's directory is shared origin-wide by default, and only one
-   worker can hold it at a time - a second encrypted connection open in
-   the same origin fails its first sync access handle with "Access
-   Handles cannot be created if there is another open Access Handle", a
-   failure that then surfaces as a confusing null-database error on
-   whatever statement runs next rather than as itself. Production only
-   ever opens one connection against the fixed Journal filename, so
-   keying the directory off the database name keeps that persistent
-   (ADR-0020's web driver survives reloads) while giving anything that
-   opens more than one connection at once - namely this codebase's own
-   cross-platform archive probe - separate storage instead of a collision. */
+   Namespace the pool by database name. Its synchronous access handles
+   are exclusive, so concurrent connections require separate directories.
+   A stable name keeps the production journal persistent across reloads. */
 
 import sqlite3InitModule, { type Database, type Sqlite3Static, type SAHPoolUtil } from '@evolu/sqlite-wasm';
 import { oneTransactionAtATime, withReadSnapshots } from './transactor';
+import { poolDirectory } from './pool-directory';
+export { poolDirectory } from './pool-directory';
 import { InterruptedRestoreError, JournalBelowBaselineError, SchemaTooNewError } from './migration-runner';
 
-// Exported for tests/browser-tier/legacy-cipher-worker.ts (ticket 04): the
+// Exported for tests/browser-tier/legacy-cipher-worker.ts: the
 // compatibility check needs to land in the exact same pool directory this
 // worker would use for the same database path.
 export const MC_VFS = 'multipleciphers-opfs-sahpool';
@@ -65,23 +40,6 @@ let hexKey = '';
 // A failed attach/open stays failed until this worker closes.
 // Queued statements report that cause instead of reopening or using null `db`.
 let openError: Error | null = null;
-
-// A pool directory name derived from the database's own path: stable
-// across reloads for a given database and distinct across databases, but
-// hashed rather than embedding the path itself - this driver exists to
-// keep the journal's contents unreadable at rest (ADR-0018), and a
-// directory literally named after "engender.sqlite3" would defeat the
-// same closed-app OPFS scan that proves nothing plaintext survives there.
-/* poolDirectory stays exported only for legacy-cipher-worker.ts, which
-   cross-checks against it (AU-09 test-only review). */
-export function poolDirectory(path: string): string {
-  let hash = 2166136261; // FNV-1a, just for a short stable non-identifying tag.
-  for (let i = 0; i < path.length; i++) {
-    hash ^= path.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  return `mc-pool-${(hash >>> 0).toString(36)}`;
-}
 
 /** Applies the raw data key (ADR-0018: PRAGMA hexkey, not a passphrase
     through sqlite3mc's own KDF - stretching already happened in the
@@ -140,10 +98,9 @@ const handlers: Record<string, (args: never) => unknown | Promise<unknown>> = {
     await warmModule(args.wasmBinary);
   },
 
-  /* The files and the key without the live database (ux-carpet 219): what
-     the copy check and the restore need on a worker of their own after a
-     failed boot, when the live file is the one that could not be migrated
-     and opening it is not the point. */
+  /* The files and the key without the live database: what the copy check and the restore
+     need on a worker of their own after a failed boot, when the live file is the one that
+     could not be migrated and opening it is not the point. */
   async target(args: { path: string; hexKey: string }) {
     await attach(args.path);
     databasePath = poolPath(args.path);
@@ -257,27 +214,24 @@ const handlers: Record<string, (args: never) => unknown | Promise<unknown>> = {
        by the URI's hexkey) encrypts - never through file bytes, which the
        pool keeps opaque anyway. Any copy left by an interrupted migration
        goes first: VACUUM INTO refuses an existing target. The runner only
-       calls this when there is none to lose (ticket 04), so what the unlink
+       calls this when there is none to lose, so what the unlink
        clears is a target left half-written inside this same call. */
     await poolUtil!.unlink(backupPath);
     db!.exec(`VACUUM INTO 'file:${backupPath}?vfs=${MC_VFS}&hexkey=${hexKey}'`);
   },
 
-  /* Ticket 04: the copy becomes the live Journal again, after a migration
-     that could not be finished.
+  /* The copy becomes the live Journal again, after a migration that could not be finished.
 
-     VACUUM INTO in the other direction, from the copy as source, for the
-     reason the copy itself is written that way: the pool's bytes are opaque,
-     there is no sqlite3_backup_* in this wasm build, and importDb wants the
-     plaintext magic that an encrypted file does not carry. Both connections
-     are keyed with the same hexkey, so the restored database is ciphertext on
-     disk like everything else the pool holds.
+     VACUUM INTO in the other direction, from the copy as source, for the reason the copy
+     itself is written that way: the pool's bytes are opaque, there is no sqlite3_backup_*
+     in this wasm build, and importDb wants the plaintext magic that an encrypted file does
+     not carry. Both connections are keyed with the same hexkey, so the restored database is
+     ciphertext on disk like everything else the pool holds.
 
-     The live database is closed first, and the target unlinked, because
-     VACUUM INTO refuses an existing target and the file being replaced is the
-     one this worker has open. The copy stays where it is afterwards: it is
-     still the only insurance, and ADR-0006 retires it at the next clean boot,
-     which is a boot that found nothing pending - not this one. */
+     The live database is closed first, and the target unlinked, because VACUUM INTO refuses
+     an existing target and the file being replaced is the one this worker has open. The
+     copy stays where it is afterwards: it is still the only insurance, and ADR-0006 retires
+     it at the next clean boot, which is a boot that found nothing pending - not this one. */
   async restorePreMigrationCopy() {
     if (!poolUtil!.getFileNames().includes(backupPath)) {
       throw new Error('there is no pre-migration copy to restore');

@@ -1,53 +1,15 @@
 <script lang="ts">
-  /* One tryout's felt-sense readings as the shape they make (phase 10
-     redesign ticket 53, DIRECTION.md rule 16, ADR-0012).
+  /* Plot each felt-sense reading at its date and chosen step. A thin straight
+     stroke connects consecutive readings and implies no values between them.
+     Marks carry more weight than the stroke. A guide at the scale midpoint
+     and one colour for every step keep the drawing descriptive (ADR-0012).
 
-     Its own component rather than markup on the card, for the reason
-     ProcedurePhaseRail gives: the arithmetic lives in
-     `$lib/data/tryoutReading` with its own tests, and the marks and the
-     stroke that turn those positions into a line are one thing. The card
-     beside it is a name, a number and a sentence.
+     tryoutReading.ts supplies the positions. The SVG stretches its viewBox
+     across time and scale. non-scaling-stroke preserves the 2px line, and
+     zero-length lines with round caps keep the marks circular.
 
-     ## What the line may mean, and what it may not
-
-     Each mark is one reading, at the day it was written and the step that
-     was chosen. That much is the record. The stroke joining consecutive
-     marks is the shape the ticket asks for and nothing more: it is drawn
-     between two readings that exist, in the order they were written, and
-     it is not a fit, not a smoothing and not a claim about the days in
-     between. The marks are drawn heavier than it for exactly that reason -
-     what is recorded is solid and what merely connects it is thin.
-
-     Two readings a fortnight apart therefore draw one straight segment,
-     which says "it went from here to here" and not "it passed through
-     these fourteen days at these heights". The reference sweep for this
-     ticket found the alternative in the wild - two mood journals run a
-     smoothed curve through a fortnight of check-ins, which paints a height
-     onto every day nobody wrote on - and this refuses it.
-
-     Nothing is averaged and no end is the good end (ADR-0012): the guide
-     sits on the middle step of the scale rather than at its foot, so the
-     drawing has a middle to be above or below rather than a floor to be
-     measured up from, and the marks are one colour whatever step they are
-     on. A tryout the app thinks went well is not a thing this can draw.
-
-     Decorative to a screen reader, and that holds only while the card
-     beside it still writes every fact on this line down in text: how many
-     readings there are and when the last one was (TryoutCard). Anything
-     added here owes the card a line of text.
-
-     ## Why an SVG rather than positioned boxes
-
-     The rail next door places its marks as absolutely positioned boxes,
-     which works because they all sit on one line. These have a height as
-     well, and joining them needs a stroke between two arbitrary points,
-     which CSS has no way to draw. So the box is a non-uniformly scaled
-     viewBox - x spans the tryout, y spans the scale - and every stroke in
-     it carries `vector-effect="non-scaling-stroke"`, so the scale never
-     reaches the ink: the stroke is 2px and the marks are round however
-     wide the card is. A mark is a zero-length line with a round cap rather
-     than a `<circle>`, because a circle in a stretched viewBox is an
-     ellipse. */
+     The drawing is decorative as long as TryoutCard exposes the reading
+     count and latest reading date in text. Add any new fact there too. */
   import type { TryoutReading } from '$lib/data/tryoutReading';
 
   let { reading }: { reading: TryoutReading } = $props();

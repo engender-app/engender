@@ -64,6 +64,24 @@ describe('runAndroidAutoExport', () => {
     });
   });
 
+  test('abort frees the native slot while an attachment read remains pending', async () => {
+    const stop = new AbortController();
+    let reading!: () => void;
+    const started = new Promise<void>((resolve) => { reading = resolve; });
+    const source: ArchiveSnapshot = {
+      journal: emptyArchiveJournal(),
+      files: [{ name: 'held.jpg', length: 1 }],
+      readFile: async () => { reading(); return new Promise<Uint8Array>(() => {}); }
+    };
+    const pending = runAndroidAutoExport({ snapshot: source, preferences: PREFERENCE_DEFAULTS },
+      { watch: { signal: stop.signal }, recordBackup: vi.fn() });
+    await started;
+    stop.abort();
+    expect(await pending).toEqual({ outcome: 'cancelled' });
+    expect(androidAutoExport.abortBackup).toHaveBeenCalledWith({ transferId: 'transfer-1' });
+    expect(androidAutoExport.finishBackup).not.toHaveBeenCalled();
+  });
+
   test('streams bounded pieces before recording a verified backup', async () => {
     let recorded: number | null = null;
 
@@ -141,7 +159,7 @@ describe('runAndroidAutoExport', () => {
     expect(androidAutoExport.beginBackup).toHaveBeenCalledWith({
       snapshotAt: 17,
       scheduled: false,
-      fileName: expect.stringMatching(/^auto-backup-\d{4}-\d{2}-\d{2}-19700101T000000Z\.ttbackup$/)
+      fileName: expect.stringMatching(/^auto-backup-\d{4}-\d{2}-\d{2}-19700101T000000Z\.gnd$/)
     });
   });
 
@@ -216,10 +234,9 @@ describe('runAndroidAutoExport', () => {
   });
 
   test('leaves the failure notice to the scheduler, whatever the outcome', async () => {
-    /* Phase 6 ticket 04: this used to take a `trigger` argument whose only
-       job was to gate notifyFailure. The notice answers to the unprompted
-       registry now - a preference, quiet hours and the disguise - which is
-       auto-export-scheduler.ts's business and failureNotice.test.ts's. */
+    /* This used to take a `trigger` argument whose only job was to gate notifyFailure. The
+       notice answers to the unprompted registry now - a preference, quiet hours and the
+       disguise - which is auto-export-scheduler.ts's business and failureNotice.test.ts's. */
     vi.mocked(androidAutoExport.finishBackup).mockRejectedValue(new Error('destination-revoked'));
 
     const result = await runAndroidAutoExport(
@@ -375,9 +392,8 @@ test('next due time and due checks use schedule windows and required prerequisit
   expect(isDue({ ...monthly, hasPassword: false }, Number.MAX_SAFE_INTEGER)).toBe(false);
 });
 
-/* Phase 9 audit ticket 11: "Back up now" on the export screen runs this,
-   and it used to swap one word on a disabled button for however long
-   packing a decade of photos takes. */
+/* "Back up now" on the export screen runs this, and it used to swap one word on a disabled
+   button for however long packing a decade of photos takes. */
 describe('runAndroidAutoExport progress and cancellation', () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -426,7 +442,7 @@ describe('runAndroidAutoExport progress and cancellation', () => {
 
     /* Cancelling is safe here for the same reason it is on the manual
        export: nothing has been written to the journal or to the folder, so
-       it means trying again (ADR-0070). Its own outcome rather than
+       it means trying again. Its own outcome rather than
        'failed', so the screen can stay quiet about it instead of saying
        the backup broke. */
     expect(result.outcome).toBe('cancelled');

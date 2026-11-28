@@ -1,39 +1,15 @@
 <script lang="ts">
-  /* Letters to your future self (phase 5 UX ticket 25, redrawn by phase 10
-     redesign ticket 45).
-
-     Two things were crowded, and phase 5 fixed the first: composing is a
-     sheet now, opened from the header's add control the way every other
-     feature screen on the hub opens its editor, and the screen itself is
-     what it says it is.
-
-     What ticket 45 changes is what a letter looks like once it is here. All
-     three states were one list row - a lock glyph, "Sealed", and `Opens 19
-     Aug 2031` in secondary grey - so five years of waiting read exactly like
-     a size record. They are three drawings now and `LetterCard` holds them;
-     opening one unfolds it in place rather than replacing it with a sheet
-     of text.
-
-     Rule 16 asks an area screen to open by saying what is true now. This one
-     answers it with its order rather than with a second drawing above the
-     list: the letters still waiting come first, soonest to open at the top,
-     and the ones already open run underneath - Appointments' Coming up and
-     Behind you, on the only fact that changes which of them you want. The
-     next letter to open, and how long until it does, is then the first thing
-     on the screen and is not repeated anywhere.
-
-     **The starred photographs are here too** (phase 11 ticket 15). They and
-     the open letters were a screen of their own under Safe space,
-     `/doubt/moments`, showing the same two letters this screen already
-     showed one door away - two surfaces for one set of things somebody put
-     aside on purpose. That screen is a redirect here now, and its photo
-     half sits in the Open section under the words it already had. Safe
-     space still has its way down: the row points at `#opened`, so a person
-     arriving from their worst day lands on what is open rather than on
-     what is still sealed. */
+  import { collapse } from '$lib/motion/reveal';
+  import { undoable } from '$lib/stores/deleteUndo';
+  import { journalTextAutocomplete } from '$lib/platform';
+  /* The add control opens Compose in a sheet. LetterCard owns the three
+     states and unfolds an opened letter in place. Show letters still
+     waiting first, ordered by soonest opening, then open letters. The
+     list itself answers what is true now. */
   import { scrollBehavior } from '$lib/motion/tokens';
   import { untrack } from 'svelte';
   import { page } from '$app/state';
+  import { replaceRoute } from '$lib/navigation/smart-back';
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
@@ -45,6 +21,7 @@
     markLetterGreeted,
     markLetterRead
   } from '$lib/data/letterStatus';
+  import { acknowledgementStore } from '$lib/data/prefs/acknowledgementStore.svelte';
   import { safeSpaceLetters } from '$lib/data/letterRetrospective';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
@@ -53,7 +30,6 @@
   import LetterArrival from '$lib/components/LetterArrival.svelte';
   import LetterCard from '$lib/components/LetterCard.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
@@ -90,23 +66,11 @@
   let lettersQuery = liveList((j) => j.letters.getLetters(HISTORY_LIMIT));
   let letters = $derived(lettersQuery.rows);
 
-  /* Starred photos shown beside the open letters, most recently
-     starred-shelf-worthy first - the bound and the order both carried over
-     from the screen this absorbed. `starredPhotos()` reads oldest first
-     (CONTEXT: "Starred", the shelf's own order) and somebody reaching for
-     what they kept wants the newest of it. Six, so a large starred
-     collection stays a glance. The full photo library remains available
-     from the Media group. */
-  const PHOTO_LIMIT = 6;
-  let starredPhotosQuery = liveList((j) => j.photos.starredPhotos());
-  let starredPhotos = $derived([...starredPhotosQuery.rows].reverse().slice(0, PHOTO_LIMIT));
-
-  /* Which letters have been read, and which arrivals have been met. Both
-     live in localStorage rather than in the journal (ADR-0039), and both are
-     mirrored into state here so opening a letter re-draws its card without a
-     reload - a plain read of the store would be taken once and never again. */
-  let readIds = $state(getReadLetterIds());
-  let greetedIds = $state(getGreetedLetterIds());
+  /* Which letters have been read, and which arrivals have been met. Both live in the
+     encrypted acknowledgements preference rather than in the journal's tables, read through
+     the reactive store so opening a letter re-draws its card without a reload. */
+  let readIds = $derived(getReadLetterIds(acknowledgementStore));
+  let greetedIds = $derived(getGreetedLetterIds(acknowledgementStore));
 
   /* Waiting first, soonest to open at the top, then the ones already open,
      most recently unlocked first. Rule 16's ordering, and the reason there
@@ -126,8 +90,7 @@
   let openId = $state<string | null>(null);
 
   function markRead(letter: Letter) {
-    markLetterRead(letter.id);
-    readIds = getReadLetterIds();
+    markLetterRead(letter.id, acknowledgementStore);
   }
 
   function openLetter(letter: Letter) {
@@ -153,8 +116,7 @@
   });
 
   function endArrival(letter: Letter) {
-    markLetterGreeted(letter.id);
-    greetedIds = getGreetedLetterIds();
+    markLetterGreeted(letter.id, acknowledgementStore);
     arrival = null;
   }
 
@@ -162,8 +124,12 @@
     const readId = page.url.searchParams.get('read') ?? page.url.searchParams.get('id');
     if (!readId) return;
     const match = letters.find((l) => l.id === readId);
-    if (match && !isLetterSealed(match, today) && openId !== match.id) {
+    if (match && !isLetterSealed(match, today)) {
       openLetter(match);
+      const url = new URL(page.url);
+      url.searchParams.delete('read');
+      url.searchParams.delete('id');
+      void replaceRoute(url, { noScroll: true, keepFocus: true });
     }
   });
 
@@ -178,15 +144,15 @@
       }
     },
     saved: () => sealOutcome || m.saved(),
-    remove: (id) => journal.letters.deleteLetter(id),
+    remove: (id) => undoable((j) => j.letters.deleteLetter(id)),
     findById: (id) => letters.find((letter) => letter.id === id)
   });
 
-  // Ticket 18: only a sealed letter's unlock day is worth a mark elsewhere -
+  // Only a sealed letter's unlock day is worth a mark elsewhere -
   // once it has opened the day has already passed.
   let calendarFor = $state<Letter | null>(null);
 
-  // Ticket 41: preserve waiting list position when returning from the ready-letters jump.
+  // Preserve waiting list position when returning from the ready-letters jump.
   let waitingScroll: number | null = null;
 
   function onJump() {
@@ -237,22 +203,24 @@
         </SectionHeading>
         <div class="screen-part letter-list" {...roleAttrs(roleAt(activeFlag.roles, 0))}>
           {#each waiting as letter (letter.id)}
-            <LetterCard
-              {letter}
-              {today}
-              read={readIds.has(letter.id)}
-              oncalendar={() => (calendarFor = letter)}
-              ondelete={() => record.askToDelete(letter)}
-            />
+            <div transition:collapse>
+              <LetterCard
+                {letter}
+                {today}
+                read={readIds.has(letter.id)}
+                oncalendar={() => (calendarFor = letter)}
+                ondelete={() => record.askToDelete(letter)}
+              />
+            </div>
           {/each}
         </div>
       {/if}
 
-      {#if opened.length || starredPhotos.length}
+      {#if opened.length}
         <SectionHeading id="opened" focusable text={m.letters_opened_title()} />
-        {#if opened.length}
-          <div class="screen-part letter-list" {...roleAttrs(roleAt(activeFlag.roles, 0))}>
-            {#each opened as letter (letter.id)}
+        <div class="screen-part letter-list" {...roleAttrs(roleAt(activeFlag.roles, 0))}>
+          {#each opened as letter (letter.id)}
+            <div transition:collapse>
               <LetterCard
                 {letter}
                 {today}
@@ -262,40 +230,17 @@
                 onclose={() => (openId = null)}
                 ondelete={() => record.askToDelete(letter)}
               />
-            {/each}
-          </div>
-        {/if}
-
-        <!-- The photographs keep the words they had on the screen they came
-             from rather than taking a heading of their own: the section is
-             already named, and a second heading inside it would make two
-             areas out of one set of kept things. Absent rather than empty
-             when nothing is starred.
-
-             It arrives rather than being painted where it lands: this read
-             resolves after the letters' (SQLite answers them in turn, ~350ms
-             apart on the demo), so without the clip the grid would cut into
-             place on a settled screen. Same movement every block in the app
-             makes (rule 10, ADR-0078). -->
-        {#if starredPhotos.length}
-          <div class="letters-photos">
-            <p class="muted small">{m.safe_space_photos_intro()}</p>
-            <div class="photo-grid" data-safe-space-photos>
-              {#each starredPhotos as p (p.id)}
-                <PhotoThumb photo={p} size={104} />
-              {/each}
             </div>
-          </div>
-        {/if}
+          {/each}
+        </div>
       {/if}
     {/snippet}
     {#snippet empty()}
       <Notice
-        icon="book"
+        icon="envelope"
         key="letters-empty"
         role={roleAt(activeFlag.roles, 0)}
         title={m.letters_empty_title()}
-        text={m.letters_empty_body()}
         action={{ label: m.letters_compose_title(), primary: true, onclick: compose }}
       />
     {/snippet}
@@ -321,15 +266,15 @@
     confirm={{
       title: m.letters_delete_sheet(),
       question: () => m.letters_delete_q(),
-      hint: () => m.letters_delete_hint(),
-      confirmLabel: m.letters_delete(),
+      hint: () => m.delete_undo_hint(),
+      confirmLabel: m.delete(),
       cancelLabel: m.keep_it()
     }}
   />
   {#snippet fields(draft: Composition)}
     <Field label={m.letters_text_label()} id="letter-text">
       {#snippet children(id, _hint, touched)}
-        <textarea
+        <textarea autocomplete={journalTextAutocomplete()}
           class="input"
           {id}
           rows="6"
@@ -363,7 +308,7 @@
             aria-pressed={draft.unlockDate === dateInputValueFromEpochDay(mi.epochDay)}
             onclick={() => (draft.unlockDate = dateInputValueFromEpochDay(mi.epochDay))}
           >
-            <Icon name="flag" size={14} />{mi.name}
+            <Icon name="summit" size={16} />{mi.name}
           </button>
         {/each}
       </div>
@@ -399,11 +344,5 @@
      none to be separated from. */
   .letter-list :global(.letter-card + .letter-card) {
     border-top: 1px solid var(--hairline);
-  }
-
-  .letters-photos {
-    display: grid;
-    gap: var(--space-2);
-    animation: kit-block-in var(--dur-slow) var(--ease-out) both;
   }
 </style>

@@ -1,41 +1,15 @@
-/* The last answer each read gave, held in memory so a warm revisit paints
-   from it (phase 12 ux-carpet ticket 201).
+/* Reuse a prior result on a warm revisit, then refresh in the
+   background. Store dependency versions from the start of the read.
+   Serve the result only when every version still matches. Equal
+   refresh results leave the screen alone.
 
-   Going back to a tab you looked at a minute ago used to show its skeleton
-   again while every read made its round trip: 190-340 ms on the Pixel even
-   with the bridge pipelined (ticket 200). Nothing had changed in between, so
-   the skeleton reported a wait for data the screen had already shown. So a
-   query that has answered leaves its answer here, and the same query asked
-   again paints it in its first frame and reads fresh underneath.
+   Keep results in memory and clear them on lock and reset. A key
+   combines the call site with operations and arguments observed before
+   the first await. Skip arguments that cannot be serialized faithfully.
 
-   Three rules keep that honest:
-
-   - **Only while nothing it read has changed.** An answer is stored with the
-     version of every table it depends on (tableVersions.svelte.ts), taken
-     when its run started. If any of them has moved since, the answer is not
-     handed out: a screen never paints something the journal has already
-     overwritten. So the refresh underneath finds the same data unless the
-     answer depends on the clock, and journal.svelte.ts skips a refresh that
-     came back equal, which leaves nothing on screen to move.
-   - **Memory only, and wiped on lock and on reset.** Alicja's decision on
-     the ticket: nothing leaves the encrypted database for localStorage, disk
-     or anywhere else, and a locked app holds none of the journal in the
-     page either. `forgetLastResults()` is called from lockNow() and
-     resetApp().
-   - **Only an answer the key can tell apart.** A key is the call site plus
-     every journal operation the query's closure called before its first
-     await, with their arguments. A closure that passes an argument that
-     cannot be written down faithfully is not stored; one that calls nothing
-     at all is keyed by its call site alone (journal.svelte.ts, NO_CALLS).
-     What the key cannot see is a variable the closure uses only after an
-     await; two live instances of one call site that ask the same thing
-     would be told apart only by that. So an answer is never handed to a new
-     instance while the instance that stored it is still alive - a revisit
-     is by definition the old screen gone and a new one asking - and a key
-     written by two instances alive at once is marked ambiguous and never
-     handed out again (until the next forget).
-
-   Rune-free, so the Node tier tests it (lastResults.test.ts). */
+   A later closure value may be outside the key. Share a result only
+   after its writer is gone. If two live instances write one key, mark
+   it ambiguous until the cache clears. */
 
 import { forgetOnLock } from '../../lock/forget-content';
 

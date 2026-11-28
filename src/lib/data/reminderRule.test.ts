@@ -12,10 +12,12 @@ import {
   assertValidRule,
   choiceFromRule,
   nextOccurrence,
+  previousOccurrence,
   ruleFromChoice,
   type ReminderRule
 } from './reminderRule.ts';
 import fixture from '../android/fixtures/reminder-rule.json';
+import { epochDayFromLocalDate, timestampAtLocalTime } from './epochDay.ts';
 
 interface Case {
   name: string;
@@ -64,9 +66,8 @@ describe('the editor choice a rule reads back as', () => {
     expect(choiceFromRule(rule({ recurrence: null, epochDay: 20000 }))).toBe('ONCE');
   });
 
-  it('reads the two plain recurrences as themselves', () => {
+  it('reads DAILY as itself', () => {
     expect(choiceFromRule(rule({ recurrence: 'DAILY' }))).toBe('DAILY');
-    expect(choiceFromRule(rule({ recurrence: 'WEEKLY' }))).toBe('WEEKLY');
   });
 
   it('splits EVERY_N_DAYS by its interval, which is the only pair offered', () => {
@@ -113,16 +114,13 @@ describe('the rule an editor choice writes back', () => {
     expect(inWarsaw(() => ruleFromChoice('ONCE', '07:00', null, now)).epochDay).toBe(today + 1);
   });
 
-  it('writes the plain recurrences with nothing else on them', () => {
+  it('writes DAILY with nothing else on it', () => {
     expect(inWarsaw(() => ruleFromChoice('DAILY', '20:00', null, now))).toEqual({
       time: '20:00',
       recurrence: 'DAILY',
       interval: null,
       anchorEpochDay: null,
       epochDay: null
-    });
-    expect(inWarsaw(() => ruleFromChoice('WEEKLY', '20:00', null, now))).toEqual({
-      time: '20:00', recurrence: 'EVERY_N_DAYS', interval: 7, anchorEpochDay: today, epochDay: null
     });
   });
 
@@ -163,27 +161,53 @@ describe('the rule an editor choice writes back', () => {
   });
 
   it('makes a rule the schema accepts whatever the choice was', () => {
-    for (const choice of ['ONCE', 'DAILY', 'EVERY_3_DAYS', 'EVERY_7_DAYS', 'WEEKLY'] as const) {
+    for (const choice of ['ONCE', 'DAILY', 'EVERY_3_DAYS', 'EVERY_7_DAYS'] as const) {
       expect(() => assertValidRule(inWarsaw(() => ruleFromChoice(choice, '20:00', null, now)))).not.toThrow();
     }
   });
 });
 
-it('keeps a Monday weekly reminder on Monday through Tuesday to Sunday resyncs and edits', () => {
+it('keeps a Monday seven-day reminder on Monday through Tuesday to Sunday resyncs and edits', () => {
   process.env.TZ = 'Europe/Warsaw';
-  const weekly = ruleFromChoice('WEEKLY', '20:00', null, new Date('2026-08-10T10:00:00+02:00'));
+  const weekly = ruleFromChoice('EVERY_7_DAYS', '20:00', null, new Date('2026-08-10T10:00:00+02:00'));
   for (let day = 11; day <= 16; day++) {
     const now = new Date(`2026-08-${day}T10:00:00+02:00`);
-    const edited = ruleFromChoice('WEEKLY', '20:00', weekly, now);
+    const edited = ruleFromChoice('EVERY_7_DAYS', '20:00', weekly, now);
     expect(nextOccurrence(edited, now)?.getTime()).toBe(Date.parse('2026-08-17T20:00:00+02:00'));
     expect(edited.anchorEpochDay).toBe(20675);
   }
 });
 
-it('rejects a legacy unanchored Weekly rule before planning or writing it', () => {
-  const rule: ReminderRule = {
+it('rejects the pre-rc WEEKLY recurrence like any word it does not know', () => {
+  const rule = {
     time: '20:00', recurrence: 'WEEKLY', interval: null, anchorEpochDay: null, epochDay: null
-  };
+  } as unknown as ReminderRule;
   expect(() => assertValidRule(rule)).toThrow('invalid reminder rule: WEEKLY');
-  expect(() => nextOccurrence(rule, new Date('2026-08-11T10:00:00+02:00'))).toThrow('WEEKLY reminder must be anchored before planning');
+});
+
+/* Which firing a Taken or Skip tap answers. The tap can come long after the alarm, after
+   midnight or after quiet hours held it, and the slot it fills is the occurrence's own day. */
+describe('the occurrence a moment answers to', () => {
+  const none = { interval: null, anchorEpochDay: null, epochDay: null };
+  const local = (day: number, time: string) => new Date(timestampAtLocalTime(day, time));
+  const dayOf = (date: Date | null) => (date === null ? null : epochDayFromLocalDate(date));
+
+  it('is today once the time has come, and yesterday before it', () => {
+    const rule: ReminderRule = { ...none, time: '20:00', recurrence: 'DAILY' };
+    expect(previousOccurrence(rule, local(20400, '20:00'))?.getTime()).toBe(local(20400, '20:00').getTime());
+    expect(dayOf(previousOccurrence(rule, local(20401, '07:00')))).toBe(20400);
+  });
+
+  it('steps back along an every-N-days progression, and has none before its anchor', () => {
+    const rule: ReminderRule = { ...none, time: '09:00', recurrence: 'EVERY_N_DAYS', interval: 3, anchorEpochDay: 20400 };
+    expect(dayOf(previousOccurrence(rule, local(20404, '10:00')))).toBe(20403);
+    expect(dayOf(previousOccurrence(rule, local(20403, '08:00')))).toBe(20400);
+    expect(previousOccurrence(rule, local(20400, '08:59'))).toBeNull();
+  });
+
+  it('is a one-off\'s own day once it has gone by', () => {
+    const rule: ReminderRule = { ...none, time: '09:00', recurrence: null, epochDay: 20400 };
+    expect(dayOf(previousOccurrence(rule, local(20402, '12:00')))).toBe(20400);
+    expect(previousOccurrence(rule, local(20400, '08:00'))).toBeNull();
+  });
 });

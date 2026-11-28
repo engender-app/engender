@@ -29,6 +29,8 @@ test('Care keeps the actual last dose across episode changes and outside the tot
   assert.equal(care.lanes[0].episode.id, current);
   assert.equal(care.lanes[0].lastDoseEpochDay, TODAY - 150);
   assert.equal(care.lanes[0].lastDoseId, doseId);
+  // The dose change is the same course: taking since its first episode.
+  assert.equal(care.lanes[0].takingSinceEpochDay, TODAY - 300);
   assert.deepEqual(care.lanes[0].doseTotals, []);
   assert.equal(care.lanes[0].runOut, null);
   assert.equal(care.latestLab, null);
@@ -61,28 +63,28 @@ test('concurrent drugs keep their own pauses, totals and stock', async () => {
   assert.equal(progesterone.runOut, null);
 });
 
-test('Care waits for totals and rejects the whole answer if totals fail', async () => {
+test('Care waits for its slot rows and rejects the whole answer if they fail', async () => {
   const { journal } = await journalWithBuiltIns();
-  let release!: (value: Awaited<ReturnType<typeof journal.exposure.getCounters>>) => void;
-  const totals = new Promise<Awaited<ReturnType<typeof journal.exposure.getCounters>>>((resolve) => { release = resolve; });
+  let release!: (value: Awaited<ReturnType<typeof journal.doses.getDosesForSlots>>) => void;
+  const doses = new Promise<Awaited<ReturnType<typeof journal.doses.getDosesForSlots>>>((resolve) => { release = resolve; });
   let published = false;
-  const pending = readCare({ ...journal, exposure: { getCounters: () => totals } }, TODAY)
+  const pending = readCare({ ...journal, doses: { ...journal.doses, getDosesForSlots: () => doses } }, TODAY)
     .then((value) => { published = true; return value; });
   await new Promise((resolve) => setTimeout(resolve, 10));
   assert.equal(published, false);
-  release({ doseTotals: [], routeDays: [], regimenDays: [], excludedDoses: 0 });
+  release([]);
   assert.deepEqual((await pending).lanes, []);
-  await assert.rejects(readCare({ ...journal, exposure: {
-    getCounters: async () => { throw new Error('totals unavailable'); }
-  } }, TODAY), /totals unavailable/);
+  await assert.rejects(readCare({ ...journal, doses: {
+    ...journal.doses, getDosesForSlots: async () => { throw new Error('doses unavailable'); }
+  } }, TODAY), /doses unavailable/);
 });
 
-test('Care reads only the totals window of the log when every lane has a dose in it (ticket 221)', async () => {
+test('Care reads only the totals window of the log when every lane has a dose in it', async () => {
   const doseReadsFrom: number[] = [];
   const db = await migratedDb();
   const counting = countingDriver(db, {
     onQuery: (sql, params) => {
-      if (/FROM dose_event\s+WHERE timestamp >= \?/.test(sql)) doseReadsFrom.push(Number(params?.[0]));
+      if (/FROM dose_event\s+WHERE \(?timestamp >= \?/.test(sql)) doseReadsFrom.push(Number(params?.[0]));
     }
   });
   const journal = openJournal(counting.driver, fakeFileStore());
@@ -106,7 +108,7 @@ test('Care reads only the totals window of the log when every lane has a dose in
   );
 });
 
-test('a lane with nothing ever logged has no last dose, through the fallback (ticket 221)', async () => {
+test('a lane with nothing ever logged has no last dose, through the fallback', async () => {
   const { journal } = await journalWithBuiltIns();
   const episodeId = await journal.regimen.upsertEpisode({
     drug: 'spironolactone', ester: null, dose: 100, doseUnit: 'mg', route: 'oral', interval: 'daily',
@@ -140,4 +142,28 @@ test('Care and quick log agree on drug case and whitespace while totals and stoc
   const episodes = await journal.regimen.getEpisodes();
   const doses = await journal.doses.getDoses(TODAY - 3, TODAY - 3);
   assert.deepEqual(episodesWithNoDoseLogged(episodes, episodes, doses), []);
+});
+
+test('Care totals keep their timestamp window when slot coverage includes older, future and moved automatic doses', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const fields = { drug: 'estradiol', ester: null, dose: 2, doseUnit: 'mg', route: 'oral', interval: 'daily' };
+  const historical = await journal.regimen.upsertEpisode({ ...fields,
+    startEpochDay: TODAY - 200, endEpochDay: TODAY - 40, endReason: 'switchedDrugOrRoute' });
+  await journal.regimen.setEpisodeHidden(historical, true);
+  const current = await journal.regimen.upsertEpisode({ ...fields,
+    startEpochDay: TODAY - 39, endEpochDay: null, endReason: null });
+  await journal.doses.upsertSchedule({ episodeId: current,
+    recurrence: { kind: 'everyNDays', everyNDays: 7 }, dosesPerDay: 1,
+    doseAmounts: null, autoLogFromEpochDay: null });
+  for (const [offset, dose] of [[-90, 100], [-89, 2], [-40, 3], [0, 5], [1, 200]]) {
+    await journal.doses.upsertDose({ drug: 'estradiol', timestamp: startOfDayTimestamp(TODAY + offset),
+      route: 'oral', dose, doseUnit: 'mg' });
+  }
+  await journal.doses.upsertDose({ drug: 'estradiol', timestamp: startOfDayTimestamp(TODAY - 90),
+    route: 'oral', dose: 1000, doseUnit: 'mg', source: 'schedule',
+    autoLogSlot: { episodeId: current, epochDay: TODAY - 89, indexInDay: 0 } });
+  const care = await readCare(journal, TODAY);
+  const expected = await journal.exposure.getCounters(TODAY - CARE_DOSE_TOTAL_WINDOW_DAYS + 1, TODAY);
+  assert.deepEqual(care.lanes[0].doseTotals, expected.doseTotals);
+  assert.equal(care.lanes[0].doseTotals[0].total, 10);
 });

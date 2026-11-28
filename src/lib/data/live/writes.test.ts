@@ -1,6 +1,6 @@
 /* The half of the reactive layer that has no runes in it, so it can be
    tested at all: which tables a journal mutation writes, and the wrapper
-   that announces them (ticket 08). */
+   that announces them. */
 
 import assert from 'node:assert/strict';
 import { expect, test } from 'vitest';
@@ -8,7 +8,7 @@ import { journalWithBuiltIns } from '../journal/test-support.ts';
 import type { Journal } from '../journal/journal.ts';
 import { journalIsBusy, prepareJournalHandover } from '../journal-busy.ts';
 import { startOfDayTimestamp } from '../epochDay.ts';
-import { JOURNAL_WIDE, observeWrites, tablesReadBy, tablesWrittenBy, TABLE_NAMES, type TableName } from './writes.ts';
+import { JOURNAL_WIDE, isJournalCommand, observeWrites, tablesReadBy, tablesWrittenBy, TABLE_NAMES, type TableName } from './writes.ts';
 import { COMPOSING_READS } from './test-support/composing-reads.ts';
 
 async function observed() {
@@ -24,8 +24,22 @@ test('a write announces exactly the tables it touched, and hands its result back
 
   assert.equal(typeof id, 'number');
   // Photos, recordings and video notes too, because a save carries
-  // additions and removals of all three, plus a debrief link.
-  assert.deepEqual(announced, [['entry', 'photo', 'voiceRecording', 'videoNote', 'checklist']]);
+  // additions and removals of all three, plus a debrief link and the
+  // contextual cards that commit beside the entry.
+  assert.deepEqual(announced, [
+    [
+      'entry',
+      'photo',
+      'voiceRecording',
+      'videoNote',
+      'checklist',
+      'feltSense',
+      'dose',
+      'procedure',
+      'personalEffect',
+      'cycleEvent'
+    ]
+  ]);
 });
 
 test('hiding or finishing an area announces it, and a read of the states announces nothing', async () => {
@@ -34,9 +48,9 @@ test('hiding or finishing an area announces it, and a read of the states announc
   /* The features spec reads these states on the hub and on Home, so a hide
      that announced nothing would leave the row it hid on screen until the
      next unrelated write - the class of staleness this whole module exists
-     for (phase 8 deepening ticket 13). */
-  await journal.areaStates.setAreasHidden(['measurements'], true);
-  await journal.areaStates.setAreasFinished(['hairStages', 'hairPhotos'], 19900);
+     for. */
+  await journal.areaStates.setAreasHidden(['personalEffects'], true);
+  await journal.areaStates.setAreasFinished(['personalEffects', 'sideEffects'], 19900);
   assert.deepEqual(announced, [['areaState'], ['areaState']]);
 
   announced.length = 0;
@@ -103,8 +117,20 @@ test('deleting an entry or a milestone announces photos too, because it takes th
 
   assert.deepEqual(announced, [
     ['entry', 'photo', 'voiceRecording', 'videoNote'],
-    ['milestone', 'photo', 'feltSense', 'document']
+    ['milestone', 'photo', 'document']
   ]);
+});
+
+test('an undoable delete announces its tables, and its undo announces them again', async () => {
+  const { journal, announced } = await observed();
+  const milestoneId = await journal.milestones.upsertMilestone({ name: 'HRT start', epochDay: 90 });
+  announced.length = 0;
+
+  const deletion = await journal.undoable((j) => j.milestones.deleteMilestone(milestoneId));
+  assert.deepEqual(announced, [['milestone', 'photo', 'document']]);
+  await deletion.undo();
+  assert.deepEqual(announced, [['milestone', 'photo', 'document'], ['milestone', 'photo', 'document']]);
+  assert.equal((await journal.milestones.getMilestones()).length, 1);
 });
 
 test('reads announce nothing at all', async () => {
@@ -135,7 +161,7 @@ test('a rejected write announces nothing: nothing changed, so nothing is stale',
   assert.deepEqual(announced, []);
 });
 
-test('a run-out reconcile with nothing to change announces nothing (ux-carpet 199)', async () => {
+test('a run-out reconcile with nothing to change announces nothing', async () => {
   const { journal, announced } = await observed();
 
   /* Android reruns this pass on every 'stock' announcement, and it declares
@@ -225,12 +251,10 @@ test('reconciling built-ins announces the reference tables it may have filled', 
     [
       'tag',
       'dimension',
-      'affirmation',
       'bodyRegion',
-      'measurementType',
       'effectCategory',
       'personalEffectType',
-      'entryTemplate'
+      'progressPhoto'
     ]
   ]);
 });
@@ -258,7 +282,7 @@ test('a Daylio preview commits through the observed journal the screen uses', as
   assert.deepEqual(announced, [TABLE_NAMES]);
 });
 
-/* The update guard hangs off the same wrapper (ticket 04). The reason it is
+/* The update guard hangs off the same wrapper. The reason it is
    here rather than at the call sites is that this is the one place that knows
    what a write is: a journal operation added next month is covered by
    classifying it, and a service worker cannot activate under it. */
@@ -330,16 +354,13 @@ test('every operation the journal actually has is classified', async () => {
   assert.deepEqual(Object.keys(wrapped).toSorted(), Object.keys(journal).toSorted());
 });
 
-/* Which members of the journal are operations rather than areas of them, and
-   the reason it matters twice over: this module wraps them itself instead of
-   looking them up in OPERATIONS, and journal.svelte.ts's lazy proxy has to
-   call them rather than build a facade of operations around them.
+/* Which members of the journal are operations rather than areas of them, and the reason it
+   matters twice over: this module wraps them itself instead of looking them up in
+   OPERATIONS, and journal.svelte.ts's lazy proxy has to call them rather than build a
+   facade of operations around them.
 
-   That proxy knew `reconcileBuiltIns` by name alone until phase 5 audit
-   ticket 13 added `discardEverything`, and the miss showed up only as
-   "discardEverything is not a function" in a walkthrough run - a rune module
-   the Node tier cannot import. This is the half of it that can be checked
-   here: the list and the journal agreeing on which members are functions. */
+   That proxy knew `reconcileBuiltIns` by name alone. This is the half of it that can be
+   checked here: the list and the journal agreeing on which members are functions. */
 test('the journal-wide operations are exactly the journal members that are functions', async () => {
   const { journal } = await journalWithBuiltIns();
 
@@ -362,7 +383,7 @@ test('a whole area this module does not know about is rejected too', async () =>
 
 test('tablesWrittenBy answers with the classified tables, and refuses anything else', () => {
   // Boot's trash purge reads this rather than carrying its own copy of
-  // deleteEntry's tables (phase 5 audit ticket 02).
+  // deleteEntry's tables.
   expect(tablesWrittenBy('entries', 'deleteEntry')).toEqual(['entry', 'photo', 'voiceRecording', 'videoNote']);
   expect(() => tablesWrittenBy('entries', 'getEntry')).toThrow(/not a classified write/);
   expect(() => tablesWrittenBy('nosuchArea', 'deleteEntry')).toThrow(/not a classified write/);
@@ -370,18 +391,16 @@ test('tablesWrittenBy answers with the classified tables, and refuses anything e
 
 test('tablesReadBy answers with the tables a read depends on, and refuses anything else', () => {
   // What a liveQuery resolves its dependencies from, instead of asking the
-  // screen to name tables (phase 5 audit ticket 03).
-  expect(tablesReadBy('journalingPauses', 'getPauses')).toEqual(['journalingPause']);
+  // screen to name tables.
   expect(() => tablesReadBy('entries', 'upsertEntry')).toThrow(/not a classified read/);
   expect(() => tablesReadBy('nosuchArea', 'getEntry')).toThrow(/not a classified read/);
 });
 
-/* One of the two live defects the audit found, as the invariant that
-   catches the class rather than the instance: a write's tables and the
-   tables of every read whose answer that write changes have to overlap, or
-   the screen holding that read shows its old number forever with nothing to
-   see. The other defect was a journaling pause against the streak read,
-   which phase 8 UX ticket 01 deleted along with the streak. */
+/* One of the two live defects the audit found, as the invariant that catches the class
+   rather than the instance: a write's tables and the tables of every read whose answer that
+   write changes have to overlap, or the screen holding that read shows its old number
+   forever with nothing to see. The other defect was a journaling pause against the streak
+   read, which deleted along with the streak. */
 test('editing a regimen episode re-runs the stock projection, the run-out date the stock screen shows', () => {
   // The screen declared ['stock', 'dose'], and the projection reads the
   // episode history too - so ending an episode left the old run-out date up.
@@ -395,20 +414,10 @@ test('editing a regimen episode re-runs the stock projection, the run-out date t
   }
 });
 
-/* The class of stale copy the audit found next, and the reason "at least one
-   table" below cannot catch it: several areas answer out of other areas'
-   reads rather than out of SQL of their own, and each one retyped the union
-   of their tables by hand. A hand-typed union goes wrong in both directions.
-   Short of a table, the composing read never re-runs on a write to the area
-   it composes and the screen holding it shows its old answer forever. Long of
-   one, it carries a dependency nothing behind it reads any more, which is a
-   re-query on every unrelated write and a lie about what the read does.
-
-   So the rule is equality rather than overlap: a composing read declares
-   exactly the tables of the reads it performs. That is also what makes the
-   list in test-support/composing-reads.ts unforgettable - a section added to one of the registries brings
-   a table with it, and the union here is short of that table until somebody
-   adds the read that brought it. */
+/* Require composing reads to declare exactly the union of tables they
+   read. Too few dependencies leave stale results and extras re-query
+   on unrelated writes. test-support/composing-reads.ts records the
+   reads supplying each union. */
 
 /** The read-only areas that answer out of SQL of their own rather than out
     of another area's read, and so have nothing to compose. Written down for
@@ -425,7 +434,8 @@ const READS_ITS_OWN_SQL: Partial<Record<keyof Journal, string>> = {
   voice: 'the recording rows dated, read straight off the driver',
   videos: 'the video-note rows dated, read straight off the driver',
   photoLibrary:
-    'one UNION ALL over the six tables that hold a photograph, so that the ordering rule is applied once by the thing holding the index rather than assembled from six reads above the seam (photoLibrary.ts)'
+    'one UNION ALL over the six tables that hold a photograph, so that the ordering rule is applied once by the thing holding the index rather than assembled from six reads above the seam (photoLibrary.ts)',
+  costs: 'one UNION ALL over the five tables that hold a cost (costs.ts)'
 };
 
 const READ_OPERATIONS_ITS_OWN_SQL = {
@@ -529,4 +539,10 @@ test('a rejected public journal write cancels handover without changing its erro
   const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 4, note: 'Recovered draft' });
   assert.equal((await journal.entries.getEntry(id))?.note, 'Recovered draft');
   assert.equal(await retry(() => { reloaded = true; }), true);
+});
+
+test('a write is a command for the session gate, a read is not', () => {
+  assert.equal(isJournalCommand('entries', 'upsertEntry'), true);
+  assert.equal(isJournalCommand('wearSessions', 'getRunningSession'), false);
+  assert.equal(isJournalCommand('noSuchArea', 'log'), false);
 });

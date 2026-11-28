@@ -1,4 +1,4 @@
-/* The rune-free half of the tableVersions seam (ticket 27): the
+/* The rune-free half of the tableVersions seam: the
    write-announcement notify.
 
    `tableVersions.svelte.ts` owns the reactive version state and, being
@@ -26,8 +26,7 @@ interface WriteAnnouncer {
 /** A fresh registry. The app uses the single shared one below; the factory
     exists so a Node test can exercise the rule without leaking listeners
     between cases. */
-/* createWriteAnnouncer stays exported only for its own test (AU-09 test-only
-   review). */
+/* createWriteAnnouncer stays exported only for its own test. */
 export function createWriteAnnouncer(): WriteAnnouncer {
   const listeners = new Set<TablesListener>();
   return {

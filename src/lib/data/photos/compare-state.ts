@@ -1,8 +1,8 @@
 /** Everything below is about ids and positions in a list, never about what
     a photograph holds, so the list it reads is anything with an id: the
-    journal's own photos on `/media/photos` and a hair progress photo on
-    `/body/hair-progress`, which are two different rows of two different
-    tables wanting the same answer. */
+    journal's own photos on `/media/photos` and a progress photo on
+    `/transition/progress-photos`, which are two different rows of two
+    different tables wanting the same answer. */
 type Identified = { id: string };
 
 /** Which two photographs of a list are being compared, by index: the earlier
@@ -63,8 +63,8 @@ export function stepPair(
 
 /** The two photographs a screen opens the wipe on when nobody has picked a
     pair yet: the oldest and the newest, which is the widest comparison the
-    list holds and the one an area screen is asking about when it opens
-    (DIRECTION.md rule 16). Null with fewer than two, where there is nothing
+    list holds and the one an area screen is asking about when it opens.
+    Null with fewer than two, where there is nothing
     to compare.
 
     Not a pairing rule in ADR-0012's sense - nothing here matches poses,

@@ -1,21 +1,22 @@
 /* The labs area (PRD F30). An analyte is free text carried with a
-   free-text unit, never converted or interpreted (CONTEXT: "Analyte"). */
+   free-text unit, never converted or interpreted. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { DoseRoute, LabResult, LabTiming } from '../types';
-import { resolveCurveDrug } from '../hormoneDrug';
+import { resolveHormoneDrug } from '../hormoneDrug';
 import { drugSpans } from '../regimenEpisode';
 import { FIRST_EPOCH_DAY, epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay';
 import { drawUpperBound, labTimingFor, selectTimingDose, type CandidateDose, type LabDraw } from '../labTiming';
 import { assertChanged, mintUuid, now } from './support';
 import { normalizeUnit } from '../labs/units';
 import type { RegimenArea } from './regimen';
+import { assertValidCost, costColumns, costFromRow, normalizeCost, type CostInput, type CostRow } from '../cost';
 
 /** The analytes offered before any result exists. Lowercase scientific
     names shown as-is, like every stored analyte. Order is cosmetic - it
     only decides which comes first in a fresh picker - and is not
     alphabetical on purpose, so the list does not read as estradiol plus
-    two afterthoughts (phase 5 ticket 37). */
+    two afterthoughts. */
 const ANALYTE_PRESETS = ['testosterone', 'estradiol', 'prolactin'];
 
 /** No `timing`: the dosing context is not something a caller supplies. It
@@ -34,6 +35,9 @@ export interface LabResultInput {
       known, and no hours figure is derived. */
   drawTime?: string | null;
   provider?: string;
+  /** What the test cost. Absent or null is none, like `note`; the editor always resubmits
+      it. Throws if invalid. */
+  cost?: CostInput;
 }
 
 /** One chart line: the results of one analyte that share a unit, oldest
@@ -53,7 +57,7 @@ export interface LabsArea {
   getUsedAnalytes(): Promise<string[]>;
   /** The analyte of whichever result was most recently saved or edited, or
       null with no results at all. What the trend screen opens on and what
-      a new result prefills to (phase 5 ticket 37) - never a hardcoded
+      a new result prefills to - never a hardcoded
       hormone.
 
       No preference backs this: the "what did they last log" memory is a
@@ -63,8 +67,7 @@ export interface LabsArea {
       have to remember to reset on a fresh device. */
   getMostRecentAnalyte(): Promise<string | null>;
   getResults(analyte: string): Promise<LabResult[]>;
-  /** Every analyte's results drawn on one day (phase 5 deepening ticket
-      21), oldest-saved first. Across analytes, because a single draw
+  /** Every analyte's results drawn on one day, oldest-saved first. Across analytes, because a single draw
       normally yields several and a day view asks about the draw rather than
       about one hormone - which is also why this is one query where the
       clinician summary, having no per-day read to reach for, walks
@@ -72,8 +75,7 @@ export interface LabsArea {
   getResultsOnDay(epochDay: number): Promise<LabResult[]>;
   getResultsInRange(fromEpochDay: number, toEpochDay: number): Promise<LabResult[]>;
   /** The most recently drawn result of any analyte, or null with no results
-      at all. What the care overview marks its draw at (phase 5 deepening
-      ticket 07): the rail asks "when was blood last taken", which is a
+      at all. What the care overview marks its draw at: the rail asks "when was blood last taken", which is a
       question about draw days across every analyte at once, where
       getMostRecentAnalyte above asks the unrelated question of what was
       last typed in.
@@ -86,11 +88,10 @@ export interface LabsArea {
   getLatestResult(): Promise<LabResult | null>;
   /** Retrieve a lab result by its UUID, or null when not found. */
   getResultById(id: string): Promise<LabResult | null>;
-  /** The draw day of the most recent result at or before `todayEpochDay`, or
-      null if there is none (phase 8 features ticket 03, lastWrite.ts). Its
-      own bounded `MAX` rather than `getLatestResult` above: that one is
-      never asked to exclude a clock-skewed future draw, and returns the
-      whole row rather than the one field the registry wants. */
+  /** The draw day of the most recent result at or before `todayEpochDay`, or null if there
+      is none (lastWrite.ts). Its own bounded `MAX` rather than `getLatestResult` above:
+      that one is never asked to exclude a clock-skewed future draw, and returns the whole
+      row rather than the one field the registry wants. */
   lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
   /** The analyte's results split into one series per unit, oldest series
       first. A result logged in ng/dL and one logged in nmol/L differ by a
@@ -103,7 +104,7 @@ export interface LabsArea {
   deleteResult(id: string): Promise<void>;
 }
 
-type LabRow = {
+type LabRow = CostRow & {
   uuid: string;
   epoch_day: number;
   analyte: string;
@@ -118,7 +119,7 @@ type LabRow = {
 };
 
 const LAB_COLUMNS = `uuid, epoch_day, analyte, value, unit, note, draw_time, provider,
-                     timing_route, timing_hours, timing_day_of_interval`;
+                     timing_route, timing_hours, timing_day_of_interval, cost_amount, cost_currency, cost_refunded`;
 
 /** The three timing columns collapsed into the arm their route names, so a
     result comes out with one figure rather than with two nulls beside it
@@ -131,7 +132,7 @@ const LAB_COLUMNS = `uuid, epoch_day, analyte, value, unit, note, draw_time, pro
 function toLabTiming(row: LabRow): LabTiming | null {
   const route = row.timing_route as DoseRoute | null;
   if (route === null) return null;
-  if (route === 'im' || route === 'sc') {
+  if (route === 'im' || route === 'sc' || route === 'implant') {
     return row.timing_day_of_interval === null ? null : { route, dayOfInterval: row.timing_day_of_interval };
   }
   return row.timing_hours === null ? null : { route, hoursSinceDose: row.timing_hours };
@@ -146,7 +147,8 @@ const toLabResult = (row: LabRow): LabResult => ({
   note: row.note ?? '',
   drawTime: row.draw_time,
   provider: row.provider,
-  timing: toLabTiming(row)
+  timing: toLabTiming(row),
+  cost: costFromRow(row)
 });
 
 /** A LabTiming as the columns that hold it. The inverse of toLabTiming. */
@@ -171,25 +173,12 @@ export function makeLabsArea(driver: SqliteDriver, regimen: RegimenArea): LabsAr
     return rows.map(toLabResult);
   };
 
-  /** The draw's dosing context, measured now against the dose log and
-      regimen episode history as they stand now. Reads `dose_event` from
-      inside the labs area on purpose: every path that creates a lab result
-      then gets a context without knowing it needs one, where a
-      caller-supplied figure would go missing the first time someone added a
-      second creation path (the OCR import is already the second).
-
-      A skipped dose is passed over. It is a dose that was expected and not
-      taken, so hours since it would be hours since nothing happened; taken
-      and changed both mean something went in.
-
-      Candidates are also filtered to the ones that attribute, through
-      episodes, to the draw analyte's own curve drug (selectTimingDose,
-      hormoneDrug.ts) - a concurrent dose of an unrelated drug is skipped
-      over exactly as if it weren't there, rather than reported as this
-      draw's context (phase 8 features ticket 37). */
+  /** Resolve each lab draw's timing from current dose and regimen history so
+      all creation paths get the same context. selectTimingDose uses doses
+      actually taken and matches the draw analyte's hormone. */
   const deriveTiming = async (draw: LabDraw, analyte: string): Promise<LabTiming | null> => {
-    const curveDrug = resolveCurveDrug(analyte);
-    if (curveDrug === null) return null;
+    const hormoneDrug = resolveHormoneDrug(analyte);
+    if (hormoneDrug === null) return null;
     const upper = drawUpperBound(draw);
     const [names, episodes] = await Promise.all([
       driver.query<{ drug: string | null }>(
@@ -198,9 +187,9 @@ export function makeLabsArea(driver: SqliteDriver, regimen: RegimenArea): LabsAr
       ),
       regimen.getEpisodes()
     ]);
-    const drugs = names.filter((row) => row.drug && resolveCurveDrug(row.drug) === curveDrug).map((row) => row.drug);
+    const drugs = names.filter((row) => row.drug && resolveHormoneDrug(row.drug) === hormoneDrug).map((row) => row.drug);
     const spans = drugSpans(episodes, FIRST_EPOCH_DAY, epochDayFromTimestamp(upper)).filter((span) =>
-      !span.ambiguous && (span.drug === null || resolveCurveDrug(span.drug) === curveDrug)
+      !span.ambiguous && (span.drug === null || resolveHormoneDrug(span.drug) === hormoneDrug)
     );
     const clauses: string[] = [];
     const params: unknown[] = [upper];
@@ -294,22 +283,21 @@ export function makeLabsArea(driver: SqliteDriver, regimen: RegimenArea): LabsAr
       return [...series.values()];
     },
 
-    /* Where the context is frozen. On insert it is derived from the dose log
-       as it stands; on update it is carried through untouched, unless the
-       draw itself moved.
+    /* Where the context is frozen. On insert it is derived from the dose log as it stands;
+       on update it is carried through untouched, unless the draw itself moved.
 
-       That is the whole of ticket 03's box 6: editing or correcting a dose
-       event months later cannot reach a context already saved, because no
-       edit to a dose passes through here. Correcting the draw's own day,
-       time or analyte does recompute, because moving the draw voids the
-       old figure outright rather than adjusting what it was measured from
-       (and an analyte can be timed from another drug's dose) - and
-       without that, a result saved with no draw time could never be given
-       one afterwards, since the hours figure that unlocks would never be
-       derived. */
+       That is the whole of box 6: editing or correcting a dose event months later cannot
+       reach a context already saved, because no edit to a dose passes through here.
+       Correcting the draw's own day, time or analyte does recompute, because moving the
+       draw voids the old figure outright rather than adjusting what it was measured from
+       (and an analyte can be timed from another drug's dose) - and without that, a result
+       saved with no draw time could never be given one afterwards, since the hours figure
+       that unlocks would never be derived. */
     async upsertResult(input) {
       const draw: LabDraw = { epochDay: input.epochDay, drawTime: input.drawTime ?? null };
       const fields = [input.analyte, input.value, input.unit ?? '', input.note ?? '', input.provider ?? ''];
+      const cost = normalizeCost(input.cost);
+      assertValidCost(cost);
 
       if (input.id) {
         const existing = (
@@ -336,9 +324,10 @@ export function makeLabsArea(driver: SqliteDriver, regimen: RegimenArea): LabsAr
         const result = await driver.run(
           `UPDATE lab_result
               SET epoch_day = ?, analyte = ?, value = ?, unit = ?, note = ?, provider = ?, draw_time = ?,
-                  timing_route = ?, timing_hours = ?, timing_day_of_interval = ?, updated_at = ?
+                  timing_route = ?, timing_hours = ?, timing_day_of_interval = ?,
+                  cost_amount = ?, cost_currency = ?, cost_refunded = ?, updated_at = ?
             WHERE uuid = ?`,
-          [input.epochDay, ...fields, draw.drawTime, ...timing, now(), input.id]
+          [input.epochDay, ...fields, draw.drawTime, ...timing, ...costColumns(cost), now(), input.id]
         );
         assertChanged(result, `lab result: ${input.id}`);
         return input.id;
@@ -347,9 +336,10 @@ export function makeLabsArea(driver: SqliteDriver, regimen: RegimenArea): LabsAr
       const uuid = mintUuid();
       await driver.run(
         `INSERT INTO lab_result (uuid, epoch_day, analyte, value, unit, note, provider, draw_time,
-                                 timing_route, timing_hours, timing_day_of_interval, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [uuid, input.epochDay, ...fields, draw.drawTime, ...timingColumns(await deriveTiming(draw, input.analyte)), now()]
+                                 timing_route, timing_hours, timing_day_of_interval,
+                                 cost_amount, cost_currency, cost_refunded, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [uuid, input.epochDay, ...fields, draw.drawTime, ...timingColumns(await deriveTiming(draw, input.analyte)), ...costColumns(cost), now()]
       );
       return uuid;
     },

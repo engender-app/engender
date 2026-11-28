@@ -1,30 +1,12 @@
 <script lang="ts">
-  /* Getting back in mid-session (ticket 53, replacing LockScreen's unlock
-     job).
+  /* Unlock with the access mode's own secret (ADR-0041). On web, locking
+     closes the database and drops its key, so one busy state covers both
+     derivation and reopening. Android retains its key. The PIN profile
+     accounts for one Argon2id derivation per re-entry.
 
-     It asks for the access mode's own secret and actually re-derives with
-     it, rather than comparing against a second, weaker secret kept around
-     to make re-entry cheap. That second secret was the app-lock PIN, and
-     ADR-0041 retires it: one word, one meaning. On the web the derived key
-     is also what opens the journal again, since a lock there closes the
-     database and lets go of the key (after-release ticket 10); the wait
-     for that reopen sits inside the same busy state as the derivation, a
-     few tens of milliseconds on top of it. Android's lock keeps its key and
-     does not reopen anything.
-
-     The price is one Argon2id derivation per re-entry, which is honest and
-     which the PIN profile was sized around (crypto/params.ts).
-
-     Four shapes, one per mode that has a secret: a passphrase field, a PIN
-     pad, Android's Keystore prompt, and the web biometric's own (ticket 55,
-     where the platform prompt is the secret exactly as Keystore's is). Web
-     device-bound mode has none, so it never reaches here - isLocked() is
-     false for it. The device-bound branch below still checks
-     isAndroid() itself even though isLocked() already guarantees it: a
-     button that calls Android's Keystore bridge is the wrong failure mode
-     for that guarantee ever breaking (final audit U2 - the gallery's own
-     `session-device` scene, retired, is what used to force the
-     combination on purpose). */
+     Web device-bound has no unlock prompt. Keep the isAndroid() guard
+     before calling the Keystore bridge even though isLocked() already
+     excludes web device-bound. */
 
   import { m } from '$lib/paraglide/messages';
   import { prefs } from '$lib/data/prefs/store.svelte';
@@ -53,7 +35,7 @@
 
   /* What every one of the four ways in below ends on: the app coming back,
      as the field opening from this screen's title onto the one Home draws
-     rather than this screen being replaced (redesign ticket 34).
+     rather than this screen being replaced.
 
      Here rather than inside `markUnlocked`, which the cold-start gates reach
      through the boot machine's own `mark-unlocked` effect: that path is
@@ -61,17 +43,22 @@
      second one from under the first skips it - the app would appear in a
      single frame, which is exactly what this exists to stop. */
   const opened = async (current: () => void) => {
+    const sessionCurrent = beginSessionUnlock();
+    let published = false;
     current();
     ui.appOpening = true;
     await openApp(() => {
       try {
         current();
         markUnlocked();
+        published = true;
       } catch (e) {
         if (!(e instanceof UnlockCancelledError)) throw e;
       }
     }).finally(() => (ui.appOpening = false));
-    current();
+    // Successful publication removes the gate; a later lock still revokes it.
+    if (!published) throw new UnlockCancelledError();
+    sessionCurrent();
   };
 
   let passphrase = $state('');
@@ -106,14 +93,8 @@
 
   /* PIN mode's attempts go through PinEntry, which owns the pad and the
      growing delay for both this screen and the cold-start gate. */
-  async function submitPin(entered: string): Promise<PinAttempt> {
-    const current = beginSessionUnlock();
-    let dataKey;
-    try {
-      dataKey = await unlockJournalPin(entered);
-    } catch (e) {
-      return e instanceof DeviceBindingUnavailableError ? 'device-gone' : 'wrong';
-    }
+  async function submitPin(entered: string, current: () => void): Promise<PinAttempt> {
+    const dataKey = await unlockJournalPin(entered, undefined, current);
     try {
       if (!(await reopened(dataKey, current))) return 'unopened';
       await opened(current);
@@ -124,11 +105,10 @@
     return 'ok';
   }
 
-  /* Back to idle after a refusal, never after the way in: the gate leaves
-     inside the app's opening transition, and turning the button back to
-     its idle label and emptying the field first painted both for two
-     frames before the gate went (after-release ticket 10, sampled per
-     frame). The field and label leave with the gate instead. */
+  /* Back to idle after a refusal, never after the way in: the gate leaves inside the app's
+     opening transition, and turning the button back to its idle label and emptying the
+     field first painted both for two frames before the gate went. The field and label leave
+     with the gate instead. */
   const settle = () => {
     if (!ui.appOpening) busy = false;
   };
@@ -192,7 +172,6 @@
     try {
       const result = await confirmWithBiometrics(androidKeystore, {
         title: m.ak_prompt_title(),
-        subtitle: m.ak_prompt_subtitle(),
         cancel: m.ak_prompt_cancel(),
         deviceCredential
       });
@@ -203,7 +182,7 @@
       deviceRefused = true;
       error =
         result.outcome === 'unenrolled' ? m.ak_unenrolled()
-        : result.outcome === 'unavailable' ? m.ak_unavailable()
+        : result.outcome === 'unavailable' ? m.ak_unavailable({ appName: appWordmark(prefs.disguise, m.app_name(), m.disguise_name()) })
         : result.outcome === 'lockedOut' ? m.ak_locked_out()
         : result.outcome === 'cancelled' ? m.ak_cancelled()
         : m.ak_failed();
@@ -235,9 +214,9 @@
     mode === 'pin'
       ? m.su_pin_body()
       : mode === 'passphrase'
-        ? m.su_passphrase_body()
+        ? ''
         : mode === 'biometric'
-          ? m.bm_unlock_body()
+          ? m.unlock_confirm_body()
           : m.su_device_body()
   );
 
@@ -259,8 +238,8 @@
   let title = $derived(appWordmark(prefs.disguise, m.app_name(), m.disguise_name()));
 </script>
 
-<GateScreen {title} data-applock>
-  <p class="gate-body">{body}</p>
+<GateScreen {title} unlock data-applock>
+  {#if body}<p class="gate-body">{body}</p>{/if}
 
   {#if mode === 'pin'}
     <PinEntry onVerify={submitPin} />
@@ -327,11 +306,10 @@
     <Icon name="alert" size={20} />
     <div class="notice-body">
       <span class="notice-title">{m.pp_forgot_no_recovery()}</span>
-      <!-- The note follows the title's noun: a sheet headed "Forgotten your
-           PIN?" cannot open with a sentence about a passphrase (UI/UX
-           ticket 09). Biometric and device-bound keep their own notes
-           because their secret is a device that will not answer, not
-           something forgotten. -->
+      <!-- The note follows the title's noun: a sheet headed "Forgotten your PIN?" cannot
+           open with a sentence about a passphrase. Biometric and device-bound keep their
+           own notes because their secret is a device that will not answer, not something
+           forgotten. -->
       {mode === 'pin'
         ? m.pin_forgot_key_note()
         : mode === 'biometric'
@@ -345,7 +323,7 @@
   {#if resetError}
     <!-- In the sheet, which stays open: the sheet is where the button was
          pressed, and closing it on a failure left the gate looking as if
-         nothing had happened (after-release ticket 09). -->
+         nothing had happened. -->
     <p class="reset-failed small" role="alert" data-reset-failed transition:disclose>{resetError}</p>
   {/if}
   <div class="stack-3" style="margin-top:var(--space-4)">

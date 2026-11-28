@@ -1,4 +1,4 @@
-/* Neutrality, measured (ADR-0087).
+/* Neutrality, measured.
 
    The rule this replaces was enforceable because it was trivial: the trunk
    was one rectangle, so one equality checked it. A drawn contour has no

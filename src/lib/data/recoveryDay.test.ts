@@ -1,9 +1,9 @@
-/* The day-since-surgery counter (phase 5 ticket 07). Pure: no clock, no
+/* The day-since-surgery counter. Pure: no clock, no
    database, so every case here is a surgery date and a day. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { activeSurgeryProcedure, procedureInArchive, procedurePhase, recoveryDay, SURGERY_RECOVERY_CUTOFF_DAYS } from './recoveryDay.ts';
+import { activeSurgeryProcedure, procedurePhase, recoveryDay, SURGERY_RECOVERY_CUTOFF_DAYS } from './recoveryDay.ts';
 
 test('procedurePhase returns planning when no surgery date is set', () => {
   assert.equal(procedurePhase(null, 20000), 'planning');
@@ -22,9 +22,21 @@ test('procedurePhase returns recovery when 1..90 days post-op', () => {
   assert.equal(procedurePhase(20000, 20000 + SURGERY_RECOVERY_CUTOFF_DAYS), 'recovery');
 });
 
-test('procedurePhase returns archived when >90 days post-op', () => {
-  assert.equal(procedurePhase(20000, 20000 + SURGERY_RECOVERY_CUTOFF_DAYS + 1), 'archived');
-  assert.equal(procedurePhase(20000, 20200), 'archived');
+/* Archiving is the person's choice (the schema's own comment on `procedure.archived`), so
+   no surgery date ages a procedure into the archive. */
+test('a procedure 120 days post-op is not archived unless the person archived it', () => {
+  assert.equal(procedurePhase(20000, 20000 + SURGERY_RECOVERY_CUTOFF_DAYS + 1), 'recovery');
+  assert.equal(procedurePhase(20000, 20120), 'recovery');
+  assert.equal(procedurePhase(20000, 20400), 'recovery');
+});
+
+test('procedurePhase reads archived only off the person\'s own switch, once the surgery is behind them', () => {
+  assert.equal(procedurePhase(20000, 20120, true), 'archived');
+  assert.equal(procedurePhase(20000, 20030, true), 'archived');
+  // Archived before the operation, the log keeps the phase the date gives.
+  assert.equal(procedurePhase(null, 20000, true), 'planning');
+  assert.equal(procedurePhase(20010, 20000, true), 'pre_op');
+  assert.equal(procedurePhase(20000, 20000, true), 'surgery_day');
 });
 
 test('recoveryDay says nothing at all until a surgery date is set', () => {
@@ -83,13 +95,4 @@ test('activeSurgeryProcedure picks the nearest procedure when multiple exist', (
 
   // If only pastExpired exists, null is returned
   assert.equal(activeSurgeryProcedure([pastExpired], 20000), null);
-});
-
-test('procedure archive grouping follows the automatic phase without changing the manual flag', () => {
-  const procedure = { surgeryEpochDay: 20000, archived: false };
-  assert.equal(procedureInArchive(procedure, 20090), false);
-  assert.equal(procedureInArchive(procedure, 20091), true);
-  assert.equal(procedure.archived, false);
-  assert.equal(procedureInArchive({ surgeryEpochDay: null, archived: false }, 20100), false);
-  assert.equal(procedureInArchive({ surgeryEpochDay: 20110, archived: true }, 20100), true);
 });

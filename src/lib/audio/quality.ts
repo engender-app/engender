@@ -1,28 +1,10 @@
-/* The quality gate a take has to get through before its numbers mean
-   anything (CONTEXT: "Voice benchmark").
+/* Assess recording conditions before storing a voice benchmark.
+   Use the supplied pitch track and report which condition to change,
+   such as microphone distance. The checks apply to the recording only.
 
-   A benchmark is comparable to the ones before it only if the conditions
-   were the same, so this is the module that decides a take is not worth
-   storing. It names which check failed, in the caller's terms rather than in
-   decibels, because the retake has to be able to say what to do differently:
-   "further from the microphone" is actionable, "peak 0.99" is not.
-
-   Nothing here is a judgement about a voice (PRODUCT.md:109). Every check is
-   about the recording - level, room, length, steadiness - and a take that
-   fails one is a take to make again, never a voice that fell short. The
-   pitch graph's reference bands are the one narrowing of that rule, and
-   for nothing else: no check in here gained a range, and none will.
-
-   Pure, like its siblings, and it takes the pitch track rather than
-   recomputing it (see resonance.ts's header for why).
-
-   **The gate and the measuring are separate, and the measuring is a running
-   total.** `assessQuality` applies the thresholds to a `QualitySignals` and
-   nothing else. Two things produce one: `takeSignals`, over a whole decoded
-   take, and the live gauge (audio/live.ts), which never has the whole take in
-   hand and keeps the same numbers running as frames complete. One
-   accumulator behind both, so the bar somebody watched and the verdict on
-   the take that got stored cannot disagree. */
+   assessQuality applies thresholds to QualitySignals. takeSignals
+   and the live gauge feed the same frame accumulator so the displayed
+   progress and final verdict use identical measurements. */
 
 import { passageLanguage, type BandLanguage } from './bands';
 import { frameGeometry, rms, type PitchTrack } from './pitch';
@@ -33,14 +15,12 @@ export const PEAK_CEILING = 0.98;
 /** Voice against room, in dB. Below this the formant estimate starts
     describing the room. */
 const MIN_SNR_DB = 15;
-/** Continuous voicing, in seconds. Continuous, not total: three seconds in
-    five bursts is not a sustained vowel. Asked only of the held vowel - the
-    sentence that used to follow, that "a passage read in fragments shorter
-    than this was not read", was the mistake redesign ticket 41 fixed. A
-    read passage is fragments by nature: every voiceless stop and fricative
-    breaks voicing, so an honest read's longest unbroken run is a few
-    hundred milliseconds and could never clear this. What the passage
-    answers to instead is `readingFloorSeconds`. */
+/** Continuous voicing, in seconds. Continuous, not total: three seconds in five bursts is
+    not a sustained vowel. Asked only of the held vowel - the sentence that used to follow,
+    that "a passage read in fragments shorter than this was not read", was fixed. A read
+    passage is fragments by nature: every voiceless stop and fricative breaks voicing, so an
+    honest read's longest unbroken run is a few hundred milliseconds and could never clear
+    this. What the passage answers to instead is `readingFloorSeconds`. */
 const MIN_VOICED_SECONDS = 1.5;
 /** Coefficient of variation of F0 across the voiced frames. Asked only of
     the sustained vowel - a read passage moves in pitch by design, which is
@@ -77,23 +57,18 @@ const VOWEL_CHECKS: readonly QualityCheck[] = ['clipping', 'noise', 'tooShort', 
     stretch of speech, not a take that came up short. */
 const SPEECH_CHECKS: readonly QualityCheck[] = ['clipping', 'noise'];
 
-/** **Seconds of voiced audio per word, per language: the passage's floor.**
-
-    A read is mostly pauses, so how long somebody read for says very little
-    and how much voice arrived says a lot. The floor is the passage's own
-    word count times this, which is what makes a short custom passage and
-    the bundled one answer to the same rule rather than to the same number.
-
-    Measured, not derived - see ADR-0082 for the takes and the arithmetic.
-    Both languages have their own because they really do differ: 98 English
-    words at 1.32 syllables each against 82 Polish words at 1.74 came out as
-    a 1.35 ratio in seconds of voice per word, which is the syllable
-    difference and not a rounding.
-
-    Each number is 0.70 of what a brisk honest read measured, so an unhurried
-    read clears it with room to spare and half the passage at the same pace
-    does not. A language with no measured figure of its own reads English's,
-    the same fallback `bandsFor` makes. */
+/**
+ * Multiply the passage word count by seconds of voiced audio per
+ * word. Measure speech instead of elapsed time so pauses do not
+ * inflate coverage.
+ *
+ * The values are 70% of a brisk espeak-ng read measured through
+ * trackPitch and takeSignals. This margin needs checking against
+ * human recordings. Polish and English use separate values because
+ * their bundled passages differ in syllables per word. Unmeasured
+ * languages use English, and custom passages use the app locale
+ * as their fallback.
+ */
 const VOICED_SECONDS_PER_WORD: Record<BandLanguage, number> = { en: 0.083, pl: 0.112 };
 
 /** How much voiced audio a passage of `wordCount` words has to carry before
@@ -128,18 +103,17 @@ export function passageGate(wordCount: number, language: BandLanguage): QualityG
 
 /** **The rate a stored benchmark cannot honestly have been read at.**
 
-    Until redesign ticket 41 the passage had no working length gate, so a
-    take abandoned a few words in was stored with the whole passage's word
-    count over the seconds it actually ran: roughly double the true speaking
-    rate, and no stored field proves it (no benchmark records how much of the
-    passage was read). What is left is the number itself, and twice an
-    unhurried read is the signature of the bug rather than of a fast reader.
+    The passage had no working length gate, so a take abandoned a few words in was stored
+    with the whole passage's word count over the seconds it actually ran: roughly double the
+    true speaking rate, and no stored field proves it (no benchmark records how much of the
+    passage was read). What is left is the number itself, and twice an unhurried read is the
+    signature of the bug rather than of a fast reader.
 
-    Each is about 1.3 times the fastest read its language was measured at,
-    which is high enough that no honest read reaches it and low enough to
-    catch a half-read of the same passage at the slowest pace measured -
-    the one case the length floor above deliberately lets through. ADR-0082
-    has both measurements and the gap between them. */
+    Each is about 1.3 times the fastest read its language was measured at, which is high
+    enough that no honest read reaches it and low enough to catch a half-read of the same
+    passage at the slowest pace measured - the one case the length floor above deliberately
+    lets through: half a passage read slowly carries as much voice as the whole read fast,
+    and voiced time alone cannot tell them apart. */
 const MAX_PLAUSIBLE_WPM: Record<BandLanguage, number> = { en: 300, pl: 200 };
 
 /** Whether a stored speaking rate is one a person could have read at.
@@ -176,38 +150,14 @@ export interface QualityReport extends QualitySignals {
   passed: boolean;
 }
 
-/* **Why the frame levels are a histogram and not a list.**
+/* Keep voiced median and room quartile in a constant-space
+   histogram of dBFS bins. rankDb selects and interpolates ranks like
+   percentileOfSorted, so the only loss is half a bin per rank.
 
-   Two of the numbers below are ranks rather than sums: the median level of
-   the voiced frames and the quiet quarter of the room's. A rank cannot be
-   kept as a running total the way a peak or a mean can - it needs to know
-   about every value that came before it - and keeping the values themselves
-   is what made the live gauge's poll grow with the take.
-
-   So the levels go into a fixed histogram of dBFS bins, which is the
-   constant-space version of the sorted list, and every rank is read off it.
-   dB bins rather than linear ones because the answer is a ratio in dB, so
-   the quantisation is even where the threshold is.
-
-   **What it costs, stated properly.** Two things could move the answer: the
-   bin a level lands in, and which values the rank picks. The second one is
-   not paid - `rankDb` selects and interpolates exactly as
-   `percentileOfSorted` does over a sorted list, so a nearest-rank shortcut
-   does not add error on top of the bins. That leaves the bins: each rank is
-   off by at most half a bin, and the SNR is a difference of two of them, so
-   at 0.01 dB a bin the reported figure is within 0.01 dB of what the sorted
-   lists answered.
-
-   That is not zero, and at a hard threshold nothing lossy can be. A take
-   whose true SNR sits within 0.01 dB of the 15 dB the gate asks for can come
-   out the other side of it. Against a figure that moves by whole decibels
-   between two takes of the same voice in the same room, a hundredth of one
-   is not a verdict anybody can hold the gate to - but it is the honest
-   bound, and it is what the pinned test in quality.test.ts measures.
-
-   A fixed-size random reservoir was the other option and was not taken: it
-   would make the same take read differently on two runs, and this number is
-   compared against a threshold and then written into a stored benchmark. */
+   At 0.01 dB per bin, the SNR difference is within 0.01 dB of the
+   sorted-list result. A take that close to the 15 dB gate can cross
+   the threshold. A random reservoir would make repeated measurements
+   vary, which would change a stored benchmark. */
 const LEVEL_FLOOR_DB = -120;
 const LEVEL_BIN_DB = 0.01;
 const LEVEL_BINS = Math.round(-LEVEL_FLOOR_DB / LEVEL_BIN_DB) + 1;
@@ -321,25 +271,14 @@ export function runningQualitySignals(hopSeconds: number): RunningQualitySignals
   };
 }
 
-/** Voice against room: the median level of the frames the pitch track called
-    voiced, over the quiet quarter of the frames it did not.
-
-    Splitting on the track rather than on a loudness percentile is what makes
-    this a measurement of the room instead of a measurement of the quiet part
-    of a sentence: a held vowel has no quiet part, so a percentile floor would
-    divide the voice by itself and report every clean sustained take as noisy.
-
-    Both ranks come back in dB already, so the ratio is their difference and
-    no logarithm is taken here at all.
-
-    Two ends of the scale, both stated rather than left implicit. A take with
-    no voiced frame has no signal to measure and scores zero, which the length
-    check is failing it for anyway. A take with too little unvoiced audio to
-    call a room has none to measure, and it got that way by being periodic
-    from end to end - which is what a clean take with the microphone already
-    running sounds like - so it scores the ceiling. A room down in the
-    underflow bin scores the ceiling for the same reason: there is nothing
-    there to divide by. */
+/**
+ * Subtract the quiet quartile of unvoiced frames from the median
+ * dB level of voiced frames. Use the pitch track to split the sets so
+ * a clean held vowel is never compared with itself as room noise.
+ *
+ * No voiced signal scores zero. Too few unvoiced frames or noise
+ * below the histogram floor scores the ceiling.
+ */
 function signalToNoiseDb(voicedLevels: Levels, roomLevels: Levels): number {
   if (voicedLevels.count === 0) return 0;
   if (roomLevels.count < MIN_ROOM_FRAMES) return MAX_SNR_DB;

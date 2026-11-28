@@ -1,19 +1,7 @@
-/* Getting an exported file off the device (ticket 13, PRD F14; ticket 15
-   for the plain formats).
-
-   Android uses its native save picker. Browsers try the share sheet first,
-   then a plain download. A cancelled share sheet is its own answer rather than a
-   failure - the screen must not claim a backup was made.
-
-   In browsers the archive is packed as a stream (pack.ts) and handed to
-   one Blob, which is the limit of what the format's bounded memory buys at
-   the last step: chunking means the bytes are never encrypted and held a
-   second time, which is what single-shot AES-GCM costs, but both a File to
-   share and an object URL to download need the whole archive to exist
-   somewhere. A Blob is the least bad somewhere - the browser owns it,
-   large ones spill to disk rather than sitting in the renderer's heap.
-   Android streams into app-private native staging before its save picker
-   opens, then verifies the destination before reporting delivery. */
+/* Android streams to private staging and verifies the save destination.
+   Browsers try sharing, then downloading. A cancelled share means the
+   backup was not delivered. Browser packing streams into one Blob because
+   both a share File and a download URL require the finished archive. */
 
 import { isAndroid } from '../../platform';
 import { nameSlug } from '../fold';
@@ -30,11 +18,10 @@ type Sharing = {
   share?: (data: { files: File[]; title?: string }) => Promise<void>;
 };
 
-/** `alicja-journal-2026-08-11.ttbackup`, or `journal-...` when the journal
-    has no display name. Folded and stripped rather than percent-escaped: it
-    passes through a share sheet, a file picker, and whatever filesystem is
-    on the other side. The extension is the caller's, because the plain
-    export writes the same name with `.csv` and `.json` (F22). */
+/** `journal-name-journal-2026-08-11.gnd`, or `journal-...` when the journal has no display
+    name. Folded and stripped rather than percent-escaped: it passes through a share sheet,
+    a file picker, and whatever filesystem is on the other side. The extension is the
+    caller's, because the plain export writes the same name with `.csv` and `.json` (F22). */
 export function exportFileName(name: string, extension: string, epochDay: number = todayEpochDay(), disguised = false): string {
   if (disguised) return `backup-${dateInputValueFromEpochDay(epochDay)}${extension}`;
   const slug = nameSlug(name);
@@ -44,6 +31,7 @@ export function exportFileName(name: string, extension: string, epochDay: number
 export async function deliverFile(file: {
   fileName: string;
   type: string;
+  recordBackup?: boolean;
   body: AsyncIterable<Uint8Array>;
 }): Promise<Delivery> {
   if (isAndroid()) return (await import('./android-file-delivery')).deliverAndroidFile(file);
@@ -52,9 +40,9 @@ export async function deliverFile(file: {
   return deliverBlob(file.fileName, new Blob(parts, { type: file.type }));
 }
 
-/** The same hand-off for something already whole in memory: ticket 27's
-    collage and timelapse come off a canvas as a Blob, and this is what keeps
-    them on the one share path rather than growing a second one. */
+/** The same hand-off for something already whole in memory: collage and timelapse come off
+    a canvas as a Blob, and this is what keeps them on the one share path rather than
+    growing a second one. */
 export async function deliverBlob(fileName: string, blob: Blob): Promise<Delivery> {
   if (isAndroid()) {
     return (await import('./android-file-delivery')).deliverAndroidFile({

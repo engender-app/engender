@@ -1,26 +1,23 @@
-/* The built-in vocabulary every install gets: six gender dimensions, eight
-  presets, five tag groups and eight milestone templates.
+/* The built-in vocabulary every install gets: six gender dimensions, eight presets, five
+  tag groups and eight milestone templates.
 
-   Keys only, no display text. A built-in is the same concept on any
-   device, so it is identified by a stable key and its name is looked up at
-   display time (ADR-0002, and CONTEXT: Built-in). Storing "Femininity"
-   would make a Polish install's archive disagree with an English one about
-   what is the same dimension, and would freeze the wording at seed time.
-   labels.ts holds the lookups; this file takes nothing but types, so the
-   Node tier can read it without dragging in paraglide (ADR-0016).
+  Keys only, no display text. A built-in is the same concept on any device, so it is
+  identified by a stable key and its name is looked up at display time (ADR-0002). Storing the label would make English and Polish archives disagree
+  about the same dimension, and would freeze the wording at seed
+  time. labels.ts holds the lookups; this file takes nothing but types, so the Node tier can
+  read it without dragging in paraglide.
 
-   `as const` throughout, so each key list also produces the union type
-   labels.ts has to cover exhaustively - a built-in added here without a
-   message fails the typecheck rather than showing a raw key to someone. */
+  `as const` throughout, so each key list also produces the union type labels.ts has to
+  cover exhaustively - a built-in added here without a message fails the typecheck rather
+  than showing a raw key to someone. */
 
 import type { GenderDimension, GenderPreset, Tag, TagGroup } from '../types.ts';
 import { BUILT_IN_DIMENSIONS } from './builtinTemplates.ts';
 
-/* Frozen. These eight stopped being a picker in ticket 35 and survive only
-   to resolve a preset key out of an archive written before that, so each
-   list has to keep saying what that key meant when it was written. A scale
-   added to BUILT_IN_DIMENSIONS above never joins one of these: `p-nb` was
-   all five scales that existed then, and restoring a 2026 archive must tick
+/* Frozen. These eight stopped being a picker and survive only to resolve a preset key out
+   of an archive written before that, so each list has to keep saying what that key meant
+   when it was written. A scale added to BUILT_IN_DIMENSIONS above never joins one of these:
+   `p-nb` was all five scales that existed then, and restoring a 2026 archive must tick
    those five rather than whatever "all of them" means today. */
 export const BUILT_IN_PRESETS = [
   { key: 'p-fem-masc', dims: ['euphoria_dysphoria', 'femininity', 'masculinity'] },
@@ -52,8 +49,19 @@ export const BUILT_IN_TAG_GROUPS = [
     ]
   },
   {
+    // Keep the six original emotion keys in their existing order. The
+    // remaining keys add angry and the finer words defined below.
     key: 'emotions',
-    tags: ['e-happy', 'e-calm', 'e-anxious', 'e-sad', 'e-hopeful', 'e-tired']
+    tags: [
+      'e-happy', 'e-calm', 'e-anxious', 'e-sad', 'e-hopeful', 'e-tired',
+      'e-angry',
+      'e-proud', 'e-grateful', 'e-excited', 'e-close',
+      'e-content', 'e-relieved', 'e-safe', 'e-grounded',
+      'e-worried', 'e-overwhelmed', 'e-restless', 'e-panicky',
+      'e-lonely', 'e-disappointed', 'e-hurt', 'e-ashamed', 'e-empty',
+      'e-frustrated', 'e-irritated', 'e-resentful', 'e-furious',
+      'e-drained', 'e-numb', 'e-bored', 'e-unmotivated'
+    ]
   },
   {
     key: 'activities',
@@ -67,7 +75,7 @@ export const BUILT_IN_TAG_GROUPS = [
     tags: []
   },
   {
-    // Named types of a hard day (CONTEXT: Dysphoria type), distinct from the
+    // Named types of a hard day, distinct from the
     // `euphoria_dysphoria` gender dimension above - a scale, not a tag group,
     // and never the same control. Bare category names, no "dysphoria" suffix,
     // matching how the emotions/activities groups above leave their own
@@ -80,49 +88,41 @@ export const BUILT_IN_TAG_GROUPS = [
   }
 ] as const;
 
-export type BuiltInTagGroupKey = (typeof BUILT_IN_TAG_GROUPS)[number]['key'];
-export type BuiltInTagKey = (typeof BUILT_IN_TAG_GROUPS)[number]['tags'][number];
-
-/* The four measurement types every install started with (phase 4 ticket
-   08), now the built-in half of an open vocabulary (phase 5 ticket 29):
-   waist, hips, chest/bust and underbust. Weight and height are
-   deliberately absent - the two most commonly requested, and the two
-   most likely to pull a BMI calculation in behind them - a person who
-   wants them adds them as custom types, same as anything else this list
-   does not name. */
-export const BUILT_IN_MEASUREMENT_TYPES = [{ key: 'waist' }, { key: 'hips' }, { key: 'chest' }, { key: 'underbust' }] as const;
-
-export type BuiltInMeasurementTypeKey = (typeof BUILT_IN_MEASUREMENT_TYPES)[number]['key'];
-
-/* The check-in's built-in affirmation pool (phase 5 ticket 15). Fourteen
-   stable keys, one per line the message catalogue carries
-   (messages/en.json, messages/pl.json) - the wording is looked up by key at
-   display time (labels.ts), the same split every other built-in here gets. */
-export const BUILT_IN_AFFIRMATION_KEYS = [
-  'affirmation_1',
-  'affirmation_2',
-  'affirmation_3',
-  'affirmation_4',
-  'affirmation_5',
-  'affirmation_6',
-  'affirmation_7',
-  'affirmation_8',
-  'affirmation_9',
-  'affirmation_10',
-  'affirmation_11',
-  'affirmation_12',
-  'affirmation_13',
-  'affirmation_14'
+/* An emotion family is a tag that opens its finer words on the marks
+   step. Picking a finer word in the tray also picks its family for stats.
+   Hopeful keeps its original tag key and appears under happy. */
+export const EMOTION_FAMILIES = [
+  { key: 'e-happy', finer: ['e-hopeful', 'e-proud', 'e-grateful', 'e-excited', 'e-close'] },
+  { key: 'e-calm', finer: ['e-content', 'e-relieved', 'e-safe', 'e-grounded'] },
+  { key: 'e-anxious', finer: ['e-worried', 'e-overwhelmed', 'e-restless', 'e-panicky'] },
+  { key: 'e-sad', finer: ['e-lonely', 'e-disappointed', 'e-hurt', 'e-ashamed', 'e-empty'] },
+  { key: 'e-angry', finer: ['e-frustrated', 'e-irritated', 'e-resentful', 'e-furious'] },
+  { key: 'e-tired', finer: ['e-drained', 'e-numb', 'e-bored', 'e-unmotivated'] }
 ] as const;
 
-export type BuiltInAffirmationKey = (typeof BUILT_IN_AFFIRMATION_KEYS)[number];
+export type BuiltInTagGroupKey = (typeof BUILT_IN_TAG_GROUPS)[number]['key'];
 
-/* The body regions every install starts with (phase 5 ticket 30, CONTEXT:
-   "Reference data" - amended): the original eight (bodyMap.ts's header
-   carries their own history) plus shoulders and whole body, seeded as
-   ordinary reference-data rows rather than the closed BODY_REGION_KEYS
-   list this replaces. Keys only, wording in labels.ts, the same split
-   every other built-in list here draws. */
+/* Built-ins a new journal seeds hidden, because
+   each one repeats another built-in. `g-body-dys` and `g-soc-dys` are the
+   physical and social dysphoria types again under the gender group, without
+   the line saying what each means; the euphoria tags they sat beside stay,
+   as the counterpart CONTEXT ("Euphoria capture") already pairs with a
+   dysphoria type. `whole_body` is a feeling about the body as a whole, which
+   is what the euphoria/dysphoria scale records on every entry.
+
+   Seed defaults only, the same shape the appointment debrief template has:
+   reconcile.ts inserts these rows hidden and never touches a row that is
+   already there, so a journal that holds them visible keeps them visible,
+   and an archive restores whatever flag it carries. */
+export const SEEDED_HIDDEN_TAGS: ReadonlySet<string> = new Set(['g-body-dys', 'g-soc-dys']);
+export const SEEDED_HIDDEN_BODY_REGIONS: ReadonlySet<string> = new Set(['whole_body']);
+export type BuiltInTagKey = (typeof BUILT_IN_TAG_GROUPS)[number]['tags'][number];
+
+
+/* The body regions every install starts with: the original eight (bodyMap.ts's header
+   carries their own history) plus shoulders and whole body, seeded as ordinary
+   reference-data rows rather than the closed BODY_REGION_KEYS list this replaces. Keys
+   only, wording in labels.ts, the same split every other built-in list here draws. */
 export const BUILT_IN_BODY_REGIONS = [
   'face_jaw',
   'voice_throat',
@@ -138,67 +138,60 @@ export const BUILT_IN_BODY_REGIONS = [
 
 export type BuiltInBodyRegionKey = (typeof BUILT_IN_BODY_REGIONS)[number];
 
-/* The five effect categories personal effects are grouped under (phase 5
-   ticket 41, CONTEXT: "Effect category"), taken from genderdysphoria.fyi's
-   own grouping across its two second-puberty pages. Body shape and
-   composition, and skin and hair, are on by default - together they hold
-   every one of the eight effects that shipped before this ticket, so an
-   existing journal loses no visible effect and a new journal meets a
-   screen no longer than today's. Genital and sexual, cognitive and
-   emotional, and sensory ship off by default: as much a privacy and
-   comfort decision as a length one. Genital and sexual in particular names
-   ejaculate changes, orgasm changes and genital odour - intimate in a way
-   the rest of the catalogue is not, on a screen in an app whose disguise
-   mode exists because its readers sometimes hand
-   their phone to someone. Built-in only: no custom-category creation is
-   asked for, so unlike a tag group there is no per-row `builtIn` flag. */
+/* The poses a progress photo is taken in that every install starts with,
+   in the order the screen offers them. A person
+   renames or hides one and adds their own (progressPhotos.ts); these four
+   are never deleted, so every photo an older journal or archive holds
+   keeps the pose it names. `hair` is where the hair progress photos of
+   a journal before version 124 went (tally-and-hair-fold-migration.ts). */
+export const BUILT_IN_PROGRESS_POSES = ['front', 'side', 'back', 'hair'] as const;
+
+/* Group personal effects using genderdysphoria.fyi's second-puberty
+   categories. Body shape and composition and skin and hair are visible
+   by default, preserving the first eight effects. Sensitive and longer
+   groups start hidden. Categories are built-ins only.
+
+   Genital and sexual have separate switches, for six groups total.
+   Place both last to match journals migrated by v121. Keep retired
+   cycle cessation under genital, hidden by default and available only
+   to journals that recorded it. */
 export const BUILT_IN_EFFECT_CATEGORIES = [
   { key: 'body_shape', defaultEnabled: true },
   { key: 'skin_hair', defaultEnabled: true },
-  { key: 'genital_sexual', defaultEnabled: false },
   { key: 'cognitive_emotional', defaultEnabled: false },
-  { key: 'sensory', defaultEnabled: false }
+  { key: 'sensory', defaultEnabled: false },
+  { key: 'genital', defaultEnabled: false },
+  { key: 'sexual', defaultEnabled: false }
 ] as const;
 
 export type BuiltInEffectCategoryKey = (typeof BUILT_IN_EFFECT_CATEGORIES)[number]['key'];
 
-/* The full personal-effects catalogue (phase 5 ticket 41, the third
-   revisit of this list's closure - it stops closing it): the eight keys
-   that shipped before this ticket, unchanged, plus a wider set
-   transcribed from genderdysphoria.fyi's two second-puberty pages
-   ("Estrogenic Second Puberty 101", "Androgenic Second Puberty 101",
-   fetched 2026-08-19) and cross-checked against GenderGP's HRT timeline
-   tables (gendergp.com/blog/hrt-timelines-hormones-effects/, also fetched
-   2026-08-19, citing WPATH Standards of Care v7). Each row names a
-   category and a direction; whether an effect is tier 1 is derived from
-   whether personalEffectWindow.ts's literature-window map lists its key,
-   not stored here a second time (personalEffectWindow.ts's `effectTier`
-   joins the two).
+/* Retain the original eight effect keys. The additional effects come
+   from genderdysphoria.fyi's Estrogenic and Androgenic Second Puberty 101
+   and GenderGP's HRT timeline tables (both fetched 2026-08-19). Category
+   and direction live here; personalEffectWindow.ts derives tier from
+   the current literature-window map.
 
-   Excluded, recorded here rather than only in the implementation note:
-   genderdysphoria.fyi's "Cyclical Period-like Symptoms" section (a
-   recurring monthly state, not a dated first-noticed change - out of
-   scope for the reason ongoing states generally are) and its "Changes to
-   Pap Test" section (a medical finding, not a body change a person
-   notices, also out of scope). "Reduced Body Hair" and "Changes to Scalp
-   Hair" (feminizing) and "Body Hair, Everywhere" (masculinizing) are
-   folded into the existing `hair_changes`/`facial_body_hair` keys rather
-   than duplicated as a second row for the same change. Masculinising
-   scalp hair loss is catalogued at tier 2 despite coming from GenderGP's
-   table: its completion figure is "variable", no range, the same carve-out
-   this ticket's own tier rule gives "male sexual dysfunction" and
-   "decreased sperm production". */
+   Exclude cyclical period-like symptoms because they recur, and Pap test
+   findings because they are not self-noticed changes. Fold body and scalp
+   hair variants into hair_changes and facial_body_hair.
+
+   Bands now use WPATH SOC8 Appendix C Table 1. Male-pattern baldness
+   ceasing stays tier 2 (variable/variable); masculinizing scalp hair
+   loss is tier 1 (6–12 months onset, more than five years maximum).
+   Tier changes leave catalogue order intact. */
 export const BUILT_IN_PERSONAL_EFFECT_TYPES = [
-  // Feminizing, tier 1: the original four (phase 4 ticket 07) plus ticket
+  // Feminizing, tier 1: the original four plus ticket
   // 41's five-effect widening.
   { key: 'breast_development', category: 'body_shape', direction: 'feminizing' },
   { key: 'fat_redistribution', category: 'body_shape', direction: 'feminizing' },
   { key: 'skin_softening', category: 'skin_hair', direction: 'feminizing' },
   { key: 'hair_changes', category: 'skin_hair', direction: 'feminizing' },
   { key: 'decreased_muscle_mass_strength', category: 'body_shape', direction: 'feminizing' },
-  { key: 'decreased_libido', category: 'genital_sexual', direction: 'feminizing' },
-  { key: 'decreased_spontaneous_erections', category: 'genital_sexual', direction: 'feminizing' },
-  { key: 'decreased_testicular_volume', category: 'genital_sexual', direction: 'feminizing' },
+  { key: 'decreased_libido', category: 'sexual', direction: 'feminizing' },
+  { key: 'decreased_spontaneous_erections', category: 'sexual', direction: 'feminizing' },
+  { key: 'decreased_testicular_volume', category: 'genital', direction: 'feminizing' },
+  // Tier 2 (see the header above).
   { key: 'male_pattern_baldness_ceasing', category: 'skin_hair', direction: 'feminizing' },
 
   // Feminizing, tier 2: named by genderdysphoria.fyi, no usable literature
@@ -224,29 +217,30 @@ export const BUILT_IN_PERSONAL_EFFECT_TYPES = [
   { key: 'improved_spatial_awareness_feminizing', category: 'sensory', direction: 'feminizing' },
   { key: 'taste_perception_change_feminizing', category: 'sensory', direction: 'feminizing' },
   { key: 'reduced_confidence_feminizing', category: 'cognitive_emotional', direction: 'feminizing' },
-  { key: 'genital_sensitivity_increase_feminizing', category: 'genital_sexual', direction: 'feminizing' },
-  { key: 'genital_moisture_odor_feminizing', category: 'genital_sexual', direction: 'feminizing' },
-  { key: 'genital_skin_texture_change_feminizing', category: 'genital_sexual', direction: 'feminizing' },
-  { key: 'fewer_erections_feminizing', category: 'genital_sexual', direction: 'feminizing' },
-  { key: 'ejaculate_change_feminizing', category: 'genital_sexual', direction: 'feminizing' },
-  { key: 'testicular_atrophy_feminizing', category: 'genital_sexual', direction: 'feminizing' },
-  { key: 'heightened_erogenous_zones_feminizing', category: 'genital_sexual', direction: 'feminizing' },
-  { key: 'orgasm_change_feminizing', category: 'genital_sexual', direction: 'feminizing' },
-  { key: 'attraction_change_feminizing', category: 'genital_sexual', direction: 'feminizing' },
+  { key: 'genital_sensitivity_increase_feminizing', category: 'genital', direction: 'feminizing' },
+  { key: 'genital_moisture_odor_feminizing', category: 'genital', direction: 'feminizing' },
+  { key: 'genital_skin_texture_change_feminizing', category: 'genital', direction: 'feminizing' },
+  { key: 'fewer_erections_feminizing', category: 'sexual', direction: 'feminizing' },
+  { key: 'ejaculate_change_feminizing', category: 'sexual', direction: 'feminizing' },
+  { key: 'testicular_atrophy_feminizing', category: 'genital', direction: 'feminizing' },
+  { key: 'heightened_erogenous_zones_feminizing', category: 'sexual', direction: 'feminizing' },
+  { key: 'orgasm_change_feminizing', category: 'sexual', direction: 'feminizing' },
+  { key: 'attraction_change_feminizing', category: 'sexual', direction: 'feminizing' },
 
-  // Masculinizing, tier 1: the original four (phase 5 ticket 02) plus
-  // ticket 41's four-effect widening.
+  // Masculinizing, tier 1: the original four plus
+  // four-effect widening.
   { key: 'voice_drop', category: 'body_shape', direction: 'masculinizing' },
   { key: 'facial_body_hair', category: 'skin_hair', direction: 'masculinizing' },
   { key: 'masculinizing_fat_redistribution', category: 'body_shape', direction: 'masculinizing' },
-  { key: 'cycle_cessation', category: 'genital_sexual', direction: 'masculinizing' },
+  { key: 'cycle_cessation', category: 'genital', direction: 'masculinizing' },
   { key: 'skin_oiliness_acne_masculinizing', category: 'skin_hair', direction: 'masculinizing' },
   { key: 'increased_muscle_mass_strength_masculinizing', category: 'body_shape', direction: 'masculinizing' },
-  { key: 'clitoral_enlargement_masculinizing', category: 'genital_sexual', direction: 'masculinizing' },
-  { key: 'vaginal_atrophy_masculinizing', category: 'genital_sexual', direction: 'masculinizing' },
+  { key: 'clitoral_enlargement_masculinizing', category: 'genital', direction: 'masculinizing' },
+  { key: 'vaginal_atrophy_masculinizing', category: 'genital', direction: 'masculinizing' },
 
-  // Masculinizing, tier 2: named by genderdysphoria.fyi (scalp hair loss by
-  // GenderGP too, see the header above), no usable literature figure.
+  // Masculinizing, tier 2: named by genderdysphoria.fyi, no usable
+  // literature figure. Scalp hair loss is the exception, tier 1 since
+
   { key: 'scalp_hair_loss_masculinizing', category: 'skin_hair', direction: 'masculinizing' },
   { key: 'larger_hands_feet_masculinizing', category: 'body_shape', direction: 'masculinizing' },
   { key: 'thicker_stronger_nails_masculinizing', category: 'skin_hair', direction: 'masculinizing' },
@@ -261,20 +255,20 @@ export const BUILT_IN_PERSONAL_EFFECT_TYPES = [
   { key: 'temperature_sensitivity_masculinizing', category: 'sensory', direction: 'masculinizing' },
   { key: 'perspiration_pattern_masculinizing', category: 'body_shape', direction: 'masculinizing' },
   { key: 'body_odor_masculinizing', category: 'skin_hair', direction: 'masculinizing' },
-  { key: 'decreased_lubrication_masculinizing', category: 'genital_sexual', direction: 'masculinizing' },
-  { key: 'increased_ejaculate_emissions_masculinizing', category: 'genital_sexual', direction: 'masculinizing' },
-  { key: 'genital_sensitivity_change_masculinizing', category: 'genital_sexual', direction: 'masculinizing' },
-  { key: 'increased_libido_masculinizing', category: 'genital_sexual', direction: 'masculinizing' },
-  { key: 'orgasm_change_masculinizing', category: 'genital_sexual', direction: 'masculinizing' },
-  { key: 'attraction_change_masculinizing', category: 'genital_sexual', direction: 'masculinizing' },
+  { key: 'decreased_lubrication_masculinizing', category: 'genital', direction: 'masculinizing' },
+  { key: 'increased_ejaculate_emissions_masculinizing', category: 'sexual', direction: 'masculinizing' },
+  { key: 'genital_sensitivity_change_masculinizing', category: 'genital', direction: 'masculinizing' },
+  { key: 'increased_libido_masculinizing', category: 'sexual', direction: 'masculinizing' },
+  { key: 'orgasm_change_masculinizing', category: 'sexual', direction: 'masculinizing' },
+  { key: 'attraction_change_masculinizing', category: 'sexual', direction: 'masculinizing' },
   { key: 'epidermis_thickening_masculinizing', category: 'skin_hair', direction: 'masculinizing' },
   { key: 'vein_prominence_masculinizing', category: 'skin_hair', direction: 'masculinizing' }
 ] as const;
 
 export type BuiltInPersonalEffectKey = (typeof BUILT_IN_PERSONAL_EFFECT_TYPES)[number]['key'];
 
-/* The dimension keys, the milestone, regimen and entry templates and the
-   euphoria tag keys live in builtinTemplates.ts (ux-carpet ticket 223): they
+/* The dimension keys, the milestone and regimen templates, the guided prompt keys and the
+   euphoria tag keys live in builtinTemplates.ts: they
    are what the boot-time vocabulary, Today and the first run's scales step
    read, and kept in this file they carried the whole catalogue below into
    every first load. Re-exported so nothing that reads the catalogue has to
@@ -283,40 +277,36 @@ export {
   BUILT_IN_DIMENSIONS,
   EUPHORIA_TAG_KEYS,
   MILESTONE_TEMPLATE_KEYS,
-  MILESTONE_TEMPLATE_LEAN,
   REGIMEN_TEMPLATE_KEYS,
   REGIMEN_TEMPLATE_LEAN,
-  ENTRY_TEMPLATES,
+  GUIDED_PROMPT_KEYS,
   milestoneTemplateRows,
   regimenTemplateRows,
   type BuiltInDimensionKey,
   type MilestoneTemplateKey,
   type RegimenTemplateKey,
-  type EntryTemplateKey
+  type GuidedPromptKey
 } from './builtinTemplates.ts';
 
-/* Presets and milestone templates are not stored rows in Phase 1 - the
-   journal holds only what the user added - so these hand back the built-in
-   ones in the shape the rest of the code already expects, names left for
-   vocabulary.ts to fill in. */
+/* Presets and milestone templates are not stored rows - the journal holds only what the
+   user added - so these hand back the built-in ones in the shape the rest of the code
+   already expects, names left for vocabulary.ts to fill in. */
 
 function builtInPresetRows(): GenderPreset[] {
   return BUILT_IN_PRESETS.map((p) => ({ id: p.key, name: '', builtIn: true, dims: [...p.dims] }));
 }
 
-/* Reconciling, not seeding-if-empty. Both functions add what is missing by
-   key and touch nothing else, so they are safe to run on every boot and
-   again before an import applies - which is the point, because a Replace
-   import must not be able to leave the journal short of a built-in.
-   Ticket 07 moves the same shape onto SQLite rows, and adds presets and
-   milestone templates, which are not stored rows yet. */
+/* Reconciling, not seeding-if-empty. Both functions add what is missing by key and touch
+   nothing else, so they are safe to run on every boot and again before an import applies -
+   which is the point, because a Replace import must not be able to leave the journal short
+   of a built-in. moves the same shape onto SQLite rows, and adds presets and milestone
+   templates, which are not stored rows yet. */
 
 function builtInDimension(key: string, min: number, max: number): GenderDimension {
   return { key, name: '', low: '', high: '', min, max, builtIn: true, hidden: false };
 }
 
-/* withBuiltInDimensions stays exported only for its own test (AU-09 test-only
-   review). */
+/* withBuiltInDimensions stays exported only for its own test. */
 export function withBuiltInDimensions(existing: GenderDimension[]): GenderDimension[] {
   const present = new Set(existing.map((d) => d.key));
   const missing = BUILT_IN_DIMENSIONS.filter((d) => !present.has(d.key)).map((d) =>
@@ -329,8 +319,7 @@ function builtInTag(id: string): Tag {
   return { id, label: '', builtIn: true, hidden: false };
 }
 
-/* withBuiltInTagGroups stays exported only for its own test (AU-09 test-only
-   review). */
+/* withBuiltInTagGroups stays exported only for its own test. */
 export function withBuiltInTagGroups(existing: TagGroup[]): TagGroup[] {
   const byKey = new Map(existing.map((g) => [g.key, g]));
 

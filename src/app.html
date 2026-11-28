@@ -2,18 +2,13 @@
 <html lang="en" data-splash data-palette="trans" data-mood-preset="teal" data-theme="light" data-a11y-text-size="normal" data-a11y-legibility="normal" data-a11y-motion="normal">
   <head>
     <meta charset="utf-8" />
-    <!-- viewport-fit=cover is what makes env(safe-area-inset-*) report anything
-         but 0. Without it the browser letterboxes the page inside the display
-         cutout and the insets read as zero everywhere, so the layout below has
-         nothing to consume - which is the shell defect SCREENS.md records
-         (phase 5 ticket 18). It also means the page now extends under the
-         status and navigation bars on all four sides, so app.css pads the
-         scroll region back off every one of them rather than only the bottom. -->
-    <!-- No maximum-scale, no user-scalable: the browser's zoom belongs to
-         the person using the app (WCAG 1.4.4, audit U2). The Android shell
-         is the exception - it turns pinch off in the WebView itself, via
-         capacitor.config.ts's zoomEnabled - so this markup serves the web
-         release only where zoom is wanted. tests/zoom-policy.test.ts holds
+    <!-- viewport-fit=cover makes the browser report the safe-area insets and
+         lets the page extend behind the system bars. app.css uses the
+         insets to pad the scroll region on all four sides. -->
+    <!-- No maximum-scale, no user-scalable: the browser's zoom belongs to the person using
+         the app (WCAG 1.4.4). The Android shell is the exception - it turns pinch off in
+         the WebView itself, via capacitor.config.ts's zoomEnabled - so this markup serves
+         the web release only where zoom is wanted. tests/node/ui/zoom-policy.test.ts holds
          both halves of that policy to their sources. -->
     <meta
       name="viewport"
@@ -33,21 +28,35 @@
     <link rel="apple-touch-icon" href="%sveltekit.assets%/apple-touch-icon.png" />
     <link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />
     <script>
-      /* Stamps the user's theme, palette and tab icon before first paint
-         (ADR-0009).
-         The attributes on <html> above are only what a first-ever visit,
-         or a visit where this throws, falls back to; SQLite is still
-         hundreds of milliseconds from opening at this point, which is why
-         these preferences are mirrored outside it at all.
+      /* Stamps the user's theme, palette and tab icon before first paint. The attributes on
+         <html> above are only what a first-ever visit, or a visit where this throws, falls
+         back to; SQLite is still hundreds of milliseconds from opening at this point, which
+         is why these preferences are mirrored outside it at all.
 
-         Inline and dependency-free because it has to run before any module
-         is parsed, so it cannot import the key or the shape - both are
-         owned by src/lib/data/prefs/boot-cache.ts and have to be changed
-         in the two places together. */
+         Inline and dependency-free because it has to run before any module is parsed, so it
+         cannot import the key or the shape - both are owned by
+         src/lib/data/prefs/boot-cache.ts and have to be changed in the two places together. */
       try {
-        const boot = JSON.parse(localStorage.getItem('engender-boot-prefs') || '{}');
+        let boot = {};
+        try {
+          boot = JSON.parse(localStorage.getItem('engender-boot-prefs') || '{}');
+          if (!boot || typeof boot !== 'object') boot = {};
+        } catch {
+          /* unreadable storage or a damaged mirror: the shell's answer below still applies */
+        }
+        /* The Android shell's live alias outranks the mirror: the disguise
+           flip kills the process before the mirror is flushed to disk, so
+           the first start after a flip would otherwise read the old state.
+           Same read as nativeDisguise() in boot-cache.ts. */
+        try {
+          if (window.androidDisguiseState) boot.disguise = window.androidDisguiseState.isDisguised() === true;
+        } catch {}
         const root = document.documentElement;
-        if (boot.palette) root.dataset.palette = boot.palette;
+        /* Disguised, the first frame and every gate wear the neutral notes palette,
+           whatever an older mirror still names. Same rule as documentChrome.ts before the
+           journal shows. */
+        if (boot.disguise) root.dataset.palette = 'notes';
+        else if (boot.palette) root.dataset.palette = boot.palette;
         if (boot.moodPreset) root.dataset.moodPreset = boot.moodPreset;
         root.dataset.theme =
           !boot.theme || boot.theme === 'system'
@@ -55,16 +64,16 @@
               ? 'dark'
               : 'light'
             : boot.theme;
-        /* Under disguise the first frame carries no mark, the same rule every
-           surface that draws it follows (ADR-0014): the ground alone. */
+        /* Under disguise the first frame carries no mark, the same rule every surface that
+           draws it follows: the ground alone. */
         if (boot.disguise) root.dataset.disguised = '';
         root.dataset.a11yTextSize = boot.a11yTextSizeBoost ? 'boost' : 'normal';
         root.dataset.a11yLegibility = boot.a11yLegibilityBoost ? 'boost' : 'normal';
         root.dataset.a11yMotion = boot.a11yMotionReduce || matchMedia('(prefers-reduced-motion: reduce)').matches
           ? 'reduce'
           : 'normal';
-        /* The tab icon, which is the mark in the flag the person picked
-           (ticket 50), and under disguise the neutral one instead. Set on
+        /* The tab icon, which is the mark in the flag the person picked,
+           and under disguise the neutral one instead. Set on
            every boot rather than only a disguised one: the document ships
            pointing at the default palette's file, so a person on any other
            flag would otherwise wear trans in the tab strip until the
@@ -97,18 +106,16 @@
         /* no mirror yet, or storage is unavailable */
       }
       /* The build leaves the document's module hints inert (rel="x-modulepreload",
-         src/hooks.server.ts) so the stylesheets a first paint waits for are
-         not sharing the connection with ninety-eight modules nothing waits
-         for. They are given back once the document has parsed and the first
-         frame has had its turn. Outside the try above, so a browser with no
-         storage still loads its modules.
+         src/hooks.server.ts) so the stylesheets a first paint waits for are not sharing the
+         connection with ninety-eight modules nothing waits for. They are given back once
+         the document has parsed and the first frame has had its turn. Outside the try
+         above, so a browser with no storage still loads its modules.
 
-         Over HTTP/1.1 there is no one connection to share: the browser opens
-         six, and holding the hints only queued the modules behind the first
-         frame, which put the first screen 0.3 s later (after-release ticket
-         31, audit PERF-03). There each hint is given back as the parser adds
-         it. Only HTTP/1.x is named, so a page with no protocol to read (the
-         offline shell, the Android WebView) keeps the hold it always had. */
+         Over HTTP/1.1 there is no one connection to share: the browser opens six, and
+         holding the hints only queued the modules behind the first frame, which put the
+         first screen 0.3 s later. There each hint is given back as the parser adds it. Only
+         HTTP/1.x is named, so a page with no protocol to read (the offline shell, the
+         Android WebView) keeps the hold it always had. */
       {
         const give = () => {
           for (const link of document.querySelectorAll('link[rel="x-modulepreload"]')) link.rel = 'modulepreload';
@@ -127,21 +134,18 @@
       }
     </script>
     <style>
-      /* The first frame (phase 14 pre-release ticket 13): the ground and the
-         mark, painted from this document alone. Everything the app draws
-         waits for its scripts, which on a slow phone is seconds, so until
-         then the page was white. The theme and palette are the ones the
-         script above has just stamped on <html>; the colours per palette
-         are generated into the block below from palettes.css
-         (npm run render:splash), and src/lib/theme/splash.ts says how.
+      /* The first frame: the ground and the mark, painted from this document alone.
+         Everything the app draws waits for its scripts, which on a slow phone is seconds,
+         so until then the page was white. The theme and palette are the ones the script
+         above has just stamped on <html>; the colours per palette are generated into the
+         block below from palettes.css (npm run render:splash), and src/lib/theme/splash.ts
+         says how.
 
-         The mark never moves. The handover is opacity only, on the blind's
-         soft ease-out (Alicja picked it over a rising edge in after-release
-         ticket 31): lib/splash.ts adds .is-leaving and .is-answered once boot
-         has answered and its screen is showing, and takes the element out
-         when the fade is done. It is fixed and inert, so nothing under it
-         can be missed or blocked, and the ground is the app's own --bg so no
-         frame of the fade shows a different one. */
+         The mark never moves. The handover is opacity only, on the blind's soft ease-out:
+         lib/splash.ts adds .is-leaving and .is-answered once boot has answered and its screen
+         is showing, and takes the element out when the fade is done. It is fixed and inert,
+         so nothing under it can be missed or blocked, and the ground is the app's own --bg
+         so no frame of the fade shows a different one. */
       #splash {
         position: fixed;
         inset: 0;
@@ -151,7 +155,10 @@
         pointer-events: none;
         background: var(--splash-ground, #f4f8fb);
         opacity: 0.996;
-        transition: opacity 280ms var(--ease-out-soft, cubic-bezier(0.38, 0.32, 0.2, 1));
+        /* The ground travels too: a disguised journal that opens without a gate trades the
+           neutral notes palette for its own as boot answers, under this very element. */
+        transition: opacity 280ms var(--ease-out-soft, cubic-bezier(0.38, 0.32, 0.2, 1)),
+          background-color 280ms var(--ease-out-soft, cubic-bezier(0.38, 0.32, 0.2, 1));
       }
       #splash i {
         --s: 96px;
@@ -170,22 +177,13 @@
       #splash rect { stroke: var(--splash-ink); }
       #splash.is-leaving { opacity: 0; }
       html[data-disguised] #splash i { display: none; }
-      /* The other half of the crossfade (Alicja, after-release ticket 31:
-         "splash with crossfade"). The app's screen waits under the first
-         frame and fades in on the same curve and length as the first frame
-         fades out, so no part of it sits at full opacity under a
-         half-transparent mark. The layer that fades is the app root, not
-         the body: the body carries the ground, so the ground never dims.
-         lib/splash.ts sets "leaving" with the answer and takes the
-         attribute off with the element.
+      /* Fade the app root in as the splash fades out on the same curve.
+         The body keeps the ground opaque. lib/splash.ts marks leaving
+         and removes it with the splash.
 
-         It waits at 0.004 under a mark at 0.996, not 0 under 1, which no
-         eye can tell apart (ticket 08). Blink does not paint a subtree at
-         opacity 0 and nothing under an opaque layer is rastered, so the
-         WebView met every GPU pipeline the screen needs on the fade's
-         first frame and stalled through it. This way the screen paints
-         while the mark holds still. Until the fade starts it takes no taps:
-         a control nobody can see yet must not open under the mark. */
+         Start at app opacity 0.004 and splash opacity 0.996 so Blink
+         paints the app and warms the GPU before the fade. Keep app
+         input disabled until leaving. */
       html[data-splash] [data-app-root] {
         opacity: 0.004;
         will-change: opacity;
@@ -193,9 +191,14 @@
       html[data-splash=''] [data-app-root] {
         pointer-events: none;
       }
+      /* The layout writes transition-property: none inline on the root, so
+         a recovery conceals it in one frame. An inline declaration beats
+         this rule unless it is important, and without that the root jumped
+         to 1 in one frame and only the mark faded. */
       html[data-splash='leaving'] [data-app-root] {
         opacity: 1;
         transition: opacity 280ms var(--ease-out-soft, cubic-bezier(0.38, 0.32, 0.2, 1));
+        transition-property: opacity !important;
       }
 /* splash:begin (generated by scripts/render-splash.mjs, do not edit) */
 #splash{--splash-tile:#FFFFFF;--splash-ink:#000;--splash-radius:30%;--splash-sun-x:95%;--splash-sun-y:5%}
@@ -211,7 +214,7 @@
 [data-palette=bisexual]{--splash-rings:#0038A8 0% 16.35%,#000 16.35% 19.35%,#0038A8 19.35% 35.7%,#000 35.7% 38.7%,#9B4F96 38.7% 55.05%,#000 55.05% 58.05%,#D60270 58.05% 74.4%,#000 74.4% 77.4%,#D60270 77.4% 93.75%,#000 93.75% 96.75%,#FFFFFF 96.75%}
 [data-palette=bisexual][data-theme=light]{--splash-ground:#FAF6F9}
 [data-palette=bisexual][data-theme=dark]{--splash-ground:#160F17}
-[data-palette=lesbian]{--splash-rings:#A30262 0% 16.35%,#000 16.35% 19.35%,#D362A4 19.35% 35.7%,#000 35.7% 38.7%,#FFFFFF 38.7% 55.05%,#000 55.05% 58.05%,#FF9A56 58.05% 74.4%,#000 74.4% 77.4%,#D52D00 77.4% 93.75%,#000 93.75% 96.75%,#FFFFFF 96.75%}
+[data-palette=lesbian]{--splash-rings:#A30262 0% 10.82%,#000 10.82% 13.82%,#B55690 13.82% 24.64%,#000 24.64% 27.64%,#D162A4 27.64% 38.46%,#000 38.46% 41.46%,#FFFFFF 41.46% 52.29%,#000 52.29% 55.29%,#FF9A56 55.29% 66.11%,#000 66.11% 69.11%,#EF7627 69.11% 79.93%,#000 79.93% 82.93%,#D52D00 82.93% 93.75%,#000 93.75% 96.75%,#FFFFFF 96.75%}
 [data-palette=lesbian][data-theme=light]{--splash-ground:#FBF7F4}
 [data-palette=lesbian][data-theme=dark]{--splash-ground:#191210}
 [data-palette=pansexual]{--splash-rings:#21B1FF 0% 29.25%,#000 29.25% 32.25%,#FFD800 32.25% 61.5%,#000 61.5% 64.5%,#FF218C 64.5% 93.75%,#000 93.75% 96.75%,#FFFFFF 96.75%}
@@ -247,6 +250,9 @@
 [data-palette=polish]{--splash-rings:#DC143C 0% 45.38%,#000 45.38% 48.38%,#FFFFFF 48.38% 93.75%,#000 93.75% 96.75%,#FFFFFF 96.75%}
 [data-palette=polish][data-theme=light]{--splash-ground:#FAF8F8}
 [data-palette=polish][data-theme=dark]{--splash-ground:#171113}
+[data-palette=notes]{--splash-rings:#8A94A6 0% 29.25%,#000 29.25% 32.25%,#FFFFFF 32.25% 61.5%,#000 61.5% 64.5%,#8A94A6 64.5% 93.75%,#000 93.75% 96.75%,#FFFFFF 96.75%}
+[data-palette=notes][data-theme=light]{--splash-ground:#F3F4F6}
+[data-palette=notes][data-theme=dark]{--splash-ground:#121417}
 /* splash:end */
     </style>
     <link rel="preload" href="%sveltekit.assets%/fonts/nunito-latin.woff2" as="font" type="font/woff2" crossorigin />

@@ -1,55 +1,18 @@
-/* The three writes a flat area has, derived once from the one thing that
-   differs between them: which column each field is stored in.
+/* Build the common write paths for a flat journal row (ADR-0053).
+   Map scalar fields to columns beside a traveling UUID and updated_at.
+   Each area supplies its WHERE and ORDER BY to read and may pass a
+   pure input guard. Joins and cascades belong in the owning area.
 
-   A **flat area** is CONTEXT.md's term, which the phase 8 features spec is
-   adding alongside `Area`; what qualifies for this factory is narrower than
-   the vocabulary entry needs to be. Here it means an area whose row is its
-   domain object - a travelling uuid, a handful of scalar columns,
-   `updated_at`, no join, no projection and no cascade. Seven of the
-   journal's areas are that shape, and
-   each had written the same three statements by hand: a SELECT naming its
-   columns, an UPDATE-or-INSERT naming them twice more, and a DELETE. Forty-
-   eight id-addressed writes copied that way is how the delete contract came
-   to split in two (ADR-0053), which is what this exists to stop: the seven
-   share `upsert` and `delete`, so the contract holds by construction rather
-   than by everyone remembering it.
-
-   WHAT IS NOT HERE. The reads. `read` takes whatever follows the FROM and
-   nothing else - each area still writes its own WHERE and ORDER BY, because
-   the read set is not a bounded enum: measurements groups by unit in JS for
-   a correctness reason (cm and inches must not become one chart line), size
-   records need by-category, tally by-kind, journaling pauses all-only.
-   Describing that declaratively is where a factory grows options, and
-   ADR-0027 already refused a descriptor that is really a policy language.
-
-   A pre-write guard is a hook rather than an option for the same reason:
-   `guard` is a pure function of the input, so an area validating a closed
-   vocabulary passes its own validator and nothing here learns what a
-   severity or a garment category is.
-
-   NOT THE ARCHIVE'S DESCRIPTOR. `archiveTable.ts`'s `FlatTable` maps the
-   same seven tables column-by-column and looks like the same declaration
-   written twice. It is not: that one says what **travels**, this one says
-   what is **stored**, and the two legitimately differ - `tally_event.context`
-   is a stored column no archive carries, and an archive descriptor also
-   carries the wire concerns (`bool`, `whenAbsent`, `whenNull`) that a local
-   write has no opinion about. Folding them into one declaration would need
-   an option per divergence, which is the descriptor-as-policy-language
-   ADR-0027 refused.
-   They agree today, and nothing here depends on them agreeing.
-
-   `eras` is the eighth flat area and stays out. Its pre-write check is
-   `assertEraFits(await getEras(), input)` - a whole-table invariant that
-   returns four discriminated conflict cases so the editor can name the era
-   you are overlapping while you type. That is behaviour, not validation,
-   and reaching it from here needs the option this file refuses. It owes the
-   contract by comment and test instead. */
+   The Archive descriptor separately declares fields on the wire and
+   their missing-value behavior (ADR-0027). Eras use a custom write
+   because overlap validation reads existing rows and returns conflicts
+   the editor displays while a person types. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import { assertChanged, mintUuid, now } from './support';
 
 /** A flat area's row: its travelling identity, plus one column per field. */
-export type FlatRow = Record<string, unknown> & { uuid: string };
+type FlatRow = Record<string, unknown> & { uuid: string };
 
 /** What a flat area's upsert takes: the domain object with its id optional,
     absent to insert and present to update. Declared here so an area's own
@@ -69,7 +32,7 @@ interface FlatAreaSpec<Domain extends { id: string }> {
   guard?: (input: Omit<Domain, 'id'>) => void;
 }
 
-/* FlatArea stays exported only for its own test (AU-09 test-only review). */
+/* FlatArea stays exported only for its own test. */
 export interface FlatArea<Domain extends { id: string }> {
   /** This table's rows as domain objects, under `tail` - everything after
       `SELECT <columns> FROM <table>`, which is the area's own business. */

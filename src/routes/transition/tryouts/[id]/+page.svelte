@@ -1,26 +1,22 @@
 <script lang="ts">
+  import { undoable } from '$lib/stores/deleteUndo';
+  import { journalTextAutocomplete } from '$lib/platform';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
-  /* One tryout, on the surface kit (phase 5 UX ticket 25).
-
-     Four cards became four named areas, which is the call ticket 22 made
-     for the entry editor and recorded in DIRECTION.md: fields sit flush to
-     the page under a heading rather than inside a box, because a box drawn
-     around a form says the form is one item in a list of them.
-
-     The felt-sense entries and the photographs kept their delete beside
-     them, on the kit's split row, so a row is one control and the delete
-     is another rather than a button floating inside a row that also opens
-     something. */
-  import { goto } from '$app/navigation';
+  /* The tryout fields sit flush below section headings. For felt-sense
+     entries and photos, use the kit's split row so the delete button and
+     the row each have their own control. */
+  import { replaceRoute } from '$lib/navigation/smart-back';
   import { tick } from 'svelte';
   import { m } from '$lib/paraglide/messages';
+  import { spanIsInverted } from '$lib/data/span';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList, liveListIn } from '$lib/data/live/journal.svelte';
-  import { todayEpochDay, epochDayFromDateInputValue, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import { todayEpochDay, epochDayFromDateInputValue, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay, dayRangeEndMin } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
   import { fmtDay } from '$lib/data/dates';
   import { moodName, tryoutKindName } from '$lib/data/vocabulary/labels';
   import type { FeltSenseEntry, Tryout, TryoutKind, TryoutPhoto } from '$lib/data/types';
+  import { TRYOUT_KINDS } from '$lib/data/rowValues';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -31,6 +27,7 @@
   import { entryDayGroups } from '$lib/data/recentEntries';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import Field from '$lib/components/kit/Field.svelte';
+  import FieldGroupHeading from '$lib/components/kit/FieldGroupHeading.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
@@ -51,17 +48,17 @@
   import { prefs } from '$lib/data/prefs/store.svelte';
   import AdoptTryoutConfirmationSheet from '$lib/components/AdoptTryoutConfirmationSheet.svelte';
   import DiscardSheet from '$lib/components/kit/DiscardSheet.svelte';
+  import { writer } from '$lib/stores/attempt.svelte';
   import { OFFERS, answerOffer, type OfferAnswer, type TryoutAdoption } from '$lib/data/offers';
 
   /* Three areas below the form: how it has felt, what it looked like, and
      what was written while it ran. */
   const SECTION_ROLE = { feeling: 0, photos: 1, entries: 2 };
 
-  const KINDS: TryoutKind[] = ['name', 'pronouns', 'style', 'garment', 'makeup', 'presentation_step'];
-  const KIND_OPTIONS = KINDS.map((value) => ({ value, label: tryoutKindName(value) }));
+  const KIND_OPTIONS = TRYOUT_KINDS.map((value) => ({ value, label: tryoutKindName(value) }));
 
   // A name or pronoun set already gets a placeholder shaped for it; every
-  // other kind gets the free-text description instead (ticket 13's own
+  // other kind gets the free-text description instead (own
   // scope split).
   const hasDescription = (kind: TryoutKind) => kind !== 'name' && kind !== 'pronouns';
 
@@ -86,6 +83,10 @@
     saving: () => saving
   });
   let draft = $derived(detail.draft);
+  let rangeInverted = $derived(spanIsInverted({
+    startEpochDay: epochDayFromDateInputValueOrToday(draft.start),
+    endEpochDay: epochDayFromDateInputValue(draft.end)
+  }));
   let saving = $state(false);
   let saveFailed = $state(false);
   let saved = $state(false);
@@ -114,7 +115,7 @@
   async function openCreatedTryout() {
     if (!creationId) return;
     try {
-      await goto(`/transition/tryouts/${creationId}`);
+      await replaceRoute(`/transition/tryouts/${creationId}`);
       navigationFailed = detail.isNew;
     } catch {
       navigationFailed = true;
@@ -123,7 +124,7 @@
   }
 
   async function saveTryout() {
-    if (saving || creationId && detail.isNew || !draft.label.trim()) return;
+    if (saving || creationId && detail.isNew || !draft.label.trim() || rangeInverted) return;
     const isNew = detail.isNew;
     saving = true;
     saveFailed = false;
@@ -170,7 +171,7 @@
   const tryoutPhotos = photoSection<TryoutPhoto>({
     photos: () => photos,
     add: storePhoto,
-    remove: (id) => journal.tryouts.deletePhoto(id),
+    remove: (id) => undoable((j) => j.tryouts.deletePhoto(id)),
     reference: () => lastPhotoReference(photos)
   });
 
@@ -178,15 +179,13 @@
   let feelingQuery = liveList((j) => (detail.isNew ? Promise.resolve([]) : j.feltSense.forTryout(detail.id)));
   let feeling = $derived(feelingQuery.rows);
 
-  /* Phase 5 performance ticket 07/08: an open-ended tryout's range has no
-     upper bound, so a page limit is the only thing that keeps this bounded.
-     Newest first, same as the query's own ORDER BY - "load more" reaches
-     further back, the same shape search/+page.svelte already uses.
+  /* An open-ended tryout's range has no upper bound, so a page limit is the only thing that
+     keeps this bounded. Newest first, same as the query's own ORDER BY - "load more"
+     reaches further back, the same shape search/+page.svelte already uses.
 
-     Five rather than search's thirty (final audit U14): a months-long
-     tryout put forty entries between the felt-sense log and the end of the
-     screen, and this list is a glance at what was written while it ran, not
-     the place to read it all. */
+     Five rather than search's thirty: a months-long tryout put forty entries between the
+     felt-sense log and the end of the screen, and this list is a glance at what was written
+     while it ran, not the place to read it all. */
   const PAGE = 5;
   let pages = $state(1);
 
@@ -226,12 +225,11 @@
     Math.max(0, (entriesQuery.value ?? NOTHING_IN_RANGE).total - entriesInRange.length)
   );
 
-  /* Ticket 18: this stretch as one side of `/compare`, and the same-length
-     window before it as the other - an open-ended tryout's own end clamps
-     to today at read time and is never stored (ADR-0049, ADR-0010), the
-     same clamp `periodFromEra` already gives an open era on `/compare`
-     itself. `compareStretchLink` answers whether there is enough journal
-     to offer that at all. */
+  /* This stretch as one side of `/compare`, and the same-length window before it as the
+     other - an open-ended tryout's own end clamps to today at read time and is never stored
+     (ADR-0049, ADR-0010), the same clamp `periodFromEra` already gives an open era on
+     `/compare` itself. `compareStretchLink` answers whether there is enough journal to
+     offer that at all. */
   let openEnded = $derived(detail.record ? detail.record.endEpochDay === null : false);
   let stretch = $derived(
     detail.record ? { start: detail.record.startEpochDay, end: detail.record.endEpochDay ?? currentDay() } : null
@@ -242,42 +240,40 @@
     openHint: m.tryout_compare_open_hint,
     tooShort: m.tryout_compare_too_short,
     noPrecedingData: m.tryout_compare_no_data,
-    action: m.tryout_compare_action
+    action: m.open_compare
   };
 
   let feelingMood = $state<number | null>(null);
   let feelingNote = $state('');
+  /* One reading per tap, and a failed one keeps the mood and note and says
+     so. Only what was sent is cleared: a mood or note changed while
+     the write ran is the next reading, not this one. */
+  const feelingWrite = writer();
   async function addFeeling() {
-    if (feelingMood == null) return;
-    await journal.feltSense.add(
-      { tryoutId: detail.id },
-      { epochDay: todayEpochDay(), mood: feelingMood, note: feelingNote.trim() || null }
-    );
-    feelingMood = null;
-    feelingNote = '';
+    const mood = feelingMood;
+    if (mood == null) return;
+    const typed = feelingNote;
+    const note = typed.trim() || null;
+    if (!(await feelingWrite.run(() => journal.feltSense.add({ tryoutId: detail.id }, { epochDay: todayEpochDay(), mood, note }), m.write_failed()))) return;
+    if (feelingMood === mood) feelingMood = null;
+    if (feelingNote === typed) feelingNote = '';
   }
 
   const feelingRecord = recordEditor<FeltSenseEntry>({
-    remove: (id) => journal.feltSense.remove(id),
+    remove: (id) => undoable((j) => j.feltSense.remove(id)),
     findById: (id) => feeling.find((f) => f.id === id)
   });
-  /* One example per kind. Name and pronouns had their own and the other four
-     shared "a short name for it", so moving between Style, Garment, Makeup
-     and Presentation step changed the highlight and nothing else - which
-     reads as a switcher that does not work (Alicja, 2026-08-26). An example
-     of the thing itself is the shortest way to say what the kind means. */
-  function labelPlaceholder(kind: TryoutKind): string {
+  /* One example per kind, so changing the picker changes the hint too.
+     "Other" has none to give: its label already asks what it is. */
+  function labelPlaceholder(kind: TryoutKind): string | undefined {
     if (kind === 'name') return m.tryout_label_placeholder_name();
     if (kind === 'pronouns') return m.tryout_label_placeholder_pronouns();
     if (kind === 'style') return m.tryout_label_placeholder_style();
-    if (kind === 'garment') return m.tryout_label_placeholder_garment();
     if (kind === 'makeup') return m.tryout_label_placeholder_makeup();
-    if (kind === 'presentation_step') return m.tryout_label_placeholder_presentation_step();
-    return m.tryout_label_placeholder_other();
+    return undefined;
   }
 
-  /* One entry in the offer registry (phase 8 features ticket 22,
-     ADR-0045). No `openOffer` guard here, unlike the roadmap and the
+  /* One entry in the offer registry (ADR-0045). No `openOffer` guard here, unlike the roadmap and the
      surgery hub: what stops this being offered twice is `canAdopt` below -
      a tryout that has ended cannot be adopted again - and there is no
      minted record to check for.
@@ -321,10 +317,9 @@
     saveFailed = false;
     try {
       if (await answerOffer(ADOPT_OFFER, subject, given, journal)) {
-        /* The stored name, never the milestone's title or an unsaved edit
-           in the label field: the switch promised "use {name}", and a
-           milestone renamed "Started going by Alex" is not what anyone
-           wants to be called (phase 15 after-release ticket 15). */
+        /* The stored name, never the milestone's title or an unsaved edit in the label
+           field: the switch promised "use {name}", and a milestone renamed "Started going
+           by Alex" is not what anyone wants to be called. */
         if (options?.updateProfileName && detail.record?.kind === 'name') {
           prefs.name = detail.record.label;
         }
@@ -355,6 +350,9 @@
   {:else if detail.isNew || detail.record}
 
   <fieldset disabled={saving || detail.isNew && creationId !== null} aria-busy={saving}>
+    <!-- Two named parts, what and when: the form was five fields in a row, and its first
+         two labels, "What are you trying?" and "What is it?", asked nearly the same thing. -->
+    <FieldGroupHeading legend={m.tryout_group_what()} />
     <Field label={m.tryout_kind_label()} legend>
       {#snippet children()}
         <ChoiceChips
@@ -366,9 +364,9 @@
         />
       {/snippet}
     </Field>
-    <Field label={m.tryout_label_label()} hint={m.tryout_label_required()} id="tr-label">
+    <Field label={m.name_label()} hint={m.tryout_label_required()} id="tr-label">
       {#snippet children(id, describedBy)}
-        <input
+        <input autocomplete={journalTextAutocomplete()}
           class="input"
           {id}
           name="tr-label"
@@ -384,48 +382,64 @@
       <div class="disclosed" transition:disclose>
         <Field label={m.tryout_description_label()} id="tr-description">
           {#snippet children(id)}
-            <textarea
+            <textarea autocomplete={journalTextAutocomplete()}
               class="input"
               {id}
               rows="2"
-              placeholder={m.tryout_description_placeholder()}
               bind:value={draft.description}
             ></textarea>
           {/snippet}
         </Field>
       </div>
     {/if}
-    <Field label={m.tryout_start_label()} id="tr-start">
-      {#snippet children(id)}
-        <DatePicker name="tr-start" bind:value={draft.start} {id} />
-      {/snippet}
-    </Field>
-    <Field label={m.tryout_end_label()} hint={m.tryout_end_hint()} id="tr-end">
-      {#snippet children(id, describedBy)}
-        <DatePicker name="tr-end" bind:value={draft.end} {id} {describedBy} />
-      {/snippet}
-    </Field>
-    {#if canAdopt}
+    <!-- When, as one pair: Started and Ended are one question, and side by
+         side they read as a span rather than two more rows of the form.
+         The end hint sits under its input so the two inputs share a top
+         edge, the lab editor's Value and Unit. -->
+    <FieldGroupHeading legend={m.tryout_group_when()} />
+    <div class="cd-endpoints tryout-span">
+      <Field label={m.started_label()} id="tr-start">
+        {#snippet children(id)}
+          <DatePicker name="tr-start" bind:value={draft.start} {id} />
+        {/snippet}
+      </Field>
+      <Field label={m.tryout_end_label()} hint={m.tryout_end_hint()} hintAfter id="tr-end">
+        {#snippet children(id, describedBy)}
+          <DatePicker name="tr-end" min={dayRangeEndMin(draft.start)} bind:value={draft.end} {id} describedBy={rangeInverted ? `${describedBy} tr-range-error` : describedBy} aria-invalid={rangeInverted || undefined} />
+        {/snippet}
+      </Field>
+    </div>
+    <div aria-live="polite">
+      {#if rangeInverted}
+        <div class="disclosed" transition:disclose>
+          <p class="muted small" id="tr-range-error">{m.era_conflict_inverted()}</p>
+        </div>
+      {/if}
+    </div>
+    <div class="details-actions">
       <button
-        type="button"
         class="btn btn-primary press"
-        data-adopt-tryout
-        onclick={() => (adoptOpen = true)}
+        data-save-tryout
+        disabled={draft.label.trim().length === 0 || rangeInverted}
+        aria-describedby={rangeInverted ? "tr-range-error" : undefined}
+        onclick={saveTryout}
       >
-        <Icon name="check" size={18} />
-        <span>{m.tryout_adopt_permanently()}</span>
+        <span>{detail.isNew ? m.save() : m.save_changes()}</span>
       </button>
-    {/if}
-    <button
-      class="btn press"
-      class:btn-primary={!canAdopt}
-      class:btn-soft={canAdopt}
-      data-save-tryout
-      disabled={draft.label.trim().length === 0}
-      onclick={saveTryout}
-    >
-      <span>{detail.isNew ? m.tryout_save() : m.tryout_save_changes()}</span>
-    </button>
+      {#if canAdopt}
+        <div class="action-slot">
+          <button
+            type="button"
+            class="btn btn-soft press"
+            data-adopt-tryout
+            onclick={() => (adoptOpen = true)}
+          >
+            <Icon name="check" size={18} />
+            <span>{m.tryout_adopt_permanently()}</span>
+          </button>
+        </div>
+      {/if}
+    </div>
   </fieldset>
   {#if saveFailed || navigationFailed && detail.isNew || saved}
     <div class="disclosed" transition:disclose>
@@ -440,21 +454,16 @@
     </div>
   {/if}
 
-  {#if detail.isNew}
-    <p class="muted" data-tryout-photo-requirement>{m.tryout_photo_save_first()}</p>
-  {/if}
-
   {#if !detail.isNew}
     <SectionHeading text={m.tryout_feeling_title()} />
-    <!-- First in how it has felt rather than after the entries (final
-         audit U14, Alicja 2026-09-22): the one control that acts on the
-         whole stretch, so it opens the section instead of sitting behind
-         forty rows of what was written during it. -->
+    <!-- First in how it has felt rather than after the entries: the one control that acts
+         on the whole stretch, so it opens the section instead of sitting behind forty rows
+         of what was written during it. -->
     {#if compareLink.state.status !== 'hidden'}
       {@const compareNotice = compareStretchNoticeProps(compareLink.state, openEnded, TRYOUT_COMPARE_COPY)}
       <div class="screen-part">
         <Notice
-          icon="shuffle"
+          icon="columns"
           key="tryout-compare"
           role={roleAt(activeFlag.roles, SECTION_ROLE.feeling)}
           title={compareNotice.title}
@@ -470,7 +479,7 @@
          this was the one field on the screen with none. -->
     <Field label={m.note_label()} id="tr-feeling-note">
       {#snippet children(id)}
-        <textarea
+        <textarea autocomplete={journalTextAutocomplete()}
           class="input"
           {id}
           rows="2"
@@ -482,7 +491,7 @@
     <button
       class="btn btn-soft btn-block press"
       style="margin:var(--space-3) 0"
-      disabled={feelingMood == null}
+      disabled={feelingMood == null || feelingWrite.busy}
       data-add-feeling
       onclick={addFeeling}
     >
@@ -492,11 +501,10 @@
       {#snippet rows()}
         <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.feeling)}>
           {#each feeling.slice(0, HISTORY_LIMIT) as f (f.id)}
-            <!-- The reading first, then when (phase 15 after-release ticket
-                 15): this log is "how it's felt", and rows that held only a
-                 date never said how. A reading saved or deleted here opens
-                 or closes its row rather than appearing or vanishing in one
-                 frame; the rows already there when the log loads do not. -->
+            <!-- The reading first, then when: this log is "how it's felt", and rows that
+                 held only a date never said how. A reading saved or deleted here opens or
+                 closes its row rather than appearing or vanishing in one frame; the rows
+                 already there when the log loads do not. -->
             <div class="rows-divide" transition:disclose>
               <ListRow
                 static
@@ -529,18 +537,18 @@
       {/snippet}
     </ReadGate>
 
-    <SectionHeading text={m.tryout_photo_section_title()} />
+    <SectionHeading text={m.photos_title()} />
     <PhotoSection
       section={tryoutPhotos}
       read={photosQuery}
       role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}
       handle="tryout-photo"
-      deleteLabel={() => m.tryout_photo_delete_sheet()}
+      deleteLabel={() => m.photo_delete_sheet()}
       confirm={{
-        title: m.tryout_photo_delete_sheet(),
-        question: () => m.tryout_photo_delete_q(),
-        hint: () => m.tryout_photo_delete_hint(),
-        confirmLabel: m.tryout_photo_delete(),
+        title: m.photo_delete_sheet(),
+        question: () => m.photo_delete_q(),
+        hint: () => m.delete_undo_hint(),
+        confirmLabel: m.delete(),
         cancelLabel: m.keep_it()
       }}
     >
@@ -550,7 +558,7 @@
             icon="camera"
             key="tryout-photos-empty"
             role={roleAt(activeFlag.roles, SECTION_ROLE.photos)}
-            title={m.tryout_photo_empty_title()}
+            title={m.no_photos_title()}
           />
         </div>
       {/snippet}
@@ -559,8 +567,7 @@
     <SectionHeading text={m.tryout_entries_title()} />
     <ReadGate read={entriesInRangeRead} variant="card" count={2}>
       {#snippet rows()}
-        <!-- Days of entries, the drawing every list of entries uses (release
-             audit U9). -->
+        <!-- Days of entries, the drawing every list of entries uses (release). -->
         <EntryDays groups={entryDayGroups(entriesInRange)} />
       {/snippet}
       {#snippet empty()}
@@ -592,8 +599,8 @@
     confirm={{
       title: m.tryout_feeling_delete_sheet(),
       question: () => m.tryout_feeling_delete_q(),
-      hint: () => m.tryout_feeling_delete_hint(),
-      confirmLabel: m.tryout_feeling_delete(),
+      hint: () => m.delete_undo_hint(),
+      confirmLabel: m.delete(),
       cancelLabel: m.keep_it()
     }}
   />
@@ -616,6 +623,12 @@
     flex: 0 0 auto;
     display: grid;
     place-items: center;
+  }
+
+  @container app (max-width: 359px) {
+    .tryout-span {
+      grid-template-columns: 1fr;
+    }
   }
 
   fieldset {

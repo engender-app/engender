@@ -1,52 +1,13 @@
 <script lang="ts">
-  /* The Transition door, reading its own data (phase 8 UX ticket 02; phase 10
-     redesign ticket 15).
+  /* More gets row definitions from hubRows.ts and wording from
+     vocabulary/hubLabels.ts. The hub stays navigable while its
+     assembled live reads fill in the row details.
 
-     Twenty-six rows of a title and an icon, in four groups, used to be
-     declared inline here as four const arrays, and only `/care` said anything
-     about what was behind it. Every row says something now, and this screen
-     owns none of the reasoning: `hubRows.ts` holds the rows and what sits
-     behind them, `vocabulary/hubLabels.ts` holds the words. What is left here
-     is four live reads and two loops.
-
-     Three of the reads are the door's own, and each comes out of one
-     assembled call (`journal/lastWrite.ts`, measured as `hub-last-writes`
-     before this screen was written; `rowForwardReads.ts`, phase 11
-     all-four-doors ticket 02) beside the area record. The fourth is the
-     search (ticket 15) and it asks nothing until somebody types.
-
-     It was three reads until phase 9 carpet ticket 16: the third was the regimen
-     episode list, read only to answer ADR-0043's gate for the cycle row. That
-     row is drawn on /care/changes now (ticket 13 moved it again,
-     with the rest of what /health/side-effects used to draw), which was
-     already asking the same question for the cycle block it draws, so the
-     gate and the read that feeds it are in one place instead of two.
-
-     Nothing gates the screen on the door's own three reads. This is a
-     navigation surface, and a skeleton in front of twenty links a person can
-     already read would be slower than the links.
-
-     **The search (ticket 15).** Twenty-seven rows is a list somebody has to
-     be able to cut through, so the field holds a search box and nothing else
-     (DIRECTION.md rule 7). What it reaches is both halves of what is behind
-     this door:
-
-       the areas   `hubRowsMatching`, in memory, over the titles this screen
-                   already drew. No wait for a keystroke: the rows are already
-                   here and filtering them is a substring test over
-                   twenty-odd short strings.
-       the records `j.textSearch.search`, the same registry and the same read
-                   the search screen's "elsewhere in the journal" half uses,
-                   waited out after the last keystroke because it is SQL over
-                   eighteen areas.
-
-     One flat list of matched areas rather than the grouped index with
-     non-matches removed: a query is a question about the whole door, and
-     keeping five headings over three surviving rows would be the screen
-     answering with its own structure (the same call `searchHitRows.ts` made
-     about grouping hits by area, and Apple's own settings search, in the
-     Mobbin pass). An empty box shows the grouped index, which is the door at
-     rest. */
+     An empty search shows the grouped index. Search matches the
+     area titles in memory and shows the matches in one flat list.
+     After a typing pause, j.textSearch.search searches records
+     through the same registry as the main Search screen's hits
+     outside entries. It runs only after the user types. */
   import { handOverQuery } from '$lib/navigation/searchReturn';
   import { m } from '$lib/paraglide/messages';
   import { navigating } from '$app/state';
@@ -60,6 +21,9 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { liveQuery } from '$lib/data/live/journal.svelte';
+  import { dilationGated } from '$lib/data/taperSchedule';
+  import { cycleTrackingVisible } from '$lib/data/cycleTracking';
+  import { prefs } from '$lib/data/prefs/store.svelte';
   import { useDoorActivity } from '$lib/navigation/doorActivity.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
@@ -75,16 +39,19 @@
   const today = $derived(currentDay());
 
   let lastWritesQuery = liveQuery((j) => j.lastWrite.getLastWrites(today));
-  let statesQuery = liveQuery((j) => j.areaStates.getAreaStates());
-  /* The forward half (phase 11 all-four-doors ticket 02): what is running
-     and what is next, which is what nine of this door's rows were getting
-     wrong by reporting a gap over a screen full of dated plans. One
-     assembled call, `rowForwardReads.ts`, the shape the last-write read next
-     to it already has. */
+  let statesQuery = liveQuery(async (j) => dilationGated(await j.areaStates.getAreaStates(), await j.procedures.getProcedures()));
+  /* The cycle row's positive gate: an active testosterone regimen or the explicit opt-in,
+     so it needs the episodes. Read with the others, so the row is not drawn and then taken
+     back. */
+  let episodesQuery = liveQuery((j) => j.regimen.getEpisodes());
+  /* The forward half: what is running and what is next, which is what nine of this door's
+     rows were getting wrong by reporting a gap over a screen full of dated plans. One
+     assembled call, `rowForwardReads.ts`, the shape the last-write read next to it already
+     has. */
   let forwardQuery = liveQuery((j) => readRowForward(j, today));
-  /* voice-benchmark's own second read (ticket 17): a memo has no last write
-     in the registry the other three rows draw on (ADR-0036), so this joins
-     the other three reads rather than being folded into one of them. */
+  /* voice-benchmark's own second read: a memo has no last write in the registry the other
+     three rows draw on, so this joins the other three reads rather than being folded into
+     one of them. */
   let voiceMemoLastWriteQuery = liveQuery((j) => j.voice.lastWriteEpochDay(today));
 
   /* All four reads or none, which is a correctness rule and not only a
@@ -103,15 +70,23 @@
   let landed = $derived(
     lastWritesQuery.value !== undefined &&
       statesQuery.value !== undefined &&
+      episodesQuery.value !== undefined &&
       forwardQuery.value !== undefined &&
       voiceMemoLastWriteQuery.value !== undefined
       ? {
           lastWrites: lastWritesQuery.value,
           states: statesQuery.value,
           forward: forwardQuery.value,
-          voiceMemoLastWriteEpochDay: voiceMemoLastWriteQuery.value
+          voiceMemoLastWriteEpochDay: voiceMemoLastWriteQuery.value,
+          cycleVisible: cycleTrackingVisible(episodesQuery.value, Date.now(), prefs.cycleTrackingChoice)
         }
-      : { lastWrites: {}, states: AREA_STATES_BEFORE_READ, forward: {} as RowForwardMap, voiceMemoLastWriteEpochDay: null }
+      : {
+          lastWrites: {},
+          states: AREA_STATES_BEFORE_READ,
+          forward: {} as RowForwardMap,
+          voiceMemoLastWriteEpochDay: null,
+          cycleVisible: false
+        }
   );
 
   let reading = $derived({ todayEpochDay: today, ...landed });
@@ -131,18 +106,15 @@
   });
   let sections = $derived(hubSections(reading));
 
-  /** How many record hits the door shows at all. Twenty rather than the
-      search screen's thirty, and no second page since audit item 11: this is
-      a door, a query that answers with a screenful of records is a query
-      better finished on the search screen, and the row under the list goes
-      there rather than reading twenty more here. */
+  /** How many record hits the door shows at all. Twenty rather than the search screen's
+      thirty, and no second page since: this is a door, a query that answers with a
+      screenful of records is a query better finished on the search screen, and the row
+      under the list goes there rather than reading twenty more here. */
   const PAGE = 20;
-  /** How long the record read waits after the last keystroke (the search
-      screen's own interval, phase 8 audit ticket 15): long enough that typing
-      at speed never fires a run per key, short enough that a pause reads as
-      instant. The area half is not waited out at all - it is a filter over
-      rows already on the screen, and making it lag behind the box would be
-      the screen feeling slower than it is. */
+  /** How long the record read waits after the last keystroke: long enough that typing at
+      speed never fires a run per key, short enough that a pause reads as instant. The area
+      half is not waited out at all - it is a filter over rows already on the screen, and
+      making it lag behind the box would be the screen feeling slower than it is. */
   const SEARCH_DEBOUNCE_MS = 250;
 
   let query = $state('');
@@ -157,7 +129,7 @@
 
   let typed = $derived(query.trim());
   /* The handoff row's query travels in memory to Search rather than in its
-     address (after-release ticket 10). */
+     address. */
   const handOffSearch = () => handOverQuery(typed);
   let searching = $derived(typed.length > 0);
 
@@ -215,7 +187,7 @@
   let foundNothing = $derived(settled && matches.length === 0 && hitRows.length === 0);
 
   /* One area of colour per list, in reading order: the areas take role 0, the
-     only index guaranteed to be a colour on all eight palettes, and the
+     only index guaranteed to be a colour on every palette, and the
      records take role 1 (the search screen's own split). */
   let matchesRole = $derived(roleAt(activeFlag.roles, 0));
   let recordsRole = $derived(roleAt(activeFlag.roles, 1));
@@ -228,20 +200,8 @@
 </script>
 
 <div class="screen">
-  <!-- DIRECTION.md 3d: the hub had "More" stacked directly above its first
-       group heading, which is two headers saying nearly the same thing. The
-       title stays in the document for a screen reader and stops being a
-       second visible label - and since ticket 08 the tab and this title no
-       longer even say the same word: the tab now names the whole subject
-       (Transition, or More disguised) and the title names the five groups
-       actually behind it.
-
-       So what the field holds is the search box, and nothing else (rule 7).
-       It is a block of the page's own colour on the flag's, which is what
-       makes 16px legal there: the type in it is page ink on the page's
-       ground, not small text on a stripe (rule 3, and the measured pairs in
-       DIRECTION.md's "Contrast"). Under disguise the field falls to
-       --surface-2 and the box is unremarkable on it. -->
+  <!-- Keep the hub title as a screen-reader heading. The field holds the
+       search box, which uses page ink on a page-coloured block for contrast. -->
   <ScreenHeader title={m.hub_screen_title()} titleHidden>
     {#snippet field()}
       <div class="search-box">
@@ -257,8 +217,8 @@
           id="hub-q"
           name="hub-q"
           type="search"
-          placeholder={m.hub_search_placeholder()}
-          aria-label={m.hub_search_placeholder()}
+          placeholder={m.search_placeholder()}
+          aria-label={m.search_placeholder()}
           autocomplete="off"
           autocapitalize="none"
           spellcheck="false"
@@ -303,13 +263,10 @@
        to be announced; empty it takes no room, and while a query is being
        answered it holds its line rather than letting the list jump (the two
        rules beside it in screens.css). -->
-  <!-- The line inside opens and closes its own height (redesign ticket 25):
-       it used to reserve its line the moment typing began and drop it the
-       moment the box was cleared, and both moved the list under the finger
-       in one frame (Alicja, on the flipbooks: "the '0 results' simply
-       disappears and yanks the whole content underneath"). The region stays
-       the <p>, empty until both halves have answered, so the count is still
-       announced once. -->
+  <!-- The line inside opens and closes its own height: it used to reserve its line the
+       moment typing began and drop it the moment the box was cleared, and both moved the
+       list under the finger in one frame. The region stays the <p>, empty until both halves
+       have answered, so the count is still announced once. -->
   <p class="hub-count" data-hub-count aria-live="polite">
     {#if searching && settled}
       <span class="hub-count-line" transition:disclose={{ skip: leaving }}>{m.results_count({ count: resultCount })}</span>
@@ -326,8 +283,7 @@
          interpolate against each other with no frame where the page is
          missing both. -->
     <div class="screen-part" data-hub-results transition:collapse={{ skip: leaving }}>
-      <!-- The card goes as one block when the last match does (ux-carpet
-           ticket 206). The rows' own `disclose` is local to the rows, so
+      <!-- The card goes as one block when the last match does. The rows' own `disclose` is local to the rows, so
            when the card's `{#if}` went they did not play: the card stood
            at its last height for as long as the rows' outros held the
            block, some 550ms, then left in one frame, and the "nothing
@@ -338,19 +294,17 @@
         <div transition:disclose={{ skip: leaving }}>
         <ListCard role={matchesRole}>
           {#each matches as row (row.spec.key)}
-            <!-- Which section the row was drawn in and which kind of line it
-                 carries, both on the row rather than on wrappers of their own:
-                 a finished row is the same row under a different heading, and
-                 the line itself is the kit's `.kit-row-sub`, a class and so
-                 something the walkthrough may not grip (ADR-0029). Naming the
-                 kind rather than the element also lets a flow tell a reading
-                 apart from the line about what is behind the row, which the
-                 element could not.
+            <!-- Which section the row was drawn in and which kind of line it carries, both
+                 on the row rather than on wrappers of their own: a finished row is the same
+                 row under a different heading, and the line itself is the kit's
+                 `.kit-row-sub`, a class and so something the walkthrough may not grip.
+                 Naming the kind rather than the element also lets a flow tell a reading
+                 apart from the line about what is behind the row, which the element could
+                 not.
 
-                 A searched row keeps `data-hub-section`, which here says
-                 where the row is drawn - one of the hub's sections, or the
-                 screen that hosts it - since in this list there is no
-                 heading above it to say so. -->
+                 A searched row keeps `data-hub-section`, which here says where the row is
+                 drawn - one of the hub's sections, or the screen that hosts it - since in
+                 this list there is no heading above it to say so. -->
             <!-- The wrapper is the row's own height, and giving it back is
                  how a row leaves (rule 10): the rows under it close up with
                  it instead of jumping. `.rows-divide` is the kit's opt-in for
@@ -377,7 +331,7 @@
       {/if}
 
       <!-- The records go as one block too, heading and all, for the same
-           reason as the areas above them (ticket 206): typed past its last
+           reason as the areas above them: typed past its last
            hit, this card stood 170px tall until the rows' outros let the
            block go and then left in one frame. -->
       {#if hitRows.length}
@@ -417,7 +371,6 @@
               data-hub-search-handoff
               icon="search"
               title={m.hub_search_handoff({ query: debouncedQuery })}
-              subtitle={m.hub_search_handoff_sub()}
               href="/search"
               onclick={handOffSearch}
             />
@@ -431,7 +384,7 @@
           icon="search"
           key="hub-search-none"
           title={m.no_results()}
-          text={m.no_results_body({ query: typed })}
+          text={m.no_results_body()}
         />
       {/if}
     </div>
@@ -488,7 +441,7 @@
     cursor: pointer;
   }
   :global(.screen-field) .field-search-clear:focus-visible {
-    outline: 2px solid var(--focus-ring);
+    outline: var(--focus-ring-width) solid var(--focus-ring);
     outline-offset: -2px;
   }
 </style>

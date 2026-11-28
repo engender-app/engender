@@ -1,0 +1,171 @@
+/* Cold-load each screen on the persona and sample top-level .screen and
+   .screen-part blocks from first paint. ReadGate skeleton removal and
+   margin collapse can move a heading. Later blocks can push settled ones
+   during the 240ms arrival window. Following home-fold-reserve.mjs, steps
+   of 4px or more count as travel in runs of at least four frames in one
+   direction. Steps over 24px require such a run. Skip first appearances
+   and view-transition snapshots. Stub storage.persist to avoid a toast.
+
+   VITE_DEMO=1 npm run build
+   node tests/guards/cold-screen-moves.mjs [--runs 3] [--theme light|dark] [--routes /a,/b] [--dump <dir>] [--root <built tree>] */
+import { COLD_SCREEN_SAMPLER, COLD_SAMPLE_MS } from '../cold-screen-sampler.mjs';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { launchChromium, settlePage, previewBuild } from '../browser-harness.mjs';
+import {
+  DEMO_THEME_EXPRESSION,
+  FILL_EVERY_FEATURE_EXPRESSION,
+  INIT_HIDE_DEMO_SCRIPT,
+  RESET_PERSONA_EXPRESSION
+} from '../yank-sweep-core.mjs';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const args = process.argv.slice(2);
+const flag = (name, fallback) => {
+  const at = args.indexOf(`--${name}`);
+  return at >= 0 ? args[at + 1] : fallback;
+};
+const RUNS = Number(flag('runs', '3'));
+const THEME = flag('theme', 'light');
+const DUMP = flag('dump', '') && resolve(flag('dump', ''));
+/* Default routes cover heading-led ReadGate and late ungated blocks.
+   Use --routes to supply a different list. */
+const ROUTES = flag(
+  'routes',
+  '/transition/tryouts,/health/surgery,/transition/letters,/body/hair-removal,/media/photos/export,' +
+    '/care/labs,/care/changes,/health/clinician-summary,/coming-back,' +
+    '/more,/settings/tags,/settings/access-mode'
+).split(',');
+const JUMP_PX = 24;
+/* `--step` lowers the floor a lone step is reported at. `--arrivals` also reports a block
+   that first paints after the screen's first frame already at full painted opacity: content
+   cut in rather than faded. */
+const STEP_PX = Number(flag('step', '4'));
+const ARRIVALS = args.includes('--arrivals');
+const TRAVEL_FRAMES = 4;
+const VIEWPORT_W = Number(flag('width', '390'));
+const VIEWPORT_H = 844;
+
+function teleports(series, samples) {
+  const out = [];
+  const step = (i) =>
+    i > 0 && i < series.length && series[i] != null && series[i - 1] != null && !samples[i].vt && !samples[i - 1].vt
+      ? series[i] - series[i - 1]
+      : 0;
+  for (let i = 1; i < series.length; i++) {
+    const d = step(i);
+    if (Math.abs(d) < STEP_PX) continue;
+    let run = 1;
+    for (let j = i - 1; j > 0 && Math.sign(step(j)) === Math.sign(d) && Math.abs(step(j)) >= 1; j--) run++;
+    for (let j = i + 1; j < series.length && Math.sign(step(j)) === Math.sign(d) && Math.abs(step(j)) >= 1; j++) run++;
+    if ((Math.abs(d) > JUMP_PX && run < TRAVEL_FRAMES) || run === 1)
+      out.push({ i, px: Math.round(d), at: Math.round(samples[i].at), run });
+  }
+  return out;
+}
+
+function analyse(samples) {
+  const keys = new Set(samples.flatMap((s) => Object.keys(s.boxes)));
+  const findings = [];
+  for (const key of keys) {
+    const series = samples.map((s) => s.boxes[key] ?? null);
+    const onScreen = (i) => Math.min(series[i] ?? Infinity, series[i - 1] ?? Infinity) < VIEWPORT_H;
+    for (const t of teleports(series, samples).filter((t) => onScreen(t.i)))
+      findings.push(`${key.replace(/^\d+:/, '')} ${t.px > 0 ? 'down' : 'up'} ${Math.abs(t.px)}px in one frame at ${t.at}ms (${t.run}-frame move)`);
+  }
+  if (ARRIVALS) {
+    /* The screen's own first paint is not an arrival, and a reserve's
+       wrapper is not content: what it holds is sampled as its own rows. */
+    const first = samples.findIndex((s) => Object.keys(s.boxes).length > 0);
+    for (const key of keys) {
+      if (/read-reserve\b(?!-)/.test(key)) continue;
+      const i = samples.findIndex((s) => s.boxes[key] != null);
+      if (i <= first || samples[i].vt || samples[i].boxes[key] >= VIEWPORT_H) continue;
+      if (samples[i].ops[key] >= 0.9)
+        findings.push(`${key.replace(/^\d+:/, '')} arrived at opacity ${samples[i].ops[key]} at ${Math.round(samples[i].at)}ms`);
+    }
+  }
+  return findings;
+}
+
+const browser = await launchChromium();
+const app = await previewBuild(resolve(flag('root', resolve(here, '../..'))));
+const base = `http://localhost:${app.httpServer.address().port}`;
+const page = await browser.newPage({ viewport: { width: VIEWPORT_W, height: VIEWPORT_H }, deviceScaleFactor: 1 });
+const errors = [];
+page.on('pageerror', (err) => errors.push(String(err)));
+await page.addInitScript(INIT_HIDE_DEMO_SCRIPT);
+
+await settlePage(page, base, '/', THEME);
+if (!(await page.evaluate(RESET_PERSONA_EXPRESSION))) throw new Error('persona reset never reached Home');
+await page.evaluate(FILL_EVERY_FEATURE_EXPRESSION);
+await page.waitForTimeout(1500);
+await settlePage(page, base, '/', THEME);
+await page.evaluate(DEMO_THEME_EXPRESSION(THEME));
+await page.waitForTimeout(1500);
+await page.addInitScript(COLD_SCREEN_SAMPLER);
+
+let failed = false;
+const failedSamples = [];
+for (const route of ROUTES) {
+  for (let run = 1; run <= RUNS; run++) {
+    {
+      await page.goto(`${base}${route}`, { waitUntil: 'networkidle' });
+      await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 40000 });
+      await page.waitForTimeout(800);
+    }
+    await page.goto(`${base}${route}`, { waitUntil: 'commit' });
+    await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 40000 });
+    let incomplete = '';
+    try {
+      await page.waitForFunction(() => window.__coldSamplesComplete, null, { timeout: COLD_SAMPLE_MS + 5000 });
+    } catch (error) {
+      if (error.name !== 'TimeoutError') throw error;
+      incomplete = 'cold-load observation incomplete: sampler did not finish';
+    }
+    const samples = await page.evaluate(() => window.__coldSamples ?? []);
+    if (DUMP) {
+      await mkdir(DUMP, { recursive: true });
+      await writeFile(`${DUMP}/${THEME}${route.replaceAll('/', '_')}-${run}.json`, JSON.stringify(samples));
+    }
+    const findings = [
+      ...(incomplete ? [incomplete] : []),
+      ...analyse(samples)
+
+    ];
+    if (findings.length) {
+      failed = true;
+      failedSamples.push({ route, run, findings, samples });
+    }
+    console.log(`[${THEME}] ${route} run ${run}: ${findings.length ? 'FAIL' : 'ok'} - ${samples.length} frames`);
+    for (const f of findings) console.log(`    ${f}`);
+  }
+}
+if (errors.length) console.log(`page errors:\n  ${errors.join('\n  ')}`);
+
+/* Retain failed cases after every scored assertion. The CI artifact upload
+   already includes ci-logs; --dump still saves the caller's complete sweep. */
+if (failedSamples.length) {
+  try {
+    await mkdir('ci-logs', { recursive: true });
+    for (const result of failedSamples) {
+      const key = result.samples.flatMap((frame) => Object.keys(frame.boxes)).find((name) => name.includes('.kit-notice[data-protocol]'));
+      const firstNotice = key && result.samples.find((frame) => (frame.ops[key] ?? 0) >= 0.1 && frame.boxes[key] != null);
+      const firstScreen = result.samples.find((frame) => Object.keys(frame.boxes).length > 0);
+      const output = `ci-logs/cold-screen-${Date.now()}-${process.pid}-${THEME}${result.route.replaceAll('/', '_')}-${result.run}.json`;
+      await writeFile(output, JSON.stringify({
+        theme: THEME, width: VIEWPORT_W, sampleMs: COLD_SAMPLE_MS,
+        firstScreenAtMs: firstScreen?.at ?? null,
+        firstVisibleNoticeAtMs: firstNotice?.at ?? null,
+        limits: 'Times start with the document sampler. These frames describe this attempt only. No SQL, parameters or content text is recorded.',
+        ...result
+      }));
+      console.log(`Cold screen diagnostic samples: ${output}`);
+    }
+  } catch (error) { console.log(`Cold screen diagnostics failed: ${error}`); }
+}
+
+await browser.close();
+await app.close();
+process.exit(failed ? 1 : 0);

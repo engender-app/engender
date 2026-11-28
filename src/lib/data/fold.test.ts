@@ -1,4 +1,4 @@
-/* Folded text (CONTEXT: "Folded text", ADR-0005): lowercased and stripped
+/* Folded text (ADR-0005): lowercased and stripped
    of Polish letterforms, including ł - which is the case Unicode
    decomposition alone cannot handle, and the reason folding lives in app
    code rather than in FTS5's tokenizer. */
@@ -25,7 +25,7 @@ test('a folded query matches folded text the way search needs', () => {
   assert.ok(foldText('Łóżko było wygodne').includes(foldText('lozko')));
 });
 
-/* The two forms of one fold (phase 5 deepening ticket 24). Every area other
+/* The two forms of one fold. Every area other
    than the entry note is matched by a scan inside SQL rather than through the
    FTS index, so the fold has to hold on that side too - and a fold that
    differed there would be a search that finds a word in a note and misses the
@@ -56,13 +56,12 @@ test('the SQL fold and the JS fold agree, letterform by letterform and case by c
     'À Ç Ê Ñ Ö Š Ž',
     '',
     'punctuation: "quoted", 50% - done_',
-    /* Cyrillic (phase 8 features ticket 49 item 4). Nothing here folds to
-       anything else - Cyrillic has no letterform this table strips - but
-       both sides still have to agree on its *case*, and only the JS side
-       got that for free: SQLite's `lower()` maps A-Z and nothing else, so
-       `Настя` stayed capitalised in the column while the typed query was
-       lowercased, and a name written the way anyone writes a name was
-       unfindable. Russian and Ukrainian alphabets, upper and lower. */
+    /* Cyrillic. Nothing here folds to anything else - Cyrillic has no letterform this table
+       strips - but both sides still have to agree on its *case*, and only the JS side got
+       that for free: SQLite's `lower()` maps A-Z and nothing else, so `Настя` stayed
+       capitalised in the column while the typed query was lowercased, and a name written
+       the way anyone writes a name was unfindable. Russian and Ukrainian alphabets, upper
+       and lower. */
     'Настя',
     'НАСТЯ',
     'настя',

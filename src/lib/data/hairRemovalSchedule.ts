@@ -1,10 +1,9 @@
-/* Days since each treatment area's last hair-removal session (phase 5
-   ticket 08), pure and kept above the journal seam next to doseSchedule.ts
+/* Days since each treatment area's last hair-removal session, pure and kept above the journal seam next to doseSchedule.ts
    for the same reason: a recency figure is a question about a log and a
    day, not a row anyone stores. Nothing here reads a clock or a database.
 
    Deliberately no "due" framing, the same restraint doseSchedule.ts's
-   siteRecency applies to the injection rotation map (ticket 10) and this
+   siteRecency applies to the injection rotation map and this
    ticket's own out-of-scope line repeats: this answers "how long since",
    and stops. No target interval, no overdue verdict. */
 

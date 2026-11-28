@@ -1,13 +1,12 @@
-/* Somatic breakdown per body region queries (phase 5 deepening ticket 08).
-   Combines feelings trajectory, linked measurements, progress photos, and
-   hair removal / staging records for an anatomical region. */
+/* Somatic breakdown per body region queries.
+   Combines feelings trajectory, progress photos, and
+   hair removal records for an anatomical region. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { journalWithBuiltIns } from './test-support.ts';
 import {
   getRegionSomaticBreakdown,
-  linkedMeasurementTypesForRegion,
   linkedHairRemovalAreasForRegion
 } from './bodyMapQueries.ts';
 
@@ -17,8 +16,6 @@ const photoShot = (full: string, thumb: string) => ({
 });
 
 test('linked mappings resolve correctly for built-in body regions', () => {
-  assert.deepEqual(linkedMeasurementTypesForRegion('chest'), ['chest', 'underbust']);
-  assert.deepEqual(linkedMeasurementTypesForRegion('hips_waist'), ['waist', 'hips']);
   assert.ok(linkedHairRemovalAreasForRegion('face_jaw').includes('chin'));
   assert.ok(linkedHairRemovalAreasForRegion('face_jaw').includes('upper_lip'));
   assert.ok(linkedHairRemovalAreasForRegion('chest').includes('chest'));
@@ -31,10 +28,8 @@ test('empty somatic breakdown when nothing is logged for a region', async () => 
   assert.equal(breakdown.region, 'chest');
   assert.equal(breakdown.isEmpty, true);
   assert.deepEqual(breakdown.trajectory, []);
-  assert.deepEqual(breakdown.measurements, []);
   assert.deepEqual(breakdown.photos, []);
   assert.deepEqual(breakdown.hairRemovalSessions, []);
-  assert.deepEqual(breakdown.hairStages, []);
   assert.equal(breakdown.averageDysphoria, null);
   assert.equal(breakdown.averageEuphoria, null);
 });
@@ -42,7 +37,7 @@ test('empty somatic breakdown when nothing is logged for a region', async () => 
 test('feelings trajectory aggregates for a region and excludes trashed entries', async () => {
   const { journal, db } = await journalWithBuiltIns();
 
-  // A region is one value on the shared scale now (ticket 39, ADR-0081), so
+  // A region is one value on the shared scale now, so
   // one entry is dysphoria-only and the other euphoria-only rather than
   // both at once.
   await journal.entries.upsertEntry({
@@ -77,38 +72,6 @@ test('feelings trajectory aggregates for a region and excludes trashed entries',
   assert.equal(breakdown.latestEuphoria, 30);
 });
 
-test('linked measurements filter by region mapping', async () => {
-  const { journal, db } = await journalWithBuiltIns();
-
-  await journal.measurements.upsertMeasurement({
-    epochDay: 100,
-    type: 'chest',
-    value: 95,
-    unit: 'cm'
-  });
-  await journal.measurements.upsertMeasurement({
-    epochDay: 102,
-    type: 'underbust',
-    value: 80,
-    unit: 'cm'
-  });
-  await journal.measurements.upsertMeasurement({
-    epochDay: 104,
-    type: 'waist',
-    value: 70,
-    unit: 'cm'
-  });
-
-  const chestBreakdown = await getRegionSomaticBreakdown(db, 'chest');
-  assert.equal(chestBreakdown.measurements.length, 2);
-  assert.equal(chestBreakdown.measurements[0].type, 'underbust');
-  assert.equal(chestBreakdown.measurements[1].type, 'chest');
-
-  const hipsBreakdown = await getRegionSomaticBreakdown(db, 'hips_waist');
-  assert.equal(hipsBreakdown.measurements.length, 1);
-  assert.equal(hipsBreakdown.measurements[0].type, 'waist');
-});
-
 test('progress photos filter by region and exclude trashed entries', async () => {
   const { journal, db } = await journalWithBuiltIns();
 
@@ -139,7 +102,7 @@ test('progress photos filter by region and exclude trashed entries', async () =>
   assert.equal(faceBreakdown.photos[0].epochDay, 100);
 });
 
-test('the trajectory and its photos filter by presentation (ADR-0048, ticket 18)', async () => {
+test('the trajectory and its photos filter by presentation (ADR-0048)', async () => {
   const { journal, db } = await journalWithBuiltIns();
 
   const girl = await journal.presentations.addPresentation('Girl mode', 0);
@@ -189,7 +152,7 @@ test('the trajectory and its photos filter by presentation (ADR-0048, ticket 18)
   );
 });
 
-test('hair removal sessions and hair staging link to relevant regions', async () => {
+test('hair removal sessions link to relevant regions', async () => {
   const { journal, db } = await journalWithBuiltIns();
 
   await journal.hairRemoval.upsertSession({
@@ -197,7 +160,6 @@ test('hair removal sessions and hair staging link to relevant regions', async ()
     area: 'chin',
     method: 'laser',
     painRating: 3,
-    cost: '50',
     provider: 'Clinic A'
   });
 
@@ -208,18 +170,10 @@ test('hair removal sessions and hair staging link to relevant regions', async ()
     painRating: 2
   });
 
-  await journal.hairProgress.upsertStage({
-    epochDay: 102,
-    scale: 'norwood_hamilton',
-    stage: '2'
-  });
-
   const faceBreakdown = await getRegionSomaticBreakdown(db, 'face_jaw');
   assert.equal(faceBreakdown.hairRemovalSessions.length, 1);
   assert.equal(faceBreakdown.hairRemovalSessions[0].area, 'chin');
-  assert.equal(faceBreakdown.hairStages.length, 0);
 
   const hairlineBreakdown = await getRegionSomaticBreakdown(db, 'hairline');
-  assert.equal(hairlineBreakdown.hairStages.length, 1);
-  assert.equal(hairlineBreakdown.hairStages[0].stage, '2');
+  assert.equal(hairlineBreakdown.hairRemovalSessions.length, 0);
 });

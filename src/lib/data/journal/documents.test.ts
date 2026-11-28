@@ -1,4 +1,4 @@
-/* The documents area (phase 8 features ticket 52, ADR-0065). */
+/* The documents area (ADR-0065). */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
@@ -148,9 +148,8 @@ test('deleting takes the file and its thumbnail with it, and an unknown id chang
   await journal.documents.deleteDocument('7ac0ffee-0000-4000-8000-000000000000');
 });
 
-/* Phase 8 features ticket 55: a PDF keeps its own bytes and carries the
-   first page drawn at import beside them, under a name spelled off the
-   `.pdf` rather than off a `.jpg` that is not there. */
+/* A PDF keeps its own bytes and carries the first page drawn at import beside them, under a
+   name spelled off the `.pdf` rather than off a `.jpg` that is not there. */
 const pdf = () => ({ pdfBytes: bytes('%PDF-1.4 a whole opinion'), thumb: bytes('its first page') });
 
 test('a PDF stores what arrived, and its first page beside it', async () => {
@@ -185,7 +184,7 @@ test('deleting a PDF takes its page with it', async () => {
   assert.deepEqual(files.names(), []);
 });
 
-/* Ticket 56, ADR-0065: at most one link, cleared as cheaply as set. */
+/* ADR-0065: at most one link, cleared as cheaply as set. */
 test('a document starts with no link, and one can be set and cleared', async () => {
   const { journal } = await device();
   const id = await journal.documents.addDocument({ epochDay: 20000, title: 'Referral' }, page());
@@ -218,27 +217,26 @@ test('documents linked to one target, newest first, and not the others', async (
   const newer = await journal.documents.addDocument({ epochDay: 20000, title: 'Newer opinion' }, page());
   const elsewhere = await journal.documents.addDocument({ epochDay: 19000, title: 'Unrelated' }, page());
 
-  await journal.documents.setDocumentTarget(older, { kind: 'goal', id: 'pl-medical-keep-opinions' });
-  await journal.documents.setDocumentTarget(newer, { kind: 'goal', id: 'pl-medical-keep-opinions' });
+  await journal.documents.setDocumentTarget(older, { kind: 'goal', id: 'pl-legal-final-copy' });
+  await journal.documents.setDocumentTarget(newer, { kind: 'goal', id: 'pl-legal-final-copy' });
   await journal.documents.setDocumentTarget(elsewhere, { kind: 'milestone', id: 'm-1' });
 
-  const linked = await journal.documents.getDocumentsLinkedTo('goal', 'pl-medical-keep-opinions');
+  const linked = await journal.documents.getDocumentsLinkedTo('goal', 'pl-legal-final-copy');
   assert.deepEqual(
     linked.map((d) => d.id),
     [newer, older]
   );
 });
 
-/* Ticket 56 asks for the null-out tested per kind, and two of the four kinds
-   have no delete to test. The two that do - milestones and procedures - are
-   tested where their own areas are (areas.test.ts, procedures.test.ts).
+/* Asks for the null-out tested per kind, and two of the four kinds have no delete to test.
+   The two that do - milestones and procedures - are tested where their own areas are
+   (areas.test.ts, procedures.test.ts).
 
-   A regimen episode is never deleted (regimen.ts) and this pins that, so the
-   day the area grows a delete it fails until the link is nulled the way
-   deleteMilestone and deleteProcedure null it. A roadmap goal is the other
-   one, and is deliberately not pinned here: ticket 69 adds deleteCustomGoal
-   with that same UPDATE in it and carries its own test for it (ADR-0068), so
-   a guard here would only fail on a delete that already does the right
+   A regimen episode is never deleted (regimen.ts) and this pins that, so the day the area
+   grows a delete it fails until the link is nulled the way deleteMilestone and
+   deleteProcedure null it. A roadmap goal is the other one, and is deliberately not pinned
+   here: adds deleteCustomGoal with that same UPDATE in it and carries its own test for it
+   (ADR-0068), so a guard here would only fail on a delete that already does the right
    thing. */
 test('a regimen episode still has no delete for a document link to dangle from', async () => {
   const { journal } = await device();

@@ -15,7 +15,7 @@ const [, width, height] = /Physical size: (\d+)x(\d+)/.exec(adb('shell', 'wm', '
 const gestureY = String(Math.round(Number(height) / 2));
 const gestureEndX = String(Math.round(Number(width) / 3));
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-adb('shell', 'am', 'start', '-n', `${pkg}/.disguise.LauncherDefault`);
+adb('shell', 'am', 'start', '-n', `${pkg}/.Launch01`);
 await pause(2000);
 const pid = adb('shell', 'pidof', pkg).trim().split(/\s+/)[0];
 const port = adb('forward', 'tcp:0', `localabstract:webview_devtools_remote_${pid}`).trim();
@@ -129,6 +129,8 @@ try {
     await page.locator('[data-list-row="replace-recovery-key"]').click();
     await page.locator('[data-confirm-replace]').click();
   }
+  await page.locator('#current-protection-secret').fill('demo');
+  await page.locator('[data-confirm-current-protection]').click();
   const recoveryKey = (await page.locator('[data-recovery-key]').innerText()).trim();
   await back();
   await page.locator('[data-keep-writing-recovery-key]').waitFor();
@@ -142,6 +144,8 @@ try {
   await navigate('/settings/recovery-key');
   await page.locator('[data-list-row="replace-recovery-key"]').click();
   await page.locator('[data-confirm-replace]').click();
+  await page.locator('#current-protection-secret').fill('demo');
+  await page.locator('[data-confirm-current-protection]').click();
   await page.locator('[data-recovery-key-done]').click();
   await back();
   await page.waitForURL((url) => url.pathname === '/');

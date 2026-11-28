@@ -1,21 +1,10 @@
-/* Waits for a run of quick frames: the sign that whatever the last frames
-   were paying for has been paid, so motion started now does not stall on
-   its first frames.
+/* Wait for quick frames after drawing faint content to warm up the
+   WebView's raster and Vulkan work. Opacity zero skips the work.
+   Splash and arrival holds call this before motion starts.
 
-   On the Pixel 10a's WebView, the first time a process draws a kind of
-   content it rasters it and compiles the Vulkan pipelines it needs, and the
-   frame waits for both. Content at opacity 0 is not drawn, so it pays this
-   on the first frame it is visible, which is the first frame of its fade.
-   The splash hold (ticket 08) and the arrival hold (ticket 09) both draw
-   the content at a nil opacity while nothing is moving, and use this to
-   tell when it has been paid for.
-
-   A frame callback runs before that frame paints, so the frame after the
-   work stopped is the first that can show what it cost: a busy frame and
-   the one after it never count. A frame is quick under one and a half of
-   the shortest frame seen, kept between 25 and 50 ms, so a display slower
-   than 60 Hz settles too and a stall is never quick. The cap covers a
-   device that never settles and a hidden page that draws no frames. */
+   Callbacks run before paint. Exclude a busy frame and the next one.
+   A quick frame takes less than 1.5× the fastest observed frame,
+   bounded at 25–50 ms. A cap covers hidden or unsettled pages. */
 
 const QUICK_FRAME_MS = 25;
 const SLOWEST_QUICK_FRAME_MS = 50;

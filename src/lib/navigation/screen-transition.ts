@@ -1,22 +1,19 @@
-/* Which tier-2 pattern one screen becomes another with (phase 5 ticket 18).
+/* Which tier-2 pattern one screen becomes another with.
 
-   The primitives themselves were built by ticket 17 and live in
-   $lib/motion/navigation.ts. What was missing was the decision: nothing in
-   the app chose between them, so every navigation was the same 6px slide
-   from .screen's own entrance animation whether it crossed the four tabs,
+   The primitives themselves were built and live in $lib/motion/navigation.ts. What was
+   missing was the decision: nothing in the app chose between them, so every navigation was
+   the same 6px slide from .screen's own entrance animation whether it crossed the four tabs,
    opened a detail, or went back.
 
-   It is a pure function and it lives here rather than in the layout for the
-   same reason active-tab.ts does: the rule is a table, the layout is where
-   a table gets buried, and a rule nobody can run in a test is one nobody
-   can check. */
+   It is a pure function and it lives here rather than in the layout for the same reason
+   active-tab.ts does: the rule is a table, the layout is where a table gets buried, and a
+   rule nobody can run in a test is one nobody can check. */
 
 import { activeTabKey } from './active-tab';
 
 type ScreenTransition = 'none' | 'fade-through' | 'shared-axis' | 'shared-axis-back' | 'container';
 
-/* NavigationFacts stays exported only for its own test (AU-09 test-only
-   review). */
+/* NavigationFacts stays exported only for its own test. */
 export interface NavigationFacts {
   from: string | null;
   to: string;
@@ -29,11 +26,10 @@ export interface NavigationFacts {
   /** Whether a sheet was open over the screen the navigation left from, so
       whatever was tapped was inside a modal rather than on the screen. */
   fromSheet: boolean;
-  /** What settings chrome (`/settings`) borrows to light a tab (audit item
-      4, chrome-tab-origin.ts) - threaded in rather than read here so this
-      stays a pure table its own test can call directly. `''` where nothing
-      has lit a tab yet, which reads as a tab change like any other unknown
-      route. */
+  /** What settings chrome (`/settings`) borrows to light a tab (chrome-tab-origin.ts) -
+      threaded in rather than read here so this stays a pure table its own test can call
+      directly. `''` where nothing has lit a tab yet, which reads as a tab change like any
+      other unknown route. */
   chromeOrigin: string;
 }
 
@@ -80,48 +76,37 @@ export function screenTransition(facts: NavigationFacts): ScreenTransition {
      button and a launcher shortcut all open it with nothing behind them,
      and a container transform with no container is a crossfade wearing a
      longer duration. */
-  /* Home's recent-entry rows are the exception Alicja called out on the
-     same ticket as this file's own container transform (phase 5 ticket 99
-     item 23: "transition from home to a recent entry should be
-     good-looking, it should be the same as transition between nav tabs").
-     From Home an entry opens as a peer crossing - the fade-through a tab
-     switch gets - and Home is the one source that gets it: the day detail
-     and search keep the transform, and leaving the editor back to Home
-     already fades through the tab rule at the bottom, since /entry lights
-     the calendar tab and / is no tab's step. */
+  /* Home's recent-entry rows are the exception called out on as this file's own container
+     transform. From Home an entry opens as a peer crossing - the fade-through a tab switch
+     gets - and Home is the one source that gets it: the day detail and search keep the
+     transform, and leaving the editor back to Home already fades through the tab rule at
+     the bottom, since /entry lights the calendar tab and / is no tab's step. */
   if (isEntryEditor(to)) {
-    /* Out of a sheet it is a fade-through whatever screen the sheet was
-       over. The tag insights on /stats open a sheet of the entries carrying
-       a tag, and those cards are a correct source by the rule above - so
-       the card's box grew out of an open modal into the whole screen while
-       the sheet sat behind it, which is item 23's complaint arriving on a
-       second surface (Alicja, carpet ticket 10). A sheet is not a place a
-       screen grows out of: what happened is that a modal was dismissed and
-       a screen replaced the one underneath it, and the transform says the
-       card became the screen instead.
+    /* Out of a sheet it is a fade-through whatever screen the sheet was over. The tag
+       insights on /stats open a sheet of the entries carrying a tag, and those cards are a
+       correct source by the rule above - so the card's box grew out of an open modal into
+       the whole screen while the sheet sat behind it. The navigation instead reflects
+       that a modal was dismissed and a screen replaced the one underneath it, and the
+       transform says the card became the screen instead.
 
-       A fact and not a route, unlike the two carve-outs below. /stats draws
-       entry cards only inside that sheet today, so naming the route would
-       be right by accident and wrong the day a screen draws them both
-       ways. */
+       A fact and not a route, unlike the two carve-outs below. /stats draws entry cards
+       only inside that sheet today, so naming the route would be right by accident and
+       wrong the day a screen draws them both ways. */
     if (fromSheet) return 'fade-through';
     if (from === NO_CONTAINER) return 'shared-axis';
     if (from === '/') return 'fade-through';
     return 'container';
   }
 
-  /* A screen with several views of itself is not a sequence. Wrapped's four
-     cadence tabs are one screen showing a different period, so crossing them
-     is tier 3 - change within a screen - and the chart's own re-tween is what
-     carries it. Slid as a shared axis the whole screen travelled and every
-     figure on it was torn down and rebuilt (Alicja, 2026-08-25: "the
-     switchers in wrapped shouldn't make the screen re-render").
+  /* A screen with several views of itself is not a sequence. Wrapped's four cadence tabs
+     are one screen showing a different period, so crossing them is tier 3 - change within a
+     screen - and the chart's own re-tween is what carries it. Slid as a shared axis the
+     whole screen travelled and every figure on it was torn down and rebuilt.
 
-     A table rather than a rule, and one entry long, for the same reason the
-     rest of this file is a table: /entry/1 to /entry/2 is also two leaves of
-     one route and it is emphatically not this - it is the container transform
-     ticket 22 built. Which of the two a route is cannot be read off its
-     shape. */
+     A table rather than a rule, and one entry long, for the same reason the rest of this
+     file is a table: /entry/1 to /entry/2 is also two leaves of one route and it is
+     emphatically not this - it is the container transform built. Which of the two a route
+     is cannot be read off its shape. */
   if (SWITCHES_VIEWS_IN_PLACE.some((parent) => from.startsWith(parent) && to.startsWith(parent))) {
     return 'none';
   }
@@ -132,26 +117,15 @@ export function screenTransition(facts: NavigationFacts): ScreenTransition {
   return activeTabKey(from, chromeOrigin) === activeTabKey(to, chromeOrigin) ? 'shared-axis' : 'fade-through';
 }
 
-/** The one surface carved out of the container transform (Alicja,
-    2026-08-26, phase 5 ticket 25). It draws entry cards like Home, a day
-    and a search hit do, so by the rule above it is a correct source - and
-    she read the transform out of it as far too big a movement for what
-    happens there. The screen is a list of past good days offered back as
-    evidence, so an entry on it is being cited rather than opened, and a box
-    growing into the whole screen claims more than the tap meant.
-
-    What it gets instead is the shared axis, named rather than left to the
-    tab rule at the bottom: that rule would call this a tab change and fade,
-    while coming back out of the editor is a slide, and a screen you fade
-    into and slide out of reads as two different places. On the axis it is
-    what it looks like - a step into one of the entries and a step back.
-
-    Written as an exception here rather than as a prop on DayEntry because
-    this file is where the rule it excepts is stated, and a rule and its one
-    carve-out belong in the same table. The source card is not told
-    anything: the layout drops the container name on any navigation this
-    function does not call the transform, so the pattern decides and the
-    surfaces stay uniform. */
+/**
+ * Use shared-axis motion between Safe Space's good-days evidence list
+ * and an entry. A cited entry should feel like a step into the detail,
+ * not a card opening into the whole screen. This also pairs the entrance
+ * with the editor's return instead of fading one way and sliding back.
+ *
+ * Keep the exception in this rule table. The layout removes the
+ * container name when this function chooses a different transition.
+ */
 const NO_CONTAINER = '/doubt';
 
 /** Routes whose sub-paths are views of one screen rather than steps into it. */
@@ -163,22 +137,9 @@ function isEntryEditor(path: string): boolean {
   return /^\/entry\/\d+$/.test(path);
 }
 
-/** Home is the one screen carrying the sun ring, so it is the one departure
-    whose field-part hold lands over a second large graphic in the same
-    corner rather than empty screen (ticket 159, measured on the mood-pick
-    gesture specifically). Named as its own fact rather than folded into the
-    tier-2 table above: this is still a fade-through like any other tab
-    crossing, and every other one keeps the shared blind budget - only this
-    one gets a shorter ride, which +layout.svelte reads to scope
-    `--blind-dur` (app.css) to just this navigation.
-
-    Every `/entry/new` departure from Home, not only mood-pick's own
-    `seedMood` query: the geometry that makes the gap read as broken is
-    Home's sun ring sitting in the corner, which is the same regardless of
-    which control sent the tap there (a mood row, quick add's fan, an
-    appointment's `debriefFor` link). Narrowing to `seedMood` alone would
-    leave the identical gap open on those other paths into the same
-    screen. */
+/** Use a shorter blind hold when Home opens /entry/new so the hold does not
+    cover its sun. Apply it to every entry path, including Quick add and the
+    debrief link. The layout scopes --blind-dur to that transition. */
 export function leavesHomeForEntry(from: string | null, to: string): boolean {
   return from === '/' && to.startsWith('/entry/new');
 }
@@ -196,16 +157,13 @@ function isBack(from: string, to: string, type: string, delta: number | undefine
      change rather than a step up, so it is excluded by hand. */
   if (to === '/') return false;
   if (from.startsWith(to.endsWith('/') ? to : `${to}/`)) return true;
-  /* /more is the settings tab's own hub, the same role /stats or /calendar
-     plays for theirs - but a features-phase ticket already reaches it from
-     routes a URL prefix cannot see it under (/care/doses) and links
-     straight to /settings/* pages that skip an intervening /settings step
-     (the roadmap and the rest of More's rows), so the check above never fires
-     for the one back link most of those screens actually have. Without
-     this, closing the roadmap read as a step deeper instead of a step up -
-     the wrong shared-axis direction, which is what a slide in the wrong
-     direction off the bottom of an easing curve reads as a yank (Alicja,
-     2026-08-28: "no sliding up animation there at all... a smooth quick
-     transition like when I click on any other 'more' tab and go back"). */
+  /* /more is the settings tab's own hub, the same role /stats or /calendar plays for theirs
+     - but a features-phase ticket already reaches it from routes a URL prefix cannot see it
+     under (/care/doses) and links straight to /settings/* pages that skip an intervening
+     /settings step (the roadmap and the rest of More's rows), so the check above never
+     fires for the one back link most of those screens actually have. Without this, closing
+     the roadmap read as a step deeper instead of a step up - the wrong shared-axis
+     direction, which is what a slide in the wrong direction off the bottom of an easing
+     curve reads as a yank. */
   return to === '/more' && activeTabKey(from, chromeOrigin) === 'settings';
 }

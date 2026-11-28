@@ -1,44 +1,15 @@
-/* The ratchet against a stylesheet regrowing into a shared dumping ground
-   (phase 5 audit ticket 16, which first cut screens.css from 239 classes to
-   under 100 - onboarding, Home, the entry editor, timeline and the heat map
-   all moved their own classes into their own <style> blocks; ticket 12
-   widened the same check to kit.css and components.css, the repo's third
-   and fourth hottest files, after finding they had no ratchet at all).
+/* Check shared classes in screens.css, kit.css and components.css.
+   A single-consumer rule belongs in the component's own style block,
+   where Svelte can report unused selectors. Existing entries have a
+   baseline. SHARED records classes intended for reuse or consumed
+   through patterns the scan cannot see.
 
-   A class belongs in one of these three shared sheets when more than one
-   consumer reads it. A class only one file ever reads belongs in that
-   file's own <style> block instead, where an unused rule is a compiler
-   warning (svelte-check's css_unused_selector) rather than silent dead text
-   nobody notices for three tickets. So: every class a sheet defines gets a
-   consumer count, and a class with exactly one consumer is either recorded
-   in that sheet's baseline (its existing long tail, which rides future
-   tickets rather than being swept up at once) or marked in that sheet's
-   SHARED set (a class one consumer happens to use today but is meant for
-   more, or a real consumer this script's grep cannot see), and a genuinely
-   new single-consumer class is neither - it fails, with the file to move it
-   to named in the message.
-
-   A class with zero consumers anywhere fails outright: nothing marks a
-   dead class deliberate, because there is no consumer left to ask about it.
-
-   Consumer counting is a grep over .svelte markup - class="...", class:foo
-   directives, and the token boundaries a hyphenated name needs (a naive
-   \b treats the hyphen in "kit-heading-action" as a delimiter and matches
-   "kit-heading" as a substring of it, which is wrong). It does not read
-   .ts helper functions that build a class string themselves
-   (GateScreen.svelte's gateBodyClass is one), template literals baked into
-   a .ts module (icons.ts's own `class="icon ..."`), a `class={expression}`
-   built at runtime (Tile.svelte's and Notice.svelte's ternaries), or a
-   class a third-party library injects into the DOM itself - all of these
-   can undercount a class's real reach. A
-   false "single consumer" or "no consumer" from any of these blind spots
-   fails this check same as a real one; fixed the same way, by adding the
-   class to that sheet's SHARED with the reason.
-
-   Run `node scripts/check-screens-classes.mjs` to see where all three
-   sheets stand, and `node scripts/check-screens-classes.mjs --update` after
-   moving a class out (or accepting a new one into a baseline), which
-   rewrites every sheet's record. */
+   The scan counts class tokens and class directives in Svelte markup.
+   It misses runtime expressions, JS helpers, inline SVG strings and
+   injected classes. Give each exception its reason. Zero consumers
+   fails unless an actual consumer is known to be outside the scan.
+   Run npm run check:screens-classes to check and pass --update after
+   moving a rule out of a shared sheet. */
 import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -81,21 +52,19 @@ const SHEETS = [
       'kit-notice-cta',
       /* Sibling selector .screen-header + .kit-heading references ScreenHeader */
       'screen-header',
-      /* direction-contract.test.ts asserts .kit-tile-note-text clamp in kit.css */
+      /* direction-contracts.ts asserts .kit-tile-note-text clamp in kit.css */
       'kit-tile-note-text',
-      /* ReadReserve.svelte is the one consumer, but the rule that names them
-         is about the heading inside, not the reserve: a .kit-heading first in
-         a reserve body keeps its 40 unless the reserve is first on the screen
-         (ux-carpet 211). It sits beside kit.css's other first-heading rules,
-         at their unscoped specificity, so the cascade between them stays
-         readable in one place; a scoped copy in ReadReserve would win on
-         specificity alone and hide the interaction (ticket 229). */
+      /* ReadReserve.svelte is the one consumer, but the rule that names them is about the
+         heading inside, not the reserve: a .kit-heading first in a reserve body keeps its 40
+         unless the reserve is first on the screen. It sits beside kit.css's other
+         first-heading rules, at their unscoped specificity, so the cascade between them
+         stays readable in one place; a scoped copy in ReadReserve would win on specificity
+         alone and hide the interaction. */
       'read-reserve',
       'read-reserve-body',
-      /* DayCard's `tight` and EntryDays' per-entry wrapper (search ticket
-         16). One consumer each, but both rules are about the day card's
-         own body and rail - `.kit-entry-row` is what the rail's first and
-         last segment rules count through - so they sit beside those rules
+      /* DayCard's `tight` and EntryDays' per-entry wrapper. One consumer each, but both
+         rules are about the day card's own body and rail - `.kit-entry-row` is what the
+         rail's first and last segment rules count through - so they sit beside those rules
          in kit.css, where the cascade between them is read in one place. */
       'is-tight',
       'kit-entry-row'
@@ -105,6 +74,10 @@ const SHEETS = [
     file: 'src/lib/styles/components.css',
     baseline: 'src/lib/styles/components-classes-baseline.txt',
     shared: new Set([
+      /* +layout.svelte draws the one .app, but the rule that names it styles a sheet's
+         scrim while a rail is showing and belongs with the desktop container query's other
+         sheet rules, at their unscoped specificity. */
+      'app',
       /* Same icons.ts blind spot screens.css's SHARED documents - `.icon
          .muted`/`.icon.muted`/`.icon.is-starred` read a class every icon
          carries via a template literal, not a .svelte class= attribute. */
@@ -121,7 +94,7 @@ const SHEETS = [
       'skeleton-card',
       'skeleton-block',
       /* overlayLock.ts adds `is-withdrawn` via classList.add() one rAF after
-         `inert`, so the pre-blurred ::after can crossfade in (ticket 232).
+         `inert`, so the pre-blurred ::after can crossfade in.
          Added in TypeScript, not a .svelte class attribute. */
       'is-withdrawn',
       /* Both nav layouts share the overlay withdrawal rule. The rail's

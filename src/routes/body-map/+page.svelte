@@ -1,48 +1,24 @@
 <script lang="ts">
-  /* One body region's dysphoria and euphoria over time (phase 5 UX ticket
-     23's rebuild) and multi-track somatic breakdown inspector (deepening
-     ticket 08).
+  /* Dysphoria and euphoria are independent axes with their own days and
+     counts, so give each a separate chart (stats.ts). Tapping a body
+     region selects both readings. The separate inspector row opens the
+     breakdown sheet.
 
-     Two charts rather than one with two lines on it. The seam answers one
-     axis per call and says why (stats.ts, ticket 31): the two are
-     independent, a day can carry a euphoria and no dysphoria, so the two
-     series have their own days and their own counts and nothing pairs them
-     up. Drawn as an overlay they needed a legend to say which line was
-     which, and DIRECTION.md's chart rules have no legend in them - the
-     heading names the reading instead, one per card, which is also the
-     honest shape for two things the screen never adds up.
-
-     Redesign ticket 40 turned the figure into the reading. One region could
-     be chosen four ways here - a hotspot, a chip, the picker in the first
-     chart card's header, and an inspect button beside it - and all four
-     opened the inspector sheet, so the map could not be browsed at all:
-     every tap left the screen. Now exactly one control selects, a tap only
-     says which region the charts describe, and the sheet is one explicit
-     row under them.
-
-     Redesign ticket 05 took the screen's own 7d-to-365d range picker off
-     it: the only way here is Look back's list, at the same span/query
-     shape /wrapped/range already reads (spanRangeQuery), so the range
-     picker on this side would only ever disagree with the one the person
-     just dragged. A direct visit with no query still gets a window - the
-     door's own default of the last thirty days - rather than an empty
-     screen. */
+     Use the range passed from Look back via spanRangeQuery. A visit with
+     no query defaults to the last 30 days. */
   import { scrollBehavior } from '$lib/motion/tokens';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
-  import { epochDayFromDateInputValue, FIRST_EPOCH_DAY } from '$lib/data/epochDay';
+  import { epochDayFromDateInputValue } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
   import { DEFAULT_SPAN_DAYS } from '$lib/data/lookBackSpan';
   import { liveList } from '$lib/data/live/journal.svelte';
-  import { plotDaySeriesGroup, type AxisPlot, type DayAxis } from '$lib/charts/dayAxis';
+  import { plotDaySeriesGroup, type AxisPlot } from '$lib/charts/dayAxis';
   import { PLOT_HEIGHT } from '$lib/charts/geometry';
-  import { dayAxisState } from '$lib/components/kit/dayAxis.svelte';
   import {
     dayAxisEnds,
-    dayAxisLabel,
-    dayAxisOptions,
     dayAxisScrubLabel
   } from '$lib/components/kit/dayAxisLabel';
   import { crossfade, resize } from '$lib/motion/reveal';
@@ -61,7 +37,7 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import BodyRegionInspectorSheet from '$lib/components/BodyRegionInspectorSheet.svelte';
 
-  /* Undefined is the unfiltered view (ADR-0048, ticket 18) - every entry,
+  /* Undefined is the unfiltered view (ADR-0048) - every entry,
      with and without a presentation, byte for byte what this screen showed
      before the filter existed. There is no "no presentation" option: an
      entry with none already reads back in the unfiltered view like every
@@ -76,7 +52,7 @@
     if (regions.length && !regions.some((r) => r.id === region)) region = regions[0].id;
   });
   // A presentation hidden mid-session drops out of visiblePresentations
-  // (CONTEXT: "Hidden") without deleting anything it was ever logged
+  // without deleting anything it was ever logged
   // against - falling back to the unfiltered view rather than silently
   // keeping a filter nothing can any longer select or clear.
   $effect(() => {
@@ -86,13 +62,13 @@
 
   let inspectorOpen = $state(false);
 
-  // Same inclusive-range rule as the stats screen (ticket 10): the journal
+  // Same inclusive-range rule as the stats screen: the journal
   // never reads the clock for a domain answer, so `today` is re-derived
   // rather than captured.
   let today = $derived(currentDay());
 
-  /* The span, reached from Look back (redesign ticket 05) at the same query
-     /wrapped/range reads (stats/+page.svelte's spanRangeQuery) - this screen
+  /* The span, reached from Look back at the same query
+     Look back readings use (spanRangeQuery) - this screen
      only ever wants the two dates out of it. A direct visit with no query,
      or one that fails to parse, falls back to the door's own default
      window: the last DEFAULT_SPAN_DAYS days ending today. */
@@ -103,53 +79,27 @@
   let spanTo = $derived(hasSpan ? (queryTo as number) : today);
   let spanDays = $derived(spanTo - spanFrom + 1);
 
-  /* Which axis the two charts are read on (ticket 16). Both take the same
-     one: they are one region's two readings and a person switches axis to
-     ask a question of the region, not of one of its halves. The queries,
-     the fallback and the keying are the kit's (dayAxis.svelte.ts) - the
-     wear trend offers the same axis and had the same twenty-five lines. */
-  const readAxis = dayAxisState(() => today);
-
-  /* A re-keyed axis reads the whole journal and says so, which is the same
-     call Care's own interval folds make: the question needs every interval
-     and every day either side of a surgery available, and the span above
-     would otherwise hand it a slice that answers nothing. So the note below
-     swaps in instead of the span quietly doing nothing. */
-  let from = $derived(readAxis.keying ? FIRST_EPOCH_DAY : spanFrom);
-
-  let dysphoriaQuery = liveList((j) => j.stats.bodyRegionTrend(region, 'dysphoria', from, spanTo, modeFilter));
-  let euphoriaQuery = liveList((j) => j.stats.bodyRegionTrend(region, 'euphoria', from, spanTo, modeFilter));
-  /* Both axes of one region over one range, so both take the same
-     annotations (ticket 23) - and neither takes any on a re-keyed axis.
-     An annotation is a calendar date and a position is not one: several
-     calendar days collapse onto one position under the repeating rule, so
-     a mark drawn there would claim a coincidence the data does not carry. */
+  let dysphoriaQuery = liveList((j) => j.stats.bodyRegionTrend(region, 'dysphoria', spanFrom, spanTo, modeFilter));
+  let euphoriaQuery = liveList((j) => j.stats.bodyRegionTrend(region, 'euphoria', spanFrom, spanTo, modeFilter));
+  /* Both readings cover one calendar range and take the same annotations.
+     */
   let annotationsQuery = liveList((j) =>
-    readAxis.keying ? Promise.resolve([]) : j.chartAnnotations.getAnnotations(from, spanTo, today)
+    j.chartAnnotations.getAnnotations(spanFrom, spanTo, today)
   );
   let dysphoria = $derived(dysphoriaQuery.rows);
   let euphoria = $derived(euphoriaQuery.rows);
 
-  /* One call for both series, so they fold onto one width and the two
-     cards' axes cannot disagree ($lib/charts/dayAxis). */
-  let plotted = $derived(plotDaySeriesGroup([dysphoria, euphoria], readAxis.keying, spanDays));
+  /* One call for both series, so the two cards share one calendar axis
+     ($lib/charts/dayAxis). */
+  let plotted = $derived(plotDaySeriesGroup([dysphoria, euphoria], null, spanDays));
   let plottedDysphoria = $derived(plotted[0]);
   let plottedEuphoria = $derived(plotted[1]);
 
-  let rangeEnds = $derived(dayAxisEnds(plottedDysphoria, from, spanTo));
-
-  /* A screen reader is told which axis a reading is on, and only when it is
-     not the one every chart starts on: ", read by Date" on the calendar
-     axis would be a phrase appended to every chart on the screen to say
-     nothing had changed. */
-  let axisName = $derived(dayAxisLabel(readAxis.axis, readAxis.anchors));
-  const withAxis = (reading: string) =>
-    readAxis.keying ? m.chart_axis_reading_aria({ reading, axis: axisName }) : reading;
+  let rangeEnds = $derived(dayAxisEnds(plottedDysphoria, spanFrom, spanTo));
 
   /* The figure's role, which is the two chart cards' own - `/stats` gives
      its charts area index 0 too, so the figure, the two charts here and
-     every chart over there are one colour. Under DIRECTION rule 3 a filled
-     region is a chart mark, the third of the three places colour may live. */
+     every chart there use one colour. A filled region is a chart mark. */
   let figureRole = $derived(roleAt(activeFlag.roles, 0));
 
   /* What the figure paints: one reading per region that has any in the
@@ -157,20 +107,19 @@
      range and the same presentation filter the charts below take, so the
      figure and the charts can never disagree about which entries are in
      view. */
-  let mapQuery = liveList((j) => j.stats.bodyRegionMap(from, spanTo, modeFilter));
+  let mapQuery = liveList((j) => j.stats.bodyRegionMap(spanFrom, spanTo, modeFilter));
 
-  /* What the figure is saying about the region that is picked, in words
-     (phase 11 pre-production UI/UX ticket 30). Before this the screen named
-     the pick once, in the heading over the two charts - which is under the
-     mode filter and, on a 390px phone, under the fold - so a tap on a panel
-     answered with a colour and nothing else, and the name of the thing you
-     had just selected was somewhere you had to scroll to find.
+  /* What the figure is saying about the region that is picked, in words. Before this the
+     screen named the pick once, in the heading over the two charts - which is under the
+     mode filter and, on a 390px phone, under the fold - so a tap on a panel answered with a
+     colour and nothing else, and the name of the thing you had just selected was somewhere
+     you had to scroll to find.
 
-     The same reading the panel is painted from, off one answer rather than a
-     second pass over the same rows (bodyMap.ts's regionSummary): the fill,
-     the accessible name on the button and this sentence can then only ever
-     agree. A region the range never mentions is absent from the rows
-     entirely, and says so - never a zero, which on this scale is a reading. */
+     The same reading the panel is painted from, off one answer rather than a second pass
+     over the same rows (bodyMap.ts's regionSummary): the fill, the accessible name on the
+     button and this sentence can then only ever agree. A region the range never mentions is
+     absent from the rows entirely, and says so - never a zero, which on this scale is a
+     reading. */
   let selectedSummary = $derived(regionSummary(mapQuery.rows.find((r) => r.region === region)));
   let summaryText = $derived.by(() => {
     if (selectedSummary.kind === 'none') return m.body_map_selected_none();
@@ -215,7 +164,7 @@
   });
 
   /* Latched: the mirror re-arms `ready` on a journal re-open, and a reserve
-     must not put its placeholder back over the map (ticket 211). */
+     must not put its placeholder back over the map. */
   let mapRevealed = $state(false);
   $effect.pre(() => {
     if (vocabulary.ready) mapRevealed = true;
@@ -225,10 +174,10 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.body_map_title()} subtitle={m.body_map_sub()} screen="body-map" back="/stats" />
+  <ScreenHeader title={m.body_map_title()} screen="body-map" back="/stats" />
 
   <!-- Held at last visit's height until the vocabulary mirror names the
-       regions, then faded in (ux-carpet ticket 211): the figure cut in at
+       regions, then faded in: the figure cut in at
        full opacity when it did. -->
   <ReadReserve ready={mapRevealed} estimate={mapEstimate} onrest={mapRemember}>
     {#if regions.length}
@@ -241,15 +190,14 @@
           onSelect={(picked) => (region = picked)}
         />
 
-        <!-- The pick, in words, on the figure's own card: the name, what the
-             range has to say about that region, and the way down to its two
-             charts. No hairline over it - the elsewhere cluster above ends on
-             one already, and a second line a few pixels under the first reads
-             as a mistake rather than as a boundary.
+        <!-- The pick, in words, on the figure's own card: the name, what the range has to
+             say about that region, and the way down to its two charts. No hairline over it
+             - the elsewhere cluster above ends on one already, and a second line a few
+             pixels under the first reads as a mistake rather than as a boundary.
 
-             Keyed on the region, so the words ease in on a pick rather than
-             swapping in place, and the sentence's slot travels between its own
-             two heights rather than stepping (ticket 25's ease-in, rule 10). -->
+             Keyed on the region, so the words ease in on a pick rather than swapping in
+             place, and the sentence's slot travels between its own two heights rather than
+             stepping. -->
         <div class="body-map-selected" data-body-map-context>
           <div class="body-map-selected-line">
             <div class="body-map-selected-name-slot">
@@ -281,39 +229,6 @@
         </div>
       </div>
 
-      <!-- The axis sits above the range, because it decides whether there is
-           a range to pick. Absent for a journal that can only answer the
-           calendar - no dose log with a completed interval in it and no
-           procedure with a date - which is the same data gating the mode
-           filter below makes. -->
-      <div class="kit-reading-controls">
-        {#if readAxis.axes.length > 1}
-          <div class="kit-filter">
-            <label class="kit-filter-label" for="body-map-axis">{m.chart_axis_label()}</label>
-            <ChartPicker
-              key="body-map-axis"
-              id="body-map-axis"
-              labelledBy="body-map-axis"
-              value={readAxis.axis}
-              options={dayAxisOptions(readAxis.axes, readAxis.anchors)}
-              onPick={(value) => (readAxis.axis = value as DayAxis)}
-            />
-          </div>
-        {/if}
-
-      <!-- The range picker that used to sit in this slot is gone (redesign
-           ticket 05): the screen takes its span from Look back now, the same
-           way /compare takes its two. A re-keyed axis still reads all
-           history regardless of that span, so the note it says so with keeps
-           its own resize and crossfade - what used to swap out for the range
-           picker now just leaves. -->
-        <div class="kit-reading-slot" use:resize>
-          {#if readAxis.keying}
-            <p class="muted small kit-reading-note" out:crossfade>{m.chart_axis_all_history()}</p>
-          {/if}
-        </div>
-      </div>
-
       {#if vocabulary.visiblePresentations.length > 0}
         <div class="kit-filter">
           <label class="kit-filter-label" for="body-map-mode-filter">{m.presentation_label()}</label>
@@ -331,11 +246,10 @@
         </div>
       {/if}
 
-      <!-- Which region the two charts below describe. The figure says it in
-           colour and this says it in words, which is also the equivalent the
-           shapes owe a screen reader beyond their own names. Keyed, so the
-           label eases in on a change rather than swapping in place (ticket
-           25's ease-in). -->
+      <!-- Which region the two charts below describe. The figure says it in colour and this
+           says it in words, which is also the equivalent the shapes owe a screen reader
+           beyond their own names. Keyed, so the label eases in on a change rather than
+           swapping in place. -->
       {#key region}
         <h2
           class="body-map-reading-head"
@@ -367,7 +281,7 @@
               from={rangeEnds.from}
               to={rangeEnds.to}
               annotations={annotationsQuery.rows}
-              ariaLabel={withAxis(m.body_map_chart_aria({ region: regionName, first, second }))}
+              ariaLabel={m.body_map_chart_aria({ region: regionName, first, second })}
             />
           </div>
         {/key}
@@ -423,6 +337,11 @@
 </div>
 
 <style>
+  .kit-filter-label {
+    font-size: var(--text-sm);
+    color: var(--text-2);
+  }
+
   /* The figure's own card. The shapes are the drawing, so the card gives
      them room and nothing else - no silhouette to sit on, because
      whole_body is the ground now. */
@@ -434,7 +353,7 @@
     margin-bottom: var(--space-3);
   }
 
-  /* The pick, in words (ticket 30). Under the drawing rather than beside it:
+  /* The pick, in words. Under the drawing rather than beside it:
      at 390px there is no beside, and the card the figure is on is where the
      selection lives. */
   .body-map-selected {

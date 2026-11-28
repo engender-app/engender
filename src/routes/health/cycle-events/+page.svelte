@@ -1,18 +1,17 @@
 <script lang="ts">
-  /* The cycle event log (phase 5 ticket 03, CONTEXT: "Cycle event"). Cycle
-     events are their own record type, mirroring side-effects.ts exactly:
-     no mood, dimension values, tags or note, and no stored regimen-episode
-     reference - the list and editor below work whether or not a regimen
-     episode exists. The chart is the one thing side effects has no analog
-     for: it reads regimen.getEpisodes() only to draw bands behind the
-     events, which is why it, and not the list or editor, is the part that
-     changes shape when there is no regimen history yet.
+  /* The cycle event log. Cycle events are their own record type, mirroring side-effects.ts
+     exactly: no mood, dimension values, tags or note, and no stored regimen-episode
+     reference - the list and editor below work whether or not a regimen episode exists. The
+     chart is the one thing side effects has no analog for: it reads regimen.getEpisodes()
+     only to draw bands behind the events, which is why it, and not the list or editor, is
+     the part that changes shape when there is no regimen history yet.
 
      Purely descriptive throughout (see Clue's own guidance for trans users:
-     https://helloclue.com/articles/cycle-a-z/tips-for-using-clue-when-you're-trans):
-     no prediction of a next period, no fertility framing, no assumption
-     that a regular cycle exists. */
-  import { crossfade, resize } from '$lib/motion/reveal';
+     https://helloclue.com/articles/cycle-a-z/tips-for-using-clue-when-you're-trans): no
+     prediction of a next period, no fertility framing, no assumption that a regular cycle
+     exists. */
+  import { undoable } from '$lib/stores/deleteUndo';
+  import { collapse, crossfade, resize } from '$lib/motion/reveal';
   import { fadeOnly, motionDuration } from '$lib/motion/tokens';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
@@ -51,11 +50,10 @@
 
   const KINDS: CycleEventKind[] = ['period_occurred', 'spotting', 'nothing_this_month'];
 
-  /* The strip's fill takes role 0 (ticket 56, following ticket 44's rule for
-     dilation and wear): index 0 is the only role guaranteed chromatic on all
-     8 palettes, and a logged day filled in a palette's achromatic band is a
-     day drawn as nothing. The chart draws its own line colour
-     (CycleEventChart.svelte) and takes no role here. */
+  /* The strip's fill takes role 0: index 0 is the only role guaranteed chromatic on every
+     palette, and a logged day filled in a palette's achromatic band is a day drawn as
+     nothing. The chart draws its own line colour (CycleEventChart.svelte) and takes no role
+     here. */
   const SECTION_ROLE = { strip: 0, sessions: 1 };
 
   const today = $derived(currentDay());
@@ -85,11 +83,9 @@
       : []
   );
 
-  /* The log is a week at a time now (phase 10 redesign ticket 56, reusing
-     ticket 44's DayStrip/dayStrip.ts). A day here is `logged` or nothing -
-     there is no `expected`, the same restraint wear's own strip applies:
-     nothing schedules a cycle event, and this screen has always refused to
-     predict one. */
+  /* The log is a week at a time now. A day here is `logged` or nothing - there is no
+     `expected`, the same restraint wear's own strip applies: nothing schedules a cycle
+     event, and this screen has always refused to predict one. */
   let eventsByDay = $derived.by(() => {
     const byDay = new Map<number, CycleEvent[]>();
     for (const event of events) {
@@ -144,11 +140,11 @@
         epochDay: epochDayFromDateInputValueOrToday(draft.date)
       });
     },
-    remove: (id) => journal.cycleEvents.deleteCycleEvent(id),
+    remove: (id) => undoable((j) => j.cycleEvents.deleteCycleEvent(id)),
     findById: (id) => events.find((event) => event.id === id)
   });
 
-  /* Latched: a reserve must not put its placeholder back (ux-carpet ticket 205). */
+  /* Latched: a reserve must not put its placeholder back. */
   let cycleEventsRevealed = $state(false);
   $effect.pre(() => {
     if (!cycleEventsRevealed && (!eventsQuery.loading && !episodesQuery.loading)) cycleEventsRevealed = true;
@@ -158,19 +154,19 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.cycle_events()} back="/care/changes" subtitle={m.cycle_events_intro()}>
+  <ScreenHeader title={m.cycle_events()} back="/more" subtitle={m.cycle_events_intro()}>
     {#snippet actions()}
-      <button class="icon-btn press" data-add aria-label={m.cycle_event_add_aria()} onclick={() => record.openEditor(null)}>
+      <button class="icon-btn press" data-add aria-label={m.cycle_event_add()} onclick={() => record.openEditor(null)}>
         <Icon name="plus" size={22} />
       </button>
     {/snippet}
   </ScreenHeader>
 
-  <!-- Not ReadGate's shape, for the reason the starred screen is not
-       (phase 5 audit ticket 04): the gate branches on one read, and the rows
+  <!-- Not ReadGate's shape, for the reason the starred screen is not:
+the gate branches on one read, and the rows
        here need the regimen episodes as well as the events, so drawing them
        the moment the events land would draw the chart without its bands. -->
-  <!-- Held at last visit's height until the reads answer, then faded in (ux-carpet ticket 205): a page-level skeleton swap cut this in at full opacity. -->
+  <!-- Held at last visit's height until the reads answer, then faded in: a page-level skeleton swap cut this in at full opacity. -->
   <ReadReserve ready={cycleEventsRevealed} estimate={cycleEventsEstimate} onrest={cycleEventsRemember}>
     {#if events.length}
       <div class="screen-part">
@@ -222,15 +218,17 @@
             {:else}
               <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}>
                 {#each weekEvents as event (event.id)}
-                  <ListRow
-                    key={event.id}
-                    data-cycle-event={event.id}
-                    icon="calendar"
-                    title={cycleEventKindName(event.kind)}
-                    subtitle={fmtDay(event.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
-                    chevron={false}
-                    onclick={() => record.openEditor(event)}
-                  />
+                  <div class="rows-divide" transition:collapse>
+                    <ListRow
+                      key={event.id}
+                      data-cycle-event={event.id}
+                      icon="calendar"
+                      title={cycleEventKindName(event.kind)}
+                      subtitle={fmtDay(event.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
+                      chevron={false}
+                      onclick={() => record.openEditor(event)}
+                    />
+                  </div>
                 {/each}
               </ListCard>
             {/if}
@@ -242,33 +240,26 @@
         <SectionHeading text={m.cycle_event_history_title()}>
           {#snippet action()}
             {#if historyEnds}
-              <span class="muted small" data-cycle-event-history-range>{m.cycle_event_history_range(historyEnds)}</span>
+              <span class="muted small" data-cycle-event-history-range>{m.range_from_to(historyEnds)}</span>
             {/if}
           {/snippet}
         </SectionHeading>
-        <!-- The chart is not in a card. It is the only thing in this area of
-             the screen, and a box drawn around the one thing on a screen is
-             what DIRECTION.md 2b names as making a screen read as generic -
-             the same call the calendar's month grid made. The endpoints sit
-             above it on the kit's filter line, because they say what the
-             chart is showing rather than entering a value. Moved under the
-             reading and the strip (ticket 56, rule 16: what is true now comes
-             first, and a chart against a chosen range is a record of before,
-             not now) - the same move ticket 44 made for wear's own trend. -->
+        <!-- Draw the chart directly on the page, below the current reading and
+             strip. Its filter line names the selected range above the plot. -->
         <div class="kit-filter cd-endpoints">
-          <Field label={m.cycle_event_range_start_label()} id="cycle-event-range-start">
+          <Field label={m.range_from_label()} id="cycle-event-range-start">
             {#snippet children(id)}
               <DatePicker max={dayRangeStartMax(endInput)} bind:value={startInput} {id} />
             {/snippet}
           </Field>
-          <Field label={m.cycle_event_range_end_label()} id="cycle-event-range-end">
+          <Field label={m.range_to_label()} id="cycle-event-range-end">
             {#snippet children(id)}
               <DatePicker min={dayRangeEndMin(startInput)} bind:value={endInput} {id} />
             {/snippet}
           </Field>
         </div>
         {#if range === null}
-          <p class="muted small">{m.cycle_event_range_required()}</p>
+          <p class="muted small">{m.range_required()}</p>
         {:else}
           <CycleEventChart fromEpochDay={range.start} toEpochDay={range.end} {bands} events={chartEvents} />
         {/if}
@@ -279,9 +270,9 @@
           icon="calendar"
           key="cycle-events-empty"
           role={roleAt(activeFlag.roles, 0)}
-          title={m.cycle_event_empty_title()}
+          title={m.empty_log_title()}
           text={m.cycle_event_empty_body()}
-          action={{ label: m.cycle_event_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
+          action={{ label: m.cycle_event_add(), primary: true, onclick: () => record.openEditor(null) }}
         />
       </div>
     {/if}
@@ -292,8 +283,8 @@
     handle="cycle-event"
     newTitle={m.cycle_event_new_sheet()}
     editTitle={m.cycle_event_edit_sheet()}
-    saveLabel={m.cycle_event_save()}
-    deleteLabel={m.cycle_event_delete()}
+    saveLabel={m.save()}
+    deleteLabel={m.delete()}
     confirm={{
       title: m.cycle_event_delete_sheet(),
       question: (e) =>
@@ -301,8 +292,8 @@
           kind: cycleEventKindName(e.kind),
           date: fmtDay(e.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })
         }),
-      hint: () => m.cycle_event_delete_hint(),
-      confirmLabel: m.cycle_event_delete(),
+      hint: () => m.delete_undo_hint(),
+      confirmLabel: m.delete(),
       cancelLabel: m.keep_it()
     }}
   >
@@ -317,7 +308,7 @@
           />
         {/snippet}
       </Field>
-      <Field label={m.cycle_event_date_label()} id="cycle-event-date">
+      <Field label={m.date_label()} id="cycle-event-date">
         {#snippet children(id)}
           <DatePicker name="cycle-event-date" bind:value={editor.date} {id} />
         {/snippet}

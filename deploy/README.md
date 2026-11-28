@@ -1,12 +1,13 @@
 # Production hosting and release switch
 
-Ticket 05 serves the Journal from one decided origin:
-`app.engender.barankiewicz.dev`.
+The production Journal runs at `journal.engender.app`.
 
-The VPS keeps immutable release directories and one symlink:
+The VPS keeps immutable release directories, a serving symlink and switch
+history:
 
 - `/home/journal/releases/<version>--<buildId>/` - complete static release
 - `/home/journal/current` - symlink nginx serves from
+- `/home/journal/current.history.json` - selected and previously active targets
 
 Nginx resolves the symlink per request, so replacing it is enough to switch
 traffic with no reload and no half-copied release state.
@@ -14,21 +15,20 @@ traffic with no reload and no half-copied release state.
 Hosting your own copy on another origin is covered in
 [SELF-HOSTING.md](SELF-HOSTING.md). It installs the same two snippets.
 
-## Adding the chosen hostname to an existing installation
+## Moving the journal to another hostname
 
-Keep `app.gender-diary.barankiewicz.dev` serving its existing release. Add
-`app.engender.barankiewicz.dev` as a separate nginx site; do not redirect the
-old hostname or replace its certificate. Browser journals belong to their
-origin. A journal on the old hostname stays there until its owner exports an
-archive and imports it on the new hostname. Android still uses
-`https://localhost`, so these DNS and nginx changes do not move Android data.
+Browser journals belong to their origin. A journal kept on the old hostname
+stays there until its owner exports an archive and imports it on the new one,
+so a hostname change is only free while no one keeps a journal on the old
+one. The move to `journal.engender.app` happened before 1.0.0, when the
+previous origin served only a development build.
+Android uses `https://localhost`, so DNS and nginx changes never move Android
+data.
 
-In the DNS provider's panel, set an A record for
-`app.engender.barankiewicz.dev` to the existing journal VPS address. Read that
-address from the `journal-host` SSH alias. Keep the landing site's record and the
-old app record unchanged. Check both authoritative nameservers before issuing
-a certificate. If the new app hostname has an AAAA record, it must reach the
-same server too.
+In the DNS provider's panel, point an A record for the new hostname at the
+journal VPS. Check both
+authoritative nameservers before issuing a certificate. If the hostname has
+an AAAA record, it must reach the same server.
 
 First enable an HTTP-only server for the new hostname. Give its
 `/.well-known/acme-challenge/` location the root `/var/lib/letsencrypt` and
@@ -40,20 +40,15 @@ certificate exists:
 sudo install -d -m 0755 /var/lib/letsencrypt
 sudo nginx -t
 sudo systemctl reload nginx
-sudo certbot certonly --webroot -w /var/lib/letsencrypt -d app.engender.barankiewicz.dev
+sudo certbot certonly --webroot -w /var/lib/letsencrypt -d journal.engender.app
 ```
 
-After issuance, install the snippets and replace only the new hostname's
-bootstrap site with `deploy/nginx/journal.conf` as described below. Its HTTP
-challenge location keeps renewals out of the immutable release directories.
-The new site initially serves the existing `/home/journal/current` release;
-adding a hostname does not publish a new app build.
-
-Verify valid TLS, response headers and `/release.json` on both app hostnames.
-Their release metadata must match. To roll back the hostname addition,
-disable only the new site's symlink, test nginx and reload, then restore the
-new hostname's previous DNS record. Leave the old site, its certificate and
-`/home/journal/current` untouched.
+After issuance, install the snippets and replace the bootstrap site with
+`deploy/nginx/journal.conf` as described below. Its HTTP challenge location
+keeps renewals out of the immutable release directories. The site serves the
+existing `/home/journal/current` release; changing a hostname does not
+publish a new app build. Verify TLS, response headers and `/release.json`
+before removing the old hostname's site and certificate.
 
 ## Nginx setup
 
@@ -102,7 +97,7 @@ The two counters are `/app` and `/website`. They count online document
 openings, including reloads, not people or internal navigation. Android,
 offline openings, demo builds and other origins do not send counts.
 
-Keep the GoatCounter dashboard on `stats.engender.barankiewicz.dev`. Never
+Keep the GoatCounter dashboard on `stats.engender.app`. Never
 proxy its scripts onto the journal origin: they would have access to the
 browser's journal storage. GoatCounter listens only on `127.0.0.1:8081`
 with `-base-path /gc`.
@@ -114,6 +109,11 @@ and settings. Create the Engender site linked to that site's administrator.
 Set only the Engender site's settings to `collect=1` (`CollectNothing`),
 `public="private"` and `data_retention=0`. Zero for `collect` restores
 defaults and is not equivalent to collecting nothing.
+
+GoatCounter picks a site by the request's Host, so the Engender site's
+`cname` must equal the dashboard hostname. Moving the dashboard to another
+hostname means updating it too, with the service stopped:
+`goatcounter db update site -find <id> -vhost <new host>`.
 
 After DNS reaches this VPS on both authoritative nameservers, issue a
 certificate using the HTTP bootstrap procedure above, with the stats
@@ -139,16 +139,15 @@ many addresses can still inflate these public totals.
 Install `nginx/engender-logrotate` as `/etc/logrotate.d/engender`, create
 `/var/log/nginx/engender` owned by `www-data:adm`, and ensure logrotate and
 its daily timer are installed and enabled. The production app server blocks
-disable access logs and use this separate error directory. Apply the same
-logging directives to the retained legacy app hostname. Five daily archives
+disable access logs and use this separate error directory. Five daily archives
 plus the active file leave room for the timer’s randomized delay within the
 seven-day limit when the daily timer runs. Rotation includes empty files so older errors still expire on quiet
 days. The counter locations write neither access nor error logs.
 
 Check both existing and new dashboard logins, private visibility, fixed
 counter labels, zero individual hits and bot rows for the new site, nginx
-configuration and the rotation timer. `node tests/page-count-hosting.mjs`
-checks the proxy with Podman; `node tests/page-load-browser.mjs` checks a
+configuration and the rotation timer. `node tests/tools/page-count-hosting.mjs`
+checks the proxy with Podman; `node tests/tools/page-load-browser.mjs` checks a
 production app build in Chromium. These commands send only synthetic data.
 
 Installing the endpoints does not publish an app build. The Journal counter
@@ -166,15 +165,24 @@ whether newer statistics would be lost before replacing the database.
 ### GitHub Actions
 
 The last job in `.github/workflows/release.yml` deploys stable signed tags
-(`v<major>.<minor>.<patch>`) after CI and GitHub publication succeed. Prerelease
+(`v<major>.<minor>.<patch>`) after CI and GitHub publication succeed. The run
+starts by hand from main with the tag as input, and the job uses main's copy
+of the deploy script. Prerelease
 tags publish downloadable artifacts without changing production. The optional
 Play upload remains non-blocking. The existing `release` environment approval
 still applies.
 
-The job downloads the published web archive and verifies its checksum, uploads
-it over SSH, then calls `journal-release.mjs` on the VPS. It compares the public
-`release.json` with the uploaded metadata before reporting success. No build
-runs on the VPS, and nginx configuration is not part of deployment.
+The package job records the SHA-256 of the web bundle it built as a job
+output. The deploy job takes the bundle from the run's own artifacts and that
+digest from `needs.package.outputs`, never from the GitHub Release, whose
+assets anyone with release access can replace together with `SHA256SUMS`. It
+refuses a bundle that does not hash to the digest, uploads the bundle over SSH
+with the digest in the command (`ssh ... sha256:<digest>`), and the receiver
+refuses an archive that does not hash to it before extracting anything. The
+job then calls `journal-release.mjs` on the VPS and compares the public
+`release.json`, `index.html`, `service-worker.js` and `_app/version.json` with
+the bundle before reporting success. No build runs on the VPS, and nginx
+configuration is not part of deployment.
 
 Configure these secrets in GitHub's `release` environment: `VPS_HOST`,
 `VPS_PORT`, `VPS_USER`, `VPS_DEPLOY_KEY`, and `VPS_KNOWN_HOSTS`. Use the
@@ -188,8 +196,12 @@ The VPS needs Node.js 18 or later, Python 3.12 or later, Bash, diff and flock. I
 `scripts/journal-release.mjs` and `scripts/app-version.mjs` as root-owned,
 mode 644 under `/usr/local/lib/engender/`, also root-owned and mode 755.
 Update these scripts as an administrator when deployment logic changes;
-uploads contain only static build files. The receiver rejects links, special
-files and paths outside `build/` before extracting anything.
+uploads contain only static build files. The receiver rejects an archive whose
+digest is not the one passed with the upload, then links, special files, paths
+that leave the release directory and top-level directories a web build does not
+have (scripts/, for one), before anything is switched. Reinstall
+the receiver after this change: the old one expects a `build/` prefix and no
+digest.
 Give `journal` a Bash login
 shell and keep its password locked. Its CI public key in
 `/home/journal/.ssh/authorized_keys` must use:
@@ -236,8 +248,24 @@ What deploy enforces:
 - source `release.json` must name a release version (not `0.0.0-dev...`) unless `--allow-development-version` is passed deliberately
 - full directory copy lands before the symlink switch
 - previous release directory stays in place
+- PDF workers from the selected and outgoing releases remain reachable through
+  a separate namespace; neither original release tree is changed
 - deployment refuses a lower `schemaMax` or an older stable version; use the
   explicit rollback command for a deliberate rollback
+
+The operator stages PDF workers in `releases/.pdf-workers/` and atomically
+publishes `releases/.pdf-current` before switching `current`. The nginx snippet
+uses that sibling namespace only when a PDF worker is absent from the selected
+release. Install the updated snippet before using this operator version.
+Original release files and `release.json` stay unchanged. Identical worker
+names must have identical bytes, or the switch is refused.
+
+The network window covers two release sets: the selected release and the one
+active immediately before the switch, including explicit rollback. Superseded
+namespace snapshots are removed after a successful switch. A worker from an
+earlier release may remain available in a browser's retained cache, but the
+server does not promise its uncached first open after another switch. PDF
+workers still load on demand; an uncached first open needs a network.
 
 For explicit non-release checks only:
 
@@ -258,6 +286,24 @@ Previous release rollback:
 ```bash
 node scripts/journal-release.mjs rollback --previous
 ```
+
+`--previous` selects the release that was active immediately before the last
+successful deploy or rollback. Directory timestamps do not determine that
+choice. For example, deploy 1.0.0, deploy 1.0.1, roll back to 1.0.0, then
+deploy 1.0.2: `--previous` returns to 1.0.0.
+
+Each switch writes `<current-link>.history.json` beside the configured current
+link. The receipt names both the selected and outgoing targets. `list` marks
+the selected release with `*` and its recorded previous release with `<`.
+The deploy message names that same previous target. A rollback to the already
+selected release leaves the history and PDF namespace unchanged.
+
+The operator publishes complete history before changing `current`. On a
+caught switch failure it restores the prior receipt and PDF namespace. If
+an interruption leaves a receipt that does not match `current`, `--previous`
+refuses to guess. A missing, malformed or stale receipt, or a removed target,
+requires a named rollback. Existing installations without switch history
+start recording it on the next deploy or named rollback.
 
 By default rollback refuses a target with lower `schemaMax` than the currently
 served release. That guard stops selecting code that cannot safely open journals
@@ -291,21 +337,27 @@ exact config snippets, serves the build through it and checks:
 - no runtime requests to other origins
 - `nginx -t` over the bare-nginx template in `deploy/self-host/engender.conf`
 
-## Local operator note
-
-If you keep a machine-specific runbook, store it in
-`.scratch/ticket-05-hosting-checklist.md` so it stays local and untracked.
-
-
 ## Candidate evidence before publication
 
 Development CI accepts the pending record in
 `scripts/progressive-release-record.json`. A signed tag does not. Before the
 release workflow builds or publishes artifacts, it checks the record against
-that tag's exact version and the tested source revision. Stable tags require
-`stable`; prerelease tags require `stage2`, the prerequisite for the signed
-GitHub APK in stage3. Stage3's publication claims are recorded after that APK
-and Play open testing exist. Prereleases never deploy the production web app.
+that tag's exact version and the tested source revision. The tag command runs
+the same gate before creating or pushing a tag, including in dry-run mode.
+Stable tags require the candidate checks in `stage1`, `stage2` and `stable`.
+Prerelease tags require `stage1` and `stage2`. These checks can pass while every
+channel is still `label-only`; channel availability is recorded after publication.
+Prereleases never deploy the production web app.
+
+Publish web and GitHub/Obtainium first. Record the web channel after its stage1
+checks and deployment, and Obtainium after its stage2 device checks and signed
+GitHub APK publication. Play's stage3 and F-Droid's stage4 outcomes follow on
+their own schedules. Neither is a prerequisite for the first stable release or
+a later stable hotfix. An incomplete stage3 or stage4 claim still fails the gate;
+leave its timestamps empty and checks false until that work is complete.
+
+For Android signing and channel-switch evidence, follow
+[Android channel verification](#android-channel-verification).
 
 Commit the candidate source, including release notes, before running its release
 matrix. Record that commit's full SHA in `candidateRevision` and the intended
@@ -331,3 +383,59 @@ Use the command for the version being released. Ordinary
 `npm run check:progressive-release` only validates the record's current claims;
 it does not authorize publication. The existing tag workflow still checks the
 signature's presence and main ancestry. No evidence is filled in automatically.
+
+## Android channel verification
+
+Play retains its current app-signing key and update path. The release workflow
+continues to sign GitHub APKs and AAB uploads with the existing developer key.
+Their public fingerprints and separate roles are recorded in
+[SECURITY.md](../SECURITY.md#android-signing-certificates). Do not reset Play's
+key to align channels: existing internal and closed-test installations would
+lose their update path. Play publication remains in the human release workflow.
+
+The selected F-Droid route is
+[reproducible builds with upstream signatures](https://f-droid.org/en/docs/Reproducible_Builds/).
+Its metadata uses the published GitHub APK URL in `Binaries` and pins the
+GitHub APK certificate in `AllowedAPKSigningKeys`. F-Droid independently rebuilds
+the source and verifies the upstream signature. No private key is given to
+F-Droid, and no Play-signed APK is redistributed through these channels.
+
+GitHub/F-Droid in-place switching is a target, not a verified capability.
+Before claiming it works, retain:
+
+- The exact source revision, build recipe, toolchain, version name/code, APK
+  digests and certificate fingerprints for the GitHub and F-Droid artifacts.
+- F-Droid's successful comparison of its clean source rebuild with the signed
+  upstream APK. The local `fdroid-rebuild-report.mjs` only compares two unsigned
+  Gradle builds using already prepared web assets; its result cannot substitute
+  for this comparison or F-Droid's acceptance.
+- Installed updates from GitHub to F-Droid and from F-Droid to GitHub on
+  disposable test installations. Use synthetic journals, compatible
+  equal-or-newer destination versions and the same application ID. Confirm
+  unlock, journal rows and attachment bytes survive each update without
+  uninstalling, clearing data or restoring an Archive. Record device/API,
+  artifact identities and results. A matching certificate alone is insufficient.
+
+Keep the F-Droid submission disabled and its release-record claims unset until
+their required evidence exists. Channel availability follows each store's
+schedule; wait for a compatible version rather than downgrading. Existing
+GitHub and Play installations retain their original signing/update paths.
+The publication workflow and F-Droid acceptance remain separate from this
+signing decision.
+
+Direct switching between Play and the other channels is not supported. If a
+person chooses to move between incompatible channels, they must export an
+Archive and verify restoration on a separate disposable installation before
+uninstalling. Uninstalling removes the local journal; a signing decision does
+not authorize that operation.
+
+OCR generations live under `/tesseract/<sha256>/`. Release preparation retains
+previous OCR directories and freezes historical root URLs before switching
+`current`. Keep these directories when copying releases outside this helper.
+The nginx snippet serves legacy `.traineddata.gz` requests from canonical
+`.traineddata` files; do not add `.gz` duplicates to APK assets.
+
+The upload carries the frozen pre-generation Tesseract library at its original
+immutable URL. Release preparation checks the receipt against both a retained
+copy and any staged fallback. Missing or changed required bytes refuse the
+switch; a verified staged copy also supports first deployment.

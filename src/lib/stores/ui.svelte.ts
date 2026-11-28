@@ -1,28 +1,22 @@
 /* Small cross-screen UI state. */
 
 export const ui = $state({
-  /** Quick add's fan (F1, phase 5 ticket 18), openable from the bar and the rail. */
+  /** Quick add's fan, openable from the bar and the rail. */
   chooserOpen: false,
-  /* The app is opening: a gate has taken the secret and the field is on its
-     way to the height the screen behind it draws ($lib/motion/appOpening,
-     redesign ticket 34).
+  /* The app is opening: a gate has taken the secret and the field is on its way to the
+     height the screen behind it draws.
 
-     Held here rather than in that module because it has to be a rune - the
-     surfaces that read it are components - and that module is node-tested,
-     which a `.svelte.ts` cannot be. What reads it is anything whose own read
-     answers during the opening: a view transition paints its snapshots over
-     the page, so a panel that mounts under one is not drawn arriving and is
-     simply there when the paint lifts, rows below it shoved down (Alicja,
-     round one: "a yank caused by the backup monit appearing between frames
-     24 and 25"). Waiting for this to clear puts it on a settled screen,
-     where opening its own height reads as the change it is. */
+     Held here rather than in that module because it has to be a rune - the surfaces that
+     read it are components - and that module is node-tested, which a `.svelte.ts` cannot
+     be. What reads it is anything whose own read answers during the opening: a view
+     transition paints its snapshots over the page, so a panel that mounts under one is not
+     drawn arriving and is simply there when the paint lifts, rows below it shoved down.
+     Waiting for this to clear puts it on a settled screen, where opening its own height
+     reads as the change it is. */
   appOpening: false,
   /** The Android tab field is moving; nested month entrances ride it. */
   tabMoving: false,
-  /** A view transition between two screens is running (ticket 09). A read
-      too heavy to run under one waits for it to end: the hormone curve's
-      model is about 100 ms of arithmetic on the phone, and run while its
-      screen arrived it stalled the transition for as long. */
+  /** A view transition between two screens is running. */
   screenMoving: false,
   /* Whether the pointer that opened the fan is still down. The add control
      sets it and quick add clears it, because the press-and-slide gesture
@@ -42,21 +36,18 @@ export const ui = $state({
      because they are not two shades of the same thing: one has something
      arriving and the other has nothing to arrive. */
   chooserFailed: false,
-  /** Which vocabulary manager's sheet is raised over whatever screen is
-      showing (audit item 6): modes and entry templates are vocabulary
-      managers wearing an area screen's clothes even under Settings
-      (redesign ticket 51), two rows and hundreds of pixels of black for
-      anyone with few of either. Mounted once at the app root
-      (VocabularyManagerSheets, alongside QuickAdd) rather than inside
-      Settings, so the entry editor's own "manage" links (EntryEditor.svelte)
-      can raise the same sheet in place, with no navigation at all - only a
-      stale bookmark to the old standalone screen actually navigates, to
-      Settings, before raising it the same way. */
-  raisedManager: null as 'modes' | 'templates' | null
+  /** Which vocabulary manager's sheet is raised over whatever screen is showing: modes are
+      a vocabulary manager wearing an area screen's clothes even under Settings, hundreds of
+      pixels of black for anyone with few of them. Mounted once at the app root
+      (VocabularyManagerSheets, alongside QuickAdd) rather than inside Settings, so the
+      entry editor's own "manage" links (EntryEditor.svelte) can raise the same sheet in
+      place, with no navigation at all - only a stale bookmark to the old standalone screen
+      actually navigates, to Settings, before raising it the same way. */
+  raisedManager: null as 'modes' | null
 });
 
 /** Neither a view transition nor an Android tab arrival is moving. */
 export const screenStill = () => !ui.screenMoving && !ui.tabMoving;
 
-/* How many bars the frame is holding (carpet 26). */
+/* How many bars the frame is holding. */
 export const saveBar = $state({ count: 0 });

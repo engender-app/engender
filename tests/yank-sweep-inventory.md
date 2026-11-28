@@ -24,6 +24,20 @@ Above 600px, the injected bloat mark widens to 35% of the viewport so its
 painted defect still exceeds the unchanged camera proof threshold. Narrow
 and device proof geometry stays unchanged.
 
+Android keeps a visited door mounted, hidden and inert
+(`[data-retained-door]`), so preparation counts such a node as gone when it is
+the screen left behind and accepts it as the target shown again; every other
+screen must still disconnect. The device runner drives only a debug build under
+`dev.engender.app.test.<name>` (`--package`, with `--port` for its devtools
+forward) and refuses the real app id before any adb call.
+
+`--force-inset <px>` gives the desktop runner the phone's status-bar inset and
+the Android platform answer so the status strip exists in its casts; each
+settle asserts the strip's height and the report records `forceInset`.
+`--reduced-motion` runs the control pass on either runner and is recorded in
+the runtime. `yank-sweep-strip-check.mjs` reads the saved casts of such a run
+and names the first frame that takes the strip off `--bg`.
+
 Theme and palette preparation wait for their actual reset transition and
 boot preference mirror before another control is tested. Measurement still
 starts after preparation with its existing window.
@@ -41,9 +55,6 @@ before the next scene. Their saved samples and compositor evidence remain.
 Cold recording still reloads the document, retains finite previous and
 current document identities, and keeps its camera-before-navigation order
 and existing ready-to-sampler window.
-The unit-switcher scene enables Measurements through its visible switch when
-needed, proves that state, and restores its original visibility after capture.
-This exposes the control in an empty journal without adding measurement data.
 Preparation closes existing overlays and restores inline edit modes before
 opening the state a scene requires. It does not change the recorded motion
 window or detector thresholds. Quick add opening, closing, choosing a mood,
@@ -61,11 +72,8 @@ A browser reminder detail is a platform exclusion because the web list
 renders an install prompt. Android resolves that record from its own list.
 
 Cold runs record the requested and actual route including query parameters,
-theme, boot state and profile. Settings consumes `raise` when opening its
-Templates or Modes manager; Home consumes `quickLogDims` when opening the
-scale sheet. Those scenes name the consumed parameter and require their
-specific visible sheet content at the canonical route. Other query
-parameters still have to match. The profile check also reads the journal's
+theme, boot state and profile. Query parameters must match. The profile
+check also reads the journal's
 entry-presence cache; persona preparation checks Alice's greeting. Both
 themes record onboarding and the PIN gate. The PIN epilogue restores the
 persona before capturing it, even when the preceding profile was empty.

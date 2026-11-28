@@ -1,20 +1,7 @@
 <script lang="ts">
-  /* Home's link into on-this-day (phase 4 features ticket 03).
-
-     One card for however many of the three lookbacks qualify today - the
-     ticket does not ask for exactly one, and ranking them the way wrapped
-     ranks cadences would invent an ordering rule this feature has no use
-     for. The good-day check for each lookback is the only thing this card
-     needs to know before deciding whether to show itself at all.
-
-     Rendered only when on-this-day is on: Home gates on the preference
-     before mounting this, so the query below does not exist while the
-     feature is off - the same split wrapped's own card makes.
-
-     Home's second look-back tile since phase 5 ticket 21. It used to be a
-     full-width card carrying the same gradient wash as wrapped's, on
-     purpose, so the two read as siblings; the tiles say that by sitting in
-     one grid instead, which is a thing the eye reads without a wash. */
+  /* Home mounts this card only when on-this-day is enabled. Show one tile
+     when any eligible good-day lookback exists. The card covers all qualifying
+     lookbacks for today. */
   import { m } from '$lib/paraglide/messages';
   import { currentDay } from '$lib/stores/today.svelte';
   import { liveList } from '$lib/data/live/journal.svelte';
@@ -25,8 +12,8 @@
   import Tile from './kit/Tile.svelte';
   import { joinReadGroup } from './kit/readGroup.svelte';
 
-  /* On the Look back door the tile opens the day in place under the pair
-     (phase 11 ticket 07): the door hands in `onOpen` and prevents the
+  /* On the Look back door the tile opens the day in place under the pair:
+the door hands in `onOpen` and prevents the
      navigation, and `open` marks the tile as the disclosure's control.
      The href stays, since the route stays for the notification deep link
      and a middle-click or a reader following the link still lands there. */
@@ -39,11 +26,9 @@
   } = $props();
 
   const today = $derived(currentDay());
-  const candidates = $derived(onThisDayCandidates(today));
 
   /* Invalidated on entry or tag writes (the good-day rule's own two
-     dependencies), and on either half of the mute layer (phase 6 ticket
-     05): eras and era mutes.
+     dependencies), and on either half of the mute layer: eras and era mutes.
 
      Seeded with the good-day read's tables. It is called after the first
      await, so without the seed the first run discovered them late and the
@@ -52,11 +37,13 @@
   let goodDaysQuery = liveList(async (j) => {
     // Read before the first await, so the query re-runs when the day changes.
     const asOf = today;
-    const lookbacks = candidates;
-    const [letters, consent] = await Promise.all([
+    const [letters, consent, bounds] = await Promise.all([
       j.letters.getLetters(LETTER_RETROSPECTIVE_LIMIT),
-      resurfacing('on-this-day-home-card', j)
+      resurfacing('on-this-day-home-card', j),
+      j.eras.getJournalBounds()
     ]);
+    const earliest = Math.min(bounds?.firstEpochDay ?? asOf, ...letters.map((letter) => letter.epochDay));
+    const lookbacks = onThisDayCandidates(asOf, earliest);
     const allowed = consent.allowedDays(lookbacks);
     const goodDays = await Promise.all(allowed.map((c) => j.stats.isGoodDay(c.epochDay)));
     /* The block this card opens also shows a day that only has a letter, so
@@ -69,12 +56,12 @@
 
   /* The tile's reading: how far back the furthest qualifying day is.
      `qualifying` keeps onThisDayCandidates' order, which is longest first, so
-     the head of it is the one worth putting on the tile - "a year" is a
-     better reason to tap than "3". Written from the plural messages the rest
+     the head of it supplies the tile distance. Written from the plural messages the rest
      of the app counts time with rather than a string of its own. */
   let distance = $derived.by(() => {
     const furthest = qualifying[0];
     if (!furthest) return undefined;
+    if (furthest.years) return m.n_years({ n: furthest.years });
     if (furthest.key === 'year') return m.n_years({ n: 1 });
     return m.n_months({ n: furthest.key === 'sixMonths' ? 6 : 1 });
   });

@@ -1,20 +1,18 @@
-/* Standalone dev server for the browser-tier probe (ticket 03) - separate
-   from the app's own vite.config.ts on purpose, since this only exists to
-   serve probe.ts to a real browser over COOP/COEP, and ticket 04 owns
-   wiring the SQLite driver into the app itself. Named so svelte-check's project
-   auto-discovery (which globs for vite.config.*) does not pick it up -
-   run.mjs loads it explicitly.
+/* Standalone dev server for the browser-tier probe - separate from the app's own
+   vite.config.ts on purpose, since this only exists to serve probe.ts to a real browser
+   over COOP/COEP, and owns wiring the SQLite driver into the app itself. Named so
+   svelte-check's project auto-discovery (which globs for vite.config.*) does not pick it up
+   - run.mjs loads it explicitly.
 
-   The svelte plugin is here only for `$state`: ticket 22's probe is the
-   first one to import a store (videoRecording.ts, by way of toast()), and
-   without it a rune reaches the browser unprocessed and throws. This is
-   plain @sveltejs/vite-plugin-svelte, not the sveltekit() plugin the app
-   config uses - there is no route tree here for it to need. */
+   The svelte plugin is here only for `$state`: probe is the first one to import a store
+   (videoRecording.ts, by way of toast), and without it a rune reaches the browser
+   unprocessed and throws. This is plain @sveltejs/vite-plugin-svelte, not the sveltekit
+   plugin the app config uses - there is no route tree here for it to need. */
 import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 
-/* A real service worker whose bytes change on demand (phase 2 ticket 04).
+/* A real service worker whose bytes change on demand.
 
    The app's own worker only exists after `vite build`, which this tier does
    not run - and what the update rule needs to be tested against is not the
@@ -91,7 +89,7 @@ export default defineConfig({
       strict: false
     }
   },
-  /* The app's static directory, so the kit gallery (phase 5 ticket 20) draws
+  /* The app's static directory, so the kit gallery draws
      in Nunito and Outfit rather than in whatever the machine's system-ui
      happens to be. Type is half of what that page is reviewed for, and every
      other probe here is unaffected by a few more files being reachable. */
@@ -121,7 +119,7 @@ export default defineConfig({
     __DEMO__: JSON.stringify(false),
     __APP_VERSION__: JSON.stringify('0.0.0-browser-tier')
   },
-  // Same exclusion the app's own config needs (ticket 09): pre-bundling
+  // Same exclusion the app's own config needs: pre-bundling
   // would inline the sqlite3mc wasm module in a way that breaks its own
   // URL-relative wasm loading inside mc-worker.ts.
   optimizeDeps: {

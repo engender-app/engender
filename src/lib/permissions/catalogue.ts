@@ -1,24 +1,7 @@
-/* Everything this app can ask the phone for, in one list (phase 10 redesign
-   ticket 31).
-
-   The app asks for four things and, until this list existed, never explained
-   them together: notifications from the reminders screen, exact alarms from a
-   warning notice, the microphone and the camera at the moment somebody taps
-   record. Each had its own inline sentence and there was no shared picture.
-   For an app whose whole claim is that nothing leaves the device, the list is
-   the claim made concrete - four things it can ask for, several it reaches
-   only by handing you a system picker, and no internet permission at all
-   (`tests/browser-tier/verify-build.mjs` asserts that last one).
-
-   What lives here is the shape of the list and the rule for what a row's
-   trailing control does. The states themselves come from the OS
-   (`status.svelte.ts`), and the words come from the catalogue, so this module
-   is rune-free and DOM-free and runs in the Node tier next to the rest of the
-   pure model (ADR-0017).
-
-   The inventory this was written from, with the file references and the
-   deep-links that already existed, is
-   `.scratch/phase-10/redesign/permissions-inventory.md`. */
+/* List notification, exact alarm, microphone and camera permissions
+   and decide each row's trailing action. status.svelte.ts supplies OS
+   state and the message catalogue supplies copy. Keep both the DOM and
+   runes out of this testable model (ADR-0017). */
 
 /** The ones an OS dialog or a system settings screen exists for. In the
     order the list draws them: the two that make the app speak first, then
@@ -26,15 +9,14 @@
 export const GRANT_KEYS = ['notifications', 'exactAlarms', 'microphone', 'camera'] as const;
 export type GrantKey = (typeof GRANT_KEYS)[number];
 
-/** The ones that need no permission. Five of them because the system asks
-    instead and hands the app exactly one thing back; the last two because
-    they are the device's own business and the app only ever gets the answer.
+/** The ones that need no permission. Five of them because the system asks instead and hands
+    the app exactly one thing back; the last two because they are the device's own business
+    and the app only ever gets the answer.
 
-    All seven, rather than the five the ticket's Scope enumerated: the whole
-    claim of this list is that it is the whole list, and the inventory
-    (`.scratch/phase-10/redesign/permissions-inventory.md`) files battery
-    optimisation and the biometric under exactly this heading. A list that
-    quietly drops two of them is not the claim it says it is. */
+    All seven, rather than the five the ticket's Scope enumerated: the whole claim of this
+    list is that it is the whole list, and the inventory files battery optimisation and the
+    biometric under exactly this heading. A list that quietly drops two of them is not the
+    claim it says it is. */
 export const AMBIENT_KEYS = [
   'takePhoto',
   'pickFile',
@@ -73,7 +55,7 @@ export const NOTHING_GRANTED: GrantStates = {
 /** What pressing the row's trailing control does. `none` is a row with
     nothing to press: granted, unavailable, or refused with nowhere to send
     somebody afterwards. */
-export type GrantAction = 'prompt' | 'settings' | 'none';
+type GrantAction = 'prompt' | 'settings' | 'none';
 
 /** The system screen a refusal sends somebody to. `appInfo` is the app's own
     details page, which is all Android offers for the microphone and the
@@ -95,7 +77,7 @@ export type SettingsTarget = 'notifications' | 'exactAlarms' | 'appInfo';
     the button on a 390px phone, on the one step in setup with the least room
     to spare (`.claude/permissions-measurements.json`), and the label already
     says where pressing it goes. */
-export type RowNote = 'browserHolds';
+type RowNote = 'browserHolds';
 
 export interface GrantRow {
   key: GrantKey;
@@ -122,7 +104,7 @@ const AMBIENT_ICON: Record<AmbientKey, string> = {
   takePhoto: 'camera',
   pickFile: 'image',
   backupFolder: 'download',
-  print: 'documents',
+  print: 'print',
   /* Not `key`, though what is copied is the recovery key: `/settings`' own
      row into this list wears that glyph, and the same icon meaning two
      things one navigation apart is the kind of small lie a list like this
@@ -169,9 +151,8 @@ export function grantRows(
   states: GrantStates,
   asked: ReadonlySet<GrantKey>
 ): GrantRow[] {
-  /* Only what this platform has (after-release 17): the web used to keep
-     Notifications and Exact timing as rows marked "Android only", which a
-     person there could do nothing with. */
+  /* Only what this platform has: the web used to keep Notifications and Exact timing as
+     rows marked "Android only", which a person there could do nothing with. */
   return GRANT_KEYS.filter((key) => availableOn(key, platform)).map((key) => {
     const state = states[key];
     const settingsTarget = settingsTargetFor(key, platform);

@@ -1,33 +1,10 @@
-/* Tier 3, change within a screen: a glyph passing through a block (phase 10
-   redesign ticket 19).
+/* Tier 3 motion swaps glyphs inside a clipped block.
+   A keyed update mounts the new face while the old leaves. Each face uses
+   only a transform, with --dur-med and --ease-out.
 
-   The log strip's squares are blocks of the flag's stripe with a glyph in
-   the block's ink, and two of them change what they show without leaving
-   the screen: a tally answers a tap with the day's count, and the wear
-   shape turns from "start" to "stop" when a session begins. DIRECTION.md
-   rule 10 says a block's contents move like objects and never fade from
-   nothing, so the glyph is a drum face: the old one rises out through the
-   block's top edge and the new one rises in from under its bottom edge,
-   both clipped by the block itself (`overflow: hidden` on the square). A
-   transform alone - the block does the covering, which is the performance
-   contract's cheapest possible material (materials.css).
-
-   Two halves rather than one bidirectional transition because they are two
-   elements: `{#key}` mounts the new face while the old one is still
-   leaving, and each needs its own travel. Both run on --dur-med, the
-   routine state-change duration, on --ease-out.
-
-   A stepper's numeral goes both ways (ticket 281, the month picker's
-   year), so `dir` says which: 1, the default, is the value going up and
-   the faces rising; -1 is the value going down and the faces falling, the
-   new one dropping in from above. Under reduced motion the faces do not
-   travel and fade instead, which is tier 3's substitute: the block still
-   says what changed, and says it as a change rather than a cut.
-
-   The date picker's month title turns sideways (phase 12 pickers, ticket
-   01): `axis: 'x'` runs the same faces across the block instead, so the
-   title leaves the way the grid under it went. `dir` 1 is the next month,
-   the faces travelling left. */
+   dir: 1 moves vertical faces up as a value increases; dir: -1 moves them
+   down. The DatePicker's month title uses axis: 'x', moving left for the next
+   month. Reduced motion fades the faces in place. */
 import type { TransitionConfig } from 'svelte/transition';
 import { crossfadeDuration, EASE_OUT, fadeOnly, isReducedMotion, motionDuration } from './tokens';
 

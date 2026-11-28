@@ -1,4 +1,4 @@
-/* The factor-impact correlation cards area (phase 4 ticket 21). A view
+/* The factor-impact correlation cards area. A view
    stitched from rows `stats`, `doses` and `dimensions` own, the same way
    exposure.ts is a view over `doses` and `regimen` - this area owns no
    table of its own. The ranking math lives in ../correlationCards.ts,
@@ -19,7 +19,7 @@ const CARD_LIMIT = 6;
 
 /** Day averages and tag insights for every metric the cards rank - mood and
     each dimension that is not hidden - in two statements however many
-    dimensions there are (after-release ticket 30), and without being told
+    dimensions there are, and without being told
     the dimensions first. `getCards` sends these with its other two reads:
     the worker answers one query at a time, and waiting for the dimensions
     put these two at the back of Look back's queue, the last read its tile

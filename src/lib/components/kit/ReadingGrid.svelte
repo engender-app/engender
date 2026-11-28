@@ -1,19 +1,17 @@
 <script lang="ts">
-  /* The grid the reading tiles sit in (phase 11 ticket 07): two columns at
-     390px, every row the height of its tallest tile, hairlines between -
-     a list's rule (rule 4) read across two columns. The grid draws the
-     lines and the tiles sit between them, so a tile absent for want of
-     data leaves no gap and no orphaned rule: the next tile takes its place
-     and the lines follow the count.
+  /* The grid the reading tiles sit in: two columns at 390px, every row the height of its
+     tallest tile, hairlines between - a list's rule (rule 4) read across two columns. The
+     grid draws the lines and the tiles sit between them, so a tile absent for want of data
+     leaves no gap and no orphaned rule: the next tile takes its place and the lines follow
+     the count.
 
-     The last odd tile stays half-width. Nine tiles is four rows and one on
-     the fixture, and any tile can be the odd one on some span, so a rule
-     that widened it would move a tile between two shapes as the span
-     dragged (Alicja on the spike: no answer, so the page's own default).
+     The last odd tile stays half-width. Nine tiles is four rows and one on the fixture, and
+     any tile can be the odd one on some span, so a rule that widened it would move a tile
+     between two shapes as the span dragged.
 
-     It carries the chart role (`roleAttrs`), which is what a tile's
-     drawing takes its ink from - one stripe for every drawing on the door,
-     the same index every chart on it has always shared. */
+     It carries the chart role (`roleAttrs`), which is what a tile's drawing takes its ink
+     from - one stripe for every drawing on the door, the same index every chart on it has
+     always shared. */
   import type { Snippet } from 'svelte';
   import { roleAttrs } from './role';
   import { settleCells } from './readingGrid';
@@ -46,10 +44,9 @@
     position: relative;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    /* Each row its own tallest tile, not the grid's: with every row as tall
-       as the tallest tile anywhere, the plane's square set the height of
-       all of them, and a tile with only a figure sat over 150 to 260px of
-       blank box (after-release 27, audit UI-13). */
+    /* Each row its own tallest tile, not the grid's: with every row as tall as the tallest
+       tile anywhere, the plane's square set the height of all of them, and a tile with only
+       a figure sat over 150 to 260px of blank box. */
     grid-auto-rows: auto;
     border-top: 1px solid var(--hairline);
     border-bottom: 1px solid var(--hairline);

@@ -56,3 +56,12 @@
   />
   <div class="dim-ends"><span>{dim.low}</span><span>{dim.high}</span></div>
 </div>
+<style>
+  /* Inset to the lane, so the two endpoint words line up under the two
+     positions the thumb can actually reach. */
+  .dim-ends {
+    display: flex; justify-content: space-between;
+    padding: 0 var(--slider-inset);
+    font-size: var(--text-xs); color: var(--text-2); margin-top: 2px;
+  }
+</style>

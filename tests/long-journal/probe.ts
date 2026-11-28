@@ -1,20 +1,7 @@
-/* The ten-year run, in the browser (phase 2 ticket 20).
-
-   Encryption is on, because that is what ships: the driver is the
-   SQLite3MultipleCiphers one under a data key (ADR-0018/0020) and the photo
-   files go through the encrypting store, so every number below includes the
-   cost of decrypting to answer.
-
-   The generator and the harness know nothing about either. They speak
-   `openJournal(driver, files)` (ADR-0017), which is the same contract
-   ticket 11's native SQLite driver satisfies - so the Android half of this
-   measurement is a different twenty lines of setup here and nothing else.
-
-   Photo bytes are supplied from this side because a representative photo
-   needs a canvas: real JPEG bytes at the sizes ADR-0008 normalizes to, with
-   enough high-frequency detail that they compress like a photograph rather
-   than like a gradient. The size of the file is most of what the photo grid
-   and the Archive export are measuring. */
+/* Run the ten-year probe on encrypted browser SQLite and files
+   (ADR-0018, ADR-0020). The generator and harness use openJournal
+   (ADR-0017), shared with Android. Use canvas JPEGs at the stored size
+   limits (ADR-0008) so grid and archive measurements include photo costs. */
 
 import { boot } from '../../src/lib/data/sqlite/boot.ts';
 import { createEncryptedWebSqlite } from '../../src/lib/data/sqlite/mc-driver.ts';
@@ -28,6 +15,7 @@ import { freshOrigin, PROBE_DATA_KEY } from '../browser-tier/fresh-origin.ts';
 import { generateLongJournal, ONE_YEAR_IN_DAYS, TEN_YEARS_IN_DAYS, type LongJournalSummary } from './generate.ts';
 import { measureLongJournal, STARTUP_MEASUREMENT_NAMES, type Measurement } from './measure.ts';
 import { mountHome } from './mount-home.svelte';
+import { prepareMountedLookBack } from './mount-look-back.svelte';
 import { prepareScreenJournal } from '../browser-tier/screen-journal';
 import { installWorkerReadRecorder } from './worker-reads';
 const workerReads = installWorkerReadRecorder();
@@ -212,7 +200,7 @@ async function run(days: number) {
   }
   storage.operation = 'complete';
 
-  /* The second open is the one worth timing (phase 5 audit ticket 02). The
+  /* The second open is the one worth timing. The
      first one above migrated an empty database; this one is the boot every
      later one is - a decade of Journal already on the current schema - which
      is the sequence a person waits through before a screen can read anything.
@@ -285,15 +273,15 @@ async function run(days: number) {
   });
 
   /* The screen mounts are counted at the driver seam rather than timed, so
-     the journal they are measured over is opened on the recording adapter
-     (phase 8 audit ticket 01). It records only inside the windows the
+     the journal they are measured over is opened on the recording adapter.
+It records only inside the windows the
      harness opens, so nothing above pays for it. */
   const recorder = recordingDriver(reopened.driver);
   stage('measurements', days);
   const measurements = await measureLongJournal(openJournal(recorder.driver, reopenedFiles), reopenedFiles, {
     today: summary.lastEpochDay,
     summary,
-    recorder, mountHome: async (journal) => {
+    recorder, prepareLookBack: (journal, today) => prepareMountedLookBack(journal, today, recorder, workerReads), mountHome: async (journal) => {
       await prepareScreenJournal(journal);
       // End the preceding benchmark's read generation before the cold mount.
       await recorder.driver.readSnapshot(async () => {});

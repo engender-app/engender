@@ -1,40 +1,25 @@
-/* The one preference object screens read and write.
+/* Project SQLite preferences into synchronous Svelte state for reads
+   and bindings. `preferences.ts` owns the rune-free persistence layer.
 
-   preferences.ts is async and rune-free so it can be tested in the Node
-   tier; a Svelte template needs a synchronous, reactive read and a plain
-   assignment it can `bind:` to. This is the thin layer between the two: a
-   $state projection of the pref table, with writes forwarded to SQLite.
+   Start with defaults and cached boot preferences. Remember writes
+   made before attachment and replay them when SQLite attaches, so
+   early setup input survives. Subsequent writes go straight through. */
 
-   It is a projection, not a second store. Nothing else caches a preference
-   and nothing writes to `values` except this module, so `activeScales`
-   cannot end up with two sources of truth while the demo store still owns
-   entries (ticket 07 takes those).
-
-   Three phases in a cold start, in order:
-
-     1. Nothing attached. Values are the defaults, then the boot set from
-        the cache once boot() reaches step 1. A write here is remembered
-        and replayed - onboarding is reachable before SQLite finishes
-        opening, and losing the name the user just typed would be its own
-        bug.
-     2. attachPreferences() lands the real values from SQLite.
-     3. Writes go straight through. */
-
-import type { PortablePreferences } from '../archive/payload';
+import { untrack } from 'svelte';
+import { getLocale, setLocale } from '$lib/paraglide/runtime';
+import { useReserveStore } from '../homeReserve';
 import { PREFERENCE_DEFAULTS, isPreferenceKey, type PreferenceKey, type PreferenceValues } from './catalogue';
-import { portablePreferencePatch } from './portableShape';
 import type { BootPreferences, Preferences } from './preferences';
 
 const values = $state<PreferenceValues>({ ...PREFERENCE_DEFAULTS });
 
-/** Whether phase 2 has happened: the stored values are in `values`, not the
-    defaults. A cold navigation straight to a screen paints before SQLite
-    opens, and a preference that is not in the boot set reads its default
-    until then - `lastBackupAt` read null, so the export screen told a
-    persona with a 34-day-old backup that it had never been backed up, for
-    about 170ms (ticket 176). The same distinction `vocabulary.ready` draws
-    for the reference mirror (ticket 152). Stays true across a re-attach:
-    the values being replaced are already this journal's, not defaults. */
+/** Whether has happened: the stored values are in `values`, not the defaults. A cold
+    navigation straight to a screen paints before SQLite opens, and a preference that is not
+    in the boot set reads its default until then - `lastBackupAt` read null, so the export
+    screen told a persona with a 34-day-old backup that it had never been backed up, for
+    about 170ms. The same distinction `vocabulary.ready` draws for the reference mirror.
+    Stays true across a re-attach: the values being replaced are already this journal's, not
+    defaults. */
 let attached = $state(false);
 export function preferencesAttached(): boolean {
   return attached;
@@ -81,28 +66,12 @@ export async function flushPreferences(): Promise<void> {
   await Promise.all([...inFlight]);
 }
 
-/** Writes a preference to SQLite first and projects it second, which is the
-    reverse of every other write in this module.
-
-    One preference needs it. Setting `prefs.disguise` is what makes the
-    Android launcher alias flip, by way of an effect in +layout.svelte, and
-    flipping the alias kills the process (DisguisePlugin). The ordinary
-    write leaves those two in a race the process loses: the effect runs on
-    a microtask while the write is still out at the database, so a disguise
-    turned on can be gone by the next boot - with the alias already
-    swapped, so the app closes itself once on launch to put it back. Here
-    the value is durable before anything can react to it.
-
-    A write that fails is logged and dropped, like every other write here,
-    and the value is *not* projected - which is the whole point rather than
-    a shortcut. The one reader of this projection that matters is the
-    effect that flips the launcher alias, and flipping it on a preference
-    that never landed is the exact state this function exists to prevent:
-    the launcher disguised, the preference false, and the app closing
-    itself once on the next boot to put the two back in step.
-
-    Nowhere else has this shape, so nothing else should use this: a screen
-    that waits on SQLite to redraw a switch is a screen that feels broken. */
+/** Writes SQLite before projection when a preference can restart the app.
+    Disguise flips Android's launcher alias and can kill the process; a
+    language change reloads the app through the locale strategy. Their
+    effects must not run ahead of the value they need on the next boot.
+    A failed write is logged and leaves the projection unchanged. Ordinary
+    preferences still use the proxy for an immediate response. */
 export async function setPreferenceDurably<K extends PreferenceKey>(
   key: K,
   value: PreferenceValues[K]
@@ -113,12 +82,19 @@ export async function setPreferenceDurably<K extends PreferenceKey>(
     prefs[key] = value;
     return;
   }
+  const current = backing;
+  const landed = current.set(key, value as never);
+  const settled = landed.catch(() => {});
+  inFlight.add(settled);
   try {
-    await backing.set(key, value as never);
+    await landed;
   } catch (error) {
     console.error(`Could not save the "${key}" preference`, error);
     return;
+  } finally {
+    inFlight.delete(settled);
   }
+  if (backing !== current) return;
   // Straight onto the projection rather than through the proxy: the write
   // above is the one this would otherwise queue a second time.
   values[key] = value as never;
@@ -152,28 +128,88 @@ export function applyCachedBootPreferences(cached: Partial<BootPreferences>) {
   }
 }
 
-/** The portable preferences a Replace import restores (ADR-0003), written
-    through the proxy above so each one lands in SQLite like any other change.
-    Walked over PORTABLE_KEYS rather than over what the file happens to hold,
-    which is the same allowlist that decided what could travel in the first
-    place - and a key the archive is missing keeps this device's value rather
-    than becoming undefined. A Merge calls none of this: what is already here
-    wins, for its rows and for its settings alike.
+/* A language picked on the welcome, before there is a journal to write it
+   to. A write before the open is held in
+   memory, and setLocale() reloads the page, so the choice needs somewhere
+   that outlives the reload: without it the journal attached with
+   'system', activateLanguagePreference() resolved that against the
+   browser, and a Polish browser was reloaded back into Polish at the
+   access-mode step. attachPreferences takes it as a write made before the
+   open, which is what it is, and drops it.
 
-    Each value is checked against the key's shape (portableShape.ts) before
-    it lands - a value outside what the key can hold is left out of the
-    patch, so this device's own value stays rather than adopting a string
-    that was never a valid theme, palette or check-in time. */
-export function applyPortablePreferences(portable: Partial<PortablePreferences>) {
-  const patch = portablePreferencePatch(portable);
-  for (const key of Object.keys(patch) as (keyof PortablePreferences)[]) {
-    // Both sides index at the same key, which the compiler can't follow
-    // across a loop over a union of key types.
-    prefs[key] = patch[key] as never;
+   Deliberately outside the `engender-` prefix. A boot that finds no
+   journal sweeps every `engender-` key as a mirror of a journal that is
+   gone (reset.ts, clearBrowserMirrors), and a first run is exactly such a
+   boot, on the reload this key exists to survive. What it holds is no more
+   than paraglide's own PARAGLIDE_LOCALE, which outlives a reset too. */
+const HELD_LANGUAGE_KEY = 'setup-language';
+
+/** The two languages the app ships in. */
+export type AppLanguage = 'en' | 'pl';
+
+function heldLanguage(): AppLanguage | null {
+  try {
+    const held = localStorage.getItem(HELD_LANGUAGE_KEY);
+    return held === 'en' || held === 'pl' ? held : null;
+  } catch {
+    return null;
   }
 }
 
-/** The lock's half (after-release ticket 10): the database is about to
+function setHeldLanguage(value: AppLanguage | null) {
+  try {
+    if (value) localStorage.setItem(HELD_LANGUAGE_KEY, value);
+    else localStorage.removeItem(HELD_LANGUAGE_KEY);
+  } catch {
+    /* storage full / private mode: the choice lasts until the reload */
+  }
+}
+
+/** Picks the app's language and switches to it, which reloads the page.
+    With a journal open the write lands first, as Settings does it; before
+    one, the choice is held until the journal attaches. */
+export async function chooseLanguage(value: AppLanguage): Promise<void> {
+  if (backing) {
+    await setPreferenceDurably('language', value);
+  } else {
+    setHeldLanguage(value);
+    prefs.language = value;
+  }
+  activateLanguagePreference();
+}
+
+/** Prepare publication before Replace starts. Capture its authoritative
+    snapshot inside the transaction, then publish after success without SQL.
+    A lock or newer attachment owns both projection and boot mirror. */
+export function preparePreferencePublication() {
+  const current = backing;
+  let commitValues: (() => void) | null = null;
+  return {
+    capture(snapshot: PreferenceValues) {
+      if (current && backing === current) commitValues = current.prepareCommittedValues(snapshot);
+    },
+    async publish(): Promise<boolean> {
+      await flushPreferences();
+      if (!current || backing !== current || !commitValues) return false;
+      commitValues();
+      for (const [key, value] of Object.entries(current.all()) as [PreferenceKey, never][]) {
+        values[key] = value;
+      }
+      return true;
+    }
+  };
+}
+
+/** The locale strategy keeps its own choice; SQLite owns the preference.
+    Activate only after a durable change or authoritative boot attachment. */
+export function activateLanguagePreference() {
+  const target = prefs.language === 'en' || prefs.language === 'pl'
+    ? prefs.language
+    : ((navigator.language || 'en').toLowerCase().startsWith('pl') ? 'pl' : 'en');
+  if (target !== getLocale()) setLocale(target);
+}
+
+/** The lock's half: the database is about to
     close, so the writes already out at it are waited for, and anything
     written from here on is held the way writes before the first open are,
     for `attachPreferences` to replay once the journal reopens. The values
@@ -187,6 +223,11 @@ export async function detachPreferences(): Promise<void> {
 /** Boot step 2: SQLite is open and authoritative from here. Anything
     written during step 1 survives - it is newer than what the table holds. */
 export async function attachPreferences(preferences: Preferences) {
+  const held = heldLanguage();
+  if (held && !writtenBeforeOpen.has('language')) {
+    values.language = held;
+    writtenBeforeOpen.add('language');
+  }
   const stored = preferences.all();
   for (const key of Object.keys(stored) as PreferenceKey[]) {
     if (!writtenBeforeOpen.has(key)) values[key] = stored[key] as never;
@@ -198,4 +239,16 @@ export async function attachPreferences(preferences: Preferences) {
   const replay = [...writtenBeforeOpen];
   writtenBeforeOpen.clear();
   for (const key of replay) write(key);
+  // The journal has it now, and reads it back on every later boot.
+  setHeldLanguage(null);
 }
+
+/* The screens' held heights (data/homeReserve.ts) are a preference, so
+   they are read here. Untracked: a screen reads its height once as it
+   mounts, and remembering a new one must not re-run whatever read it. */
+useReserveStore({
+  read: () => untrack(() => values.layoutReserves),
+  write: (next) => {
+    prefs.layoutReserves = next;
+  }
+});

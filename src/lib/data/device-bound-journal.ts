@@ -39,8 +39,8 @@ const fromBase64 = (text: string): Uint8Array<ArrayBuffer> =>
 
 const isNotFound = (error: unknown): boolean => (error as DOMException)?.name === 'NotFoundError';
 
-/** One named slot in the browser's key store. Two things keep keys here now
-    (ticket 53): this journal's device-bound wrapping key, and PIN mode's
+/** One named slot in the browser's key store. Two things keep keys here now:
+this journal's device-bound wrapping key, and PIN mode's
     binding key (data/device-secret.ts). Same database and store, different
     slot names - a second database would be a second thing a reset has to
     remember. */
@@ -48,7 +48,8 @@ export function browserKeySlot(slot: string): DeviceKeySlot {
   return {
     async load() {
       const db = await openDeviceKeyDatabase();
-      return runRequest<CryptoKey | null>(db.transaction(DEVICE_BOUND_STORE, 'readonly').objectStore(DEVICE_BOUND_STORE).get(slot));
+      const key = await runRequest<CryptoKey | undefined>(db.transaction(DEVICE_BOUND_STORE, 'readonly').objectStore(DEVICE_BOUND_STORE).get(slot));
+      return key ?? null;
     },
     async save(key) {
       const db = await openDeviceKeyDatabase();
@@ -124,28 +125,38 @@ export async function setupDeviceBoundJournal(): Promise<Uint8Array<ArrayBuffer>
   });
 }
 
-/** Moves an already-open journal to device-bound mode from Settings: the
-    same data key and the stored wrapping key, so nothing is re-encrypted.
+/** Moves an already-open journal to device-bound mode from Settings: the same data key and
+    the stored wrapping key, so nothing is re-encrypted.
 
-    Web only. Android's device-bound key lives in Keystore behind a bridge
-    that mints its own data key (`create()`) and cannot be asked to wrap
-    one - so on a phone this direction would mean re-encrypting the whole
-    journal, and the module does not offer it there. Ticket 53's notes carry
-    that as the follow-up it is. The caller owns credential mutation through
+    Web only. Android's device-bound key lives in Keystore behind a bridge that mints its
+    own data key (`create`) and cannot be asked to wrap one - so on a phone this direction
+    would mean re-encrypting the whole journal, and the module does not offer it there.
+    notes carry that as the follow-up it is. The caller owns credential mutation through
     old-mode cleanup. */
-export async function addDeviceBoundJournal(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
+export async function addDeviceBoundJournal(dataKey: Uint8Array<ArrayBuffer>, current: () => void = () => {}): Promise<void> {
   const slot = browserDeviceKeySlot();
   const wrappingKey = await wrappingKeyFor(slot);
   const metadata = await wrapDeviceBoundDataKey(dataKey, wrappingKey);
-  await writeDeviceBoundMetadata(metadata);
+  current();
+  await writeDeviceBoundMetadata(metadata, current);
 }
 
 export async function deviceBoundJournalExists(): Promise<boolean> {
-  return (await readDeviceBoundMetadata()) !== null;
+  try {
+    return (await readDeviceBoundMetadata()) !== null;
+  } catch (error) {
+    if (error instanceof DeviceBoundMetadataUnreadableError) return true;
+    throw error;
+  }
 }
 
 export async function unlockDeviceBoundJournal(): Promise<Uint8Array<ArrayBuffer>> {
-  const metadata = await readDeviceBoundMetadata();
+  const metadata = await readDeviceBoundMetadata().catch((error) => {
+    if (error instanceof DeviceBoundMetadataUnreadableError) {
+      throw new DeviceBoundKeyUnavailableError('the stored device-bound journal metadata is unreadable');
+    }
+    throw error;
+  });
   if (metadata === null) {
     throw new DeviceBoundKeyUnavailableError('there is no device-bound journal metadata to unlock');
   }
@@ -155,8 +166,17 @@ export async function unlockDeviceBoundJournal(): Promise<Uint8Array<ArrayBuffer
 
 /** Called inside the access-mode operation's credential ownership. */
 export async function removeDeviceBoundJournal(): Promise<void> {
-  await browserDeviceKeySlot().remove().catch(() => {});
-  await removeDeviceBoundMetadata().catch(() => {});
+  const slot = browserDeviceKeySlot();
+  // Keep the metadata until its key is gone, so a failed removal remains
+  // visible to the next boot's survey and gets another authenticated sweep.
+  await slot.remove();
+  if ((await slot.load()) !== null) {
+    throw new Error('device-bound journal key material is still present');
+  }
+  await removeDeviceBoundMetadata();
+  if (await deviceBoundJournalExists()) {
+    throw new Error('device-bound journal key material is still present');
+  }
 }
 
 /** Takes every slot this database holds - the device-bound wrapping key and
@@ -168,8 +188,7 @@ export async function deleteDeviceKeyDatabase(): Promise<void> {
   await runRequest(indexedDB.deleteDatabase(DEVICE_BOUND_DB));
 }
 
-/* createDeviceBoundMetadata stays exported only for its own test (AU-09
-   test-only review). */
+/* createDeviceBoundMetadata stays exported only for its own test. */
 export async function createDeviceBoundMetadata(
   slot: DeviceKeySlot
 ): Promise<{ dataKey: Uint8Array<ArrayBuffer>; metadata: DeviceBoundMetadata }> {
@@ -179,8 +198,7 @@ export async function createDeviceBoundMetadata(
   return { dataKey, metadata };
 }
 
-/* unlockDeviceBoundMetadata stays exported only for its own test (AU-09
-   test-only review). */
+/* unlockDeviceBoundMetadata stays exported only for its own test. */
 export async function unlockDeviceBoundMetadata(
   metadata: DeviceBoundMetadata,
   slot: DeviceKeySlot
@@ -197,8 +215,7 @@ export async function unlockDeviceBoundMetadata(
   }
 }
 
-/* serializeDeviceBoundMetadata stays exported only for its own test (AU-09
-   test-only review). */
+/* serializeDeviceBoundMetadata stays exported only for its own test. */
 export function serializeDeviceBoundMetadata(metadata: DeviceBoundMetadata): string {
   return JSON.stringify({
     version: metadata.version,
@@ -208,14 +225,17 @@ export function serializeDeviceBoundMetadata(metadata: DeviceBoundMetadata): str
   });
 }
 
-/* parseDeviceBoundMetadata stays exported only for its own test (AU-09
-   test-only review). */
+/* parseDeviceBoundMetadata stays exported only for its own test. */
 export function parseDeviceBoundMetadata(serialized: string): DeviceBoundMetadata {
   let raw: Record<string, unknown>;
   try {
     raw = JSON.parse(serialized) as Record<string, unknown>;
   } catch {
     throw new DeviceBoundMetadataUnreadableError('device-bound key metadata is not JSON');
+  }
+
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    throw new DeviceBoundMetadataUnreadableError('device-bound key metadata is not an object');
   }
 
   if (raw.version !== DEVICE_BOUND_VERSION || raw.kind !== 'device-bound') {
@@ -226,12 +246,16 @@ export function parseDeviceBoundMetadata(serialized: string): DeviceBoundMetadat
     throw new DeviceBoundMetadataUnreadableError('device-bound key metadata is missing fields');
   }
 
-  return {
-    version: DEVICE_BOUND_VERSION,
-    kind: 'device-bound',
-    nonce: fromBase64(raw.nonce),
-    wrappedKey: fromBase64(raw.wrappedKey)
-  };
+  try {
+    return {
+      version: DEVICE_BOUND_VERSION,
+      kind: 'device-bound',
+      nonce: fromBase64(raw.nonce),
+      wrappedKey: fromBase64(raw.wrappedKey)
+    };
+  } catch {
+    throw new DeviceBoundMetadataUnreadableError('device-bound key metadata has invalid base64');
+  }
 }
 
 async function readDeviceBoundMetadata(): Promise<DeviceBoundMetadata | null> {
@@ -245,12 +269,13 @@ async function readDeviceBoundMetadata(): Promise<DeviceBoundMetadata | null> {
   }
 }
 
-async function writeDeviceBoundMetadata(metadata: DeviceBoundMetadata): Promise<void> {
+async function writeDeviceBoundMetadata(metadata: DeviceBoundMetadata, current: () => void = () => {}): Promise<void> {
   const root = await navigator.storage.getDirectory();
   const handle = await root.getFileHandle(DEVICE_BOUND_FILE, { create: true });
   const writable = await handle.createWritable();
   try {
     await writable.write(serializeDeviceBoundMetadata(metadata));
+    current();
     await writable.close();
   } catch (error) {
     await writable.abort().catch(() => {});
@@ -260,7 +285,11 @@ async function writeDeviceBoundMetadata(metadata: DeviceBoundMetadata): Promise<
 
 async function removeDeviceBoundMetadata(): Promise<void> {
   const root = await navigator.storage.getDirectory();
-  await root.removeEntry(DEVICE_BOUND_FILE);
+  try {
+    await root.removeEntry(DEVICE_BOUND_FILE);
+  } catch (error) {
+    if (!isNotFound(error)) throw error;
+  }
 }
 
 async function wrapDeviceBoundDataKey(

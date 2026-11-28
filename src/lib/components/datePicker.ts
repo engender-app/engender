@@ -1,11 +1,10 @@
-/* The arithmetic under DatePicker (phase 12 pickers, ticket 01), kept out of
-   the components so the node tier can hold it: which day sits in which of a
-   month's 42 cells, what a typed date means, where a key moves the cursor,
-   and when a swipe turns the month.
+/* The arithmetic under DatePicker, kept out of the components so the node tier can hold it:
+   which day sits in which of a month's 42 cells, what a typed date means, where a key moves
+   the cursor, and when a swipe turns the month.
 
-   Days are epoch days (ADR-0001) and months are month keys, `year * 12 +
-   month`, so a month step is `+ 1` and never a Date rolling over. */
-import { epochDayFromLocalDate, localDateFromEpochDay } from '../data/epochDay';
+   Days are epoch days (ADR-0001) and months are month keys, `year * 12 + month`, so a month
+   step is `+ 1` and never a Date rolling over. */
+import { FIRST_EPOCH_DAY, MAX_FUTURE_EPOCH_DAYS, epochDayFromLocalDate, localDateFromEpochDay } from '../data/epochDay';
 
 export function monthKey(year: number, month: number): number {
   return year * 12 + month;
@@ -39,6 +38,18 @@ export function monthCells(key: number): (number | null)[] {
     const n = i - lead;
     return n >= 0 && n < length ? first + n : null;
   });
+}
+
+/** The days the picker offers: the caller's `min` and `max` (ISO text),
+    inside the span the journal stores days in, so no pick can be a day a
+    restore of the journal would refuse. */
+export function pickerRange(min: string | undefined, max: string | undefined, todayEpochDay: number): { first: number; last: number } {
+  const from = min ? parseIsoDate(min) : null;
+  const to = max ? parseIsoDate(max) : null;
+  return {
+    first: Math.max(from ?? FIRST_EPOCH_DAY, FIRST_EPOCH_DAY),
+    last: Math.min(to ?? Infinity, todayEpochDay + MAX_FUTURE_EPOCH_DAYS)
+  };
 }
 
 /** A typed `yyyy-mm-dd` as an epoch day, or null. Strict: the text has to

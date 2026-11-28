@@ -21,8 +21,6 @@ This is a map of the codebase for anyone about to change it: what runs where, ho
 
 ## Reading this guide
 
-The implementation snapshot is `e035ba72`, the phase 15 after-release delivery
-merged into `main`. Architecture and inventory counts describe that snapshot.
 Performance figures are recorded measurements, not a fresh benchmark of this
 commit; their source files carry the measurement context.
 
@@ -34,22 +32,7 @@ commit; their source files carry the measurement context.
 | [Self-hosting](deploy/SELF-HOSTING.md), [deployment](deploy/README.md) | Hosting, releases and rollback |
 | [Security policy](SECURITY.md), [support](SUPPORT.md) | Reporting problems without disclosing journal data |
 
-<details>
-<summary>Maintainer-only references</summary>
-
-ADRs cited as `ADR-NNNN` live in `docs/adr/`. The domain glossary is
-`CONTEXT.md`; product and screen briefs are `PRODUCT.md` and `SCREENS.md`.
-`docs/agents/verification.md` and `docs/agents/platform.md` hold additional
-test instructions. These files are excluded from the public repository, so
-they are named here without links. Public contributors can use the rules
-and implementation references in this guide; a change that needs additional
-decision context should include that context in its review description.
-
-[.gitignore](.gitignore) excludes all files under `docs/`, including
-maintainer notes. Public architecture and privacy policies live at the
-repository root. Copy-coverage data lives under `messages/`.
-
-</details>
+Read [the ADR index](docs/adr/README.md) for decisions cited as `ADR-NNNN`. Include any context your change needs in its review description.
 
 ---
 
@@ -57,7 +40,7 @@ repository root. Copy-coverage data lives under `messages/`.
 
 engender is a private journal for a gender transition. One SvelteKit codebase ships to two places:
 
-- **The web app (PWA).** A static SPA served by nginx from its own origin, cached by a service worker, with the journal kept in the browser's origin-private file system (OPFS).
+- **The web app (PWA).** A static SPA served by nginx from its own origin, cached by a service worker, with the journal kept in the browser's origin-private file system (OPFS). Today offers Safari tabs installation advice for iOS Home Screen or macOS Dock (Safari 17+) regardless of the persistent-storage answer. It uses the storage notice's existing first-backup and dismissal gates; installed windows get no installation advice.
 - **The Android app.** The same static bundle inside a Capacitor 8 shell ([capacitor.config.ts](capacitor.config.ts), appId `dev.engender.app`), served from `https://localhost` inside the APK. The database and files live in app-private storage, and Android Keystore protects the keys.
 
 There are no accounts and no backend for journal data. Nothing leaves the device unless the person exports or shares it.
@@ -85,12 +68,20 @@ The hosted origin serves only static files: the app shell, chunks, fonts, icons,
 | Shell | Static bundle from nginx ([deploy/nginx/](deploy/nginx)) | Same bundle in the APK, `https://localhost` origin |
 | SQLite | SQLite3MultipleCiphers WASM (`@evolu/sqlite-wasm`) over the OPFS SAHPool VFS, in a worker ([src/lib/data/sqlite/mc-worker.ts](src/lib/data/sqlite/mc-worker.ts)) | SQLCipher 4.9.0 through a local Capacitor plugin (`android/.../sqlite/`) |
 | Files (photos, voice, video, documents) | OPFS, AES-GCM per file | App-private files, AES-GCM per file |
-| Data-key storage | Wraps in OPFS JSON files; device-bound key in IndexedDB | Wraps in OPFS JSON files; device key wrapped by an Android Keystore key pair |
+| Data-key storage | Wraps in OPFS JSON files; device-bound key in IndexedDB | PIN/passphrase wrap in a durable app-private file; recovery wrap in OPFS; device key wrapped by an Android Keystore key pair |
 | Unlock options | Passphrase, PIN, WebAuthn PRF biometric, device-bound | Passphrase, PIN, device lock or biometric prompt, unlocked |
 | Offline | Service worker, one cache per release (ADR-0021) | Bundle is local |
 | Updates | New release waits until the journal is idle | App update |
-| Background work | None | Reminders (AlarmManager), scheduled backups, retrospective notifications, widgets |
-| Minimum runtime | Secure context with OPFS | WebView 87 (`minWebViewVersion`, ADR-0023), `minSdk` 26 |
+| Background work | None | Reminders (AlarmManager), scheduled backups, widgets |
+| Minimum runtime | Secure context with OPFS | WebView 104 (`minWebViewVersion`, ADR-0023), `minSdk` 26 |
+
+The browser's SAHPool holds exclusive access handles, and the production driver
+opens one connection per database path. `scripts/patch-sqlite-wasm.mjs` pins two
+corrections to the installed 2.2.4 bundle: failed initialization preserves pool
+files, and the reserved-lock answer follows the file's current SQLite lock.
+On reopen, SQLite can then roll back a hot journal left by an interrupted write. Retained pagehide delegates live worker release to the wrapped driver close, which waits for admitted transactions. The session still bounds stalled drains through synchronous disposal; ordinary reload releases handles directly. New connections wait for that release to settle before acquiring the pool.
+The browser tier checks recovery after cache spill and contention with another
+worker. This does not prove durability through a power cut.
 
 ## 2. Tech stack
 
@@ -111,8 +102,8 @@ Versions are the ones the lockfile installs ([package-lock.json](package-lock.js
 | `@inlang/paraglide-js` | 2.25.0 | Compiled English and Polish message catalogues |
 | `d3-scale`, `d3-shape` | 4.0.2, 3.2.0 | Scales and path generators for SVG charts. Nothing else from d3 |
 | `melt` | 0.30.1 | Headless behaviour for a few controls (`Slider`, `Switch`, `MediaTransport`) |
-| `fflate` | 0.8.3 | Zip reading for the Daylio and Day One importers |
-| `tesseract.js` (+ eng, pol data) | 7.0.0 | Lab-result OCR. Loaded on demand and cached afterwards |
+| `fflate` | 0.8.3 | Zip reading for the Daylio backup importer |
+| `tesseract.js` (+ eng, pol data) | 7.0.0 | Lab-result OCR. Installed with the PWA and bundled in the APK; initialized on a scan |
 | `pdfjs-dist` | 4.10.38 | Renders stored documents in a worker ([src/lib/data/documents/pdf-worker.ts](src/lib/data/documents/pdf-worker.ts)) |
 | Vitest | 4.1.11 | Node tier |
 | `playwright-core` | 1.63.0 | Drives Chromium for the browser tier, guards and walkthrough |
@@ -130,24 +121,23 @@ Two policies apply to dependencies. [scripts/check-licences.mjs](scripts/check-l
 ```text
 .
 ├── src/                 the app (SvelteKit)
-│   ├── routes/          69 screens (+page.svelte), root +layout.svelte
+│   ├── routes/          every screen (+page.svelte), root +layout.svelte, root +error.svelte (unknown addresses)
 │   ├── lib/             everything else, see section 4
 │   ├── app.html         document template + pre-paint boot script
 │   ├── hooks.server.ts  build-time only: holds module preloads
 │   └── service-worker.ts
-├── messages/            en.json, pl.json (3616 keys each), untranslated-literals.txt
+├── messages/            en.json, pl.json, untranslated-literals.txt
 ├── ARCHITECTURE.md      public codebase guide
 ├── PRIVACY*.md          English and Polish privacy policies
 ├── project.inlang/      paraglide project settings
-├── static/              fonts, icons, 16 palette favicons, manifests
-├── android/             Capacitor project, 50 Java sources under app/src/main
+├── static/              fonts, icons, a favicon per palette, manifests
+├── android/             Capacitor project, Java sources under app/src/main
 ├── tests/               non-unit tiers, guards, galleries, harness
 ├── scripts/             build, release, CI and check scripts (.mjs)
 ├── deploy/              nginx config, self-host Dockerfile, hosting docs
 ├── brand/mark/          the logo in svg/png/jpg + README
-├── fixtures/released/   archives from released versions (format guard)
-├── prototypes/          throwaway spikes kept for their findings
-├── docs/                ignored maintainer notes
+├── fixtures/released/   Archives and SQLite journals from released versions (format guard)
+├── docs/adr/            architecture decision records
 └── .github/workflows/   ci.yml, release.yml, guard-recovery-proof.yml
 ```
 
@@ -155,9 +145,8 @@ Ignored working directories you will see in a maintainer's checkout:
 
 | Path | What it is |
 |---|---|
-| `.scratch/<phase>/<feature>/` | The issue tracker. One markdown file per ticket; finished phases move under `.scratch/done/` (`docs/agents/issue-tracker.md`) |
 | `.claude/` | Agent worktrees, audit evidence, review pages |
-| `docs/adr/`, `CONTEXT.md`, `PRODUCT.md`, `SCREENS.md` | Decisions and briefs, kept out of the public tree |
+| Root `evidence*/` directories | Private local evidence; ignored, rejected by the index guard and excluded from committed source archives |
 | `build/`, `.svelte-kit/`, `dist/`, `ci-logs/` | Build output, release artifacts and kept CI logs |
 
 Generated files, and where they come from:
@@ -170,30 +159,35 @@ Generated files, and where they come from:
 | `android/app/src/main/assets/public` and Capacitor plugin glue | `npx cap sync android` |
 | [android/app/src/androidTest/assets/](android/app/src/androidTest/assets) | [tests/android-tier/run.mjs](tests/android-tier/run.mjs) |
 
+Tesseract language data keeps its gzip bytes under `.traineddata` names. The
+loader uses `gzip: false` for the URL suffix and decompresses by byte signature.
+This prevents Android asset merging from renaming the files. The release-artifact
+guard checks required OCR paths and every web OCR asset against `assets/public`
+in the APK.
+
 Naming conventions you'll meet everywhere:
 
 - `*.svelte.ts` modules use runes. Plain `*.ts` modules are rune-free and can be imported by the Node tier.
 - `*.test.ts` sits beside the module it tests. The tiers are described in section 10.
 - `*-bridge.ts` is the JS side of one native plugin. `android-*.ts` is Android-only code above a bridge.
-- Branches and tickets are `ticket-NN-<slug>`. Comments name the ticket that introduced a rule ("phase 11 ticket 11"), and those tickets live in `.scratch/`.
 
 ## 4. Source layout and dependency direction
 
 | `src/lib/...` | Holds |
 |---|---|
-| [data/](src/lib/data) | The model: SQLite drivers and schema ([sqlite/](src/lib/data/sqlite)), the journal facade and its areas ([journal/](src/lib/data/journal)), the reactive layer ([live/](src/lib/data/live)), preferences ([prefs/](src/lib/data/prefs)), vocabulary labels ([vocabulary/](src/lib/data/vocabulary)), the archive and importers ([archive/](src/lib/data/archive)), media ([photos/](src/lib/data/photos), [voiceRecordings/](src/lib/data/voiceRecordings), [videoNotes/](src/lib/data/videoNotes), [documents/](src/lib/data/documents)), the demo persona ([demo/](src/lib/data/demo)), plus about 100 pure domain modules (stock projection, hormone curves, agenda, wrapped...) |
+| [data/](src/lib/data) | The model: SQLite drivers and schema ([sqlite/](src/lib/data/sqlite)), the journal facade and its areas ([journal/](src/lib/data/journal)), the reactive layer ([live/](src/lib/data/live)), preferences ([prefs/](src/lib/data/prefs)), vocabulary labels ([vocabulary/](src/lib/data/vocabulary)), the archive and importers ([archive/](src/lib/data/archive)), media ([photos/](src/lib/data/photos), [voiceRecordings/](src/lib/data/voiceRecordings), [videoNotes/](src/lib/data/videoNotes), [documents/](src/lib/data/documents)), the demo persona ([demo/](src/lib/data/demo)), plus about 100 pure domain modules (stock projection, agenda, wrapped...) |
 | [crypto/](src/lib/crypto) | AES-GCM, Argon2id and its worker, KDF profiles, keystore wrap format, recovery key |
 | [lock/](src/lib/lock) | Lock timing, PIN throttle, Keystore, lock-timing and screen-capture bridges |
 | [stores/](src/lib/stores) | App-level state in runes: the boot adapter and machine, lock, UI, toasts, media capture |
-| [components/](src/lib/components) | 128 top-level components, the control and reading kit (`kit/`), readings tiles (`readings/`), hub icon masks |
+| [components/](src/lib/components) | Top-level components, the control and reading kit (`kit/`), readings tiles (`readings/`), hub icon masks |
 | [motion/](src/lib/motion) | Motion primitives, tokens, press and material CSS |
-| [theme/](src/lib/theme) | Fonts, base tokens, 16 palettes, flag roles, active flag |
+| [theme/](src/lib/theme) | Fonts, base tokens, palettes, flag roles, active flag |
 | [styles/](src/lib/styles) | [app.css](src/lib/styles/app.css), [components.css](src/lib/styles/components.css), [kit.css](src/lib/styles/kit.css), [screens.css](src/lib/styles/screens.css), print CSS, class baselines |
 | [navigation/](src/lib/navigation) | Route policy ([routeGates.ts](src/lib/navigation/routeGates.ts)), screen transitions, smart back, tab mapping, return context |
 | [android/](src/lib/android) | Plugin registry, launch routes, [platform-sync.ts](src/lib/android/platform-sync.ts), back button, status bar |
 | [pwa/](src/lib/pwa) | Service-worker registration, update rule, shell asset split, SW messages |
 | [audio/](src/lib/audio), [charts/](src/lib/charts) | Voice analysis (pitch, resonance, bands) and chart geometry |
-| [disguise/](src/lib/disguise), [unprompted/](src/lib/unprompted), [reminders/](src/lib/reminders), [retrospective/](src/lib/retrospective), [onboarding/](src/lib/onboarding), [permissions/](src/lib/permissions), [print/](src/lib/print), [media/](src/lib/media), [a11y/](src/lib/a11y), [resources/](src/lib/resources), [document/](src/lib/document) | One concern each |
+| [disguise/](src/lib/disguise), [unprompted/](src/lib/unprompted), [reminders/](src/lib/reminders), [onboarding/](src/lib/onboarding), [permissions/](src/lib/permissions), [print/](src/lib/print), [media/](src/lib/media), [a11y/](src/lib/a11y), [resources/](src/lib/resources), [document/](src/lib/document) | One concern each |
 
 ```mermaid
 flowchart TD
@@ -233,6 +227,7 @@ flowchart LR
   Drv <-- "postMessage<br/>{id, op, args}" --> W[DB worker<br/>mc-worker.ts]
   W --> OPFS[(OPFS SAHPool)]
   UI <--> A2[Argon2id worker]
+  UI <--> Photo[Photo normalization worker]
   UI <--> PDF[pdf.js worker]
   UI <--> OCR[tesseract worker]
   UI <-- "skip-waiting,<br/>cache-on-demand" --> SW[Service worker]
@@ -242,22 +237,41 @@ flowchart LR
 
 Vite emits workers as ES modules so demo worker imports can split into chunks. The development and preview servers set COOP/COEP headers for SQLite; production hosting supplies those headers itself.
 
-**Transactions.** Both drivers implement transactions as manual `BEGIN`/`COMMIT`/`ROLLBACK`, queued one at a time by `oneTransactionAtATime()` in [data/sqlite/transactor.ts](src/lib/data/sqlite/transactor.ts). A transaction gets a scoped driver, and only that scope may run statements inside it. `readSnapshot()` gives a consistent multi-statement read. Unrelated calls wait until the reserved transaction or snapshot ends. Transactions don't nest. Entry trash and restore, tryout adoption, procedure deletion and doubt-snapshot deletion commit their related writes together. A failed file cleanup after commit logs a warning and leaves reclamation to the boot sweep; the committed write still succeeds.
+**Date range writes.** Regimen episodes, dose pauses and tryouts share the
+ordering guard in [data/span.ts](src/lib/data/span.ts).
+Editors constrain the end picker and explain an inverted draft before saving.
+Journal writes reject inverted bounds independently, including episode ending
+and tryout adoption. Equal dates remain inclusive and null ends stay open.
+Reads and archive handling leave existing records unchanged.
+
+**Transactions.** Both drivers implement transactions as manual `BEGIN`/`COMMIT`/`ROLLBACK`, queued one at a time by `oneTransactionAtATime()` in [data/sqlite/transactor.ts](src/lib/data/sqlite/transactor.ts). A transaction gets a scoped driver, and only that scope may run statements inside it. `readSnapshot()` gives a consistent multi-statement read. Unrelated calls wait until the reserved transaction or snapshot ends. Transactions don't nest. Entry trash and restore, tryout adoption and procedure deletion commit their related writes together. A failed file cleanup after commit logs a warning and leaves reclamation to the boot sweep; the committed write still succeeds.
 
 Ordinary `SELECT` calls with identical SQL and scalar bindings share an answer within a driver read generation. The connection keeps at most 128 answers and returns separate row objects to each caller. Writes and transaction or snapshot boundaries discard those answers; scoped reads always reach SQLite, and rejected reads can retry. This saves repeated worker and Android bridge calls when several Home readers ask for the same rows.
 
 
 **Android bridge.** On Android, [android-driver.ts](src/lib/data/sqlite/android-driver.ts) talks to `SqlitePlugin` over the Capacitor bridge. Calls are pipelined (ADR-0089): each crosses as soon as it is made, carrying a session and a sequence number, and [CallSequencer.java](android/app/src/main/java/dev/engender/app/sqlite/CallSequencer.java) runs them strictly in order on one thread. Bulk photo bytes skip the JSON bridge and go through two WebMessage channels (`PhotoPickChannel`, `PhotoWriteChannel`), registered with `WebViewCompat.addWebMessageListener` and limited to the `https://localhost` origin.
 
-**Native plugins** are listed once in [src/lib/android/plugin-registry.ts](src/lib/android/plugin-registry.ts), each with the JS module that owns it: `Sqlite`, `Keystore`, `PinBinding`, `Photos`, `Reminders`, `AutoExport`, `FileDelivery`, `RetrospectiveNotifications`, `Disguise`, `LockTiming`, `ScreenCapture`, `DeviceReset`, `Print`, `SensitiveClipboard`, `Permissions` and `StatusBarAppearance`, plus `@capacitor/app` for the back button. Every required plugin is checked at startup. The Java side registers them in [AndroidPluginRegistry.java](android/app/src/main/java/dev/engender/app/AndroidPluginRegistry.java).
+If Android kills the WebView renderer, `MainActivity` handles
+`onRenderProcessGone`, destroys the dead WebView and recreates the activity
+and its bridge. The new page boots through the journal's normal access
+mode, without a retained session or door pages. The encrypted editor draft
+survives in localStorage. Recovery adds no notice. Destroying the old bridge
+drains admitted SQLCipher work before closing its connection, dropping its
+stored key reference and stopping its worker. Late calls to that bridge
+are refused. Ordinary driver close keeps its migration recovery context;
+bridge disposal discards it.
+
+**Native plugins** are listed once in [src/lib/android/plugin-registry.ts](src/lib/android/plugin-registry.ts), each with the JS module that owns it: `Sqlite`, `Keystore`, `PinBinding`, `Photos`, `Reminders`, `AutoExport`, `FileDelivery`, `Disguise`, `LockTiming`, `ScreenCapture`, `DeviceReset`, `Print`, `SensitiveClipboard`, `Permissions` and `StatusBarAppearance`, plus `@capacitor/app` for the back button. Every required plugin is checked at startup. The Java side registers them in [AndroidPluginRegistry.java](android/app/src/main/java/dev/engender/app/AndroidPluginRegistry.java).
 
 **Write notifications.** The journal wrapper announces a successful write's declared tables. Known no-op results skip the announcement (section 6.4).
 
-**Service worker.** It exchanges three messages, each defined once and imported by both sides: `engender:skip-waiting` and `engender:cache-on-demand` (OCR assets) in [src/lib/pwa/sw-messages.ts](src/lib/pwa/sw-messages.ts), and `engender:cache-pdf-worker` in [src/lib/pwa/pdf-worker-cache.ts](src/lib/pwa/pdf-worker-cache.ts).
+**Photo normalization.** Each picked image is decoded and encoded in a short-lived module worker. The worker returns the normalized JPEG and thumbnail, then terminates. This avoids Android canvas encoding waiting for the page’s idle scheduler after a screen mount. Size limits, orientation handling and metadata removal are unchanged.
 
-Update discovery follows an installing worker until its state changes, so a mid-session release can be offered without another journal write. An explicit update check stops waiting for installation after 30 seconds; applying a waiting release still uses the separate five-second takeover limit.
+**Service worker.** Update activation uses `engender:skip-waiting` in [src/lib/pwa/sw-messages.ts](src/lib/pwa/sw-messages.ts). The optional PDF worker uses `engender:cache-pdf-worker` in [src/lib/pwa/pdf-worker-cache.ts](src/lib/pwa/pdf-worker-cache.ts). OCR needs no download message.
 
-Media capture guards the microphone-opening request as well as the live session. Leaving either voice screen aborts an unfinished open or discards the live take, and an inactive recorder preserves its captured bytes. Video re-encoding has bounded decode, playback and recorder-stop waits and returns the original-capture fallback when they expire. Android photo channels close their ports after 30 seconds without a reply. Both transports can retry through the bridge. PickedFiles retains a picked source until JavaScript acknowledges its bytes; timeout cancellation closes the channel reader and lets the bridge open a fresh stream from the same source. Late channel completion cannot close the newer chunk reader. Native reserves each file's write order when the channel header or bridge call arrives, so a late channel write finishes before any retry or restore writes newer bytes. A header with no payload expires after 30 seconds; other files can still write in parallel. Native read and write errors still propagate.
+Update discovery follows an installing worker until its state changes, so a mid-session release can be offered without another journal write. An explicit update check stops waiting for installation after 30 seconds; applying a waiting release still uses the separate five-second takeover limit. The update notice ([UpdateNotice.svelte](src/lib/components/UpdateNotice.svelte)) is drawn under the screen's field at the width of its content, by [UpdateNoticeSlot.svelte](src/lib/components/UpdateNoticeSlot.svelte), which the two field owners (ScreenHeader and Today's header) place after their field; setup and the gates have none. Each screen mounts its own, so its dismissal and its announcement belong to the page: a dismissed notice stays closed across navigations and lock/unlock and is offered again on the next load, and a release is announced once when it becomes ready. Locking marks a screen arrival before journal DOM is removed, so outgoing panels finish immediately and a fast unlock cannot resume a detached route.
+
+Media capture guards the opening request as well as the live session. The entry editor admits one pending or active capture per control. Leaving the editor or either voice screen aborts an unfinished open or discards the live take. A late permission result closes its tracks before starting a recorder or reporting a refusal. Entry video capture releases every track and its duration timer when recorder construction, start or stop fails. An inactive recorder preserves its captured bytes. Video re-encoding has bounded decode, playback and recorder-stop waits and returns the original-capture fallback when they expire. Android photo channels close their ports after 30 seconds without a reply. Both transports can retry through the bridge. PickedFiles retains a picked source until JavaScript acknowledges its bytes; timeout cancellation closes the channel reader and lets the bridge open a fresh stream from the same source. Late channel completion cannot close the newer chunk reader. Native reserves each file's write order when the channel header or bridge call arrives, so a late channel write finishes before any retry or restore writes newer bytes. A header with no payload expires after 30 seconds; other files can still write in parallel. Native read and write errors still propagate.
 
 **Native into the app.** Notifications and widgets open the app through launch routes that carry a nonce (section 9).
 
@@ -267,12 +281,13 @@ Media capture guards the microphone-opening request as well as the live session.
 
 ### 6.1 Schema and migrations
 
-The whole schema is one statement, `BASELINE_SCHEMA` in [src/lib/data/sqlite/schema.ts](src/lib/data/sqlite/schema.ts), registered as version 88. It has been squashed twice before 1.0.0: ticket 34 folded the first 78 forward-only migrations into a v78 baseline, and after-release ticket 42 folded that baseline and migrations 79 through 88 into this one. [schema.test.ts](src/lib/data/sqlite/schema.test.ts) holds the baseline to a dump the retired chain produced at c0656984 (`test-support/schema-v88-reference.txt`, and its rows in `schema-v88-reference-rows.txt`): every table, column, type, default, constraint, index and trigger, the FTS5 table and its shadow tables. The one row the chain left that the baseline does not write, taper's `sqlite_sequence` counter at 0, is named in the test and hands out the same first id. Later versions are ordinary forward migrations in [migrations.ts](src/lib/data/sqlite/migrations.ts) (ADR-0006), and `LATEST_SCHEMA_VERSION` in [schema-version.ts](src/lib/data/sqlite/schema-version.ts) names the newest one. A test fails if the two disagree.
+The whole schema is one statement, `BASELINE_SCHEMA` in [src/lib/data/sqlite/schema.ts](src/lib/data/sqlite/schema.ts), registered as version 88. It folds the first 88 forward-only migrations into one baseline. [schema.test.ts](src/lib/data/sqlite/schema.test.ts) holds the baseline to a dump from the retired chain (`test-support/schema-v88-reference.txt`, and its rows in `schema-v88-reference-rows.txt`): every table, column, type, default, constraint, index and trigger, the FTS5 table and its shadow tables. The one row the chain left that the baseline does not write, taper's `sqlite_sequence` counter at 0, is named in the test and hands out the same first id. rc.1 shipped at 88, so 88 stays the baseline, and one step follows it: version 119, which runs what were migrations 89 through 119 in their original order, data conversions included, in one transaction. An rc.1 journal updates in place in that one step, and a process killed partway leaves it at 88 with its rows. [squash-v119.test.ts](src/lib/data/sqlite/squash-v119.test.ts) holds the step to dumps from the unsquashed chain (`test-support/schema-v119-*.txt`): the schema of an empty database and of the rc.1 released journal, and the rows of both, with a seed (`rc1-conversion-seed.ts`) that gives every data conversion something to convert. `POST_RC1_STEPS` in [migrations.ts](src/lib/data/sqlite/migrations.ts) keeps the folded steps under their old numbers for their comments and their tests; no release runs them one at a time. Versions after 119 are ordinary forward migrations in [migrations.ts](src/lib/data/sqlite/migrations.ts) (ADR-0006), and `LATEST_SCHEMA_VERSION` in [schema-version.ts](src/lib/data/sqlite/schema-version.ts) names the newest one. A test fails if the two disagree.
 
 ```mermaid
 timeline
   title Schema versions
   v88 : squashed baseline, 72 tables + entry_fts
+  v119 : one step, what were 89 to 119
 ```
 
 The retired steps are in git history: v1 to v78 at 4c38403a, and the v78 baseline with 79 to 88 at c0656984. What each one still means sits beside its column in `schema.ts`.
@@ -280,12 +295,13 @@ The retired steps are in git history: v1 to v78 at 4c38403a, and the v78 baselin
 The rules:
 
 - **Append only.** Never edit a shipped migration or the baseline. From 1.0.0 on, a released migration is never squashed either: a released journal can sit at any version a release shipped, and every step from there to the newest has to stay in the list. A journal whose `user_version` is above `LATEST_SCHEMA_VERSION` is refused with `SchemaTooNewError`, and the app shows [SchemaTooNew.svelte](src/lib/components/SchemaTooNew.svelte) instead of guessing.
-- **Nothing below the baseline.** A journal with a schema between 1 and 87 comes from a development build from before the squash; no release ever wrote one. The runner refuses it with `JournalBelowBaselineError` before copying or writing anything, and the boot-failure notice ([BootFailureNotice.svelte](src/lib/components/BootFailureNotice.svelte)) says where it came from and offers the start-over way out instead of a retry. The notice speaks one sentence per failure kind (`BootFailure` in [boot-state.ts](src/lib/stores/boot-state.ts)) and keeps the driver's text behind "Copy details for a bug report". The journal itself is left as it was. To keep its content, open it in the build that wrote it, export an archive from Settings, then restore that archive in this build; the archive format is versioned separately from the schema (ADR-0007).
-- **Copy before migrating.** Before migrating, the runner makes an encrypted pre-migration copy. A failed step rolls back and leaves that copy in place (ADR-0006).
+- **Nothing below the baseline, nothing between the steps.** A journal with a schema between 1 and 87 comes from a development build from before the squash, and one between 89 and 118 from a development build that ran the folded steps one at a time; no release ever wrote either. The runner refuses the first with `JournalBelowBaselineError` and the second with `JournalBetweenStepsError` (a kind of the first) before copying or writing anything, and the boot-failure notice ([BootFailureNotice.svelte](src/lib/components/BootFailureNotice.svelte)) says where it came from and offers the start-over way out instead of a retry. The notice speaks one sentence per failure kind (`BootFailure` in [boot-state.ts](src/lib/stores/boot-state.ts)) and keeps the driver's text behind "Copy details for a bug report". The journal itself is left as it was. To keep its content, open it in the build that wrote it, export an archive from Settings, then restore that archive in this build; the archive format is versioned separately from the schema (ADR-0007).
+- **Copy before migrating.** Before migrating, the runner makes an encrypted pre-migration copy. A failed step rolls back and leaves that copy in place (ADR-0006). A copy or a step that runs out of space is the `storage-full` boot failure: the notice asks for free space and keeps "Try opening again" and the restore offer.
+- **Transaction errors keep their cause.** If explicit rollback also fails, the transactor reports an AggregateError with the original statement or commit message and cause. Its errors list keeps that failure first and rollback refusal second. A failed BEGIN does not issue rollback, and rejection does not poison the transaction queue.
 - **Foreign keys are on.** Both drivers set `PRAGMA foreign_keys = ON` (the web worker and [SqliteConnection.java](android/app/src/main/java/dev/engender/app/sqlite/SqliteConnection.java)). The migration runner turns them off only while it migrates, and checks for violations before it finishes.
 - **Two identities per row.** Each row has a local `INTEGER` rowid and a travelling identity: a minted `uuid` for the person's own rows, a seeded `key` for built-ins (ADR-0002). Archives and merges match on the travelling identity.
 - **No derived state.** The schema stores rules and facts, not derived numbers (ADR-0010). Stock is a projection, not a count (ADR-0046). A reminder stores its rule, not its next fire time. The exceptions carry a comment in capitals at the table.
-- **Dates are epoch days.** A date is an integer epoch day, meaning the local calendar day counted from 1970-01-01, never derived from UTC clock time (ADR-0001). The arithmetic lives in [data/epochDay.ts](src/lib/data/epochDay.ts), which imports nothing. Timestamps are integer milliseconds. Day URL parameters are validated by [data/dayParam.ts](src/lib/data/dayParam.ts): a nonnegative epoch-day integer, `today`, or a valid `YYYY-MM-DD` date. Invalid addresses keep the unavailable notice and Back control; `/entry/new/[day]` also refuses future days. A screen that needs today reads `currentDay()` from [stores/today.svelte.ts](src/lib/stores/today.svelte.ts) inside a `$derived`, an effect or a live read, and so follows the day across midnight and when the page becomes visible again; a write reads `todayEpochDay()` when it runs. `tests/today-capture.test.ts` fails on a top-level `todayEpochDay()` binding or a `$derived` that calls it.
+- **Dates are epoch days.** A date is an integer epoch day, meaning the local calendar day counted from 1970-01-01, never derived from UTC clock time (ADR-0001). The arithmetic lives in [data/epochDay.ts](src/lib/data/epochDay.ts), which imports nothing. Timestamps are integer milliseconds. Day URL parameters are validated by [data/dayParam.ts](src/lib/data/dayParam.ts): a nonnegative epoch-day integer, `today`, or a valid `YYYY-MM-DD` date. Invalid addresses keep the unavailable notice and Back control; `/entry/new/[day]` also refuses future days. A screen that needs today reads `currentDay()` from [stores/today.svelte.ts](src/lib/stores/today.svelte.ts) inside a `$derived`, an effect or a live read, and so follows the day across midnight and when the page becomes visible again; a write reads `todayEpochDay()` when it runs. `tests/node/journal/today-capture.test.ts` fails on a top-level `todayEpochDay()` binding or a `$derived` that calls it.
 - **Native units.** Numbers are stored in the unit the person entered (ADR-0012). The one narrow exception is conversion for known analytes (ADR-0026).
 - **Entry text search.** An FTS5 contentless table, `entry_fts`, holds folded entry text. Folding happens in application code (ADR-0005). Search outside entries is one SQL statement built from per-area column declarations ([journal/textSearch.ts](src/lib/data/journal/textSearch.ts)).
 
@@ -309,11 +325,10 @@ erDiagram
   entry ||--o{ entry_dimension_value : has
   gender_dimension ||--o{ entry_dimension_value : scale
   presentation ||--o{ entry : presentation_id
-  entry ||--o{ revisit : entry_id
   entry ||--o{ checklist : debrief_entry_id
 ```
 
-The same section holds `gender_preset`/`preset_dimension`, `body_region`, `entry_template` (with its tag and dimension children), `affirmation` and `presentation` (ADR-0048: a grouping key, never a set of scales). An entry is never deleted on the spot. `trashed_at` marks it, and boot purges trash older than 30 days.
+The same section holds `gender_preset`/`preset_dimension`, `body_region` and `presentation` (ADR-0048: a grouping key, never a set of scales). An entry is never deleted on the spot. `trashed_at` marks it, and boot purges trash older than 30 days.
 
 **Care: regimen, doses, stock, labs**
 
@@ -328,7 +343,12 @@ erDiagram
   lab_result
 ```
 
-`dose_event` carries a `source` column: either the person logged it, or a schedule logged it automatically (ADR-0086). `medication_stock` has one row per drug, and the remaining stock is projected from it and from dose events (ADR-0046, [data/stockProjection.ts](src/lib/data/stockProjection.ts)). An optional `doses_per_unit` says how many doses one unit holds, so a dose takes a fifth of a vial rather than a whole one; empty means one dose per unit. `taper` and `taper_session` belong to a procedure.
+`doses.upsertDose` rejects non-finite or non-positive actual amounts for taken
+and changed doses before writing. The dose editor uses the same amount check.
+Skipped expected slots and historical reads are unchanged. Auto-logging leaves
+slots with invalid saved amounts open while recording other valid due doses.
+
+`dose_event` carries a `source` column: either the person logged it, or a schedule logged it automatically (ADR-0086). Since schema 90, new automatic rows retain their episode UUID, slot day and position within that day. This provenance keeps one automatic row attached to one slot through a device zone change; the logged timestamp stays unchanged. Person-logged rows still resolve by timestamp. Existing rows receive no inferred identity, and existing duplicates are not merged or deleted. `medication_stock` has one row per drug, and the remaining stock is projected from it and from dose events (ADR-0046, [data/stockProjection.ts](src/lib/data/stockProjection.ts)). An optional `doses_per_unit` says how many doses one unit holds, so a dose takes a fifth of a vial rather than a whole one; empty means one dose per unit. `taper` and `taper_session` belong to a procedure.
 
 **Body, transition and the rest**
 
@@ -336,53 +356,63 @@ erDiagram
 erDiagram
   procedure ||--o{ procedure_photo : has
   procedure ||--o{ appointment : procedure_id
+  provider ||--o{ appointment : provider_id
+  appointment ||--o{ appointment_status : has
   procedure ||--o{ taper : has
   procedure ||--o{ milestone : procedure_id
   tryout ||--o{ milestone : tryout_id
   tryout ||--o{ tryout_photo : has
   tryout ||--o{ felt_sense : tryout_id
-  milestone ||--o{ felt_sense : milestone_id
   checklist ||--o{ checklist_item : has
   hair_removal_session ||--o{ hair_removal_photo : has
   effect_category ||--o{ personal_effect_type : category
-  doubt_snapshot ||--o{ doubt_snapshot_entry : has
 ```
 
 The rest, without SQL edges:
 
 | Area | Tables |
 |---|---|
-| Body | `measurement_type`, `measurement`, `size_record`, `hair_stage`, `hair_photo`, `personal_effect`, `side_effect` |
+| Body | `personal_effect`, `side_effect`, `progress_photo`, `progress_pose` (Hair is a built-in pose since 124) |
 | Voice | `voice_benchmark`, `voice_practice_take` |
-| Logs | `tally_event`, `cycle_event` (ADR-0043), `wear_session` (ADR-0064), `journaling_pause` |
-| Self | `letter` (seal derived from dates), `document` (ADR-0065), `roadmap_check`, `roadmap_goal`, `roadmap_track` (ADR-0068) |
+| Logs | `cycle_event` (ADR-0043), `wear_session` (binder, tucking or compression) |
+| Self | `letter` (seal derived from dates), `document` (ADR-0065), `roadmap_check`, `roadmap_goal` (ADR-0068), `roadmap_category`, `roadmap_institution`, `roadmap_institution_change` |
 | Eras and resurfacing | `era` (ADR-0049), `era_mute`, `comfort_item` |
-| Housekeeping | `reminder`, `pref`, `word_frequency_ignore`, `saved_question`, `import_log`, `area_state` (hidden and finished areas, ADR-0052) |
+| Appointments | `appointment_debrief` (keyed by the appointment's uuid, no FK) |
+| Housekeeping | `reminder`, `pref`, `import_log`, `area_state` (hidden and finished areas, ADR-0052), `deletion` (what a delete leaves behind for Merge) |
 
 [unprompted/resurfacing.ts](src/lib/unprompted/resurfacing.ts) loads eras
 and mutes for each registered resurfacing surface. On this day filters out
 muted candidates before reading their content. Wrapped rejects the whole
-period if it overlaps a muted era, including notifications and direct share
-URLs. The interface requires a registered surface key; its type check rejects
+period if it overlaps a muted era. The interface requires a registered surface key; its type check rejects
 missing and unknown keys. Direct Journal reads remain possible; code review
 must check that resurfacing surfaces use this interface.
 
-Count the ordinary tables with `rg -c '^CREATE TABLE' src/lib/data/sqlite/schema.ts`; the FTS5 virtual table is separate.
+The v119 step drops the tables of retired areas and adds
+the ones its additions needed.
 
 ### 6.3 The journal facade
+
+Domain modules under [`data/`](src/lib/data) work with values a caller has
+already loaded. Modules under [`data/journal/`](src/lib/data/journal) read
+and write those values through the journal driver. For example,
+[`data/eras.ts`](src/lib/data/eras.ts) defines how eras are interpreted, and
+[`data/journal/eras.ts`](src/lib/data/journal/eras.ts) stores era records.
+[`data/archive/daylioBackup.ts`](src/lib/data/archive/daylioBackup.ts)
+previews Daylio backups. [`data/journal/archive.ts`](src/lib/data/journal/archive.ts)
+commits the import.
 
 ```mermaid
 flowchart LR
   subgraph journal.ts
-    O[openJournal driver, files] --> E[61 facade members]
+    O[openJournal driver, files] --> E[facade members]
     E --> Eager[entries, tags, doses,<br/>regimen, labs, photos...]
-    E --> Def[14 deferred members<br/>archive, hormoneCurve,<br/>clinicianSummary, roadmap...]
+    E --> Def[deferred members<br/>archive, clinicianSummary,<br/>roadmap...]
     E --> Views[views over other areas<br/>day, lastWrite, dayAhead,<br/>textSearch, photoLibrary]
   end
   Def -. "import() on first call" .-> Mod[area module chunk]
 ```
 
-The journal is one handle bound to a driver (ADR-0017). `openJournal(driver, files)` in [src/lib/data/journal/journal.ts](src/lib/data/journal/journal.ts) composes 61 facade members covering stored areas and computed views. A domain Area owns a kind of journal content and has an archive section that makes it portable. Code also uses the `*Area` type suffix for computed views: `day`, `lastWrite`, `dayAhead` and `textSearch` own no table. Facade operations are async and rune-free. Fourteen heavy members are deferred with `deferredArea()` ([journal/deferredArea.ts](src/lib/data/journal/deferredArea.ts)), so their code loads on the first call while their type stays static. [deferredArea.test.ts](src/lib/data/journal/deferredArea.test.ts) checks each deferred member's method list against the eager interface.
+The journal is one handle bound to a driver (ADR-0017). `openJournal(driver, files)` in [src/lib/data/journal/journal.ts](src/lib/data/journal/journal.ts) composes facade members covering stored areas and computed views. A domain Area owns a kind of journal content and has an archive section that makes it portable. Code also uses the `*Area` type suffix for computed views: `day`, `lastWrite`, `dayAhead` and `textSearch` own no table. Facade operations are async and rune-free. Heavy members are deferred with `deferredArea()` ([journal/deferredArea.ts](src/lib/data/journal/deferredArea.ts)), so their code loads on the first call while their type stays static. [deferredArea.test.ts](src/lib/data/journal/deferredArea.test.ts) checks the archive facade's method list against the eager interface.
 
 Facade-wide rules:
 
@@ -404,12 +434,12 @@ flowchart LR
   B --> M[reference mirror<br/>reference.svelte.ts]
 ```
 
-- **Every operation is declared.** [data/live/writes.ts](src/lib/data/live/writes.ts) classifies every journal operation as a read or a write and names the tables it touches (52 coarse table names in `TABLE_NAMES`). The `OPERATIONS` table is checked at compile time against the `Journal` interface, and `observeWrites` throws at boot on anything unclassified.
+- **Every operation is declared.** [data/live/writes.ts](src/lib/data/live/writes.ts) classifies every journal operation as a read or a write and names the tables it touches (46 coarse table names in `TABLE_NAMES`). The `OPERATIONS` table is checked at compile time against the `Journal` interface, and `observeWrites` throws at boot on anything unclassified.
 - **The declarations are checked against SQL.** For operations and branches exercised by its fixtures, [writes.sql.test.ts](src/lib/data/live/writes.sql.test.ts) checks that observed SQL tables fit within each operation's declarations. A separate union check requires coverage of the tables behind each coarse name. Redundant declarations can still pass, and unexercised branches, trigger/view internals and the file's explicit importer opt-outs remain outside that proof. Extend the fixtures when adding behavior.
 - **Writes bump versions.** [live/journal.svelte.ts](src/lib/data/live/journal.svelte.ts) exports `journal`, a proxy over the open journal. A successful write bumps a version for each of its declared tables ([tableVersions.svelte.ts](src/lib/data/live/tableVersions.svelte.ts)). A write that knows it changed nothing can return `NOTHING_WRITTEN` from [journal/nothingWritten.ts](src/lib/data/journal/nothingWritten.ts); the wrapper returns `undefined` without a version bump. `doses.autoLogDueDoses` instead preserves its count and skips the bump when that count is zero. These exceptions keep reconciliation from waking itself on unchanged data. `batchWrites()` coalesces the bumps from a batch into one.
 - **Reads re-run on their own tables.** `liveQuery(run)` records which operations its run called, maps them to tables with `tablesReadBy`, and re-runs only when one of those tables' versions moves. Saving a lab result doesn't re-run the entry list.
 - **A refresh failure keeps the last result.** Read state is `{ value, loading, failed }` ([live/readState.ts](src/lib/data/live/readState.ts)). A failed refresh keeps the previous result on screen and sets `failed`.
-- **Locking on the web.** [stores/journal-session.ts](src/lib/stores/journal-session.ts) is the lifecycle, rune-free. A lock in a lockable web mode closes the live facade's gate ([live/sessionGate.ts](src/lib/data/live/sessionGate.ts)) and waits for every call already running, so a save in flight lands; flushes preference writes; closes the driver, which terminates the worker holding the hex key; stops handing the key out; drops the photo stores, the vocabulary mirror and the content caches ([lock/forget-content.ts](src/lib/lock/forget-content.ts)); and starts a keyless worker for the next unlock. The unlock derives the key from the access mode's secret as before and reopens on that worker, about 30 to 80 ms measured in the browser tier. Calls made while locked queue at the gate and run against the reopened journal. The entry editor keeps its encrypted draft mirror when a lock unmounts it, so the unlock returns to the same draft.
+- **Locking on the web.** [stores/journal-session.ts](src/lib/stores/journal-session.ts) is the lifecycle, rune-free. A lock in a lockable web mode closes the live facade's gate ([live/sessionGate.ts](src/lib/data/live/sessionGate.ts)) and waits for every call already running, so a save in flight lands; flushes preference writes; closes the driver, which terminates the worker holding the hex key; stops handing the key out; drops the photo stores, the vocabulary mirror and the content caches ([lock/forget-content.ts](src/lib/lock/forget-content.ts)); and starts a keyless worker for the next unlock. The unlock derives the key from the access mode's secret as before and reopens on that worker, about 30 to 80 ms measured in the browser tier. Calls made while locked queue at the gate and run against the reopened journal. The entry editor keeps its encrypted draft mirror when a lock unmounts it, so the unlock returns to the same draft. Each retained navigation suspension owns a separate key holder. A cancelled return can release only its own holder; the same key retained for a newer return survives. Explicit lock clears the holder before waiting for disposal.
 - **Warm revisits paint at once.** [live/lastResults.ts](src/lib/data/live/lastResults.ts) keeps each query's last answer in memory, stamped with its table versions. A revisit paints that answer in its first frame and refreshes underneath. The store is cleared on lock and on reset.
 - **Reference data is mirrored.** Dimensions, tags, milestones and the rest of the vocabulary are bounded, so [reference.svelte.ts](src/lib/data/live/reference.svelte.ts) keeps them in reactive state and re-reads them from SQLite after any write that touches them (ADR-0004).
 
@@ -466,24 +496,32 @@ stateDiagram-v2
   Saved --> Trashed: deleteEntry sets trashed_at
   Trashed --> Saved: restoreEntry
   Trashed --> Purged: boot, after 30 days
-  Saved --> Archived: export .ttbackup
+  Saved --> Archived: export .gnd
   Archived --> Saved: restore Merge or Replace
   Saved --> Erased: reset / start over
   Purged --> [*]
   Erased --> [*]
 ```
 
-A boot sweep reclaims orphaned media files. Android's photo listing excludes dotfiles, so `.nomedia` survives the sweep, and native file operations accept only the photo directory or named test directories in debug builds. Both native photo-write transports sync their file before acknowledging success. Reset ([data/reset.ts](src/lib/data/reset.ts), and `DeviceResetPlugin` on Android) wipes everything the installation holds: OPFS, the boot mirror, the device-key IndexedDB and the PIN bindings. It never touches an archive made earlier (ADR-0014).
+A boot sweep reclaims orphaned media files. Android's photo listing excludes dotfiles, so `.nomedia` survives the sweep, and native file operations accept only the photo directory or named test directories in debug builds. Both native photo-write transports sync their file before acknowledging success, and remove it when the write or sync fails, so a full disk leaves no empty file; OPFS writes do the same. Every caller writes a fresh name, so the removal never reaches a file a row names. Reset ([data/reset.ts](src/lib/data/reset.ts), and `DeviceResetPlugin` on Android) wipes everything the installation holds: OPFS, the boot mirror, the device-key IndexedDB and the PIN bindings. It never touches an archive made earlier (ADR-0014).
+
+Web reset starts ordinary browser-mirror cleanup before asynchronous file
+deletion and removes credential wrap files after the other OPFS entries. A
+failed data deletion keeps the remaining ways to open that data. On the next
+boot, a web survey with no credentials or legacy journal discards this app's
+mirrors and restores default preferences before onboarding. This is a logical
+recovery boundary: Web Storage exposes no fsync operation, and the app does
+not promise removal of old physical browser log bytes.
 
 ### 6.7 Media files
 
-Photos, thumbnails, voice recordings, video notes and documents live outside SQLite in one file store. The UI reads it through [stores/photoFiles.ts](src/lib/stores/photoFiles.ts); boot installs and clears that holder once, and recording/video readers share it. The file names are opaque uuids, such as `<uuid>.webm` for a recording. `encryptedFileStore()` in [data/photos/encrypted-file-store.ts](src/lib/data/photos/encrypted-file-store.ts) wraps the platform store (OPFS on the web, app-private files on Android). Each file is stored as a nonce followed by its AES-256-GCM ciphertext under the data key, with the file name as AAD. Photos are normalized and stripped of metadata on import (ADR-0008, ADR-0015). A photo pick can bring back several images in one trip on both platforms (Android asks the system picker for up to `MediaStore.getPickImagesMaxLimit()`). Photo picks accept source files up to 32 MiB before normalization; document picks keep their own 25 MiB ceiling. Both native read transports enforce the source ceiling when a provider omits or understates its size. Every photo is browsed in one library, but each table still owns its own photos (ADR-0085).
+Photos, thumbnails, voice recordings, video notes and documents live outside SQLite in one file store. The UI reads it through [stores/photoFiles.ts](src/lib/stores/photoFiles.ts); boot installs and clears that holder once, and recording/video readers share it. The file names are opaque uuids, such as `<uuid>.webm` for a recording. `encryptedFileStore()` in [data/photos/encrypted-file-store.ts](src/lib/data/photos/encrypted-file-store.ts) wraps the platform store (OPFS on the web, app-private files on Android). Each file is stored as a nonce followed by its AES-256-GCM ciphertext under the data key, with the file name as AAD. Photos are normalized and stripped of metadata on import (ADR-0008, ADR-0015). A photo pick can bring back several images in one trip on both platforms (Android asks the system picker for up to `MediaStore.getPickImagesMaxLimit()`). Photo picks accept source files up to 50 MiB before normalization; document picks keep their own 25 MiB ceiling. Both native read transports enforce the source ceiling when a provider omits or understates its size. Every photo is browsed in one library, but each table still owns its own photos (ADR-0085).
 
 ### 6.8 Archive format and restore
 
 ```mermaid
 flowchart TB
-  subgraph File[".ttbackup file"]
+  subgraph File[".gnd file"]
     H["plaintext header<br/>magic GDIARY, u16 version,<br/>u32 length, JSON: salt,<br/>Argon2id params, chunk count"]
     C1[chunk 0<br/>AES-256-GCM]
     C2[chunk 1 ...]
@@ -491,16 +529,27 @@ flowchart TB
   end
   H --> C1 --> C2 --> Cn
   subgraph Body[decrypted body, codec v2]
-    PJ[payload JSON<br/>54 sections]
+    PJ[payload JSON<br/>one key per section]
     F1[file bytes, one by one]
   end
   Cn -.-> PJ
 ```
 
-- **[container.ts](src/lib/data/archive/container.ts) (ADR-0007)** owns the frame. Each chunk is about 1 MB and its AAD is the whole header plus the chunk index, so truncating, reordering or relabelling the file fails authentication. Header size and KDF parameters are bounded before anything is allocated. The key comes from the archive password through the archive Argon2id profile and has nothing to do with the journal's data key.
-- **[codec.ts](src/lib/data/archive/codec.ts)** owns the versioned body encoding. `ARCHIVE_CODECS` holds versions 1 and 2.
-- **`payload.ts`** is the wire shape. It is deliberately separate from the domain types, so renaming something in the app can't change the format. `PAYLOAD_MIGRATIONS` brings old payloads forward one step at a time. [tests/released-formats.test.ts](tests/released-formats.test.ts) reads archives from released versions in [fixtures/released/](fixtures/released).
-- **[journal/archiveSections.ts](src/lib/data/journal/archiveSections.ts)** is the registry that makes an area travel (ADR-0027). Each of its 54 sections declares its name, the sections it depends on (`after`), what of it may leave in a shared structure file (`travels`), and how it is read and applied. A flat area declares its table once and gets both directions from that.
+- **[container.ts](src/lib/data/archive/container.ts) (ADR-0007)** owns the frame. Each chunk is about 1 MB and its AAD is the whole header plus the chunk index, so truncating, reordering or relabelling the file fails authentication. Header size and KDF parameters are bounded before key derivation. The key comes from the archive password through the archive Argon2id profile and has nothing to do with the journal's data key.
+- **[codec.ts](src/lib/data/archive/codec.ts)** owns the versioned body encoding. `ARCHIVE_CODECS` holds versions 1 and 2. New payloads carry `writer.app` from the build version and `writer.schema` from `LATEST_SCHEMA_VERSION`. The stamp is informational; rc.1 payloads without it still read.
+- **`payload.ts`** is the wire shape. It is deliberately separate from the domain types, so renaming something in the app can't change the format. `PAYLOAD_MIGRATIONS` brings old payloads forward one step at a time. [tests/node/release/released-formats.test.ts](tests/node/release/released-formats.test.ts) opens Archives and migrates populated SQLite journals from released versions in [fixtures/released/](fixtures/released). It requires a fixture directory for every non-alpha `v*` tag and rejects an empty fixture set. CI fetches the release tags before running it.
+- **[journal/archiveSections.ts](src/lib/data/journal/archiveSections.ts)** is the registry that makes an area travel (ADR-0027). Each section declares its name, the sections it depends on (`after`), what of it may leave in a shared structure file (`travels`), and how it is read and applied. A flat area declares its table once and gets both directions from that. Restore and verification read an absent known section as `[]`, skip names in `DROPPED_ARCHIVE_SECTION_NAMES`, and refuse every other unknown name as a newer-version archive. The dropped list holds `doubtEntries` and the sections of retired areas, `counterevidenceSnapshots` and `affirmations` among them.
+
+Archive import admits at most 65,536 KiB of Argon2id memory, six iterations,
+one lane and a 32-byte output (ADR-0013). The released export profile remains
+65,536 KiB with three iterations. Doubling only the passes gives twice the
+memory-times-iterations cost; doubling both dimensions would cost four times
+as much and is refused. `ARCHIVE_ARGON2_MAX_PARAMS` is a fixed ceiling separate
+from the export profile. `readArchiveHeader` rejects an over-cap header as
+`CorruptArchiveError` before `openArchive` calls `deriveKey`. The retained
+physical-Pixel probe measures the largest admitted profile against a 2,000 ms
+budget with five fresh workers per profile. Raising the ceiling needs another
+phone measurement and an ADR record.
 
 [journal/archive.ts](src/lib/data/journal/archive.ts) reads all archive rows
 and builds the file manifest inside one `readSnapshot()` reservation, so writes
@@ -512,7 +561,7 @@ through a snapshot.
 
 ```mermaid
 flowchart TD
-  O[openArchive password] --> V[validate payload shape]
+  O[openArchive password] --> V[validate sections, rows<br/>and file ownership]
   V --> F[stage all files;<br/>rename collisions]
   F --> R
   subgraph T[one database transaction]
@@ -520,31 +569,101 @@ flowchart TD
     M -->|Replace| D[discard journal rows]
     D --> A[apply sections in dependency order]
     M -->|Merge| A
-    A --> I[external imports only:<br/>count additions and write import_log]
+    A --> P[Archive Replace only:<br/>write portable preferences<br/>and prepare their snapshot]
+    P --> I[external imports only:<br/>count additions and write import_log]
   end
   I --> C[commit]
-  C --> P[Replace only: apply portable<br/>preferences outside this transaction]
+  C --> L[Archive Replace only:<br/>publish committed preferences<br/>and activate locale]
 ```
 
-[journal/restore.ts](src/lib/data/journal/restore.ts) stages every file before opening the database transaction. Existing file names receive fresh replacements, so staging cannot overwrite files the live journal still owns. Built-in reconciliation, Replace's row deletion and section application run inside the transaction. A failure rolls back those database changes. Cleanup removes unpublished replacements; remaining orphaned files wait for the boot sweep.
+[journal/archiveRowValidation.ts](src/lib/data/journal/archiveRowValidation.ts)
+checks wire rows and nested rows before destination file access or transaction
+admission. Checks cover identities, scalar types, safe finite numbers, selected
+stored values and cross-field rules. They also reject repeated identities,
+including legacy consult IDs, and resolve references to Archive rows or built-ins
+before SQLite or template lookup. Full Archives may reference built-in tags or
+tags they carry; row-only imports may also reuse destination tags. The contracts
+cover all `ArchiveJournal` sections and fields at compile time. Flat descriptors
+supply natural identities and absent-field defaults. These known malformed rows raise
+`CorruptArchiveError` during verification, Merge and Replace. A document link
+with one missing half gets that typed refusal before SQLite. SQLite still
+enforces remaining constraints inside the transaction; unexpected storage and
+driver failures keep their original errors.
 
-Replace keeps the built-in vocabulary and device-local preferences. Merge adds unmatched rows by uuid or key and leaves matching rows alone. Prep lists match by owner as well as uuid: incoming items join the existing list, including the standalone list. A procedure keeps its existing taper when the archive carries another. [journal/restoreFlow.ts](src/lib/data/journal/restoreFlow.ts) applies portable preferences only after Replace returns, outside the row transaction. Merge preserves this device's preferences. Security preferences never travel. External import commits also measure additions and write `import_log` inside the row transaction.
+[journal/fileOwnership.ts](src/lib/data/journal/fileOwnership.ts) supplies one
+ownership rule for Archive reads, cleanup and restore admission. Verification,
+Merge and Replace refuse a physical name claimed by distinct deletion owners
+before accessing destination files. The rule includes derived photo thumbnails
+and document previews across all file-bearing sections. Nested attachments use
+their parent's identity too. A missing file remains a supported placeholder.
 
-**External importers** sit in [data/archive/sources.ts](src/lib/data/archive/sources.ts), a registry of `daylio`, `daylio-backup`, `dayone`, `transtracks`, `trackAndGraph` and `pixels`. Each source detects its own bytes, parses them, previews the result and hands it to the ordinary Merge. Plain CSV and JSON exports ([archive/plain.ts](src/lib/data/archive/plain.ts)) are readable files, not backups.
+[journal/restore.ts](src/lib/data/journal/restore.ts) stages every file before opening the database transaction. Existing file names receive fresh replacements, so staging cannot overwrite files the live journal still owns. Built-in reconciliation, Replace's row deletion, section application and portable preference writes run inside the transaction. A failure rolls back those database changes together. Cleanup removes unpublished replacements; remaining orphaned files wait for the boot sweep.
 
-Importers deduplicate entry tags. Pixels preview reports `invalidMoodCount` for entries whose supplied scores fall outside 1 to 5; their mood becomes null. This count is part of the preview API; Pixels has no import screen yet. Archive restore also nulls invalid moods.
+Replace keeps the built-in vocabulary and device-local preferences. Merge matches rows by uuid or key and keeps whichever copy, or deletion, was written last; a tie keeps this device's row ([archiveMerge.ts](src/lib/data/journal/archiveMerge.ts)). Device clocks decide, so a fast clock, or edits to different fields of one row on two devices, can lose an edit silently. Prep lists match by owner as well as uuid: incoming items join the existing list, including the standalone list. A procedure keeps its existing taper when the archive carries another. Full Archive Replace writes only the validated portable allowlist in the row transaction. [journal/restoreFlow.ts](src/lib/data/journal/restoreFlow.ts) publishes the preference snapshot prepared inside that transaction to the projection and boot mirror after success, then activates the restored locale through the existing reload strategy. Publication performs no SQL after COMMIT. Successful preference writes after preparation retain priority, even when they reassert the previous value. Boot also reconciles the locale after authoritative preference attachment, covering interruption between commit and activation. A lock or newer attachment prevents stale publication. Row-only imports leave preferences untouched. Merge preserves this device's preferences. Security preferences never travel. External import commits also measure additions and write `import_log` inside the row transaction.
 
-The Daylio backup picker refuses files larger than 1024 MiB before buffering them.
-The shared [ZIP reader](src/lib/data/archive/zipReader.ts) allows at most
-1536 MiB of declared decompressed content across the members it reads, including
-Day One and TransTracks imports. Both limits use a ten-year estimate: twice the
-393.6 MiB attachment baseline in [the benchmark](tests/long-journal/budgets.json),
-plus 64 MiB for longer recordings, metadata and ZIP overhead, totals 851.2 MiB.
-The factor of two allows larger source media than Engender's normalized photos;
-it is an assumption, not a measurement of another app's export. The file limit
-leaves room even if media barely compresses. These allocation limits do not
-guarantee enough memory on every device. Engender's encrypted Archives use a
-separate streaming reader.
+Medication stock matches the trimmed, case-insensitive `drugNameKey` used by
+dose attribution. Schema 91 stores that derived identity under a unique index;
+the reported drug spelling and count remain on the stock row. Live writes and
+Archive application derive the key locally, so it is not a new wire field.
+Merge matches a stock row by uuid or drug key, including a row renamed since
+the Archive was made, and the newer copy wins. The stock owner filters
+destination uuids before grouping incoming rows by drug key. Both checks run
+inside the restore transaction. Replace clears stock first.
+
+Legacy Archives can contain multiple stock spellings for one key. They do not
+carry edit timestamps, so the last eligible row in Archive order supplies the
+whole choice, regardless of its recorded count day. Only that spelling's
+automatic reminder travels, with its marker normalized; the last matching
+reminder in Archive order wins if there is more than one. Reminder application
+runs before stock insertion and shares the same selection. Destination stock
+and automatic reminder owners take precedence in Merge. Manual reminders and
+markers unrelated to incoming stock retain ordinary uuid matching.
+
+Bundled roadmap goals keep status and visibility separately during Merge. A
+local unchecked row records only visibility, so an incoming status fills it
+without changing the local hidden flag. A local checked or not-my-path status
+still wins; a missing incoming goal leaves both choices alone.
+
+**External importers** sit in [data/archive/sources.ts](src/lib/data/archive/sources.ts), a registry of `daylio` (its CSV export) and `daylio-backup` (its `.daylio` backup). Each source detects its own bytes, parses them, previews the result and hands it to the ordinary Merge. Plain CSV and JSON exports ([archive/plain.ts](src/lib/data/archive/plain.ts)) are readable files, not backups.
+
+Importers deduplicate entry tags. Archive restore also nulls invalid moods.
+
+The ZIP reader reports malformed container bytes through `ZipFormatError`.
+Daylio backup translates that error into its own import failure type,
+including attachment reads deferred until commit.
+Consumed JSON fields are checked before string and collection operations.
+Preview refuses incoming identity collisions before they can reach SQLite
+uniqueness checks or attachment writes.
+Known JSON and encoding refusals receive the same importer classification;
+unexpected parser, allocation and platform failures propagate to the caller.
+Source detection keeps its existing non-throwing sniff contract.
+Daylio JSON refusals omit parser diagnostics that can echo a cleartext PIN.
+
+Both Daylio routes read one input budget,
+[daylioInputBudget.ts](src/lib/data/archive/daylioInputBudget.ts), sized from a
+generated ten-year export (10,950 entries, notes up to 2.7 KB) rather than from
+what a phone could survive: the CSV is 3.2 MiB and `backup.daylio` 6.2 MiB; the
+attachments are about 1500 photos, 858 MiB, the same order as the 851.2 MiB
+estimate the earlier limits used. The backup picker refuses files over
+1024 MiB before buffering them, and the CSV picker files over 32 MiB before
+`File.text()`. The shared [ZIP reader](src/lib/data/archive/zipReader.ts)
+allows 1024 MiB of declared decompressed content in total, 256 MiB per member
+and 64 MiB for `backup.daylio`, and its central-directory walk refuses more
+than 20,000 entries, names over 1024 bytes or more than 4 MiB of names before
+the name collections grow. The CSV parser refuses over 200,000 rows, 64
+columns or a 1 MiB field while parsing, and a note over 1 MiB never reaches
+`htmlToText`, which is a single-pass scanner. Every refusal is an
+`ImportTooLargeError`, which the screen shows as its too-large message. The
+file limit leaves room even if media barely compresses. These allocation
+limits do not guarantee enough memory on every device. Engender's encrypted
+Archives use a separate streaming reader.
+
+Daylio preview indexes raw member names and attachment suffixes once. The ZIP
+reader retains central-directory member ranges, copies only a stored file's
+requested prefix and feeds deflated prefixes in bounded compressed chunks.
+Data descriptors and ZIP64 use the central sizes and offsets. Prefix reads
+remain uncached and share the declared-size budget with complete reads; import
+commit still loads the original attachment through the same reader.
 
 ## 7. Security model
 
@@ -554,7 +673,7 @@ The things the app protects are journal content (the database, photos, voice, vi
 
 | Adversary | Design answer |
 |---|---|
-| Shoulder-surfer | Gates show no journal data. Notifications are private and hide titles by default. Recents shows the app unless screen capture is off. Disguise renames the app. |
+| Shoulder-surfer | Gates show no journal data. Notifications are private and hide titles by default. Recents shows the app unless Block screenshots or disguise is on. Disguise renames the app. |
 | Someone holding the unlocked phone | Lock timing, PIN throttle, sensitive-clipboard clearing. |
 | Someone holding the locked phone | Data is encrypted at rest. The data key is behind Keystore or an Argon2id wrap. Launch routes are nonce-gated. |
 | Copy of stored app data | Database and files are ciphertext. Android Keystore keys are outside app-private files. A whole browser-profile copy can include the IndexedDB keys beside the web wraps; non-extractability alone does not protect that copy. |
@@ -566,6 +685,25 @@ The things the app protects are journal content (the database, photos, voice, vi
 These controls assume trusted application code, browser and operating system. Memory inspection, a compromised unlocked OS and use of an already unlocked app are outside the encryption guarantee (ADR-0018). On the web, a mid-session lock in a passphrase, PIN or biometric journal closes the database and drops the app's references to the data key (see "Locking on the web" below). It cannot promise to erase the key's bytes: JavaScript frees memory when the engine chooses. Android's lock hides the journal and keeps its key and database open.
 
 Web PIN binding prevents guessing from `keystore.json` alone. Copying the whole browser profile can also copy the binding material, leaving the PIN's 10,000 candidates as the search space ([data/device-secret.ts](src/lib/data/device-secret.ts), ADR-0041). Android keeps the binding key in Keystore, outside the app's files, though code running with the app's authority can ask it to sign. CSP limits browser requests; it does not protect plaintext or keys from compromised application code running on the trusted origin.
+
+Journal text inputs and textareas use `journalTextAutocomplete()` in
+[platform.ts](src/lib/platform.ts): web fields receive `autocomplete="off"`,
+while Android receives no autocomplete attribute so suggestions remain
+available. Existing explicit attributes, including password-manager hints, remain
+unchanged. [journal-field-policy.test.ts](tests/node/journal/journal-field-policy.test.ts)
+checks every editable text control through the Svelte AST; the retained
+[journal-field-profile probe](tests/tools/journal-field-profile.mjs) types into the
+real entry, tag and document fields, closes Chromium and Firefox, and scans
+their profiles, including decoded Firefox session files. Earlier profile
+copies and keyboard storage remain outside this control.
+
+Android's [JournalWebView](android/app/src/main/java/dev/engender/app/webview/JournalWebView.java)
+extends CapacitorWebView and adds `IME_FLAG_NO_PERSONALIZED_LEARNING` after
+the superclass creates each input connection. The bridge layout uses this
+subclass, preserving Capacitor's bridge, input types and existing IME options.
+The request is always on, with no setting. It asks the keyboard not to learn;
+the keyboard can ignore it, and earlier learned words remain outside the app's
+control.
 
 Report vulnerabilities as [SECURITY.md](SECURITY.md) describes.
 
@@ -597,20 +735,38 @@ flowchart TD
 - **KDF parameters are data** (ADR-0013, [crypto/params.ts](src/lib/crypto/params.ts)). Each consumer has its own Argon2id profile (archive, PIN, journal), the profile is stored in the wrap, and older wraps keep opening after a re-tune. Each derivation runs in a worker that is terminated afterwards.
 - **The PIN is bound to a device key** (ADR-0041): a non-extractable HMAC key in the browser, or a Keystore alias on Android. Without that binding, four digits would be too weak to wrap anything.
 - **Android's device mode** wraps the data key with a Keystore RSA key pair whose private half never leaves Keystore. Replacing a wrap generates a second alias first, then atomically commits its alias and ciphertext and syncs the parent directory before removing the previous key. An error after publication keeps both aliases so either directory state remains openable. A retry syncs the current directory entry before reusing the alternate alias. Existing raw ciphertext wraps remain readable. The pair is bound to the device lock when the person wants a prompt, and unbound in "unlocked" mode.
-- **The recovery key** is an optional second wrap (ADR-0054). It opens the journal on the device that holds the wrap. It cannot open an archive, and it cannot move a journal to another device.
+- **Android prompts** are admitted on the UI thread only while the activity is resumed and its fragment state is not saved. A request after Home or screen-off returns the existing cancelled outcome without a key, leaving the gate's retry enabled on return. Prompt startup exceptions reject the bridge call.
+- **The recovery key** is an optional second wrap (ADR-0054). It opens the journal on the device that holds the wrap. It cannot open an archive, and it cannot move a journal to another device. A new key is written to `recovery-key-pending.json` and promoted over `recovery-key.json` only when the person confirms it is written down; a gate tries the active wrap, then the pending one, and an interrupted replacement is finished, redone or discarded from the recovery key screen ([data/recovery-key.ts](src/lib/data/recovery-key.ts)).
 - **Reminder payloads** on Android are wrapped under their own Keystore key (ADR-0047), so an alarm can fire without the journal being open.
 
 ### 7.3 Access modes and boot
 
-`JournalAccessMode` ([data/journal-access-mode.ts](src/lib/data/journal-access-mode.ts)) is one of `passphrase`, `pin`, `biometric`, `device-bound`, `unlocked`, or `null` before setup. A secret-backed keystore always wins over leftover device-bound material, so a crash midway through changing modes can't downgrade the journal. Browser device-bound metadata reuses its existing wrapping key, waits for an IndexedDB write to commit before publishing metadata, and aborts a failed OPFS write rather than closing a partial file.
+Android PIN/passphrase metadata lives in `journal-credential.json`, owned by [CredentialWrapStore.java](android/app/src/main/java/dev/engender/app/keystore/CredentialWrapStore.java). A write syncs its staged file, atomically replaces the authoritative record, then syncs the parent directory before returning. Failure prevents confirmation; interruption leaves the old or new wrap. There is no fallback to a previous credential generation. The first read adopts a validated released OPFS wrap before removing it. A durable removal marker prevents that old OPFS copy from becoming active again after a mode switch or reset. Web OPFS writes remain safe from process interruption without promising persistence through power loss.
+
+`JournalAccessMode` ([data/journal-access-mode.ts](src/lib/data/journal-access-mode.ts)) is one of `passphrase`, `pin`, `biometric`, `device-bound`, `unlocked`, or `null` before setup or when a lost access wrap no longer identifies the mode. A secret-backed keystore always wins over leftover device-bound material. A mode change reports success only after the old device-bound wrap is removed. On the web, removal verifies that both the wrapping key and metadata are absent; the metadata stays until key removal is verified so a failed cleanup remains visible to boot. If boot surveys both wraps, a successful secret unlock retries cleanup under credential ownership and checks that a secret keystore still owns access. A cleanup failure leaves the journal usable and retries on the next boot. Browser device-bound metadata reuses its existing wrapping key, waits for an IndexedDB write to commit before publishing metadata, and aborts a failed OPFS write rather than closing a partial file.
+
+Boot inspects storage without opening SQLite or creating a key. Android's existing file survey reports presence and the plaintext header separately; the web checks the journal's namespaced SAH pool directory. Even an empty retained pool is treated conservatively until an explicit reset removes it. The gate describes missing access without claiming that usable journal data survives: an unreadable wrap can also remain after interrupted setup. Missing access with retained storage, or unreadable access metadata, reaches the recovery gate before setup or demo initialization. Unexpected storage errors fail boot. The same presence invariant runs under credential ownership in `initializeJournal`, so a stale setup action cannot mint over surviving ciphertext. Native credential presence respects the authoritative record and tombstone before considering legacy OPFS. Recovery uses the existing active/pending wrap owner and requires a new access mode before journal content appears. Archive replacement and reset retain their destructive confirmation.
+
+Settings protection changes capture the current session, lock generation and
+credential generation when their prompt opens. `protection-change.ts` verifies
+the current protection, compares persisted credential and recovery-wrap identities
+under `changeCredentials`, and spends the operation before mutation. Publication
+owners check again after asynchronous derivation or enrolment. PIN verification
+uses the existing attempt store without rebinding credentials. A cleanup failure
+after secret publication reconciles boot's access mode to that persisted authority
+without reporting success; retry asks for that current secret. Recovery unlock
+holds one immediate-setup proof, using a weak reference so it cannot retain a
+locked browser session's key. Android unlocked mode accepts a fresh biometric
+check or an existing recovery key; only web device-bound mode permits unlocked
+session authority.
 
 ```mermaid
 stateDiagram-v2
   [*] --> booting
-  booting --> needs_setup: no keystore
+  booting --> needs_setup: no access wrap and no retained journal
   booting --> needs_unlock: secret wrap exists
   booting --> needs_authentication: Android key<br/>needs a prompt
-  booting --> needs_device_recovery: device key unusable
+  booting --> needs_device_recovery: device key unusable<br/>or access wrap missing/unreadable
   booting --> legacy_refused
   needs_unlock --> needs_authentication
   needs_unlock --> legacy_refused
@@ -619,12 +775,13 @@ stateDiagram-v2
   needs_authentication --> booting: key obtained
   booting --> ready: journal opened
   booting --> schema_too_new: journal newer<br/>than the app
+  ready --> schema_too_new: private reopen<br/>finds a newer schema
   booting --> error
 ```
 
-A web lock does not leave `ready`. Two events swap the journal handle a ready state holds: `journal-closed` sets it to null when a lock closes the database, and `journal-reopened` puts the reopened handle back.
+A web lock keeps `ready` with a null journal handle. Every private reopen runs the existing migration owner before reading preferences or reference data. A current schema opens without loading the migration list; a supported older schema follows the same copy and forward-migration policy as cold boot. A newer schema reaches the existing update-recovery gate. Reopen does not repeat cold-boot reconciliation or housekeeping. The session disposes a failed private driver before the boot adapter reports its failure; its file operations remain available for existing migration recovery.
 
-These are the statuses in [stores/boot-state.ts](src/lib/stores/boot-state.ts), and the edges are the ones its transitions allow. Only `booting` reaches `ready` or `schema_too_new`: a gate hands back to `booting` once a key is obtained (`resetToBooting`), and any state can fail into `error`. [stores/boot-machine.ts](src/lib/stores/boot-machine.ts) is a pure reducer: an event comes in (`started`, `web-surveyed`, `android-surveyed`, `key-obtained`...) and it returns the next state and the effects to perform. [stores/boot.svelte.ts](src/lib/stores/boot.svelte.ts) and [boot-platform.ts](src/lib/stores/boot-platform.ts) are the effect interpreter. They do the I/O and decide nothing. The data key travels inside events and never lands in reactive state.
+These are the statuses in [stores/boot-state.ts](src/lib/stores/boot-state.ts), and the edges are the ones its transitions allow. Only `booting` reaches `ready`; a closed `ready` state can also reach `schema_too_new`. A gate hands back to `booting` once a key is obtained (`resetToBooting`), and any state can fail into `error`. [stores/boot-machine.ts](src/lib/stores/boot-machine.ts) is a pure reducer: an event comes in (`started`, `web-surveyed`, `android-surveyed`, `key-obtained`...) and it returns the next state and the effects to perform. [stores/boot.svelte.ts](src/lib/stores/boot.svelte.ts) and [boot-platform.ts](src/lib/stores/boot-platform.ts) are the effect interpreter. They do the I/O and decide nothing. The data key travels inside events and never lands in reactive state.
 
 ```mermaid
 sequenceDiagram
@@ -666,25 +823,70 @@ stateDiagram-v2
   Unlocked --> Locked: immediately,<br/>as the page goes
 ```
 
-`lockAfter` is `immediately`, `one-minute`, `five-minutes` or `restart` ([data/prefs/catalogue.ts](src/lib/data/prefs/catalogue.ts)). [lock/leave-lock.ts](src/lib/lock/leave-lock.ts) checks elapsed wall-clock time when the person comes back, because a backgrounded WebView may never run a timer. On Android, `onUserLeaveHint` locks sooner. [stores/lock.svelte.ts](src/lib/stores/lock.svelte.ts) holds `unlocked`, which starts as false on every load. [SessionUnlock.svelte](src/lib/components/SessionUnlock.svelte) asks for the access mode's own secret again. The PIN wait grows with failed attempts ([lock/throttle.ts](src/lib/lock/throttle.ts), [pin-throttle.ts](src/lib/lock/pin-throttle.ts), and [PinAttemptWait.java](android/app/src/main/java/dev/engender/app/lock/PinAttemptWait.java) on Android), using monotonic time. Android persists the deadline with the boot count and owes the full delay after a reboot. On the web, a reload owes the full pending delay unless the current session can prove elapsed time; changing the wall clock cannot pay it. A forgotten PIN can be recovered at the cold-start gate if a recovery key was created earlier and the journal and recovery wrap remain intact (ADR-0054). `SessionUnlock` does not offer recovery while the journal is already open. Without a usable credential or recovery key, a reset is needed before starting again or restoring an archive with its own password.
+`lockAfter` is `immediately`, `one-minute`, `five-minutes` or `restart` ([data/prefs/catalogue.ts](src/lib/data/prefs/catalogue.ts)). [lock/leave-lock.ts](src/lib/lock/leave-lock.ts) checks elapsed wall-clock time when the person comes back, because a backgrounded WebView may never run a timer. On Android, `onUserLeaveHint` locks sooner. [stores/lock.svelte.ts](src/lib/stores/lock.svelte.ts) holds `unlocked`, which starts as false on every load. [SessionUnlock.svelte](src/lib/components/SessionUnlock.svelte) asks for the access mode's own secret again. The PIN wait grows with failed attempts ([lock/throttle.ts](src/lib/lock/throttle.ts), [pin-throttle.ts](src/lib/lock/pin-throttle.ts), and [PinAttemptWait.java](android/app/src/main/java/dev/engender/app/lock/PinAttemptWait.java) on Android), using monotonic time. Android persists the attempt count and deadline with the boot count, and owes the full pending delay after a reboot. On the web, a reload owes the full pending delay unless the current session can prove elapsed time; changing the wall clock cannot pay it. A forgotten PIN can be recovered at the cold-start gate if a recovery key was created earlier and the journal and recovery wrap remain intact (ADR-0054). `SessionUnlock` does not offer recovery while the journal is already open. Without a usable credential or recovery key, a reset is needed before starting again or restoring an archive with its own password.
+
+PIN authentication waits under [data/credential-ownership.ts](src/lib/data/credential-ownership.ts)
+for the current credential operation, then reads its committed wrap and binding.
+It retains ownership through any legacy binding migration. Credential mutations
+still reject overlap. The native queue retains completion only, so it does not
+keep returned data keys. A gate's mount and session-generation guards refuse a
+queued or completed derivation after departure or a newer lock; a cancelled
+derived key is cleared before returning it. Successful session publication may
+remove the gate, but its session-generation guard still rejects a later lock.
+
+[PinEntry.svelte](src/lib/components/PinEntry.svelte) classifies authentication
+failures for cold start, session unlock and current-PIN verification in Settings.
+On the web, only `DecryptionFailedError` increments the wrong-attempt count.
+On Android, the existing authentication queue checks the wrap, binding and
+current gate before admitting a guess. Admission increments the native count
+before derivation, through the same file-sync, atomic-replacement and directory-sync
+boundary as credential wraps. A failed or interrupted derivation keeps that count;
+a successful current authentication resets it durably. Preflight refusals do not
+admit a guess, and reopening failure after correct authentication adds no penalty.
+A new document settles an interrupted admission into its full delay; an old
+owner's completion cannot reset it. The count survives paid waits. One-time
+adoption preserves the surviving web count and native pending delay, but cannot
+reconstruct counts an older build already lost. Local storage remains only a
+display mirror on Android. Unreadable metadata asks the person to
+reopen the app so boot can check the current access mode. Busy and error feedback
+use the catalogue and the existing live regions.
+An out-of-space refusal before PIN admission, while reading the credential or
+persisting admission, instead asks for free space and another try. The native
+bridge marks ENOSPC with `storage-full`; the PIN gate uses `spaceShortage` on
+that code or a wrapped read error. No guess is admitted in either case, so
+this refusal leaves the wrong-attempt count alone. A failed settlement after
+admission keeps the unavailable-access message: the guess is already counted
+and its pending token needs a new document to recover.
+
+[browserKeySlot](src/lib/data/device-bound-journal.ts) converts IndexedDB's
+absent-record `undefined` to its declared `null` result. Missing PIN bindings
+and device-bound wrapping keys reach their existing typed key-loss errors.
+Unlocking never creates a replacement for a missing key. Older PIN wraps
+without a binding name still use the browser binding.
 
 ### 7.5 Disguise
 
-[disguise/identity.ts](src/lib/disguise/identity.ts) is the one place that answers what the app is called right now (ADR-0035). The pre-paint script in [src/app.html](src/app.html) swaps the tab title, favicon and manifest before the first frame. On Android, `DisguisePlugin` switches between 33 launcher activity-aliases: the default and 15 pride flags, each in a square and a round version (32), plus one disguised alias named "Notes" in English and "Notatki" in Polish, with no round version (ADR-0088). Widgets drop their labels under disguise. Notification icons follow the disguise; the normal icon uses a monochrome engender mark. Android still exposes the application name in notifications and permission prompts. The web domain remains visible in the address bar, history, bookmarks and site settings. Backup, journey and wrapped export file names omit the person's name under disguise. Setup doesn't change with disguise and offers it last (ADR-0079).
+Catalogue sentences that name the app take an `appName` parameter from
+`appWordmark()`, including gate bodies and archive failures. Only `app_name`
+contains the literal name. The identity tests guard catalogue entries and
+their consumers; the rendered wordmark probe checks both languages and modes.
+
+[disguise/identity.ts](src/lib/disguise/identity.ts) is the one place that answers what the app is called right now (ADR-0101). The pre-paint script in [src/app.html](src/app.html) swaps the tab title, favicon and manifest before the first frame. On Android, `DisguisePlugin` switches between 33 launcher activity-aliases: the default and 15 pride flags, each in a square and a round version (32), plus one disguised alias named "Notes" in English and "Notatki" in Polish, with no round version (ADR-0088). Setup and the Settings switch both write disguise with `setPreferenceDurably`, which saves it to SQLite before the projection moves, because the projection moving is what flips the alias and restarts the app. Widgets drop their labels under disguise. Notification icons follow the disguise; the normal icon uses a monochrome engender mark. Android still exposes the application name in notifications and permission prompts. The web domain remains visible in the address bar, history, bookmarks and site settings. Backup, export and journey file names omit the person's name under disguise. Inside the unlocked app nothing else changes (ADR-0101). Setup uses the same steps and offers disguise last.
 
 ### 7.6 Web hardening
 
 - **CSP in the document.** [svelte.config.js](svelte.config.js) writes the CSP as a meta policy in hash mode. It covers the two inline scripts, sets `connect-src 'self'`, and sets object and frame sources to none. The meta policy is the only CSP inside the Capacitor shell, because nginx headers never reach the APK.
-- **nginx headers.** [deploy/nginx/journal-headers.conf](deploy/nginx/journal-headers.conf) adds HSTS, COOP/COEP/CORP, `X-Frame-Options DENY`, `frame-ancestors` and a Permissions-Policy. [tests/csp.test.ts](tests/csp.test.ts) checks the built document against the header list.
+- **nginx headers.** [deploy/nginx/journal-headers.conf](deploy/nginx/journal-headers.conf) adds HSTS, COOP/COEP/CORP, `X-Frame-Options DENY`, `frame-ancestors` and a Permissions-Policy. [tests/node/security/csp.test.ts](tests/node/security/csp.test.ts) checks the built document against the header list.
 - **Service worker.** It answers same-origin GET requests only, never calls `clients.claim()`, and takes over only when a page asks it to (ADR-0021).
 - **Separate origins.** The landing site and the journal live on different origins (ADR-0019).
 
 ### 7.7 Android hardening
 
 - `allowBackup="false"`, plus [data_extraction_rules.xml](android/app/src/main/res/xml/data_extraction_rules.xml) excluding every domain.
-- No `INTERNET` permission. The declared permissions are notifications, exact alarms, boot-completed, audio record and settings, and camera.
-- `MainActivity` is not exported. The `FileProvider` is limited to `cache/camera-capture/`. Capture output is deleted after consumption or cancellation, at the next app start, and when device stores are wiped.
-- Screen capture and Recents follow one per-device switch, `allowScreenCapture` (on by default). On, screenshots and the Recents preview both show, with or without a lock. Off, `FLAG_SECURE` hides both, and Android 13+ also gets `setRecentsScreenshotEnabled(false)`.
+- No `INTERNET` permission. The complete installed permission set covers notifications, exact alarms, boot-completed, audio record and settings, camera, biometric unlock, a wake lock for scheduled encrypted delivery, and AndroidX's private receiver permission. The release artifact guard checks that exact set through `aapt2`; dependency additions fail. `BackupWork` uses delayed jobs without network constraints or foreground execution, so the unused network-state permission/proxy and foreground-service permission/service are removed at manifest merge. WorkManager's job and rescheduling components remain.
+- `android.webkit.WebView.MetricsOptOut=true` opts out of per-app diagnostic uploads. Safe Browsing retains WebView's enabled default. Its checks can use Google Play services' own network access; keyboards and browsers also have their own network behavior, described in both privacy policies.
+- `MainActivity` is not exported. The `FileProvider` is limited to `cache/camera-capture/`. Capture output is deleted after consumption or cancellation, at every process start (`JournalApplication`, so a scheduled backup or alarm that starts the process also clears it) and when device stores are wiped. `ACTION_IMAGE_CAPTURE` writes the JPEG through a URI, so it cannot be encrypted as it arrives: the guarantee is that the plaintext file exists only while the camera holds it, and a killed process leaves it until the next start of any kind, not that it is never on disk. The cache directory is outside both extraction rules, so it is never backed up or transferred.
+- Screenshots, screen recording and the Recents preview follow one per-device switch, Block screenshots in Settings > Security, off by default. It is stored the other way round as `allowScreenCapture` (default `true`), and `lock/screenshot-block.ts` is the one place that turns it. With the blocker off, screenshots show, with or without a lock. The Recents preview shows too, except that while a lock is set it is never kept on Android 13+ (`setRecentsScreenshotEnabled(false)`), and every leave puts a plain cover over the window (`LeaveCover`), so Recents and the return never show the journal. The cover also goes up before any picker, save dialog, folder picker or camera is launched, so a translucent handler never shows the journal, and it comes off only after the page has drawn the gate or the journal on return. Under Lock immediately, the 60 second grace for a screen the app opened is given only when Android resolves the intent to a system app, or every candidate in its chooser is a system app (`HandlerTrust`); any other handler gets an ordinary leave and locks, and its result still reaches the plugin that asked; below 13 the window is also made secure while the app is left. With the blocker on, `FLAG_SECURE` hides both, and Android 13+ also gets `setRecentsScreenshotEnabled(false)`. Disguise hides the Recents card on its own: Android 13+ gets `setRecentsScreenshotEnabled(allowScreenCapture && !disguised)` with `FLAG_SECURE` still following the blocker alone, so screenshots stay allowed under disguise; below 13 `FLAG_SECURE` is set when the blocker is on or disguise is on. `ScreenCapturePlugin.applyWindowFlags` applies this before the first frame and on every resume, and the disguise switch applies the new identity's state to the running window before the launcher alias flips.
 - Notifications use `VISIBILITY_PRIVATE`, PendingIntents are immutable, and Capacitor logging is off (`loggingBehavior: 'none'`).
 - Launch routes need a nonce (section 9).
 
@@ -697,22 +899,53 @@ stateDiagram-v2
 - Screens read through `liveQuery`/`liveList` and write through `journal`. They never import a driver.
 - A screen draws an edit draft through `kit/recordEditor.svelte.ts` or `kit/detailDraft.svelte.ts`. `recordEditor` owns the open editor, its baseline and save/delete state; `detailDraft` owns a route-bound draft and its read/retry state. `recordEditor` toasts "Saved." and "Deleted." once a write lands (a screen that says more passes `saved` or `deleted` returning null), and keeps the delete sheet open with the error when a remove fails. Records that can only be hidden omit the delete handler and confirmation wording.
 - Changed drafts use [kit/leaveGuard.svelte.ts](src/lib/components/kit/leaveGuard.svelte.ts) and [DiscardSheet.svelte](src/lib/components/kit/DiscardSheet.svelte), backed by the rune-free [leaveGuard.ts](src/lib/components/kit/leaveGuard.ts). `detailDraft` installs the guard by default, and the entry session uses the same guard. Other editors supply their changed and saving state to it. A save in flight blocks departure. Discard replays the held history move or URL once, and a failed replay leaves later departures guarded. Reloads and external departures use the browser's confirmation.
-- Every tapped write says how it ended. A write outside `recordEditor` goes through [stores/attempt.svelte.ts](src/lib/stores/attempt.svelte.ts): `attempt(write, failMessage)` toasts a rejection, `writer()` adds a `busy` flag for the button so a double tap writes once, and `deleter()` does the same for a screen's own `ConfirmDeleteSheet`. A sheet closes after its write lands, never before. The rune-free core is [stores/writeOutcome.ts](src/lib/stores/writeOutcome.ts).
+- Every tapped write says how it ended. A write outside `recordEditor` goes through [stores/attempt.svelte.ts](src/lib/stores/attempt.svelte.ts): `attempt(write, failMessage)` toasts a rejection, `writer()` adds a `busy` flag for the button so a double tap writes once, `rowWriter()` does the same per row for a control every row of a list repeats (a tick, a flag) without disabling it, and `deleter()` does the same for a screen's own `ConfirmDeleteSheet`. A sheet closes after its write lands, never before. The rune-free core is [stores/writeOutcome.ts](src/lib/stores/writeOutcome.ts).
 - Svelte transitions are local by default. Use `|global` when the block that toggles is not the transition's own.
 
 ### 8.2 The shell and route policy
+
+Successful custom-scale and reminder saves, new-tryout creation, and document
+or saved-question deletion replace the completed route through
+`navigation/smart-back.ts`'s `replaceRoute`. This keeps browser history and
+the app's navigation depth aligned. Ordinary Back still uses `smartBack`
+to return to the opening source; saving an existing tryout stays in place.
+
+Journal keeps its browsed month and recent-day limit per history depth in
+`navigation/journalVisit.ts`. It captures before retained-door deactivation
+and restores before activation or the web route's first render. Fresh forward
+arrivals use the current month and five days. Lock and reload drop these
+memory-only snapshots; sheets and month animations still end on departure.
+
+In the room keeps its question position per history depth and appointment
+identity in `stores/inTheRoom.ts`, beside the held answers. History arrivals
+restore the position before rendering; fresh visits start at question one.
+Choosing another appointment while the room stays open keeps the current
+standing-list question and switches to that appointment's answers. Both
+positions and answers stay in memory and are cleared on lock.
+
+Search return snapshots and queries handed over from More stay in module
+memory. Returning from an entry consumes the snapshot; lock or reload drops
+it. They never go to Web Storage, whose disk logs can retain removed text.
+Lock cleanup also removes the legacy search key written by older builds.
 
 [src/routes/+layout.svelte](src/routes/+layout.svelte) is the composition root. It imports the global CSS, starts boot, and renders one of the gates in a single `{#if}` chain: `JournalGate`, `AndroidKeyGate`, `DeviceBoundRecovery`, `SessionUnlock`, `PostRecoveryAccessMode`, `SchemaTooNew`, or the route. It also passes ports into the policy modules:
 
 | Module | Decides |
 |---|---|
-| [navigation/routeGates.ts](src/lib/navigation/routeGates.ts) | What the person is owed before the URL's screen: `onboarding`, `close-chooser` (an access mode after a recovery unlock), `coming-back` (the return moment, ADR-0062), or nothing |
+| [navigation/routeGates.ts](src/lib/navigation/routeGates.ts) | What the person is owed before the URL's screen: `onboarding`, `close-chooser` (an access mode after a recovery unlock), `coming-back` (a one-time view of what is waiting after a long gap), or nothing |
 | [navigation/navigationTransition.ts](src/lib/navigation/navigationTransition.ts), [screen-transition.ts](src/lib/navigation/screen-transition.ts) | How one screen becomes another |
-| [navigation/smart-back.ts](src/lib/navigation/smart-back.ts), [sourceRecord.ts](src/lib/navigation/sourceRecord.ts), [searchReturn.ts](src/lib/navigation/searchReturn.ts), [scroll-region.ts](src/lib/navigation/scroll-region.ts) | Where Back goes and what the previous screen looked like |
-| [data/backgroundSchedulers.ts](src/lib/data/backgroundSchedulers.ts) | When the Android auto-export and retrospective-notification checks run: on start, every 15 minutes and on return to the foreground |
+| [navigation/smart-back.ts](src/lib/navigation/smart-back.ts), [sourceRecord.ts](src/lib/navigation/sourceRecord.ts), [searchReturn.ts](src/lib/navigation/searchReturn.ts), [journalVisit.ts](src/lib/navigation/journalVisit.ts), [scroll-region.ts](src/lib/navigation/scroll-region.ts) | Where Back goes and what the previous screen looked like |
+| [data/backgroundSchedulers.ts](src/lib/data/backgroundSchedulers.ts) | When the Android auto-export check runs: on start, every 15 minutes and on return to the foreground |
 | [android/platform-sync.ts](src/lib/android/platform-sync.ts) | Everything that runs only on Android while the journal is open: reminder sync, stock run-out, launch routes, the back button, the disguise alias, the lock-timing mirror |
 
 The return gap uses the median interval between distinct entry and dose writing days in the last year. One bounded query supplies those days; future records do not count.
+
+Care links carry an episode UUID, record UUID and numeric day instead of a
+free-text drug or lane name. The dose owner resolves the episode after reading
+the encrypted journal, preserving the visit's pick, linked episode and stored
+pick priority. Source-lane memory also keeps the episode identity for Back.
+Drug names stay out of new URL/history entries; old browser history is not
+rewritten by this change.
 
 ### 8.3 The four doors
 
@@ -724,12 +957,12 @@ flowchart LR
   Nav --> X["Transition /more"]
   T --- T2[/doubt, /coming-back/]
   J --- J2[/day, /search, /entry/]
-  L --- L2[/wrapped, /body-map, /tally,<br/>/compare, /on-this-day/]
+  L --- L2[/wrapped, /body-map,<br/>/compare, /on-this-day/]
   X --- X2[/care, /doses, /health, /body,<br/>/voice, /media, /transition,<br/>/support, /practice .../]
   T --> S[/settings/]
 ```
 
-The `TAB_ROUTES` table in [navigation/active-tab.ts](src/lib/navigation/active-tab.ts) maps route prefixes to tabs. The fourth door's `href` is `/more` and its key is `settings`, a split ADR-0036 makes on purpose. The bar and the rail light what `litTabKey` answers: an open entry borrows the door it was opened from, and `/settings` borrows the last door on the bar without claiming `aria-current`. Each borrowing page keeps the door it was opened from per history entry, keyed by history depth and path ([navigation/chrome-tab-origin.ts](src/lib/navigation/chrome-tab-origin.ts)), so browser Back and Forward land on it lit the same way, a cold-opened one included. The desktop rail has a Settings row of its own, which `railTabKey` lights on every `/settings` route. Screen transitions still read the table. Under disguise it is labelled "More". Settings holds only preferences. Feature surfaces live in the hub, whose rows are declared in [data/hubRows.ts](src/lib/data/hubRows.ts) (ADR-0072). Today's front page is pinned by the person and nothing ranks it centrally (ADR-0073). Live tiles are gated on data (ADR-0039). An area can be hidden and can be finished, and those are separate states (ADR-0052).
+The `TAB_ROUTES` table in [navigation/active-tab.ts](src/lib/navigation/active-tab.ts) maps route prefixes to tabs. The fourth door's `href` is `/more` and its key is `settings`, a split ADR-0036 makes on purpose. The bar and the rail light what `litTabKey` answers: an open entry borrows the door it was opened from, and `/settings` borrows the last door on the bar without claiming `aria-current`. Each borrowing page keeps the door it was opened from per history entry, keyed by history depth and path ([navigation/chrome-tab-origin.ts](src/lib/navigation/chrome-tab-origin.ts)), so browser Back and Forward land on it lit the same way, a cold-opened one included. The desktop rail has a Settings row of its own, which `railTabKey` lights on every `/settings` route. Screen transitions still read the table. Settings holds only preferences. Feature surfaces live in the hub, whose rows are declared in [data/hubRows.ts](src/lib/data/hubRows.ts) (ADR-0072). Today's front page is pinned by the person and nothing ranks it centrally (ADR-0073). Live tiles are gated on data (ADR-0039). An area can be hidden and can be finished, and those are separate states (ADR-0052).
 
 ### 8.4 Kit, tokens, palettes and theme
 
@@ -742,26 +975,26 @@ flowchart LR
 ```
 
 - `<html>` carries `data-palette`, the theme and the accessibility attributes, stamped before first paint from the boot cache.
-- Colour appears only in a field and in blocks (ADR-0075). Each area of a screen takes one stripe of the active flag, and the assignment is categorical, never ordinal.
-- Mood has its own scale, and each step picks its own ink (ADR-0025, ADR-0077, ADR-0091).
-- A secondary button is a block of the page (ADR-0093).
-- One pattern, one way (after-release 28). A `Segmented` only ever swaps what a screen shows; scrolling to a part of a long screen is `kit/SectionJump.svelte` (names over a rule, a mark that follows the scroll). Every fold is `kit/Disclosure.svelte` or the `.disclosure-toggle` row it is built on, never a native `<details>`. Areas are named by `kit/SectionHeading.svelte`, and small labels take the field label's type in sentence case, never letterspaced capitals. Each icon in [icons.ts](src/lib/components/icons.ts) means one thing: `pill` is medication, `flask` a lab result, `repeat` dilation, `dice` a random draw.
+- Colour appears only in a field and in blocks. Each area of a screen takes one stripe of the active flag, and the assignment is categorical, never ordinal.
+- Mood has its own five-step scale. Each step defines a fill and a contrasting ink in [palettes.css](src/lib/theme/palettes.css).
+- Secondary buttons use the page background, a 1px outline and body ink.
+- Use the same control for the same action. A `Segmented` only ever swaps what a screen shows; scrolling to a part of a long screen is `kit/SectionJump.svelte` (names over a rule, a mark that follows the scroll). Every fold is `kit/Disclosure.svelte` or the `.disclosure-toggle` row it is built on, never a native `<details>`. Areas are named by `kit/SectionHeading.svelte`, and small labels take the field label's type in sentence case, never letterspaced capitals. Each icon in [icons.ts](src/lib/components/icons.ts) means one thing: `pill` is medication, `flask` a lab result, `repeat` dilation, `dice` a random pick.
 - Dates a person reads come from [data/dates.ts](src/lib/data/dates.ts): `fmtDateValue` for a picked day ("3 Oct 2026", what a `DatePicker` field shows), `fmtDayBar` for a day card's bar. `yyyy-mm-dd` is only the stored value and the picker's typed entry; the field carries it on `data-date-value`, which the guards read through `dateValue()`/`fieldValue()` in `tests/browser-harness.mjs`.
-- The pride flag motif appears only on Home and never under disguise (ADR-0035).
-- Every `var(--x)` without a stated fallback must name a property the tree defines, whether in a stylesheet, a `style:` directive, `setProperty` or `@property`. An undefined one is invalid at computed-value time and falls back to the inherited value without any error. [tests/css-tokens-resolve.test.ts](tests/css-tokens-resolve.test.ts) walks `src` and fails on one. The scale has no `--muted`, `--text-1` or `--weight-semibold`; use `--text-2`, `--text` and `--weight-medium`.
+- The pride flag motif appears only on Home.
+- Every `var(--x)` without a stated fallback must name a property the tree defines, whether in a stylesheet, a `style:` directive, `setProperty` or `@property`. An undefined one is invalid at computed-value time and falls back to the inherited value without any error. [tests/node/ui/css-tokens-resolve.test.ts](tests/node/ui/css-tokens-resolve.test.ts) walks `src` and fails on one. The scale has no `--muted`, `--text-1` or `--weight-semibold`; use `--text-2`, `--text` and `--weight-medium`.
 - [kit.css](src/lib/styles/kit.css), [components.css](src/lib/styles/components.css) and [screens.css](src/lib/styles/screens.css) keep class baselines (`src/lib/styles/*-classes-baseline.txt`). `check:screens-classes` stops a screen-only class from spreading.
 
 ### 8.5 Motion system
 
 Motion follows mechanical rules that tests and frame sweeps can check:
 
-- **A state change moves** unless its ticket says why not (ADR-0078). Nothing should paint at its destination before it has travelled there, and no frame should have an element in neither place. In this codebase both of those count as a "yank".
-- **Only transform, opacity and clip.** Height changes travel through primitives such as `resize`, `maskHeight`, `disclose` and `collapse` in [motion/reveal.ts](src/lib/motion/reveal.ts), never by snapping. Late-arriving reads hold their room with `kit/ReadReserve.svelte` and [ReadGate.svelte](src/lib/components/kit/ReadGate.svelte), then crossfade.
+- **Animate state changes.** Document exceptions beside the code that implements them. Nothing should paint at its destination before it has travelled there, and no frame should have an element in neither place. In this codebase both of those count as a "yank".
+- **Only transform, opacity and clip.** Height changes travel through primitives such as `resize`, `maskHeight`, `disclose` and `collapse` in [motion/reveal.ts](src/lib/motion/reveal.ts), never by snapping. Late-arriving reads hold their room with `kit/ReadReserve.svelte` and [ReadGate.svelte](src/lib/components/kit/ReadGate.svelte), then crossfade. A screen whose rows need two reads gates on both, and a block that opens or closes its own height after arriving sits in a reserve below the gate rather than inside it, because the gate's `resize` clips growth it is still catching up with.
 - **One easing and one set of durations.** [motion/tokens.ts](src/lib/motion/tokens.ts) mirrors `--ease-out` and the `--dur-*` tokens for Svelte and WAAPI transitions, which CSS cannot reach.
 - **Android door changes** fade the live outgoing content over `--dur-fast` before the route swaps. [navigation/androidTabMotion.ts](src/lib/navigation/androidTabMotion.ts) leaves the field background in place for the incoming bridge and releases superseded routes just before their successor swaps. Sun rings close outermost first on the ring stagger. It retains no copy of journal content across a gate. Web and deep navigation use view transitions.
-- **Reduced motion.** [theme/base.css](src/lib/theme/base.css) clamps durations to 1ms under reduced motion or `html[data-a11y-motion]`. [tests/motion-system.test.ts](tests/motion-system.test.ts) requires every animation's end state to equal its element's resting state, so a clamped animation never strands an element.
-- **Ambient motion has a budget** (ADR-0050, ADR-0051, ADR-0071).
-- **Sweeps measure frames.** `npm run sweep:yanks` and `sweep:hydration` sample animated properties frame by frame.
+- **Reduced motion.** [theme/base.css](src/lib/theme/base.css) clamps durations to 1ms under reduced motion or `html[data-a11y-motion]`. [tests/node/ui/motion-system.test.ts](tests/node/ui/motion-system.test.ts) requires every animation's end state to equal its element's resting state, so a clamped animation never strands an element.
+- **Ambient motion is limited to the flag sun and mood faces.** Home's [motion/homeAmbient.ts](src/lib/motion/homeAmbient.ts) pauses sun breath, face blink and face glance after 30 seconds without input, or while the document or retained door is hidden. Pointer, keyboard, focus, click and wheel input resume active Home from its held phase. Sun breath uses a separate play state from its finite arrival; [motion/holdWhileStill.ts](src/lib/motion/holdWhileStill.ts) owns face clocks and composes idle holds with gaze holds. Reduced motion still removes these loops.
+- **Sweeps measure frames.** The [yank and hydration sweeps](tests/tools/README.md#frame-sweeps) sample animated properties frame by frame.
 
 ### 8.6 i18n
 
@@ -769,27 +1002,43 @@ Motion follows mechanical rules that tests and frame sweeps can check:
 - **Locale builds.** [scripts/build-locales.mjs](scripts/build-locales.mjs) runs two ordinary SvelteKit builds with Paraglide's `experimentalStaticLocale`, using one build ID. It joins hashed assets, checks the generated startup contract and composes the fallback shell with a synchronous locale selector. The final service worker receives both emitted asset lists before compilation. Both languages therefore work offline, while startup imports one client graph. `npm run dev` keeps the runtime locale resolver.
 - **Dates and numbers.** [data/dates.ts](src/lib/data/dates.ts) binds display formatting to the selected language: `en-GB` or `pl-PL`, rather than the host's default locale. `fmtNumber` delegates to the rune-free [numbers.ts](src/lib/data/numbers.ts); stored values and calculation inputs remain numbers. Date and time formatters are cached per locale and options. Picked dates and day bars use the shared functions described in section 8.4.
 - **Import aliases.** Daylio matching loads the static English and Polish tag strings through [import-labels.ts](src/lib/data/vocabulary/import-labels.ts) when an import preview starts. Their catalogue shape and built-in tag coverage have Node tests; display labels use the active compiled locale.
-- **Human copy review.** `npm run strings` serves the local catalogue editor in [scripts/strings.mjs](scripts/strings.mjs). Field saves compare the displayed value with disk before replacing it; bulk save uses the same operation and retains conflicting edits in the browser. Literal find-and-replace previews selected languages across shown or all keys, then applies replacements to drafts before saving. Individual and group checkboxes save fingerprints of the reviewed English/Polish pairs in `.scratch/copy-review.json`. Later copy changes invalidate approval for the affected keys. A filtered group checkbox applies only to the shown keys. Copy outside the catalogues (Android resources, web manifests, the store listing, the privacy policy by paragraph) is read by [scripts/strings-outside.mjs](scripts/strings-outside.mjs) as values with their offsets, so a save splices one value into its file and leaves the formatting alone. This review state is local tooling data, separate from the journal and shipped catalogues.
+- **Human copy review.** `npm run strings` serves the local catalogue editor in [scripts/strings.mjs](scripts/strings.mjs). A field saves when it loses focus, one request at a time. Each save compares the value last read with disk before replacing it, and a refused edit stays in the browser with the reason. Literal find-and-replace previews selected languages across shown or all keys, then saves the replacements through the same operation. Individual and group checkboxes save fingerprints of the reviewed English/Polish pairs in a local, untracked file. Later copy changes invalidate approval for the affected keys. A filtered group checkbox applies only to the shown keys. Copy outside the catalogues (Android resources, web manifests, the store listing, the privacy policy by paragraph) is read by [scripts/strings-outside.mjs](scripts/strings-outside.mjs) as values with their offsets, so a save splices one value into its file and leaves the formatting alone. This review state is local tooling data, separate from the journal and shipped catalogues.
 - **Keys, not words, in the database.** Built-in rows store keys, and [data/vocabulary/](src/lib/data/vocabulary) turns keys into words (ADR-0024).
-- **Copy checks.** `npm run check:copy` checks that both catalogues have the same keys and that the count in [messages/untranslated-literals.txt](messages/untranslated-literals.txt) never grows. `docs/ui-copy.md` is the copy guide.
+- **Copy checks.** `npm run check:copy` checks that both catalogues have the same keys and that the count in [messages/untranslated-literals.txt](messages/untranslated-literals.txt) never grows. The app calls its data a journal and uses gender-neutral Polish when addressing the reader.
 - **Merging catalogues.** [scripts/merge-catalogue.mjs](scripts/merge-catalogue.mjs) is a git merge driver that merges catalogues by key (README).
 
 ### 8.7 Accessibility conventions
 
 - **Handles for tests.** Screens expose `data-*` handles, and the walkthrough grips those, never structure or wording (ADR-0029).
-- **Touch targets** are 48px. A control drawn smaller keeps its drawing and takes `.hit-floor` ([components.css](src/lib/styles/components.css)), a transparent box that adds only what is missing on each axis. Where that box would cover a neighbour, the control grows instead. The browser tier measures the touch-target and press-depth geometry of the control kit, and `tests/a11y-targets-large-text.mjs` measures the audited controls with `elementFromPoint` at 320 and 390px and 200% text.
+- **Touch targets** are 48px. A control drawn smaller keeps its drawing and takes `.hit-floor` ([components.css](src/lib/styles/components.css)), a transparent box that adds only what is missing on each axis. Where that box would cover a neighbour, the control grows instead; a row inside padding of its own (an opened letter's) reaches into that padding with a negative margin, so the drawing stays put. The browser tier measures the touch-target and press-depth geometry of the control kit, and `tests/tools/a11y-targets-large-text.mjs` measures the audited controls from layout, the box joined with any `::before`/`::after` extension, with `elementFromPoint` catching a side something covers, at 320 and 390px and 200% text, and letter rows, Words chips and five screens' headers and text at 195px too, in English and Polish. At 195px it also fails a named piece of text cut by the viewport or by an ancestor that clips sideways, and two listed controls whose boxes overlap. Below 240px of app width (`@container app (max-width: 239px)`) a deep screen's header actions take a line of their own under the back control. Journal's search control moves to a line under the month at 15.75em of app width (252px at 100% text, 504px at 200%), where the longest month word, "październik", stops fitting beside it, and a month word wider than the whole line breaks inside the word rather than being cut.
 - **Large text.** The bottom bar keeps every name on one line. When a name is wider than a fifth of the bar, as rendered with Android's text zoom, [AppNav.svelte](src/lib/components/AppNav.svelte) puts the four tabs in two rows around the add button, and the scroll region's clearance follows the bar's measured height.
-- **Contrast** floors are tested: [tests/kit-roles.test.ts](tests/kit-roles.test.ts) and the palette contrast tests. Chart lines that carry a reading answer to 3:1 (WCAG 1.4.11). The line keeps the flag's stripe, and where the stripe is under 3:1 a casing in `--role-edge` (the same hue, moved in lightness, from `Role.edge` in [theme/roles.ts](src/lib/theme/roles.ts)) is drawn under it. Every role of every palette is measured against the grounds a chart paints.
+- **Contrast** floors are tested: [tests/node/ui/kit-roles.test.ts](tests/node/ui/kit-roles.test.ts) and the palette contrast tests. Chart lines that carry a reading answer to 3:1 (WCAG 1.4.11). The line keeps the flag's stripe, and where the stripe is under 3:1 a casing in `--role-edge` (the same hue, moved in lightness, from `Role.edge` in [theme/roles.ts](src/lib/theme/roles.ts)) is drawn under it. Every role of every palette is measured against the grounds a chart paints.
 - **Text fields** are edged in `--input-edge`, `--text` at 53%, which clears 3:1 on every ground in every palette and theme. It edges `.input` and `.rule-input` only; every other line keeps `--outline` and `--hairline`.
-- **Speech.** A live region only speaks a change inside a region that was already there. The root layout draws two that never leave the page, outside `[data-app-root]` so a sheet's inert background never silences them, the urgent one as `aria-live="assertive"` rather than a permanent empty `role="alert"`, and `announce(text, urgent?)` from [stores/announcer.svelte.ts](src/lib/stores/announcer.svelte.ts) is the way to speak into them. It empties the region and writes the words 100ms later, so the same sentence twice is heard twice. Toasts, the progress bar, the update notice, the PIN wait, keyboard reordering and picking an area back up speak through it. A line that comes and goes inside a screen that stays (the schema gate's result) can instead sit inside a status element that stays.
+- **Speech.** A live region only speaks a change inside a region that was already there. The root layout draws two that never leave the page, outside `[data-app-root]` so a sheet's inert background never silences them, the urgent one as `aria-live="assertive"` rather than a permanent empty `role="alert"`, and `announce(text, urgent?)` from [stores/announcer.svelte.ts](src/lib/stores/announcer.svelte.ts) is the way to speak into them. It empties the region and writes the words 100ms later, so the same sentence twice is heard twice. Toasts, the progress bar, the update notice, the PIN wait, keyboard reordering and picking an area back up speak through it. A line that comes and goes inside a screen that stays (the schema gate's result) can instead sit inside a status element that stays. Lock clears both regions and cancels their pending writes through the existing journal-content forget hook. Disguise activation performs the same reset. Toast reset also cancels expiry timers, revokes actions and retires outgoing DOM immediately; ordinary dismissal keeps its transition. The regions remain mounted for fresh gate feedback.
 - **Headings** take their level from the placing screen: ChartCard, DayCard (and EntryDays) and EmptyState accept a `level`.
-- **Route focus.** After navigation, [navigation/arrivalFocus.ts](src/lib/navigation/arrivalFocus.ts) focuses the screen's `h1`, or the scroll region when no heading exists, without scrolling. It preserves focus already held by a control in the new screen or an open overlay. The target gets `tabindex="-1"`, so it adds no Tab stop; the private tab title can remain the app's name.
+- **Layout manager sheets.** The Modes sheet lives in the shell so Settings and entry editors share it. `navigationTransition.ts` closes them when the pathname changes, alongside Quick add cleanup. A same-screen query replacement preserves a manager raised by a legacy address. The layout's existing gate effect clears the manager state and unmounts its host before private content can appear behind a gate.
+
+- **Arrival and replacement focus.** After navigation or a completed unlock/cold-start gate, [navigation/arrivalFocus.ts](src/lib/navigation/arrivalFocus.ts) focuses the screen's `h1`, or the scroll region when no heading exists, without scrolling. It preserves focus already held by a control in the new screen or an open overlay. Headings get `tabindex="-1"`, so they add no Tab stop; the private tab title can remain the app's name. Hidden retained doors never receive focus. In-place editor and access/recovery steps focus their new heading; successful row removal focuses the next row or the preceding list heading. A slow write leaves focus alone if the person has moved to another control. Buttons keep their Tab stop and focus ring.
 - **Form errors.** A control is marked `aria-invalid` only once focus has left it or a submit has been refused; `Field` hands its control the first as a third snippet argument. An error names the field it is about through `aria-describedby`.
 - **Reduced motion** is described in section 8.5.
 - **Visible text first.** `aria-label` doesn't replace a card's visible reading.
-- **Audit records.** `docs/accessibility-audit-2026-09-30*` holds the latest audit.
+
+Setup keeps one empty SvelteKit shallow-history entry while mounted.
+Browser Back consumes that entry, calls the same previous-step function as
+the setup arrow, and rearms it. Answers stay in component state, never in
+the address or history payload. Finishing consumes the shallow entry and
+replaces the underlying setup route with Today before releasing the busy
+state. Android delegates to the mounted setup owner; Welcome backgrounds
+the app. The access-mode module handles its own inner Back controls, and
+its initial list remains a hard gate.
 
 ## 9. Native layer
+
+Android Back is registered before the journal opens. While a lock, key or
+access-recovery gate is visible, it backgrounds the app before consulting
+overlays or route history. The hidden route stays in place for the next
+unlock. Journal reads, reminder launch routes and native preference mirrors
+still wait for readiness.
 
 ```mermaid
 sequenceDiagram
@@ -799,7 +1048,7 @@ sequenceDiagram
   participant RS as ReminderScheduler
   participant PS as platform-sync.ts
   participant L as +layout
-  N->>MA: PendingIntent: route + gd_route_nonce
+  N->>MA: PendingIntent (OPEN_ROUTE, via the live launcher alias): route + gd_route_nonce
   MA->>AL: authenticatedRoute(intent)
   AL-->>MA: route if nonce matches, else null
   MA->>RS: storeLaunchRoute(route)
@@ -812,36 +1061,43 @@ sequenceDiagram
 
 Launcher aliases are exported, so a route extra by itself proves nothing about who sent it. The nonce in [AppLaunch.java](android/app/src/main/java/dev/engender/app/launch/AppLaunch.java) proves the app made the intent. The allowed route shapes are pinned on both sides by [src/lib/android/fixtures/launch-routes.json](src/lib/android/fixtures/launch-routes.json), and navigation waits until the app lock has cleared.
 
+A widget or notification tap names the action `dev.engender.app.action.OPEN_ROUTE` within this package, not MainActivity's class. Only the launcher aliases declare that action and one of them is enabled at a time, so the tap starts the alias the launcher would start, resolved when the tap lands. Recents and the window title TalkBack reads take their label and icon from that alias: Notes and the neutral icon under disguise, the chosen flag otherwise.
+
 The native features:
 
-- **Reminders.** `RemindersPlugin` and `ReminderScheduler` schedule exact alarms. `ReminderAlarmReceiver` fires them, and `ReminderRescheduleReceiver` restores them after a reboot. Quiet hours and the payload store sit beside them.
-- **Scheduled backups.** `AutoExportPlugin` derives the archive key natively (ADR-0042) and keeps the five newest verified automatic backups ([BackupRetention.java](android/app/src/main/java/dev/engender/app/backup/BackupRetention.java)). Pruning follows verification and touches only recorded app-owned backups. A temporarily unavailable folder keeps its setting for a later retry. Changing or disabling the destination releases its persisted SAF grant. The scheduler admits one check at a time and reports failures from status lookup or snapshotting as well as packing and delivery.
-- **Retrospective notifications.** These are the Wrapped and On-this-day notifications (`RetrospectiveNotificationsPlugin`).
-- **Widgets.** `QuickLogWidgetProvider`, `TallyWidgetProvider` and `DoubtWidgetProvider` extend `DisguisableWidgetProvider`. Their taps are launch routes.
-- **Everything else** is one plugin per concern: file delivery to the share sheet with encrypted staging, the camera through a `FileProvider` cache file, print, the sensitive clipboard, the status bar, permissions and device reset.
+- **Reminders.** `RemindersPlugin` and `ReminderScheduler` use exact alarms while permission allows them, otherwise inexact alarms. `ReminderAlarmReceiver` fires them. `ReminderRescheduleReceiver` rebuilds alarms from native stored rules after boot, package replacement, time or zone changes, and exact-alarm grants. `MainActivity.onResume` also rebuilds them, including at a journal gate, so the next launch after revocation restores the inexact fallback. A grant can race revocation; exact admission refusal falls back to inexact. The wrapped native payload records the one pending occurrence admitted for each reminder. Boot delivers an elapsed pending occurrence once, then schedules the next future occurrence; a long absence does not replay each missed day. A one-off has no future occurrence after delivery. The scheduler persists consumption before posting, so another boot cannot repeat it. Catch-up inside quiet hours waits until the window ends and survives foreground sync for an unchanged rule. Old payloads without a pending record begin with the next future occurrence. For a daily reminder, slot identity is the unchanged reminder rule and its original local date, before quiet-hour deferral. The payload retains that date, the delivery zone and delivery instant across restart and foreground sync. A changed zone skips the same slot when its new delivery time is less than 12 hours after the recorded delivery. At 12 hours it is eligible again; another date or reminder is unaffected. These native delivery records do not change the journal's stored rules (ADR-0010). The Reminders and Notifications screens and the permissions list read permission status through `watchStatus` ([src/lib/permissions/watchStatus.ts](src/lib/permissions/watchStatus.ts)), which reads again on `visibilitychange`, lets the newest read win and hands a refused read to the caller's own `unreadable` value, never an older answer. Reminders and Notifications then say they could not check and offer another try. Reminders shows one notice per refused permission; the exact-alarm one states the next-launch/boot fallback above.
+- **Scheduled backups.** `AutoExportPlugin` derives the archive key natively (ADR-0042) and keeps the five newest verified automatic backups ([BackupRetention.java](android/app/src/main/java/dev/engender/app/backup/BackupRetention.java)). Foreground and `BackupWork` delivery share [DeliveredBackup.java](android/app/src/main/java/dev/engender/app/backup/DeliveredBackup.java): sync a regular destination file, sync its directory, close and reopen it, then check its length and SHA-256 before committing success and pruning. The supported production boundary is Android's system ExternalStorageProvider. SAF has no cloud-upload durability acknowledgement; an unknown provider or a pipe reports incomplete delivery and cannot trigger retention. Failed writes remove their partial target through this shared owner. A temporarily unavailable folder keeps its setting for a later retry. Changing or disabling the destination releases its persisted SAF grant. The scheduler admits one check at a time and reports failures from status lookup or snapshotting as well as packing and delivery. A device-local SQLite preference records the native failure timestamp after its notice posts, waits for quiet hours or is declined by the notice switch. The same timestamp identifies a failed run and later status checks, so ticks and cold starts cannot repeat it. Clearing the native failure after success or a destination change clears this receipt. A new failure can notify again, including after the device clock moves back. WorkManager initializes on demand through `JournalApplication`, not AndroidX Startup. Its initialization handler logs a fixed message without journal content and keeps the failure timestamp in memory even when storage cannot accept preferences. Scheduling rejects a failed initialization; auto-export status returns `backup-scheduling-unavailable`, that timestamp and no next due time. The failure lasts until the process restarts, when WorkManager can try again. Journal boot remains independent and uses the existing `storage-full` failure and retry.
+- **Widgets.** `QuickLogWidgetProvider` and `DoubtWidgetProvider` extend `DisguisableWidgetProvider`. Their taps are launch routes.
+- **Manual file delivery.** `FileDeliveryPlugin` opens Android's system save picker. Encrypted staging and its in-memory key survive activity recreation while the picker is open; process death loses the key. Capacitor's restored result carries the transfer, process and reset identities. The shell reports it once after the journal gates clear, and checks the journal owner again after asynchronous status lookup. Only journal exports update the last-backup timestamp. Before writing, the plugin records the exact returned destination URI in app-private preferences and requests a persisted grant where supported. Failed or interrupted delivery deletes only that destination. A later app start retries cleanup; denied access keeps the record and reports that cleanup remains pending. Success removes the record and releases only a grant acquired for that transfer. No plaintext export or staging key is persisted for recovery.
+
+  A full disk while staging rejects with the code `storage-full`, one while writing to the destination with `destination-full`, and every other failure with no code, so the screen names only a real full disk ([spaceShortage.ts](src/lib/data/spaceShortage.ts)). Before writing, a destination on Android's own on-device providers (shared storage, SD cards, Downloads) that hands over a regular file is measured with `fstatvfs` and refused when the export will not fit. Any other provider, a cloud drive included, is not measured and goes straight to the write, because its descriptor may be a local cache or a pipe.
+- **Everything else** is one plugin per concern: the camera through a `FileProvider` cache file, print, the sensitive clipboard, the status bar, permissions and device reset.
 
 ## 10. Testing
+
+See [Running tests](tests/README.md) for suite locations and commands.
 
 ```mermaid
 flowchart TB
   A["Android tier<br/>emulators, instrumentation"] --- B
   B["Walkthrough<br/>full app, demo build, 4 groups"] --- C
-  C["Guards<br/>78 in tests/guards.json"] --- D
+  C["Guards<br/>roster in tests/guards.json"] --- D
   D["Browser tier<br/>real OPFS/WASM, rendered routes"] --- E
-  E["Node tier, vitest<br/>563 tracked test files, real SQLite"]
+  E["Node tier, Vitest<br/>real SQLite"]
   F["Static: check, check:copy,<br/>licences, budgets"] -.- E
 ```
 
 | Tier | Run | What it proves |
 |---|---|---|
-| Node | `npm test` | The data layer against real `node:sqlite` through `test-support` drivers; schema, migrations, archive round trips and golden archives; declarations against SQL; pure domain logic; machines and policies; stylesheet invariants. Build once first, because [csp.test.ts](tests/csp.test.ts) reads `build/`. |
+| Node | `npm test` | The data layer against real `node:sqlite` through `test-support` drivers; schema, migrations, archive round trips and golden archives; declarations against SQL; pure domain logic; machines and policies; stylesheet invariants. Build once first, because [csp.test.ts](tests/node/security/csp.test.ts) reads `build/`. |
 | Browser | `npm run test:browser` | [tests/browser-tier/](tests/browser-tier): SQLite3MultipleCiphers on real OPFS, WebCrypto, canvas photo and video processing, the service-worker lifecycle, kit geometry and rendered screen contracts. Each check group declares how many checks it expects (`createReporter().block`), so a group that runs fewer fails. |
-| Guards | `npm run test:guards`, `test:guards:built` | One Playwright script per regression, listed in [tests/guards.json](tests/guards.json) (37 `dev`, 41 `built`) and run by [tests/run-guards.mjs](tests/run-guards.mjs) with retry and shards. [tests/PROBES.md](tests/PROBES.md) is the index; a probe that isn't indexed is deleted before its ticket merges. |
+| Guards | `npm run test:guards`, `test:guards:built` | One Playwright script per regression in [tests/guards/](tests/guards/). [tests/run-guards.mjs](tests/run-guards.mjs) runs the [roster](tests/guards.json) with retry and shards. [tests/PROBES.md](tests/PROBES.md) describes each probe. |
 | Walkthrough | `npm run test:walkthrough` | [tests/walkthrough.test.mjs](tests/walkthrough.test.mjs) drives the whole demo build through real flows by `data-*` handles. Four groups: journal, setup, features, actions. A full run takes about 15 minutes. |
 | Built app | `npm run verify:build`, `verify:hosting` | Installed-PWA cold start, offline start, update and PIN; the nginx container's headers, cache rules and SPA routing. |
 | Benchmarks | `npm run benchmark:long-journal`, `test:return-floor` | A ten-year fixture against [tests/long-journal/budgets.json](tests/long-journal/budgets.json); the return-floor timing. |
 | Android | `npm run test:android` | Instrumentation tests on the `gd26` and `tracker35` emulators: native SQLite features, Keystore behaviour, the encryption claim test, the contract suite in a WebView. JVM unit tests run with `./gradlew :app:testDebugUnitTest`. |
-| Galleries | `npm run gallery:*`, `measure:*`, `sweep:*` | Renders and frame captures for review. Most of them gate nothing. |
+| Installed Android upgrade | `npm run test:android:upgrade -- <serial> <avd> <manifest>` | Opt-in update of a filled rc.1 synthetic package, journal/media/SQLite/alarm preservation, row-deleting control and failed-migration recovery. [Kit and fixture preparation](tests/android-tier/installed-upgrade.md) rebuild the APKs and Archive from source. |
+| Manual test tools | [Galleries, measurements and sweeps](tests/tools/README.md) | Renders and frame captures for review. |
 
 Screen contracts use [mount-screen.ts](tests/browser-tier/mount-screen.ts)
 to render route components over seeded, open journals. The fixture attaches
@@ -854,7 +1110,14 @@ The contract suite in [data/journal/contract-suite.ts](src/lib/data/journal/cont
 
 **Fixtures and the demo.** [data/demo/persona.ts](src/lib/data/demo/persona.ts) is "Alice", a seeded, deterministic persona about two and a half years into transition, generated relative to today. Every import of it sits behind `__DEMO__`, which a production build replaces with `false`. [verify-build.mjs](tests/browser-tier/verify-build.mjs) greps the built bundle to prove the persona is gone. `VITE_DEMO=1 npm run build` produces the demo build that guards and the walkthrough use. On a cold web load the database worker seeds the persona itself, in one transaction ([worker-seed.ts](src/lib/data/demo/worker-seed.ts)). While the sqlite wasm is still downloading, the worker draws the persona's photos ahead of time (`warmDemoPhotos`); the seed takes each one from that set, and draws on demand any photo the set does not hold. Photos depend on their seed alone, so the rows and bytes written do not change. [data/demo/fullFixture.ts](src/lib/data/demo/fullFixture.ts) fills every feature. The long-journal fixture is a separate generator ([tests/long-journal/generate.ts](tests/long-journal/generate.ts)).
 
-`docs/agents/verification.md` lists what each tier needs and its known noise.
+The Node tier also runs [tests/fuzz/](tests/fuzz/): 40 seeded mutations for
+each of 8 importer, archive and sniffer targets. A separate child has a 1 GiB heap
+limit and a 30-second case watchdog. Refused cases must preserve row and file
+content hashes after orphan cleanup; accepted imports must pass SQLite
+integrity checks and read back through the journal. Exact failing inputs and
+seed/index receipts stay in ignored `ci-logs/fuzz/`. `FUZZ_LONG=1` raises the
+default to 2,000 cases per target. Untyped refusals are report-only unless
+`FUZZ_STRICT_TYPED=1`; crashes and invariant failures always fail the run.
 
 ## 11. Performance architecture
 
@@ -867,7 +1130,7 @@ flowchart LR
     Boot[boot machine, drivers]
   end
   subgraph Later[on demand]
-    Def[deferred areas:<br/>archive, hormone curve,<br/>roadmap, clinician summary...]
+    Def[deferred areas:<br/>archive, roadmap,<br/>clinician summary...]
     Mig[migrations.ts]
     OCR[tesseract]
     PDF[pdf.js]
@@ -876,18 +1139,18 @@ flowchart LR
   First -. "import()" .-> Later
 ```
 
-**First load has a budget.** [scripts/check-first-load-budget.mjs](scripts/check-first-load-budget.mjs) gzips every `/_app/immutable` URL that `build/index.html` asks for and compares the total with [scripts/first-load-budget.json](scripts/first-load-budget.json). Each build compiles one language, so it measures the English and the Polish graph and gates the larger. The budget is 104 files and 251,272 bytes (recorded 2026-10-07, after-release ticket 40). A production build of that commit came to 104 files, 248.8 KB English and 250.2 KB Polish. The file count gets no headroom, and the byte budget gets a 1 KB floor for hash wobble. A rebaseline has to name the change that caused it in the same file. The script also records a separate vendor-assets total for OCR and PDF fonts (about 22 MB gzip), without gating it. Its `onDemand` label describes this measurement bucket; PDF fonts are actually precached. CI gates the production build only.
+**First load has a budget.** [scripts/check-first-load-budget.mjs](scripts/check-first-load-budget.mjs) gzips every `/_app/immutable` URL that `build/index.html` asks for and compares the total with [scripts/first-load-budget.json](scripts/first-load-budget.json). Each build compiles one language, so it measures the English and the Polish graph and gates the larger. The numbers live in that file (`firstLoad.filesBudget` and `gzipBytesBudget`), recorded against the larger of the English and Polish graphs with the selector included, and its note names the change behind every re-recording; this page does not repeat them, because a copy here went stale twice. The file count gets no headroom, and the byte budget adds exactly 1,024 bytes to the larger measurement for hash wobble. A rebaseline has to name the change that caused it in the same file. The script records OCR installation transfer and stored bytes separately. OCR installation does not add eager execution to this graph. PDF fonts remain precached. CI gates the production build only.
 
 **What stays out of first load:**
 - deferred journal areas (section 6.3)
 - [migrations.ts](src/lib/data/sqlite/migrations.ts), because a journal already on the current schema never loads it
 - `hash-wasm`, which the Argon2 worker bundles for itself
 - most of the built-in vocabulary ([vocabulary/builtinTemplates.ts](src/lib/data/vocabulary/builtinTemplates.ts) carries only what boot needs)
-- the screens' wording layer, [vocabulary/vocabulary.ts](src/lib/data/vocabulary/vocabulary.ts), with the dose and entry-template labels it joins in. The shell's one reader, the Android affirmation pool, loads it with the rest of the Android sync, and [tests/shell-graph.test.ts](tests/shell-graph.test.ts) keeps the shell's static imports from reaching it
+- the screens' wording layer, [vocabulary/vocabulary.ts](src/lib/data/vocabulary/vocabulary.ts), with the dose labels it joins in. The shell does not need it, and [tests/node/performance/shell-graph.test.ts](tests/node/performance/shell-graph.test.ts) keeps the shell's static imports from reaching it
 
-**Preload hints wait for the first frame.** [src/hooks.server.ts](src/hooks.server.ts) runs once at build time and turns the document's module preload hints into held `x-modulepreload` hints. The pre-paint script in [app.html](src/app.html) releases them after the first frame, so the splash paints before the chunk downloads compete with it. Over HTTP/2 at 4x CPU throttling and a slow network, the splash paints in under a second. Over HTTP/1.1 the browser has six connections rather than one to share, so the script gives each hint back as the parser adds it instead; holding them there only delayed the first screen by about 0.3 s. The browser checks serve `build/` through [tests/serve-build.mjs](tests/serve-build.mjs), which hands out `build/index.html` itself under the production isolation headers, so they run under the shipped CSP and the held hints.
+**Preload hints wait for the first frame.** [src/hooks.server.ts](src/hooks.server.ts) runs once at build time and turns the document's module preload hints into held `x-modulepreload` hints. The pre-paint script in [app.html](src/app.html) releases them after the first frame, so the splash paints before the chunk downloads compete with it. Over HTTP/2 at 4x CPU throttling and a slow network, the splash paints in under a second. Over HTTP/1.1 the browser has six connections rather than one to share, so the script gives each hint back as the parser adds it instead; holding them there only delayed the first screen by about 0.3 s. The browser checks serve `build/` through [tests/serve-build.mjs](tests/serve-build.mjs), which hands out `build/index.html` itself under the production isolation headers and the CSP header read from the nginx configuration, so they run under the shipped CSP and the held hints.
 
-**The offline shell is one cache per release** (ADR-0021). A production precache is roughly 680 files and about 3 MB brotli: the app's chunks and CSS, the SQLite WASM, fonts and static icons. [src/lib/pwa/shell-assets.ts](src/lib/pwa/shell-assets.ts) keeps the OCR engine and the PDF worker out of the install. A page asks for OCR through `engender:cache-on-demand` and the PDF worker through `engender:cache-pdf-worker`. PDF fonts are already precached. `registerServiceWorkerAfterBoot` ([src/lib/pwa/register.ts](src/lib/pwa/register.ts)) schedules registration on browser idle after `ready` or `needs-setup`; returning users at an unlock gate wait until `ready`. This keeps registration out of initial boot work, though downloads can overlap later activity.
+**The offline shell is one cache per release** (ADR-0021). Installation atomically caches the app and one complete OCR generation, including its ESM library, worker, core/WASM and English/Polish models. Any missing response rejects installation, so a prior active release stays usable. Recognition imports the library only when a scan begins. [prepare-vendor-assets.mjs](scripts/prepare-vendor-assets.mjs) hashes the complete set into `/tesseract/<sha256>/`; model IndexedDB caching is disabled to avoid mixing generations through global language keys. Activation preserves previous OCR entries under their original cache names, and [journal-release.mjs](scripts/journal-release.mjs) retains those generation directories before switching the web release. The pre-generation Tesseract library is shipped as a frozen 15,829-byte compatibility file and retained through an explicit URL/SHA-256 receipt; it has no module import dependencies. Release preparation verifies the prior or uploaded copy and refuses a missing or changed required library before switching `current`. Historical root OCR bytes stay fixed, with web `.traineddata.gz` aliases; APKs use `.traineddata` to avoid AGP renaming. Each activated shell also records browser client IDs for documents using that release. Registration reports the document's compiled build ID after controller takeover and on return to the tab. Unknown older documents conservatively retain previous shells. The active worker serves their exact immutable asset URLs while every navigation uses its current document. Activation, navigation and client reports reclaim shell bytes after their clients close or reload, leaving previous OCR compatibility bytes and unrelated origin caches untouched. Waiting installation caches have no ownership receipt and remain untouched by the active worker. PDF fonts stay precached; the PDF worker is still added through `engender:cache-pdf-worker`. The web release operator also publishes a separate PDF namespace from the selected and outgoing original releases before switching `current`. Nginx uses it for a missing exact PDF worker URL, including after explicit rollback. The namespace holds two release sets and replaces its old snapshot after each successful switch; original release trees and metadata stay unchanged. This preserves an online first open in a retained page without precaching PDF workers or promising an uncached offline first open. `registerServiceWorkerAfterBoot` ([src/lib/pwa/register.ts](src/lib/pwa/register.ts)) schedules registration on browser idle after `ready` or `needs-setup`; returning users at an unlock gate wait until `ready`.
 
 **One serialized database queue.** On the web, every statement goes to one worker and runs in arrival order ([mc-worker.ts](src/lib/data/sqlite/mc-worker.ts)), so a screen's read cost is mostly round trips times their number. A round trip is a few to a few tens of milliseconds. On Android the queue is the bridge, which is why calls are pipelined with sequence numbers (ADR-0089) and why [tests/long-journal/budgets.json](tests/long-journal/budgets.json) counts statements and bytes per screen mount (`mount-*`) as well as time.
 
@@ -898,6 +1161,12 @@ flowchart LR
 - `batchWrites` coalesces bursts of writes into one round of re-runs.
 - A refresh that comes back equal leaves the screen untouched.
 - `lastResults` paints a warm revisit from memory in its first frame.
+- Hidden retained doors defer repository admission for up to 75 ms per query
+  attempt. Becoming visible releases pending reads immediately. The query still
+  captures dependencies synchronously; superseded attempts cannot dispatch
+  delayed reads. Hidden refresh continues after the bound, keeping warm caches
+  fresh. [The physical comparison](tests/retained-door-cost/RESULTS.md) records
+  the foreground gain and the longer full refresh settlement.
 
 Home also limits which questions it asks. [data/pinnedRows.ts](src/lib/data/pinnedRows.ts)'s
 `pinReadScope()` supplies the selected rows, last-write areas and forward facts;
@@ -911,9 +1180,9 @@ described in section 5.
 
 A returning visit with a full fixture reaches ready in about 0.6 s at 4x CPU throttling, with first contentful paint under 100 ms.
 
-**No layout jump on arrival.** Home's blocks answer out of many reads. [data/homeReserve.ts](src/lib/data/homeReserve.ts) remembers how tall each block was last time, and `kit/ReadReserve.svelte` holds that room until the reads agree. [tests/tile-arrival-timing.mjs](tests/tile-arrival-timing.mjs) and [tests/return-floor-check.mjs](tests/return-floor-check.mjs) (`npm run test:return-floor`) guard arrival timing.
+**No layout jump on arrival.** Home's blocks answer out of many reads. [data/homeReserve.ts](src/lib/data/homeReserve.ts) remembers how tall each block was last time, and `kit/ReadReserve.svelte` holds that room until the reads agree. [tests/guards/tile-arrival-timing.mjs](tests/guards/tile-arrival-timing.mjs) and [tests/return-floor-check.mjs](tests/return-floor-check.mjs) (`npm run test:return-floor`) guard arrival timing.
 
-**Housekeeping runs on idle.** Trash purge, the orphan photo sweep and dose auto-logging start in an idle callback after boot reports ready ([data/sqlite/boot.ts](src/lib/data/sqlite/boot.ts)). Auto-logging checks expected days with indexed timestamp probes in batches, then reads dose events only for underfilled days. It still checks historical slots on every pass so deleting an old automatic dose can recreate it; no stored cursor or derived checkpoint skips that history.
+**Housekeeping runs on idle.** Trash purge, the orphan photo sweep and dose auto-logging start in an idle callback after boot reports ready ([data/sqlite/boot.ts](src/lib/data/sqlite/boot.ts)). Each pass waits for admitted journal writes, including Android stock-reminder reconciliation, before reading ownership. Purge and sweep still give way if a write starts during the pass. Auto-logging checks expected days with indexed timestamp and slot-identity probes in batches, then reads dose events only for underfilled days. Today, Care, the dose log and the Transition Care row use the dose owner's pairing, including its tolerance, episode boundaries and pauses. Calendar day-ahead marks retain their raw expected-day meaning. It still checks historical slots on every pass so deleting an old automatic dose can recreate it; no stored cursor or derived checkpoint skips that history.
 
 **Long lists and media are rendered lazily.**
 - Long lists grow in rendered batches (`kit/BatchedList.svelte`, ADR-0069). A log that should grow only on request passes `autoGrow={false}`: the dose log does, so its day headings and older batches arrive through its show-more control, which discloses the new rows and collapses itself with its spacing once nothing is left.
@@ -946,24 +1215,25 @@ flowchart LR
   Bm --> All
 ```
 
-- **[ci.yml](.github/workflows/ci.yml) ("Checks")** runs on pushes, pull requests and `workflow_call`. The Node and Android jobs run their check lists through [scripts/run-ci-checks.mjs](scripts/run-ci-checks.mjs), which keeps going after a failure and reports checks whose prerequisites failed as blocked. The `results` job, "All required checks", runs with `if: always()` and fails unless every upstream tier succeeded. The main ruleset requires that job, in strict mode with no bypass ([CONTRIBUTING.md](CONTRIBUTING.md)).
+- **[ci.yml](.github/workflows/ci.yml) ("Checks")** runs on pushes, pull requests and `workflow_call`. The Node suite runs under UTC and Europe/Warsaw, with each duration recorded in the job summary. The Node and Android jobs run their check lists through [scripts/run-ci-checks.mjs](scripts/run-ci-checks.mjs), which keeps going after a failure and reports checks whose prerequisites failed as blocked. The `results` job, "All required checks", runs with `if: always()` and fails unless every upstream tier succeeded. The main ruleset requires that job, in strict mode with no bypass ([CONTRIBUTING.md](CONTRIBUTING.md)).
 - **[guard-recovery-proof.yml](.github/workflows/guard-recovery-proof.yml)** is a manual, synthetic check of the guard runner's retry evidence.
 
 ```mermaid
 flowchart LR
-  Tag["signed tag v1.2.3<br/>npm run release:tag"] --> Checks[ci.yml via workflow_call]
-  Checks --> Pub["publish: version from tag,<br/>notes from CHANGELOG"]
-  Pub --> Sign[signed APK + AAB]
-  Sign --> Verify[check-release-artifacts]
-  Verify --> Pack["package-release:<br/>web bundle built twice,<br/>same digest"]
-  Pack --> GH[GitHub Release<br/>+ SHA256SUMS]
+  Tag["signed tag v1.2.3<br/>npm run release:tag"] --> Res["resolve: dispatched on main,<br/>signer in release-signers,<br/>commit on main"]
+  Res --> Checks[ci.yml via workflow_call]
+  Checks --> Build["build: unsigned APK + AAB,<br/>no secrets, digests out"]
+  Build --> Sign["sign: release environment,<br/>no repository code"]
+  Sign --> Pack["package: check-release-artifacts,<br/>web bundle built twice,<br/>same digest"]
+  Pack --> GH[publish: GitHub Release<br/>+ SHA256SUMS]
   GH -. optional .-> Play[Play internal track,<br/>draft]
+  Pack --> Web["deploy-web: run's bundle, digest from<br/>package output, receiver checks it too"]
 ```
 
-- **Versioning.** The public version comes only from a signed `v<semver>` tag (ADR-0022). [scripts/app-version.mjs](scripts/app-version.mjs) reads it once, and an ordinary checkout builds as `0.0.0-dev`. [scripts/cut-release-tag.mjs](scripts/cut-release-tag.mjs) refuses to tag unless `main` is clean and [CHANGELOG.md](CHANGELOG.md) has a section for the version. [scripts/release-notes.mjs](scripts/release-notes.mjs) requires the four call-outs: schema, archive format, security migrations and minimum version.
-- **Hosting.** `npm run deploy:release`, `deploy:rollback` and `deploy:list` drive immutable web releases ([deploy/README.md](deploy/README.md)). Rollback refuses code that can't open the current schema.
-- **Progressive release.** Shipping goes through stages (`stage1` web beta through `stable`), each with a recorded release matrix: update, migration, archive round trip, scheduled backup and rollback. These are recorded in [scripts/progressive-release-record.json](scripts/progressive-release-record.json) and checked by `check:progressive-release` (`docs/progressive-release.md`).
-- **F-Droid** rebuilds with its own key, so moving between channels means reinstalling and restoring an archive.
+- **Versioning.** The public version comes only from a signed `v<semver>` tag (ADR-0022), signed by a key in [.github/release-signers](.github/release-signers) and released only through a manual dispatch on main. [scripts/app-version.mjs](scripts/app-version.mjs) reads it once, and an ordinary checkout builds as `0.0.0-dev`. [scripts/cut-release-tag.mjs](scripts/cut-release-tag.mjs) refuses to tag unless `main` is clean and [CHANGELOG.md](CHANGELOG.md) has a section for the version. [scripts/release-notes.mjs](scripts/release-notes.mjs) requires the four call-outs: schema, archive format, security migrations and minimum version.
+- **Hosting.** `npm run deploy:release`, `deploy:rollback` and `deploy:list` drive immutable web releases ([deploy/README.md](deploy/README.md)). A sidecar receipt beside the current link records the outgoing target at each switch. `rollback --previous` uses that matching history, never directory age; missing or stale history requires a named target. Failed switches restore the prior receipt and PDF namespace. Rollback still refuses code that can't open the current schema.
+- **Progressive release.** Candidate checks in `stage1` and `stage2`, plus the `stable` matrix for stable versions, precede publication. Web and GitHub/Obtainium publish first; Play (`stage3`) and F-Droid (`stage4`) follow. Channel-live states record completed publication, so pending channels do not prevent a tag. Each required stage records update, migration, archive round trip, scheduled backup and rollback checks in [scripts/progressive-release-record.json](scripts/progressive-release-record.json). The tag command and release workflow validate the tested source revision and exact version before publication. See [candidate evidence](deploy/README.md#candidate-evidence-before-publication).
+- **Android channel signing.** Play retains its separate app-signing key. The planned F-Droid route verifies a reproducible source build and preserves the GitHub APK's developer signature. GitHub/F-Droid switching remains unverified until the actual rebuild and installed updates in both directions preserve synthetic journals. A matching certificate alone is insufficient. [Android channel verification](deploy/README.md#android-channel-verification) records the required proof and the Archive migration rule for incompatible channels.
 
 ## 13. Paradigms worth knowing before editing
 
@@ -983,7 +1253,7 @@ flowchart LR
 
 **Errors and observability.** Journal actions and application errors are not reported to any service. The maintainer-hosted web app counts a full online document opening through [document/page-load.ts](src/lib/document/page-load.ts), mounted once in the root layout. It sends an empty POST to a fixed same-origin endpoint, with credentials and referrer omitted. Android, offline openings, development/demo builds and other origins do not count. The separate landing repository sends the same empty signal to a fixed website endpoint. There are no retries, offline queues or navigation listeners.
 
-The optional nginx snippets [journal-page-count.conf](deploy/nginx/journal-page-count.conf) and [journal-count-proxy.conf](deploy/nginx/journal-count-proxy.conf) discard incoming headers, body and query parameters. GoatCounter receives only a fixed app/website label and a fixed non-identifying User-Agent. Its Engender site uses `collect=1` (`CollectNothing`), private visibility and indefinite aggregate retention. GoatCounter 2.7 stores hourly totals; individual hit storage and sessions are disabled. Empty User-Agent would trigger its separate raw bot log, so the fixed header is part of this privacy boundary. Direct `/gc/count` access is refused. The private dashboard has its own origin, `stats.engender.barankiewicz.dev`, so its code cannot access journal storage.
+The optional nginx snippets [journal-page-count.conf](deploy/nginx/journal-page-count.conf) and [journal-count-proxy.conf](deploy/nginx/journal-count-proxy.conf) discard incoming headers, body and query parameters. GoatCounter receives only a fixed app/website label and a fixed non-identifying User-Agent. Its Engender site uses `collect=1` (`CollectNothing`), private visibility and indefinite aggregate retention. GoatCounter 2.7 stores hourly totals; individual hit storage and sessions are disabled. Empty User-Agent would trigger its separate raw bot log, so the fixed header is part of this privacy boundary. Direct `/gc/count` access is refused. The private dashboard has its own origin, `stats.engender.app`, so its code cannot access journal storage.
 
  Failures surface to the person as toasts or notices in the app's own words ([archive/failure.ts](src/lib/data/archive/failure.ts), [failureNotice.ts](src/lib/data/archive/failureNotice.ts)). On the web, developer diagnostics go to the console only. Native code logs no secrets, and Capacitor's bridge logging is off. Support never needs journal data ([SUPPORT.md](SUPPORT.md)).
 
@@ -995,14 +1265,14 @@ The optional nginx snippets [journal-page-count.conf](deploy/nginx/journal-page-
 2. Write the area's methods in `src/lib/data/journal/<area>.ts` and compose it in [journal.ts](src/lib/data/journal/journal.ts).
 3. Classify every method in [data/live/writes.ts](src/lib/data/live/writes.ts) and extend [writes.sql.test.ts](src/lib/data/live/writes.sql.test.ts) to exercise its SQL. Section 6.4 describes the limits of that check.
 4. If the data should travel, register a section in [journal/archiveSections.ts](src/lib/data/journal/archiveSections.ts) (ADR-0027) and extend [archive/payload.ts](src/lib/data/archive/payload.ts). A format change needs a payload migration.
-5. Add the term to `CONTEXT.md`, and an ADR if a decision was made.
+5. Define new domain terms beside the types that use them. See [Writing an ADR](CONTRIBUTING.md#writing-an-adr) for decisions that need a record.
 
 **Add a screen**
 
 1. Create `src/routes/<path>/+page.svelte`, reading through `liveQuery` and building from the kit.
 2. Map its prefix to a tab in [navigation/active-tab.ts](src/lib/navigation/active-tab.ts). If it belongs in the hub, add a row in [data/hubRows.ts](src/lib/data/hubRows.ts).
 3. Add strings to both catalogues and expose `data-*` handles for the walkthrough.
-4. Its motion follows ADR-0078. Index any probe you keep in [tests/PROBES.md](tests/PROBES.md) and [tests/guards.json](tests/guards.json).
+4. Use the shared motion primitives for state changes. Index any probe you keep in [tests/PROBES.md](tests/PROBES.md) and [tests/guards.json](tests/guards.json).
 
 **Add an external importer**
 
@@ -1025,5 +1295,3 @@ The optional nginx snippets [journal-page-count.conf](deploy/nginx/journal-page-
 **Change crypto parameters**
 
 1. Re-run `npm run benchmark:argon2` and record the result in an ADR (ADR-0013). Old wraps keep their stored parameters.
-
-A note on one ADR: ADR-0090 describes LAN pairing between devices. No pairing code exists in the tree yet. The prototype under [prototypes/02-pc-browser-lan/](prototypes/02-pc-browser-lan) holds its research.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { chromelessPath, cutsInsteadOfMoving, replacesAppNavigation } from './chromeless.ts';
+import { barlessPath, chromelessPath, cutsInsteadOfMoving, replacesAppNavigation } from './chromeless.ts';
 
 describe('the routes that render without chrome', () => {
   it('is onboarding, all of it', () => {
@@ -9,9 +9,8 @@ describe('the routes that render without chrome', () => {
   });
 
   it('is the lock screen, which is where a PIN is set', () => {
-    /* /settings/lock was the second chromeless route until ticket 53 retired
-       the app-lock gate. Its replacements are rendered by the layout instead
-       of the app, so no path produces them. */
+    /* /settings/lock was the second chromeless route retired the app-lock gate. Its
+       replacements are rendered by the layout instead of the app, so no path produces them. */
     expect(chromelessPath('/settings')).toBe(false);
   });
 
@@ -23,7 +22,7 @@ describe('the routes that render without chrome', () => {
     expect(chromelessPath('/settings/export')).toBe(false);
   });
 
-  it('is the in-the-room view, which owes its reader one way out (ticket 60)', () => {
+  it('is the in-the-room view, which owes its reader one way out', () => {
     expect(chromelessPath('/health/appointments/in-the-room')).toBe(true);
   });
 
@@ -35,9 +34,8 @@ describe('the routes that render without chrome', () => {
     expect(chromelessPath('/health/appointment-prep')).toBe(false);
   });
 
-  it('is the return moment, which is a step and has nowhere to go (ticket 35)', () => {
-    /* DIRECTION.md rule 15: one purpose, no navigation. A tab bar over it
-       is four ways off a screen whose foot already carries the one. */
+  it('is the return moment, which is a step and has nowhere to go', () => {
+    /* The return step has one exit in its footer. */
     expect(chromelessPath('/coming-back')).toBe(true);
   });
 
@@ -58,12 +56,9 @@ describe('the routes that render instead of the app rather than inside it', () =
     expect(replacesAppNavigation('/health/appointments/in-the-room')).toBe(true);
   });
 
-  it('is not the return moment, which Home navigates to (ticket 35)', () => {
-    /* It has no bar, so it is chromeless; it is still a step the app walks
-       to from Home, so it owes the movement every other step gets. Alicja
-       on the ticket 35 flipbooks: the empty state arriving had "no
-       animation at all, yank between frames 7 and 8" - the yank was this
-       predicate answering both questions at once. */
+  it('is not the return moment, which Home navigates to', () => {
+    /* It has no bar, so it is chromeless; it is still a step the app walks to from Home, so
+       it uses the same transition as the other steps. */
     expect(chromelessPath('/coming-back')).toBe(true);
     expect(replacesAppNavigation('/coming-back')).toBe(false);
   });
@@ -87,12 +82,10 @@ describe('which navigations cut instead of moving', () => {
   });
 
   it('moves on the way out of setup, which is the app opening', () => {
-    /* Redesign ticket 33. Somebody pressed "Start writing" and the app
-       opened; rule 12 already says the sun's handover to Home is one object
-       at one size, and a cut made the app's largest surface change in a
-       single frame at the end of ten steps that had all moved. Both doors
-       out of setup are the same act and complete() is one function for
-       them. */
+    /* Somebody pressed "Start writing" and the app opened; rule 12 already says the sun's
+       handover to Home is one object at one size, and a cut made the app's largest surface
+       change in a single frame at the end of setup's moving steps. Both doors out of setup
+       are the same act and complete() is one function for them. */
     expect(cutsInsteadOfMoving('/onboarding', '/')).toBe(false);
     expect(cutsInsteadOfMoving('/onboarding/flag', '/')).toBe(false);
   });
@@ -113,12 +106,47 @@ describe('which navigations cut instead of moving', () => {
     );
   });
 
-  it('moves the return moment both ways (ticket 35)', () => {
+  it('moves the return moment both ways', () => {
     expect(cutsInsteadOfMoving('/', '/coming-back')).toBe(false);
     expect(cutsInsteadOfMoving('/coming-back', '/')).toBe(false);
   });
 
   it('moves between two ordinary screens', () => {
     expect(cutsInsteadOfMoving('/', '/calendar')).toBe(false);
+  });
+});
+
+describe('the routes with no tab bar over them', () => {
+  /* New entry hides the tab bar but keeps Today's retained doors mounted
+     beneath it. */
+  it('is a new entry, on any day', () => {
+    expect(barlessPath('/entry/new/today')).toBe(true);
+    expect(barlessPath('/entry/new/19000')).toBe(true);
+    expect(chromelessPath('/entry/new/today')).toBe(false);
+  });
+
+  /* An address that is not a day the editor can open shows the unavailable
+     notice, with the app's chrome and Back (the route's own rule), so it is
+     not a step. Sampled by the day-addresses guard: /entry/new/abc lost its
+     tab bar. */
+  it('is not an address that shows the unavailable notice', () => {
+    const today = 20000;
+    expect(barlessPath('/entry/new/abc', today)).toBe(false);
+    expect(barlessPath('/entry/new/NaN', today)).toBe(false);
+    expect(barlessPath('/entry/new/2026-02-30', today)).toBe(false);
+    expect(barlessPath('/entry/new/20001', today)).toBe(false);
+    expect(barlessPath('/entry/new/today', today)).toBe(true);
+    expect(barlessPath('/entry/new/19999', today)).toBe(true);
+    expect(barlessPath('/entry/new/20000', today)).toBe(true);
+  });
+
+  it('is not the editor of an entry that exists, which keeps its single page', () => {
+    expect(barlessPath('/entry/12')).toBe(false);
+  });
+
+  it('is every chromeless route as well', () => {
+    expect(barlessPath('/onboarding')).toBe(true);
+    expect(barlessPath('/coming-back')).toBe(true);
+    expect(barlessPath('/')).toBe(false);
   });
 });

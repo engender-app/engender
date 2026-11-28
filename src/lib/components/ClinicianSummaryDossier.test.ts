@@ -15,15 +15,38 @@ const printCss = readFileSync(
   root + '/src/lib/styles/clinician-print.css',
   'utf8'
 );
+const labels = readFileSync(root + '/src/lib/data/vocabulary/clinicianSummaryLabels.ts', 'utf8');
+const messages = ['en', 'pl'].map((locale) => readFileSync(`${root}/messages/${locale}.json`, 'utf8'));
 
-describe('ClinicianSummaryDossier component contract', () => {
-  it('defines Props interface with ClinicianDossier', () => {
+/* One section mechanism and one label set. The page draws the registry's sections by
+   walking its keys, one snippet per key, and names each one from the same record the
+   include switches use. */
+describe('one layer, one label set', () => {
+  it('takes the registry\'s own summary, not a second dossier shape', () => {
     expect(dossierComponent).toContain('interface Props');
-    expect(dossierComponent).toContain('dossier: ClinicianDossier');
+    expect(dossierComponent).toContain('summary: ClinicianSummary');
+    expect(dossierComponent).not.toMatch(/ClinicianDossier\b/);
   });
 
+  it('draws the sections by walking the registry\'s keys, through a snippet per key', () => {
+    expect(dossierComponent).toContain('{#each CLINICIAN_SUMMARY_SECTION_KEYS as key (key)}');
+    expect(dossierComponent).toContain('{@render sectionSnippet(key)(content)}');
+    expect(dossierComponent).toContain(
+      'const SECTION_SNIPPETS: { [Key in ClinicianSummarySectionKey]: Snippet<[Section<Key>]> } = {'
+    );
+    expect(dossierComponent).not.toMatch(/\{#if dossier\./);
+  });
+
+  it('names every section from the one label set, on paper and on its switch', () => {
+    expect(labels).toContain('Record<ClinicianSummarySectionKey, () => string>');
+    expect(dossierComponent).not.toMatch(/m\.clinician_summary_section_(?!truncated)[a-z_]+\(\)/);
+    expect(summaryPage).toContain('clinicianSummarySectionName(key)');
+    for (const catalogue of messages) expect(catalogue).not.toContain('"clinician_summary_part_');
+  });
+});
+
+describe('ClinicianSummaryDossier component contract', () => {
   it('renders patient demographics section when present', () => {
-    expect(dossierComponent).toContain('{#if dossier.demographics}');
     expect(dossierComponent).toContain('data-dossier-section="demographics"');
     expect(dossierComponent).toContain('m.clinician_summary_name_label()');
     expect(dossierComponent).toContain('m.clinician_summary_pronouns_label()');
@@ -31,29 +54,29 @@ describe('ClinicianSummaryDossier component contract', () => {
   });
 
   it('renders regimen and dosage history section with tables', () => {
-    expect(dossierComponent).toContain('{#if dossier.regimen}');
+    expect(dossierComponent).toContain("{#snippet regimenSection(regimen: Section<'regimen'>)}");
     expect(dossierComponent).toContain('data-dossier-section="regimen"');
     expect(dossierComponent).toContain('m.clinician_summary_current_regimen()');
     expect(dossierComponent).toContain('m.clinician_summary_past_regimen()');
-    expect(dossierComponent).toContain('m.clinician_summary_dose_history()');
+    expect(dossierComponent).toContain('m.doses()');
   });
 
-  it('prints an ended episode\'s end reason as a clause on its own date range, when one is set (ticket 43)', () => {
+  it('prints an ended episode\'s end reason as a clause on its own date range, when one is set', () => {
     expect(dossierComponent).toContain('m.clinician_summary_regimen_end_reason(');
     expect(dossierComponent).toContain('ep.endReason');
   });
 
-  /* Ticket 67: restores the record-linking ticket 09's rewrite dropped when
-     the flat, static rows became a printed table. */
+  /* Restores the record-linking rewrite dropped when the flat, static rows became a printed
+     table. */
   it('links every regimen and dose row back to its own record', () => {
     expect(dossierComponent).toContain('href={`/care/regimen#${ep.id}`}');
     expect(dossierComponent).toContain('href={`/care/doses#${dose.id}`}');
     expect(dossierComponent).toContain('class="dossier-row-link"');
   });
 
-  /* Phase 11 ticket 11: a dose a schedule wrote on the person's behalf is
-     marked where it leaves the device, and the mark is explained in words
-     rather than left as a symbol a reader has to guess at. */
+  /* A dose a schedule wrote on the person's behalf is marked where it leaves the device,
+     and the mark is explained in words rather than left as a symbol a reader has to guess
+     at. */
   it('marks an auto-logged dose in the dose table and explains the mark in a legend', () => {
     expect(dossierComponent).toContain("dose.source === 'schedule'");
     expect(dossierComponent).toContain('data-dose-auto-logged');
@@ -70,7 +93,7 @@ describe('ClinicianSummaryDossier component contract', () => {
   });
 
   it('renders cumulative exposure section', () => {
-    expect(dossierComponent).toContain('{#if dossier.exposure}');
+    expect(dossierComponent).toContain("{#snippet exposureSection(exposure: Section<'exposure'>)}");
     expect(dossierComponent).toContain('data-dossier-section="exposure"');
     expect(dossierComponent).toContain('m.exposure_dose_totals_title()');
     expect(dossierComponent).toContain('m.exposure_route_days_title()');
@@ -86,16 +109,16 @@ describe('ClinicianSummaryDossier component contract', () => {
   });
 
   it('renders lab results with post-dose timing badge', () => {
-    expect(dossierComponent).toContain('{#if dossier.labs}');
+    expect(dossierComponent).toContain("{#snippet labsSection(labs: Section<'labs'>)}");
     expect(dossierComponent).toContain('data-dossier-section="labs"');
     expect(dossierComponent).toContain('m.clinician_summary_timing_header()');
     expect(dossierComponent).toContain('class="dossier-timing-badge"');
   });
 
   it('renders side effects and cycle events sections', () => {
-    expect(dossierComponent).toContain('{#if dossier.sideEffects}');
+    expect(dossierComponent).toContain("{#snippet sideEffectsSection(sideEffects: Section<'sideEffects'>)}");
     expect(dossierComponent).toContain('data-dossier-section="sideEffects"');
-    expect(dossierComponent).toContain('{#if dossier.cycleEvents}');
+    expect(dossierComponent).toContain("{#snippet cycleEventsSection(cycleEvents: Section<'cycleEvents'>)}");
     expect(dossierComponent).toContain('data-dossier-section="cycleEvents"');
     expect(dossierComponent).toContain('cycleEventKindName(event.kind)');
   });
@@ -106,7 +129,7 @@ describe('ClinicianSummaryDossier component contract', () => {
   });
 
   it('renders appointment prep consultation questions', () => {
-    expect(dossierComponent).toContain('{#if dossier.appointmentPrep}');
+    expect(dossierComponent).toContain("{#snippet appointmentPrepSection(appointmentPrep: Section<'appointmentPrep'>)}");
     expect(dossierComponent).toContain('data-dossier-section="appointmentPrep"');
   });
 
@@ -140,10 +163,10 @@ describe('clinician-print.css contract', () => {
   });
 });
 
-/* Ticket 08: every section's table shows its first rows on screen and every
-   row in print. The floor is 12 (the ticket's own proposal, kept - see the
-   component's own comment on PREVIEW_ROW_FLOOR for why). */
-describe('ClinicianSummaryDossier preview truncation (ticket 08)', () => {
+/* Every section's table shows its first rows on screen and every row in print. The floor is
+   12 (the ticket's own proposal, kept - see the component's own comment on
+   PREVIEW_ROW_FLOOR for why). */
+describe('ClinicianSummaryDossier preview truncation', () => {
   it('sets the row floor to twelve', () => {
     expect(dossierComponent).toContain('const PREVIEW_ROW_FLOOR = 12;');
   });
@@ -154,15 +177,17 @@ describe('ClinicianSummaryDossier preview truncation (ticket 08)', () => {
      A count rather than one assertion per table so a table added later that
      forgets the mark fails loudly instead of silently passing everything
      else. */
-  it('marks every table row past the floor as an overflow row, on all twelve of the dossier\'s tables', () => {
+  /* Thirteen table templates added the changes noticed; the ongoing and resolved side
+     effects share one. */
+  it('marks every table row past the floor as an overflow row, on every one of the dossier\'s table templates', () => {
     const marks = dossierComponent.match(/class:dossier-row-overflow={i >= PREVIEW_ROW_FLOOR}/g) ?? [];
-    expect(marks.length).toBe(12);
+    expect(marks.length).toBe(13);
   });
 
   it('reports a table\'s overflow through the same helper everywhere, one call per table', () => {
     const calls = dossierComponent.match(/overflowCount\(/g) ?? [];
     // Once per table to compute the count, once more to render the note.
-    expect(calls.length).toBe(24);
+    expect(calls.length).toBe(26);
   });
 
   it('renders the truncation note through one shared snippet, screen-only', () => {
@@ -179,13 +204,11 @@ describe('ClinicianSummaryDossier preview truncation (ticket 08)', () => {
   });
 });
 
-/* After-release 22, the 5 October audit's follow-up on the summary a
-   person hands their doctor. */
-describe('ClinicianSummaryDossier says only what the person told it (after-release 22)', () => {
-  /* L04-02: every summary printed "Pronouns: Not specified", and nothing
+describe('ClinicianSummaryDossier says only what the person told it', () => {
+  /* Every summary printed "Pronouns: Not specified", and nothing
      in the app could change it. */
   it('draws the pronouns row only when pronouns were given', () => {
-    expect(dossierComponent).toMatch(/{#if dossier\.demographics\.pronouns\?\.trim\(\)}/);
+    expect(dossierComponent).toMatch(/{#if demographics\.pronouns\?\.trim\(\)}/);
     expect(dossierComponent).not.toContain('pronouns?.trim() || m.clinician_summary_not_set()');
   });
 
@@ -195,7 +218,7 @@ describe('ClinicianSummaryDossier says only what the person told it (after-relea
     expect(summaryPage).not.toMatch(/prefs\.pronouns/);
   });
 
-  /* L04-06: print showed the raw route code ("im", "oral") in English,
+  /* Print showed the raw route code ("im", "oral") in English,
      while the screen and the dose tables showed the label. */
   it('prints the same route label it shows, with no print-only route code', () => {
     expect(dossierComponent).not.toContain('dossier-route-print');
@@ -210,11 +233,8 @@ describe('ClinicianSummaryDossier says only what the person told it (after-relea
   });
 });
 
-/* After-release 22 (UI-11): at phone width a wide table reads as stacked
-   rows, and paper keeps the table. The rendered check (every column on
-   screen at 320 and 390, dates on one line) is the ticket's browser probe;
-   this pins the parts a later edit could quietly break. */
-describe('stacked rows at phone width (after-release 22)', () => {
+/* Narrow screens stack rows. Print keeps the table. */
+describe('stacked rows at phone width', () => {
   const screenBlock = printCss.slice(printCss.indexOf('@media screen'));
 
   it('labels every table cell with its column header', () => {
@@ -233,5 +253,36 @@ describe('stacked rows at phone width (after-release 22)', () => {
   it('keeps a table date on one line on screen only', () => {
     expect(dossierComponent).toContain('<span class="dossier-date">{dayShort(epochDay)}{after}</span>');
     expect(screenBlock).toMatch(/\.dossier-date\s*{\s*white-space:\s*nowrap;/);
+  });
+});
+
+/* What leaves the device. */
+describe('HRT drugs by default, the changes noticed, and honest side-effect headings', () => {
+  const sideEffectNames = messages.map((catalogue) => JSON.parse(catalogue).clinician_summary_section_side_effects as string);
+
+  it('files a resolved side effect under its own heading, never under an "active" one', () => {
+    for (const name of sideEffectNames) expect(name).not.toMatch(/^(Active|Aktualne)\b/i);
+    expect(dossierComponent).toContain('effect.resolvedEpochDay === null');
+    expect(dossierComponent).toContain('data-side-effects="ongoing"');
+    expect(dossierComponent).toContain('data-side-effects="resolved"');
+    expect(dossierComponent).toContain('m.clinician_summary_side_effects_resolved()');
+    expect(dossierComponent).toContain('m.side_effect_resolved_label()');
+  });
+
+  it('prints the changes noticed with their first-noticed dates, named in the reader\'s language', () => {
+    expect(dossierComponent).toContain("{#snippet personalEffectsSection(changes: Section<'personalEffects'>)}");
+    expect(dossierComponent).toContain('data-dossier-section="personalEffects"');
+    expect(dossierComponent).toContain('change.firstNoticedEpochDay');
+    expect(dossierComponent).toContain('personalEffectName(change.effect)');
+    expect(labels).toContain('personalEffects: m.clinician_summary_section_personal_effects');
+  });
+
+  it('defaults the drug switches from the episodes, so a drug that is not HRT starts off', () => {
+    expect(summaryPage).toContain('excludedClinicianDrugs(regimenEpisodesQuery.value ?? [], prefs.clinicianSummaryDrugExcluded)');
+  });
+
+  it('opens and closes a part switched on or off rather than painting it whole', () => {
+    expect(dossierComponent).toMatch(/\{#if content !== null\}<div class="dossier-part"[^>]*transition:partDisclose>/);
+    expect(dossierComponent).toContain('easing: easeOutSoft');
   });
 });

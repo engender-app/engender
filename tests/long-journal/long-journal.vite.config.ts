@@ -1,4 +1,4 @@
-/* Dev server for the benchmark probe (phase 2 ticket 20). The same shape as
+/* Dev server for the benchmark probe. The same shape as
    tests/browser-tier/browser-tier.vite.config.ts and separate for the same
    reason it is: named so svelte-check's project auto-discovery, which globs
    for vite.config.*, does not pick it up and fail on the missing Svelte
@@ -19,8 +19,10 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      '$lib/stores/today.svelte': resolve(import.meta.dirname, './today-stub.ts'),
       '$app/state': resolve(import.meta.dirname, '../browser-tier/app-state-stub.ts'),
       '$app/navigation': resolve(import.meta.dirname, '../browser-tier/app-navigation-stub.ts'),
+      '$app/environment': resolve(import.meta.dirname, '../browser-tier/app-environment-stub.ts'),
       '$lib/stores/boot.svelte': resolve(import.meta.dirname, '../browser-tier/entry-editor-boot-stub.ts'),
       $lib: resolve(import.meta.dirname, '../../src/lib')
     }

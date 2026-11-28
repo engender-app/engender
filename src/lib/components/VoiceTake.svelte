@@ -1,30 +1,10 @@
 <script lang="ts">
-  /* A finished benchmark, drawn (phase 8 features ticket 09, ADR-0059).
-
-     The take the numbers came from: pitch over time from the stored track,
-     the p10-p90 span as a band and the median as a line, on the same
-     absolute axis and behind the same reference bands the live gauge used
-     while it was being recorded (PitchFigure.svelte). That continuity is
-     the point - a person reads their take against the picture they were
-     just watching, not against a second chart with its own scale.
-
-     The span is p10 to p90 and not minimum to maximum. That is what the row
-     stores, audio/pitch.ts says why at length, and a true minimum would
-     mostly display one creaky frame at the end of a sentence.
-
-     **A benchmark with no track.** Every benchmark taken before schema v58
-     has none, because the frames were summarized and dropped, and no amount
-     of work brings them back. Those get a sentence saying so rather than an
-     empty field: a chart with bands and no trace looks like a take that had
-     no voice in it, which is a different and much worse claim.
-
-     Motion: tier 3. The chart, reference bands and figures uncover together
-     from the left through the wrapper's wipe transition. Where clip-path
-     is unavailable the wrapper fades in; reduced motion reveals it at once. */
+  /* Saved benchmark trace and its own p10-p90 span on a fixed hertz axis.
+     Older benchmarks without stored frames show a sentence instead. */
   import { m } from '$lib/paraglide/messages';
   import { decodePitchTrack } from '$lib/audio/track';
   import { pitchDensity } from '$lib/audio/density';
-  import { pitchAxis, type BandLanguage } from '$lib/audio/bands';
+  import { pitchAxis } from '$lib/audio/bands';
   import type { Role } from '$lib/theme/roles';
   import PitchFigure from '$lib/components/PitchFigure.svelte';
   import { roleAttrs } from '$lib/components/kit/role';
@@ -37,9 +17,6 @@
     p10Hz,
     p90Hz,
     comfort = null,
-    language,
-    languageGuessed = false,
-    captionShared = false,
     role,
     ...rest
   }: {
@@ -50,14 +27,6 @@
     p10Hz: number;
     p90Hz: number;
     comfort?: { lowHz: number; highHz: number } | null;
-    /** Whose figures the bands are: the language of the passage this
-        benchmark was read from, which the row stores (bands.ts's
-        `bandLanguageOf`). */
-    language: BandLanguage;
-    languageGuessed?: boolean;
-    /** Passed straight to the figure: two takes side by side share one
-        caption (PitchBandsCaption.svelte). */
-    captionShared?: boolean;
     role?: Role;
     [attribute: string]: unknown;
   } = $props();
@@ -71,8 +40,8 @@
     pitchAxis({ hz: [...(trace?.map((frame) => frame.hz) ?? []), medianHz, p10Hz, p90Hz], comfort })
   );
 
-  /** Where the read sat, off the same decoded track the trace is drawn from
-      (redesign ticket 42). One decode feeds both, and the figure is handed
+  /** Where the read sat, off the same decoded track the trace is drawn from.
+One decode feeds both, and the figure is handed
       a shape rather than a track so it stays a drawing component. */
   let density = $derived(trace ? pitchDensity(trace, axis) : null);
 </script>
@@ -88,14 +57,8 @@
         span={{ lowHz: p10Hz, highHz: p90Hz }}
         {medianHz}
         tickLabel={hzLabel}
-        {language}
-        {languageGuessed}
-        {captionShared}
       />
-      <!-- The figure's own legend names the reference bands; these two marks
-           are the take's, so they are named where the take is. Their values
-           are in the line rather than beside a swatch, because the number is
-           the thing somebody came for. -->
+      <!-- The take's median and span, stated beside its figure. -->
       <p class="vt-marks" data-vb-take-marks>
         {m.vb_take_marks({
           median: hzLabel(medianHz),

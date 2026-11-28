@@ -1,10 +1,11 @@
-/* Deploy and roll back immutable web releases on the VPS (phase 2 ticket 05).
+/* Deploy and roll back immutable web releases on the VPS.
 
    Deploy copies one complete release directory under a stable name and then
    switches the `current` symlink with one rename, so no request can see a half
    copied release. Rollback uses the same switch in reverse, with one guard:
    unless forced, it refuses a target whose schemaMax is lower than the
-   currently deployed release.
+   currently deployed release. A sidecar receipt records the outgoing target
+   at each switch; --previous never infers active history from directory age.
 
    Commands:
      node scripts/journal-release.mjs deploy <source-dir> [--root DIR] [--current LINK]
@@ -12,10 +13,12 @@
      node scripts/journal-release.mjs rollback --previous [--root DIR] [--current LINK] [--force]
      node scripts/journal-release.mjs list [--root DIR] [--current LINK] */
 import {
+  chmodSync,
   cpSync,
   existsSync,
   lstatSync,
   mkdirSync,
+  mkdtempSync,
   readFileSync,
   readdirSync,
   readlinkSync,
@@ -23,9 +26,11 @@ import {
   renameSync,
   rmSync,
   statSync,
-  symlinkSync
+  symlinkSync,
+  writeFileSync
 } from 'node:fs';
-import { basename, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
+import { createHash, randomUUID } from 'node:crypto';
 import { isReleaseVersion } from './app-version.mjs';
 
 const DEFAULT_ROOT = '/home/journal/releases';
@@ -132,7 +137,167 @@ function switchCurrent(current, targetPath) {
   const next = `${current}.next-${process.pid}`;
   rmSync(next, { force: true });
   symlinkSync(targetPath, next);
-  renameSync(next, current);
+  try {
+    renameSync(next, current);
+  } finally {
+    rmSync(next, { force: true });
+  }
+}
+
+/** Publish complete receipt bytes before current changes. Its current field
+    lets a later command refuse a switch interrupted between the two renames. */
+function writeHistory(path, bytes) {
+  const next = `${path}.next-${randomUUID()}`;
+  try {
+    writeFileSync(next, bytes, { flag: 'wx' });
+    renameSync(next, path);
+  } finally {
+    rmSync(next, { force: true });
+  }
+}
+
+function recordedPrevious(options, current, releases) {
+  const history = `${options.current}.history.json`;
+  if (!existsSync(history)) return null;
+  let record;
+  try {
+    record = JSON.parse(readFileSync(history, 'utf8'));
+  } catch (error) {
+    if (error instanceof SyntaxError) return null;
+    throw error;
+  }
+  if (record?.current !== current || typeof record.previous !== 'string' || record.previous === current) return null;
+  return releases.find((entry) => realpathSync(entry.path) === record.previous)?.path ?? null;
+}
+
+/** A first PDF can request its old worker after either deploy or rollback.
+    Keep only the selected and previously active releases' original workers;
+    the fallback never becomes part of either immutable release tree. */
+function preparePdfNamespace(previous, target, root) {
+  const namespaces = join(root, '.pdf-workers');
+  mkdirSync(namespaces, { recursive: true });
+  chmodSync(namespaces, 0o755);
+  const namespace = mkdtempSync(join(namespaces, 'generation-'));
+  chmodSync(namespace, 0o755);
+  try {
+    for (const release of [previous, target]) {
+      if (!release) continue;
+      const workers = join(release, '_app/immutable/workers');
+      if (!existsSync(workers)) continue;
+      for (const entry of readdirSync(workers, { withFileTypes: true })) {
+        if (!entry.isFile() || !/^pdf-worker-[A-Za-z0-9_-]+\.js(?:\.br|\.gz)?$/.test(entry.name)) continue;
+        const bytes = readFileSync(join(workers, entry.name));
+        const destination = join(namespace, entry.name);
+        if (existsSync(destination) && !bytes.equals(readFileSync(destination))) {
+          throw new Error(`PDF worker identity collision: ${entry.name}`);
+        }
+        writeFileSync(destination, bytes);
+        chmodSync(destination, 0o644);
+      }
+    }
+    return namespace;
+  } catch (error) {
+    rmSync(namespace, { recursive: true, force: true });
+    throw error;
+  }
+}
+
+function switchRelease(current, target, root, pdfNamespace) {
+  const pdfCurrent = join(root, '.pdf-current');
+  const history = `${current}.history.json`;
+  let priorHistory;
+  let priorPdf;
+  let historyPublished = false;
+  let pdfPublished = false;
+  try {
+    priorHistory = existsSync(history) ? readFileSync(history) : null;
+    priorPdf = existsSync(pdfCurrent) ? realpathSync(pdfCurrent) : null;
+    mkdirSync(dirname(resolve(current)), { recursive: true });
+    writeHistory(history, JSON.stringify({ current: realpathSync(target), previous: currentTarget(current) }) + '\n');
+    historyPublished = true;
+    // The union includes the outgoing release, so publishing it first is safe.
+    switchCurrent(pdfCurrent, pdfNamespace);
+    pdfPublished = true;
+    switchCurrent(current, target);
+  } catch (error) {
+    const failures = [error];
+    if (pdfPublished) {
+      try {
+        if (priorPdf) switchCurrent(pdfCurrent, priorPdf);
+        else rmSync(pdfCurrent, { force: true });
+      } catch (restoreError) { failures.push(restoreError); }
+    }
+    if (historyPublished) {
+      try {
+        if (priorHistory === null) rmSync(history, { force: true });
+        else writeHistory(history, priorHistory);
+      } catch (restoreError) { failures.push(restoreError); }
+    }
+    if (failures.length > 1) throw new AggregateError(failures, error.message, { cause: error });
+    throw error;
+  } finally {
+    if (!existsSync(pdfCurrent) || realpathSync(pdfCurrent) !== pdfNamespace) {
+      rmSync(pdfNamespace, { recursive: true, force: true });
+    }
+  }
+  for (const entry of readdirSync(join(root, '.pdf-workers'))) {
+    const obsolete = join(root, '.pdf-workers', entry);
+    if (obsolete !== pdfNamespace) rmSync(obsolete, { recursive: true, force: true });
+  }
+}
+
+/** Keep exact OCR generations reachable after the release symlink switches.
+    Root URLs belong to pre-generation pages and keep their original bytes. */
+function retainOcrAssets(previous, staging) {
+  const manifest = join(staging, 'tesseract/assets.json');
+  const legacy = existsSync(manifest) ? JSON.parse(readFileSync(manifest, 'utf8')).legacyRuntime ?? [] : [];
+  for (const asset of legacy) {
+    if (!/^\/_app\/immutable\/chunks\/[A-Za-z0-9_-]+\.js$/.test(asset.path) || !/^[a-f0-9]{64}$/.test(asset.sha256)) {
+      throw new Error('Invalid legacy OCR identity');
+    }
+    const target = join(staging, asset.path);
+    const prior = previous ? join(previous, asset.path) : undefined;
+    const source = prior && existsSync(prior) ? prior : target;
+    if (!existsSync(source)) throw new Error(`Missing legacy OCR runtime: ${asset.path}`);
+    for (const path of new Set([source, ...(existsSync(target) ? [target] : [])])) {
+      if (createHash('sha256').update(readFileSync(path)).digest('hex') !== asset.sha256) {
+        throw new Error(`Legacy OCR identity mismatch: ${asset.path}`);
+      }
+    }
+    if (source !== target) {
+      mkdirSync(dirname(target), { recursive: true });
+      cpSync(source, target);
+    }
+  }
+  if (!previous) return;
+  const oldRoot = join(previous, 'tesseract');
+  if (!existsSync(oldRoot)) return;
+  const nextRoot = join(staging, 'tesseract');
+  mkdirSync(nextRoot, { recursive: true });
+  for (const entry of readdirSync(oldRoot, { withFileTypes: true })) {
+    if (!entry.isDirectory() || !/^[a-f0-9]{64}$/.test(entry.name)) continue;
+    const source = join(oldRoot, entry.name);
+    const target = join(nextRoot, entry.name);
+    if (existsSync(target)) {
+      for (const name of readdirSync(source, { recursive: true })) {
+        const oldFile = join(source, name);
+        if (!statSync(oldFile).isFile()) continue;
+        const nextFile = join(target, name);
+        if (!existsSync(nextFile) || !readFileSync(oldFile).equals(readFileSync(nextFile))) {
+          throw new Error(`OCR generation collision: ${entry.name}/${name}`);
+        }
+      }
+    } else cpSync(source, target, { recursive: true });
+  }
+  for (const name of ['worker.min.js', 'tesseract-core.wasm.js', 'tesseract-core.wasm',
+    'lang-data/eng.traineddata', 'lang-data/pol.traineddata']) {
+    const plain = join(oldRoot, name);
+    const source = existsSync(plain) ? plain : plain + '.gz';
+    if (!existsSync(source)) continue;
+    const target = join(nextRoot, name);
+    mkdirSync(dirname(target), { recursive: true });
+    cpSync(source, target);
+  }
 }
 
 function deploy(source, options) {
@@ -176,13 +341,20 @@ function deploy(source, options) {
   }
 
   const staging = join(options.root, `.staging-${name}-${Date.now()}-${process.pid}`);
+  let pdfNamespace;
 
   try {
     cpSync(sourcePath, staging, { recursive: true, errorOnExist: true, force: false });
+    retainOcrAssets(previous, staging);
+    pdfNamespace = preparePdfNamespace(previous, staging, options.root);
     renameSync(staging, targetPath);
-    switchCurrent(options.current, targetPath);
+    switchRelease(options.current, targetPath, options.root, pdfNamespace);
   } finally {
     rmSync(staging, { recursive: true, force: true });
+    const pdfCurrent = join(options.root, '.pdf-current');
+    if (pdfNamespace && (!existsSync(pdfCurrent) || realpathSync(pdfCurrent) !== pdfNamespace)) {
+      rmSync(pdfNamespace, { recursive: true, force: true });
+    }
   }
 
   console.log(`Deployed ${name}`);
@@ -198,9 +370,9 @@ function resolveRollbackTarget(options) {
 
   if (options.previous) {
     if (!current) die('No current symlink to roll back from');
-    const previous = releases.find((entry) => realpathSync(entry.path) !== current);
-    if (!previous) die('No previous release found');
-    return previous.path;
+    const previous = recordedPrevious(options, current, releases);
+    if (!previous) die('No recorded previous release for current. Use an explicit release name.');
+    return previous;
   }
 
   const name = options.positional[0];
@@ -230,7 +402,13 @@ function rollback(options) {
     );
   }
 
-  switchCurrent(options.current, target);
+  if (realpathSync(target) === current) {
+    console.log(`${basename(target)} is already current`);
+    console.log(`Current -> ${target}`);
+    return;
+  }
+  const pdfNamespace = preparePdfNamespace(current, target, options.root);
+  switchRelease(options.current, target, options.root, pdfNamespace);
   console.log(`Rolled back to ${basename(target)}`);
   console.log(`Current -> ${target}`);
 }
@@ -242,9 +420,10 @@ function list(options) {
     console.log(`No releases in ${options.root}`);
     return;
   }
+  const previous = recordedPrevious(options, current, releases);
 
   for (const entry of releases) {
-    const marker = current && realpathSync(entry.path) === current ? '*' : ' ';
+    const marker = current && realpathSync(entry.path) === current ? '*' : entry.path === previous ? '<' : ' ';
     const metadata = readReleaseMetadata(entry.path);
     console.log(`${marker} ${entry.name}  schemaMax=${metadata.schemaMax}  version=${metadata.version}`);
   }

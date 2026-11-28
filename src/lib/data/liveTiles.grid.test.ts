@@ -1,15 +1,14 @@
-/* What Home's grid holds, in what order, and what each tile says (phase 8
-   deepening ticket 07).
+/* What Home's grid holds, in what order, and what each tile says.
 
-   The rule this replaces was `tests/home-surfaces.test.ts:124`, which pinned
+   The rule this replaces was `tests/browser-tier/home-contracts.ts:124`, which pinned
    the tiles' gating by matching the route's source for the text of five
    `$derived` lines. That passes on a broken screen that keeps the strings
    and fails on a correct move that does not, which is what this ticket is.
    So everything here goes through `composeHomeTiles` instead.
 
-   One fixture qualifies all twelve at once, and each test switches off the
+   One fixture qualifies all live tiles at once, and each test switches off the
    one thing it is about. That is the shape the ordering and the absence of a
-   cap need - both are claims about twelve tiles together - and it also means
+   cap need - both are claims about all tiles together - and it also means
    a tile that silently stops qualifying breaks every test rather than one. */
 
 import { describe, expect, it, vi } from 'vitest';
@@ -21,12 +20,9 @@ import {
   HOME_TILE_CAP,
   LIVE_TILE_DRAW_ORDER,
   LIVE_TILE_ORDER,
-  LIVE_TILE_PREF_KEY,
   LIVE_TILE_TIER,
   composeHomeTiles,
-  dosePanelCoversEveryRegimen,
   isLiveTileKind,
-  liveTilePrefKeys,
   splitHomeTiles,
   type HomeTileActions,
   type HomeTileFormat,
@@ -35,16 +31,13 @@ import {
   type LiveTileKind
 } from './liveTiles';
 import type { LetterSeal } from './journal/letters';
-import type { AppointmentDayRecord } from './journal/appointments';
 import type {
   DoseSchedule,
-  HairRemovalSession,
-  Revisit,
   Procedure,
   RegimenEpisode,
-  Tryout,
   WearSession
 } from './types';
+import { NO_COST } from './cost';
 
 const TODAY = 20_000;
 /* Midday, so a timezone that moves the day boundary cannot move which day
@@ -62,10 +55,11 @@ const wearSession: WearSession = {
 };
 
 /* Every three days from fifteen days ago lands on today, and nothing is
-   logged, which is what the patch tile is for. */
+   logged, so the dose panel has a dose due today to state. */
 const episode: RegimenEpisode = {
   id: 'ep-1',
   drug: 'Estradiol patch',
+  drugClass: 'hrt',
   ester: null,
   dose: 100,
   doseUnit: 'mcg',
@@ -88,12 +82,13 @@ const schedule: DoseSchedule = {
 const procedure: Procedure = {
   id: 'proc-1',
   name: 'Vaginoplasty',
-  surgeryEpochDay: TODAY + 10,
+  surgeryEpochDay: TODAY - 10,
   consults: [],
   notes: '',
   kind: 'vaginoplasty',
   dilationOptIn: false,
-  archived: false
+  archived: false,
+  cost: NO_COST
 };
 
 const letters: LetterSeal[] = [
@@ -101,36 +96,6 @@ const letters: LetterSeal[] = [
   { id: 'letter-2', epochDay: TODAY - 30, unlockEpochDay: TODAY - 1 }
 ];
 
-const dueRevisits: Revisit[] = [
-  { id: 'revisit-1', entryId: 101, entryEpochDay: TODAY - 60, createdEpochDay: TODAY - 61, targetEpochDay: TODAY }
-];
-
-const tryout: Tryout = {
-  id: 'tryout-1',
-  kind: 'name',
-  label: 'Alicja',
-  description: null,
-  startEpochDay: TODAY - 10,
-  endEpochDay: null
-};
-
-const hairRemovalSession: HairRemovalSession = {
-  id: 'hr-1',
-  epochDay: TODAY,
-  area: 'upper_lip',
-  method: 'laser',
-  painRating: 3,
-  cost: '',
-  provider: ''
-};
-
-const todayAppointment: AppointmentDayRecord = {
-  id: 'appt-1',
-  kind: 'Endocrinologist',
-  place: 'City clinic',
-  procedureId: null,
-  procedureName: null
-};
 
 const allOn = <T>(value: T): Record<LiveTileKind, T> =>
   Object.fromEntries(LIVE_TILE_ORDER.map((kind) => [kind, value])) as Record<LiveTileKind, T>;
@@ -163,38 +128,27 @@ function input(overrides: Overrides = {}): HomeTilesInput {
       episodes: [episode],
       procedures: [procedure],
       letters,
-      dueRevisits,
+      readLetterIds: [],
       latestBadEntryId: 42,
       safeSpaceDismissedEntryId: null,
-      tryouts: [tryout],
-      latestFeltSenseByTryoutId: new Map(),
       schedules: [schedule],
       dosePauses: [],
-      todayDoses: [],
-      yesterdayDoses: [],
-      latestBenchmarkEpochDay: TODAY - 20,
-      journalingPauses: [{ id: 'pause-1', startEpochDay: TODAY - 2, endEpochDay: TODAY + 2 }],
-      latestHairRemovalSession: hairRemovalSession,
-      measurements: { count: 3, latestDay: TODAY - 40 },
-      todayAppointments: [todayAppointment]
+      scheduleDoses: [],
+      yesterdayDoses: []
     },
     actions: {
       stopWear: vi.fn(),
       dismissSafeSpace: vi.fn(),
-      openLetterDismiss: vi.fn(),
-      dismissRevisit: vi.fn(),
-      resumePause: vi.fn(),
-      snooze: vi.fn()
+      openLetterDismiss: vi.fn()
     },
     format: {
       /* Deliberately not the app's formats: what is under test is that each
          tile asks for the right one about the right day, which a real date
          string would hide behind a locale. */
       fullDay: (epochDay) => `full:${epochDay}`,
-      shortDay: (epochDay) => `short:${epochDay}`,
       weekdayDay: (epochDay) => `weekday:${epochDay}`,
       time: (timestamp) => `time:${timestamp}`,
-      hairRemovalArea: (area) => `area:${area}`
+      doseRoute: (route) => `route:${route}`
     }
   };
   return {
@@ -211,47 +165,30 @@ const tileNamed = (kind: LiveTileKind, overrides?: Overrides) =>
   composeHomeTiles(input(overrides)).find((t) => t.key === kind);
 const ORDER: LiveTileKind[] = [...LIVE_TILE_ORDER];
 /** The order the grid actually comes out in: tier first, LIVE_TILE_ORDER
-    inside a tier (phase 8 UX ticket 01). Written out rather than derived
+    inside a tier. Written out rather than derived
     from `LIVE_TILE_TIER`, which is the thing under test. */
 const TIERED: LiveTileKind[] = [
   // Bound to today.
   'wear-timer',
-  'patch-schedule-tile',
-  'hair-removal-recovery',
-  'appointment-today',
   // A moment.
   'dose-panel',
   'surgery-countdown',
   'safe-space-nudge',
-  'ready-letter',
-  'revisit',
-  'pause-active-banner',
-  // Dormant.
-  'active-tryout-tile',
-  'voice-benchmark-nudge',
-  'measurements-nudge'
+  'ready-letter'
 ];
 
 describe('which kinds the grid is for', () => {
-  it('draws the twelve live tiles and none of the registry\'s other seven', () => {
-    /* The narrowing is the point: `UnpromptedKind` has nineteen members and
+  it('draws only live tiles from the registry', () => {
+    /* The narrowing is the point: `UnpromptedKind` has thirteen members and
        seven of them are a notice, a look-back card or a notification, so an
        ordering keyed off the whole union would demand an entry for
        `export-failure`. */
     expect([...LIVE_TILE_ORDER].sort()).toEqual(
       [
-        'active-tryout-tile',
-        'appointment-today',
         'dose-panel',
-        'hair-removal-recovery',
-        'measurements-nudge',
-        'patch-schedule-tile',
-        'pause-active-banner',
         'ready-letter',
-        'revisit',
         'safe-space-nudge',
         'surgery-countdown',
-        'voice-benchmark-nudge',
         'wear-timer'
       ].sort()
     );
@@ -261,55 +198,49 @@ describe('which kinds the grid is for', () => {
     }
   });
 
-  it('takes each tile\'s preference from the registry that declares it', () => {
+  it('gives each tile a row in the registry, which is where its switch and default live', () => {
     for (const kind of LIVE_TILE_ORDER) {
       const row = SURFACE_ROWS.find((r) => r.key === kind);
       expect(row, `${kind} has a surfaces row`).toBeDefined();
-      expect(LIVE_TILE_PREF_KEY[kind]).toBe(row!.surface.prefKey);
+      expect(typeof row!.surface.defaultOn).toBe('boolean');
     }
-  });
-
-  it('refuses a registry that has stopped declaring one of them', () => {
-    /* The rule run over a shortened registry rather than asserted never to
-       fail on the real one: filtering a row out and then checking it is
-       absent would restate `filter`. */
-    const withoutMeasurements = SURFACE_ROWS.filter((row) => row.key !== 'measurements-nudge');
-    expect(() => liveTilePrefKeys(withoutMeasurements)).toThrow(/measurements-nudge/);
   });
 });
 
 describe('the tier every kind is in', () => {
-  /* Phase 8 UX ticket 01. The tier is the policy: it decides the order, and
-     Home draws it as three weights so the difference is legible without
-     reading either tile. */
+  /* The tier is the policy: it decides the order, and Home draws it as three weights so the
+     difference is legible without reading either tile. */
 
   it('puts every kind in one of the three bands, and these are the bands', () => {
     const byTier = { today: [] as string[], moment: [] as string[], dormant: [] as string[] };
     for (const kind of LIVE_TILE_ORDER) byTier[LIVE_TILE_TIER[kind]].push(kind);
 
-    expect(byTier.today).toEqual([
-      'wear-timer',
-      'patch-schedule-tile',
-      'hair-removal-recovery',
-      'appointment-today'
-    ]);
+    expect(byTier.today).toEqual(['wear-timer']);
     expect(byTier.moment).toEqual([
       'dose-panel',
       'surgery-countdown',
       'safe-space-nudge',
-      'ready-letter',
-      'revisit',
-      'pause-active-banner'
+      'ready-letter'
     ]);
-    expect(byTier.dormant).toEqual([
-      'active-tryout-tile',
-      'voice-benchmark-nudge',
-      'measurements-nudge'
-    ]);
+    expect(byTier.dormant).toEqual([]);
   });
 
   it('carries the tier on the tile, which is what Home draws the weight from', () => {
-    for (const tile of composeHomeTiles(input())) expect(tile.tier).toBe(LIVE_TILE_TIER[tile.key]);
+    /* Logged today, so no tile has risen out of its band. */
+    const logged = [{ id: 1, timestamp: NOW, drug: 'Estradiol patch' }] as unknown as HomeTileReads['scheduleDoses'];
+    for (const tile of composeHomeTiles(input({ reads: { scheduleDoses: logged } }))) {
+      expect(tile.tier).toBe(LIVE_TILE_TIER[tile.key]);
+    }
+  });
+
+  /* The patch-schedule tile was the `today` tile for a dose due now. Folded into the panel,
+     the panel takes that band for that day and goes back to being a moment once it is
+     logged. */
+  it('lifts the dose panel to the today band on a day a dose is due, after the wear timer', () => {
+    const due = composeHomeTiles(input());
+    expect(due.filter((t) => t.tier === 'today').map((t) => t.key)).toEqual(['wear-timer', 'dose-panel']);
+    const logged = [{ id: 1, timestamp: NOW, drug: 'Estradiol patch' }] as unknown as HomeTileReads['scheduleDoses'];
+    expect(tileNamed('dose-panel', { reads: { scheduleDoses: logged } })!.tier).toBe('moment');
   });
 });
 
@@ -319,12 +250,11 @@ describe('the order, and the cap', () => {
   });
 
   it('states that order once, for the grid and for the editor that arranges it', () => {
-    /* Phase 11 ticket 04: Today's editor lists the switches in the order
-       the grid draws them, and a second nested loop over the same two
-       lists would be a copy of the order that nothing keeps in step. So
-       `composeHomeTiles` and the editor read the same array, and this is
-       what says the array is the tiered order rather than something that
-       merely happens to agree with it today. */
+    /* Today's editor lists the switches in the order the grid draws them, and a second
+       nested loop over the same two lists would be a copy of the order that nothing keeps
+       in step. So `composeHomeTiles` and the editor read the same array, and this is what
+       says the array is the tiered order rather than something that merely happens to agree
+       with it today. */
     expect([...LIVE_TILE_DRAW_ORDER]).toEqual(TIERED);
   });
 
@@ -338,12 +268,12 @@ describe('the order, and the cap', () => {
   });
 
   it('keeps the order when the ones before a tile drop out', () => {
-    /* Order is the policy\'s, not the reads\': with the first six of the
-       tiered order gone the remaining six come out in the same relative
+    /* Order is the policy\'s, not the reads\': with the first four of the
+       tiered order gone the remaining four come out in the same relative
        order. */
     const enabled = allOn(true);
-    for (const kind of TIERED.slice(0, 6)) enabled[kind] = false;
-    expect(keysOf({ enabled })).toEqual(TIERED.slice(6));
+    for (const kind of TIERED.slice(0, 4)) enabled[kind] = false;
+    expect(keysOf({ enabled })).toEqual(TIERED.slice(4));
   });
 
   it('shows three and folds the rest, in place, with nothing dropped', () => {
@@ -357,16 +287,16 @@ describe('the order, and the cap', () => {
 
   it('folds nothing while the cap is not reached', () => {
     const enabled = allOn(false);
-    for (const kind of ['revisit', 'measurements-nudge'] as const) enabled[kind] = true;
+    for (const kind of ['ready-letter', 'surgery-countdown'] as const) enabled[kind] = true;
     const { shown, folded } = splitHomeTiles(composeHomeTiles(input({ enabled })));
 
-    expect(shown.map((t) => t.key)).toEqual(['revisit', 'measurements-nudge']);
+    expect(shown.map((t) => t.key)).toEqual(['surgery-countdown', 'ready-letter']);
     expect(folded).toEqual([]);
   });
 
   it('folds nothing at exactly the cap, so three never becomes two and a row', () => {
     const enabled = allOn(false);
-    for (const kind of ['wear-timer', 'revisit', 'measurements-nudge'] as const) enabled[kind] = true;
+    for (const kind of ['wear-timer', 'ready-letter', 'surgery-countdown'] as const) enabled[kind] = true;
     const { shown, folded } = splitHomeTiles(composeHomeTiles(input({ enabled })));
 
     expect(shown).toHaveLength(HOME_TILE_CAP);
@@ -403,11 +333,11 @@ describe('what each tile says', () => {
     expect(tile.note).toBe(m.wear_session_running_since({ time: `time:${wearSession.startTimestamp}` }));
     expect(tile.action?.attrs).toEqual({ 'data-wear-stop': '' });
     expect(tile.dismiss).toBeUndefined();
-    // Named by the kind, not by "wear" (ticket 50).
+    // Named by the kind, not by "wear".
     expect(tile.title).toBe(m.tile_wear_title_binder());
   });
 
-  /* The duration cue (ticket 50, ADR-0064). Nine hours in, which is past
+  /* The duration cue. Nine hours in, which is past
      the eight-hour figure the binder rule reads. */
   const NINE_HOURS_IN = { nowMs: wearSession.startTimestamp + 9 * 3600_000 };
 
@@ -444,25 +374,35 @@ describe('what each tile says', () => {
     expect(tile.action?.href).toBe('/care/doses?add=1');
   });
 
-  /* Phase 11 ticket 03: the panel is the dose's one home on Today, so it
-     has to say when the next one falls - the agenda's doseSlot row is
-     withheld while the panel is up (agendaReads.ts) and there is nowhere
-     else on the screen the day is stated. The fixture's schedule falls
-     every three days from fifteen days ago, which lands on today. */
-  it('the dose panel says a dose the day expects is today', () => {
-    expect(tileNamed('dose-panel')!.note).toBe(m.tile_dose_next_today());
+  /* The panel is the dose's one home on Today, so it has to say when the next one falls -
+     the agenda's doseSlot row is withheld while the panel is up (agendaReads.ts) and there
+     is nowhere else on the screen the day is stated. The fixture's schedule falls every
+     three days from fifteen days ago, which lands on today. */
+  it('the dose panel says a dose the day expects is today, with how much and how', () => {
+    /* What the patch-schedule tile used to say beside it: the episode's amount, since the schedule sets none, and
+       the route in words. */
+    expect(tileNamed('dose-panel')!.note).toBe(
+      m.tile_dose_today_detail({ dose: '100', unit: 'mcg', route: 'route:patch' })
+    );
+  });
+
+  it('the dose panel takes a due day\'s amount from the schedule where it sets one', () => {
+    const tile = tileNamed('dose-panel', {
+      reads: { schedules: [{ ...schedule, doseAmounts: [{ dose: 50, doseUnit: 'mcg' }] }] },
+      format: { number: (value) => `n${value}` }
+    })!;
+    expect(tile.note).toBe(m.tile_dose_today_detail({ dose: 'n50', unit: 'mcg', route: 'route:patch' }));
   });
 
   it('the dose panel names the next day once today has been logged', () => {
-    const logged = [{ id: 1, timestamp: NOW, drug: 'Estradiol patch' }] as unknown as HomeTileReads['todayDoses'];
-    const tile = tileNamed('dose-panel', { reads: { todayDoses: logged } })!;
+    const logged = [{ id: 1, timestamp: NOW, drug: 'Estradiol patch' }] as unknown as HomeTileReads['scheduleDoses'];
+    const tile = tileNamed('dose-panel', { reads: { scheduleDoses: logged } })!;
     expect(tile.note).toBe(m.tile_dose_next({ date: `weekday:${TODAY + 3}` }));
   });
 
   it('the dose panel says yesterday\'s dose was logged for you, ahead of the next day', () => {
-    /* Phase 11 ticket 11: on the morning after an auto-logged slot the fact
-       worth reading is the row written without the person, not a date they
-       can work out from their own schedule. */
+    /* On the morning after an auto-logged slot the fact worth reading is the row written
+       without the person, not a date they can work out from their own schedule. */
     const written = [
       { id: 1, timestamp: NOW - 86_400_000, source: 'schedule', status: 'taken' }
     ] as unknown as HomeTileReads['yesterdayDoses'];
@@ -475,65 +415,102 @@ describe('what each tile says', () => {
     const byHand = [
       { id: 1, timestamp: NOW - 86_400_000, source: 'person', status: 'taken' }
     ] as unknown as HomeTileReads['yesterdayDoses'];
-    expect(tileNamed('dose-panel', { reads: { yesterdayDoses: byHand } })!.note).toBe(m.tile_dose_next_today());
+    expect(tileNamed('dose-panel', { reads: { yesterdayDoses: byHand } })!.note).toBe(
+      m.tile_dose_today_detail({ dose: '100', unit: 'mcg', route: 'route:patch' })
+    );
+  });
+
+  it('the dose panel skips a due day a pause covers', () => {
+    /* What the patch tile's own test held folded it in: a declared break is not a dose due. */
+    const pause = { id: 'pause-1', episodeId: 'ep-1', startEpochDay: TODAY - 1, endEpochDay: TODAY + 1, reason: 'planned' } as const;
+    expect(tileNamed('dose-panel', { reads: { dosePauses: [pause] } })!.note).toBe(
+      m.tile_dose_next({ date: `weekday:${TODAY + 3}` })
+    );
   });
 
   it('a regimen with no schedule gets a panel with no forward line', () => {
     expect(tileNamed('dose-panel', { reads: { schedules: [] } })!.note).toBeUndefined();
   });
 
-  /* What Today reads to decide whether to withhold the agenda's `doseSlot`
-     rows (agendaReads.ts). The panel names one drug - `activeEpisodesAt`'s
-     first - so it only accounts for the whole kind while that is the only
-     regimen running. With two, a row the panel does not stand for would be
-     stated nowhere at all, which is the thing the withholding exists to
-     prevent rather than to cause. */
-  describe('what the dose panel accounts for', () => {
-    const second: RegimenEpisode = { ...episode, id: 'ep-2', drug: 'Cyproterone', startEpochDay: TODAY - 8 };
-    const dailyFor = (episodeId: string): DoseSchedule => ({
+  /* Today withholds the agenda's `doseSlot` rows whenever the panel is drawn
+     (agendaReads.ts), so the panel names every regimen the agenda would have drawn a row
+     for: the one whose next open slot comes first, and the others after it. A regimen taken
+     daily draws no row (ADR-0067) and is not named beside one that does. */
+  describe('which regimens the dose panel names', () => {
+    const second: RegimenEpisode = { ...episode, id: 'ep-2', drug: 'Cyproterone', route: 'oral', startEpochDay: TODAY - 8 };
+    const third: RegimenEpisode = { ...episode, id: 'ep-3', drug: 'Leuprorelin', route: 'im', startEpochDay: TODAY - 20 };
+    const everyFor = (episodeId: string, everyNDays: number): DoseSchedule => ({
       id: `sched-${episodeId}`,
       episodeId,
-      recurrence: { kind: 'everyNDays', everyNDays: 1 },
+      recurrence: { kind: 'everyNDays', everyNDays },
       dosesPerDay: 1,
       doseAmounts: null,
       autoLogFromEpochDay: null
     });
-    const weeklyFor = (episodeId: string): DoseSchedule => ({ ...dailyFor(episodeId), recurrence: { kind: 'everyNDays', everyNDays: 4 } });
-    const covers = (over?: Overrides) => {
-      const grid = input(over);
-      return dosePanelCoversEveryRegimen(composeHomeTiles(grid), grid.reads.episodes, grid.reads.schedules, NOW);
-    };
+    const panel = (episodes: RegimenEpisode[], schedules: DoseSchedule[]) =>
+      tileNamed('dose-panel', { reads: { episodes, schedules } })!;
+    const dueToday = m.tile_dose_today_detail({ dose: '100', unit: 'mcg', route: 'route:patch' });
 
-    it('covers the whole kind while one regimen is running', () => {
-      expect(covers()).toBe(true);
+    it('names a regimen on a rhythm ahead of a daily one listed before it', () => {
+      const tile = panel([second, episode], [everyFor('ep-2', 1), schedule]);
+      expect(tile.value).toBe('Estradiol patch');
+      expect(tile.note).toBe(dueToday);
     });
 
-    /* A daily schedule earns no forward mark (ADR-0067), so a second
-       regimen taken every day puts no row on the band for the panel to be
-       standing in front of. This is the demo journal's own shape: an
-       injection on a rhythm beside an everyday pill. */
-    it('still covers it while a second regimen is taken daily', () => {
-      expect(covers({ reads: { episodes: [episode, second], schedules: [schedule, dailyFor('ep-2')] } })).toBe(true);
+    it('leads with the regimen due first and names the other after it', () => {
+      /* Leuprorelin every 28 days from twenty days ago falls in eight days;
+         the patch falls today. */
+      const tile = panel([third, episode], [everyFor('ep-3', 28), schedule]);
+      expect(tile.value).toBe('Estradiol patch');
+      expect(tile.note).toBe(`${dueToday} · ${m.tile_dose_also({ drugs: 'Leuprorelin' })}`);
     });
 
-    it('covers nothing while a second regimen earns marks of its own', () => {
-      expect(covers({ reads: { episodes: [episode, second], schedules: [schedule, weeklyFor('ep-2')] } })).toBe(false);
+    it('names a regimen that starts inside the agenda\'s month, whose first dose the agenda would have drawn', () => {
+      const starting = { ...third, startEpochDay: TODAY + 5 };
+      const tile = panel([episode, starting], [schedule, everyFor('ep-3', 28)]);
+      expect(tile.note).toBe(`${dueToday} · ${m.tile_dose_also({ drugs: 'Leuprorelin' })}`);
     });
 
-    it('covers nothing when the panel is switched off', () => {
-      expect(covers({ enabled: { ...allOn(true), 'dose-panel': false } })).toBe(false);
+    it('names only the first active episode when nothing runs on a rhythm', () => {
+      const tile = panel([second, { ...episode, id: 'ep-4', drug: 'Spironolactone' }], [everyFor('ep-2', 1), everyFor('ep-4', 1)]);
+      expect(tile.value).toBe('Cyproterone');
+      expect(tile.note).toBe(m.tile_dose_today_detail({ dose: '100', unit: 'mcg', route: 'route:oral' }));
     });
   });
 
-  it('the surgery countdown reads the nearest procedure and carries no control', () => {
+  it('the surgery tile says which day after surgery it is and carries no control', () => {
     const tile = tileNamed('surgery-countdown')!;
     expect(tile.tileKey).toBe('surgery-countdown');
     expect(tile.attrs).toEqual({ 'data-surgery-tile': true });
-    expect(tile.value).toBe(m.surgery_day_upcoming({ days: m.n_days({ n: 10 }) }));
+    expect(tile.value).toBe(m.surgery_post_op_day({ days: '10' }));
     expect(tile.note).toBe('Vaginoplasty');
     expect(tile.href).toBe('/health/surgery');
     expect(tile.action).toBeUndefined();
     expect(tile.dismiss).toBeUndefined();
+  });
+
+  /* The agenda already states a surgery's date while it is ahead, so the tile counting down
+     to it said the same thing twice. Only the days after it are the tile's. */
+  it('the surgery tile is absent before the surgery day and on it', () => {
+    for (const surgeryEpochDay of [TODAY + 10, TODAY + 1, TODAY]) {
+      expect(tileNamed('surgery-countdown', { reads: { procedures: [{ ...procedure, surgeryEpochDay }] } })).toBeUndefined();
+    }
+    expect(tileNamed('surgery-countdown', { reads: { procedures: [{ ...procedure, surgeryEpochDay: null }] } })).toBeUndefined();
+  });
+
+  it('the surgery tile counts from the day after, and an upcoming one nearer today does not hide it', () => {
+    const dayOne = tileNamed('surgery-countdown', { reads: { procedures: [{ ...procedure, surgeryEpochDay: TODAY - 1 }] } })!;
+    expect(dayOne.value).toBe(m.surgery_post_op_day({ days: '1' }));
+    const behind = tileNamed('surgery-countdown', {
+      reads: {
+        procedures: [
+          { ...procedure, id: 'proc-2', name: 'Top surgery', surgeryEpochDay: TODAY + 1 },
+          { ...procedure, surgeryEpochDay: TODAY - 20 }
+        ]
+      }
+    })!;
+    expect(behind.value).toBe(m.surgery_post_op_day({ days: '20' }));
+    expect(behind.note).toBe('Vaginoplasty');
   });
 
   it('the safe space nudge dismisses the entry it is about', () => {
@@ -558,188 +535,22 @@ describe('what each tile says', () => {
     expect(tile.href).toBe('/transition/letters?read=letter-1');
     expect(tile.value).toBe(`full:${TODAY - 40}`);
     // Two unread, so the note counts the other one.
-    expect(tile.note).toBe(m.tile_letter_more({ count: '1' }));
+    expect(tile.note).toBe(m.count_more({ count: '1' }));
     // Its dismiss opens a sheet on Home rather than snoozing in place.
     tile.dismiss!.onclick(CLICK);
     expect(actions.openLetterDismiss).toHaveBeenCalled();
     expect(tile.action).toBeUndefined();
   });
-
-  it('the revisit tile names the entry due and deletes the row on dismiss', () => {
-    const actions = { dismissRevisit: vi.fn() };
-    const tile = tileNamed('revisit', { actions })!;
-    expect(tile.tileKey).toBe('revisit');
-    expect(tile.attrs).toEqual({ 'data-revisit-tile': true });
-    expect(tile.href).toBe('/entry/101');
-    expect(tile.value).toBe(`full:${TODAY - 60}`);
-    // One due revisit, so the note names it rather than counting others.
-    expect(tile.note).toBe(m.tile_revisit_single_note());
-    tile.dismiss!.onclick(CLICK);
-    expect(actions.dismissRevisit).toHaveBeenCalledWith('revisit-1');
-    expect(tile.action).toBeUndefined();
-  });
-
-  it('the revisit tile counts the rest when more than one is due', () => {
-    const tile = tileNamed('revisit', {
-      reads: {
-        dueRevisits: [
-          ...dueRevisits,
-          { id: 'revisit-2', entryId: 102, entryEpochDay: TODAY - 5, createdEpochDay: TODAY - 6, targetEpochDay: TODAY }
-        ]
-      }
-    })!;
-    expect(tile.note).toBe(m.tile_revisit_more({ count: '1' }));
-  });
-
-  it('the revisit tile is absent with nothing due', () => {
-    expect(tileNamed('revisit', { reads: { dueRevisits: [] } })).toBeUndefined();
-  });
-
-  it('the active tryout offers a felt-sense entry against the tryout it names', () => {
-    const tile = tileNamed('active-tryout-tile')!;
-    expect(tile.tileKey).toBe('active-tryout');
-    expect(tile.attrs).toEqual({ 'data-active-tryout-tile': true });
-    expect(tile.value).toBe('Alicja');
-    expect(tile.note).toBe(m.tile_active_tryout_note({ days: '10' }));
-    expect(tile.href).toBe('/transition/tryouts/tryout-1');
-    expect(tile.action?.href).toBe('/transition/tryouts/tryout-1?feltSense=1');
-  });
-
-  it('the patch schedule names the dose that is due', () => {
-    const tile = tileNamed('patch-schedule-tile')!;
-    expect(tile.tileKey).toBe('patch-schedule');
-    expect(tile.attrs).toEqual({ 'data-patch-schedule-tile': true });
-    expect(tile.value).toBe('Estradiol patch');
-    expect(tile.note).toBe('100 mcg · patch');
-    expect(tile.action?.href).toBe('/care/doses?add=1');
-  });
-
-  it('the voice benchmark nudge counts the days and links the recorder', () => {
-    const tile = tileNamed('voice-benchmark-nudge')!;
-    expect(tile.tileKey).toBe('voice-benchmark');
-    expect(tile.attrs).toEqual({ 'data-voice-benchmark-tile': true });
-    expect(tile.note).toBe(m.tile_voice_benchmark_days_ago({ days: '20' }));
-    expect(tile.href).toBe('/voice?tab=compare');
-    expect(tile.action?.href).toBe('/voice?tab=record');
-  });
-
-  it('the pause banner says when the pause ends and offers to resume it', () => {
-    const actions = { resumePause: vi.fn() };
-    const tile = tileNamed('pause-active-banner', { actions })!;
-    expect(tile.tileKey).toBe('pause-active');
-    expect(tile.attrs).toEqual({ 'data-pause-active-tile': true });
-    expect(tile.note).toBe(m.tile_pause_until_date({ date: `short:${TODAY + 2}` }));
-    expect(tile.href).toBe('/settings/journaling-pause');
-    tile.action!.onclick!(CLICK);
-    expect(actions.resumePause).toHaveBeenCalledWith('pause-1', TODAY - 2);
-  });
-
-  it('the pause banner says so when the pause has no end', () => {
-    const tile = tileNamed('pause-active-banner', {
-      reads: { journalingPauses: [{ id: 'pause-1', startEpochDay: TODAY - 2, endEpochDay: null }] }
-    })!;
-    expect(tile.note).toBe(m.tile_pause_ongoing());
-  });
-
-  it('the hair removal tile names the area and carries no action', () => {
-    const tile = tileNamed('hair-removal-recovery')!;
-    expect(tile.tileKey).toBe('hair-removal-recovery');
-    expect(tile.attrs).toEqual({ 'data-hair-removal-tile': true });
-    expect(tile.value).toBe('area:upper_lip');
-    expect(tile.href).toBe('/body/hair-removal');
-    expect(tile.action).toBeUndefined();
-    expect(tile.dismiss).toBeDefined();
-  });
-
-  it('the measurements nudge counts the days since the last one', () => {
-    const tile = tileNamed('measurements-nudge')!;
-    expect(tile.tileKey).toBe('measurements-nudge');
-    expect(tile.attrs).toEqual({ 'data-measurements-tile': true });
-    expect(tile.note).toBe(m.tile_measurements_note({ days: '40' }));
-    expect(tile.href).toBe('/body/measurements');
-    expect(tile.action?.href).toBe('/body/measurements');
-  });
-
-  it('the appointment tile names the kind and place of today\'s appointment', () => {
-    const tile = tileNamed('appointment-today')!;
-    expect(tile.tileKey).toBe('appointment-today');
-    expect(tile.attrs).toEqual({ 'data-appointment-today-tile': true });
-    expect(tile.value).toBe('Endocrinologist');
-    expect(tile.note).toBe('City clinic');
-    expect(tile.href).toBe('/health/appointments');
-    expect(tile.action).toBeUndefined();
-    expect(tile.dismiss).toBeUndefined();
-  });
-
-  it('the appointment tile falls back to the untitled label with no kind or procedure', () => {
-    const tile = tileNamed('appointment-today', {
-      reads: { todayAppointments: [{ ...todayAppointment, kind: null }] }
-    })!;
-    expect(tile.value).toBe(m.appointments_untitled());
-  });
-
-  it('the appointment tile names the procedure before the untitled label', () => {
-    const tile = tileNamed('appointment-today', {
-      reads: { todayAppointments: [{ ...todayAppointment, kind: null, procedureName: 'Vaginoplasty' }] }
-    })!;
-    expect(tile.value).toBe('Vaginoplasty');
-  });
-
-  it('the appointment tile counts the rest when more than one is today', () => {
-    const tile = tileNamed('appointment-today', {
-      reads: {
-        todayAppointments: [
-          todayAppointment,
-          { ...todayAppointment, id: 'appt-2', kind: 'Psychologist', place: null }
-        ]
-      }
-    })!;
-    expect(tile.note).toBe(m.tile_appointment_more({ count: '1' }));
-  });
-
-  it('the appointment tile is absent with nothing today', () => {
-    expect(tileNamed('appointment-today', { reads: { todayAppointments: [] } })).toBeUndefined();
-  });
 });
 
 describe('the dismiss controls', () => {
-  const SNOOZABLE = [
-    'active-tryout-tile',
-    'patch-schedule-tile',
-    'voice-benchmark-nudge',
-    'pause-active-banner',
-    'hair-removal-recovery',
-    'measurements-nudge'
-  ] as const;
+  it('gives no dismiss to the three that close nothing', () => {
+    /* Wear, dose and surgery each resolve themselves - a running session cannot be hidden
+       while it runs, and the other two are facts about the day rather than nudges.
 
-  it.each(SNOOZABLE)('%s snoozes itself and no other kind', (kind) => {
-    const snooze = vi.fn();
-    const tile = tileNamed(kind, { actions: { snooze } })!;
-    tile.dismiss!.onclick(CLICK);
-    expect(snooze).toHaveBeenCalledWith(kind);
-  });
-
-  it('gives no dismiss to the four that close nothing', () => {
-    /* Wear, dose and surgery each resolve themselves - a running session
-       cannot be hidden while it runs (ADR-0039's amendment), and the other
-       two are facts about the day rather than nudges. The appointment tile
-       joins them for the nearest reason: it names a single day's own fact,
-       gone on its own tomorrow, so there is nothing a snooze would buy
-       (ticket 63).
-
-       Safe space, the ready letter and the revisit left this list in phase 9
-       carpet ticket 04 (ADR-0071). All three were closable all along - each
-       carried an `action` whose icon was an x - and only the registry field
-       said otherwise, which drew one job as two controls: a corner X on six
-       tiles and a soft button on these three. What each close does is
-       unchanged: the letter opens Home's sheet, the revisit deletes its row,
-       safe space forgets the entry it was about. */
-    for (const kind of [
-      'wear-timer',
-      'dose-panel',
-      'surgery-countdown',
-      'appointment-today'
-    ] as const) {
+       Safe space and the ready letter both offer a close action. The letter opens Home's
+       sheet. Safe space forgets the entry it was about. */
+    for (const kind of ['wear-timer', 'dose-panel', 'surgery-countdown'] as const) {
       expect(tileNamed(kind)!.dismiss).toBeUndefined();
     }
   });
@@ -747,7 +558,7 @@ describe('the dismiss controls', () => {
   it('draws every close as the tile\'s own dismiss, never as an action wearing an x', () => {
     /* The rule the three above were breaking, held over the whole registry
        so a fourth cannot quietly reintroduce it. An `action` is the tile's
-       other control - log this dose, stop this session, take a measurement -
+       other control - log this dose, stop this session, open a letter -
        and none of those is a close. */
     for (const kind of LIVE_TILE_ORDER) {
       const tile = tileNamed(kind);
@@ -762,21 +573,21 @@ describe('the dismiss controls', () => {
     expect(stopWear).toHaveBeenCalledWith(wearSession);
   });
 
-  /* Phase 8 features ticket 04: the cascade. One decision takes every tile
-     an area owns off the grid, and touches no other tile. */
+  /* The cascade. One decision takes every tile an area owns off the grid, and touches no
+     other tile. */
 
   it('takes an area\'s tiles off the grid once it is finished', () => {
     const areaStates: AreaStates = { wearSessions: { hidden: false, finishedEpochDay: TODAY - 1, suspendedEpochDay: null } };
 
     expect(tileNamed('wear-timer', { areaStates })).toBeUndefined();
-    expect(tileNamed('measurements-nudge', { areaStates })).toBeDefined();
+    expect(tileNamed('ready-letter', { areaStates })).toBeDefined();
   });
 
   it('takes them off while it is hidden too, and puts them back when it is not', () => {
-    const hidden: AreaStates = { measurements: { hidden: true, finishedEpochDay: null, suspendedEpochDay: null } };
+    const hidden: AreaStates = { wearSessions: { hidden: true, finishedEpochDay: null, suspendedEpochDay: null } };
 
-    expect(tileNamed('measurements-nudge', { areaStates: hidden })).toBeUndefined();
-    expect(tileNamed('measurements-nudge', { areaStates: {} })).toBeDefined();
+    expect(tileNamed('wear-timer', { areaStates: hidden })).toBeUndefined();
+    expect(tileNamed('wear-timer', { areaStates: {} })).toBeDefined();
   });
 
   it('leaves a finish day that has not arrived alone', () => {

@@ -1,21 +1,6 @@
-/* Where the finish control is, and where it is not (phase 8 features ticket
-   04).
-
-   The ticket's own line: it appears on each finishable area's own screen and
-   nowhere else. That is a claim about seven route files, and nothing else in
-   the tree can make it - `areaGroups.ts` knows which groups exist and the
-   routes know which screen is which, and only this test knows they line up.
-   An eighth group added without a screen to finish it on would otherwise be
-   a compile-clean feature nobody can reach.
-
-   Phase 11 all-four-doors ticket 13 took `health/side-effects` off this list
-   without adding a replacement: side effects finish on
-   care/changes now, under `effects`, the way hair progress's
-   two areas always have. Ticket 21 moved that screen's own address, and
-   the voice screen's, off the retired Practice prefix.
-
-   A source scan, like the clinician summary's print-parity test: these are
-   `.svelte` files and the node tier cannot mount one (ADR-0016). */
+/* Read route sources to check that each finishable area has its control on its owning
+   screen. Match the registry to routes so a new area cannot ship with no way to finish it.
+   Node cannot mount these files. */
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -50,9 +35,7 @@ describe('where the finish control is mounted', () => {
 
   it('puts each group on the screen that owns it', () => {
     expect(mounts).toEqual([
-      { route: 'body/hair-progress', group: 'hair-progress' },
       { route: 'body/hair-removal', group: 'hair-removal' },
-      { route: 'body/measurements', group: 'measurements' },
       { route: 'body/wear', group: 'wear' },
       { route: 'care/changes', group: 'effects' },
       { route: 'health/dilation', group: 'dilation' },
@@ -65,33 +48,29 @@ describe('where the finish control is mounted', () => {
     expect(new Set(groups).size).toBe(groups.length);
   });
 
-  it('covers every finishable area through those seven screens', () => {
-    /* The sections, not the groups: measurements, hair progress, effects and
-       voice are each one screen and two areas, so a count of screens would
-       not prove the eleven are reachable. */
+  it('covers every finishable area through those five screens', () => {
+    /* The sections, not the groups: effects and voice are each one screen
+       and two areas, so a count of screens would not prove the seven are
+       reachable. */
     const covered = mounts.flatMap((m) => [...AREA_GROUPS[m.group as keyof typeof AREA_GROUPS]]);
-    expect(covered.length).toBe(11);
-    expect(new Set(covered).size).toBe(11);
+    expect(covered.length).toBe(7);
+    expect(new Set(covered).size).toBe(7);
   });
 
   it('names groups the More hub has rows for, and the same screen owns both', () => {
-    /* `areaLabels.ts` claims each group's name is the hub row's own, and this
-       is what catches the two drifting apart. It used to grep the hub's route
-       for `key: '<group>'`, since the row list was written inline in a
-       route a data module could not import; phase 8 UX ticket 02 moved the
-       rows into `hubRows.ts`, which declares the mapping outright - so the
-       check can now be that the row fronting a group is on the same screen
-       the finish control is mounted on, rather than that the hub file happens
-       to contain a matching string. */
+    /* `areaLabels.ts` claims each group's name is the hub row's own, and this is what
+       catches the two drifting apart. It used to grep the hub's route for `key: '<group>'`,
+       since the row list was written inline in a route a data module could not import;
+       moved the rows into `hubRows.ts`, which declares the mapping outright - so the check
+       can now be that the row fronting a group is on the same screen the finish control is
+       mounted on, rather than that the hub file happens to contain a matching string. */
     for (const key of AREA_GROUP_KEYS) {
       expect(Object.keys(AREA_GROUP_ROW_KEYS), key).toContain(key);
     }
 
     const owner = Object.fromEntries(mounts.map((m) => [m.group, m.route]));
     expect(AREA_GROUP_ROW_KEYS).toEqual({
-      measurements: 'measurements',
       wear: 'wear',
-      'hair-progress': 'hair-progress',
       'hair-removal': 'hair-removal',
       effects: 'effects',
       voice: 'voice-benchmark',

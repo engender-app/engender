@@ -8,29 +8,11 @@ const createWorker = vi.fn(
   async (_langs: unknown, _oem: unknown, _options?: { logger?: TesseractLogger }) => ({ recognize, terminate })
 );
 
-vi.mock('tesseract.js', () => ({ createWorker }));
+vi.mock('./ocr-runtime', () => ({ loadOcrRuntime: async () => ({ createWorker }) }));
 
-import { CACHE_ON_DEMAND } from '../../pwa/sw-messages';
+import { OCR_ASSET_PREFIX } from '../../pwa/ocr-assets.generated';
 import { tesseractLabOcrEngine } from './ocr-engine';
-
-/** What a page with the offline shell installed sees. Absent by default,
-    which is a browser with no worker as well as the Android build, where
-    register.ts installs none.
-
-    A registration with an active worker, rather than a controller: the page
-    that installed the worker is not controlled by it, and that is the visit
-    the ask has to survive. */
-function stubServiceWorker(active: { postMessage: (message: unknown) => void } | null) {
-  const original = Object.getOwnPropertyDescriptor(navigator, 'serviceWorker');
-  Object.defineProperty(navigator, 'serviceWorker', {
-    value: { getRegistration: async () => (active ? { active } : undefined) },
-    configurable: true
-  });
-  return () => {
-    if (original) Object.defineProperty(navigator, 'serviceWorker', original);
-    else delete (navigator as { serviceWorker?: unknown }).serviceWorker;
-  };
-}
+import { pngHeader } from '../media/image-fixtures';
 
 describe('tesseractLabOcrEngine', () => {
   beforeEach(() => {
@@ -44,9 +26,11 @@ describe('tesseractLabOcrEngine', () => {
     const result = await tesseractLabOcrEngine().recognize(new Uint8Array([1, 2, 3]));
     expect(result.data.text).toBe('ok');
     expect(createWorker).toHaveBeenCalledWith(['eng', 'pol'], 1, {
-      workerPath: '/tesseract/worker.min.js',
-      corePath: '/tesseract/tesseract-core.wasm.js',
-      langPath: '/tesseract/lang-data',
+      workerPath: `${OCR_ASSET_PREFIX}worker.min.js`,
+      corePath: `${OCR_ASSET_PREFIX}tesseract-core.wasm.js`,
+      langPath: `${OCR_ASSET_PREFIX}lang-data`,
+      gzip: false,
+      cacheMethod: 'none',
       logger: expect.any(Function)
     });
     expect(terminate).toHaveBeenCalledTimes(1);
@@ -55,7 +39,7 @@ describe('tesseractLabOcrEngine', () => {
   /* A Blob passed straight to the worker, not an object URL: the worker reads
      a Blob with FileReader, but fetches a URL string - and this document's
      CSP has no `blob:` in connect-src, so that fetch would be refused before
-     recognition ever ran (ticket 44). */
+     recognition ever ran. */
   test('passes the image as a Blob rather than an object URL', async () => {
     await tesseractLabOcrEngine().recognize(new Uint8Array([1, 2, 3]));
     const [passedImage] = recognize.mock.calls[0];
@@ -63,50 +47,32 @@ describe('tesseractLabOcrEngine', () => {
     expect(typeof passedImage).not.toBe('string');
   });
 
-  test('asks the offline shell to keep the engine once it has loaded', async () => {
-    const postMessage = vi.fn();
-    const restore = stubServiceWorker({ postMessage });
-    try {
-      await tesseractLabOcrEngine().recognize(new Uint8Array([1, 2, 3]));
-      // Sent without being awaited, so the microtask it rides on has to drain.
-      await Promise.resolve();
-      await Promise.resolve();
-      expect(postMessage).toHaveBeenCalledWith(CACHE_ON_DEMAND);
-    } finally {
-      restore();
-    }
+  /* Tesseract decodes the image whole, so a tiny file declaring 65535 x 65535 pixels is
+     refused before a worker exists. */
+  test('refuses an image declaring over-budget dimensions before Tesseract is loaded', async () => {
+    await expect(tesseractLabOcrEngine().recognize(pngHeader(65535, 65535))).rejects.toMatchObject({
+      name: 'MediaBudgetError',
+      kind: 'image-pixels'
+    });
+    expect(createWorker).not.toHaveBeenCalled();
+    expect(recognize).not.toHaveBeenCalled();
   });
 
-  test('does not ask when the engine failed to load: half an engine is not worth storing', async () => {
-    const postMessage = vi.fn();
-    const restore = stubServiceWorker({ postMessage });
+  test('still reads a scan of a format whose header the budget cannot read', async () => {
+    await tesseractLabOcrEngine().recognize(new Uint8Array([1, 2, 3]));
+    expect(recognize).toHaveBeenCalledTimes(1);
+  });
+
+  test('propagates initialization failure without a cache download request', async () => {
     createWorker.mockRejectedValue(new Error('no engine'));
-    try {
-      await expect(tesseractLabOcrEngine().recognize(new Uint8Array([1, 2, 3]))).rejects.toThrow('no engine');
-      await Promise.resolve();
-      await Promise.resolve();
-      expect(postMessage).not.toHaveBeenCalled();
-    } finally {
-      restore();
-    }
+    await expect(tesseractLabOcrEngine().recognize(new Uint8Array([1, 2, 3]))).rejects.toThrow('no engine');
   });
 
-  test('recognises with no worker installed at all, which is every Android run', async () => {
-    const restore = stubServiceWorker(null);
-    try {
-      const result = await tesseractLabOcrEngine().recognize(new Uint8Array([1, 2, 3]));
-      expect(result.data.text).toBe('ok');
-    } finally {
-      restore();
-    }
-  });
-
-  /* Phase 9 audit ticket 11. The bar over a lab-report scan is a real
-     fraction rather than a sweep only because the installed tesseract.js
-     reports one - so what this pins is that the reading pass is the only
-     status turned into one. Loading the core and each language's
-     traineddata each sweep 0 to 1 of their own, and forwarding those would
-     fill the bar three times before the page is read. */
+  /* The bar over a lab-report scan is a real fraction rather than a sweep only because the
+     installed tesseract.js reports one - so what this pins is that the reading pass is the
+     only status turned into one. Loading the core and each language's traineddata each
+     sweep 0 to 1 of their own, and forwarding those would fill the bar three times before
+     the page is read. */
   test('reports the reading pass and nothing before it', async () => {
     const seen: (number | null)[] = [];
     await tesseractLabOcrEngine().recognize(new Uint8Array([1, 2, 3]), {

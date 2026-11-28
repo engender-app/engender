@@ -1,30 +1,11 @@
-/* The wear log (phase 5 ticket 04, CONTEXT: "Wear session"). Two ways to
-   reach the same row: a live start/stop timer - a running session is a row
-   with a real start_timestamp and a null duration_ms - or a backfilled
-   start day plus duration entered directly. Its own record type, not an
-   Entry: no mood, dimension values, tags or note beyond its own free-text
-   comfort/pain field.
+/* A running wear session has start_timestamp and a null duration_ms.
+   Backfilled sessions use a day and entered duration. Every session has
+   a practice kind, plus its own comfort/pain field.
 
-   Every row says which practice it was (`kind`, schema v71, phase 8
-   features ticket 50). Everything downstream reads it: the screen's whole
-   wording, which body region the trend defaults to, and whether the eight-
-   hour duration cue below can apply at all.
-
-   Its optional Reminder hook is reconciled here rather than at the UI seam,
-   the same reason stock.ts owns its run-out reminder rather than leaving it
-   to a screen: every save that can move a session's start time or reminder
-   hours runs through the one function that decides what changes.
-
-   Simpler than stock's reconcileStockReminder on purpose: a wear session's
-   reminder has exactly one rule (a one-off, N hours after start) with
-   nothing to recompute the way a moving run-out projection does, so there
-   is no everCreated/dismissed bookkeeping here. The trade-off: if someone
-   edits or deletes this session's auto reminder from the general reminders
-   editor and then re-saves the session with its hours unchanged, a fresh
-   reminder is recreated rather than staying cleared - a session is a
-   one-time event a person is unlikely to keep re-saving after taking a
-   reminder over by hand, which is why that gap is accepted rather than
-   built around. */
+   Reconcile its optional reminder on every relevant session save. This
+   is one alert N hours after start, without a dismissal record. If the
+   person changes or deletes that alert separately, saving the session
+   again can recreate it. */
 
 import { epochDayFromLocalDate, epochDayFromTimestamp, startOfDayTimestamp, timestampAtLocalTime } from '../epochDay';
 import type { SqliteDriver } from '../sqlite/driver';
@@ -35,7 +16,7 @@ import { wearAutoSource } from '../autoSource';
 
 interface WearSessionInput {
   id?: string;
-  /** Required on every write, not just a create (ticket 50): every caller
+  /** Required on every write, not just a create: every caller
       that updates a session is holding the row it read, so asking for the
       kind back costs nothing and keeps the column out of the "sometimes
       set" category a partial update would put it in. */
@@ -69,14 +50,13 @@ export interface WearSessionsArea {
       this area arbitrates. */
   getRunningSession(): Promise<WearSession | null>;
   /** The kind of the most recently started session, or null with nothing
-      logged. What a screen with no kind to hand opens on (ticket 50): the
+      logged. What a screen with no kind to hand opens on: the
       wear sheet's blank draft, and quick add's one-tap start, which has no
       picker to offer at all. */
   latestKind(): Promise<WearKind | null>;
-  /** The day the most recent session started, at or before `todayEpochDay`,
-      or null if there is none (phase 8 features ticket 03, lastWrite.ts).
-      The table stores a `start_timestamp`, not an `epoch_day`, the same
-      timestamp-bound reasoning doses.ts's own version gives. */
+  /** The day the most recent session started, at or before `todayEpochDay`, or null if
+      there is none (lastWrite.ts). The table stores a `start_timestamp`, not an
+      `epoch_day`, the same timestamp-bound reasoning doses.ts's own version gives. */
   lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
   /** Returns the session's id. Updating an unknown id throws. */
   upsertSession(input: WearSessionInput): Promise<string>;
@@ -109,41 +89,8 @@ const SESSION_COLUMNS = 'uuid, kind, start_timestamp, duration_ms, note';
     typecheck failure. */
 export const WEAR_KINDS: readonly WearKind[] = ['binder', 'tucking', 'compression'];
 
-/** Which built-in body region the wear trend compares against by default,
-    per kind (CONTEXT: "Wear session"). Built-in ids only - no new region
-    vocabulary - and a default rather than a rule: the chart card's own
-    region picker overrides it for any kind, exactly as it did before there
-    were kinds. */
-export const WEAR_KIND_REGION: Record<WearKind, string> = {
-  binder: 'chest',
-  tucking: 'genitals',
-  compression: 'hips_waist'
-};
-
-/** Which region the trend actually draws against: what the person picked,
-    or the kind's own default, or - if either names a region they have
-    turned off in their body-region vocabulary - the first one still
-    offered. A function rather than three expressions on the screen, so the
-    override and the fallback are one rule that can be read and tested in
-    one place.
-
-    `picked` is null until the person touches the picker, and never seeded
-    with the default: seeded, a deliberate pick of the region the default
-    already names would be indistinguishable from not having picked, and the
-    selection would start following the kind again on the next save. */
-export function wearTrendRegion(
-  kind: WearKind,
-  picked: string | null,
-  available: readonly string[]
-): string {
-  for (const candidate of [picked, WEAR_KIND_REGION[kind]]) {
-    if (candidate !== null && available.includes(candidate)) return candidate;
-  }
-  return available[0] ?? WEAR_KIND_REGION[kind];
-}
-
 /** How long a running binder session runs before it picks up the duration
-    cue (ADR-0064).
+    cue.
 
     Eight hours is what four independent harm-reduction sources converge on
     - Point of Pride, Desert AIDS Project, the Rainbow Project and Trans
@@ -157,9 +104,15 @@ export function wearTrendRegion(
     binding's four and is already exceeded by 44.8% of daily tuckers (Malik
     et al. 2024), and no source of any kind gives a compression figure, so
     neither kind gets a threshold rather than getting a borrowed one. */
-/* BINDER_CUE_HOURS stays exported only for its own test (AU-09 test-only
-   review). */
+/* BINDER_CUE_HOURS stays exported only for its own test. */
 export const BINDER_CUE_HOURS = 8;
+
+/** The day the wear screen's safety facts (wearLabels.ts) and the figure
+    above were written against binder-tucking-safety-guidance-research.md,
+    as an ISO day. A claim, not a build stamp: bump it only after reading
+    the sources again. The release-time guard in reviewedContent.ts warns
+    24 months after it. */
+export const WEAR_SAFETY_REVIEWED_ON = '2026-09-05';
 
 /** Whether this session is showing the duration cue right now. Running
     binder sessions only: a stopped session is a record of something already
@@ -193,10 +146,9 @@ export function hoursMinutesSecondsOf(ms: number): { hours: number; minutes: num
   return { hours, minutes, seconds };
 }
 
-/** Where this session's reminder marks which session it belongs to -
-    `feature:id`, the same shape stock.ts's own marker has. Both live in
-    autoSource.ts now, since phase 6 ticket 04 gave the registry a switch
-    that has to recognise this subset. */
+/** Where this session's reminder marks which session it belongs to - `feature:id`, the same
+    shape stock.ts's own marker has. Both live in autoSource.ts now gave the registry a
+    switch that has to recognise this subset. */
 const autoSourceFor = wearAutoSource;
 
 /** A one-off Reminder rule for `hours` after `startTimestamp`, as the local
@@ -238,7 +190,6 @@ export function makeWearSessionsArea(driver: SqliteDriver, reminders: RemindersA
     await reminders.upsertReminder({
       id: existing?.id,
       title: existing?.title ?? (title as string),
-      type: 'other',
       time: rule.time,
       recurrence: null,
       interval: null,

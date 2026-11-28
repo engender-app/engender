@@ -1,26 +1,11 @@
-/* Every preference the app has, with its default and its two memberships.
-   Kept free of imports so both tiers and the pre-database boot path can
-   read it.
+/* The import-free preference catalogue serves both tiers and early boot.
 
-   Two lists, and they deliberately do not line up:
+   `PORTABLE_KEYS` is the Archive allowlist. New preferences stay device-local by default
+   (ADR-0003). The independent boot set mirrors first-paint settings and gate flags in
+   plaintext localStorage. Keep secrets such as the PIN hash behind encryption (ADR-0018).
+   catalogue.test.ts checks that each preference is classified as portable or device-local. */
 
-   - Portable vs device-local (ADR-0003) decides whether a preference
-     travels inside an export archive. It is an allowlist: a preference
-     added later is device-local until someone puts it in PORTABLE_KEYS on
-     purpose, so nothing leaks into an archive by accident.
-   - The boot set (ADR-0009) decides whether a preference is mirrored
-     outside SQLite, and its one question is different: is this needed
-     before the database is open? Theme, palette and language must apply on
-     first paint; the lock flags shape the passphrase gate that renders
-     before the database can be unlocked (ticket 09). The mirror lives in
-     plaintext localStorage, so nothing sensitive may join it: the PIN hash
-     used to be here for the pre-database lock screen, and moved back
-     behind encryption when the passphrase gate took that slot - a 4-digit
-     hash beside the ciphertext is an offline-guessable secret (ADR-0018
-     names sensitive boot preferences as covered).
-
-   catalogue.test.ts fails if a preference lands in neither of the first
-   two lists. */
+import type { Acknowledgements } from '../acknowledgements';
 
 /** The four answers to "when does it ask again", in the order screens list
     them. */
@@ -30,25 +15,24 @@ export type LockAfter = (typeof LOCK_AFTER_CHOICES)[number];
 export interface PreferenceValues {
   onboarded: boolean;
   name: string;
-  /** The gender scales the entry screen offers, by dimension key (phase 5
-      ticket 35). A list somebody ticked, not a preset key resolved to a
-      list: there are 32 subsets of five scales and the app used to ship
-      eight of them, so choosing meant finding the preset that was wrong in
-      the fewest places. Empty is a legitimate resting state - a mood, tags,
+  /** The gender scales the entry screen offers, by dimension key. A list somebody ticked, not a preset key resolved to a
+      list: the app used to ship eight presets out of the 32 subsets of the
+      five scales it had then (64 of today's six), so choosing meant finding
+      the preset that was wrong in the fewest places. Empty is a legitimate resting state - a mood, tags,
       a note and a photo are still an entry - and never an error.
 
       Order here is the order they were ticked in and nothing reads it: the
       editor draws its sliders in catalogue order (`reference.activeDimensions`),
       so which box was ticked first cannot move a slider. */
   activeScales: string[];
-  /** Which quantity colours the Home strip and the calendar (CONTEXT: Metric). */
+  /** Which quantity colours the Home strip and the calendar. */
   metricKind: 'mood' | 'dimension';
   /** The gender dimension's key when metricKind is 'dimension', otherwise null. */
   metricDimension: string | null;
   theme: 'system' | 'light' | 'dark';
   palette: string;
   launcherIconShape: 'current' | 'round';
-  /** Mood's own fixed 5-step scale (ADR-0025), independent of `palette` -
+  /** Mood's own fixed 5-step scale, independent of `palette` -
       selectable on its own so a mood dot never has to double as a gender
       colour. */
   moodPreset: string;
@@ -56,53 +40,36 @@ export interface PreferenceValues {
   a11yTextSizeBoost: boolean;
   a11yLegibilityBoost: boolean;
   a11yMotionReduce: boolean;
-  /** How long the app may be out of sight before the access mode's secret
-      is asked for again (lock-timing ticket 01). Replaced `lockOnLeave`,
-      whose on and off are `immediately` and `restart`; openPreferences()
-      reads an old row across. Meaningless under a mode with no secret, which
+  /** How long the app may be out of sight before the access mode's secret is asked for
+      again. Replaced `lockOnLeave`, whose on and off are `immediately` and `restart`;
+      migration 117 moved an old row across. Meaningless under a mode with no secret, which
       is why no screen asks it there. */
   lockAfter: LockAfter;
   disguise: boolean;
   /** Android only (ticket screen-capture-guard/01): whether this device may
       screenshot or record the app, mirrored into SharedPreferences so
       MainActivity can decide FLAG_SECURE before the window has a frame.
-      Default true; a saved false still blocks capture on that device. */
+      Default true. False is the person's choice: the Security row is a
+      "Block screenshots" switch that is on when this is false
+      (lock/screenshot-block.ts). */
   allowScreenCapture: boolean;
   /** Reminder notifications show their real title and body when false; a
       generic one otherwise, regardless of whether the device is locked at
-      the moment they fire (ticket 15) - the app cannot reliably learn the
+      the moment they fire - the app cannot reliably learn the
       lock state at post time, so it never trusts one. */
   hideNotificationTitles: boolean;
   checkInEnabled: boolean;
   /** Wall-clock "HH:MM" in the device's timezone. */
   checkInTime: string;
-  /** Whether the daily check-in prompt carries an affirming line alongside
-      its question (phase 4 features ticket 22). Only ever adds a line to
-      the prompt - off leaves the check-in exactly as it was. Portable,
-      with `checkInEnabled` and `checkInTime` rather than with the wrapped
-      family: it configures the same ritual those two carry into an
-      archive, and someone who turned the line off should not get it back
-      by restoring on a new device. Weighed rather than defaulted -
-      ADR-0003's rule alone would have made it device-local. */
-  checkInAffirmationsEnabled: boolean;
-  /** Optional entry nudges that suggest adding detail after a mood-only save. */
-  entryNudges: boolean;
+  /** The last day the check-in stays silent, or null when it is not paused. It fires again
+      the day after (checkIn.ts). Portable with the check-in's own two keys. */
+  checkInPausedThrough: number | null;
   /** Whether the rotating reflection prompt shows on the entry-creation
-      screen (phase 4 features ticket 17). Device-local for the same reason
-      `entryNudges` is: a yes/no about one installation's entry screen, not
-      anything the journal itself carries. */
+      screen. Device-local because this controls
+      one installation's entry screen, not anything the journal carries. */
   guidedPromptsEnabled: boolean;
-  /** Whether active tryouts show a felt-sense quick prompt in the entry editor. */
-  entryTryoutPromptEnabled: boolean;
-  /** Whether a scheduled dose due today shows a quick-log chip in the entry editor. */
-  entryDoseQuickLogEnabled: boolean;
-  /** Whether post-op procedure recovery shows a status card in the entry editor. */
-  entryProcedureRecoveryEnabled: boolean;
-  /** Whether active HRT regimen shows a physical change marker chip in the entry editor. */
-  entryHrtEffectsEnabled: boolean;
   /** Whether a running binder session past eight hours picks up its
-      duration cue, on the wear screen and the live tile (phase 8 features
-      ticket 50, ADR-0064). Default on: the figure is well enough sourced to
+      duration cue, on the wear screen and the live tile. Default on: the figure is well enough sourced to
       show unasked, and the cue blocks nothing.
 
       It covers the cue and only the cue. The static safety facts on the
@@ -111,108 +78,38 @@ export interface PreferenceValues {
       household tape), and a person turning off an eight-hour marker is not
       asking to be told less about tape.
 
-      Device-local for the same reason `entryNudges` and
+      Device-local for the same reason `guidedPromptsEnabled` and
       `roadmapMilestoneSyncEnabled` are: a yes/no about what this
       installation's screens say. */
   wearDurationCueEnabled: boolean;
-  /** Whether the wear-timer live tile is ever shown (phase 5 ticket 51).
-      A kind-level switch, not a way to hide one running session: the tile
-      appears while a session is running and the kind is on, and this never
-      stands in for that data check (ADR-0039's amendment). Default on, the
-      same "the app may speak unless told otherwise" default wrapped has.
-      Device-local for the same reason `wrappedEnabled` is - a yes/no about
-      one installation's Home screen. */
-  wearTimerEnabled: boolean;
-  /** Whether the dose-log live tile is ever shown (phase 5 ticket 51),
-      while a regimen episode is active. Same shape and reasoning as
-      `wearTimerEnabled`. */
-  dosePanelEnabled: boolean;
-  /** Whether the ready-letter live tile is ever shown (phase 5 ticket 51),
-      when a time-capsule letter has become readable. Same shape and
-      reasoning as `wearTimerEnabled`. */
-  readyLetterEnabled: boolean;
-  /** Whether the revisit live tile is ever shown (phase 8 features ticket
-      08, ADR-0045), when a day chosen to see an old entry again has
-      arrived. Same shape and reasoning as `wearTimerEnabled`. */
-  revisitEnabled: boolean;
-  /** Whether the surgery-countdown live tile is ever shown (phase 5
-      ticket 51), ahead of a scheduled procedure. Same shape and reasoning
-      as `wearTimerEnabled`. */
-  surgeryCountdownEnabled: boolean;
-  /** Whether the Safe Space nudge is ever shown (phase 5 ticket 51), after
-      an entry that reads as a bad moment. Same shape and reasoning as
-      `wearTimerEnabled`. */
-  safeSpaceNudgeEnabled: boolean;
   /** The entry ID of the most recent bad-moment entry whose Safe Space nudge
-      was dismissed or opened (ticket 50). A subsequent qualifying entry with a
+      was dismissed or opened. A subsequent qualifying entry with a
       newer ID produces its own fresh nudge. */
   safeSpaceNudgeDismissedEntryId: number | null;
-  /** Whether the running-low stock notice is ever shown (phase 5 ticket 51),
-      while an in-use regimen's stock is projected to run out. Same shape and
-      reasoning as `wearTimerEnabled`. */
-  stockNoticeEnabled: boolean;
-  /** Whether the active-tryout live tile is ever shown (phase 5 deepening ticket 03). */
-  activeTryoutTileEnabled: boolean;
-  /** Whether the patch-schedule live tile is ever shown (phase 5 deepening ticket 03). */
-  patchScheduleTileEnabled: boolean;
-  /** Whether the voice-benchmark nudge live tile is ever shown (phase 5 deepening ticket 03). */
-  voiceBenchmarkNudgeEnabled: boolean;
-  /** A passage of somebody's own to read for a voice benchmark, empty for the
-      one the app ships (phase 5 deepening ticket 15, CONTEXT: "Benchmark
-      passage"). Kept because the next benchmark has to be read from the same
-      words as the last one, which is the only thing that makes two of them
-      comparable. */
+  /** A passage of somebody's own to read for a voice benchmark, empty for the one the app
+      ships. Kept because the next benchmark has to be read from the same words as the last
+      one, which is the only thing that makes two of them comparable. */
   voiceBenchmarkPassage: string;
   /** The two ends of the person's own comfort band on the pitch figure, in
-      Hz, or null when they have not set one (phase 8 features ticket 09,
-      ADR-0059). Null is the shipped state and stays it: the reference bands
-      on that figure are a citation, and this one is a decision nobody but
-      the person can make, so there is no default and no table behind it.
+      Hz, or null when they have not set one (ADR-0059). Null is the shipped state; no default or suggested range.
       Both are set and cleared together.
       Portable, like every other preference that is about the person rather
       than about this installation (ADR-0003). */
   voiceComfortLowHz: number | null;
   voiceComfortHighHz: number | null;
-  /** Whether the pause-active banner live tile is ever shown (phase 5 deepening ticket 03). */
-  pauseActiveBannerEnabled: boolean;
-  /** Whether the hair-removal recovery live tile is ever shown (phase 5 deepening ticket 03). */
-  hairRemovalRecoveryEnabled: boolean;
-  /** Whether the measurements nudge live tile is ever shown (phase 5 deepening ticket 03). */
-  measurementsNudgeEnabled: boolean;
-  /** Whether the appointment-today live tile is ever shown (phase 8 features
-      ticket 63), when today's date carries an appointment. Same shape and
-      reasoning as `wearTimerEnabled`. */
-  appointmentTodayEnabled: boolean;
-  /** Whether wrapped is offered at all (phase 4 features ticket 01). Off
-      stops the Home card and the recap read behind it, rather than hiding a
-      card over work that still runs.
+  /** The person's own answer to "show me this kind of thing", for every kind in the
+      unprompted registry that draws something in the app: the live tiles, the stock notice,
+      wrapped and on-this-day. Keyed by the registry's kind (`UnpromptedKind`) and holding
+      only an answer that differs from the registry's default, so the defaults live in one
+      place and a kind added later needs no key here. A key this build has no kind for is
+      left alone.
 
-      Device-local, deliberately, and unlike `checkInEnabled`: the check-in is
-      a ritual with a time attached that a person would have to set up again
-      on a new device, while this is a yes/no about one installation's Home
-      screen. Weighed rather than defaulted - ADR-0003's rule would have
-      landed it here either way. */
-  wrappedEnabled: boolean;
-  /** Whether on-this-day is offered at all (phase 4 features ticket 03).
-      Its own toggle, independent of `wrappedEnabled`: on-this-day reuses
-      wrapped's presentation components but answers a different question,
-      and turning one off must not silently turn off the other. Device-local
-      for the same reason `wrappedEnabled` is - a yes/no about one
-      installation's Home screen. */
-  onThisDayEnabled: boolean;
-  /** Whether wrapped also fires a local notification when a fresh period is
-      ready (phase 4 features ticket 04). Its own switch, independent of
-      `wrappedEnabled`'s Home-card toggle - wanting the card is not the same
-      as wanting to be pinged about it. Off by default, since notifications
-      are opt-in, and forced back to false whenever `wrappedEnabled` is
-      turned off, so there is no second toggle to remember to also find.
-      Device-local for the same reason `wrappedEnabled` is. */
-  wrappedNotificationsEnabled: boolean;
-  /** Whether on-this-day also fires a local notification for a qualifying
-      day (phase 4 features ticket 04). Same shape as
-      `wrappedNotificationsEnabled`, and for the same reasons. */
-  onThisDayNotificationsEnabled: boolean;
-  /** Whether reminder alarms are scheduled at all (phase 6 ticket 04). The
+      A switch is a kind-level yes or no, never a way to hide one running session. Portable,
+      like `pinnedRows` beside it: which tiles somebody turned off is a statement about the
+      front page they arranged, and a restore that switched them all back on would be the
+      app forgetting an answer. Notifications keep their own switches. */
+  surfaceOverrides: Partial<Record<string, boolean>>;
+  /** Whether reminder alarms are scheduled at all. The
       kind-level switch the notifications view draws, one level above each
       Reminder row's own `enabled`: off means no reminder reaches the phone,
       while the rows themselves stay exactly as the person wrote them. Off is
@@ -221,36 +118,35 @@ export interface PreferenceValues {
       Device-local, unlike the reminder rows it gates, which travel in an
       archive: this is a yes/no about whether this installation may fire. */
   remindersEnabled: boolean;
-  /** Whether a wear session's own elapsed prompt is scheduled (phase 6
-      ticket 04). A wear prompt is an ordinary Reminder row on a `wear:`
-      auto-source (CONTEXT.md), so this gates that subset rather than a
+  /** Whether a wear session's own elapsed prompt is scheduled. A wear prompt is an ordinary Reminder row on a `wear:`
+      auto-source, so this gates that subset rather than a
       producer of its own, and independently of `remindersEnabled`: wanting
       medication reminders is not wanting to be told a binder has been on for
       eight hours. Device-local for the same reason `remindersEnabled` is. */
   wearElapsedEnabled: boolean;
-  /** Whether a scheduled backup that failed says so on the phone (phase 6
-      ticket 04). The notice has fired since phase 4 with no settings home at
-      all; this is that home. On by default, unlike the two retrospective
-      notifications: a backup that saved nothing is the one thing in here
-      that is worth interrupting somebody for, and it is the half of the
-      admission rule that says "something failed". */
+  /** Whether a scheduled backup that failed says so on the phone. The notice has fired in
+      older versions with no settings home at all; this is that home. On by default because
+      a backup that saved nothing meets the notification rule for a failed action. */
   exportFailureNoticeEnabled: boolean;
   /** An export failure notice that came due inside quiet hours and is
-      waiting for them to end (phase 6 ticket 04). Held, not dropped - the
+      waiting for them to end. Held, not dropped - the
       auto-export scheduler's next check outside the window posts it and
-      clears this. The three other producers need no such flag: reminders
-      shift their own alarm, and the two retrospective checks re-run every
-      fifteen minutes anyway, so skipping one is already a hold. */
+      clears this. Reminders shift their own alarm, so they need no such
+      flag. */
   heldExportFailureNotice: boolean;
-  /** Whether quiet hours hold notifications at all (phase 6 ticket 04). One
+  /** Native backup failure timestamp last posted, held or declined by the
+      notice switch. Device-local notification history survives scheduler
+      restarts without travelling in an Archive. */
+  lastExportFailureNotifiedAt: number | null;
+  /** Whether quiet hours hold notifications at all. One
       cross-class rule for every producer rather than a field per producer,
       which is what four schedulers each picking their own time amounted to
       before. Off by default: a rule about when the phone may wake somebody
       is theirs to set, and a window nobody asked for is its own surprise. */
   quietHoursEnabled: boolean;
-  /** When quiet hours begin, as wall-clock `HH:MM` (phase 6 ticket 04).
+  /** When quiet hours begin, as wall-clock `HH:MM`.
       Stored as a time rather than an instant for the same reason a Reminder
-      is (CONTEXT.md): 22:00 means 22:00 after a flight, not the instant that
+      is: 22:00 means 22:00 after a flight, not the instant that
       was 22:00 at home. */
   quietHoursStart: string;
   /** When quiet hours end, as wall-clock `HH:MM`. A window may wrap past
@@ -258,209 +154,110 @@ export interface PreferenceValues {
       empty window rather than a whole silent day - quietHours.ts owns that
       rule. */
   quietHoursEnd: string;
-  /** The wrapped period (`cadence:start`) last notified about, so the
-      scheduler does not repeat itself on every check while the same period
-      is still fresh (phase 4 features ticket 04). Device-local: it
-      describes this installation's notification history, not the journal. */
-  lastWrappedNotifiedPeriodKey: string | null;
-  /** The epoch day on-this-day last notified about (phase 4 features ticket
-      04) - at most one on-this-day notification per day, even when more
-      than one lookback qualifies. Device-local for the same reason
-      `lastWrappedNotifiedPeriodKey` is. */
-  lastOnThisDayNotifiedEpochDay: number | null;
   /** Optional per-analyte default units for labs entry/review. */
   preferredLabUnits: Partial<Record<'estradiol' | 'testosterone', string>>;
-  /** The unit body measurements chart in (phase 5, "units should be
-      choosable in settings"). A measurement is still logged and stored in
-      whatever unit it was typed in, never converted (measurements.ts) -
-      this only decides what a chart converts every reading to for display,
-      which is what lets the chart be one line instead of one per unit
-      someone has ever logged in. */
-  measurementUnit: 'cm' | 'in';
-  /** Whether the measurements screen's capture-protocol guidance has been
-      dismissed (ticket 08; collapsed from a per-type record to one flag in
-      ticket 14 - the notice is one instance whose text follows the
-      selected type, so dismissing it dismisses it for every type, not just
-      the one on screen when it was closed). Guidance is opt-in, never
-      required to save a measurement, so this only ever hides a card - it
-      blocks nothing.
-
-      A row already on disk from before ticket 14 still reads correctly:
-      preferences.ts's `JSON.parse` on the raw column delivers whatever the
-      old writer left there rather than coercing it, so a stale
-      `{ waist: true }` shows up here as an object, not `false` - but every
-      truthy value, including any non-empty object, satisfies `!dismissed`
-      the same way `true` does, and the old writer never persisted an empty
-      one. `preferences.test.ts` locks this in. */
-  measurementProtocolDismissed: boolean;
-  /** Whether the hair-photo capture-protocol guidance has been dismissed
-      (phase 4 ticket 09). Hair progress has only the one photo kind, so
-      this was already a single flag. Guidance is opt-in, never required to
-      take a photo, so this only ever hides a card - it blocks nothing. */
-  hairPhotoProtocolDismissed: boolean;
   /** Whether the Look back rail's "drag the ends" hint has been answered by
-      a drag (phase 11 ticket 06). One flag rather than a count: the hint is
+      a drag. One flag rather than a count: the hint is
       there to say the rail can be dragged, and one drag is the whole
       answer. Device-local, with the two protocol flags above: what it
       records is that somebody has worked out a gesture on this
       installation, which does not travel with the journal - a restore on a
       new device is a screen somebody has not used before. */
   spanRailHintDismissed: boolean;
-  /** The day the hair-progress timeline counts from, as an epoch day, or
-      null when the person has not set one (phase 5 ticket 33). Null is a
-      resting state, not unfinished setup: with no date set the screen falls
-      back to the earliest dose logged, and with neither it simply shows no
-      week counts (hairAnchor.ts). Portable rather than device-local - it
-      says something about the journal's own timeline, the same way
-      `journeyAnchorMilestoneId` does. */
-  hairAnchorEpochDay: number | null;
-  /** Whether the hormone curve is fitted to the user's own lab results
-      (phase 4 ticket 10). Off by default: the published band is what the
-      literature says, and moving it onto someone's own points is a thing
-      they ask for rather than a thing that happens to them. Not portable -
-      it says how one device draws a chart, not anything about the journal. */
-  hormoneCurveFitToOwnLabs: boolean;
+  /** The day HRT began, as the person set it, or null to count from the earliest HRT
+      episode (personalEffectWindow.ts's hrtAnchor). The effects timeline and its onset
+      bands count from it. Portable, because it is a fact about the journal. */
+  hrtStartEpochDay: number | null;
   /** The milestone id that durations, stats ranges and wrapped figures are
-      measured from (phase 5 ticket 25), or null when none is chosen - a
+      measured from, or null when none is chosen - a
       resting state the app never nags about. Mirrors `activeScales`: one
       global choice rather than a per-surface one, so wrapped and a stats
       range cannot disagree about how long the person has been on their own
       journey. A milestone this install no longer has resolves to unset
       rather than falling back to another one. */
   journeyAnchorMilestoneId: string | null;
-  /** Legacy opt-in, kept so older journals and archives retain their
-      visibility before a cycle choice is made. */
-  cycleTrackingEnabled: boolean;
-  /** Null preserves the pre-choice rule for existing journals. A new
-      journal records false when setup finishes. */
+  /** Null preserves the pre-choice rule for existing journals. A new journal records false
+      when setup finishes. */
   cycleTrackingChoice: boolean | null;
   autoExportEnabled: boolean;
   autoExportSchedule: 'weekly' | 'monthly';
   /** Epoch milliseconds, not an epoch day. */
   lastBackupAt: number | null;
   backupNoticeDismissed: boolean;
-  /** Home's "this browser may clear your journal" notice, put away
-      (after-release 17). Device-local: it is about this browser. */
+  /** Home's "this browser may clear your journal" notice, put away. Device-local: it is
+      about this browser. */
   storageNoticeDismissed: boolean;
   /** When a dry-run restore drill last decrypted, parsed and validated a
-      chosen archive without error (phase 4 features ticket 28). Epoch
+      chosen archive without error. Epoch
       milliseconds, like `lastBackupAt`, and just as device-local: it
       describes what this installation has checked, not the journal. */
   lastVerifiedAt: number | null;
   /** Whether ticking a roadmap goal prompts to record it as a milestone
-      on the timeline (phase 5 deepening ticket 10, ADR-0045). */
+      on the timeline (ADR-0045). */
   roadmapMilestoneSyncEnabled: boolean;
-  /** The areas whose finish offer has been answered no (phase 8 features
-      ticket 04, ADR-0045). `ArchiveSectionName`s - the same key space
-      `area_state` rows use.
-
-      An offer that keeps coming back is a nag, and the rule this ticket
-      holds itself to is that it asks once per area for the life of the
-      journal. That needs the no kept somewhere, and it cannot be a column:
-      `area_state` is deepening ticket 13's and holds what the person said
-      about an area, while this holds what the app has already asked.
-
-      Section names and **not** the hub row keys a person actually meets,
-      which is ADR-0052's own rule about stored keys applied to a stored
-      preference: a row renamed, regrouped or split this afternoon would
-      otherwise quietly change which area a stored no refers to. The rows are
-      resolved to sections by `areaGroups.ts`, which is also where a group
-      reads as declined when any of its sections is.
-
-      A list rather than a boolean per area, so a section added later needs
-      no migration and no entry here. Portable, like `cycleTrackingEnabled`
-      and for the same reason: it says something about this person and their
-      journal rather than about this installation, and a restore that started
-      asking again about eight areas would be the app forgetting an answer
-      somebody gave. */
+  /** The answer to the roadmap's "Polish legal steps" switch, null until somebody touches it. Null is off in
+      every language (roadmap.ts, `polishLegalStepsShown`). Portable, on `areaFinishOfferDeclined`'s
+      argument: whether a Polish court procedure is somebody's path is
+      something they said about their own journal. */
+  roadmapPolishStepsChoice: boolean | null;
+  /** Whether the roadmap's built-in "Social and presentation" group shows. On until
+      switched off: unlike the Polish steps it is not tied to a country, so there is no
+      locale to follow. Portable, on `roadmapPolishStepsChoice`'s argument. */
+  roadmapSocialStepsShown: boolean;
+  /** Portable list of declined finish offers (ADR-0045). Ask once per
+      journal and area. Store stable `ArchiveSectionName` keys instead of
+      hub row keys (ADR-0052). `areaGroups.ts` treats a group as declined
+      if any member is. The list accommodates new sections without a
+      migration and preserves answers across restore. */
   areaFinishOfferDeclined: string[];
-  /** The return this installation has already shown (phase 8 features
-      ticket 05, ADR-0062): the `sinceEpochDay` of the last gap the return
-      surface opened for, or null while it has opened for none.
-
-      This is what makes `/coming-back` a moment rather than a place. The
-      surface is linked from nowhere and opens by itself, so without a
-      record of which gap it has been shown for it would open again every
-      time somebody who came back, read it and wrote nothing reopened the
-      app - which is the one way a screen about what is waiting turns into a
-      screen that follows you around.
-
-      The gap's own last-write day rather than a date or a counter: it names
-      *which* return this was, so a new gap months later is a different
-      value and opens the surface again with no bookkeeping to expire. It
-      also cannot drift, because it is read off the journal each time rather
-      than incremented.
-
-      Device-local, unlike `areaFinishOfferDeclined` beside it, and the
-      difference is what each one records. That one holds an answer the
-      person gave and would be the app forgetting it. This holds what this
-      installation has drawn, like `lastOnThisDayNotifiedEpochDay` - and a
-      journal restored onto a new phone after a long gap should meet what is
-      waiting rather than inherit a note saying it was already shown. */
+  /** The last gap for which this installation opened `/coming-back`, or
+      null. Store its journal-derived `sinceEpochDay` so reopening without
+      writing does not repeat it and later gaps get their own opening.
+      Keep it device-local so a restore can show the return on a new
+      installation. */
   comingBackSeenSince: number | null;
-  /** Which drugs a person has turned off the clinician summary's regimen,
-      dose-history and exposure sections, keyed by drug name (phase 8
-      features ticket 39, ADR-0031). On (absent or false) by default. Device-
-      local: which drug a printout leaves out is a choice about a specific
-      visit on this installation, not portable journal data (ADR-0003). */
+  /** Which drugs a person has turned off the clinician summary's regimen, dose-history and
+      exposure sections, keyed by drug name. On (absent or false) by default. Device- local:
+      which drug a printout leaves out is a choice about a specific visit on this
+      installation, not portable journal data (ADR-0003). */
   clinicianSummaryDrugExcluded: Partial<Record<string, boolean>>;
   /** Which drug's schedule /doses' "against the schedule" view compares
-      against, while more than one regimen episode is active at once
-      (phase 9 UX carpet ticket 15). Null until chosen, and a stored pick
+      against, while more than one regimen episode is active at once.
+      Null until chosen, and a stored pick
       that no longer names a currently active drug resolves back to the
       screen's own default rather than showing nothing. Device-local: it is
       a choice about what this installation's screen currently shows, not
       something the journal itself remembers. */
   adherenceRegimenPick: string | null;
-  /** Which areas the person put on the front page, in their order (phase 10
-      redesign ticket 05). `hubRows.ts` row keys, resolved by
-      `pinnedRows.ts`.
+  /** Ordered Home pins use hub row keys, resolved by `pinnedRows.ts`.
+      An empty list means no pins. Null resolves defaults from
+      `onboardingAreas` or the legacy default set. Resolve defaults
+      without writing. Reset returns to null.
 
-      Three values, and the third is the one that carries the meaning. A
-      list is the arrangement the person made. An **empty** list is the
-      arrangement in which they pinned nothing, and the front page shows no
-      rows - "nothing pinned means nothing shown" is the rule, so unpinning
-      the last row may not read as a fresh install. **Null** is a person who
-      has never arranged it, and resolves to the default set derived from
-      `onboardingAreas`. The same null-is-not-empty distinction onboarding
-      already makes for `activeScales`, for the same reason.
-
-      Nothing writes this except the person: the default set is *resolved*
-      rather than stored, so the app never puts a pin somewhere by itself
-      and a reset is this going back to null.
-
-      Row keys and not the archive section names `area_state` rows use,
-      which is the one place a stored key here departs from ADR-0052's rule,
-      on purpose - a pin is a statement about a row on a screen rather than
-      about a record, and a row the registry no longer holds has no front
-      page to be on. A stale key resolves to nothing rather than to a
-      guess. */
+      Pins refer to UI rows rather than archive sections (ADR-0052).
+      Ignore stale keys for rows the registry no longer holds. */
   pinnedRows: string[] | null;
-  /** Which of ADR-0067's five mark kinds the agenda draws, by kind (phase 10
-      redesign ticket 05). Null while the person has switched none of them
-      off, which is every kind; a list is exactly the kinds left on.
+  /** Saved area choices from older onboarding flows. `hubRows.ts` row keys.
 
-      A switch rather than a dismissal, which is the whole of why it is
-      stored: a kind somebody does not want is one they would otherwise
-      dismiss every week for the life of the journal. A stored kind
-      `DAY_AHEAD_MARK_KINDS` does not name resolves to nothing, the same way
-      a stale pin does. */
-  agendaKinds: string[] | null;
-  /** Which areas the person said they were keeping track of, when
-      onboarding asked (phase 10 redesign ticket 05; the step itself is its
-      own ticket). `hubRows.ts` row keys.
+      Held apart from `pinnedRows` rather than written straight into it, because the initial
+      pins have to stay computable after the front page has been rearranged: reset returns
+      to this choice or the default set.
 
-      Held apart from `pinnedRows` rather than written straight into it,
-      because the default has to stay computable after the front page has
-      been rearranged: ticket 14's reset is "back to what I said at the
-      start", and a default that had been flattened into the arrangement
-      would have nothing to go back to.
-
-      Null is a skipped question - and a journal that predates the step -
-      which resolves to `DEFAULT_ONBOARDING_AREAS`. An empty list is
-      somebody who unticked everything, and it means a front page with no
-      pinned rows, the same way an empty `pinnedRows` does. */
+      Null means no saved answer and resolves to `DEFAULT_ONBOARDING_AREAS`. An empty list
+      is somebody who unticked everything, and it means a front page with no pinned rows,
+      the same way an empty `pinnedRows` does. */
   onboardingAreas: string[] | null;
+  /** What the person has already been told: tile snoozes, letters read and
+      met, and the last answer to "are there entries". Four facts that used to sit in plaintext localStorage,
+      where they showed which features a journal uses. Portable, so letter
+      read state finally travels with a backup. The shape and its rules are
+      data/acknowledgements.ts's. */
+  acknowledgements: Acknowledgements;
+  /** The height each screen's late block last rested at, by slot (data/homeReserve.ts), so
+      its next visit holds that room. Home's own three stay in localStorage for its first
+      frame; these name screens (dilation, doses, wear), so they live behind the journal's
+      key. Device-local: a height belongs to this screen size. */
+  layoutReserves: Record<string, number>;
 }
 
 export type PreferenceKey = keyof PreferenceValues;
@@ -479,64 +276,35 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   a11yTextSizeBoost: false,
   a11yLegibilityBoost: false,
   a11yMotionReduce: false,
-  /* A restart, because that is what the old switch's off meant and every
-     journal from before ticket 01 that never touched it was off. A new
-     install is offered a minute in setup instead, and only writes it by
-     answering. */
+  /* A restart, because that is what the old switch's off meant and every journal from that
+     never touched it was off. A new install is offered a minute in setup instead, and only
+     writes it by answering. */
   lockAfter: 'restart',
   disguise: false,
   allowScreenCapture: true,
   hideNotificationTitles: true,
   checkInEnabled: false,
   checkInTime: '21:00',
-  checkInAffirmationsEnabled: true,
-  entryNudges: true,
+  checkInPausedThrough: null,
   guidedPromptsEnabled: true,
-  entryTryoutPromptEnabled: true,
-  entryDoseQuickLogEnabled: true,
-  entryProcedureRecoveryEnabled: true,
-  entryHrtEffectsEnabled: true,
   wearDurationCueEnabled: true,
-  wearTimerEnabled: true,
-  dosePanelEnabled: true,
-  readyLetterEnabled: true,
-  revisitEnabled: true,
-  surgeryCountdownEnabled: true,
-  safeSpaceNudgeEnabled: true,
   safeSpaceNudgeDismissedEntryId: null,
-  stockNoticeEnabled: true,
-  activeTryoutTileEnabled: true,
-  patchScheduleTileEnabled: true,
-  voiceBenchmarkNudgeEnabled: true,
   voiceBenchmarkPassage: '',
   voiceComfortLowHz: null,
   voiceComfortHighHz: null,
-  pauseActiveBannerEnabled: true,
-  hairRemovalRecoveryEnabled: true,
-  measurementsNudgeEnabled: true,
-  appointmentTodayEnabled: true,
-  wrappedEnabled: true,
-  onThisDayEnabled: true,
-  wrappedNotificationsEnabled: false,
-  onThisDayNotificationsEnabled: false,
+  surfaceOverrides: {},
   remindersEnabled: true,
   wearElapsedEnabled: true,
   exportFailureNoticeEnabled: true,
   heldExportFailureNotice: false,
+  lastExportFailureNotifiedAt: null,
   quietHoursEnabled: false,
   quietHoursStart: '22:00',
   quietHoursEnd: '07:00',
-  lastWrappedNotifiedPeriodKey: null,
-  lastOnThisDayNotifiedEpochDay: null,
   preferredLabUnits: {},
-  measurementUnit: 'cm',
-  measurementProtocolDismissed: false,
-  hairPhotoProtocolDismissed: false,
   spanRailHintDismissed: false,
-  hairAnchorEpochDay: null,
-  hormoneCurveFitToOwnLabs: false,
+  hrtStartEpochDay: null,
   journeyAnchorMilestoneId: null,
-  cycleTrackingEnabled: false,
   cycleTrackingChoice: null,
   autoExportEnabled: false,
   autoExportSchedule: 'weekly',
@@ -545,14 +313,21 @@ export const PREFERENCE_DEFAULTS: PreferenceValues = {
   storageNoticeDismissed: false,
   lastVerifiedAt: null,
   roadmapMilestoneSyncEnabled: true,
+  roadmapPolishStepsChoice: null,
+  roadmapSocialStepsShown: true,
   areaFinishOfferDeclined: [],
   comingBackSeenSince: null,
   clinicianSummaryDrugExcluded: {},
   adherenceRegimenPick: null,
   pinnedRows: null,
-  agendaKinds: null,
-  onboardingAreas: null
+  onboardingAreas: null,
+  acknowledgements: { snoozes: {}, readLetterIds: [], greetedLetterIds: [], hasEntries: null },
+  layoutReserves: {}
 };
+
+/** What a disguised journal wears before it unlocks, in the boot mirror and on every gate:
+    palettes.css's neutral `notes`, not a flag. Never a value of `palette` itself. */
+export const DISGUISED_PALETTE = 'notes';
 
 /** Describes the journal, so it travels in an archive (ADR-0003). */
 export const PORTABLE_KEYS = [
@@ -567,32 +342,31 @@ export const PORTABLE_KEYS = [
   'language',
   'checkInEnabled',
   'checkInTime',
-  'checkInAffirmationsEnabled',
+  'checkInPausedThrough',
   'preferredLabUnits',
-  'measurementUnit',
   'journeyAnchorMilestoneId',
-  'hairAnchorEpochDay',
-  'cycleTrackingEnabled',
+  'hrtStartEpochDay',
   'cycleTrackingChoice',
   'voiceComfortLowHz',
   'voiceComfortHighHz',
+  'surfaceOverrides',
   'areaFinishOfferDeclined',
-  /* All three of phase 10's front-page preferences travel, on
-     `areaFinishOfferDeclined`'s own argument next door: each is something
-     the person said about their own journal rather than something this
-     installation happens to be showing, and a restore that handed somebody
-     a front page they never arranged would be the app forgetting an answer
-     they gave. `adherenceRegimenPick` is the other side of that line - a
-     choice about what one screen shows right now - and stays device-local
-     for it. */
+  'roadmapPolishStepsChoice',
+  'roadmapSocialStepsShown',
+  /* Both 's remaining front-page preferences travel, on `areaFinishOfferDeclined`'s own
+     argument next door: each is something the person said about their own journal rather
+     than something this installation happens to be showing, and a restore that handed
+     somebody a front page they never arranged would be the app forgetting an answer they
+     gave. `adherenceRegimenPick` is the other side of that line - a choice about what one
+     screen shows right now - and stays device-local for it. */
   'pinnedRows',
-  'agendaKinds',
-  'onboardingAreas'
+  'onboardingAreas',
+  'acknowledgements'
 ] as const satisfies readonly PreferenceKey[];
 
 /** Describes this installation, so it never leaves it (ADR-0003). */
-/* DEVICE_LOCAL_KEYS stays exported for its own test, and cross-checked in
-   pack.test.ts, roadmap-milestone-sync.test.ts (AU-09 test-only review). */
+/* DEVICE_LOCAL_KEYS stays exported for its own test, and cross-checked in pack.test.ts,
+   roadmap-milestone-sync.test.ts. */
 export const DEVICE_LOCAL_KEYS = [
   'onboarded',
   'a11yTextSizeBoost',
@@ -602,42 +376,18 @@ export const DEVICE_LOCAL_KEYS = [
   'disguise',
   'allowScreenCapture',
   'hideNotificationTitles',
-  'entryNudges',
   'guidedPromptsEnabled',
-  'entryTryoutPromptEnabled',
-  'entryDoseQuickLogEnabled',
-  'entryProcedureRecoveryEnabled',
-  'entryHrtEffectsEnabled',
   'wearDurationCueEnabled',
-  'wearTimerEnabled',
-  'dosePanelEnabled',
-  'readyLetterEnabled',
-  'revisitEnabled',
-  'surgeryCountdownEnabled',
-  'safeSpaceNudgeEnabled',
   'safeSpaceNudgeDismissedEntryId',
-  'stockNoticeEnabled',
-  'activeTryoutTileEnabled',
-  'patchScheduleTileEnabled',
-  'voiceBenchmarkNudgeEnabled',
   'voiceBenchmarkPassage',
-  'pauseActiveBannerEnabled',
-  'hairRemovalRecoveryEnabled',
-  'measurementsNudgeEnabled',
-  'appointmentTodayEnabled',
-  'wrappedEnabled',
-  'onThisDayEnabled',
-  'wrappedNotificationsEnabled',
-  'onThisDayNotificationsEnabled',
   'remindersEnabled',
   'wearElapsedEnabled',
   'exportFailureNoticeEnabled',
   'heldExportFailureNotice',
+  'lastExportFailureNotifiedAt',
   'quietHoursEnabled',
   'quietHoursStart',
   'quietHoursEnd',
-  'lastWrappedNotifiedPeriodKey',
-  'lastOnThisDayNotifiedEpochDay',
   'autoExportEnabled',
   'autoExportSchedule',
   'lastBackupAt',
@@ -645,21 +395,20 @@ export const DEVICE_LOCAL_KEYS = [
   'storageNoticeDismissed',
   'lastVerifiedAt',
   'roadmapMilestoneSyncEnabled',
-  'measurementProtocolDismissed',
-  'hairPhotoProtocolDismissed',
   'spanRailHintDismissed',
-  'hormoneCurveFitToOwnLabs',
   'comingBackSeenSince',
   'clinicianSummaryDrugExcluded',
-  'adherenceRegimenPick'
+  'adherenceRegimenPick',
+  'layoutReserves'
 ] as const satisfies readonly PreferenceKey[];
 
-/** Mirrored outside SQLite because it is needed before the database opens
-    (ADR-0009). `language` has no pre-paint reader of its own: paraglide
-    resolves the locale from its own localStorage strategy (vite.config.ts)
-    before any of this runs, and setLocale() reloads the page. This is the
-    app's own record of the choice, which is what makes it portable in an
-    archive - paraglide's copy is not. */
+/** Mirrored outside SQLite because it is needed before the database opens. `language` has
+    no pre-paint reader of its own: paraglide resolves the locale from its own localStorage
+    strategy (vite.config.ts) before any of this runs, and setLocale() reloads the page.
+    This is the app's own record of the choice, which is what makes it portable in an
+    archive - paraglide's copy is not. After durable preference attachment, boot reconciles
+    that strategy with SQLite so an interrupted Replace cannot leave a restored choice
+    beside the previous locale. */
 export const BOOT_KEYS = [
   'theme',
   'palette',
@@ -683,10 +432,10 @@ export function isPreferenceKey(key: string): key is PreferenceKey {
   return Object.prototype.hasOwnProperty.call(PREFERENCE_DEFAULTS, key);
 }
 
-/** The metric in the form the entry repositories still take it: 'mood', or
-    a gender dimension's key. The preference is a kind plus a key so that
-    "mood" is a case rather than a reserved dimension name, and this is the
-    one place the two forms meet - ticket 07 owns those signatures. */
+/** The metric in the form the entry repositories still take it: 'mood', or a gender
+    dimension's key. The preference is a kind plus a key so that "mood" is a case rather
+    than a reserved dimension name, and this is the one place the two forms meet - owns
+    those signatures. */
 export function metricKey(values: Pick<PreferenceValues, 'metricKind' | 'metricDimension'>): string {
   return values.metricKind === 'dimension' && values.metricDimension ? values.metricDimension : 'mood';
 }

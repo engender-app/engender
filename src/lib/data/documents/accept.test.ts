@@ -1,5 +1,4 @@
-/* The accept/refuse boundary and the size ceiling (phase 8 features ticket
-   53) - both pure predicates over bytes, so both run at the Node tier with
+/* The accept/refuse boundary and the size ceiling - both pure predicates over bytes, so both run at the Node tier with
    no canvas at all.
 
    normalizePhoto() itself needs a real decoder (photos/normalize.ts's own
@@ -91,6 +90,18 @@ test('neither a PDF nor a readable image is refused naming both accepted kinds',
     assert.ok(error instanceof DocumentRefusedError);
     assert.equal(error.kind, 'unsupported');
     assert.match(error.message, /PDF/);
+    return true;
+  });
+});
+
+test('an image declaring more pixels than the budget is refused before any decoder or worker', async () => {
+  const png = new Uint8Array([
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52,
+    0, 0, 0xff, 0xff, 0, 0, 0xff, 0xff, 8, 6, 0, 0, 0, 0, 0, 0, 0
+  ]);
+  await assert.rejects(acceptDocumentFile(png), (error: unknown) => {
+    assert.ok(error instanceof DocumentRefusedError);
+    assert.equal(error.kind, 'too-many-pixels');
     return true;
   });
 });

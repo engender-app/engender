@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Same book glyph as static/icons/icon-notes.svg, redrawn as a vector
-     drawable for the disguised launcher alias (ticket 15). -->
+     drawable for the disguised launcher alias. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"

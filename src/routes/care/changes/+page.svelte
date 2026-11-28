@@ -1,60 +1,45 @@
 <script lang="ts">
-  /* When you first noticed each change, on the surface kit (phase 5 UX
-     ticket 25).
+  import { undoable } from '$lib/stores/deleteUndo';
+  import { journalTextAutocomplete } from '$lib/platform';
+  /* NoticedAxis shows recorded dates before any group opens. Keep
+     personal effects and side effects in the axis and their own
+     sections in the log. Literature bands stay with the individual
+     change they describe. A recorded date never implies a band.
 
-     The groups keep their disclosure - a screen that opened every category
-     at once would be a page of timelines - and it finally has motion. A
-     group used to appear at full height, which shoved everything under it
-     down the screen in one frame; it opens its own height now
-     (DIRECTION.md tier 3, and the one place that tier spends a layout
-     property), so the rows below travel with it. Reduced motion is an
-     instant cut, and the chevron has already turned to say what happened.
-
-     The group is a list card rather than a `.card` holding a `.list-group`,
-     which was two containers deep for one list.
-
-     The screen opens on the axis now (phase 10 redesign ticket 57,
-     DIRECTION.md rule 16): every change already marked, at the month it was
-     noticed, before any group is opened. The groups are the log under that
-     reading and are otherwise untouched - they are still where a change is
-     marked for the first time, and still where the literature's bands are
-     drawn against the one change each belongs to. Two drawings on one
-     screen answering two questions: when did I notice this, and what do the
-     tables say about when people usually do.
-
-     Side effects moved in whole (phase 11 all-four-doors ticket 13): a side
-     effect and a change you were hoping for are both something you noticed
-     after starting a regimen, and having them on two screens made the
-     reader classify their own symptom before they could write it down. The
-     axis draws both kinds now (`NoticedAxis`, `$lib/data/noticedAxis`'s
-     `kind` field), the list under it keeps both under their own headings,
-     and the cycle block that used to sit under the side effects screen came
-     with it, its gate unchanged. What did not move: the record itself, the
-     literature bands, or the rule that no band is drawn for what somebody
-     noticed rather than what the tables expect. */
+     A category opens its own height and moves the rows below it.
+     Reduced motion applies the open state immediately. The cycle
+     block keeps its own availability gate. */
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
-  import { earliestEpisode } from '$lib/data/regimenEpisode';
   import {
     effectTier,
     effectWindowShape,
+    hrtAnchor,
     literatureWindow,
-    literatureWindowDays
+    literatureWindowDays,
+    type LiteratureSourceKey
   } from '$lib/data/personalEffectWindow';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
+  import { offeredEffectTypes } from '$lib/data/effectPicker';
+  import { RETIRED_PERSONAL_EFFECT_KEYS } from '$lib/data/vocabulary/retiredEffects';
   import { fmtDay } from '$lib/data/dates';
-  import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
+  import {
+    crossesCalendarYear,
+    todayEpochDay,
+    epochDayFromDateInputValue,
+    epochDayFromDateInputValueOrToday,
+    dateInputValueFromEpochDay
+  } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
-  import { cycleTrackingVisible } from '$lib/data/cycleTracking';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
-  import { severityName, cycleEventKindName } from '$lib/data/vocabulary/labels';
+  import { writer } from '$lib/stores/attempt.svelte';
+  import { severityName } from '$lib/data/vocabulary/labels';
   import type { PersonalEffectCatalogEntry, SideEffect } from '$lib/data/types';
   import Icon from '$lib/components/Icon.svelte';
-  import HostedRows from '$lib/components/HostedRows.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
@@ -66,7 +51,7 @@
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import { disclose } from '$lib/motion/reveal';
+  import { collapse, disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
@@ -86,11 +71,10 @@
   let episodesQuery = liveList((j) => j.regimen.getEpisodes());
   let episodes = $derived(episodesQuery.rows);
   /* The anchor is HRT's own start, not whichever episode is active right
-     now (ticket 07) - activeEpisodesAt is the wrong function here, this is
-     the one place earliestEpisode is called from. Its drug decides which
-     bands may be drawn at all (ticket 27), so the whole episode is held
-     rather than only its start day. */
-  let anchor = $derived(earliestEpisode(episodes));
+     now and not the first episode of any drug: the HRT start the person set, else the earliest HRT
+     episode. Its drug decides which bands may be drawn at all,
+     so the whole anchor is held rather than only its start day. */
+  let anchor = $derived(hrtAnchor(episodes, prefs.hrtStartEpochDay));
   let anchorEpochDay = $derived(anchor?.startEpochDay ?? null);
 
   let markersQuery = liveList((j) => j.personalEffects.getMarkers());
@@ -100,10 +84,13 @@
   const today = $derived(currentDay());
 
   /* The catalogue a hidden effect or a disabled category has already
-     removed (CONTEXT: "Hidden", "Effect category") - what the timeline and
-     the "mark a change" list offer. The full, unfiltered list lives only in
-     the manage sheet below. */
-  let visibleEffects = $derived(vocabulary.visiblePersonalEffectTypes);
+     removed - what the timeline and
+     the "mark a change" list offer. A retired built-in is left
+     out too unless it is already marked, which keeps its row and its mark.
+     The fuller list lives only in the manage sheet below. */
+  let visibleEffects = $derived(
+    offeredEffectTypes(vocabulary.visiblePersonalEffectTypes, new Set(markers.map((marker) => marker.effect)))
+  );
 
   /* Whether an effect has a band at all is decided once, here, and read by
      both the chart and the editor sheet's caption - asking
@@ -116,8 +103,7 @@
 
   const directionOf = (e: PersonalEffectCatalogEntry): EffectDirectionGroup => e.direction ?? 'other';
 
-  /* Category, then direction, is the coarse control (CONTEXT: "Effect
-     category"); collapsed by default so a new journal's screen stays no
+  /* Category, then direction, is the coarse control; collapsed by default so a new journal's screen stays no
      longer than the eight-row screen this replaces - the acceptance
      criterion this file exists to keep. Keyed by direction and category
      together, since the same category groups separately under each
@@ -131,9 +117,12 @@
     expandedGroups = next;
   }
 
-  let hasDrawnBands = $derived(visibleEffects.some((effect) =>
-    expandedGroups.has(groupKey(directionOf(effect), effect.categoryKey)) && bands?.get(effect.key) != null
-  ));
+  /* What the literature says sits behind one disclosure, closed on every visit, so the person's own markers are what
+     the screen shows first. The same state opens the timelines' bands, the
+     explanation above the groups and the sentence in the editor sheet: one
+     question, asked once, wherever it is asked. */
+  let literatureOpen = $state(false);
+  let hasBands = $derived(visibleEffects.some((effect) => bands?.get(effect.key) != null));
 
   function timelineRowsFor(effects: PersonalEffectCatalogEntry[]) {
     return effects.map((e) => ({
@@ -145,15 +134,13 @@
     }));
   }
 
-  /* One whole-sentence message per window shape (no completion window,
-     open-ended, or bounded) rather than concatenating parts - each is a
-     full sentence in its own right, so nothing here has to guess how any
-     other language would order the pieces.
+  /* One whole-sentence message per window shape (no completion window, open-ended, or
+     bounded) rather than concatenating parts - each is a full sentence in its own right, so
+     nothing here has to guess how any other language would order the pieces.
 
-     Null where the band is withheld, and nothing is said in its place: the
-     sentence would be a timing claim about a hormone this person is not on
-     (ticket 27), or about an effect the literature has no window for at
-     all (tiers 2 and 3, ticket 41). */
+     Null where the band is withheld, and nothing is said in its place: the sentence would
+     be a timing claim about a hormone this person is not on, or about an effect the
+     literature has no window for at all. */
   function windowCaption(key: string): string | null {
     if (bands?.get(key) == null) return null;
     const window = literatureWindow(key)!;
@@ -183,6 +170,28 @@
     }
   }
 
+  /* Every band names where its figures came from and when they were last
+     read against it. One source today, so one sentence; a second source
+     gets its own case here and its own string. */
+  function sourceLine(source: LiteratureSourceKey, reviewedOn: string): string {
+    const day = epochDayFromDateInputValue(reviewedOn);
+    const date = day === null ? reviewedOn : fmtDay(day, { day: 'numeric', month: 'long', year: 'numeric' });
+    switch (source) {
+      case 'soc8-appendix-c-table-1':
+        return m.effects_literature_source({ date });
+    }
+  }
+
+  /* The sources of the bands this screen can draw, once each. */
+  let bandSources = $derived([
+    ...new Map(
+      visibleEffects.flatMap((effect) => {
+        const window = bands?.get(effect.key) ? literatureWindow(effect.key) : undefined;
+        return window ? [[`${window.source}@${window.reviewedOn}`, sourceLine(window.source, window.reviewedOn)] as const] : [];
+      })
+    ).values()
+  ]);
+
   /** A community-listed effect has no published timing band. */
   function sourceCaption(e: PersonalEffectCatalogEntry): string | null {
     const tier = effectTier(e);
@@ -190,7 +199,7 @@
     return null;
   }
 
-  /* The side effects half of the merged screen (ticket 13): the same list,
+  /* The side effects half of the merged screen: the same list,
      the same editor sheet and the same cycle block that used to live on
      /health/side-effects, moved here whole. */
   let effectsQuery = liveList((j) => j.sideEffects.getSideEffects());
@@ -199,61 +208,82 @@
   let bodyRevealed = $state(false);
   $effect.pre(() => {
     if (bodyRevealed || episodesQuery.loading || markersQuery.loading || effectsQuery.loading) return;
-    if (cycleShown && cycleEventsQuery.loading) return;
     bodyRevealed = true;
   });
   const bodyEstimate = readReserve('care-changes');
   const rememberBody = (px: number) => rememberReserve('care-changes', px);
   let effects = $derived(effectsQuery.rows);
 
-  const record = recordEditor<SideEffect, { id?: string; date: string; name: string; severity: string }>({
-    blank: () => ({ date: dateInputValueFromEpochDay(todayEpochDay()), name: '', severity: '' }),
+  /* `resolved` is the resolved day as a date input value, empty while the
+     side effect is ongoing. */
+  type SideEffectDraft = { id?: string; date: string; name: string; severity: string; resolved: string };
+
+  const record = recordEditor<SideEffect, SideEffectDraft>({
+    blank: () => ({ date: dateInputValueFromEpochDay(todayEpochDay()), name: '', severity: '', resolved: '' }),
     fromRecord: (effect) => ({
       id: effect.id,
       date: dateInputValueFromEpochDay(effect.epochDay),
       name: effect.name,
-      severity: effect.severity === null ? '' : String(effect.severity)
+      severity: effect.severity === null ? '' : String(effect.severity),
+      resolved: effect.resolvedEpochDay === null ? '' : dateInputValueFromEpochDay(effect.resolvedEpochDay)
     }),
     async upsert(draft) {
       const name = draft.name.trim();
-      if (!name) return false;
+      if (!name || !resolvedAfterStart(draft)) return false;
       await journal.sideEffects.upsertSideEffect({
         id: draft.id,
         name,
         severity: draft.severity === '' ? null : Number(draft.severity),
-        epochDay: epochDayFromDateInputValueOrToday(draft.date)
+        epochDay: epochDayFromDateInputValueOrToday(draft.date),
+        resolvedEpochDay: epochDayFromDateInputValue(draft.resolved)
       });
     },
-    remove: (id) => journal.sideEffects.deleteSideEffect(id),
+    remove: (id) => undoable((j) => j.sideEffects.deleteSideEffect(id)),
     findById: (id) => effects.find((effect) => effect.id === id)
   });
 
-  /* Ticket 11's second entry point into the appointment prep list: a
-     one-tap add, seeded from what is already on screen, rather than a
-     detour through that list's own editor. */
+  /* Marking it resolved starts the end day on today, or on the start day
+     when that is later, so the sheet never opens on a day it would refuse. */
+  function setResolved(draft: SideEffectDraft, resolved: boolean) {
+    if (!resolved) {
+      draft.resolved = '';
+      return;
+    }
+    if (draft.resolved !== '') return;
+    const start = epochDayFromDateInputValueOrToday(draft.date);
+    draft.resolved = dateInputValueFromEpochDay(Math.max(start, todayEpochDay()));
+  }
+
+  function resolvedAfterStart(draft: SideEffectDraft): boolean {
+    const end = epochDayFromDateInputValue(draft.resolved);
+    return end === null || end >= epochDayFromDateInputValueOrToday(draft.date);
+  }
+
+  const longDay = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
+
+  /** When it began and, once resolved, when it ended. */
+  function sideEffectSpan(effect: SideEffect): string {
+    if (effect.resolvedEpochDay === null) return m.side_effect_since({ date: longDay(effect.epochDay) });
+    if (effect.resolvedEpochDay === effect.epochDay) return longDay(effect.epochDay);
+    /* The year once when both ends share it, so a span fits on one line. */
+    const from = crossesCalendarYear(effect.epochDay, effect.resolvedEpochDay)
+      ? longDay(effect.epochDay)
+      : fmtDay(effect.epochDay, { day: 'numeric', month: 'long' });
+    return m.range_from_to({ from, to: longDay(effect.resolvedEpochDay) });
+  }
+
+  /* Second entry point into the appointment prep list: a one-tap add, seeded from what is
+     already on screen, rather than a detour through that list's own editor. One add per
+     tap, and a failed one says so; a later tap is a second add on purpose. */
+  const prepWrite = writer();
   async function addToAppointmentPrep(name: string) {
-    await journal.checklists.addToStandaloneChecklist(m.appointment_prep_from_effect_item({ name }));
+    if (!(await prepWrite.run(() => journal.checklists.addToStandaloneChecklist(m.appointment_prep_from_effect_item({ name })), m.write_failed()))) return;
     toast(m.appointment_prep_added_toast());
   }
 
-  /* The cycle log as a second area of this screen (ADR-0043), moved here
-     with the rest of what /health/side-effects drew (ticket 13): bleeding
-     and spotting are physiological effects like anything else read here, so
-     the most recent ones sit beneath the two lists once cycle tracking is
-     surfaced at all under the cycle choice (cycleTracking.ts). This screen
-     is where that gate lives now.
-
-     The rows state, they do not open anything: editing happens on the cycle
-     screen the trailing row links to, which owns the chart and the range
-     pickers this list deliberately does not duplicate. */
-  let cycleEventsQuery = liveList((j) => j.cycleEvents.getCycleEvents());
-  let cycleEvents = $derived(cycleEventsQuery.rows);
-  let cycleShown = $derived(cycleTrackingVisible(episodes, Date.now(), prefs.cycleTrackingEnabled, prefs.cycleTrackingChoice));
-  let recentCycleEvents = $derived([...cycleEvents].sort((a, b) => b.epochDay - a.epochDay).slice(0, 3));
-
   /* What the axis at the top of the screen draws: the changes that carry a
-     marker, joined to their catalogue entry (ticket 57), and every side
-     effect logged (ticket 13) - the two kinds `NoticedChange.kind` tells
+     marker, joined to their catalogue entry, and every side
+     effect logged - the two kinds `NoticedChange.kind` tells
      apart. Personal effects are only the visible ones, the same catalogue
      the groups below and the chart inside them read, so hiding an effect or
      turning its category off takes it off the axis too. A marker for an
@@ -325,14 +355,21 @@
   }
 
   let manageOpen = $state(false);
-  let methodologyOpen = $state(false);
+  /* A retired built-in has no hide toggle to offer: nothing
+     brings it back, so a row for it here would be a switch that does
+     nothing. */
+  let managedEffects = $derived(vocabulary.personalEffectTypes.filter((e) => !RETIRED_PERSONAL_EFFECT_KEYS.has(e.key)));
   let newEffectName = $state('');
   let newEffectCategory = $state('');
 
+  /* One type per tap: a custom type can only be hidden, never
+     deleted, so a double tap used to leave a duplicate for good. A failed
+     add keeps the name and says so. */
+  const effectTypeWrite = writer();
   async function addEffectType() {
     const name = newEffectName.trim();
     if (!name) return;
-    await journal.personalEffects.addCustomEffectType(name, newEffectCategory || null);
+    if (!(await effectTypeWrite.run(() => journal.personalEffects.addCustomEffectType(name, newEffectCategory || null), m.write_failed()))) return;
     newEffectName = '';
     newEffectCategory = '';
   }
@@ -340,7 +377,12 @@
 
 {#snippet groupBody(groupEffects: typeof visibleEffects)}
                     {#if anchorEpochDay !== null}
-                      <EffectsTimeline rows={timelineRowsFor(groupEffects)} {anchorEpochDay} todayEpochDay={today} />
+                      <EffectsTimeline
+                        rows={timelineRowsFor(groupEffects)}
+                        {anchorEpochDay}
+                        todayEpochDay={today}
+                        literature={literatureOpen}
+                      />
                     {/if}
                     {#each groupEffects as e (e.key)}
                       {@const marker = markerFor(e.key)}
@@ -364,46 +406,45 @@
        screens' intros, and in the header it is seven lines of lead before
        a single change is named. A subtitle is a line; this is a paragraph,
        and it belongs where a paragraph goes. The subtitle carries the
-       shorter claim instead (ticket 13): what both halves of this screen
+       shorter claim instead: what both halves of this screen
        are, and the "no grading and no advice" line the side effects screen
        used to open on, rather than losing it in the merge. -->
-  <ScreenHeader title={m.effects_timeline()} back="/care" subtitle={m.effects_timeline_subtitle()}>
+  <ScreenHeader title={m.effects_timeline()} back="/care">
     {#snippet actions()}
-      <button class="icon-btn press" data-add aria-label={m.side_effect_add_aria()} onclick={() => record.openEditor(null)}>
+      <button class="icon-btn press" data-add aria-label={m.side_effect_add()} onclick={() => record.openEditor(null)}>
         <Icon name="plus" size={22} />
       </button>
-      <button class="icon-btn press" data-manage-effects aria-label={m.effect_manage_types_aria()} onclick={() => (manageOpen = true)}>
+      <button class="icon-btn press" data-manage-effects aria-label={m.effect_manage_types()} onclick={() => (manageOpen = true)}>
         <Icon name="settings" size={20} />
       </button>
     {/snippet}
   </ScreenHeader>
 
   <!-- Held at last visit's height until every read the body draws from has
-       answered, then faded in (ux-carpet ticket 205). It swapped from a
+       answered, then faded in. It swapped from a
        skeleton inside a resize wrapper: cut in at full opacity, and the
        effects gate inside it could still be answering, its rows one wrapper
        too deep for the screen's spacing. -->
   <ReadReserve ready={bodyRevealed} estimate={bodyEstimate} onrest={rememberBody} data-changes-body>
-    <!-- What is true now, before the records (DIRECTION.md rule 16): every
+    <!-- What is true now, before the records: every
          change already marked, at the month it was noticed, on one line. -->
     <NoticedAxis
       changes={noticedChanges}
       {anchorEpochDay}
       todayEpochDay={today}
       onOpen={openMark}
-      onRecord={() => record.openEditor(null)}
     />
 
     <!-- Under the axis rather than over it, and no longer instead of it.
          This notice used to replace the whole screen, so a journal with no
-         regimen in it saw nothing it had marked (ticket 57) - and a person
+         regimen in it saw nothing it had marked - and a person
          can notice a change before they are on anything, or restore a
          journal and not have typed a regimen back in yet. It reads as what
          a regimen would buy the line above it: months counted from a start
          day instead of calendar months. -->
     {#if anchorEpochDay == null}
       <Notice
-        icon="sparkle"
+        icon="sprout"
         key="effects-no-regimen"
         role={roleAt(activeFlag.roles, 0)}
         title={m.effects_no_regimen_title()}
@@ -412,33 +453,35 @@
       />
     {/if}
 
-    <!-- These explanations concern the literature's bands, so they keep
-         the company of the chart that draws them: a collapsed group has
-         no bands on screen, even when a regimen supplies their windows.
-         Longer context stays in an accessible disclosure (ticket 20, UX17). -->
-    {#if hasDrawnBands}
-      <div data-bands-context transition:disclose>
-        <p class="muted small" style="margin-bottom:var(--space-2)">{m.effects_bands_limitation()}</p>
-        <div class="effects-methodology">
-          <button
-            type="button"
-            class="effects-methodology-toggle"
-            aria-expanded={methodologyOpen}
-            data-methodology-toggle
-            onclick={() => (methodologyOpen = !methodologyOpen)}
-          >
-            <span>{m.effects_methodology_disclosure()}</span>
-            <span class="effects-methodology-chev">
-              <Icon name="chevronDown" size={18} />
-            </span>
-          </button>
-          {#if methodologyOpen}
-            <div class="disclosed" transition:disclose>
-              <p class="muted small" style="margin-bottom:var(--space-2)">{m.effects_intro()}</p>
-              <p class="muted small" style="margin-bottom:var(--space-2)">{m.effect_variability_notice()}</p>
-            </div>
-          {/if}
-        </div>
+    <!-- What the literature says, closed until asked for: no band is drawn and no timing
+         sentence is shown before this opens, so what the person marked comes first. It
+         replaces always-visible limitation line and its "About shaded bands" disclosure;
+         the limitation now arrives with the bands it qualifies. Offered only while a band
+         could be drawn at all. -->
+    {#if hasBands}
+      <div class="literature" data-bands-context transition:disclose>
+        <button
+          type="button"
+          class="literature-toggle"
+          aria-expanded={literatureOpen}
+          data-literature-toggle
+          onclick={() => (literatureOpen = !literatureOpen)}
+        >
+          <span>{m.effects_literature_disclosure()}</span>
+          <span class="literature-chev">
+            <Icon name="chevronDown" size={18} />
+          </span>
+        </button>
+        {#if literatureOpen}
+          <div class="disclosed" data-literature-body transition:disclose>
+            <p class="muted small" style="margin-bottom:var(--space-2)">{m.effects_bands_limitation()}</p>
+            <p class="muted small" style="margin-bottom:var(--space-2)">{m.effects_intro()}</p>
+            <p class="muted small" style="margin-bottom:var(--space-2)">{m.effect_variability_notice()}</p>
+            {#each bandSources as line (line)}
+              <p class="muted small" data-literature-source style="margin-bottom:var(--space-2)">{line}</p>
+            {/each}
+          </div>
+        {/if}
       </div>
     {/if}
 
@@ -496,15 +539,13 @@
       {/if}
     {/each}
 
-    <!-- The other change hanging off this screen (ticket 13): a side effect
+    <!-- The other change hanging off this screen: a side effect
          and a change you were hoping for are both something you noticed
          after starting a regimen, and having them as two screens made the
          reader classify their own symptom before they could write it down.
          Its own heading, list, editor sheet and empty state - moved here
-         whole from /health/side-effects, which is a redirect stub now. -->
-    <!-- The wrapper names nothing but the crop: a sign-off render needs one
-         stable box around the heading and the list, the way `data-noticed-axis`
-         already gives the axis one. -->
+         whole from /health/side-effects, whose route was removed. -->
+    <!-- This wrapper gives the screenshot probe a stable crop around the heading and list. -->
     <div data-side-effects-section>
       <SectionHeading text={m.side_effects()} />
       <ReadGate read={effectsQuery} variant="line" count={3}>
@@ -512,74 +553,52 @@
           <ListCard role={roleAt(activeFlag.roles, 1)}>
             {#each [...effects].reverse() as effect (effect.id)}
               {@const severity = severityName(effect.severity)}
-              {@const day = fmtDay(effect.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}
-              <ListRow
-                key={effect.id}
-                data-side-effect={effect.id}
-                icon="zap"
-                title={effect.name}
-                subtitle={severity ? `${day} · ${severity}` : day}
-                chevron={false}
-                onclick={() => record.openEditor(effect)}
-              />
+              {@const day = sideEffectSpan(effect)}
+              <div class="rows-divide" transition:collapse>
+                <ListRow
+                  key={effect.id}
+                  data-side-effect={effect.id}
+                  icon="sprout"
+                  title={effect.name}
+                  subtitle={severity ? `${day} · ${severity}` : day}
+                  chevron={false}
+                  onclick={() => record.openEditor(effect)}
+                />
+              </div>
             {/each}
+            <!-- The way to add one, at the end of the list it adds to: it was a button over
+                 the timeline, named for a side effect. -->
+            <div class="rows-divide">
+              <ListRow
+                key="add-own-change"
+                data-add-own-change
+                icon="plus"
+                title={m.side_effect_add()}
+                chevron={false}
+                onclick={() => record.openEditor(null)}
+              />
+            </div>
           </ListCard>
         {/snippet}
         {#snippet empty()}
           <Notice
-            icon="zap"
+            icon="sprout"
             key="side-effects-empty"
             role={roleAt(activeFlag.roles, 1)}
-            title={m.side_effect_empty_title()}
-            action={{ label: m.side_effect_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
+            title={m.empty_log_title()}
+            action={{ label: m.side_effect_add(), primary: true, onclick: () => record.openEditor(null) }}
           />
         {/snippet}
       </ReadGate>
     </div>
-
-    <!-- The cycle log, gated exactly as it was on /health/side-effects
-         (ADR-0043, ticket 13 moved the block rather than weakening the
-         gate): a second area, so a heading. -->
-    {#if cycleShown && !cycleEventsQuery.loading}
-      <SectionHeading text={m.cycle_events()} />
-      <ListCard role={roleAt(activeFlag.roles, 2)}>
-        {#each recentCycleEvents as event (event.id)}
-          <!-- Static rows (the shape regimen's pause rows use, ticket 16):
-               they name nothing to press, and routing them through ListRow
-               would add a tab stop and a wash to text that does nothing.
-               The trailing row below is the way in. -->
-          <div class="kit-row is-static" data-cycle-event={event.id}>
-            <span class="kit-row-ico"><Icon name="calendar" size={22} /></span>
-            <span class="kit-row-text">
-              <span class="kit-row-title">{cycleEventKindName(event.kind)}</span>
-              <span class="kit-row-sub">{fmtDay(event.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })}</span>
-            </span>
-          </div>
-        {/each}
-        <ListRow
-          key="all-cycle-events"
-          icon="calendar"
-          title={m.cycle_events_open_row_title()}
-          subtitle={m.cycle_events_open_row_sub()}
-          href="/health/cycle-events"
-        />
-      </ListCard>
-    {/if}
   </ReadReserve>
-
-  <!-- Hair progress remains available outside the regimen-dependent bands.
-       It uses a published scale and photos, so no regimen is required.
-       Cycle events are hosted above; HostedRows excludes their key. -->
-  <HostedRows host="effects" card />
 
   <Sheet open={editor !== null} title={editor ? editor.effect.name : ''} onClose={() => (editor = null)}>
     {#if editor}
       <h3>{editor.effect.name}</h3>
       {@const caption = windowCaption(editor.effect.key)}
+      {@const window = literatureWindow(editor.effect.key)}
       {@const source = sourceCaption(editor.effect)}
-      {#if caption}
-        <p class="muted small" style="margin-bottom:var(--space-3)">{caption}</p>
-      {/if}
       {#if source}
         <p class="muted small" style="margin-bottom:var(--space-3)">{source}</p>
       {/if}
@@ -588,8 +607,34 @@
           <DatePicker name="effect-date" bind:value={editor!.date} {id} />
         {/snippet}
       </Field>
+      <!-- The person's own date first, then the literature's timing for the
+           same change behind the screen's one disclosure. -->
+      {#if caption && window}
+        <div class="literature" data-sheet-literature>
+          <button
+            type="button"
+            class="literature-toggle"
+            aria-expanded={literatureOpen}
+            data-literature-toggle
+            onclick={() => (literatureOpen = !literatureOpen)}
+          >
+            <span>{m.effects_literature_disclosure()}</span>
+            <span class="literature-chev">
+              <Icon name="chevronDown" size={18} />
+            </span>
+          </button>
+          {#if literatureOpen}
+            <div class="disclosed" data-literature-body transition:disclose>
+              <p class="muted small" style="margin-bottom:var(--space-2)">{caption}</p>
+              <p class="muted small" data-literature-source style="margin-bottom:var(--space-2)">
+                {sourceLine(window.source, window.reviewedOn)}
+              </p>
+            </div>
+          {/if}
+        </div>
+      {/if}
       <div class="stack-3">
-        <button class="btn btn-primary" data-save-effect onclick={saveMarker}><span>{m.effect_save()}</span></button>
+        <button class="btn btn-primary" data-save-effect onclick={saveMarker}><span>{m.save()}</span></button>
         {#if markerFor(editor.effect.key)}
           <button class="btn btn-ghost" data-clear-effect onclick={clearMarker}><span>{m.effect_clear()}</span></button>
           <p class="muted small">{m.effect_clear_hint()}</p>
@@ -603,20 +648,21 @@
     handle="side-effect"
     newTitle={m.side_effect_new_sheet()}
     editTitle={m.side_effect_edit_sheet()}
-    saveLabel={m.side_effect_save()}
-    deleteLabel={m.side_effect_delete()}
+    saveLabel={m.save()}
+    deleteLabel={m.delete()}
+    canSave={resolvedAfterStart}
     confirm={{
       title: m.side_effect_delete_sheet(),
       question: (effect) => m.side_effect_delete_q({ name: effect.name }),
-      hint: () => m.side_effect_delete_hint(),
-      confirmLabel: m.side_effect_delete(),
+      hint: () => m.delete_undo_hint(),
+      confirmLabel: m.delete(),
       cancelLabel: m.keep_it()
     }}
   >
     {#snippet fields(editor)}
-      <Field label={m.side_effect_name_label()} id="side-effect-name">
+      <Field label={m.what_is_it_label()} id="side-effect-name">
         {#snippet children(id)}
-          <input class="input" {id} name="side-effect-name" placeholder={m.side_effect_name_placeholder()} bind:value={editor.name} />
+          <input autocomplete={journalTextAutocomplete()} class="input" {id} name="side-effect-name" placeholder={m.side_effect_name_placeholder()} bind:value={editor.name} />
         {/snippet}
       </Field>
       <Field label={m.side_effect_severity_label()} legend>
@@ -629,14 +675,38 @@
           />
         {/snippet}
       </Field>
-      <Field label={m.side_effect_date_label()} id="side-effect-date">
+      <Field label={m.status_label()} legend>
+        {#snippet children()}
+          <div data-side-effect-status>
+            <Segmented
+              name={m.status_label()}
+              options={[
+                { value: 'ongoing', label: m.side_effect_ongoing() },
+                { value: 'resolved', label: m.side_effect_resolved() }
+              ]}
+              value={editor.resolved === '' ? 'ongoing' : 'resolved'}
+              onChange={(v) => setResolved(editor, v === 'resolved')}
+            />
+          </div>
+        {/snippet}
+      </Field>
+      <Field label={m.started_label()} id="side-effect-date">
         {#snippet children(id)}
           <DatePicker name="side-effect-date" bind:value={editor.date} {id} />
         {/snippet}
       </Field>
+      {#if editor.resolved !== ''}
+        <div class="disclosed" transition:disclose>
+          <Field label={m.side_effect_resolved_label()} id="side-effect-resolved">
+            {#snippet children(id)}
+              <DatePicker name="side-effect-resolved" bind:value={editor.resolved} {id} />
+            {/snippet}
+          </Field>
+        </div>
+      {/if}
     {/snippet}
     {#snippet extraActions(editor)}
-      <button class="btn btn-soft" data-add-to-appointment-prep onclick={() => addToAppointmentPrep(editor.name)}>
+      <button class="btn btn-soft" data-add-to-appointment-prep disabled={prepWrite.busy} onclick={() => addToAppointmentPrep(editor.name)}>
         <span>{m.appointment_prep_add_button()}</span>
       </button>
     {/snippet}
@@ -659,7 +729,7 @@
       <button
         class="icon-btn"
         data-effect-type-hide={e.key}
-        aria-label={e.hidden ? m.effect_type_show_aria({ name: e.name }) : m.effect_type_hide_aria({ name: e.name })}
+        aria-label={e.hidden ? m.show_named_aria({ name: e.name }) : m.hide_named_aria({ name: e.name })}
         onclick={() => journal.personalEffects.setEffectTypeHidden(e.key, !e.hidden)}
       >
         <Icon name={e.hidden ? 'eye' : 'eyeOff'} size={16} />
@@ -667,10 +737,10 @@
     </div>
   {/snippet}
 
-  <!-- Saying you are done with this area (phase 8 features ticket 04). -->
+  <!-- Saying you are done with this area. -->
   <AreaFinish group="effects" />
 
-  <Sheet open={manageOpen} title={m.effect_manage_types()} onClose={() => (manageOpen = false)}>
+  <Sheet busy={effectTypeWrite.busy} open={manageOpen} title={m.effect_manage_types()} onClose={() => (manageOpen = false)}>
     <h3>{m.effects_categories_heading()}</h3>
     <p class="muted small" style="margin-bottom:var(--space-3)">{m.effects_categories_intro()}</p>
     <div class="taggroup-toggles">
@@ -688,19 +758,17 @@
 
     <h3>{m.effect_manage_types()}</h3>
     <p class="muted small" style="margin-bottom:var(--space-3)">{m.effect_manage_types_intro()}</p>
-    <!-- Grouped the same way the timeline above groups them (by category),
-         rather than one flat list of every effect the catalogue has - the
-         two disagreeing about how these effects are organised was its own
-         kind of confusing (Alicja, 2026-08-27). A category's own Switch,
-         above, already keeps every effect under it out of the timeline and
-         the "mark a change" picker (visiblePersonalEffectTypes); shown here
-         as effectively hidden too, rather than only in the two screens this
-         one does not do the toggling for, so what a row says matches what
-         the category switch already decided for it. Its own eye toggle
-         stays live regardless - hiding it individually is a choice that
-         should still stick once the category comes back on. -->
+    <!-- Grouped the same way the timeline above groups them (by category), rather than one
+         flat list of every effect the catalogue has - the two disagreeing about how these
+         effects are organised was its own kind of confusing. A category's own Switch,
+         above, already keeps every effect under it out of the timeline and the "mark a
+         change" picker (visiblePersonalEffectTypes); shown here as effectively hidden too,
+         rather than only in the two screens this one does not do the toggling for, so what
+         a row says matches what the category switch already decided for it. Its own eye
+         toggle stays live regardless - hiding it individually is a choice that should still
+         stick once the category comes back on. -->
     {#each vocabulary.effectCategories as cat (cat.key)}
-      {@const catEffects = vocabulary.personalEffectTypes.filter((e) => e.categoryKey === cat.key)}
+      {@const catEffects = managedEffects.filter((e) => e.categoryKey === cat.key)}
       {#if catEffects.length}
         <p class="field-label" style="margin:var(--space-3) 0 var(--space-2)">{cat.name}</p>
         <div class="managed-tags">
@@ -710,7 +778,7 @@
         </div>
       {/if}
     {/each}
-    {@const uncategorized = vocabulary.personalEffectTypes.filter((e) => e.categoryKey === null)}
+    {@const uncategorized = managedEffects.filter((e) => e.categoryKey === null)}
     {#if uncategorized.length}
       <p class="field-label" style="margin:var(--space-3) 0 var(--space-2)">{m.effect_type_category_none()}</p>
       <div class="managed-tags">
@@ -720,13 +788,12 @@
       </div>
     {/if}
 
-    <Field label={m.effect_type_new_label()} id="new-effect-type">
+    <Field label={m.name_label()} id="new-effect-type">
       {#snippet children(id)}
-        <input
+        <input autocomplete={journalTextAutocomplete()}
           class="input"
           {id}
           name="new-effect-type"
-          placeholder={m.effect_type_new_placeholder()}
           bind:value={newEffectName}
         />
       {/snippet}
@@ -741,7 +808,7 @@
         </select>
       {/snippet}
     </Field>
-    <button class="btn btn-primary" data-add-effect-type onclick={addEffectType}><span>{m.effect_type_add()}</span></button>
+    <button class="btn btn-primary" data-add-effect-type disabled={effectTypeWrite.busy} onclick={addEffectType}><span>{m.effect_type_add()}</span></button>
   </Sheet>
 </div>
 
@@ -757,11 +824,11 @@
     padding: var(--space-3) var(--space-3) 0;
   }
 
-  .effects-methodology {
+  .literature {
     margin-bottom: var(--space-3);
   }
 
-  .effects-methodology-toggle {
+  .literature-toggle {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -778,14 +845,14 @@
     cursor: pointer;
   }
 
-  .effects-methodology-chev {
+  .literature-chev {
     flex: 0 0 auto;
     display: grid;
     place-items: center;
     transition: transform var(--dur-med) var(--ease-out);
   }
 
-  .effects-methodology-toggle[aria-expanded='true'] .effects-methodology-chev {
+  .literature-toggle[aria-expanded='true'] .literature-chev {
     transform: rotate(180deg);
   }
 </style>

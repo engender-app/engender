@@ -1,21 +1,20 @@
 <script lang="ts">
+  import { undoable } from '$lib/stores/deleteUndo';
+  import { journalTextAutocomplete } from '$lib/platform';
   import { navigating, page } from '$app/state';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
-  /* Electrolysis and laser sessions, on the surface kit (phase 5 UX
-     ticket 25). Two lists on the screen and a third inside the editor,
-     all of them `.list-group` before this; the recency rows open the
-     add-session form with their own area chosen (pre-production UI/UX
-     ticket 28), the session photos state something and go nowhere, so
-     they stay static rows, and the sessions themselves open the editor. */
+  /* Electrolysis and laser sessions, on the surface kit. Two lists on the screen and a
+     third inside the editor, all of them `.list-group` before this; the recency rows open
+     the add-session form with their own area chosen, the session photos state something and
+     go nowhere, so they stay static rows, and the sessions themselves open the editor. */
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import Disclosure from '$lib/components/kit/Disclosure.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { hairRemovalAreaName, hairRemovalMethodName, severityName } from '$lib/data/vocabulary/labels';
   import { daysSinceLastSession } from '$lib/data/hairRemovalSchedule';
-  import { shouldShowHairRemovalRecovery } from '$lib/data/liveTiles';
   import { HAIR_REMOVAL_AREAS, type HairRemovalAreaKey } from '$lib/data/hairRemovalAreas';
-  import { fmtDay } from '$lib/data/dates';
+  import { fmtDay, intlLocale } from '$lib/data/dates';
   import { todayEpochDay, epochDayFromDateInputValueOrToday, dateInputValueFromEpochDay } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
   import type { HairRemovalSession, HairRemovalMethod } from '$lib/data/types';
@@ -42,15 +41,21 @@
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
   import AreaFinish from '$lib/components/AreaFinish.svelte';
   import { crossfade } from '$lib/motion/reveal';
+  import CostField from '$lib/components/CostField.svelte';
+  import { blankCostDraft, costDraftFrom, costDraftOk, costFromDraft, type CostDraft } from '$lib/components/costDraft';
+  import { deviceDefaultCurrency } from '$lib/data/cost';
+  import { costLine } from '$lib/data/vocabulary/costLabel';
 
-  /* The strip's fill shares the chromatic role with the recency figures
-     (ticket 56, following ticket 44's own rule for dilation and wear):
-     index 0 is the only role guaranteed chromatic on all 8 palettes, and a
-     logged day filled in a palette's achromatic band is a day drawn as
-     nothing. */
+  /* The strip's fill shares the chromatic role with the recency figures: index 0 is the
+     only role guaranteed chromatic on every palette, and a logged day filled in a palette's
+     achromatic band is a day drawn as nothing. */
   const SECTION_ROLE = { recency: 0, strip: 0, sessions: 1 };
 
-  const PAIN_RATINGS = [1, 2, 3, 4, 5];
+  /* '' is no rating: the draft opens unrated and an unrated session stores none. */
+  const PAIN_OPTIONS = [
+    { value: '', label: m.hair_removal_pain_unrated() },
+    ...[1, 2, 3, 4, 5].map((v) => ({ value: String(v), label: severityName(v) ?? String(v) }))
+  ];
 
   const today = $derived(currentDay());
 
@@ -62,9 +67,11 @@
       date: dateInputValueFromEpochDay(epochDay),
       area,
       method: 'laser' as HairRemovalMethod,
-      painRating: '3',
-      cost: '',
-      provider: ''
+      painRating: '',
+      minutes: null as number | null,
+      cost: blankCostDraft(deviceDefaultCurrency()),
+      provider: '',
+      note: ''
     };
   }
 
@@ -79,11 +86,9 @@
 
   const dayLabel = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
 
-  /* The log is a week at a time now (phase 10 redesign ticket 56, reusing
-     ticket 44's DayStrip/dayStrip.ts). A day here is `logged` or nothing -
-     there is no `expected`, the same restraint wear's own strip applies,
-     because nothing schedules a hair-removal session and hairRemovalSchedule.ts
-     refuses due framing on purpose. */
+  /* The log is a week at a time now. A day here is `logged` or nothing - there is no
+     `expected`, the same restraint wear's own strip applies, because nothing schedules a
+     hair-removal session and hairRemovalSchedule.ts refuses due framing on purpose. */
   let sessionsByDay = $derived.by(() => {
     const byDay = new Map<number, HairRemovalSession[]>();
     for (const session of sessions) {
@@ -102,12 +107,8 @@
     return onDay && onDay.length ? onDay.map((session) => hairRemovalAreaName(session.area)).join(' · ') : null;
   };
 
-  /* Hair removal's present reading (ticket 56): the recovery state the Home
-     tile already computes (liveTiles.ts), not a next-session due date -
-     hairRemovalSchedule.ts refuses that framing on purpose. Read with
-     `enabled`/`snoozed` fixed rather than off `prefs`: this is the area's
-     own screen, not a dismissible Home nudge, so a snoozed tile has nothing
-     to say about it. */
+  /* The newest session at or before today, which is the week the strip
+     opens on. */
   let latestSession = $derived(
     sessions.reduce<HairRemovalSession | null>((latest, session) => {
       if (session.epochDay > today) return latest;
@@ -126,10 +127,6 @@
       .sort((a, b) => b.epochDay - a.epochDay)
   );
 
-  let recovery = $derived(
-    shouldShowHairRemovalRecovery({ latestSession, todayEpochDay: today, enabled: true, snoozed: false })
-  );
-
   /** A tap on a strip day: its first session if it has one, or a blank
       draft anchored to that day if it has none - the same two ways the add
       control already offers, pointed at one day. */
@@ -142,20 +139,18 @@
     record.editor = blankDraft(HAIR_REMOVAL_AREAS[0], epochDay);
   }
 
-  /** A recency row's handoff (pre-production UI/UX ticket 28): no per-area
-      history destination exists - the body-map inspector reads the
-      dysphoria-scoped region vocabulary, which these treatment areas are
-      deliberately never merged with - so the row opens the existing
-      add-session form with its area already chosen. A seeded blank is a
-      clean baseline: nothing saves until Save, and dismissing an untouched
-      form closes it directly. */
+  /** A recency row's handoff: no per-area history destination exists - the body-map
+      inspector reads the dysphoria-scoped region vocabulary, which these treatment areas
+      are deliberately never merged with - so the row opens the existing add-session form
+      with its area already chosen. A seeded blank is a clean baseline: nothing saves until
+      Save, and dismissing an untouched form closes it directly. */
   function openSessionForArea(area: HairRemovalAreaKey) {
     record.editor = blankDraft(area);
   }
 
   const record = recordEditor<
     HairRemovalSession,
-    { id?: string; date: string; area: string; method: HairRemovalMethod; painRating: string; cost: string; provider: string }
+    { id?: string; date: string; area: string; method: HairRemovalMethod; painRating: string; minutes: number | null; cost: CostDraft; provider: string; note: string }
   >({
     blank: () => blankDraft(HAIR_REMOVAL_AREAS[0]),
     fromRecord: (session) => ({
@@ -163,9 +158,11 @@
       date: dateInputValueFromEpochDay(session.epochDay),
       area: session.area,
       method: session.method,
-      painRating: String(session.painRating),
-      cost: session.cost,
-      provider: session.provider
+      painRating: session.painRating === null ? '' : String(session.painRating),
+      minutes: session.minutes,
+      cost: costDraftFrom(session.cost, deviceDefaultCurrency(), intlLocale()),
+      provider: session.provider,
+      note: session.note ?? ''
     }),
     async upsert(draft) {
       const id = await journal.hairRemoval.upsertSession({
@@ -173,17 +170,23 @@
         epochDay: epochDayFromDateInputValueOrToday(draft.date),
         area: draft.area,
         method: draft.method,
-        painRating: Number(draft.painRating),
-        cost: draft.cost,
-        provider: draft.provider
+        painRating: draft.painRating === '' ? null : Number(draft.painRating),
+        minutes: draft.minutes,
+        cost: costFromDraft(draft.cost),
+        provider: draft.provider,
+        note: draft.note
       });
       if (!draft.id) savedId = id;
     },
     // A new session's notice below says more than a toast would.
     saved: (draft) => (draft.id ? m.saved() : null),
-    remove: (id) => journal.hairRemoval.deleteSession(id),
+    remove: (id) => undoable((j) => j.hairRemoval.deleteSession(id)),
     findById: (id) => sessions.find((session) => session.id === id)
   });
+  /** Empty is fine; a length is a whole number of minutes in a day. */
+  const minutesOk = (draft: { minutes: number | null }) =>
+    draft.minutes === null || (Number.isInteger(draft.minutes) && draft.minutes >= 1 && draft.minutes <= 1440);
+  const canSave = (draft: { minutes: number | null; cost: CostDraft }) => minutesOk(draft) && costDraftOk(draft.cost);
   let editor = $derived(record.editor);
   let deleteTarget = $derived(record.deleteTarget);
 
@@ -201,7 +204,7 @@
   const sessionPhotos = photoSection<HairRemovalPhoto>({
     photos: () => photos,
     add: storePhoto,
-    remove: (id) => journal.hairRemoval.deletePhoto(id),
+    remove: (id) => undoable((j) => j.hairRemoval.deletePhoto(id)),
     reference: () => lastPhotoReference(photos)
   });
 </script>
@@ -217,7 +220,7 @@
           title={hairRemovalAreaName(area)}
           subtitle={days === null
             ? m.hair_removal_area_never_used()
-            : m.hair_removal_area_days_ago({ days: m.n_days({ n: days }) })}
+            : m.days_ago({ days: m.n_days({ n: days }) })}
           onclick={() => openSessionForArea(area)}
         />
       {/each}
@@ -248,15 +251,6 @@
 
   <ReadGate read={sessionsQuery} variant="line" count={3}>
     {#snippet rows()}
-      {#if recovery}
-        <Notice
-          icon="shuffle"
-          key="hair-removal-recovery"
-          role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}
-          title={hairRemovalAreaName(recovery.session.area)}
-          text={m.tile_hair_removal_guidance()}
-        />
-      {/if}
       <SectionHeading text={m.hair_removal_sessions_title()} />
       {#if earliest !== null}
         <DayStrip
@@ -282,9 +276,9 @@
                   <ListRow
                     key={session.id}
                     data-hair-removal-session={session.id}
-                    icon="shuffle"
+                    icon="razor"
                     title={hairRemovalAreaName(session.area)}
-                    subtitle={`${dayLabel(session.epochDay)} · ${hairRemovalMethodName(session.method)} · ${severityName(session.painRating)}`}
+                    subtitle={[dayLabel(session.epochDay), hairRemovalMethodName(session.method), session.minutes === null ? null : m.hair_removal_minutes_short({ n: session.minutes }), severityName(session.painRating), costLine(session.cost)].filter(Boolean).join(' · ')}
                     chevron={false}
                     onclick={() => record.openEditor(session)}
                   />
@@ -298,11 +292,10 @@
     {#snippet empty()}
       <div out:crossfade|global={{ instant: navigating.to !== null }}>
         <Notice
-          icon="shuffle"
+          icon="razor"
           key="hair-removal-empty"
           role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}
-          title={m.hair_removal_empty_title()}
-          text={m.hair_removal_empty_body()}
+          title={m.empty_log_title()}
           action={{ label: m.hair_removal_empty_action(), primary: true, onclick: () => record.openEditor(null) }}
         />
       </div>
@@ -322,13 +315,14 @@
     handle="hair-removal-session"
     newTitle={m.hair_removal_new_sheet()}
     editTitle={m.hair_removal_edit_sheet()}
-    saveLabel={m.hair_removal_save()}
-    deleteLabel={m.hair_removal_delete()}
+    saveLabel={m.save()}
+    canSave={canSave}
+    deleteLabel={m.delete()}
     confirm={{
       title: m.hair_removal_delete_sheet(),
       question: (session) => m.hair_removal_delete_q({ area: hairRemovalAreaName(session.area) }),
-      hint: () => m.hair_removal_delete_hint(),
-      confirmLabel: m.hair_removal_delete(),
+      hint: () => m.delete_undo_hint(),
+      confirmLabel: m.delete(),
       cancelLabel: m.keep_it()
     }}
   >
@@ -352,30 +346,36 @@
           </select>
         {/snippet}
       </Field>
+      <Field label={m.hair_removal_minutes_label()} id="hair-removal-minutes">
+        {#snippet children(id)}
+          <input
+            class="input"
+            {id}
+            name="hair-removal-minutes"
+            type="number"
+            inputmode="numeric"
+            min="1"
+            max="1440"
+            step="1"
+            placeholder={m.hair_removal_minutes_placeholder()}
+            bind:value={draft.minutes}
+          />
+        {/snippet}
+      </Field>
       <Field label={m.hair_removal_pain_label()} legend>
         {#snippet children()}
           <Segmented
             name={m.hair_removal_pain_label()}
-            options={PAIN_RATINGS.map((v) => ({ value: String(v), label: severityName(v) ?? String(v) }))}
+            options={PAIN_OPTIONS}
             value={draft.painRating}
             onChange={(v) => (draft.painRating = v)}
           />
         {/snippet}
       </Field>
-      <Field label={m.hair_removal_cost_label()} id="hair-removal-cost">
-        {#snippet children(id)}
-          <input
-            class="input"
-            {id}
-            name="hair-removal-cost"
-            placeholder={m.hair_removal_cost_placeholder()}
-            bind:value={draft.cost}
-          />
-        {/snippet}
-      </Field>
+      <CostField id="hair-removal-cost" bind:draft={draft.cost} />
       <Field label={m.hair_removal_provider_label()} id="hair-removal-provider">
         {#snippet children(id)}
-          <input
+          <input autocomplete={journalTextAutocomplete()}
             class="input"
             {id}
             name="hair-removal-provider"
@@ -384,14 +384,25 @@
           />
         {/snippet}
       </Field>
+      <Field label={m.note_label()} id="hair-removal-note">
+        {#snippet children(id)}
+          <textarea autocomplete={journalTextAutocomplete()}
+            class="input"
+            {id}
+            name="hair-removal-note"
+            rows="3"
+            bind:value={draft.note}
+          ></textarea>
+        {/snippet}
+      </Field>
 
-      <Field label={m.hair_removal_date_label()} id="hair-removal-date">
+      <Field label={m.date_label()} id="hair-removal-date">
         {#snippet children(id)}
           <DatePicker name="hair-removal-date" bind:value={draft.date} {id} />
         {/snippet}
       </Field>
 
-      <SectionHeading text={m.hair_removal_photo_section_title()} />
+      <SectionHeading text={m.photos_title()} />
       {#if !draft.id}
         <p class="muted small" style="margin-bottom:var(--space-3)">{m.hair_removal_photo_hint()}</p>
       {:else}
@@ -400,12 +411,12 @@
           read={photosQuery}
           role={roleAt(activeFlag.roles, SECTION_ROLE.sessions)}
           handle="hair-removal-photo"
-          deleteLabel={() => m.hair_removal_photo_delete_sheet()}
+          deleteLabel={() => m.photo_delete_sheet()}
           confirm={{
-            title: m.hair_removal_photo_delete_sheet(),
-            question: () => m.hair_removal_photo_delete_q(),
-            hint: () => m.hair_removal_photo_delete_hint(),
-            confirmLabel: m.hair_removal_photo_delete(),
+            title: m.photo_delete_sheet(),
+            question: () => m.photo_delete_q(),
+            hint: () => m.delete_undo_hint(),
+            confirmLabel: m.delete(),
             cancelLabel: m.keep_it()
           }}
         >
@@ -413,7 +424,7 @@
             <Notice
               icon="camera"
               key="hair-removal-photos-empty"
-              title={m.hair_removal_photo_empty_title()}
+              title={m.no_photos_title()}
             />
           {/snippet}
         </PhotoSection>

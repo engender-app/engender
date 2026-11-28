@@ -1,5 +1,5 @@
-/* The result handshake every probe page and its driving script share
-   (ticket 06): a probe sets a result on `window` and a ready attribute on
+/* The result handshake every probe page and its driving script share:
+a probe sets a result on `window` and a ready attribute on
    `<body>` so the Node script driving Chromium knows when to read it. Both
    ends used to spell the two strings by hand at each of 15 call sites, with
    nothing tying one spelling to the other - this derives both from one

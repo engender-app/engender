@@ -1,36 +1,23 @@
-/* The "fill every feature" persona (phase 5 ticket 36).
-
-   The persona (persona.ts) writes entries, moods, tags, photos, milestones,
-   reminders, labs and tally events - which is what most of the app is
-   reviewed against, and what the walkthrough asserts specific facts about
-   (150 days of entries, five estradiol results, and so on). Everything else
-   the More hub links to - regimen, measurements, sizes, hair progress, hair
-   removal, roadmap, letters, tryouts, personal effects, wear sessions,
-   cycle events, side effects, surgery, appointment prep, stock, voice -
-   stayed empty, which is the gap ticket 25's sign-off review ran into
-   (Alicja, 2026-08-26: "add a ticket for expanding the long journal
-   fixture so that all features can be checked before final sign off of
-   redesign - regimens, curves, everything needs to be filled out").
-
-   Layered on top of the persona rather than replacing it, through a second
-   demo-bar control (controls.ts's resetDemoFull) - the persona's own reset
-   stays exactly as it was, so a reviewer can still see every one of these
-   screens in its designed empty state, and the walkthrough's assumptions
-   about the persona never see this module at all. */
+/* Extend the standard persona with data for otherwise empty features.
+   The separate `resetDemoFull` control fills those screens for review.
+   Standard reset still shows their empty states and keeps walkthrough
+   expectations such as 150 entry days and five estradiol results. */
 
 import type { Journal } from '../journal/journal';
 import { todayEpochDay, weekdayOfEpochDay } from '../epochDay';
 import { demoPhoto } from './journal-seed';
+import { PROGRESS_POSES, type ProgressPose } from '../journal/progressPhotos';
+import type { NormalizedPhoto } from '../journal/photos';
 import { demoNow } from './demoClock';
 import { demoAudioBytes, demoVideoBytes } from '../demoAudioBytes';
 import { BUILT_IN_PERSONAL_EFFECT_TYPES } from '../vocabulary/builtins';
-import { GARMENT_CATEGORIES } from '../garmentCategories';
 import { HAIR_REMOVAL_AREAS } from '../hairRemovalAreas';
-import { POLISH_PACK, ROADMAP_TRACKS } from '../roadmap';
+import { POLISH_PACK, SOCIAL_PACK } from '../roadmap';
 import { expectedSessionDays } from '../taperSchedule';
 import { encodePitchTrack } from '../../audio/track';
 import { percentileOfSorted } from '../../audio/series';
 import { acceptDocumentFile } from '../documents/accept';
+import type { PersonaLocale } from './persona';
 
 function rng(seed: number) {
   return function () {
@@ -42,19 +29,28 @@ function rng(seed: number) {
   };
 }
 
-export async function seedFullFixture(journal: Journal, today: number = todayEpochDay()): Promise<void> {
+export async function seedFullFixture(
+  journal: Journal,
+  today: number = todayEpochDay(),
+  locale: PersonaLocale = 'en'
+): Promise<void> {
   const now = demoNow(today);
+  // The persona's language (persona.ts): free text only, never a draw.
+  const say = (en: string, pl: string) => (locale === 'pl' ? pl : en);
+  const estradiol = say('Estradiol valerate', 'Walerianian estradiolu');
+  const progesterone = say('Progesterone', 'Progesteron');
+  const sertraline = say('Sertraline', 'Sertralina');
   const r = rng(90210);
   const pick = <T>(from: readonly T[]): T => from[Math.floor(r() * from.length)];
   const between = (low: number, high: number) => low + Math.floor(r() * (high - low + 1));
 
   // Regimen: two concurrently active episodes, an injectable estradiol run
-  // and an oral progesterone one overlapping it - the shape ticket 38's
+  // and an oral progesterone one overlapping it - the shape the
   // concurrent-episode handling exists for, with real doses on both so the
-  // adherence view and the hormone curve both have something to read.
+  // adherence view has something to read.
   const estradiolStart = today - 500;
   const estradiolEpisodeId = await journal.regimen.upsertEpisode({
-    drug: 'Estradiol valerate',
+    drug: estradiol,
     ester: 'valerate',
     dose: 4,
     doseUnit: 'mg',
@@ -69,7 +65,10 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     recurrence: { kind: 'weekdays', weekdays: [0] },
     dosesPerDay: 1,
     doseAmounts: [{ dose: 4, doseUnit: 'mg' }],
-    autoLogFromEpochDay: null
+    autoLogFromEpochDay: null,
+    // Its reminder comes from the schedule,
+    // at the hour the injections below are logged.
+    reminderTimes: ['19:00']
   });
   const injectionSites = ['thigh-left', 'thigh-right', 'deltoid-left', 'deltoid-right', 'ventrogluteal-left', 'ventrogluteal-right'] as const;
   let injectionCount = 0;
@@ -82,7 +81,7 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
       dose: 4,
       doseUnit: 'mg',
       status: 'taken',
-      drug: 'Estradiol valerate',
+      drug: estradiol,
       injectionSite: injectionSites[injectionCount % injectionSites.length],
       vehicle: 'oil'
     });
@@ -91,7 +90,7 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
 
   const progesteroneStart = today - 300;
   const progesteroneEpisodeId = await journal.regimen.upsertEpisode({
-    drug: 'Progesterone',
+    drug: progesterone,
     ester: null,
     dose: 100,
     doseUnit: 'mg',
@@ -107,6 +106,8 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     dosesPerDay: 1,
     doseAmounts: [{ dose: 100, doseUnit: 'mg' }],
     autoLogFromEpochDay: null
+    // No reminder times: the persona's own "Progesterone" reminder is
+    // what this schedule's editor offers to take over.
   });
   for (let day = progesteroneStart; day <= today; day++) {
     if (r() < 0.08) continue;
@@ -116,18 +117,18 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
       dose: 100,
       doseUnit: 'mg',
       status: 'taken',
-      drug: 'Progesterone'
+      drug: progesterone
     });
   }
 
   // A non-hormone episode - an SSRI, daily, oral - so every screen this
   // track touches (labs timing, the care spine, the clinician summary
   // toggle, quick add's picker) has a real non-hormone branch to render
-  // during a demo, not only a unit test (phase 8 features ticket 42).
-  // resolveCurveDrug returns null for it: neither ester vocabulary names it.
+  // during a demo, not only a unit test.
+  // resolveHormoneDrug returns null for it.
   const sertralineStart = today - 250;
   const sertralineEpisodeId = await journal.regimen.upsertEpisode({
-    drug: 'Sertraline',
+    drug: sertraline,
     ester: null,
     dose: 50,
     doseUnit: 'mg',
@@ -142,7 +143,8 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     recurrence: { kind: 'everyNDays', everyNDays: 1 },
     dosesPerDay: 1,
     doseAmounts: [{ dose: 50, doseUnit: 'mg' }],
-    autoLogFromEpochDay: null
+    autoLogFromEpochDay: null,
+    reminderTimes: ['09:00']
   });
   for (let day = sertralineStart; day <= today; day++) {
     if (r() < 0.08) continue;
@@ -152,78 +154,18 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
       dose: 50,
       doseUnit: 'mg',
       status: 'taken',
-      drug: 'Sertraline'
+      drug: sertraline
     });
   }
 
-  // Measurements, sizes, hair progress and hair removal: a year each, at
-  // an irregular cadence rather than an evenly spaced one - the one shape
-  // every chart already handles.
   const trackingStart = today - 365;
-  const measurementTypes = ['waist', 'hips', 'chest', 'underbust'] as const;
-  const measurementBase = { waist: 78, hips: 92, chest: 88, underbust: 74 };
-  for (let day = trackingStart; day <= today; day++) {
-    if (r() < 0.94) continue;
-    const type = pick(measurementTypes);
-    const unit = type === 'waist' && r() < 0.15 ? 'in' : 'cm';
-    const base = measurementBase[type];
-    const value = unit === 'in' ? Math.round(base / 2.54) : base + Math.round((r() - 0.5) * 6);
-    await journal.measurements.upsertMeasurement({ type, epochDay: day, value, unit });
-  }
-  // A guaranteed second unit on waist - the random 15% above makes it rare
-  // enough that a run can land on zero or one 'in' reading, which draws as
-  // "two measurements make a trend, add another" rather than a trend.
-  await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: today - 200, value: 31, unit: 'in' });
-  await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: today - 40, value: 30, unit: 'in' });
-
-  /* One scale per category rather than one pool for all eight. A shuffle
-     across every size in the app puts "34" and "XS" in the same pair of
-     trousers, which the size log wore quietly and the change line
-     (redesign ticket 61) states out loud - so a demo of a screen whose
-     point is that it makes a statement was making a nonsense one. */
-  const SIZE_SCALE: Record<(typeof GARMENT_CATEGORIES)[number], string[]> = {
-    shirts: ['XS', 'S', 'M', 'L'],
-    pants: ['28', '30', '32', '34'],
-    dresses: ['6', '8', '10', '12'],
-    skirts: ['XS', 'S', 'M', 'L'],
-    bras: ['32A', '34A', '34B', '36B'],
-    underwear: ['XS', 'S', 'M', 'L'],
-    shoes: ['38', '39', '40', '41'],
-    outerwear: ['S', 'M', 'L', 'XL']
-  };
-  for (let day = trackingStart; day <= today; day++) {
-    if (r() < 0.97) continue;
-    const category = pick(GARMENT_CATEGORIES);
-    await journal.sizeRecords.upsertRecord({
-      epochDay: day,
-      category,
-      size: pick(SIZE_SCALE[category]),
-      brand: pick(['', 'Zara', "Levi's", 'H&M', 'Uniqlo']),
-      fitNote: pick(['', 'true to size', 'runs small', 'runs large'])
-    });
-  }
-
-  const hairStages = ['1', '2', '2a', '3', '3v', '3a', '4', '4a'];
-  let hairPhotoCount = 0;
-  for (let day = trackingStart, i = 0; day <= today; day += between(60, 140), i++) {
-    await journal.hairProgress.upsertStage({ epochDay: day, scale: 'norwood_hamilton', stage: hairStages[i % hairStages.length] });
-    /* One photograph per staging, not a 40% roll. The roll was seeded, so
-       it came up the same way every time and that way was never: the demo
-       journal had stagings and no fixed-position photographs at all, which
-       is the one thing this screen's photo half exists for and the whole
-       of what redesign ticket 55 put a wipe over. This loop only runs a
-       handful of times - 60 to 140 days a step over the tracked period -
-       so anything less than every staging leaves too few to compare.
-
-       The roll it used to be gated on is still drawn and thrown away, so
-       everything seeded after this loop lands exactly where it always did.
-       Dropping the draw instead would shift the whole rest of the demo
-       journal - hair removal, tryouts, procedures - for a change that is
-       about this screen. */
-    r();
-    await journal.hairProgress.addPhoto(day, await demoPhoto(4000 + hairPhotoCount));
-    hairPhotoCount++;
-  }
+  /* Hair progress stagings and photographs were seeded here until hair
+     progress folded into progress photos (version 124): its photographs are
+     the hair pose of the progress photos seeded last. The draws stay, and
+     only the draws - dropping them would shift the whole rest of the demo
+     journal (hair removal, tryouts, procedures) for a change about another
+     screen. */
+  for (let day = trackingStart; day <= today; day += between(60, 140)) r();
 
   let hairRemovalPhotoCount = 0;
   for (let day = trackingStart; day <= today; day++) {
@@ -232,8 +174,9 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
       epochDay: day,
       area: pick(HAIR_REMOVAL_AREAS),
       method: pick(['laser', 'electrolysis', 'other'] as const),
-      painRating: between(1, 5),
-      cost: r() < 0.7 ? `${between(150, 450)} PLN` : '',
+      painRating: r() < 0.25 ? null : between(1, 5),
+      minutes: r() < 0.5 ? between(15, 120) : null,
+      cost: r() < 0.7 ? { amount: between(150, 450), currency: 'PLN', refunded: false } : null,
       provider: r() < 0.7 ? 'Klinika Laserowa' : ''
     });
     if (r() < 0.25) {
@@ -242,51 +185,63 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     }
   }
 
-  // Roadmap: a few ticks across every track, plus one custom goal.
-  for (const track of ROADMAP_TRACKS) {
-    for (const goal of POLISH_PACK.goals.filter((g) => g.track === track)) {
-      if (r() < 0.65) continue;
-      await journal.roadmap.setGoalStatus(POLISH_PACK.key, goal.key, r() < 0.85 ? 'checked' : 'not-my-path');
-    }
+  // Roadmap: a few ticks across the legal steps, plus a category of the
+  // person's own with two goals in it, one done.
+  for (const goal of POLISH_PACK.goals) {
+    if (r() < 0.65) continue;
+    await journal.roadmap.setGoalStatus(POLISH_PACK.key, goal.key, r() < 0.85 ? 'checked' : 'not-my-path');
   }
-  const customGoal = await journal.roadmap.addCustomGoal('social', 'Tell my sister');
+  // Fixed rather than drawn, so the seeded stream the rest of the fixture reads is unchanged.
+  for (const goal of SOCIAL_PACK.goals.slice(0, 3)) await journal.roadmap.setGoalStatus(SOCIAL_PACK.key, goal.key, 'checked');
+  // "Coming out" here and "top surgery" below stay as they are in Polish:
+  // that is how Polish trans people write both.
+  const comingOut = await journal.roadmap.addCategory('Coming out');
+  const customGoal = await journal.roadmap.addCustomGoal(say('Tell my sister', 'Powiedzieć siostrze'), comingOut.id);
   await journal.roadmap.setCustomGoalStatus(customGoal.id, 'checked');
+  await journal.roadmap.addCustomGoal(say('Tell my manager', 'Powiedzieć szefowej'), comingOut.id);
+
+  // Name and document changes: a few offices
+  // at different stages, a diploma that bounced, and one office of the
+  // person's own. Fixed, not drawn from r(), so the rest of the persona's
+  // random stream stays where it was.
+  const change = (institution: string, status: string, epochDay: number, note: string | null = null) =>
+    journal.roadmap.addInstitutionChange({ institution, status, epochDay, note });
+  await change('pl-legal-pesel', 'submitted', today - 60);
+  await change('pl-legal-pesel', 'done', today - 32);
+  await change('pl-legal-id-card', 'submitted', today - 30);
+  await change('pl-legal-id-card', 'done', today - 9);
+  await change('pl-legal-bank', 'submitted', today - 8);
+  await change('pl-legal-bank', 'waiting', today - 6, say('Branch asked for a copy of the ruling', 'Oddział chce kopii wyroku'));
+  await change('pl-legal-diplomas', 'submitted', today - 25, say('Sent to the university', 'Wysłane na uczelnię'));
+  await change('pl-legal-diplomas', 'waiting', today - 12, say('Passed on to the kuratorium', 'Przekazane do kuratorium'));
+  const gym = await journal.roadmap.addInstitution(say('Gym membership', 'Karnet na siłownię'));
+  await change(gym.id, 'submitted', today - 4);
 
   // Letters: two already unlockable, two still sealed.
-  await journal.letters.addLetter({ epochDay: today - 400, text: 'Dear future me, HRT starts next month.', unlockEpochDay: today - 200 });
-  await journal.letters.addLetter({ epochDay: today - 150, text: 'One year in and the mirror is different now.', unlockEpochDay: today - 5 });
-  await journal.letters.addLetter({ epochDay: today - 20, text: 'For the day the court hearing is scheduled.', unlockEpochDay: today + 45 });
-  await journal.letters.addLetter({ epochDay: today - 3, text: 'For five years from now.', unlockEpochDay: today + 1800 });
-
-  /* Two breaks from journaling, both finished and both well behind the
-     persona's entry window so they never collide with the days it writes.
-     This is the one feature the module's own header list did not cover and
-     nothing else seeds, so every reading of a pause - Home's tile, the
-     chart's band, the Look back rail's own lane - captured empty in every
-     review anyone had run (found on ticket 06, the same gap the door audit
-     found for eras). */
-  await journal.journalingPauses.upsertPause({ startEpochDay: today - 330, endEpochDay: today - 300 });
-  await journal.journalingPauses.upsertPause({ startEpochDay: today - 210, endEpochDay: today - 195 });
+  await journal.letters.addLetter({ epochDay: today - 400, text: say('Dear future me, HRT starts next month.', 'Do mnie z przyszłości: w przyszłym miesiącu zaczynam HRT.'), unlockEpochDay: today - 200 });
+  await journal.letters.addLetter({ epochDay: today - 150, text: say('One year in and the mirror is different now.', 'Rok za mną i lustro jest już inne.'), unlockEpochDay: today - 5 });
+  await journal.letters.addLetter({ epochDay: today - 20, text: say('For the day the court hearing is scheduled.', 'Na dzień, w którym sąd wyznaczy termin rozprawy.'), unlockEpochDay: today + 45 });
+  await journal.letters.addLetter({ epochDay: today - 3, text: say('For five years from now.', 'Na za pięć lat.'), unlockEpochDay: today + 1800 });
 
   // Tryouts: dated inside the persona's own 150-day entry window, so the
   // detail route has real entries to read back by date overlap.
-  const tryoutSpecs: { kind: 'name' | 'pronouns' | 'style' | 'garment' | 'makeup' | 'presentation_step'; label: string; startEpochDay: number; endEpochDay: number | null }[] = [
+  const tryoutSpecs: { kind: 'name' | 'pronouns' | 'style' | 'makeup'; label: string; startEpochDay: number; endEpochDay: number | null }[] = [
     { kind: 'name', label: 'Alex', startEpochDay: today - 120, endEpochDay: today - 60 },
-    { kind: 'pronouns', label: 'she/her', startEpochDay: today - 100, endEpochDay: null },
-    { kind: 'style', label: 'layered look', startEpochDay: today - 40, endEpochDay: today - 10 }
+    { kind: 'pronouns', label: say('she/her', 'ona/jej'), startEpochDay: today - 100, endEpochDay: null },
+    { kind: 'style', label: say('layered look', 'na warstwy'), startEpochDay: today - 40, endEpochDay: today - 10 }
   ];
   for (const spec of tryoutSpecs) {
     const tryoutId = await journal.tryouts.upsertTryout({
       kind: spec.kind,
       label: spec.label,
-      description: spec.kind === 'name' ? null : `Notes on trying out ${spec.label}.`,
+      description: spec.kind === 'name' ? null : say(`Notes on trying out ${spec.label}.`, `Jak mi z tym: ${spec.label}.`),
       startEpochDay: spec.startEpochDay,
       endEpochDay: spec.endEpochDay
     });
     await journal.tryouts.addPhoto(tryoutId, spec.startEpochDay + 5, await demoPhoto(6000 + spec.startEpochDay));
     /* Readings across the tryout's own span rather than one at its start.
        A single reading is a single mark, which is honest and is also the
-       one shape the tryouts index cannot be reviewed against (ticket 53) -
+       one shape the tryouts index cannot be reviewed against -
        the screen draws how a tryout has felt over time, and every tryout
        in the fixture having exactly one reading left that undrawable.
        Every twelfth day, so a hundred-day tryout gets nine marks rather
@@ -297,12 +252,14 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     }
   }
 
-  // Personal effects: several feminizing markers, plus one non-default
-  // category switched on so its disclosure group has something in it too.
-  await journal.effectCategories.setCategoryEnabled('genital_sexual', true);
+  // Personal effects: several feminizing markers, plus the two non-default
+  // categories split from genital and sexual switched on so their
+  // disclosure groups have something in them too.
+  await journal.effectCategories.setCategoryEnabled('genital', true);
+  await journal.effectCategories.setCategoryEnabled('sexual', true);
   const effectTypes = BUILT_IN_PERSONAL_EFFECT_TYPES.filter((t) => t.direction === 'feminizing').filter((_, i) => i % 3 === 0);
   /* Written out rather than stepped, because the axis at the top of that
-     screen (ticket 57) has two shapes to show and an even 45-day step only
+     screen has two shapes to show and an even 45-day step only
      ever produced one of them: four of these land inside three weeks and
      stack into lanes, and the rest stand alone with months between them.
      Which days go to which effect is not arbitrary - only the effects in an
@@ -330,7 +287,7 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   /* Wear sessions: a year, irregular, most backfilled with a duration and
      one still running so the live timer state is reachable too. All three
      kinds, so every per-kind wording and the binder-only duration cue are
-     reachable in the demo (ticket 50), off one draw per session rather than
+     reachable in the demo, off one draw per session rather than
      two - a second conditional draw would spend a different count of the
      seeded sequence depending on the first, and everything seeded after
      this would move with it. */
@@ -341,20 +298,20 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
       kind: kindFor(r()),
       startTimestamp: (day * 24 + 8) * 3_600_000,
       durationMs: between(2, 8) * 3_600_000,
-      note: r() < 0.2 ? 'a bit tight by the end' : null
+      note: r() < 0.2 ? say('a bit tight by the end', 'pod koniec trochę uciska') : null
     });
   }
-  // Its elapsed reminder is what ticket 31's web reminders list has to show
+  // Its elapsed reminder is what web reminders list has to show
   // and delete - the one write that screen offers on web (ADR-0063).
   /* Nine hours in, not two: past the eight-hour figure, so the binder
-     duration cue is reachable in the demo on both surfaces that carry it
-     (ticket 50). */
+     duration cue is reachable in the demo on both surfaces that carry it.
+     */
   await journal.wearSessions.upsertSession({
     kind: 'binder',
     startTimestamp: now - 9 * 3_600_000,
     durationMs: null,
     reminderHoursAfterStart: 8,
-    reminderTitle: 'Binder check-in'
+    reminderTitle: say('Binder check-in', 'Sprawdzić binder')
   });
 
   // Cycle events: roughly monthly over two years.
@@ -362,33 +319,51 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     await journal.cycleEvents.upsertCycleEvent({ kind: pick(['period_occurred', 'spotting', 'nothing_this_month'] as const), epochDay: day });
   }
 
-  // Side effects: a handful spread over the last two years.
-  const sideEffectNames = ['hot flashes', 'nausea', 'breast tenderness', 'headache', 'fatigue', 'mood swings'];
+  // Side effects: a handful spread over the last two years. The older ones
+  // resolved a few weeks in, the two newest still going on (functional
+  // so both states show. No extra rolls: the seeded
+  // sequence after this stays where it was.
+  const sideEffectNames = locale === 'pl'
+    ? ['uderzenia gorąca', 'mdłości', 'tkliwość piersi', 'ból głowy', 'zmęczenie', 'wahania nastroju']
+    : ['hot flashes', 'nausea', 'breast tenderness', 'headache', 'fatigue', 'mood swings'];
   for (let i = 0; i < 8; i++) {
-    await journal.sideEffects.upsertSideEffect({ name: pick(sideEffectNames), severity: between(1, 5), epochDay: today - 730 + Math.floor((i / 8) * 730) });
+    const epochDay = today - 730 + Math.floor((i / 8) * 730);
+    await journal.sideEffects.upsertSideEffect({
+      name: pick(sideEffectNames),
+      severity: between(1, 5),
+      epochDay,
+      resolvedEpochDay: i < 6 ? epochDay + 14 + i * 3 : null
+    });
   }
 
   // Surgery: one procedure, dated in the past, with consults, notes and a
   // recovery checklist. `kind` defaults to `custom`, and the dilation gate
-  // only reads a `custom` procedure's own opt-in (ticket 17), so this needs
+  // only reads a `custom` procedure's own opt-in, so this needs
   // it set to be the seed the surgery-journey and dilation screens read.
+  // Archived by hand: nothing archives a procedure by its date any more
+  //, and the persona keeps one in the archive
+  // so the screen shows both groups.
   const procedureId = await journal.procedures.upsertProcedure({
     name: 'top surgery',
     surgeryEpochDay: today - 400,
-    notes: 'Double incision, drains out on day 5.',
-    dilationOptIn: true
+    notes: say('Double incision, drains out on day 5.', 'Podwójne cięcie, dreny wyjęte piątego dnia.'),
+    dilationOptIn: true,
+    archived: true,
+    cost: { amount: 24000, currency: 'PLN', refunded: false }
   });
   await journal.procedures.addConsult(procedureId, today - 460);
   await journal.procedures.addConsult(procedureId, today - 420);
-  for (const item of ['buy gauze', 'arrange time off work', 'ask about lifting restrictions']) {
+  for (const item of locale === 'pl'
+    ? ['kupić gazę', 'załatwić wolne w pracy', 'zapytać, ile wolno dźwigać']
+    : ['buy gauze', 'arrange time off work', 'ask about lifting restrictions']) {
     await journal.procedures.addChecklistItem(procedureId, item);
   }
   await journal.procedures.addPhoto(procedureId, today - 390, await demoPhoto(7000));
 
   // Dilation: names the same procedure above rather than carrying its own
-  // surgery day (audit item 7, schema v83) - a daily stage easing to every
+  // surgery day (schema v83) - a daily stage easing to every
   // third day, and most - not all - of the expected sessions actually
-  // logged, so the gap rendering has something real to show (ticket 12).
+  // logged, so the gap rendering has something real to show.
   const taperStart = today - 400 + 5;
   const taper = {
     procedureId,
@@ -401,7 +376,7 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   await journal.taper.upsertTaper(taper);
   for (const day of expectedSessionDays(taper, today)) {
     if (r() < 0.15) continue;
-    await journal.taper.upsertSession({ epochDay: day, note: r() < 0.2 ? 'a bit more resistance today' : '' });
+    await journal.taper.upsertSession({ epochDay: day, note: r() < 0.2 ? say('a bit more resistance today', 'dziś trochę większy opór') : '' });
   }
 
   // A document attached to the procedure, kind PDF - so documentGroups.ts
@@ -412,8 +387,8 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   // hits - a page pdf.js could fail to render only costs the thumbnail
   // (renderPdfThumbnail swallows that itself), never the document.
   const preOpClearanceId = await journal.documents.addDocument(
-    { epochDay: today - 405, title: 'Pre-op clearance' },
-    await acceptDocumentFile(demoDocumentPdf('Cleared for surgery.'))
+    { epochDay: today - 405, title: say('Pre-op clearance', 'Kwalifikacja do zabiegu') },
+    await acceptDocumentFile(demoDocumentPdf(say('Cleared for surgery.', 'Zakwalifikowano do zabiegu.')))
   );
   await journal.documents.setDocumentTarget(preOpClearanceId, { kind: 'procedure', id: procedureId });
 
@@ -421,38 +396,40 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   // behind it and one still to come - `open` (ProcedureRecoveryCard.svelte)
   // is everything but the archived phase, so this is what puts a full-size,
   // still-running rail beside the first procedure's collapsed, archived
-  // one. The consult ahead is what gives that card its forward line (audit
-  // item 13): with both consults behind it, the card that is meant to say
-  // what is next has nothing to say.
+  // one. The upcoming consult supplies the active card’s next event.
   const secondProcedureId = await journal.procedures.upsertProcedure({
-    name: 'facial feminization surgery',
+    name: say('facial feminization surgery', 'feminizacja twarzy (FFS)'),
     kind: 'facial_feminization',
     surgeryEpochDay: today + 60,
-    notes: 'Consult went well, surgeon proposed a date.'
+    notes: say('Consult went well, surgeon proposed a date.', 'Konsultacja dobra, chirurg zaproponował termin.'),
+    cost: { amount: 9800, currency: 'EUR', refunded: false }
   });
   await journal.procedures.addConsult(secondProcedureId, today - 10);
   await journal.procedures.addConsult(secondProcedureId, today + 12);
 
   // Appointment prep: a standalone checklist, unrelated to the procedure's.
-  for (const item of ['ask about spironolactone dose', 'bring lab results', 'question about hair removal referral']) {
+  for (const item of locale === 'pl'
+    ? ['zapytać o dawkę spironolaktonu', 'zabrać wyniki badań', 'zapytać o skierowanie na depilację']
+    : ['ask about spironolactone dose', 'bring lab results', 'question about hair removal referral']) {
     await journal.checklists.addToStandaloneChecklist(item);
   }
 
   // Stock: current supply for the two drugs in regimen. The vial carries an
-  // opened date and an in-use window (ticket 13), past it on purpose - the
+  // opened date and an in-use window, past it on purpose - the
   // demo persona is the one place "past it, with no adjective" gets seen.
   await journal.stock.upsertEntry({
-    drug: 'Estradiol valerate',
+    drug: estradiol,
     quantity: 6,
-    unit: 'mL',
+    unit: say('mL', 'ml'),
     recordedEpochDay: today - 3,
     openedEpochDay: today - 40,
-    inUseWindowDays: 28
+    inUseWindowDays: 28,
+    cost: { amount: 38.9, currency: 'PLN', refunded: false }
   });
   await journal.stock.upsertEntry({
-    drug: 'Progesterone',
+    drug: progesterone,
     quantity: 40,
-    unit: 'tablets',
+    unit: say('tablets', 'tabletek'),
     recordedEpochDay: today - 3,
     openedEpochDay: today - 3,
     inUseEndEpochDay: today + 60
@@ -462,7 +439,7 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
      on the compare tab is a reading against the person's own earlier takes
      and one benchmark shows none of it: the pitch density, the six
      own-history lines, the pair comparison and the break a change of phone
-     puts in a series all need a history behind them (redesign ticket 42).
+     puts in a series all need a history behind them.
      Without these the whole tab renders empty and nothing on it can be
      reviewed.
 
@@ -473,7 +450,8 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   for (const take of demoBenchmarks(r, today)) {
     await journal.voiceBenchmarks.saveBenchmark({
       ...take,
-      passageKey: 'builtin-en',
+      // A Polish persona reads the Polish passage, as the flow offers it.
+      passageKey: say('builtin-en', 'builtin-pl'),
       passageAudio: demoAudioBytes(r),
       vowelAudio: take.f1Hz === null ? null : demoAudioBytes(r)
     });
@@ -502,23 +480,11 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     attachRecordings: [demoAudioBytes(r)]
   });
 
-  /* Two video notes, which ticket 01 left for this ticket to decide about
-     and ticket 14 decided in favour of: a note is in the photo library
-     now, so "Fill every feature" has to put one there or the Video chip
-     is a control nobody can review.
-
-     Arbitrary bytes rather than a recorded clip, the trade demoAudioBytes
-     already makes for a voice recording and for the same reason: nothing
-     decodes a note to draw its tile (the library draws a glyph, not a
-     still frame), and encoding real WebM here would mean running
-     MediaRecorder for the length of the clip on every reset. A reviewer
-     who taps play gets a player with nothing to play, exactly as they do
-     for the persona's recordings.
-
-     Its own stream rather than the fixture's `r`, because 4000 draws per
-     note would shift every roll made after this point: nothing is rolled
-     below here today, and a fixture whose contents depend on that staying
-     true is a trap for whoever adds the next block. */
+  /* Add two video placeholders so reviewers can exercise the photo
+     library's Video chip. Tiles show a glyph and do not decode bytes.
+     Synthetic payloads keep reset fast and are not playable.
+     Use a separate random stream so 4000 draws per note do not shift
+     other fixture data. */
   const videoRandom = rng(4242);
   for (const back of [11, 95]) {
     await journal.entries.upsertEntry({
@@ -535,7 +501,9 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
 
   // Comfort list: who to text, which walk, which song - the editor's own
   // register (comfort_list_item_placeholder).
-  for (const text of ['Text Ola', 'Walk by the river', 'Rewatch Steven Universe', 'Call my sister']) {
+  for (const text of locale === 'pl'
+    ? ['Napisać do Oli', 'Spacer nad rzeką', 'Jeszcze raz Steven Universe', 'Zadzwonić do siostry']
+    : ['Text Ola', 'Walk by the river', 'Rewatch Steven Universe', 'Call my sister']) {
     await journal.comfortItems.addItem(text);
   }
 
@@ -556,7 +524,7 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     await journal.marginNotes.add({
       entryId: goodOldEntry.id,
       epochDay: today,
-      text: 'Reading this again - I remember exactly how nervous I was.'
+      text: say('Reading this again - I remember exactly how nervous I was.', 'Czytam to jeszcze raz i dokładnie pamiętam tamten stres.')
     });
   }
 
@@ -569,47 +537,6 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
   const milestonePhoto = journalPhotos.find((p) => p.milestoneName !== null);
   if (milestonePhoto) await journal.photos.setStarred(milestonePhoto.id, true);
 
-  // Saved questions: a query plus its filters, the shape the search
-  // screen keeps past closing (savedQuestionQuery.ts). The tag filter is
-  // guaranteed hits - g-soc-eu is written across dozens of the persona's
-  // own entries - the free-text one is a real search she might keep
-  // without needing to be guaranteed anything.
-  await journal.savedQuestions.upsertSavedQuestion({
-    name: 'Good days',
-    queryText: '',
-    tagIds: ['g-soc-eu'],
-    moods: [],
-    startEpochDay: null,
-    endEpochDay: null,
-    hasNote: false,
-    hasPhoto: false,
-    starred: false
-  });
-  await journal.savedQuestions.upsertSavedQuestion({
-    name: 'Laser progress',
-    queryText: 'laser',
-    tagIds: [],
-    moods: [],
-    startEpochDay: null,
-    endEpochDay: null,
-    hasNote: false,
-    hasPhoto: false,
-    starred: false
-  });
-
-  // One custom entry template, alongside whatever built-ins ship.
-  await journal.entryTemplates.addEntryTemplate({
-    name: 'Hard day',
-    tags: ['g-body-dys', 'e-anxious'],
-    dims: { euphoria_dysphoria: 20 },
-    noteScaffold: 'What was hard today: ',
-    presentationId: null
-  });
-
-  // One ignored word - "voice" shows up constantly (voice practice, voice
-  // workshop, the voice tag) without saying anything about a given day.
-  await journal.wordIgnore.setWordIgnored('voice', true);
-
   // One voice practice take, distinct from the benchmarks above - a
   // practice session has nothing to compare it against (voicePracticeTakes.ts).
   await journal.voicePracticeTakes.addTake({
@@ -620,11 +547,56 @@ export async function seedFullFixture(journal: Journal, today: number = todayEpo
     feltSense: 4
   });
 
-  // One custom affirmation line, beside the built-in pool.
-  await journal.affirmations.addLine('en', 'I get to move at my own pace.');
+  /* Progress photos: four shots in each pose,
+     a season apart and ending this week, so every pose has a timeline, a
+     pair to compare and a last shot for the camera to lay over its
+     picture. Seeded last and off no draw of `r`, so nothing above moves. */
+  for (const [poseIndex, pose] of PROGRESS_POSES.entries()) {
+    for (let shot = 0; shot < 4; shot++) {
+      const day = today - (3 - shot) * 90 - poseIndex;
+      await journal.progressPhotos.addPhoto(day, pose, await demoProgressPhoto(poseIndex * 4 + shot, pose));
+    }
+  }
 }
 
-/** A minimal, valid one-page PDF (phase 11 ticket 01), built the same way
+/** A 3:4 placeholder with a plain figure on it, for the progress-photo
+    fixture above: the gradient demoPhoto draws (journal-seed.ts) says
+    nothing a ghost could be lined up against, and a figure that sits a
+    little differently in each shot does. A side pose is drawn narrower. */
+async function demoProgressPhoto(seed: number, pose: ProgressPose): Promise<NormalizedPhoto> {
+  const draw = async (width: number): Promise<Uint8Array> => {
+    const height = Math.round((width * 4) / 3);
+    // OffscreenCanvas off the main thread, the way demoPhoto draws.
+    const canvas = typeof document === 'undefined' ? new OffscreenCanvas(width, height) : document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d')! as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+    const hue = (seed * 23 + 200) % 360;
+    const gradient = context.createLinearGradient(0, 0, 0, height);
+    gradient.addColorStop(0, `hsl(${hue} 30% 82%)`);
+    gradient.addColorStop(1, `hsl(${hue} 25% 66%)`);
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, width, height);
+    const unit = width / 100;
+    const shift = ((seed % 4) - 1.5) * 2 * unit;
+    const body = pose === 'side' ? 16 : 24;
+    context.fillStyle = `hsl(${hue} 20% 38%)`;
+    context.beginPath();
+    context.arc(50 * unit + shift, 26 * unit, 10 * unit, 0, Math.PI * 2);
+    context.fill();
+    context.beginPath();
+    context.roundRect((50 - body / 2) * unit + shift, 40 * unit, body * unit, 72 * unit, 10 * unit);
+    context.fill();
+    const blob = 'convertToBlob' in canvas
+      ? await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.8 })
+      : await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.8));
+    if (!blob) throw new Error('the demo could not encode a progress photo');
+    return new Uint8Array(await blob.arrayBuffer());
+  };
+  return { full: await draw(480), thumb: await draw(240) };
+}
+
+/** A minimal, valid one-page PDF, built the same way
     tests/pdf-fixture.mjs is - independently, since src/ cannot import from
     tests/: precise object offsets are what make this a file pdf.js will
     actually open, not just a header with bytes after it. */

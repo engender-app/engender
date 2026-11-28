@@ -1,4 +1,4 @@
-/* The picker's ordering rule (phase 8 features ticket 56). Here rather than
+/* The picker's ordering rule. Here rather than
    beside the component because the reactive half is a `.svelte.ts` a node
    test cannot compile; this is the part worth pinning either way. */
 
@@ -60,10 +60,10 @@ test('a link whose target is gone pins nothing and still leads with its kind', (
 
 test('each kind carries its exact record identity to its screen', () => {
   assert.equal(documentTargetHref({ kind: 'milestone', id: 'm1' }), '/transition/milestones?edit=m1');
-  assert.equal(documentTargetHref({ kind: 'procedure', id: 'p1' }), '/health/surgery?procedure=p1');
+  assert.equal(documentTargetHref({ kind: 'procedure', id: 'p1' }), '/health/surgery/p1');
   assert.equal(documentTargetHref({ kind: 'episode', id: 'e1' }), '/care/regimen?episode=e1#e1');
   assert.equal(
-    documentTargetHref({ kind: 'goal', id: 'pl-medical-keep-opinions' }),
-    '/transition/roadmap?goal=pl-medical-keep-opinions'
+    documentTargetHref({ kind: 'goal', id: 'pl-legal-final-copy' }),
+    '/transition/roadmap?goal=pl-legal-final-copy'
   );
 });

@@ -1,23 +1,10 @@
-/* On-device proof for setup's disguise step (phase 10 redesign ticket 32).
+/* Check disguise during setup finishes the install even when changing
+   launcher alias restarts the app. Drive the debug WebView on a
+   disposable emulator by explicit serial.
 
-   The acceptance criterion this answers: turning the disguise on during
-   setup produces a finished install rather than a setup that died halfway.
-   It cannot be shown in a browser, because what makes it hard is Android's
-   alone - flipping the launcher alias kills the process
-   (DisguisePlugin.setDisguised), and setup holds every answer in memory
-   until complete() writes them.
+   node tests/android-tier/disguise-setup-probe.mjs emulator-5554 [apk]
 
-   Driven through the debug build's WebView devtools socket rather than by
-   input events, for the reason [[webview-devtools-over-adb]] gives: the app
-   sets FLAG_SECURE, so a screencap is black, and the live page is the
-   authority anyway. Screenshots come from Page.captureScreenshot, which is
-   the renderer rather than the framebuffer and so is not blocked.
-
-   Run against an emulator, by serial, never against a phone that happens to
-   be plugged in:
-     node tests/android-tier/disguise-setup-probe.mjs emulator-5554 [apk]
-
-   Build the APK first, with JDK 21 and the web assets copied in:
+   Build the debug APK with JDK 21 and copied web assets:
      npm run build
      npx cap copy android
      JAVA_HOME=~/.sdkman/candidates/java/21.0.12-tem \
@@ -27,7 +14,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 
 const serial = process.argv[2];
-if (!serial) throw new Error('pass the device serial, e.g. emulator-5554');
+if (!/^emulator-\d+$/.test(serial ?? '')) throw new Error('Pass a disposable emulator serial, e.g. emulator-5554');
 const PKG = 'dev.engender.app';
 const APK =
   process.argv[3] ??
@@ -60,7 +47,7 @@ function appPid() {
     and cannot tell them apart. This answers with the component itself. */
 function launcherAlias() {
   const out = adb('shell', 'pm resolve-activity --brief -c android.intent.category.LAUNCHER ' + PKG);
-  return /Launcher\w+/.exec(out)?.[0] ?? out.trim();
+  return /Launch\d{2}/.exec(out)?.[0] ?? out.trim();
 }
 
 async function attach() {
@@ -390,11 +377,11 @@ page = null;
 adb('forward', '--remove', 'tcp:9333');
 
 const ok =
-  findings['the launcher starts undisguised'] === 'LauncherDefault' &&
+  findings['the launcher starts undisguised'] === 'Launch01' &&
   findings['starts on setup'] === true &&
-  findings['alias while the step is open'] === 'LauncherDefault' &&
+  findings['alias while the step is open'] === 'Launch01' &&
   findings['the app restarted itself'] === true &&
-  findings['alias after the finish'] === 'LauncherDisguised' &&
+  findings['alias after the finish'] === 'Launch03' &&
   findings['setup came back'] === false &&
   findings['the journal opened'] === true &&
   String(findings['the greeting']).includes('Ola') &&

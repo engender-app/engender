@@ -1,16 +1,13 @@
-/* Search's own history of what was actually searched (ticket 18): the last
-   MAX_ENTRIES queries that ran, offered back as tappable rows before a
-   character is typed, so a returning search is one tap rather than
-   retyped.
+/* Search's own history of what was actually searched: the last MAX_ENTRIES queries that
+   ran, offered back as tappable rows before a character is typed, so a returning search is
+   one tap rather than retyped.
 
-   Session memory now, not localStorage (pre-production audit S1): a search
-   term is journal content the moment it echoes a diagnosis, a drug or a
-   provider's name, and `engender-recent-searches` held the last five in
-   plaintext outside ADR-0018's encryption boundary. There is no encrypted
-   design for this ticket to reach for, so the history lives only as long as
-   the process does - client-side and per-device still, the same footing
-   liveTilesSnooze.ts's snoozes stand on, just without a mirror surviving a
-   reload. */
+   Session memory now, not localStorage (pre-production): a search term is journal content
+   the moment it echoes a diagnosis, a drug or a provider's name, and
+   `engender-recent-searches` held the last five in plaintext outside ADR-0018's encryption
+   boundary. There is no encrypted design for this ticket to reach for, so the history lives
+   only as long as the process does - client-side and per-device still, the same footing
+   liveTilesSnooze.ts's snoozes stand on, just without a mirror surviving a reload. */
 
 const LEGACY_STORAGE_KEY = 'engender-recent-searches';
 

@@ -1,6 +1,5 @@
-/* The app and decoy names come from the caller's catalogue lookups.
-   This module only chooses between them, without importing Paraglide
-   into the Node tier (ADR-0016). */
+/* The app and decoy names come from the caller's catalogue lookups. This module only
+   chooses between them, without importing Paraglide into the Node tier. */
 
 /** What a surface writes where the app's name goes. `appName` is the
     catalogue's, supplied by the caller. */
@@ -8,13 +7,9 @@ export function appWordmark(disguised: boolean, appName: string, decoyName: stri
   return disguised ? decoyName : appName;
 }
 
-/** The fourth tab's label (ticket 08). Undisguised it names the whole
-    subject the hub holds; disguised, everything the bar says stays as
-    neutral as the rest of it already is, so it reverts to the generic word
-    instead. Both strings are the caller's own catalogue lookups - this only
-    picks between them, same shape as `appWordmark`. */
-export function hubTabLabel(disguised: boolean, hubLabel: string, subjectLabel: string): string {
-  return disguised ? hubLabel : subjectLabel;
+/** Launcher, browser tab and install icon consume the outside identity. */
+export function outsideDisguise(prefs: { disguise: boolean }): boolean {
+  return prefs.disguise;
 }
 
 interface TabState {

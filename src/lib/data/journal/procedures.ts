@@ -1,33 +1,15 @@
-/* The surgery journey area (phase 5 ticket 07, CONTEXT: "Procedure"). One
-   record per procedure someone is going through, and nothing here assumes
-   exactly one is active: two can run concurrently or in sequence, so every
-   read is a list and every write names the procedure it is for.
+/* Store each surgery journey separately. Reads return lists and
+   writes name the procedure. recoveryDay.ts derives recovery elapsed
+   time from the surgery date (ADR-0010).
 
-   A procedure is not an Entry: no mood, dimension values or tags, and no
-   regimen-episode reference, the same reasoning SideEffect and CycleEvent
-   give for standing alone. It stores no day counter either - how far along
-   recovery is is a question about the surgery date and today, answered
-   above this seam by recoveryDay.ts (ADR-0010).
+   The recovery checklist uses the ordinary (kind, UUID) owner.
+   Create a checklist through checklists.ts, and delete it explicitly
+   with the procedure because that ownership has no foreign key.
 
-   The recovery checklist is not this area's own record type: it is an
-   ordinary Checklist (checklists.ts) owned by the (kind, uuid) pair ticket
-   05 built for exactly this, which is why `checklists` is a dependency
-   below rather than a table here. The lazy create-on-first-item lives in
-   checklists.ts next to the standalone list's own (ticket 11), so one file
-   owns that rule; what this area adds is that deleting a procedure takes
-   its checklist with it - the owner pair is not a foreign key, so no
-   cascade would do it.
-
-   Recovery photos are their own table (procedure_photo) rather than a third
-   owner arm on `photo` (schema.ts explains why: `photo`'s
-   exactly-one-owner CHECK cannot be widened in place). They carry both an
-   owning procedure and their own date, unlike either existing photo table:
-   a recovery photo belongs to one procedure the way hair_removal_photo
-   belongs to one session, and is dated the way hair_photo is, because when
-   in recovery it was taken is the whole point of it. The shared pipeline is
-   reused unchanged: stagePhoto (photos.ts) writes the same normalized,
-   metadata-stripped bytes through the same file-before-row order, and
-   removeFilesOf reclaims them the same way on delete. */
+   Recovery photos have their own table because photo's owner CHECK
+   cannot be widened in place. Each row carries a procedure and its
+   own day. Use stagePhoto for normalized, metadata-stripped files
+   before publishing the row, and removeFilesOf for cleanup. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Checklist, ChecklistItem, ChecklistOwner, Milestone, Procedure, ProcedureKind } from '../types';
@@ -38,11 +20,12 @@ import type { MilestonesArea } from './milestones';
 import { photosByMilestone, removeFilesOf, stagePhoto, type NormalizedPhoto } from './photos';
 import { assertChanged, mintUuid, now } from './support';
 import { todayEpochDay } from '../epochDay';
+import { assertValidCost, costColumns, costFromRow, normalizeCost, type CostInput, type CostRow } from '../cost';
 
 /** What a procedure's checklist is owned by. A plain string rather than an
     enum of one, matching ChecklistOwner's own deliberately open `kind`
     (types.ts). */
-export const PROCEDURE_CHECKLIST_OWNER_KIND = 'procedure';
+const PROCEDURE_CHECKLIST_OWNER_KIND = 'procedure';
 
 const procedureChecklistOwner = (procedureId: string): ChecklistOwner => ({
   kind: PROCEDURE_CHECKLIST_OWNER_KIND,
@@ -60,17 +43,20 @@ interface ProcedureInput {
       notes in one call; `setNotes` is how notes are edited afterwards, so
       an ordinary name/date edit cannot blank them by omission. */
   notes?: string;
-  /** Defaults to `custom` (phase 9 carpet ticket 17) - an existing
+  /** Defaults to `custom` - an existing
       procedure's editor always echoes its current kind back here, so this
       default is only ever reached by a brand-new procedure. */
   kind?: ProcedureKind;
   /** Only read for a `custom` kind (see `Procedure`). Defaults to false. */
   dilationOptIn?: boolean;
   archived?: boolean;
+  /** What it cost. Absent leaves the stored cost as it is, like `archived`, so an edit that
+      is not about the cost cannot blank it; null clears it. Throws if invalid. */
+  cost?: CostInput;
 }
 
-/** One dated recovery photo. Its own shape rather than hairProgress.ts's
-    HairPhoto or hairRemoval.ts's HairRemovalPhoto: it is the only photo in
+/** One dated recovery photo. Its own shape rather than hairRemoval.ts's
+    HairRemovalPhoto: it is the only photo in
     the app that carries both an owner and a date. */
 export interface ProcedurePhoto {
   id: string;
@@ -79,11 +65,10 @@ export interface ProcedurePhoto {
   fileName: string;
 }
 
-/** One recovery photo a procedure holds, with the procedure named on it
-    (phase 5 deepening ticket 21).
+/** One recovery photo a procedure holds, with the procedure named on it.
 
     It used to be two arms, the second being the procedure's consults. Those
-    are appointments now (ticket 57, ADR-0066) and reach a day through
+    are appointments now (ADR-0066) and reach a day through
     `appointments.getDayRecords`, which names the procedure on them the same
     way this does - so a consult is reported once rather than by two sections
     of the same day. */
@@ -109,7 +94,7 @@ export interface ProceduresArea {
       cannot overwrite each other. */
   setNotes(id: string, notes: string): Promise<void>;
   /** Returns the consult's own id, which is what deleteConsult takes.
-      Writes an appointment linked to this procedure (ticket 57): the same
+      Writes an appointment linked to this procedure: the same
       row the appointments screen creates, with the link filled in. */
   addConsult(procedureId: string, epochDay: number): Promise<string>;
   /** Idempotent. */
@@ -119,14 +104,14 @@ export interface ProceduresArea {
   /** Every procedure's recovery photos, oldest first, keyed by procedure
       and read in one query rather than one per row - the shape
       `consultsByProcedure` already takes for the other thing the index
-      draws against each procedure (ticket 52). A procedure with no photos
+      draws against each procedure. A procedure with no photos
       is absent rather than present with an empty list, so a caller reads
       "has any" off `get` alone. */
   photosByProcedure(): Promise<Map<string, ProcedurePhoto[]>>;
-  /** What a procedure put on one day (phase 5 deepening ticket 21): the
+  /** What a procedure put on one day: the
       recovery photos taken on it, carrying the procedure they belong to.
       Its consults are appointments now and reach a day through
-      `appointments.getDayRecords` instead (ticket 57).
+      `appointments.getDayRecords` instead.
 
       Not the procedure itself. A procedure is a journey that runs for
       months, and a day view says what happened on a day rather than what
@@ -134,14 +119,13 @@ export interface ProceduresArea {
       view as the milestone it already mints (ADR-0045) rather than as a
       second row here. */
   getDayRecords(epochDay: number): Promise<ProcedureDayRecord[]>;
-  /** The day of the most recent consult or recovery photo, across every
-      procedure, at or before `todayEpochDay`, or null if there is none
-      (phase 8 features ticket 03, lastWrite.ts). Still reads the consults,
-      unlike `getDayRecords` above: this is what the surgery hub row
-      reports, and a journey whose only activity was booking the next visit
-      has not gone quiet. Mirrors `getDayRecords`' other exclusion, though -
-      a procedure's `surgeryEpochDay` reaches the day view as the milestone
-      ADR-0045 mints, so it is not part of this area's own last write. */
+  /** The day of the most recent consult or recovery photo, across every procedure, at or
+      before `todayEpochDay`, or null if there is none (lastWrite.ts). Still reads the
+      consults, unlike `getDayRecords` above: this is what the surgery hub row reports, and
+      a journey whose only activity was booking the next visit has not gone quiet. Mirrors
+      `getDayRecords`' other exclusion, though - a procedure's `surgeryEpochDay` reaches the
+      day view as the milestone ADR-0045 mints, so it is not part of this area's own last
+      write. */
   lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
   /** Normalizes nothing itself - `photo` must already be through
       normalizePhoto (photoPicking.ts), same as photos.ts's attach. Returns
@@ -152,9 +136,9 @@ export interface ProceduresArea {
   /** The procedure's recovery checklist, or undefined until its first item
       creates one. Reads through checklists.ts's own path unchanged. */
   getChecklist(procedureId: string): Promise<Checklist | undefined>;
-  /** Adds a user-authored item, creating the checklist on first use so no
-      caller has to check whether it exists yet - the same shape ticket 11's
-      addToStandaloneChecklist takes. Throws if the procedure is unknown. */
+  /** Adds a user-authored item, creating the checklist on first use so no caller has to
+      check whether it exists yet - the same shape addToStandaloneChecklist takes. Throws if
+      the procedure is unknown. */
   addChecklistItem(procedureId: string, content: string): Promise<ChecklistItem>;
   /** Finds the transition milestone linked to this procedure, if one exists. */
   getMilestone(procedureId: string): Promise<Milestone | null>;
@@ -162,7 +146,7 @@ export interface ProceduresArea {
   recordSurgeryMilestone(procedureId: string, options?: { name?: string; epochDay?: number }): Promise<string>;
 }
 
-type ProcedureRow = {
+type ProcedureRow = CostRow & {
   id: number;
   uuid: string;
   name: string;
@@ -200,12 +184,13 @@ export function makeProceduresArea(
       // would sort NULL to the front in SQLite, putting a procedure with no
       // date yet ahead of one already had.
       const rows = await driver.query<ProcedureRow>(
-        `SELECT id, uuid, name, surgery_epoch_day, notes, kind, dilation_opt_in, archived FROM procedure
+        `SELECT id, uuid, name, surgery_epoch_day, notes, kind, dilation_opt_in, archived,
+                cost_amount, cost_currency, cost_refunded FROM procedure
          ORDER BY surgery_epoch_day IS NULL, surgery_epoch_day, id`
       );
       // The appointments that name a procedure, grouped by it and read in
       // one query rather than one per row - appointments.ts owns that table
-      // now (ticket 57), and a consult is one of its rows with the link
+      // now, and a consult is one of its rows with the link
       // filled in.
       const consults = await appointments.consultsByProcedure();
 
@@ -217,7 +202,8 @@ export function makeProceduresArea(
         consults: consults.get(row.uuid) ?? [],
         kind: row.kind,
         dilationOptIn: row.dilation_opt_in !== 0,
-        archived: row.archived !== 0
+        archived: row.archived !== 0,
+        cost: costFromRow(row)
       }));
     },
 
@@ -226,11 +212,17 @@ export function makeProceduresArea(
       const kind = input.kind ?? 'custom';
       const dilationOptIn = input.dilationOptIn ?? false;
       const archived = input.archived;
+      const cost = input.cost === undefined ? null : normalizeCost(input.cost);
+      if (cost) assertValidCost(cost);
 
       if (input.id) {
         const result = await driver.run(
-          'UPDATE procedure SET name = ?, surgery_epoch_day = ?, kind = ?, dilation_opt_in = ?, archived = COALESCE(?, archived), updated_at = ? WHERE uuid = ?',
-          [input.name, surgeryEpochDay, kind, dilationOptIn ? 1 : 0, archived === undefined ? null : archived ? 1 : 0, now(), input.id]
+          `UPDATE procedure SET name = ?, surgery_epoch_day = ?, kind = ?, dilation_opt_in = ?, archived = COALESCE(?, archived),
+                  ${cost ? 'cost_amount = ?, cost_currency = ?, cost_refunded = ?, ' : ''}updated_at = ? WHERE uuid = ?`,
+          [
+            input.name, surgeryEpochDay, kind, dilationOptIn ? 1 : 0, archived === undefined ? null : archived ? 1 : 0,
+            ...(cost ? costColumns(cost) : []), now(), input.id
+          ]
         );
         assertChanged(result, `procedure: ${input.id}`);
         return input.id;
@@ -238,8 +230,9 @@ export function makeProceduresArea(
 
       const uuid = mintUuid();
       await driver.run(
-        'INSERT INTO procedure (uuid, name, surgery_epoch_day, notes, kind, dilation_opt_in, archived, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [uuid, input.name, surgeryEpochDay, input.notes ?? '', kind, dilationOptIn ? 1 : 0, archived ? 1 : 0, now()]
+        `INSERT INTO procedure (uuid, name, surgery_epoch_day, notes, kind, dilation_opt_in, archived,
+                                cost_amount, cost_currency, cost_refunded, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [uuid, input.name, surgeryEpochDay, input.notes ?? '', kind, dilationOptIn ? 1 : 0, archived ? 1 : 0, ...costColumns(cost ?? normalizeCost(null)), now()]
       );
       return uuid;
     },
@@ -256,7 +249,7 @@ export function makeProceduresArea(
       const checklist = await checklists.getChecklistByOwner(procedureChecklistOwner(id));
 
       await driver.transaction(async (driver) => {
-        await driver.run('UPDATE milestone SET procedure_id = NULL WHERE procedure_id = ?', [id]);
+        await driver.run('UPDATE milestone SET procedure_uuid = NULL WHERE procedure_uuid = ?', [id]);
         await driver.run("UPDATE document SET target_kind = NULL, target_id = NULL WHERE target_kind = 'procedure' AND target_id = ?", [id]);
         await driver.run('DELETE FROM procedure WHERE uuid = ?', [id]);
         if (checklist) await driver.run('DELETE FROM checklist WHERE uuid = ?', [checklist.id]);
@@ -404,9 +397,9 @@ export function makeProceduresArea(
         epoch_day: number;
         description: string;
         template_key: string | null;
-        procedure_id: string | null;
+        procedure_uuid: string | null;
       }>(
-        'SELECT id, uuid, name, epoch_day, description, template_key, procedure_id FROM milestone WHERE procedure_id = ? LIMIT 1',
+        'SELECT id, uuid, name, epoch_day, description, template_key, procedure_uuid FROM milestone WHERE procedure_uuid = ? LIMIT 1',
         [procedureId]
       );
       if (rows.length === 0) return null;
@@ -417,7 +410,7 @@ export function makeProceduresArea(
         epochDay: rows[0].epoch_day,
         description: rows[0].description,
         templateKey: rows[0].template_key,
-        procedureId: rows[0].procedure_id,
+        procedureId: rows[0].procedure_uuid,
         photo: photos.get(rows[0].id) ?? null
       };
     },
@@ -434,7 +427,7 @@ export function makeProceduresArea(
       const epochDay = options?.epochDay ?? procedure.surgery_epoch_day ?? todayEpochDay();
 
       const existing = await driver.query<{ uuid: string }>(
-        'SELECT uuid FROM milestone WHERE procedure_id = ?',
+        'SELECT uuid FROM milestone WHERE procedure_uuid = ?',
         [procedureId]
       );
 

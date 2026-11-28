@@ -1,41 +1,13 @@
-/* The entry editor's template application, asserted as a value where the
-   component actually runs (phase 8 audit ticket 25).
+/* The entry editor, mounted over a real encrypted journal and read back out of SQLite.
 
-   Three rules meet on one click. Two of them are the pure merge's, node-
-   tested in vocabulary/entryTemplates.test.ts: tags union, dims replace by
-   key, a note scaffold fills an empty note and never overwrites a written
-   one. The third is the screen's own and lives nowhere else - EntryEditor
-   .svelte filters the template through what this install currently shows,
-   so a hidden tag, dimension or presentation stays out of the draft even
-   when the template names it (CONTEXT: "Hidden"). Until this page there was
-   no way to run that filter at all: it is a closure inside a 386-line
-   component, reachable only by mounting it.
+   Each case mounts the real editor, drives the real controls, saves, and reads the entry
+   back from SQLite. What is published is what the database holds - not what the markup
+   says. The draft is component-local `$state` with no handle out, so the save is the only
+   way to see it at all, and one transaction saves all nine areas. A failed save writes none of them.
 
-   So each case mounts the real editor over a real encrypted journal, opens
-   the real template sheet, clicks a real row, saves, and reads the entry
-   back out of SQLite. What is published is what the database holds - not
-   what the markup says, and not whether the source text mentions
-   `visibleTagGroups`.
-
-   Two things follow from reading it back through the save rather than off
-   the draft, and both are deliberate. The draft is component-local `$state`
-   with no handle out, so the save is the only way to see it at all. And the
-   save is ADR-0044's nine-area transaction, so a break in *that* would
-   surface here as a template that applied nothing - a misattribution worth
-   knowing about before believing this page's verdict on a red run.
-
-   The first two cases are not the node tests restated. What only this page
-   can fail on is the wiring: that clicking the row reaches the merge at all,
-   and that what the merge produced survives `toUpsert()` into the tables.
-   They are also the positive control the third case needs - without a case
-   proving a template's tag, dimension, note and presentation *do* land, "the
-   hidden ones did not land" would pass just as well on a screen that applies
-   nothing whatsoever.
-
-   The editor's draft mirror uses this fixture's data key through the boot
-   stub. The fixture opens below the keystore, so the real boot store has
-   no session key to release. Waiting for draft restoration before enabling
-   Save needs that same key available to the editor. */
+   The editor's draft mirror uses this fixture's data key through the boot stub. The fixture
+   opens below the keystore, so the real boot store has no session key to release. Waiting
+   for draft restoration before enabling Save needs that same key available to the editor. */
 
 import { flushSync } from 'svelte';
 import { createEncryptedWebSqlite } from '../../src/lib/data/sqlite/mc-driver.ts';
@@ -45,7 +17,7 @@ import { opfsPhotoFiles } from '../../src/lib/data/photos/opfs-file-store.ts';
 import { attachJournal, journalIsOpen } from '../../src/lib/data/live/journal.svelte.ts';
 import { hydrateReference } from '../../src/lib/data/live/reference.svelte.ts';
 import { openPreferences } from '../../src/lib/data/prefs/preferences.ts';
-import { attachPreferences } from '../../src/lib/data/prefs/store.svelte.ts';
+import { attachPreferences, setPreferenceDurably } from '../../src/lib/data/prefs/store.svelte.ts';
 import { localStorageCache } from '../../src/lib/data/prefs/boot-cache.ts';
 import { refreshActiveFlag } from '../../src/lib/theme/activeFlag.svelte.ts';
 import EntryEditor from '../../src/lib/components/EntryEditor.svelte';
@@ -71,16 +43,10 @@ const NAME = 'entry-editor-probe';
    there rather than minting its own vocabulary. `masculinity` and `a-work`
    are the two the golden archive fixture already hides for its own reasons -
    nothing about them is special beyond being built in. */
-const KEPT_TAG = 'g-euphoria';
 const ADDED_TAG = 'g-body-eu';
 const HIDDEN_TAG = 'a-work';
-const DIM = 'euphoria_dysphoria';
 const HIDDEN_DIM = 'masculinity';
 
-/* One day per case, since a case reads its entry back by day. */
-const BLANK_DAY = 19_000;
-const OVER_A_FILLED_DRAFT_DAY = 19_001;
-const HIDDEN_DAY = 19_002;
 
 type Awaitable<T> = T | Promise<T>;
 
@@ -97,61 +63,45 @@ async function until<T>(get: () => Awaitable<T | null | undefined>, what: string
   throw new Error(`timed out waiting for ${what}`);
 }
 
-/** Applies `templateId` through the sheet the screen offers, which is the
-    only way in: the button exists for a new entry alone (a template is a
-    creation aid), and the rows are inside a sheet that has to be opened. */
-async function applyTemplateThroughTheSheet(root: ParentNode, templateId: string): Promise<void> {
-  const row = `[data-list-row="${templateId}"]`;
-  (await until(() => root.querySelector<HTMLButtonElement>('[data-use-template]'), 'the use-template button')).click();
-  (await until(() => root.querySelector<HTMLElement>(row), `the template row for ${templateId}`)).click();
-  // The screen closes the sheet as the last thing it does when a template
-  // lands, so the row going away is the click having been taken.
-  await until(() => (root.querySelector(row) ? null : true), 'the template sheet to close');
+/** The one step on screen once a change between steps has finished: both
+    are in the page for the length of it. */
+function settledStep(root: ParentNode): string | null {
+  const steps = root.querySelectorAll('[data-entry-step]');
+  return steps.length === 1 ? steps[0].getAttribute('data-entry-step') : null;
 }
 
-type Applied = {
-  tags: string[];
-  dims: Record<string, number>;
-  note: string;
-  presentationId: string | null;
-};
-
-/** Mounts the editor on a new entry for `epochDay`, applies each template in
-    turn through the sheet, saves, and answers with what SQLite then holds
-    for that day. `seedMood` because the save refuses a moodless entry, and
-    a mood is the one thing no template here sets. */
-async function applyAndSave(journal: Journal, epochDay: number, templateIds: string[]): Promise<Applied> {
-  const target = document.createElement('div');
-  document.querySelector('#editor')!.replaceChildren(target);
-  const screen = mountInto(EntryEditor, { epochDay, seedMood: 4 }, target);
-  try {
-    for (const templateId of templateIds) await applyTemplateThroughTheSheet(target, templateId);
-
-    const save = await until(() => {
-      const button = target.querySelector<HTMLButtonElement>('[data-save]');
-      return button && !button.disabled ? button : null;
-    }, 'the ready save button');
-    save.click();
-    /* Waited out on the screen's committed state rather than by polling
-       the journal for the entry. A read issued while the save's transaction
-       is open goes into the same driver's statement queue and runs *inside*
-       it, so a poll can land between the entry row and its tag and dimension
-       rows and come back with an entry that has neither - which is exactly
-       what this check would then report as a template that applied nothing. */
-    await until(() => target.querySelector('[data-entry-saved]'), 'the save to finish');
-    const entry = await until(async () => (await journal.entries.entriesForDay(epochDay))[0], `the entry saved on day ${epochDay}`);
-    return { tags: entry.tags, dims: entry.dims, note: entry.note, presentationId: entry.presentationId };
-  } finally {
-    await screen.remove();
+/** Walks a new entry's steps forward
+    until `selector` is on the step shown. */
+async function toStepWith(root: ParentNode, selector: string): Promise<void> {
+  for (let hop = 0; hop < 6; hop++) {
+    const at = await until(() => settledStep(root), 'a settled step');
+    if (root.querySelector(`[data-entry-step] ${selector}`)) return;
+    if (at === 'writing') break;
+    // The way on from the first step waits for a face.
+    if (at === 'today' && !root.querySelector('[data-entry-step="today"] [data-mood][aria-checked="true"]')) {
+      root.querySelector<HTMLButtonElement>('[data-entry-step="today"] [data-mood="3"]')?.click();
+    }
+    (await until(() => root.querySelector<HTMLButtonElement>('[data-entry-continue]'), `the way on from the ${at} step`)).click();
+    await until(() => (settledStep(root) && settledStep(root) !== at ? true : null), `the step after ${at}`);
   }
+  throw new Error(`no step shows ${selector}`);
+}
+
+/** To the last step, where the note and the attachments are. */
+async function toTheRest(root: ParentNode): Promise<void> {
+  await toStepWith(root, '#ed-note');
 }
 
 async function saveWithNavigationFailure(journal: Journal) {
   const epochDay = 19_003;
   const target = document.createElement('div');
   document.querySelector('#editor')!.replaceChildren(target);
-  const screen = mountInto(EntryEditor, { epochDay, seedMood: 4, debriefForAppointment: 'visit-1' }, target);
+  /* A real appointment on the entry's own day: the save links a debrief only to an
+     appointment the offer could be naming. */
+  const visit = await journal.appointments.upsertAppointment({ epochDay, procedureId: null, kind: null, place: null, note: null });
+  const screen = mountInto(EntryEditor, { epochDay, seedMood: 4, debriefForAppointment: visit }, target);
   try {
+    await toTheRest(target);
     (await until(() => target.querySelector<HTMLButtonElement>('[data-save-star]'), 'the star')).click();
     const save = await until(() => {
       const button = target.querySelector<HTMLButtonElement>('[data-save]');
@@ -168,7 +118,7 @@ async function saveWithNavigationFailure(journal: Journal) {
     return {
       entryCount: entries.length,
       starred: entries[0].starred,
-      debriefLinked: await journal.checklists.getDebriefEntryId('visit-1') === entries[0].id,
+      debriefLinked: await journal.checklists.getDebriefEntryId(visit) === entries[0].id,
       truthfulNotice: notice.textContent!.includes(m.saved()),
       saveOffered: target.querySelector('[data-save]') !== null,
       saveFailureReported: toasts.some((item) => item.message === m.entry_save_failed()),
@@ -177,6 +127,286 @@ async function saveWithNavigationFailure(journal: Journal) {
   } catch (error) {
     await screen.remove();
     throw error;
+  }
+}
+
+type FirstStepSave = { mood: number | null; dims: Record<string, number>; note: string; tags: string[]; shownValue: string | null };
+
+/** A new entry finished on its first step:
+    a face, optionally one scale moved by a key, and the finish control,
+    which saves and leaves in one touch. Read back out of SQLite, so what is
+    published is what was written - including that the scales nobody
+    touched wrote nothing. */
+async function finishOnTheFirstStep(
+  journal: Journal,
+  epochDay: number,
+  { face, nudgeFirstScale }: { face: number; nudgeFirstScale: boolean }
+): Promise<FirstStepSave> {
+  const target = document.createElement('div');
+  document.querySelector('#editor')!.replaceChildren(target);
+  const screen = mountInto(EntryEditor, { epochDay }, target);
+  try {
+    await until(() => target.querySelector('[data-entry-step="today"]'), 'the first step');
+    (await until(() => target.querySelector<HTMLButtonElement>(`[data-entry-step="today"] [data-mood="${face}"]`), 'a face on the first step')).click();
+    let shownValue: string | null = null;
+    if (nudgeFirstScale) {
+      const slider = await until(() => target.querySelector<HTMLElement>('[data-entry-step="today"] [role="slider"]'), 'a scale on the first step');
+      slider.focus();
+      slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+      shownValue = await until(() => {
+        flushSync();
+        const text = target.querySelector('[data-entry-step="today"] [data-dim-value]')?.textContent?.trim();
+        return text && /^\d+$/.test(text) ? text : null;
+      }, 'the moved scale to show a value');
+    }
+    const finish = await until(() => {
+      const button = target.querySelector<HTMLButtonElement>('[data-entry-finish]');
+      return button && !button.disabled && !button.dataset.saveUnmet ? button : null;
+    }, 'the ready finish control');
+    finish.click();
+    await until(() => target.querySelector('[data-entry-saved]'), 'the save to finish');
+    const entry = await until(async () => (await journal.entries.entriesForDay(epochDay))[0], `the entry saved on day ${epochDay}`);
+    return { mood: entry.mood, dims: entry.dims, note: entry.note, tags: entry.tags, shownValue };
+  } finally {
+    await screen.remove();
+  }
+}
+
+/** Types into a field the way a keyboard does, so bind:value hears it. */
+function typeInto(field: HTMLTextAreaElement, text: string) {
+  field.value = text;
+  field.dispatchEvent(new Event('input', { bubbles: true }));
+  flushSync();
+}
+
+type StepTwoSave = {
+  mood: number | null;
+  dims: Record<string, number>;
+  note: string;
+  tags: string[];
+  presentationId: string | null;
+  starred: boolean;
+};
+
+/** A new entry finished from its second step:
+    a face and a scale on the first, then on the second a mode, a tag on the
+    page (no chip to open first), the note and the star, and the same finish
+    control the first step has. Read back out of SQLite. */
+async function finishOnTheSecondStep(journal: Journal, epochDay: number): Promise<StepTwoSave> {
+  const target = document.createElement('div');
+  document.querySelector('#editor')!.replaceChildren(target);
+  const screen = mountInto(EntryEditor, { epochDay }, target);
+  try {
+    await until(() => target.querySelector('[data-entry-step="today"]'), 'the first step');
+    (await until(() => target.querySelector<HTMLButtonElement>('[data-entry-step="today"] [data-mood="3"]'), 'a face')).click();
+    const slider = await until(() => target.querySelector<HTMLElement>('[data-entry-step="today"] [role="slider"]'), 'a scale');
+    slider.focus();
+    slider.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    await toStepWith(target, '.presentation-chip');
+    (await until(() => target.querySelector<HTMLButtonElement>('[data-entry-step="marks"] .presentation-chip'), 'a mode chip')).click();
+    (await until(() => target.querySelector<HTMLButtonElement>(`[data-entry-step="marks"] [data-editor-section="tags"] [data-tag="${ADDED_TAG}"]`), 'a tag on the page, with no chip opened')).click();
+    await toTheRest(target);
+    typeInto(await until(() => target.querySelector<HTMLTextAreaElement>('#ed-note'), 'the note'), 'written on the second step');
+    (await until(() => target.querySelector<HTMLButtonElement>('[data-save-star]'), 'the star')).click();
+    const finish = await until(() => {
+      const button = target.querySelector<HTMLButtonElement>('[data-entry-finish]');
+      return button && !button.disabled && !button.dataset.saveUnmet ? button : null;
+    }, 'the finish control on the second step');
+    finish.click();
+    await until(() => target.querySelector('[data-entry-saved]'), 'the save to finish');
+    const entry = await until(async () => (await journal.entries.entriesForDay(epochDay))[0], `the entry saved on day ${epochDay}`);
+    return {
+      mood: entry.mood, dims: entry.dims, note: entry.note, tags: entry.tags,
+      presentationId: entry.presentationId ?? null, starred: !!entry.starred
+    };
+  } finally {
+    await screen.remove();
+  }
+}
+
+/** A save from a middle step: a face on the first step, a tag on
+    the marks step, and the finish control pressed there. Writes those two
+    and nothing the later steps hold. */
+async function finishOnTheMarksStep(journal: Journal, epochDay: number): Promise<StepTwoSave> {
+  const target = document.createElement('div');
+  document.querySelector('#editor')!.replaceChildren(target);
+  const screen = mountInto(EntryEditor, { epochDay }, target);
+  try {
+    (await until(() => target.querySelector<HTMLButtonElement>('[data-entry-step="today"] [data-mood="3"]'), 'a face')).click();
+    await toStepWith(target, '[data-editor-section="tags"]');
+    (await until(() => target.querySelector<HTMLButtonElement>(`[data-entry-step="marks"] [data-tag="${ADDED_TAG}"]`), 'a tag')).click();
+    const finish = await until(() => {
+      const button = target.querySelector<HTMLButtonElement>('[data-entry-finish]');
+      return button && !button.disabled && !button.dataset.saveUnmet ? button : null;
+    }, 'the finish control on the marks step');
+    finish.click();
+    await until(() => target.querySelector('[data-entry-saved]'), 'the save to finish');
+    const entry = await until(async () => (await journal.entries.entriesForDay(epochDay))[0], `the entry saved on day ${epochDay}`);
+    return {
+      mood: entry.mood, dims: entry.dims, note: entry.note, tags: entry.tags,
+      presentationId: entry.presentationId ?? null, starred: !!entry.starred
+    };
+  } finally {
+    await screen.remove();
+  }
+}
+
+/** Every body region hidden and no card offered: the body step
+    is not drawn, and the progress counts the steps that are. */
+async function walkWithTheBodyStepEmpty(journal: Journal): Promise<{ steps: string[]; segments: string[] }> {
+  for (const region of await journal.bodyRegions.getBodyRegions()) {
+    if (!region.hidden) await journal.bodyRegions.setRegionHidden(region.id, true);
+  }
+  const target = document.createElement('div');
+  document.querySelector('#editor')!.replaceChildren(target);
+  const screen = mountInto(EntryEditor, { epochDay: 19_009 }, target);
+  try {
+    (await until(() => target.querySelector<HTMLButtonElement>('[data-entry-step="today"] [data-mood="3"]'), 'a face')).click();
+    const steps: string[] = [];
+    let segments: string[] = [];
+    for (let hop = 0; hop < 6; hop++) {
+      const at = await until(() => settledStep(target), 'a settled step');
+      steps.push(at);
+      segments = [...document.querySelectorAll<HTMLElement>('[data-step-segment]')].map((s) => s.dataset.stepSegment ?? '');
+      const ahead = at === 'writing' ? null : target.querySelector<HTMLButtonElement>('[data-entry-continue]');
+      if (!ahead) break;
+      ahead.click();
+      await until(() => (settledStep(target) && settledStep(target) !== at ? true : null), `the step after ${at}`);
+    }
+    return { steps, segments };
+  } finally {
+    await screen.remove();
+  }
+}
+
+/** The mood comes first: the way on from the first step, pressed with no face picked, stays
+    on the step, takes the focus to the faces and says why. */
+async function wayOnWithoutAMood(): Promise<{ step: string | null; focusOnAFace: boolean; said: string }> {
+  const target = document.createElement('div');
+  document.querySelector('#editor')!.replaceChildren(target);
+  const screen = mountInto(EntryEditor, { epochDay: 19_010 }, target);
+  try {
+    (await until(() => target.querySelector<HTMLButtonElement>('[data-entry-continue]'), 'the way on')).click();
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    return {
+      step: settledStep(target),
+      focusOnAFace: !!document.activeElement?.closest('[data-first-step-moods]'),
+      said: target.querySelector('[data-save-status]')?.textContent?.trim() ?? ''
+    };
+  } finally {
+    await screen.remove();
+  }
+}
+
+type StepTwoShape = { steps: string[]; order: string[]; backKeptDraft: boolean; footOnStep2: number; finishSameNode: boolean };
+
+/** The later steps' parts in page order, step by step, and what going back does to the
+    draft: the order is (mode, tags, the body and the cards, the note, the attachments
+    last), on steps of one purpose each; back walks every step to the first with the face
+    and the note kept. */
+async function secondStepShape(): Promise<StepTwoShape> {
+  const target = document.createElement('div');
+  document.querySelector('#editor')!.replaceChildren(target);
+  const screen = mountInto(EntryEditor, { epochDay: 19_007 }, target);
+  try {
+    await until(() => target.querySelector('[data-entry-step="today"]'), 'the first step');
+    (await until(() => target.querySelector<HTMLButtonElement>('[data-entry-step="today"] [data-mood="5"]'), 'a face')).click();
+    const finishBefore = target.querySelector('[data-entry-finish]');
+    const landmarks: [string, string][] = [
+      ['mode', '.presentation-chip'],
+      ['tags', '[data-editor-section="tags"]'],
+      ['body', '[data-editor-section="body"]'],
+      ['note', '#ed-note'],
+      ['photos', '[data-section-chip="photos"]'],
+      ['voice', '[data-section-chip="voice"]'],
+      ['video', '[data-section-chip="video"]']
+    ];
+    const steps: string[] = [];
+    const order: string[] = [];
+    for (let hop = 0; hop < 6; hop++) {
+      const at = await until(() => settledStep(target), 'a settled step');
+      steps.push(at);
+      const step = target.querySelector<HTMLElement>(`[data-entry-step="${at}"]`)!;
+      const found = landmarks
+        .map(([name, selector]) => [name, step.querySelector(selector)] as const)
+        .filter((pair): pair is readonly [string, Element] => pair[1] != null);
+      found.sort((a, b) => (a[1].compareDocumentPosition(b[1]) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
+      order.push(...found.map(([name]) => name));
+      // The last step's way on is still fading out as it arrives.
+      const ahead = at === 'writing' ? null : target.querySelector<HTMLButtonElement>('[data-entry-continue]');
+      if (!ahead) break;
+      ahead.click();
+      await until(() => (settledStep(target) && settledStep(target) !== at ? true : null), `the step after ${at}`);
+    }
+    const finishAfter = target.querySelector('[data-entry-finish]');
+    const footOnLast = target.querySelectorAll('[data-entry-finish]').length;
+    typeInto(target.querySelector<HTMLTextAreaElement>('#ed-note')!, 'kept across a step back');
+    for (let hop = 0; hop < 6 && settledStep(target) !== 'today'; hop++) {
+      const at = settledStep(target);
+      target.querySelector<HTMLButtonElement>('[data-screen-back]')!.click();
+      await until(() => (settledStep(target) && settledStep(target) !== at ? true : null), `the step before ${at}`);
+    }
+    const face = target.querySelector<HTMLElement>('[data-entry-step="today"] [data-mood="5"]');
+    const faceKept = face?.getAttribute("aria-checked") === "true";
+    await toTheRest(target);
+    const note = (await until(() => target.querySelector<HTMLTextAreaElement>('#ed-note'), 'the note')).value;
+    return {
+      steps,
+      order,
+      backKeptDraft: faceKept && note === 'kept across a step back',
+      footOnStep2: footOnLast,
+      finishSameNode: finishBefore != null && finishBefore === finishAfter
+    };
+  } finally {
+    await screen.remove();
+  }
+}
+
+type FirstStepNoScales = {
+  faces: number;
+  facesInView: boolean;
+  sliders: number;
+  dimValues: number;
+  hints: number;
+  headings: string[];
+  stepChildren: string[];
+  finish: { inView: boolean; height: number } | null;
+  cont: { inView: boolean; height: number } | null;
+  viewport: [number, number];
+};
+
+/** A new entry's first step for a person who has hidden every scale. Reads what the step
+    drew: the five faces, and no scale row, no value, no "not ticked" hint, no heading for a
+    block that is not there; and that both ways on are on screen in the window the page was
+    given. */
+async function firstStepWithEveryScaleHidden(journal: Journal): Promise<FirstStepNoScales> {
+  const target = document.createElement('div');
+  document.querySelector('#editor')!.replaceChildren(target);
+  const screen = mountInto(EntryEditor, { epochDay: 19_100 }, target);
+  try {
+    const step = await until(() => target.querySelector<HTMLElement>('[data-entry-step="today"]'), 'the first step');
+    await until(() => step.querySelector('[data-mood]'), 'the faces');
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    flushSync();
+    const view = (el: Element | null) => {
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return { inView: r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth && r.height > 0, height: Math.round(r.height * 100) / 100 };
+    };
+    return {
+      faces: step.querySelectorAll('[data-mood]').length,
+      facesInView: [...step.querySelectorAll('[data-mood]')].every((f) => view(f)?.inView === true),
+      sliders: step.querySelectorAll('[role="slider"]').length,
+      dimValues: step.querySelectorAll('[data-dim-value]').length,
+      hints: step.querySelectorAll('.first-step-hint').length,
+      headings: [...step.querySelectorAll('h1, h2, h3, h4, [role="heading"]')].map((h) => h.textContent?.trim() ?? ''),
+      stepChildren: [...step.children].map((c) => c.tagName.toLowerCase() + (c.className ? '.' + String(c.className).split(' ')[0] : '')),
+      finish: view(target.querySelector('[data-entry-finish]')),
+      cont: view(target.querySelector('[data-entry-continue]')),
+      viewport: [innerWidth, innerHeight]
+    };
+  } finally {
+    await screen.remove();
   }
 }
 
@@ -194,50 +424,37 @@ async function run() {
   await attachPreferences(await openPreferences(booted.driver, localStorageCache()));
   journalIsOpen();
 
-  /* Two presentations, one of each visibility, and the hidden pair of a tag
-     and a dimension - the fixture's own half of the third case, without
-     which "the hidden one stayed out" would only be saying that a row this
-     journal never had is not in the draft. */
+  /* Two presentations, one of each visibility, and a hidden tag and scale,
+     so the cases run against a journal that holds hidden vocabulary. */
   const shown = await journal.presentations.addPresentation('Shown', 0);
   const concealed = await journal.presentations.addPresentation('Concealed', 1);
   await journal.presentations.setPresentationHidden(concealed.id, true);
   await journal.tags.setTagHidden(HIDDEN_TAG, true);
   await journal.dimensions.setDimensionHidden(HIDDEN_DIM, true);
 
-  /* Applied first in the second case: what the draft is already holding
-     when the template under test lands on it. */
-  const groundwork = await journal.entryTemplates.addEntryTemplate({
-    name: 'Groundwork',
-    tags: [KEPT_TAG],
-    dims: { [DIM]: 20 },
-    noteScaffold: 'already writing',
-    presentationId: null
-  });
-  const template = await journal.entryTemplates.addEntryTemplate({
-    name: 'Under test',
-    tags: [KEPT_TAG, ADDED_TAG],
-    dims: { [DIM]: 85 },
-    noteScaffold: 'What felt euphoric today?',
-    presentationId: shown.id
-  });
-  /* Every field naming something this install does not show, beside one
-     that does, so the filter has to discriminate rather than drop the lot. */
-  const hiddenTemplate = await journal.entryTemplates.addEntryTemplate({
-    name: 'Naming what is hidden',
-    tags: [HIDDEN_TAG, ADDED_TAG],
-    dims: { [HIDDEN_DIM]: 70, [DIM]: 85 },
-    noteScaffold: '',
-    presentationId: concealed.id
-  });
   await hydrateReference(journal);
 
+  /* The scales-hidden case runs on its own page load (?hideScales=1), in a
+     360x640 window, so hiding every scale here cannot reach the cases below. */
+  if (new URLSearchParams(location.search).has('skipBody')) {
+    return { bodyStepEmpty: await walkWithTheBodyStepEmpty(journal) };
+  }
+  if (new URLSearchParams(location.search).has('hideScales')) {
+    /* "Hidden" is a scale left unticked: the entry screen offers
+       `activeScales` and nothing else. */
+    await setPreferenceDurably('activeScales', []);
+    return { firstStepEveryScaleHidden: await firstStepWithEveryScaleHidden(journal) };
+  }
+
   return {
-    onBlank: await applyAndSave(journal, BLANK_DAY, [template.id]),
-    overAFilledDraft: await applyAndSave(journal, OVER_A_FILLED_DRAFT_DAY, [groundwork.id, template.id]),
-    namingWhatIsHidden: await applyAndSave(journal, HIDDEN_DAY, [hiddenTemplate.id]),
     navigationFailure: await saveWithNavigationFailure(journal),
-    shownPresentationId: shown.id,
-    hiddenPresentationId: concealed.id
+    firstStepMoodOnly: await finishOnTheFirstStep(journal, 19_004, { face: 4, nudgeFirstScale: false }),
+    firstStepWithAScale: await finishOnTheFirstStep(journal, 19_005, { face: 2, nudgeFirstScale: true }),
+    secondStepSave: await finishOnTheSecondStep(journal, 19_006),
+    marksStepSave: await finishOnTheMarksStep(journal, 19_008),
+    wayOnWithoutAMood: await wayOnWithoutAMood(),
+    secondStepShape: await secondStepShape(),
+    shownPresentationId: shown.id
   };
 }
 

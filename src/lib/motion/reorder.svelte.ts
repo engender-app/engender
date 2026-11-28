@@ -1,36 +1,20 @@
-/* Reordering a list by hand: the drag a row's handle runs, and the FLIP
-   that carries every row to its new place once an order is written.
+/* TodayEditor and Things that help share drag and FLIP. Each caller
+   defines rows and how to persist order. Pointer events on a handle
+   support touch and keep the rest of the row scrollable. Measure boxes
+   once on grab so dragged rows do not move their own thresholds.
 
-   Two lists use it, the Today editor (TodayEditor.svelte) and Things that
-   help (doubt/comfort), and they had grown two copies of the same ~150
-   lines (phase 14 ticket 18's review). What differs between them stays
-   with them: where an order is written (a preference, a journal write)
-   and which rows the list holds. What is the same is here:
-
-   - **The drag.** Pointer events on a handle rather than HTML5
-     drag-and-drop, which has no touch story, and rather than the whole row,
-     which would make a list a thumb cannot scroll. The gesture is measured
-     against the rows' own boxes, taken once at the grab: the rows move
-     under the pointer as it travels, and measuring again mid-gesture would
-     compare the pointer against boxes the gesture had already displaced.
-   - **The travel.** Measure where every row is painted, write, then start
-     each row at the difference and release it on the next frame. Every row,
-     a zero difference included, with its transition off and its translate
-     cleared before it is measured: a row that stood aside during a drag
-     loses its translate in the same update the order is written, and with
-     its transition left on it was measured mid-flight and then played that
-     loss as a 48px trip the wrong way (sampled on the comfort list).
-
-   Node-tier safe apart from the rune: no clock, no driver, no paraglide. */
+   Measure every row's painted position before writing, then start with
+   the offset from its new position and release on the next frame.
+   Clear transitions and translates on every row, even a zero offset.
+   Leaving a transition enabled previously sent a row 48px the wrong way. */
 
 import { isReducedMotion } from './tokens';
 
 export type RowTop = { key: string; top: number; left: number };
 
-/** Where each row is painted, keyed. Both axes, so a grid that reflows
-    sideways travels as well as a list that reflows down (the clinician
-    summary's profile card, after-release 22); a list's rows only ever
-    differ in `top`. */
+/** Where each row is painted, keyed. Both axes, so a grid that reflows sideways travels as
+    well as a list that reflows down (the clinician summary's profile card); a list's rows
+    only ever differ in `top`. */
 export function measureTops(rows: HTMLElement[], keyOf: (el: HTMLElement) => string): RowTop[] {
   return rows.map((el) => {
     const box = el.getBoundingClientRect();
@@ -63,16 +47,14 @@ export function travelFrom(rows: HTMLElement[], keyOf: (el: HTMLElement) => stri
   });
 }
 
-/** The same travel for a list that changes under a read rather than under
-    a drag: a dose saved to another day, a procedure that moved to the
-    archive (after-release 05). Measured before the DOM updates, released
-    after it, every time `track` changes. Call it while the component
+/** The same travel for a list that changes under a read rather than under a drag: a dose
+    saved to another day, a procedure that moved to the archive. Measured before the DOM
+    updates, released after it, every time `track` changes. Call it while the component
     initialises; the rows need the list's own CSS translate transition.
 
-    Hand-written rather than Svelte's `animate:` directive on purpose: the
-    first `animate:` in the app pulls the keyed-each animation runtime into
-    the shared chunk every screen loads first, about 400 bytes gzip of a
-    first-load budget that has none to spare. */
+    Hand-written rather than Svelte's `animate:` directive on purpose: the first `animate:`
+    in the app pulls the keyed-each animation runtime into the shared chunk every screen
+    loads first, about 400 bytes gzip of a first-load budget that has none to spare. */
 export function travelOnChange(rows: () => HTMLElement[], keyOf: (el: HTMLElement) => string, track: () => unknown): void {
   let before: RowTop[] = [];
   $effect.pre(() => {
@@ -81,7 +63,14 @@ export function travelOnChange(rows: () => HTMLElement[], keyOf: (el: HTMLElemen
   });
   $effect(() => {
     track();
-    travelFrom(rows(), keyOf, before);
+    /* A microtask later, not now: Svelte applies an arriving row's intro styles in a
+       microtask of its own, queued while the DOM updated, so measuring here saw that row at
+       full height. The rows below it were then started a whole row too high and travelled
+       down while the row also opened under them, crossing the day heading for a frame.
+       Measured after the intro, an arriving row is at its first-frame height and the rows
+       below move only as it opens. Still before the next paint. */
+    const measured = before;
+    queueMicrotask(() => travelFrom(rows(), keyOf, measured));
   });
 }
 

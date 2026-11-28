@@ -1,5 +1,4 @@
-/* What a lock takes out of the page besides the database and the key
-   (after-release ticket 10; audit L09-02, L09-03 and SEC-08). */
+/* What a lock takes out of the page besides the database and the key. */
 
 import { afterEach, expect, it, vi } from 'vitest';
 import { forgetJournalContent, forgetOnLock } from './forget-content.ts';
@@ -62,7 +61,7 @@ it('runs what a holder registered, so the lock never has to import the holder', 
   expect(held).toBeNull();
 });
 
-it('takes a search held before a reload, when nothing has loaded the search module yet', () => {
+it('removes the legacy search key left by an older version', () => {
   stubStorage();
   sessionStorage.setItem('engender-search-return', JSON.stringify({ ...EMPTY_SEARCH, query: 'from before the reload' }));
   forgetJournalContent();

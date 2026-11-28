@@ -1,9 +1,8 @@
-/* The fluidity engine's presentation area (phase 5 deepening ticket 17,
-   ADR-0048): no built-ins, no delete, and an MRU order that reads the entry
+/* The fluidity engine's presentation area (ADR-0048): no built-ins, no delete, and an MRU order that reads the entry
    table directly rather than a stored "last used" column. The MRU cases
    below insert an `entry` row by hand rather than through
    journal.entries.upsertEntry - this module's own ordering is what is under
-   test, and entries.test.ts covers the write side of `presentation_id`. */
+   test, and entries.test.ts covers the write side of `presentation_uuid`. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
@@ -54,12 +53,12 @@ test('rename, recolour and hide throw on an unknown id', async () => {
 });
 
 /** Inserts a bare `entry` row carrying `presentationId` at `timestamp`,
-    bypassing journal.entries entirely - only presentation_id and timestamp
+    bypassing journal.entries entirely - only presentation_uuid and timestamp
     matter to the ordering under test. */
 function plantEntry(db: Awaited<ReturnType<typeof journalWithBuiltIns>>['db'], presentationId: string, timestamp: number) {
   db.raw
     .prepare(
-      "INSERT INTO entry (uuid, epoch_day, timestamp, note, presentation_id, updated_at) VALUES (?, ?, ?, '', ?, ?)"
+      "INSERT INTO entry (uuid, epoch_day, timestamp, note, presentation_uuid, updated_at) VALUES (?, ?, ?, '', ?, ?)"
     )
     .run(`e-${timestamp}`, 100, timestamp, presentationId, timestamp);
 }
@@ -84,7 +83,7 @@ test('a trashed entry does not count towards a presentation\'s last-used order',
 
   plantEntry(db, fresh.id, 2000);
   plantEntry(db, stale.id, 9000);
-  db.raw.prepare("UPDATE entry SET trashed_at = ? WHERE presentation_id = ?").run(9500, stale.id);
+  db.raw.prepare("UPDATE entry SET trashed_at = ? WHERE presentation_uuid = ?").run(9500, stale.id);
 
   const order = (await journal.presentations.getPresentations()).map((p) => p.id);
   assert.deepEqual(order, [fresh.id, stale.id]);

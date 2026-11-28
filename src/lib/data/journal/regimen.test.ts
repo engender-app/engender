@@ -1,6 +1,5 @@
-/* The regimen episode area (phase 4 ticket 01, CONTEXT: "Regimen episode"):
-   uuid-only identity, no built-in counterpart, hide-never-delete, and the
-   ordering getEpisodes() promises activeEpisodesAt relies on. */
+/* The regimen episode area: uuid-only identity, no built-in counterpart, hide-never-delete,
+   and the ordering getEpisodes() promises activeEpisodesAt relies on. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
@@ -26,6 +25,7 @@ test('an episode gets a minted uuid id and round-trips every field', async () =>
     {
       id,
       drug: 'estradiol valerate',
+      drugClass: 'hrt',
       ester: 'valerate',
       dose: 4,
       doseUnit: 'mg',
@@ -147,7 +147,7 @@ test('a retroactive correction (a past start date) changes what an existing epis
 
   // A corrective episode starting on day 140, added after the fact - the
   // estradiol tablets were a mistaken record and the patch is what was
-  // really being used from day 140. Ticket 38 stores an end explicitly
+  // really being used from day 140. stores an end explicitly
   // rather than inferring one from the next episode's start, so a real
   // correction is two writes now, not one: the new episode, and shortening
   // the one it corrects so the two don't sit concurrently over days that
@@ -205,7 +205,7 @@ test('endEpisode sets an explicit end day, independent of any other episode star
   await assert.rejects(journal.regimen.endEpisode('nope', 150), /unknown regimen episode/);
 });
 
-/* Ticket 43: one nullable column, set only alongside the end day. */
+/* One nullable column, set only alongside the end day. */
 test('endEpisode can carry a reason, set at the same time as the end day; ending with no reason stays valid', async () => {
   const { journal } = await journalWithBuiltIns();
   const id = await journal.regimen.upsertEpisode({
@@ -308,7 +308,7 @@ test('a straight edit of an already-ended episode\'s other fields preserves its 
   assert.equal((await journal.regimen.getEpisodes())[0].endReason, 'switchedDrugOrRoute');
 });
 
-test('two episodes for different drugs can both be active on the same day (phase 5 ticket 38)', async () => {
+test('two episodes for different drugs can both be active on the same day', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.regimen.upsertEpisode({
     drug: 'estradiol',

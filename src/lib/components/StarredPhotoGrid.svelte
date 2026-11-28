@@ -1,8 +1,6 @@
 <script lang="ts">
-  /* The starred photos under a Starred search, with their unstar mark. Its
-     own component so /search and a saved question draw the same grid
-     (after-release ticket 16 follow-up); the heading above it stays with
-     each screen, which knows what else it is showing. */
+  /* The starred photos under a Starred search, with their unstar mark. The heading above it
+     stays with the screen, which knows what else it is showing. */
   import { m } from '$lib/paraglide/messages';
   import { journal } from '$lib/data/live/journal.svelte';
   import { photoSourceLabel } from '$lib/data/vocabulary/photoLibraryLabels';

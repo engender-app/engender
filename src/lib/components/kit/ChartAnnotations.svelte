@@ -1,58 +1,17 @@
 <script lang="ts">
-  /* What was happening around the readings (phase 5 deepening ticket 23).
+  /* Annotations use the chart's plot coordinates, clip and reveal. A stretch
+     uses a neutral ink wash behind the data fill. Draw its 1px start edge only
+     when the actual start falls inside the range. A clipped band edge does not
+     mark an event.
 
-     A layer inside the area chart's own plot rather than a second chart laid
-     over it, which is what makes it belong to the chart: it is drawn in the
-     same coordinate space, revealed by the same wipe on the way in, and
-     clipped by nothing of its own.
+     Stretch starts draw from the top and moments rise one fifth of the plot
+     from the baseline. Short ticks preserve the full-height dotted line for
+     scrubbing. Two ticks indicate several moments on the same day.
 
-     Two marks, because there are two kinds of thing to say.
-
-     A stretch is a band, drawn behind the fill. Neutral ink at a few percent
-     rather than a colour of its own: the fill is already the flag palette's
-     role colour and there are eight of those times two themes, so an
-     annotation drawn in any hue would be readable against some of them and
-     lost against the rest. Ink is the one thing every palette shares, and a
-     wash of it darkens the card without competing with the line. The band's
-     start carries a 1px edge, but only where that day is really inside the
-     range: an episode that began before the chart did gets no edge, because
-     the left side of that band is where the chart starts and not where
-     anything happened.
-
-     A moment is a mark off the baseline, a fifth of the plot's height. Two
-     registers, and they never meet: what began is written along the top,
-     what happened is written along the bottom, and the readings run between
-     them untouched. Not floor to ceiling: a full-height line is the loudest thing on a chart, it
-     crosses the data it is supposed to be context for, and three of them on
-     adjacent days is a thicket. It is also already spoken for - the scrub
-     draws a dotted full-height line, and a second full-height line in the
-     same chart would read as a second scrub. Where several land together the
-     tick doubles, which says "more than one here" without a number: a count
-     drawn on a plot is a label, and labels on marks are what this design
-     spent its legibility budget avoiding.
-
-     Every mark can be pointed at, and says what it is when it is (Alicja,
-     2026-09-01: "there should be a hover action with a label displayed for
-     each moment"). Both registers answer, not only the baseline: the day a
-     stretch began is a moment too, and half the marks on a chart going dead
-     under the pointer reads as a bug rather than as a rule.
-
-     Two things follow from a mark being 1.5px of ink. The thing a pointer
-     finds is an invisible target around it, not the mark. And the hover is
-     reported upward rather than drawn here: a label wants wrapping, the
-     card's own type and a pill behind it, and SVG text has none of those.
-
-     The targets exist only where hovering is real. A finger has no hover, and
-     on a touch screen these would swallow the drag that scrubs the chart -
-     which is how the same names are read there, so the rule costs a touch
-     reader nothing.
-
-     Nothing here is tabbable and nothing carries a title: the marks are
-     decoration to the accessibility tree, and the annotations are read as a
-     list beside the chart instead (AreaChart.svelte). Same reasoning the
-     chart's own marks carry - there is nothing here to tab to, and a hover is
-     an addition for whoever has a pointer rather than the only way to the
-     words. */
+     Both registers report pointer targets to AreaChart for HTML labels. The
+     invisible hit area is wider than the ink. Touch uses the chart scrubber,
+     so hover targets are absent there. The annotation layer is aria-hidden
+     and unfocusable. AreaChart reads the same annotations as a separate list. */
   import type {
     AnnotationEdge,
     AnnotationMark,

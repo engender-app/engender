@@ -1,20 +1,18 @@
-/* Choosing an archive to import (ticket 14, PRD F14).
+/* Choosing an archive to import.
 
-   The web half, like photos/picker.ts is for photos: on Android this becomes
-   the shell's own file picker, and the screen above must never learn which
-   one it got.
+   The web half, like photos/picker.ts is for photos: on Android this becomes the shell's
+   own file picker, and the screen above must never learn which one it got.
 
-   Bytes rather than a File, and a stream rather than one buffer: opening an
-   archive reads the header, then the payload, then the photo files as the
-   body reaches them (pack.ts), so restoring years of photos never holds more
-   than a chunk of it.
+   Bytes rather than a File, and a stream rather than one buffer: opening an archive reads
+   the header, then the payload, then the photo files as the body reaches them (pack.ts), so
+   restoring years of photos never holds more than a chunk of it.
 
-   `bytes()` is a function and not a value, because a wrong password is a
-   retry rather than a dead end: every attempt gets its own read of the same
-   file, and a stream cannot be consumed twice. */
+   `bytes()` is a function and not a value, because a wrong password is a retry rather than
+   a dead end: every attempt gets its own read of the same file, and a stream cannot be
+   consumed twice. */
 
 import { chooseFiles } from '../fileDialog';
-import { ARCHIVE_FILE_EXTENSION } from './container';
+import { ARCHIVE_FILE_EXTENSION, LEGACY_ARCHIVE_FILE_EXTENSION } from './container';
 
 export interface PickedArchive {
   /** What to show the user they picked. Never a path. */
@@ -31,10 +29,10 @@ export class EmptyArchiveFileError extends Error {}
 
 /** The archive the user chose, or null if they backed out - an ordinary
     outcome, not an error. Android's `MimeTypeMap` only resolves an accept
-    entry that names a real MIME type (ticket 66); the extension alone
+    entry that names a real MIME type; the extension alone
     resolved to nothing and crashed the picker before it could open. */
 export async function pickArchive(): Promise<PickedArchive | null> {
-  const [file] = await chooseFiles(`${ARCHIVE_FILE_EXTENSION},application/octet-stream`);
+  const [file] = await chooseFiles(`${ARCHIVE_FILE_EXTENSION},${LEGACY_ARCHIVE_FILE_EXTENSION},application/octet-stream`);
   if (!file) return null;
   if (file.size === 0) throw new EmptyArchiveFileError();
   return { name: file.name, bytes: () => blobBytes(file) };

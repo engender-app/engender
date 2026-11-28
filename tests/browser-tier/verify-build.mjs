@@ -1,93 +1,38 @@
-/* Release gate (ticket 04's acceptance: "verify it, do not assume it"):
-   confirms the production build (`npm run build`) is a static SPA that
-   makes zero requests off its own origin - the SQLite .wasm/worker in
-   particular, which Rive's canvas package already gets wrong by
-   defaulting to a CDN. Serves build/ as production does (serve-build.mjs:
-   build/index.html itself, under the isolation headers) and drives a real
-   Chromium through it with Playwright.
+/* Serve the static build under production isolation headers and drive
+   Chromium. Assert zero off-origin requests, including SQLite worker
+   and WASM, and check emitted JS excludes the persona and demo bar.
+   Install the manifest and service worker, then relaunch offline
+   from the precache.
 
-   It also reads the emitted JavaScript from disk (ticket 05): the Alice
-   persona and the demo bar have to be absent from a production build, and
-   the only way to know is to look at what was written, not at the source
-   that was supposed to guard them. Run with `npm run verify:build` after
-   `npm run build`.
-
-   The second half installs the app for real (phase 2 ticket 03): manifest,
-   service worker and precached shell, then kills the network and starts the
-   app again. That is the check no test against a dev server can make -
-   neither the worker nor the manifest exists until something is built. */
+   npm run build
+   npm run verify:build */
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
-import { newCapabilityContext, createReporter, launchBrowser, launchPersistentBrowser, browserEngine } from '../browser-harness.mjs';
+import { newCapabilityContext, createReporter, launchBrowser, launchPersistentBrowser, browserEngine, continueToTheRest } from '../browser-harness.mjs';
 import { serveBuild } from '../serve-build.mjs';
+import { observeBuildRequests } from '../build-requests.mjs';
 import { appVersion } from '../../scripts/app-version.mjs';
 import { choosePassphrase, firstRun } from './built-flow.mjs';
 
-/* --- Phase 5 performance ticket 01: the OCR engine, online then offline ---
+// The generation manifest comes from the same recipe as the worker and APK.
+const OCR_ASSETS = JSON.parse(readFileSync('build/tesseract/assets.json', 'utf8')).assets;
 
-   The shell no longer precaches that engine, so the question this answers is
-   the one the trade turns on: are its bytes still there with no network, after
-   the app has loaded it once.
-
-   Driven at the cache rather than through the scanner's own sheet: what this
-   file is responsible for is the shell's caching behaviour, not the screen
-   that triggers it, and a real recognition run would make this slower and
-   less deterministic for no gain here. The screen itself - opening the sheet,
-   running a recognition, the download notice it shows first - is the
-   walkthrough's job (ticket 44). The step neither file drives (tesseract
-   reading those files) stays covered by ocr-engine.test.ts, which pins the
-   paths the engine loads from.
-
-   The set the page asks for, as ocr-engine.ts names it. */
-const OCR_ASSETS = [
-  '/tesseract/worker.min.js',
-  '/tesseract/tesseract-core.wasm.js',
-  '/tesseract/tesseract-core.wasm',
-  '/tesseract/lang-data/eng.traineddata.gz',
-  '/tesseract/lang-data/pol.traineddata.gz'
-];
-
-/* The two built files the shell does not install (phase 14 pre-release ticket
-   13; shell-assets.ts has the reasoning). Named by pattern, as it does,
-   because their names carry a hash. */
+/* The emitted workers the shell does not install (shell-assets.ts has the reasoning). Named
+   by pattern because their names carry a hash. PDF fonts are checked by directory below. */
 const PDF_WORKER = /^\/_app\/immutable\/workers\/pdf-worker-[^/]+\.js$/;
+const PHOTO_WORKER = /^\/_app\/immutable\/workers\/normalize\.worker-[^/]+\.js$/;
 const UNUSED_WORKER = /^\/_app\/immutable\/workers\/sqlite3-worker1-bundler-friendly-[^/]+\.js$/;
-
-/** Loads the engine's files the way a first recognition does, then sends the
-    ask ocr-engine.ts sends once they are in. Returns what each file measured,
-    which is what the offline half is compared against - not the bytes on
-    disk, since the two language files are served .gz and a blob of one is its
-    decompressed size. */
-async function loadAndKeepOcrEngine(page, assets, message) {
-  return await page.evaluate(
-    async ({ assets, message }) => {
-      const sizes = {};
-      for (const asset of assets) {
-        const response = await fetch(asset);
-        if (!response.ok) return `fetching ${asset} answered ${response.status}`;
-        sizes[asset] = (await response.blob()).size;
-      }
-      /* Through the registration, the way ocr-engine.ts sends it: this page
-         installed the worker, so it is not controlled by it. */
-      const registration = await navigator.serviceWorker.getRegistration();
-      registration?.active?.postMessage(message);
-      return registration?.active ? { sizes } : 'no active worker to ask';
-    },
-    { assets, message }
-  );
-}
 
 /** Any screen, from whatever state the page is in.
 
-    Loaded by URL rather than walked to. Both would be fair - the walkthrough
-    suite is what covers the taps that get a person there, and ADR-0036 moved
-    Settings behind a More hub since these checks were written - but a load is
-    the one that works from a page that has just started cold offline, which is
-    where half the calls below are made. A load is a reload, and a reload ends
-    the unlocked session (ADR-0018), so the gate is met again on the way in. */
+    Loaded by URL rather than walked to. Both would be fair - the walkthrough suite is what
+    covers the taps that get a person there, and More hosts feature navigation - but a load
+    is the one that works from a page that has just started cold offline, which is where
+    half the calls below are made. A load is a reload, and a reload ends the unlocked
+    session (ADR-0018), so the gate is met again on the way in. */
 async function openScreen(page, origin, path) {
   await page.goto(`${origin}${path}`);
   await page.waitForSelector('#journal-passphrase', { timeout: 30000 }).catch(() => {});
@@ -96,13 +41,12 @@ async function openScreen(page, origin, path) {
   await page.waitForSelector('.app[data-boot="ready"]', { timeout: 30000 });
 }
 
-/** What the release cache holds right now: its name, every path in it, and the
-    bytes it adds up to.
+/** What the release cache holds right now: its name, every path in it, and the bytes it
+    adds up to.
 
-    Measured rather than derived from the file list, because what a first visit
-    actually costs is what the browser stored, and the two came apart once
-    already: the audit found a 54.06 MB shell whose asset list read as
-    unremarkable (phase 5 performance ticket 01). */
+    Measured rather than derived from the file list, because what a first visit actually
+    costs is what the browser stored, and the two came apart once already: the audit found a
+    54.06 MB shell whose asset list read as unremarkable. */
 async function measureCache(page) {
   return await page.evaluate(async () => {
     const names = await caches.keys();
@@ -150,19 +94,15 @@ const browser = await launchBrowser();
 const initialContext = await newCapabilityContext(browser);
 const page = await initialContext.newPage();
 
-const allRequests = [];
-const externalRequests = [];
-page.on('request', (req) => {
-  allRequests.push(req.url());
-  if (new URL(req.url()).origin !== origin) externalRequests.push(req.url());
-});
+const { allRequests, externalRequests, observe } = observeBuildRequests(origin);
+observe(initialContext);
 
 const { ok, fail, finish } = createReporter();
 
 try {
   const PASSPHRASE = 'verify-build passphrase';
 
-  /* Onboarding is truly first now (ticket 54): a brand new install used to
+  /* Onboarding is truly first now: a brand new install used to
      stop at the passphrase gate before the database even existed, ahead of
      onboarding's own welcome screen ever getting a chance to paint - only
      the demo build invented a passphrase for itself and never met this.
@@ -193,9 +133,8 @@ try {
     record();
   });
 
-  /* The page every check below loads is the document that ships (ticket
-     31, audit PERF-05): vite preview rendered its own, with no CSP and no
-     held module hints, so nothing here ever ran under either. */
+  /* The page every check below loads is the document that ships: vite preview rendered its
+     own, with no CSP and no held module hints, so nothing here ever ran under either. */
   const served = await (await fetch(`${origin}/`)).text();
   if (served === readFileSync('build/index.html', 'utf8')) ok('the served document is build/index.html, byte for byte');
   else fail('the served document is build/index.html, byte for byte', `${served.length}B served against ${statSync('build/index.html').size}B on disk`);
@@ -210,7 +149,7 @@ try {
     await page.locator('[data-next]').click();
   }
 
-  /* Reaching the lock step is where the access-mode module (ticket 53)
+  /* Reaching the lock step is where the access-mode module
      appears - not before, which the race above already pinned, and not a
      second copy built for onboarding: this is the same AccessModeSetup
      component Settings uses, on screen because the gate itself is
@@ -218,9 +157,8 @@ try {
   await page.waitForSelector('[data-access-modes]', { timeout: 10000 });
   ok('the access-mode module appears at the one onboarding step that needs it, and only there');
 
-  /* Ticket 30 split choosing a mode from typing its secret into two
-     screens: the consequence screen names the mode first, and only its own
-     Continue reaches the fields. */
+  /* Split choosing a mode from typing its secret into two screens: the consequence screen
+     names the mode first, and only its own Continue reaches the fields. */
   await choosePassphrase(page, PASSPHRASE);
 
   // Give boot() time to open the database and load the sqlite3mc
@@ -255,16 +193,14 @@ try {
   if (page.url() === `${origin}/`) ok('Home stays put - no late navigation undid finishing onboarding');
   else fail('Home stays put after finishing onboarding', page.url());
 
-  /* The session rule (ADR-0018), on the production build - the walkthrough
-     can't test this because the demo build unlocks itself: a reload ends
-     the unlocked session, the unwrapped key dies with it, and the journal
-     opens again only for the passphrase.
+  /* The session rule (ADR-0018), on the production build - the walkthrough can't test this
+     because the demo build unlocks itself: a reload ends the unlocked session, the
+     unwrapped key dies with it, and the journal opens again only for the passphrase.
 
-     This doubles as ticket 54's other half: a returning user, with a
-     keystore already on the device, still meets the gate first - the
-     first-run exception above only ever applied to needs-setup, and a
-     reload here is needs-unlock. Nothing onboarding does is reachable from
-     this screen; there is no [data-next] to find. */
+     This doubles as other half: a returning user, with a keystore already on the device,
+     still meets the gate first - the first-run exception above only ever applied to
+     needs-setup, and a reload here is needs-unlock. Nothing onboarding does is reachable
+     from this screen; there is no [data-next] to find. */
   await page.reload({ waitUntil: 'networkidle' });
   await page.waitForSelector('#journal-passphrase', { timeout: 10000 });
   const confirmField = await page.locator('#journal-passphrase-confirm').count();
@@ -304,6 +240,12 @@ try {
   if (demoBar.length === 0) ok('production build contains no demo bar');
   else fail('production build contains no demo bar', `found ${demoBar.join(', ')}`);
 
+  /* `?celebrate=1` forces Home's milestone celebration for review. Behind `__DEMO__`, the
+     read of the parameter folds away, so a production build has no way to be told to
+     celebrate. */
+  if (!/\.get\(\s*["'`]celebrate["'`]\s*\)/.test(bundle)) ok('production build ignores ?celebrate=1');
+  else fail('production build ignores ?celebrate=1', 'the bundle still reads the celebrate parameter');
+
   /* The counterpart: the vocabulary every real user needs does ship, so a
      "nothing found" pass above can't be the bundle simply not being read. */
   if (bundle.includes('euphoria_dysphoria')) ok('production build does contain the built-in vocabulary');
@@ -315,12 +257,12 @@ try {
 await initialContext.close();
 await browser.close();
 
-/* --- Phase 2 ticket 03: install the app, kill the network, start it again -
+/* --- install the app, kill the network, start it again -
 
-   A profile directory rather than the throwaway context above, for two
-   reasons: Chromium answers every installability question about an incognito
-   profile with `in-incognito` and looks no further, and a restart that the
-   browser remembers nothing about would not be much of a restart. */
+   A profile directory rather than the throwaway context above, for two reasons: Chromium
+   answers every installability question about an incognito profile with `in-incognito` and
+   looks no further, and a restart that the browser remembers nothing about would not be
+   much of a restart. */
 const profile = await mkdtemp(join(tmpdir(), 'engender-install-'));
 // Disable Firefox HTTP caches so an uncached offline navigation needs the worker.
 const profileOptions = browserEngine() === 'firefox' ? { firefoxUserPrefs: {
@@ -333,12 +275,12 @@ const closeServer = async () => {
 };
 try {
   installed = await launchPersistentBrowser(profile, profileOptions);
+  observe(installed);
   const cold = installed.pages()[0] ?? (await installed.newPage());
   await firstRun(cold, origin);
   await cold.locator('[data-mood="4"]').click();
-  // Quick Log now seeds the editor route; save once to create the entry
-  // this offline-start check is meant to read back.
-  await cold.waitForSelector('#ed-note');
+  // The seeded mood can be saved from the first step of a new entry.
+  await cold.locator('[data-entry-step="today"] [data-mood="4"][aria-checked="true"]').waitFor();
   await cold.locator('[data-save]').click();
   await cold.waitForSelector('[data-home-hello]');
   await cold.waitForSelector('[data-home-count]');
@@ -351,7 +293,7 @@ try {
 
   } else console.log('UNSUPPORTED installation audit: Chromium CDP required; offline engine checks continue');
 
-  /* The same question with disguise on (ticket 25). Flipped through the real
+  /* The same question with disguise on. Flipped through the real
      Settings control, then waited on the boot mirror the head script reads,
      so SQLite and localStorage agree before a fresh page asks Chromium what
      it would install. That keeps this from passing only because the profile
@@ -417,65 +359,18 @@ try {
     ok(`the shell is one cache per release (${shell.names[0]}), ${shell.paths.length} entries, ${megabytes} MB`);
   else fail('the shell is one cache per release', JSON.stringify(shell.names));
 
-  /* The whole of ticket 01's first finding, as the one number a person feels:
-     the shell was 54.06 MB across 324 entries, 49.7 MB of it an OCR engine
-     that a first visit has no use for. The ceiling is deliberately loose - it
-     is here to catch another feature's assets being precached wholesale, not
-     to make an ordinary release fail because a font was added. */
-  const SHELL_CEILING_MB = 15;
-  if (shell.bytes < SHELL_CEILING_MB * 1e6) ok(`a first visit stores ${megabytes} MB, under the ${SHELL_CEILING_MB} MB ceiling`);
-  else fail(`a first visit stores under ${SHELL_CEILING_MB} MB`, `${megabytes} MB across ${shell.paths.length} entries`);
-
-  const precachedOnDemand = shell.paths.filter((path) => path.startsWith('/tesseract/'));
-  if (precachedOnDemand.length === 0) ok('the OCR engine is not in a fresh install\'s shell');
-  else fail("the OCR engine is not in a fresh install's shell", precachedOnDemand.slice(0, 4).join(', '));
-
-  /* The download notice, read off the built bundle rather than off the
-     screen: what can be checked here is that the copy shipped and that both
-     languages of it did. The walkthrough drives the screen itself and checks
-     the notice is actually on it, in whichever one locale that runs in. */
-  const shipped = emittedAssets();
-  /* Read out of the catalogues rather than restated here, so a reworded notice
-     stays checked instead of quietly failing (ADR-0029's rule, applied to copy
-     this file has to name). */
-  const notice = ['messages/en.json', 'messages/pl.json']
-    .map((catalogue) => JSON.parse(readFileSync(catalogue, 'utf8')).labs_ocr_download_title)
-    .filter((line) => shipped.includes(line));
-  if (notice.length === 2) ok('the scanner ships the line that says what it is about to download, in both languages');
-  else fail('the scanner ships its download notice in both languages', `found ${notice.length} of 2`);
-
-  /* Loading the engine, which is what puts it in the cache: the same files
-     ocr-engine.ts fetches, then the same ask it sends afterwards. */
-  const online = await loadAndKeepOcrEngine(cold, OCR_ASSETS, 'engender:cache-on-demand');
-  if (typeof online === 'string') fail('the OCR engine loads from the app origin', online);
-  else ok('the OCR engine loads from the app origin');
-  const onlineSizes = typeof online === 'string' ? {} : online.sizes;
-
-  /* The worker fills its cache off the message, so the wait is for the cache
-     rather than for a reply: the ask is deliberately one-way. Polled with
-     plain evaluates rather than waitForFunction, whose default polling runs on
-     animation frames - which a page that is not the frontmost tab does not
-     get, and this one has had a second page opened over it. */
-  for (let attempt = 0; attempt < 60; attempt++) {
-    const cached = await cold.evaluate(async (assets) => {
-      const cache = await caches.open((await caches.keys())[0]);
-      let found = 0;
-      for (const asset of assets) if (await cache.match(asset)) found++;
-      return found;
-    }, OCR_ASSETS);
-    if (cached === OCR_ASSETS.length) break;
-    await cold.waitForTimeout(1000);
-  }
-
-  const afterUse = await measureCache(cold);
-  const cachedOcr = afterUse.paths.filter((path) => path.startsWith('/tesseract/')).length;
-  if (cachedOcr === OCR_ASSETS.length)
-    ok(
-      `loading the engine adds it to the same release cache (${afterUse.paths.length} entries, ${(
-        afterUse.bytes / 1e6
-      ).toFixed(2)} MB)`
-    );
-  else fail('loading the engine adds it to the release cache', `${cachedOcr} of ${OCR_ASSETS.length} OCR files cached`);
+  const ocrStoredBytes = OCR_ASSETS.reduce((sum, asset) => sum + statSync(join('build', asset)).size, 0);
+  const applicationBytes = shell.bytes - ocrStoredBytes;
+  // The accepted OCR installation cost is separate from the application shell.
+  if (applicationBytes < 15e6) ok(`application shell stores ${(applicationBytes / 1e6).toFixed(2)} MB, under 15 MB`);
+  else fail('application shell stores under 15 MB', `${applicationBytes} bytes`);
+  const precachedOcr = shell.paths.filter(path => path.startsWith('/tesseract/'));
+  if (OCR_ASSETS.every(asset => precachedOcr.includes(asset)) && precachedOcr.length === OCR_ASSETS.length)
+    ok(`fresh installation contains all ${OCR_ASSETS.length} OCR assets (${ocrStoredBytes} stored bytes)`);
+  else fail('fresh installation contains the complete current OCR generation', JSON.stringify(precachedOcr));
+  const onlineSizes = Object.fromEntries(OCR_ASSETS.map(asset => [asset, statSync(join('build', asset)).size]));
+  const photoWorkers = shell.paths.filter((path) => PHOTO_WORKER.test(path));
+  if (photoWorkers.length !== 1) throw new Error(`expected one precached photo worker, found ${photoWorkers.length}`);
 
   /* The PDF renderer's worker, kept out of the install and asked for by the
      first document opened (pdf.ts). Sent the way pdf.ts sends it. Checked on
@@ -484,6 +379,14 @@ try {
   const pdfWorkerInShell = shell.paths.filter((path) => PDF_WORKER.test(path) || UNUSED_WORKER.test(path));
   if (pdfWorkerInShell.length === 0) ok('a fresh install stores neither the PDF worker nor the unused SQLite promiser worker');
   else fail('a fresh install stores neither the PDF worker nor the unused SQLite promiser worker', pdfWorkerInShell.join(', '));
+  const PDF_FONT_DIR = new URL('../../static/pdf-fonts/', import.meta.url);
+  const pdfFonts = readdirSync(PDF_FONT_DIR).map((name) => `/pdf-fonts/${name}`);
+  const pdfFontBytes = pdfFonts.reduce((sum, asset) =>
+    sum + statSync(new URL(asset.slice('/pdf-fonts/'.length), PDF_FONT_DIR)).size, 0);
+  const freshFonts = shell.paths.filter((path) => path.startsWith('/pdf-fonts/'));
+  if (freshFonts.length === 0) ok('fresh precache contains no PDF fonts');
+  else fail('fresh precache contains no PDF fonts', freshFonts.join(', '));
+  ok(`PDF font precache ${pdfFontBytes} to 0 bytes; same-build full manifest ${shell.bytes + pdfFontBytes} to ${shell.bytes} bytes`);
 
   await cold.evaluate(async () => {
     const registration = await navigator.serviceWorker.getRegistration();
@@ -496,6 +399,9 @@ try {
   }
   if (pdfWorkerCached.length === 1) ok('opening a document adds the PDF worker to the release cache');
   else fail('opening a document adds the PDF worker to the release cache', `${pdfWorkerCached.length} found`);
+  const cachedFonts = (await measureCache(cold)).paths.filter((path) => path.startsWith('/pdf-fonts/'));
+  if (cachedFonts.length === pdfFonts.length) ok('PDF request adds every standard font to the release cache');
+  else fail('PDF request adds every standard font to the release cache', `${cachedFonts.length} of ${pdfFonts.length} found`);
 
   /* The whole release, file by file, against what is actually in the cache.
      Four files are deliberately outside the shell: the fallback document,
@@ -504,21 +410,15 @@ try {
      worker itself, which the browser fetches and stores on its own; and
      release.json, which describes the directory on the server rather than the
      app in the browser - nothing in the app reads it, and a cached copy would
-     go on answering for the release that was live when it was cached
-     (ticket 05).
+     go on answering for the release that was live when it was cached.
 
-     The OCR engine is outside it for a different reason, and the assertion is
-     narrowed rather than weakened: /tesseract/ belongs to a feature the app
-     loads on demand, so an install that has never opened the lab scanner is
-     supposed not to hold it, and what is checked below is every file of the
-     release except that set (phase 5 performance ticket 01). The set is named
-     by its directory rather than listed, so a sixth OCR file would join it
-     silently - which is right, since the whole directory is what ships and
-     what a page later asks the worker for. */
+     Current OCR assets are checked against the complete generated manifest
+     above. Root legacy copies stay on the server for older pages and are
+     excluded from a new install. */
   const outsideShell = new Set(['/index.html', '/_app/version.json', '/service-worker.js', '/release.json']);
   const release = releasePaths().filter(
     (path) =>
-      !outsideShell.has(path) && !path.startsWith('/tesseract/') && !PDF_WORKER.test(path) && !UNUSED_WORKER.test(path)
+      !outsideShell.has(path) && !path.startsWith('/tesseract/') && !path.startsWith('/pdf-fonts/') && !PDF_WORKER.test(path) && !UNUSED_WORKER.test(path)
   );
   const missing = release.filter((path) => !shell.paths.includes(path));
   if (missing.length === 0 && shell.paths.includes('/'))
@@ -529,9 +429,8 @@ try {
       missing.length ? `missing ${missing.slice(0, 8).join(', ')}` : 'the fallback document is not cached under /'
     );
 
-  /* Named separately from the count above, which both sides of a mistake can
-     satisfy at once: fonts dropped from static/ would leave the release and
-     the cache agreeing with each other and nothing to load offline. */
+  /* Named separately from the count above: an absent required shell asset
+     can otherwise disappear from both sides of the count. */
   const kinds = {
     "SQLite's worker": shell.paths.some((path) => path.startsWith('/_app/immutable/workers/') && path.endsWith('.js')),
     // The encrypted driver loads one SQLite WASM asset from this release.
@@ -539,28 +438,17 @@ try {
       (path) => path.startsWith('/_app/immutable/assets/') && path.endsWith('.wasm')
     ).length === 1,
     'all four bundled woff2 faces': shell.paths.filter((path) => path.endsWith('.woff2')).length === 4,
-    /* The PDF renderer's fonts (phase 8 features ticket 55): the fourteen
-       standard faces a document may name without carrying. Without them a
-       page of an opened document draws blank, and it would draw blank
-       exactly when there is no network, which is when this store matters
-       most (ADR-0065). Its worker is not here any more: the first document
-       opened asks for it, and the block after the OCR check proves that. */
-    'every standard PDF font': readdirSync(new URL('../../static/pdf-fonts/', import.meta.url)).every((font) =>
-      shell.paths.includes(`/pdf-fonts/${font}`)
-    ),
     /* Both manifests, because either one can be the one a disguised install
-       reads (ticket 25), and every icon either one names - counted off the
+       reads, and every icon either one names - counted off the
        files rather than written down here, so adding a purpose or a disguise
        cannot leave this passing while the shell is short an icon. */
     'the manifests and their icons':
       ['/manifest.webmanifest', '/manifest-notes.webmanifest'].every((path) => shell.paths.includes(path)) &&
       readdirSync(new URL('../../static/icons/', import.meta.url)).every((icon) => shell.paths.includes(`/icons/${icon}`))
   };
-  /* Nothing is stored twice (ticket 31, audit PERF-04). The SQLocal stack
-     shipped one chunk under both chunks/ and workers/chunks/, the same 64 KB
-     brotli each, and before ticket 13 its wasm twice the same way. The route
-     stubs under nodes/ are SvelteKit's and identical on purpose, so they are
-     left out. */
+  /* Nothing is stored twice. The SQLocal stack shipped one chunk under both chunks/ and
+     workers/chunks/, the same 64 KB brotli each, and its wasm twice the same way. The route
+     stubs under nodes/ are SvelteKit's and identical on purpose, so they are left out. */
   const byContent = new Map();
   for (const path of shell.paths.filter((p) => p.startsWith('/_app/immutable/') && !p.startsWith('/_app/immutable/nodes/'))) {
     const key = createHash('sha256').update(readFileSync(`build${path}`)).digest('hex');
@@ -606,7 +494,7 @@ try {
       );
   }
 
-  /* The version the running app shows (phase 2 ticket 01), read out of the
+  /* The version the running app shows, read out of the
      release that was just built - the real one, resolved from this checkout,
      which is the version this build would ship under.
 
@@ -616,10 +504,10 @@ try {
      cannot prove is that the resolver itself is right, since both sides ask
      the same function. The walkthrough suite holds the other half - it
      builds under a ENGENDER_VERSION nobody derives and insists on seeing
-     exactly that string - and the rules live in tests/app-version.test.ts. */
+     exactly that string - and the rules live in tests/node/release/app-version.test.ts. */
   await openScreen(cold, origin, '/settings');
-  /* Phase 5 ticket 24: the About row is a ListRow now, whose own handle is
-     data-list-row="about" rather than a settings-specific attribute. */
+  /* The About row is a ListRow now, whose own handle is data-list-row="about" rather than a
+     settings-specific attribute. */
   await cold.locator('[data-list-row="about"]').click();
   const shownVersion = (await cold.locator('[data-app-version]').innerText()).trim();
   const builtVersion = appVersion();
@@ -636,9 +524,8 @@ try {
   // The stopped origin remains the real network boundary for that engine.
   installed = await launchPersistentBrowser(profile, { ...profileOptions, offline: browserEngine() !== 'webkit' });
 
+  const offlineRequests = observe(installed);
   const restarted = installed.pages()[0] ?? (await installed.newPage());
-  const offlineRequests = [];
-  restarted.on('request', (request) => offlineRequests.push(request.url()));
   const offlineURL = `${origin}/?offline-proof=${Date.now()}`;
   const offlineResponse = await restarted.goto(offlineURL);
 
@@ -685,7 +572,6 @@ try {
   // closes its browser window, so that context cannot create another page.
   const deep = await installed.newPage();
   await restarted.close();
-  deep.on('request', (request) => offlineRequests.push(request.url()));
   await deep.goto(`${origin}/entry/new/today`);
   await deep.waitForSelector('#journal-passphrase', { timeout: 30000 }).catch(() => {});
   await deep.fill('#journal-passphrase', 'verify-build passphrase').catch(() => {});
@@ -694,22 +580,18 @@ try {
     .waitForSelector('.app[data-boot="ready"]', { timeout: 30000 })
     .then(() => true)
     .catch(() => false);
-  if (deepBooted && (await deep.locator('#ed-note').count()) === 1)
+  const reachedNote = deepBooted && await continueToTheRest(deep).then(() => true, () => false);
+  if (reachedNote)
     ok('an offline start on a nested route opens that screen, not a shell missing its chunks');
   else
     fail(
       'an offline start on a nested route opens that screen',
-      deepBooted ? 'the entry editor did not render' : 'the app never booted - check the asset URLs in the cached document'
+      deepBooted ? 'the entry editor did not reach its note step' : 'the app never booted - check the asset URLs in the cached document'
     );
 
-  /* The half of ticket 01 the whole trade rests on: the engine was loaded once
-     while there was a network, and this is a different browser process against
-     an origin that is gone. Every byte below can only come from the cache the
-     page asked the worker to fill.
-
-     Sizes compared against the files on disk, because a 200 proves less than
-     it looks: an offline fetch that fell through to a cached error page would
-     also be ok. */
+  /* Every OCR byte comes from the fresh installation's complete generation,
+     with no scanner warm-up required. Compare against on-disk bytes so a
+     fallback error page cannot count as an offline engine. */
   const offlineEngine = await deep.evaluate(async (assets) => {
     const sizes = {};
     for (const asset of assets) {
@@ -731,8 +613,7 @@ try {
       short.map((asset) => `${asset}: ${offlineEngine[asset]} of ${onlineSizes[asset]} bytes`).join(', ')
     );
 
-  /* The same question for the PDF renderer's fonts (phase 8 features
-     ticket 55), and it is the half the ticket asks to be proven offline:
+  /* The same question for the PDF renderer's fonts, and it is the half the ticket asks to be proven offline:
      a document that named Helvetica draws blank without these, and it
      would draw blank exactly when there is no network - which is when a
      store that exists so a diagnosis is not in Downloads matters most.
@@ -741,8 +622,6 @@ try {
      rather than off an earlier fetch: precache membership was already
      checked above, so what is new here is that the bytes come back whole
      from a browser process the origin is gone from. */
-  const PDF_FONT_DIR = new URL('../../static/pdf-fonts/', import.meta.url);
-  const pdfFonts = readdirSync(PDF_FONT_DIR).map((name) => `/pdf-fonts/${name}`);
   const offlineFonts = await deep.evaluate(async (assets) => {
     const sizes = {};
     for (const asset of assets) {
@@ -755,10 +634,10 @@ try {
     (asset) => offlineFonts[asset] !== statSync(new URL(asset.slice('/pdf-fonts/'.length), PDF_FONT_DIR)).size
   );
   if (shortFonts.length === 0)
-    ok(`with the network gone all ${pdfFonts.length} standard PDF faces still load whole from the shell`);
+    ok(`with the network gone all ${pdfFonts.length} standard PDF faces load after the PDF request`);
   else
     fail(
-      'with the network gone the standard PDF faces still load whole from the shell',
+      'with the network gone the standard PDF faces still load after the PDF request',
       shortFonts.map((asset) => `${asset}: ${offlineFonts[asset]} bytes`).join(', ')
     );
 
@@ -769,6 +648,30 @@ try {
   }, pdfWorkerCached[0]);
   if (offlinePdfWorker > 0) ok('with the network gone the PDF worker, once asked for, still loads from the shell');
   else fail('with the network gone the PDF worker, once asked for, still loads from the shell', `${offlinePdfWorker} bytes`);
+
+  const offlinePhoto = await deep.evaluate(async (path) => {
+    const canvas = new OffscreenCanvas(4, 3);
+    canvas.getContext('2d').fillRect(0, 0, 4, 3);
+    const input = new Uint8Array(await (await canvas.convertToBlob({ type: 'image/png' })).arrayBuffer());
+    const worker = new Worker(path, { type: 'module' });
+    try {
+      const reply = await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error('offline photo worker timed out')), 10000);
+        worker.onmessage = ({ data }) => { clearTimeout(timeout); resolve(data); };
+        worker.onerror = (event) => { clearTimeout(timeout); reject(new Error(event.message)); };
+        worker.postMessage(input);
+      });
+      if (!reply.ok) throw new Error(reply.error);
+      const bitmap = await createImageBitmap(new Blob([reply.photo.full], { type: 'image/jpeg' }));
+      const size = `${bitmap.width}x${bitmap.height}`;
+      bitmap.close();
+      return size;
+    } finally {
+      worker.terminate();
+    }
+  }, photoWorkers[0]);
+  if (offlinePhoto === '4x3') ok('the precached photo worker normalizes an image offline');
+  else fail('the precached photo worker normalizes an image offline', offlinePhoto);
 
   const offOrigin = offlineRequests.filter((url) => new URL(url).origin !== origin);
   if (offOrigin.length === 0 && offlineRequests.length > 0)
@@ -782,6 +685,9 @@ try {
   // A no-op unless the section threw before it got that far itself.
   await closeServer();
 }
+
+if (externalRequests.length === 0) ok(`all browser contexts made ${allRequests.length} requests without leaving the build origin`);
+else fail('all browser contexts make no request to another origin', externalRequests.join(', '));
 
 const failures = finish('BUILD VERIFICATION PASSES');
 process.exit(failures ? 1 : 0);

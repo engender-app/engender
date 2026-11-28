@@ -6,7 +6,7 @@
   import '$lib/styles/components.css';
   import '$lib/styles/screens.css';
   import '$lib/styles/kit.css';
-  /* $lib/motion last, after the sheets it applies over (phase 5 ticket 28).
+  /* $lib/motion last, after the sheets it applies over.
      Both files are opt-in classes a screen puts on top of a component's own
      class - .press-add on the add button, .scrim-withdraw on a scrim - and
      each declares a resting value the material animates away from. At equal
@@ -19,7 +19,7 @@
 
   import { navigating, page } from '$app/state';
   import type { DoorPath } from '$lib/navigation/RetainedDoors.svelte';
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { dropJournalScreens, dropRetainedDoors } from '$lib/motion/outgoingScreen';
   import { countPageLoad } from '$lib/document/page-load';
   import { assets } from '$app/paths';
@@ -32,9 +32,12 @@
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { documentChrome } from '$lib/data/prefs/documentChrome';
   import { applyStatusBarAppearance } from '$lib/android/status-bar-bridge';
-  import { tabIdentity } from '$lib/disguise/identity';
+  import { leaveCovers, syncLeaveCover } from '$lib/lock/leave-cover';
+  import { accessModeHasSecret } from '$lib/data/journal-access-mode';
+  import { outsideDisguise, tabIdentity } from '$lib/disguise/identity';
   import { saveBar, ui } from '$lib/stores/ui.svelte';
   import { speech } from '$lib/stores/announcer.svelte';
+  import { toast } from '$lib/stores/toasts.svelte';
   import { bootState, browserSession, closeJournalForLock, recoveryUnlock, startBoot, watchBrowserSession } from '$lib/stores/boot.svelte';
   import {
     bootGate,
@@ -44,11 +47,15 @@
     needsOnboardingAccessMode
   } from '$lib/stores/boot-state';
   import { registerServiceWorkerAfterBoot } from '$lib/pwa/register';
+  import { takeInstallRequest } from '$lib/pwa/installRequest';
   import { answerSplash, splashMayLeave } from '$lib/splash';
   import { isLocked, watchLock } from '$lib/stores/lock.svelte';
   import { isValidAndroidLaunchRoute } from '$lib/android/launch-routes';
+  import { moodName } from '$lib/data/vocabulary/labels';
   import { hoverHints } from '$lib/a11y/hoverHint';
-  import { chromelessPath } from '$lib/navigation/chromeless';
+  import { trackPointerFocus } from '$lib/a11y/pointerFocus';
+  import { barlessPath, chromelessPath } from '$lib/navigation/chromeless';
+  import { currentDay } from '$lib/stores/today.svelte';
   import { routeGate } from '$lib/navigation/routeGates';
   import { navigateWithTransition } from '$lib/navigation/navigationTransition';
   import { startBackgroundSchedulers } from '$lib/data/backgroundSchedulers';
@@ -56,12 +63,14 @@
 
   /* Mark screen arrival at layout script execution time so initial cold-mount
      components rendering during boot treat their mount as part of screen
-     arrival rather than as a panel change on a settled screen (ticket 111). */
+     arrival rather than as a panel change on a settled screen. */
   markScreenArrival();
   import { depthAfter, navigationDepth, recordNavigation, replaceRoute, sameUrl } from '$lib/navigation/smart-back';
   import { borrowsTab, litTabKey } from '$lib/navigation/active-tab';
   import { chromeTabOrigin, noteBorrowingArrival, noteTabVisit } from '$lib/navigation/chrome-tab-origin';
   import { restoreScroll } from '$lib/navigation/scroll-region';
+  import { arriveWithoutJournalText, withoutJournalText } from '$lib/navigation/journalTextParams';
+  import { ACTIVE_DOOR_CONTENT } from '$lib/navigation/doorActivity';
   import { focusArrivedScreen } from '$lib/navigation/arrivalFocus';
   import { refreshActiveFlag } from '$lib/theme/activeFlag.svelte';
   import AppNav from '$lib/components/AppNav.svelte';
@@ -75,6 +84,11 @@
 
   let { children } = $props();
 
+  /* The landing site's install hand-off (installRequest.ts): read and taken
+     off the address before anything can navigate, so the prompt it holds
+     is listened for from the start. */
+  const installAsked = takeInstallRequest();
+
   let RetainedDoors = $state<typeof import('$lib/navigation/RetainedDoors.svelte').default | null>(null);
   let retainedFrom = $state<string | null>(null);
   let retaining = $state(false);
@@ -85,6 +99,7 @@
   }
 
   onMount(countPageLoad);
+  onMount(() => trackPointerFocus());
 
   if (isAndroid()) {
     void import('$lib/android/plugin-registry').then(({ assertAndroidRuntimePluginRegistry }) => {
@@ -93,7 +108,7 @@
   }
 
   /* Started here rather than from an $effect so that boot's first step -
-     reading the mirrored theme and palette (ticket 06) - has run before the
+     reading the mirrored theme and palette - has run before the
      effect below stamps them on <html>. From an effect it would land one
      step too late and briefly undo what app.html's pre-paint script did. */
   startBoot();
@@ -109,16 +124,15 @@
     return () => { stopSession(); stopLock(); };
   });
 
-  /* A side effect with nothing above it to order against, unlike startBoot():
-     the registration is not awaited and the worker precaches the shell in the
-     background, whenever it gets there - which is after boot has answered and
-     the browser is idle, so the precache does not compete with the first
-     screen for the connection (phase 14 pre-release ticket 13). */
+  /* A side effect with nothing above it to order against, unlike startBoot(): the
+     registration is not awaited and the worker precaches the shell in the background,
+     whenever it gets there - which is after boot has answered and the browser is idle, so
+     the precache does not compete with the first screen for the connection. */
   $effect(() => {
     registerServiceWorkerAfterBoot(bootState.status);
   });
 
-  /* The passphrase gate (ticket 09) renders before the database can even
+  /* The passphrase gate renders before the database can even
      open, the same way the lock renders instead of the app: no route shows
      journal content, because there is no journal to show yet. Unsupported
      legacy storage meets this gate's refusal screen. */
@@ -131,34 +145,32 @@
     if (RetainedDoors && path !== retainedFrom) retaining = true;
   });
 
-  /* A brand new install (ticket 54); routeGates.ts says why onboarding
+  /* A brand new install; routeGates.ts says why onboarding
      renders over this one gate state instead of meeting it. */
   let onboardingFirstRun = $derived(needsOnboardingAccessMode(bootState));
   let needsPassphrase = $derived(gate === 'passphrase' && !onboardingFirstRun);
 
   /* The same moment on Android, where nothing is typed: Keystore is holding
-     the data key and wants the platform's word for who is here first
-     (ticket 13). Its own gate rather than a branch inside the passphrase
+     the data key and wants the platform's word for who is here first.
+     Its own gate rather than a branch inside the passphrase
      one - they share the job and none of the words. */
   let needsAuthentication = $derived(gate === 'authentication');
 
   let needsDeviceRecovery = $derived(gate === 'device-recovery');
 
-  /* A recovery unlock owes the person a new access mode before the app shows
-     them anything (ADR-0054, ticket sec-02). Not a gate - the journal is
-     open behind this - so it sits with the lock in the chain below rather
-     than with the gates above, and for the lock's own reason: instead of the
-     route, not over it, so no screen mounts and no query runs behind a
+  /* A recovery unlock owes the person a new access mode before the app shows them anything
+     (ADR-0054). Not a gate - the journal is open behind this - so it sits with the lock in
+     the chain below rather than with the gates above, and for the lock's own reason:
+     instead of the route, not over it, so no screen mounts and no query runs behind a
      screen somebody has not finished. */
   let needsAccessModeAfterRecovery = $derived(isReadyState(bootState) && recoveryUnlock.used);
-  /* Older code against a newer Journal (ticket 04). Its own screen rather
+  /* Older code against a newer Journal. Its own screen rather
      than the boot-error notice: nothing is wrong with the Journal, and there
      is something the person can do. */
   let schemaTooNew = $derived(gate === 'schema-too-new');
-  /* A boot that failed has no journal behind it, so nothing a booted app
-     draws belongs on screen: the notice above <main> and its ways out are
-     the whole page. Until ux-carpet 213 no gate claimed this state and
-     Today mounted under the notice, greeting and mood row and all, which
+  /* A boot that failed has no journal behind it, so nothing a booted app draws belongs on
+     screen: the notice above <main> and its ways out are the whole page. no gate claimed
+     this state and Today mounted under the notice, greeting and mood row and all, which
      read as a boot to a person and to every walk keyed on the greeting. */
   let bootFailed = $derived(isErrorState(bootState));
 
@@ -188,15 +200,67 @@
 
   $effect.pre(() => {
     if (locked || browserSession.recovering) retainedSession = Symbol();
+    // The gate cuts journal DOM immediately. End panel outros before that
+    // removal, or a quick unlock can resume their detached route subtree.
+    if (locked) markScreenArrival();
   });
   $effect(() => {
     if (locked) dropJournalScreens();
     else if (browserSession.recovering) dropRetainedDoors();
   });
+  /* The lock screen keeps the address it locked on, so whatever journal text that address
+     still carried goes before the gate shows. */
+  $effect(() => {
+    if (!locked) return;
+    const clean = withoutJournalText(new URL(location.href));
+    if (clean) void replaceRoute(clean, { noScroll: true, keepFocus: true });
+  });
 
   /* Those, plus the routes that render without chrome whoever is looking at
      them - which now includes a step the app does navigate to. */
+  let restoredDeliveryReporter = $state<ReturnType<typeof import('$lib/data/archive/restored-file-delivery').restoredFileDelivery> | null>(null);
+  onMount(() => {
+    if (!isAndroid()) return;
+    let stopped = false;
+    let removeListener: (() => Promise<void>) | undefined;
+    void Promise.all([
+      import('@capacitor/app'),
+      import('$lib/data/archive/android-file-delivery-bridge'),
+      import('$lib/data/archive/restored-file-delivery')
+    ]).then(async ([{ App }, { androidFileDelivery }, { restoredFileDelivery }]) => {
+      if (stopped) return;
+      const reporter = restoredFileDelivery(androidFileDelivery,
+        () => isReadyState(bootState) && !replacesApp,
+        (result) => {
+          if (result.backupAt !== undefined) {
+            prefs.lastBackupAt = Math.max(prefs.lastBackupAt ?? 0, result.backupAt);
+            prefs.backupNoticeDismissed = false;
+          }
+          toast(result.outcome === 'saved' ? m.exp_file_saved()
+            : result.outcome === 'cancelled' ? m.exp_cancelled()
+            : result.outcome === 'cleanup-pending' ? m.exp_cleanup_pending() : m.exp_failed());
+        }, () => bootState.journal);
+      restoredDeliveryReporter = reporter;
+      const listener = await App.addListener('appRestoredResult', reporter.accept);
+      if (stopped) { reporter.stop(); await listener.remove(); }
+      else removeListener = () => listener.remove();
+    });
+    return () => {
+      stopped = true;
+      restoredDeliveryReporter?.stop();
+      void removeListener?.();
+    };
+  });
+  $effect(() => {
+    if (isReadyState(bootState) && !replacesApp) void restoredDeliveryReporter?.flush();
+  });
+
   let chromeless = $derived(replacesApp || chromelessPath(path));
+  let journalShown = $derived(bootState.status === 'ready' && !replacesApp);
+  /* No bottom bar: every chromeless screen, and a new entry, which is a step
+     but keeps Today's retained doors mounted under it (chromeless.ts). The
+     desktop rail stays for a new entry (app.css, .is-barless). */
+  let barless = $derived(chromeless || barlessPath(path, currentDay()));
 
   /* How deep the app is in its own history, for the back controls that ask
      whether there is anything behind them (`smartBack`). Counted here rather
@@ -205,23 +269,26 @@
      so a cancelled one is never counted. */
   afterNavigate((navigation) => {
     recordNavigation(navigation.type, navigation.delta, sameUrl(navigation));
-    /* What the gear will borrow next time it opens settings chrome
-       (ADR-0076, audit item 4) - noted from every settled navigation, not
-       only ones into a tab, since a screen already inside settings can
-       still carry the tab it borrowed forward (chrome-tab-origin.ts). */
+    /* An address naming a medication or a search (journalTextParams.ts)
+       that got past hooks.client.ts - history-back onto an entry written
+       before Care carried episode ids - is replaced as it lands. */
+    const clean = navigation.to && arriveWithoutJournalText(navigation.to.url);
+    if (clean) void replaceRoute(clean, { noScroll: true, keepFocus: true });
+    /* What the gear will borrow next time it opens settings chrome - noted from every
+       settled navigation, not only ones into a tab, since a screen already inside settings
+       can still carry the tab it borrowed forward (chrome-tab-origin.ts). */
     if (navigation.to) noteTabVisit(litTabKey(navigation.to.url.pathname, chromeTabOrigin()));
-    /* A borrowing page opened cold has no onNavigate to key it, so it keeps
-       the tab it just resolved to here: back to it from Today, it lights
-       that tab again rather than Today (after-release 17 review). */
+    /* A borrowing page opened cold has no onNavigate to key it, so it keeps the tab it just
+       resolved to here: back to it from Today, it lights that tab again rather than Today
+       (review). */
     if (navigation.type === 'enter' && navigation.to && borrowsTab(navigation.to.url.pathname)) {
       noteBorrowingArrival(`0:${navigation.to.url.pathname}`, false);
     }
     /* A screen you go forward to starts at the top; one history brings you
        back to starts where you left it. The scroll region is the layout's own
        element, so nothing else in the stack does this for us. */
-    if (navigation.to) restoreScroll(navigation.to.url.pathname, navigation.type);
-    /* And a screen that just arrived is not a screen changing (phase 9
-       carpet ticket 04). Its panels are gated on reads that answer a few
+    if (navigation.to) restoreScroll(navigation.to.url, navigation.type);
+    /* And a screen that just arrived is not a screen changing. Its panels are gated on reads that answer a few
        dozen milliseconds from here, so without this every one of them would
        play an entrance on the way back from the calendar and the screen
        would assemble itself in front of you. The shell is the only thing
@@ -242,11 +309,33 @@
     markScreenArrival();
   });
 
-  /* The width the scroll region keeps for its scrollbar (`scrollbar-gutter:
-     stable`), published for the toast, which centres on the content
-     column and so has to leave that strip out too (after-release 17
-     review: 5px off centre at 1280). Measured, since a classic scrollbar
-     has a width only the browser knows and an overlay one has none. */
+  // Gate removal is an arrival even when the URL stays unchanged. A retained
+  // door can mount after the shell, so wait for its heading before handing over.
+  $effect(() => {
+    if (replacesApp || bootState.status !== 'ready') return;
+    let cancelled = false;
+    let observer: MutationObserver | undefined;
+    void tick().then(() => {
+      if (cancelled) return;
+      const region = document.getElementById('app-main');
+      if (!region) return;
+      const arrive = () => {
+        if (!region.querySelector(`h1${ACTIVE_DOOR_CONTENT}`)) return;
+        focusArrivedScreen(region);
+        observer?.disconnect();
+      };
+      observer = new MutationObserver(arrive);
+      observer.observe(region, { childList: true, subtree: true });
+      arrive();
+    });
+    return () => { cancelled = true; observer?.disconnect(); };
+  });
+
+  /* The width the scroll region's scrollbar takes, which is 0 now that none is drawn
+     (app.css) but is still measured rather than assumed, published for the toast, which
+     centres on the content column and so has to leave that strip out too (review: 5px off
+     centre at 1280). Measured, since a classic scrollbar has a width only the browser knows
+     and an overlay one has none. */
   function publishScrollGutter(node: HTMLElement) {
     const publish = () =>
       document.documentElement.style.setProperty('--scroll-gutter', `${node.offsetWidth - node.clientWidth}px`);
@@ -279,10 +368,15 @@
        (prefs/documentChrome.ts, fixtures/document-chrome.json). This side
        has the live preferences and the media queries; that side has a
        mirror in localStorage and the same two queries. */
-    const chrome = documentChrome(prefs, {
-      prefersDark: systemDark.current,
-      prefersReducedMotion: systemReducedMotion.current
-    });
+    const chrome = documentChrome(
+      prefs,
+      { prefersDark: systemDark.current, prefersReducedMotion: systemReducedMotion.current },
+      /* Disguised, the person's flag waits for the journal. The unlock flips this inside
+         openApp's view transition, so the gate is photographed in the neutral palette and
+         the app in its own, and the change happens under the opening rather than as a frame
+         of its own. */
+      journalShown
+    );
     root.dataset.palette = chrome.palette;
     root.dataset.moodPreset = chrome.moodPreset;
     root.dataset.theme = chrome.theme;
@@ -293,22 +387,22 @@
        reads (disguise/identity.ts) - the rule and its reasons are there,
        and this is the wiring. */
     const tab = tabIdentity({
-      disguised: prefs.disguise,
+      disguised: outsideDisguise(prefs),
       appName: m.app_name(),
       decoyName: m.disguise_name(),
       icon: chrome.icon
     });
     document.title = tab.title;
     document.querySelector('link[rel="icon"]')?.setAttribute('href', `${assets}/${tab.icon}`);
-    document.querySelector('link[rel="apple-touch-icon"]')?.setAttribute('href', `${assets}/apple-touch-icon${prefs.disguise ? '-notes' : ''}.png`);
+    document.querySelector('link[rel="apple-touch-icon"]')?.setAttribute('href', `${assets}/apple-touch-icon${outsideDisguise(prefs) ? '-notes' : ''}.png`);
     /* The installed app's identity follows the disguise preference. */
     const manifest = getLocale() === 'pl' ? chrome.manifest.replace('.webmanifest', '-pl.webmanifest') : chrome.manifest;
     document.querySelector('link[rel="manifest"]')?.setAttribute('href', `${assets}/${manifest}`);
     document
       .querySelector('meta[name="theme-color"]')
       ?.setAttribute('content', getComputedStyle(document.body).backgroundColor);
-    /* The same answer for the native bar, which the meta above cannot reach
-       (carpet ticket 154): theme-color is the installed PWA's, and the
+    /* The same answer for the native bar, which the meta above cannot reach:
+       theme-color is the installed PWA's, and the
        Capacitor shell draws an edge-to-edge window whose status bar icons
        Android tints from its own DayNight resolution unless the app says
        otherwise. Here rather than beside this effect, because the value is
@@ -319,15 +413,26 @@
        and the section colours derived from them are read off the palette and
        the theme this block has just stamped, and anything that read them for
        itself would be racing that stamp (activeFlag.svelte.ts). */
-    refreshActiveFlag(document, prefs.disguise);
+    refreshActiveFlag(document);
   });
 
-  /* Document language (pre-production audit U1). app.html ships `lang="en"`
-     as a valid fallback; this stamps the resolved locale so assistive
-     technology pronounces in the right language after a cold start on a
-     Polish preference or a browser whose navigator.language is Polish.
-     setLocale() reloads the page, so a language switch re-enters here
-     with the new value rather than needing a reactive update. */
+  /* What the activity covers the window with whenever a lock is set
+     (lock/leave-cover.ts): Android photographs the window before the page
+     can draw its gate, so the activity has to know ahead of the leave, and
+     cover with the page's own ground. After the effect above, which stamps
+     the theme and palette that ground is read from. */
+  $effect(() => {
+    if (!isAndroid()) return;
+    documentChrome(prefs, { prefersDark: systemDark.current, prefersReducedMotion: systemReducedMotion.current }, journalShown);
+    const cover = leaveCovers(accessModeHasSecret(bootState.accessMode, true));
+    syncLeaveCover(cover, getComputedStyle(document.documentElement).getPropertyValue('--bg').trim());
+  });
+
+  /* Document language (pre-production). app.html ships `lang="en"` as a valid fallback;
+     this stamps the resolved locale so assistive technology pronounces in the right
+     language after a cold start on a Polish preference or a browser whose
+     navigator.language is Polish. setLocale() reloads the page, so a language switch
+     re-enters here with the new value rather than needing a reactive update. */
   $effect(() => {
     document.documentElement.lang = getLocale();
   });
@@ -358,24 +463,12 @@
     else if (pendingGate === 'coming-back') offerComingBack();
   });
 
-  /* What stops the return moment opening twice is the preference and
-     nothing else (ADR-0062). The surface stamps `comingBackSeenSince` as it
-     draws, so this has an answer before the person could have left it, and
-     a flag latching the decision for the page load would only add a second
-     guard that disagrees - it also has to be wrong for a demo build, where
-     the journal underneath can be replaced without a reload.
-
-     So this does re-read on every arrival at Home, and what makes that
-     affordable is that the first read answers on its own for almost
-     everybody: `readReturnGap` is eighteen bounded `MAX`es, the same read
-     AreaFinish already makes on eight screens, and the five behind
-     `readWhatIsWaiting` are only paid for once three weeks have passed and
-     the gap is one this person has not met. The `path` check runs again
-     after the awaits, because a slow read must not pull somebody off a
-     screen they navigated to in the meantime.
-
-     Nothing is navigated to on an empty answer: a gap with nothing waiting
-     in it is not a return worth a screen, and the person is left on Home. */
+  /* comingBackSeenSince is the only repeat guard. Recheck
+     on each Home arrival, including when demo replaces the journal.
+     readReturnGap uses 18 bounded MAX queries. Only run the five
+     readWhatIsWaiting queries for an unseen gap of at least three
+     weeks. Recheck path after awaiting and stay on Home if nothing
+     is waiting. */
   function offerComingBack() {
     const day = todayEpochDay();
     void import('$lib/data/comingBackReads').then(async ({ readReturnGap, readWhatIsWaiting }) => {
@@ -387,8 +480,7 @@
     });
   }
 
-  /* Auto-export and the retrospective notifications, for as long as an
-     Android journal is open and unlocked (backgroundSchedulers.ts). */
+  /* Auto-export runs while an Android journal is open and unlocked. */
   $effect(() => {
     if (isReadyState(bootState) && !locked && isAndroid()) return startBackgroundSchedulers();
   });
@@ -411,8 +503,8 @@
   /* Every Android-only effect that used to live here one at a time -
      reminder schedule sync, stock run-out reconciliation, launch-route
      consumption, visibility/focus resync, the back button, the disguise
-     alias and the lock-timing mirror - now lives behind platform-sync.ts
-     (phase 5 deepening ticket 04). This effect is what makes it reactive:
+     alias and the lock-timing mirror - now lives behind platform-sync.ts.
+     This effect is what makes it reactive:
      the module itself takes no runes (ADR-0017, so it can run in the Node
      tier), so watching a preference like `disguise` for a change has to
      happen here and be handed to the module as a fresh start. Restarting
@@ -423,29 +515,28 @@
      does not restart. */
   $effect(() => {
     if (!isAndroid()) return;
-    const ready = isReadyState(bootState);
+    // Track readiness even though Back is registered before the key arrives.
+    isReadyState(bootState);
     const checkInEnabled = prefs.checkInEnabled;
     const checkInTime = prefs.checkInTime;
-    const checkInAffirmationsEnabled = prefs.checkInAffirmationsEnabled;
+    const checkInPausedThrough = prefs.checkInPausedThrough;
     const hideNotificationTitles = prefs.hideNotificationTitles;
-    /* Read here rather than inside platform-sync.ts for the same reason every
-       preference above is: only a .svelte file has the reactivity that
-       re-runs this effect, and so re-syncs the schedule, when one of them
-       changes (phase 6 ticket 04's registry switches and quiet window). */
+    /* Read here rather than inside platform-sync.ts for the same reason every preference
+       above is: only a .svelte file has the reactivity that re-runs this effect, and so
+       re-syncs the schedule, when one of them changes. */
     const remindersEnabled = prefs.remindersEnabled;
     const wearElapsedEnabled = prefs.wearElapsedEnabled;
     const quietHoursEnabled = prefs.quietHoursEnabled;
     const quietHoursStart = prefs.quietHoursStart;
     const quietHoursEnd = prefs.quietHoursEnd;
-    const disguise = prefs.disguise;
+    const disguise = outsideDisguise(prefs);
     /* Read here for the same reason, and it is the one preference on this
        list that reaches the native side purely to be looked at: the
-       launcher icon follows the flag (ticket 50). */
+       launcher icon follows the flag. */
     const palette = prefs.palette;
     const launcherIconShape = prefs.launcherIconShape;
     const lockAfter = prefs.lockAfter;
     const allowScreenCapture = prefs.allowScreenCapture;
-    if (!ready || !isAndroid()) return;
 
     let cleanup: (() => void) | undefined;
     let unmounted = false;
@@ -456,10 +547,11 @@
       import('$lib/disguise/android-bridge'),
       import('$lib/lock/lock-timing-bridge'),
       import('$lib/lock/screen-capture-bridge'),
-      import('$lib/reminders/affirmations'),
-      // Loaded here rather than at the top: the shell itself draws no
-      // catalogue wording, and this callback is its only reader.
-      import('$lib/data/vocabulary/vocabulary')
+      import('$lib/android/step-back-bridge'),
+      import('$lib/reminders/doseActions'),
+      import('$lib/reminders/doseActionToast'),
+      import('$lib/data/vocabulary/doseLabels'),
+      import('$lib/data/vocabulary/doseReminderLabel'),
     ]).then(
       ([
         { startAndroidPlatformSync },
@@ -468,8 +560,11 @@
         { androidDisguise },
         { androidLockTiming },
         { androidScreenCapture },
-        { affirmationLines },
-        { vocabulary }
+        { androidStepBack },
+        { applyPendingDoseAction, resolveDoseReminderRoute },
+        { confirmDoseAction },
+        { ROUTE_OPTIONS },
+        { reminderNotification }
       ]) => {
         if (unmounted) return;
         cleanup = startAndroidPlatformSync({
@@ -479,7 +574,7 @@
           prefs: {
             checkInEnabled,
             checkInTime,
-            checkInAffirmationsEnabled,
+            checkInPausedThrough,
             hideNotificationTitles,
             remindersEnabled,
             wearElapsedEnabled,
@@ -496,7 +591,8 @@
             reminders: journal.reminders,
             entries: journal.entries,
             stock: journal.stock,
-            journalingPauses: journal.journalingPauses,
+            doses: journal.doses,
+            regimen: journal.regimen,
             areaStates: journal.areaStates
           },
           onTablesWritten,
@@ -504,15 +600,15 @@
           androidDisguise,
           androidLockTiming,
           androidScreenCapture,
+          doseActions: {
+            apply: (action) => applyPendingDoseAction(journal, action, ROUTE_OPTIONS),
+            confirm: (outcome) => confirmDoseAction(outcome, (href) => void goto(href)),
+            resolveLaunchRoute: (route) => resolveDoseReminderRoute(route, journal, Date.now())
+          },
           androidBackButton,
-          // Hidden built-ins and this language's custom lines are read fresh on
-          // every call (phase 5 ticket 15) rather than captured once here, so a
-          // change lands on the next sync without needing this effect to restart.
-          affirmationLines: () =>
-            affirmationLines(
-              new Set(vocabulary.affirmations.filter((a) => a.builtIn && a.hidden).map((a) => a.id)),
-              vocabulary.customAffirmations(getLocale()).map((a) => a.text)
-            ),
+          androidStepBack,
+          isGateActive: () => locked || needsPassphrase || needsAuthentication ||
+            needsDeviceRecovery || needsAccessModeAfterRecovery,
           reminderTexts: () => ({
             channelReminders: m.reminders(),
             channelCheckIn: m.checkin_title(),
@@ -521,8 +617,14 @@
                ends in the mechanic ("skipped on days you already logged"),
                which is what a person reading the row needs and not what a
                notification should say. */
-            checkInBody: m.checkin_notification_body()
+            checkInBody: m.checkin_notification_body(),
+            checkInMoods: [1, 2, 3, 4, 5].map(moodName),
+            doseTaken: m.rem_dose_taken(),
+            doseDone: m.done(),
+            doseSkip: m.skip(),
+            doseNoted: m.rem_dose_noted()
           }),
+          reminderNotification,
           isValidLaunchRoute: isValidAndroidLaunchRoute,
           currentPathname: () => page.url.pathname,
           goto,
@@ -556,7 +658,7 @@
        finish before it clears storage, or it interrupts the very writes it
        then asserts against (tests/walkthrough.test.mjs). -->
   <!-- is-chromeless is what tells the scroll region there is no bar floating
-       over it (phase 5 ticket 26). The clearance below the content is sized
+       over it. The clearance below the content is sized
        for the bar, its float gap and the system inset, and on a screen with
        no bar that is room held for nothing: it pushed a vertically-centred
        gate up by most of a bar's height. -->
@@ -566,8 +668,8 @@
     class="app"
     data-app-root
     {@attach (node) => hoverHints(node)?.destroy}
-    class:disguised={prefs.disguise}
     class:is-chromeless={chromeless}
+    class:is-barless={barless && !chromeless}
     data-boot={bootState.status}
     inert={browserSession.recovering}
     style:opacity={browserSession.recovering ? '0' : undefined}
@@ -575,21 +677,8 @@
   >
     {#if isErrorState(bootState)}
       <!-- What happened, in the person's words, and the doors that failure
-           leaves (after-release ticket 09). -->
+           leaves. -->
       <BootFailureNotice />
-    {/if}
-    <!-- Only over a Journal that is open and unlocked. The notice is not
-         urgent enough to sit above a passphrase gate or a lock screen, and
-         those two screens have one job each. -->
-    {#if isReadyState(bootState) && !locked && !browserSession.recovering}
-      <!-- Loaded after boot rather than with it, like the schema gate below:
-           neither is drawn on a first visit, and the first-load budget had
-           no room left for the live regions after-release 21 added. The
-           service worker precaches every chunk of a release, so both still
-           load offline. -->
-      {#await import('$lib/components/UpdateNotice.svelte') then { default: UpdateNotice }}
-        <UpdateNotice />
-      {/await}
     {/if}
     <!-- Before <main>, which is what puts the rail to the left of the
          content at desktop width without an `order` (order moves boxes and
@@ -601,19 +690,16 @@
       <AppNav />
     {/if}
 
-    <!-- The scroll region and the foot a screen may ask for, stacked. The
-         box is what lets the column reserve the foot's room by layout
-         rather than by arithmetic: the foot is the region's flex sibling
-         rather than a second pinned thing inside it, so no screen can end
-         up with a control under it (carpet 26, and
-         $lib/stores/saveBar.svelte for what that cost before). It is also
-         what puts the pair beside the rail rather than under it at desktop
-         width, where `.app` itself is a row.
+    <!-- The scroll region and the foot a screen may ask for, stacked. The box is what lets
+         the column reserve the foot's room by layout rather than by arithmetic: the foot is
+         the region's flex sibling rather than a second pinned thing inside it, so no screen
+         can end up with a control under it (and $lib/stores/saveBar.svelte for what that
+         cost before). It is also what puts the pair beside the rail rather than under it at
+         desktop width, where `.app` itself is a row.
 
-         The landmark is on this box rather than on the scroll region
-         inside it, because the foot moved: a screen's one commitment is
-         part of the screen, and left outside <main> it would be a group of
-         controls belonging to no landmark at all. -->
+         The landmark is on this box rather than on the scroll region inside it, because the
+         foot moved: a screen's one commitment is part of the screen, and left outside
+         <main> it would be a group of controls belonging to no landmark at all. -->
     <main class="app-column" class:has-savebar={saveBar.count > 0} data-app-column>
       <div class="app-main" data-app-scroll-region id="app-main" tabindex="-1" use:publishScrollGutter
         inert={browserSession.recovering} style:display={browserSession.recovering ? 'none' : undefined}>
@@ -629,7 +715,7 @@
           <AndroidKeyGate />
         {:else if needsDeviceRecovery}
           {#await import('$lib/components/DeviceBoundRecovery.svelte') then { default: DeviceBoundRecovery }}
-            <DeviceBoundRecovery />
+            <DeviceBoundRecovery missingAccess={bootState.status === 'needs-device-recovery' && bootState.recoveryReason === 'missing-access'} />
           {/await}
         {:else if needsAccessModeAfterRecovery}
           <!-- Before the lock rather than after it: a session that has just
@@ -645,7 +731,7 @@
         {:else if redirectingToOnboarding}
           <!-- The effect above is already navigating here; nothing renders
                for the frame that takes, so a brand new install's first paint
-               is never whatever route the URL happened to be (ticket 54). -->
+               is never whatever route the URL happened to be. -->
         {:else if retaining && RetainedDoors && (!chromeless || browserSession.recovering)}
           <!-- Recovery keeps the route someone is using mounted, hidden and
                inert above, so an unsaved draft survives a BFCache restore.
@@ -664,11 +750,30 @@
       </div>
     </main>
 
+    <!-- The status strip (app.css): an element rather than .app's ::before,
+         so a navigation's view transition can give it a group of its own. -->
+    <div class="app-strip" aria-hidden="true"></div>
+
     <div inert={browserSession.recovering} style:display={browserSession.recovering ? 'none' : 'contents'}>
-    <QuickAdd />
+    <!-- Not while locked. The lock used to close the fan and leave quick add mounted, so
+         its cards stayed in the document for their fade and a tap there in the lock's first
+         frame opened the backdate sheet over the gate or queued a tally for the next
+         session. Unmounted, what is still fading is inert and goes with it, and its sheets
+         go at once. -->
+    {#if !locked}<QuickAdd />{/if}
     {#if managersRequested && !replacesApp}
       {#await import('$lib/components/VocabularyManagerSheets.svelte') then { default: VocabularyManagerSheets }}
         <VocabularyManagerSheets />
+      {/await}
+    {/if}
+    <!-- Over an open journal with its chrome, and never over a gate, setup
+         or the unlock's opening: a new person meets it on Today once setup
+         is done. Onboarded as well as chromeless, because a journal that is
+         not onboarded is drawn at / for a moment before the gate moves it
+         to setup. Loaded on demand, since almost no visit asks for it. -->
+    {#if installAsked && isReadyState(bootState) && prefs.onboarded && !chromeless && !ui.appOpening}
+      {#await import('$lib/components/InstallSheet.svelte') then { default: InstallSheet }}
+        <InstallSheet />
       {/await}
     {/if}
     </div>
@@ -697,13 +802,12 @@
 </div>
 
 <style>
-  /* A toast centres in what the rail leaves, the strip the column and the
-     sheets centre in too (after-release 17). A chromeless screen
-     (/coming-back) has no rail to leave room for, and its column centres in
-     the whole width. Here rather than in components.css because .app and
+  /* A toast centres in what the rail leaves, the strip the column and the sheets centre in
+     too. A chromeless screen (/coming-back) has no rail to leave room for, and its column
+     centres in the whole width. Here rather than in components.css because .app and
      .is-chromeless are this file's own classes. */
   @container app (min-width: 1024px) {
-    .app:not(.is-chromeless) :global(.toast) {
+    .app:not(.is-chromeless) :global(.toast-stack) {
       left: calc(var(--rail-width) + var(--inset-left));
     }
   }

@@ -1,13 +1,9 @@
-/* A database's shape, as text, for comparing two databases that were built
-   different ways (the squashes: one baseline statement against the chain
-   it replaced, the 78 steps in ticket 34 and the v78 baseline plus 79 to 88
-   in after-release ticket 42).
+/* A database's shape, as text, for comparing two databases that were built different ways.
 
-   Everything compared here comes out of `sqlite_master`, which is the only
-   place some of it is written down - a CHECK constraint appears in no pragma,
-   and neither does the option list on a virtual table. The stored text is
-   verbatim, though, so three differences that are not shape differences have
-   to be forgiven first, which is what normalizeSql is for. */
+   Everything compared here comes out of `sqlite_master`, which is the only place some of it
+   is written down - a CHECK constraint appears in no pragma, and neither does the option
+   list on a virtual table. The stored text is verbatim, though, so three differences that
+   are not shape differences have to be forgiven first, which is what normalizeSql is for. */
 
 import type { DatabaseSync } from 'node:sqlite';
 
@@ -20,8 +16,7 @@ import type { DatabaseSync } from 'node:sqlite';
 
     Whitespace around brackets and commas goes entirely rather than collapsing
     to one space, because `ALTER TABLE ... ADD COLUMN` appends its column after
-    whatever whitespace the last one ended on - `updated_at INTEGER NOT NULL ,
-    trashed_at INTEGER` - and no hand-written column list would have that. */
+    whatever whitespace the last one ended on - `updated_at INTEGER NOT NULL, trashed_at INTEGER` - and no hand-written column list would have that. */
 function normalizeSql(sql: string): string {
   const pieces: string[] = [];
   let plain = '';
@@ -137,7 +132,7 @@ export function dumpSchema(raw: DatabaseSync): string {
 }
 
 /** Every row every table holds, as text, for proving that two ways of building
-    a schema also leave the same data behind (after-release ticket 42). A fresh
+    a schema also leave the same data behind. A fresh
     schema has no authored rows, so what this compares is what the DDL itself
     writes: FTS5's config and structure records, and the AUTOINCREMENT
     counters in `sqlite_sequence`. Rows are sorted by their own text rather
@@ -150,10 +145,20 @@ export function dumpRows(raw: DatabaseSync): string {
 
   return tables
     .map(({ name }) => {
-      const rows = (raw.prepare(`SELECT * FROM "${name.replace(/"/g, '""')}"`).all() as Record<string, unknown>[])
+      /* Read as BigInt: a populated FTS5 index keys its segment rows above
+         2^53 (entry_fts_data in the rc.1 fixture), which node:sqlite refuses
+         to hand over as a number. A safe integer is written as the number it
+         always was, so the empty-schema dumps read the same as before. */
+      const statement = raw.prepare(`SELECT * FROM "${name.replace(/"/g, '""')}"`);
+      statement.setReadBigInts(true);
+      const rows = (statement.all() as Record<string, unknown>[])
         .map((row) =>
           JSON.stringify(row, (_key, value: unknown) =>
-            value instanceof Uint8Array ? `x'${Buffer.from(value).toString('hex')}'` : value
+            value instanceof Uint8Array
+              ? `x'${Buffer.from(value).toString('hex')}'`
+              : typeof value === 'bigint'
+                ? (Number.isSafeInteger(Number(value)) ? Number(value) : `${value}n`)
+                : value
           )
         )
         .sort();

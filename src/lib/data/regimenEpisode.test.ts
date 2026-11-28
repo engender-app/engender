@@ -5,8 +5,8 @@ import {
   activeEpisodesAt,
   attributeDose,
   attributeDrug,
+  continuousSince,
   drugSpans,
-  earliestEpisode,
   expectedDosesOnDay,
   lastDayWithin,
   nearestActiveEpisode,
@@ -23,6 +23,7 @@ const episode = (
 ): RegimenEpisode => ({
   id,
   drug,
+  drugClass: 'hrt',
   ester: null,
   dose: 4,
   doseUnit: 'mg',
@@ -65,18 +66,6 @@ test('a retroactive correction changes what an existing record resolves to, by t
 
   const corrected = [episode('a', 100, 139), episode('c', 140, 199), episode('b', 200, null)];
   assert.deepEqual(activeEpisodesAt(corrected, recordTimestamp).map((e) => e.id), ['c']);
-});
-
-test('earliestEpisode is the first episode there has ever been, not the current one', () => {
-  const episodes = [episode('a', 100, 199), episode('b', 200, 299), episode('c', 300, null)];
-  assert.equal(earliestEpisode(episodes)?.id, 'a');
-  assert.equal(earliestEpisode(episodes)?.startEpochDay, 100);
-  assert.equal(earliestEpisode([]), null);
-});
-
-test('earliestEpisode is unaffected by episodes overlapping', () => {
-  const episodes = [episode('b', 50, null, 'spironolactone'), episode('a', 100, null, 'estradiol')];
-  assert.equal(earliestEpisode(episodes)?.id, 'b');
 });
 
 test('attributeDose falls back to the sole active episode when the dose names no drug of its own', () => {
@@ -125,7 +114,7 @@ test('a dose naming a drug that matches no active episode is ambiguous, not sile
 });
 
 test('case 4: a non-hormone oral dose alongside a concurrent estradiol episode never resolves to the estradiol episode', () => {
-  // The bug this ticket exists to close: before ticket 38, a spironolactone
+  // The bug this ticket exists to close:, a spironolactone
   // tablet logged by the same oral route as an active estradiol episode
   // resolved to that estradiol episode purely because it was the only one
   // active, and got drawn into its curve at full value.
@@ -163,7 +152,7 @@ test('attributeDrug falls back to the sole active episode, tolerates several agr
   // "nothing to attribute" case, and not the new ambiguous kind.
   assert.deepEqual(attributeDrug(none, { drug: null, timestamp }), { drug: null, ambiguous: false });
   // Two episodes actively disagreeing on the drug is the only new kind of
-  // failure ticket 38 introduces.
+  // failure introduces.
   assert.deepEqual(attributeDrug(differentDrugs, { drug: null, timestamp }), { drug: null, ambiguous: true });
   // A dose naming its own drug is never ambiguous for this question, even
   // among several active episodes disagreeing - attributeDrug takes it as-is.
@@ -310,8 +299,7 @@ test("nearestActiveEpisode scopes a pause to its own episode - one episode's pau
   assert.equal(nearestActiveEpisode(episodes, episodes, schedules, [e1PausedToday], [], 200, 30), e2);
 });
 
-/* expectedDosesOnDay: what a schedule expects on one day, with the episode
-   named (phase 11 ticket 20, audit item 12). */
+/* ExpectedDosesOnDay: what a schedule expects on one day, with the episode named. */
 
 const everyThirdDay = (episodeId: string, dosesPerDay = 1, amounts: DoseScheduleAmount[] | null = null): DoseSchedule => ({
   id: `s-${episodeId}`,
@@ -395,7 +383,7 @@ test('showAttributionLabel: two episodes agreeing on one drug hide the "not reco
 });
 
 /* The day-ahead dose marks read each episode only as far as its own span
-   reaches into the range (after-release ticket 01). */
+   reaches into the range. */
 
 test('an open episode that began before the range runs to the end of it', () => {
   assert.equal(lastDayWithin(episode('a', 100), 150, 160), 160);
@@ -416,4 +404,17 @@ test('an episode that misses the range on either side answers null', () => {
 
 test('an episode ending on the first day of the range keeps that one day', () => {
   assert.equal(lastDayWithin(episode('a', 100, 150), 150, 160), 150);
+});
+
+test('continuousSince walks back over the same drug while the episodes touch, and stops at a gap', () => {
+  const current = episode('now', 300, null);
+  // A dose change the day after the last one ended, and an overlap before that.
+  const episodes = [episode('old', 100, 150), episode('a', 160, 249), episode('b', 240, 299), current, episode('other', 50, null, 'spironolactone')];
+  assert.equal(continuousSince(episodes, current), 160);
+  // The same drug written another way still counts as the same drug.
+  assert.equal(continuousSince([episode('a', 200, 299, ' Estradiol '), current], current), 200);
+  // Nothing before it: its own start.
+  assert.equal(continuousSince([current], current), 300);
+  // A one-day gap is a break.
+  assert.equal(continuousSince([episode('a', 200, 298), current], current), 300);
 });

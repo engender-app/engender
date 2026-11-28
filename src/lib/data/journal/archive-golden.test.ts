@@ -1,26 +1,11 @@
-/* The golden archive: one encrypted backup, committed as bytes, holding at
-   least one row in every section an archive carries.
+/* Keep a committed encrypted Archive with every section represented.
+   Reading frozen bytes and checking golden-archive-counts.json catches an
+   omitted section or row even if snapshot and restore drift together.
 
-   It exists because the wiring that decides which sections travel is spread
-   across a snapshot, a restore and a wire type, and a section dropped from
-   one of them fails silently - the archive is simply short that area and
-   everything still passes. Reading a fixture that was packed once and never
-   again is the only check that notices, because nothing in this test can
-   change what the fixture says an archive of that journal looks like. Each
-   section's row count is pinned too (golden-archive-counts.json), not just
-   whether it is empty: a section that goes from nine rows to one is still
-   non-empty, and "more than zero" was the whole guarantee until ticket 12.
-
-   Two ways to change what is committed, and they are not interchangeable.
-   `GOLDEN_ARCHIVE=rebuild` packs a brand new `everySection()` journal and is
-   the routine path - it is how adding a built-in dimension, preset or tag
-   shows up in the fixture, because `everySection()` reconciles today's
-   vocabulary itself. `GOLDEN_ARCHIVE=patch` decrypts what is committed and
-   runs a transform over its journal instead of starting from nothing,
-   which is what a change a fresh journal cannot reproduce on its own needs -
-   see golden-archive-fixture.ts's own doc comment on `patchGoldenArchive`.
-   Either way every id in the fixture changes, so a diff that touches more
-   than the section under discussion is the signal to stop and look. */
+   GOLDEN_ARCHIVE=rebuild packs today's everySection() fixture and built-ins.
+   GOLDEN_ARCHIVE=patch transforms the committed input for changes a fresh
+   journal cannot reproduce; see patchGoldenArchive. The regenerated fixture
+   gets fresh IDs. Check unexpected differences outside the target section. */
 
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -30,6 +15,7 @@ import type { ArchiveJournal } from '../archive/payload.ts';
 import {
   archivePath,
   countsPath,
+  builtInsOnlyDevice,
   emptyDevice,
   everySection,
   GOLDEN_PASSWORD,
@@ -44,47 +30,40 @@ import {
     a value, so this file keeps saying what the archive carried on the day it
     was written even if the shape it is checked against moves. */
 const SECTIONS = [
+  'deletions',
   'dimensions',
   'presets',
   'tagGroups',
   'presentations',
-  'entryTemplates',
-  'affirmations',
   'bodyRegions',
   'entries',
   'marginNotes',
-  'wordIgnore',
   'documents',
   'milestones',
   'labResults',
-  'measurementTypes',
-  'measurements',
-  'sizeRecords',
   'taper',
   'taperSessions',
   'sideEffects',
   'cycleEvents',
-  'journalingPauses',
-  'savedQuestions',
-  'revisits',
   'eras',
   'eraMutes',
   'effectCategories',
   'personalEffectTypes',
   'personalEffects',
-  'hairStages',
-  'hairPhotos',
+  'progressPhotos',
+  'progressPoses',
   'hairRemovalSessions',
   'procedures',
+  'providers',
   'appointments',
   'reminders',
-  'tallyEvents',
-  'counterevidenceSnapshots',
   'letters',
   'voicePracticeTakes',
   'roadmapChecks',
-  'roadmapTracks',
+  'roadmapCategories',
   'roadmapGoals',
+  'roadmapInstitutions',
+  'roadmapInstitutionChanges',
   'regimenEpisodes',
   'doseEvents',
   'doseSchedules',
@@ -107,6 +86,16 @@ const SECTIONS = [
     `rebuildGolden` and `patchGoldenArchive` write it (golden-archive-
     fixture.ts) - so the two can never quietly drift apart. */
 const SECTION_COUNTS: Record<string, number> = JSON.parse(readFileSync(countsPath, 'utf8'));
+
+// Keep the released encrypted fixture intact. New nullable provenance
+// fields restore as null when an older Archive never carried them.
+function goldenWithCurrentDoseDefaults(): ArchiveJournal {
+  const golden: ArchiveJournal = JSON.parse(readFileSync(journalPath, 'utf8'));
+  golden.doseEvents = golden.doseEvents.map((dose) => ({
+    autoLogEpisodeId: null, autoLogEpochDay: null, autoLogIndex: null, ...dose
+  }));
+  return golden;
+}
 
 if (process.env.GOLDEN_ARCHIVE === 'rebuild') {
   test('rebuilds the golden archive', async () => {
@@ -138,7 +127,7 @@ test('the patch mechanism round-trips the fixture unchanged through the identity
 });
 
 test('the golden archive restores section by section into an empty journal', async () => {
-  const golden: ArchiveJournal = JSON.parse(readFileSync(journalPath, 'utf8'));
+  const golden = goldenWithCurrentDoseDefaults();
   const opened = await openArchive(oneShot(new Uint8Array(readFileSync(archivePath))), GOLDEN_PASSWORD);
 
   const target = await emptyDevice();
@@ -155,6 +144,14 @@ test('the golden archive restores section by section into an empty journal', asy
   }
 });
 
+test('a journal holding the golden archive passes the integrity and foreign key checks', async () => {
+  const opened = await openArchive(oneShot(new Uint8Array(readFileSync(archivePath))), GOLDEN_PASSWORD);
+  const { driver, journal } = await builtInsOnlyDevice();
+  await journal.archive.replace({ journal: opened.payload.journal, files: opened.files });
+  assert.deepEqual(await driver.query('PRAGMA integrity_check'), [{ integrity_check: 'ok' }]);
+  assert.deepEqual(await driver.query('PRAGMA foreign_key_check'), []);
+});
+
 /* The keys and their order, not just the rows under them: a section renamed
    or moved changes what is in the file, and a per-section comparison cannot
    see either. The fixture's own key order is what today's code wrote, so
@@ -162,7 +159,12 @@ test('the golden archive restores section by section into an empty journal', asy
 test('the golden archive names its sections in the order a snapshot writes them', async () => {
   const opened = await openArchive(oneShot(new Uint8Array(readFileSync(archivePath))), GOLDEN_PASSWORD);
 
-  assert.deepEqual(Object.keys(opened.payload.journal), [...SECTIONS]);
+  /* The committed archive was written before entry templates were removed,
+     so it still carries that one dropped section: the restore below is also
+     the proof that an older backup with templates restores. */
+  const keys = Object.keys(opened.payload.journal);
+  assert.ok(keys.includes('entryTemplates'));
+  assert.deepEqual(keys.filter((key) => key !== 'entryTemplates'), [...SECTIONS]);
 
   const target = await emptyDevice();
   await target.archive.replace({ journal: opened.payload.journal, files: opened.files });
@@ -177,7 +179,7 @@ test('the golden archive names its sections in the order a snapshot writes them'
    by hand (restore.ts's discardJournalRows), and a table missed there keeps
    stale rows through the most destructive path in the app. */
 test('replacing a populated journal leaves exactly the golden archive behind', async () => {
-  const golden: ArchiveJournal = JSON.parse(readFileSync(journalPath, 'utf8'));
+  const golden = goldenWithCurrentDoseDefaults();
   const opened = await openArchive(oneShot(new Uint8Array(readFileSync(archivePath))), GOLDEN_PASSWORD);
 
   const target = await everySection();

@@ -19,32 +19,22 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 
 /**
- * That the secret outlives the process, and the reboot, and that neither is a
- * question the JVM tier or a single test method can answer (ticket
- * sec-02-06's first acceptance box).
- *
- * <p>The two steps below hand a value to each other through a file, so they
- * can be driven as two separate {@code am instrument} invocations - two
- * processes - or with a reboot in between:
+ * Check the binding key across separate instrumentation processes.
+ * Use a disposable emulator and optionally reboot between steps.
  *
  * <pre>
  * adb -s emulator-5554 shell am instrument -w \
  *   -e class ...PinBindingAcrossProcessesTest#step1MintAndRecordTheSecret \
  *   dev.engender.app.test/androidx.test.runner.AndroidJUnitRunner
- * adb -s emulator-5554 reboot            # or nothing, for a process death alone
+ * adb -s emulator-5554 reboot
  * adb -s emulator-5554 shell am instrument -w \
  *   -e class ...PinBindingAcrossProcessesTest#step2TheSecretIsStillTheSame \
  *   dev.engender.app.test/androidx.test.runner.AndroidJUnitRunner
  * </pre>
  *
- * <p>Run as a class instead - which is what the suite does - the two steps
- * share one process, and then this is a weaker check that says the same thing
- * about the alias rather than about process boundaries. The name ordering is
- * fixed so that it is at least the right way round there.
- *
- * <p>The recorded secret is written to the app's own files directory, which is
- * exactly where it must never be in earnest. It is a test artefact for one
- * comparison and step 2 deletes it along with the key.
+ * <p>The suite runs ordered methods in one process and checks alias
+ * persistence there. Only this test writes the comparison secret to
+ * app storage. Step 2 deletes it and the test key.
  */
 @RunWith(AndroidJUnit4.class)
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)

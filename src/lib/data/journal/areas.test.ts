@@ -1,5 +1,5 @@
-/* The dimensions, milestones, labs, reminders and hair-progress areas,
-   exercised through the driver interface (ticket 07). */
+/* The dimensions, milestones, labs, and reminders areas,
+   exercised through the driver interface. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
@@ -7,10 +7,11 @@ import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { openJournal } from './journal.ts';
 import { journalWithBuiltIns, UUID_PATTERN } from './test-support.ts';
-import { timestampAtLocalTime, todayEpochDay } from '../epochDay.ts';
+import { timestampAtLocalTime } from '../epochDay.ts';
 import type { Journal } from './journal.ts';
 import type { LabResultInput } from './labs.ts';
 import type { LabResult } from '../types.ts';
+import { NO_COST } from '../cost.ts';
 
 /* dimensions */
 
@@ -64,6 +65,25 @@ test('dimensions hide rather than delete, and their logged values survive hiding
   await assert.rejects(journal.dimensions.setDimensionHidden('nope', true), /unknown dimension/);
 });
 
+test('a custom dimension renames its name and both ends; a built-in or unknown key throws', async () => {
+  const { journal, db } = await journalWithBuiltIns();
+  const voice = await journal.dimensions.addCustomDimension({ name: 'Vocie', low: 'strianed', high: 'easy', min: 0, max: 10 });
+  db.raw.prepare('UPDATE gender_dimension SET updated_at = 1 WHERE key = ?').run(voice.key);
+
+  await journal.dimensions.renameCustomDimension(voice.key, { name: 'Voice', low: 'strained', high: 'at ease' });
+
+  const stored = (await journal.dimensions.getDimensions()).find((d) => d.key === voice.key);
+  assert.deepEqual(stored, { ...voice, name: 'Voice', low: 'strained', high: 'at ease' });
+  const updatedAt = db.raw.prepare('SELECT updated_at FROM gender_dimension WHERE key = ?').get(voice.key) as { updated_at: number };
+  assert.ok(updatedAt.updated_at > 1, 'a rename moves updated_at, which Merge reads');
+
+  await assert.rejects(
+    journal.dimensions.renameCustomDimension('femininity', { name: 'x', low: 'a', high: 'b' }),
+    /custom dimension/
+  );
+  await assert.rejects(journal.dimensions.renameCustomDimension('nope', { name: 'x', low: 'a', high: 'b' }), /custom dimension/);
+});
+
 /* milestones */
 
 test('a milestone round-trips without a kind column and updates by id', async () => {
@@ -80,6 +100,7 @@ test('a milestone round-trips without a kind column and updates by id', async ()
       roadmapGoalKey: null,
       procedureId: null,
       tryoutId: null,
+      celebrate: true,
       procedureName: null,
       tryoutLabel: null,
       customRoadmapGoalText: null,
@@ -98,12 +119,19 @@ test('a milestone round-trips without a kind column and updates by id', async ()
       roadmapGoalKey: null,
       procedureId: null,
       tryoutId: null,
+      celebrate: true,
       procedureName: null,
       tryoutLabel: null,
       customRoadmapGoalText: null,
       photo: null
     }
   ]);
+
+  /* The choice not to celebrate is kept by an edit that does not name it, the way a
+     procedure resync keeps a link. */
+  await journal.milestones.upsertMilestone({ id, name: 'HRT day one', epochDay: 20001, celebrate: false });
+  await journal.milestones.upsertMilestone({ id, name: 'HRT, day one', epochDay: 20001 });
+  assert.equal((await journal.milestones.getMilestones())[0].celebrate, false);
 
   await assert.rejects(journal.milestones.upsertMilestone({ id: 'nope', name: 'x', epochDay: 1 }), /unknown milestone/);
 });
@@ -149,7 +177,7 @@ test('deleting a milestone takes its photo rows and files; twice is success', as
   await journal.milestones.deleteMilestone(id); // idempotent
 });
 
-/* Ticket 56, ADR-0065: the link nulls, the document survives. */
+/* ADR-0065: the link nulls, the document survives. */
 test('deleting a milestone nulls a document\'s link to it, and the document survives', async () => {
   const db = await migratedDb();
   const files = fakeFileStore();
@@ -191,7 +219,8 @@ test('analytes are the presets plus whatever is in use; results order by day', a
     note: '',
     drawTime: null,
     provider: '',
-    timing: null
+    timing: null,
+    cost: NO_COST
   });
 });
 
@@ -317,175 +346,7 @@ test('lab results update by id, throw on unknown ids and delete idempotently', a
   assert.deepEqual(await journal.labs.getResults('estradiol'), []);
 });
 
-/* measurements */
-
-test('a measurement round-trips with no episode reference, ordered by day', async () => {
-  const { journal } = await journalWithBuiltIns();
-  await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 200, value: 79, unit: 'cm' });
-  const id = await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 100, value: 82, unit: 'cm' });
-
-  const measurements = await journal.measurements.getMeasurements('waist');
-  assert.deepEqual(measurements.map((r) => r.epochDay), [100, 200]);
-  assert.deepEqual(measurements[0], { id, type: 'waist', epochDay: 100, value: 82, unit: 'cm' });
-});
-
-test('each type keeps its own measurements; another type is not returned', async () => {
-  const { journal } = await journalWithBuiltIns();
-  await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 100, value: 80, unit: 'cm' });
-  await journal.measurements.upsertMeasurement({ type: 'hips', epochDay: 100, value: 95, unit: 'cm' });
-
-  assert.equal((await journal.measurements.getMeasurements('waist')).length, 1);
-  assert.equal((await journal.measurements.getMeasurements('hips')).length, 1);
-  assert.deepEqual(await journal.measurements.getMeasurements('chest'), []);
-});
-
-test('two units on one type are two series, drawn from the values as logged', async () => {
-  const { journal } = await journalWithBuiltIns();
-  await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 100, value: 82, unit: 'cm' });
-  await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 200, value: 79, unit: 'cm' });
-  await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 300, value: 31, unit: 'in' });
-
-  const series = await journal.measurements.getSeries('waist');
-  assert.deepEqual(
-    series.map((s) => [s.unit, s.measurements.map((r) => r.value)]),
-    [
-      ['cm', [82, 79]],
-      ['in', [31]]
-    ]
-  );
-  // The whole point: 31 in is about 79 cm, and nothing here says so.
-  assert.deepEqual((await journal.measurements.getMeasurements('waist')).map((r) => r.value), [82, 79, 31]);
-});
-
-test('a range read returns every type within the days it was asked for', async () => {
-  const { journal } = await journalWithBuiltIns();
-  await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 100, value: 82, unit: 'cm' });
-  await journal.measurements.upsertMeasurement({ type: 'hips', epochDay: 150, value: 96, unit: 'cm' });
-  await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 200, value: 79, unit: 'cm' });
-
-  const inRange = await journal.measurements.getMeasurementsInRange(120, 180);
-  assert.deepEqual(
-    inRange.map((r) => [r.type, r.epochDay]),
-    [['hips', 150]]
-  );
-});
-
-test('measurements update by id, throw on unknown ids and delete idempotently', async () => {
-  const { journal } = await journalWithBuiltIns();
-  const id = await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 100, value: 82, unit: 'cm' });
-
-  await journal.measurements.upsertMeasurement({ id, type: 'waist', epochDay: 100, value: 81, unit: 'cm' });
-  assert.equal((await journal.measurements.getMeasurements('waist'))[0].value, 81);
-
-  await assert.rejects(
-    journal.measurements.upsertMeasurement({ id: 'nope', type: 'waist', epochDay: 1, value: 1, unit: 'cm' }),
-    /unknown measurement/
-  );
-
-  await journal.measurements.deleteMeasurement(id);
-  await journal.measurements.deleteMeasurement(id); // idempotent
-  assert.deepEqual(await journal.measurements.getMeasurements('waist'), []);
-});
-
-/* measurement types (phase 5 ticket 29) */
-
-test('a custom measurement type gets a minted key and reads back; built-ins are marked', async () => {
-  const { journal } = await journalWithBuiltIns();
-  const created = await journal.measurements.addCustomMeasurementType('Shoulders');
-
-  const types = await journal.measurements.getMeasurementTypes();
-  assert.deepEqual(types.find((t) => t.key === created.key), {
-    key: created.key,
-    name: 'Shoulders',
-    builtIn: false,
-    hidden: false
-  });
-  assert.equal(types.find((t) => t.key === 'waist')?.builtIn, true);
-});
-
-test('measurement types hide rather than delete, and their logged rows survive hiding', async () => {
-  const { journal } = await journalWithBuiltIns();
-  const id = await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 100, value: 80, unit: 'cm' });
-
-  await journal.measurements.setMeasurementTypeHidden('waist', true);
-
-  assert.equal((await journal.measurements.getMeasurementTypes()).find((t) => t.key === 'waist')?.hidden, true);
-  assert.deepEqual((await journal.measurements.getMeasurements('waist')).map((m) => m.id), [id]);
-  assert.ok(!('deleteMeasurementType' in journal.measurements), 'no delete operation exists');
-  await assert.rejects(journal.measurements.setMeasurementTypeHidden('nope', true), /unknown measurement type/);
-});
-
-test('a custom measurement type hides on the same terms as a built-in', async () => {
-  const { journal } = await journalWithBuiltIns();
-  const created = await journal.measurements.addCustomMeasurementType('Shoulders');
-
-  await journal.measurements.setMeasurementTypeHidden(created.key, true);
-
-  assert.equal((await journal.measurements.getMeasurementTypes()).find((t) => t.key === created.key)?.hidden, true);
-});
-
-/* size records */
-
-test('a size record round-trips with no episode reference, ordered by day', async () => {
-  const { journal } = await journalWithBuiltIns();
-  await journal.sizeRecords.upsertRecord({ epochDay: 200, category: 'pants', size: '32', brand: 'Levi\'s', fitNote: 'true to size' });
-  const id = await journal.sizeRecords.upsertRecord({ epochDay: 100, category: 'pants', size: '30', brand: '', fitNote: '' });
-
-  const records = await journal.sizeRecords.getRecords();
-  assert.deepEqual(records.map((r) => r.epochDay), [100, 200]);
-  assert.deepEqual(records[0], { id, epochDay: 100, category: 'pants', size: '30', brand: '', fitNote: '' });
-});
-
-test('each category keeps its own records; another category is not returned', async () => {
-  const { journal } = await journalWithBuiltIns();
-  await journal.sizeRecords.upsertRecord({ epochDay: 100, category: 'shirts', size: 'M', brand: '', fitNote: '' });
-  await journal.sizeRecords.upsertRecord({ epochDay: 100, category: 'shoes', size: '9', brand: '', fitNote: '' });
-
-  assert.equal((await journal.sizeRecords.getRecordsByCategory('shirts')).length, 1);
-  assert.equal((await journal.sizeRecords.getRecordsByCategory('shoes')).length, 1);
-  assert.deepEqual(await journal.sizeRecords.getRecordsByCategory('pants'), []);
-});
-
-test('size records update by id, throw on unknown ids and delete idempotently', async () => {
-  const { journal } = await journalWithBuiltIns();
-  const id = await journal.sizeRecords.upsertRecord({ epochDay: 100, category: 'shirts', size: 'M', brand: '', fitNote: '' });
-
-  await journal.sizeRecords.upsertRecord({ id, epochDay: 100, category: 'shirts', size: 'L', brand: '', fitNote: '' });
-  assert.equal((await journal.sizeRecords.getRecords())[0].size, 'L');
-
-  await assert.rejects(
-    journal.sizeRecords.upsertRecord({ id: 'nope', epochDay: 1, category: 'shirts', size: 'M', brand: '', fitNote: '' }),
-    /unknown size record/
-  );
-
-  await journal.sizeRecords.deleteRecord(id);
-  await journal.sizeRecords.deleteRecord(id); // idempotent
-  assert.deepEqual(await journal.sizeRecords.getRecords(), []);
-});
-
-test('a category outside the closed vocabulary is refused before it reaches the schema', async () => {
-  const { journal } = await journalWithBuiltIns();
-  await assert.rejects(
-    journal.sizeRecords.upsertRecord({ epochDay: 100, category: 'upper_lip', size: 'M', brand: '', fitNote: '' }),
-    /invalid garment category/
-  );
-});
-
-test('brand and fit note are stored as typed, with no list and no normalization', async () => {
-  const { journal } = await journalWithBuiltIns();
-  await journal.sizeRecords.upsertRecord({ epochDay: 100, category: 'shirts', size: 'M', brand: '  Uniqlo ', fitNote: 'Runs Small' });
-  await journal.sizeRecords.upsertRecord({ epochDay: 101, category: 'shirts', size: 'L' });
-
-  assert.deepEqual(
-    (await journal.sizeRecords.getRecords()).map((r) => [r.brand, r.fitNote]),
-    [
-      ['  Uniqlo ', 'Runs Small'],
-      ['', '']
-    ]
-  );
-});
-
-/* lab draw context (phase 4 ticket 03) */
+/* lab draw context */
 
 const DRAW_DAY = 20000;
 const drawn = (time: string) => timestampAtLocalTime(DRAW_DAY, time);
@@ -587,9 +448,9 @@ test('a changed dose did happen, so the context is measured from it', async () =
   assert.deepEqual(result.timing, { route: 'oral', hoursSinceDose: 2 });
 });
 
-/* Ticket 03, box 6. The reason the figure is stored rather than derived on
-   read: a dose corrected in November must not rewrite the context on a draw
-   from August that someone has already discussed at an appointment. */
+/* Box 6. The reason the figure is stored rather than derived on read: a dose corrected in
+   November must not rewrite the context on a draw from August that someone has already
+   discussed at an appointment. */
 test('editing a past dose event leaves an already-saved timing context alone', async () => {
   const { journal } = await journalWithBuiltIns();
   const doseId = await journal.doses.upsertDose({
@@ -645,9 +506,8 @@ test('correcting the draw day or time re-derives the context', async () => {
   assert.deepEqual((await journal.labs.getResults('estradiol'))[0].timing, { route: 'oral', hoursSinceDose: 3 });
 });
 
-/* Which dose a draw is timed from depends on the analyte (selectTimingDose),
-   so a result moved to another analyte has to be timed again, or it keeps
-   the old drug's context (after-release ticket 01, L01-13). */
+/* Which dose a draw is timed from depends on the analyte (selectTimingDose), so a result
+   moved to another analyte has to be timed again, or it keeps the old drug's context. */
 test('changing a result to another analyte re-derives the context from that drug', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.doses.upsertDose({ timestamp: drawn('06:00'), route: 'oral', dose: 2, doseUnit: 'mg', drug: 'estradiol' });
@@ -684,27 +544,27 @@ test('a provider is stored as typed, with no list and no normalization', async (
 
 test('a side effect round-trips with no episode reference, ordered by day', async () => {
   const { journal } = await journalWithBuiltIns();
-  await journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2, epochDay: 200 });
-  const id = await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 4, epochDay: 100 });
+  await journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2, epochDay: 200, resolvedEpochDay: null });
+  const id = await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 4, epochDay: 100, resolvedEpochDay: null });
 
   const effects = await journal.sideEffects.getSideEffects();
   assert.deepEqual(effects.map((e) => e.epochDay), [100, 200]);
-  assert.deepEqual(effects[0], { id, name: 'hot flashes', severity: 4, epochDay: 100 });
+  assert.deepEqual(effects[0], { id, name: 'hot flashes', severity: 4, epochDay: 100, resolvedEpochDay: null });
 });
 
 test('severity round-trips as null when left blank, sorting and reading like any other side effect', async () => {
   const { journal } = await journalWithBuiltIns();
-  const id = await journal.sideEffects.upsertSideEffect({ name: 'brain fog', severity: null, epochDay: 100 });
+  const id = await journal.sideEffects.upsertSideEffect({ name: 'brain fog', severity: null, epochDay: 100, resolvedEpochDay: null });
 
   const [effect] = await journal.sideEffects.getSideEffects();
-  assert.deepEqual(effect, { id, name: 'brain fog', severity: null, epochDay: 100 });
+  assert.deepEqual(effect, { id, name: 'brain fog', severity: null, epochDay: 100, resolvedEpochDay: null });
 });
 
 test('a range read returns only the days it was asked for', async () => {
   const { journal } = await journalWithBuiltIns();
-  await journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2, epochDay: 100 });
-  await journal.sideEffects.upsertSideEffect({ name: 'headache', severity: 1, epochDay: 150 });
-  await journal.sideEffects.upsertSideEffect({ name: 'fatigue', severity: 3, epochDay: 200 });
+  await journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2, epochDay: 100, resolvedEpochDay: null });
+  await journal.sideEffects.upsertSideEffect({ name: 'headache', severity: 1, epochDay: 150, resolvedEpochDay: null });
+  await journal.sideEffects.upsertSideEffect({ name: 'fatigue', severity: 3, epochDay: 200, resolvedEpochDay: null });
 
   const inRange = await journal.sideEffects.getSideEffectsInRange(120, 180);
   assert.deepEqual(inRange.map((e) => e.name), ['headache']);
@@ -712,13 +572,13 @@ test('a range read returns only the days it was asked for', async () => {
 
 test('side effects update by id, throw on unknown ids and delete idempotently', async () => {
   const { journal } = await journalWithBuiltIns();
-  const id = await journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2, epochDay: 100 });
+  const id = await journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2, epochDay: 100, resolvedEpochDay: null });
 
-  await journal.sideEffects.upsertSideEffect({ id, name: 'nausea', severity: 3, epochDay: 100 });
+  await journal.sideEffects.upsertSideEffect({ id, name: 'nausea', severity: 3, epochDay: 100, resolvedEpochDay: null });
   assert.equal((await journal.sideEffects.getSideEffects())[0].severity, 3);
 
   await assert.rejects(
-    journal.sideEffects.upsertSideEffect({ id: 'nope', name: 'x', severity: 1, epochDay: 1 }),
+    journal.sideEffects.upsertSideEffect({ id: 'nope', name: 'x', severity: 1, epochDay: 1, resolvedEpochDay: null }),
     /unknown side effect/
   );
 
@@ -730,20 +590,43 @@ test('side effects update by id, throw on unknown ids and delete idempotently', 
 test('a severity outside the 1-5 scale is refused before it reaches the schema', async () => {
   const { journal } = await journalWithBuiltIns();
   await assert.rejects(
-    journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 0, epochDay: 100 }),
+    journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 0, epochDay: 100, resolvedEpochDay: null }),
     /invalid severity/
   );
   await assert.rejects(
-    journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 6, epochDay: 100 }),
+    journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 6, epochDay: 100, resolvedEpochDay: null }),
     /invalid severity/
   );
   await assert.rejects(
-    journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2.5, epochDay: 100 }),
+    journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2.5, epochDay: 100, resolvedEpochDay: null }),
     /invalid severity/
   );
 });
 
-/* cycle events (phase 5 ticket 03) */
+/* A side effect is ongoing until the person says it resolved, and the resolution can be
+   taken back. */
+test('a side effect starts ongoing, can be marked resolved and back', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const id = await journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2, epochDay: 100, resolvedEpochDay: null });
+  assert.equal((await journal.sideEffects.getSideEffects())[0].resolvedEpochDay, null);
+
+  await journal.sideEffects.upsertSideEffect({ id, name: 'nausea', severity: 2, epochDay: 100, resolvedEpochDay: 130 });
+  assert.equal((await journal.sideEffects.getSideEffects())[0].resolvedEpochDay, 130);
+
+  await journal.sideEffects.upsertSideEffect({ id, name: 'nausea', severity: 2, epochDay: 100, resolvedEpochDay: null });
+  assert.equal((await journal.sideEffects.getSideEffects())[0].resolvedEpochDay, null);
+});
+
+test('a side effect cannot resolve before it began', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await assert.rejects(
+    journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: null, epochDay: 100, resolvedEpochDay: 99 }),
+    /resolved before it began/
+  );
+  await journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: null, epochDay: 100, resolvedEpochDay: 100 });
+});
+
+/* cycle events */
 
 test('a cycle event round-trips with no episode reference, ordered by day', async () => {
   const { journal } = await journalWithBuiltIns();
@@ -782,36 +665,7 @@ test('cycle events update by id, throw on unknown ids and delete idempotently', 
   assert.deepEqual(await journal.cycleEvents.getCycleEvents(), []);
 });
 
-/* journaling pause (phase 5 ticket 21) */
-
-test('a journaling pause round-trips with no episode reference, ordered by start day', async () => {
-  const { journal } = await journalWithBuiltIns();
-  await journal.journalingPauses.upsertPause({ startEpochDay: 200, endEpochDay: 210 });
-  const id = await journal.journalingPauses.upsertPause({ startEpochDay: 100, endEpochDay: null });
-
-  const pauses = await journal.journalingPauses.getPauses();
-  assert.deepEqual(pauses.map((p) => p.startEpochDay), [100, 200]);
-  assert.deepEqual(pauses[0], { id, startEpochDay: 100, endEpochDay: null });
-});
-
-test('journaling pauses update by id, throw on unknown ids and delete idempotently', async () => {
-  const { journal } = await journalWithBuiltIns();
-  const id = await journal.journalingPauses.upsertPause({ startEpochDay: 100, endEpochDay: null });
-
-  await journal.journalingPauses.upsertPause({ id, startEpochDay: 100, endEpochDay: 105 });
-  assert.equal((await journal.journalingPauses.getPauses())[0].endEpochDay, 105);
-
-  await assert.rejects(
-    journal.journalingPauses.upsertPause({ id: 'nope', startEpochDay: 1, endEpochDay: null }),
-    /unknown journaling pause/
-  );
-
-  await journal.journalingPauses.deletePause(id);
-  await journal.journalingPauses.deletePause(id); // idempotent
-  assert.deepEqual(await journal.journalingPauses.getPauses(), []);
-});
-
-/* personal effects timeline (phase 4 ticket 07) */
+/* personal effects timeline */
 
 test('no marker exists until an effect is set; getMarkers only returns what was marked', async () => {
   const { journal } = await journalWithBuiltIns();
@@ -850,7 +704,7 @@ test('each of the eight effects keeps its own marker', async () => {
   );
 });
 
-/* masculinizing effects timeline pack (phase 5 ticket 02) */
+/* masculinizing effects timeline pack */
 
 test('masculinizing fat redistribution is a distinct marker from fat redistribution, not the same one read two ways', async () => {
   const { journal } = await journalWithBuiltIns();
@@ -895,165 +749,7 @@ test('clearing a marker is the undo for a mistaken date, and is idempotent', asy
   assert.deepEqual(await journal.personalEffects.getMarkers(), []);
 });
 
-/* hair progress (phase 4 ticket 09) */
-
-const nh = (epochDay: number, stage: string) => ({ epochDay, scale: 'norwood_hamilton', stage });
-
-test('a staging round-trips with no anchor reference, ordered by day', async () => {
-  const { journal } = await journalWithBuiltIns();
-  await journal.hairProgress.upsertStage(nh(200, '3v'));
-  const id = await journal.hairProgress.upsertStage(nh(100, '2'));
-
-  const stages = await journal.hairProgress.getStages();
-  assert.deepEqual(stages.map((s) => s.epochDay), [100, 200]);
-  assert.deepEqual(stages[0], { id, epochDay: 100, scale: 'norwood_hamilton', stage: '2', description: '' });
-});
-
-test('re-staging adds a row rather than replacing the last one - it is a series', async () => {
-  const { journal } = await journalWithBuiltIns();
-  await journal.hairProgress.upsertStage(nh(100, '2'));
-  await journal.hairProgress.upsertStage(nh(200, '3'));
-
-  assert.equal((await journal.hairProgress.getStages()).length, 2);
-});
-
-test('stagings update by id, throw on unknown ids and delete idempotently', async () => {
-  const { journal } = await journalWithBuiltIns();
-  const id = await journal.hairProgress.upsertStage(nh(100, '2'));
-
-  await journal.hairProgress.upsertStage({ id, ...nh(100, '2a') });
-  assert.equal((await journal.hairProgress.getStages())[0].stage, '2a');
-
-  await assert.rejects(journal.hairProgress.upsertStage({ id: 'nope', ...nh(1, '1') }), /unknown hair stage/);
-
-  await journal.hairProgress.deleteStage(id);
-  await journal.hairProgress.deleteStage(id); // idempotent
-  assert.deepEqual(await journal.hairProgress.getStages(), []);
-});
-
-test('an unrecognized stage is refused before it reaches the schema', async () => {
-  const { journal } = await journalWithBuiltIns();
-  await assert.rejects(journal.hairProgress.upsertStage(nh(100, 'not_a_real_stage')));
-});
-
-/* ticket 33: a second scale, and a pattern neither describes */
-
-test('a staging keeps the scale it was recorded against', async () => {
-  const { journal } = await journalWithBuiltIns();
-  await journal.hairProgress.upsertStage(nh(100, '3'));
-  await journal.hairProgress.upsertStage({ epochDay: 200, scale: 'sinclair', stage: '3' });
-
-  const stages = await journal.hairProgress.getStages();
-  // Both say '3' and neither means what the other means.
-  assert.deepEqual(
-    stages.map((s) => [s.scale, s.stage]),
-    [
-      ['norwood_hamilton', '3'],
-      ['sinclair', '3']
-    ]
-  );
-});
-
-test('a grade from the wrong scale is refused, though it is a grade somewhere', async () => {
-  const { journal } = await journalWithBuiltIns();
-
-  await assert.rejects(journal.hairProgress.upsertStage({ epochDay: 100, scale: 'sinclair', stage: '3v' }), /sinclair/);
-  await assert.rejects(journal.hairProgress.upsertStage({ epochDay: 100, scale: 'ludwig', stage: 'ii' }), /ludwig/);
-});
-
-test("a pattern neither scale describes is recorded in the person's own words", async () => {
-  const { journal } = await journalWithBuiltIns();
-  const id = await journal.hairProgress.upsertStage({
-    epochDay: 100,
-    scale: 'other',
-    stage: '',
-    description: 'thinner all over the top, parting unchanged'
-  });
-
-  assert.deepEqual((await journal.hairProgress.getStages())[0], {
-    id,
-    epochDay: 100,
-    scale: 'other',
-    stage: '',
-    description: 'thinner all over the top, parting unchanged'
-  });
-});
-
-test('neither of these, with nothing written down, is still a record', async () => {
-  const { journal } = await journalWithBuiltIns();
-  await journal.hairProgress.upsertStage({ epochDay: 100, scale: 'other', stage: '' });
-
-  assert.equal((await journal.hairProgress.getStages())[0].description, '');
-});
-
-test("changing a staging's scale keeps the stagings recorded under the other one", async () => {
-  const { journal } = await journalWithBuiltIns();
-  const kept = await journal.hairProgress.upsertStage(nh(100, '3'));
-  const moving = await journal.hairProgress.upsertStage(nh(200, '4'));
-
-  await journal.hairProgress.upsertStage({ id: moving, epochDay: 200, scale: 'sinclair', stage: '2' });
-
-  const stages = await journal.hairProgress.getStages();
-  assert.deepEqual(
-    stages.map((s) => [s.id, s.scale, s.stage]),
-    [
-      [kept, 'norwood_hamilton', '3'],
-      [moving, 'sinclair', '2']
-    ]
-  );
-});
-
-test('prose does not survive a move back onto a graded scale', async () => {
-  const { journal } = await journalWithBuiltIns();
-  const id = await journal.hairProgress.upsertStage({
-    epochDay: 100,
-    scale: 'other',
-    stage: '',
-    description: 'thinner all over'
-  });
-
-  await journal.hairProgress.upsertStage({ id, ...nh(100, '3'), description: 'thinner all over' });
-
-  assert.equal((await journal.hairProgress.getStages())[0].description, '');
-});
-
-test('a hair photo writes both files and its own row, distinct from the shared photo table', async () => {
-  const db = await migratedDb();
-  const files = fakeFileStore();
-  const journal = openJournal(db, files);
-
-  const id = await journal.hairProgress.addPhoto(19000, {
-    full: new Uint8Array([1]),
-    thumb: new Uint8Array([2])
-  });
-
-  assert.match(id, UUID_PATTERN);
-  const photos = await journal.hairProgress.getPhotos();
-  assert.deepEqual(photos, [{ id, epochDay: 19000, fileName: `${id}.jpg` }]);
-  assert.deepEqual(files.names(), [`${id}-thumb.jpg`, `${id}.jpg`]);
-  assert.equal((db.raw.prepare('SELECT COUNT(*) AS n FROM photo').get() as { n: number }).n, 0, 'not a third owner on `photo`');
-});
-
-test('hair photos order oldest first and delete takes the row and its files; twice is success', async () => {
-  const db = await migratedDb();
-  const files = fakeFileStore();
-  const journal = openJournal(db, files);
-
-  const first = await journal.hairProgress.addPhoto(19100, { full: new Uint8Array([1]), thumb: new Uint8Array([2]) });
-  const second = await journal.hairProgress.addPhoto(19000, { full: new Uint8Array([3]), thumb: new Uint8Array([4]) });
-
-  assert.deepEqual(
-    (await journal.hairProgress.getPhotos()).map((p) => p.id),
-    [second, first]
-  );
-
-  await journal.hairProgress.deletePhoto(first);
-  assert.deepEqual(files.names(), [`${second}-thumb.jpg`, `${second}.jpg`]);
-
-  await journal.hairProgress.deletePhoto(first); // idempotent
-});
-
-/* hair removal (phase 5 ticket 08) */
+/* hair removal */
 
 test('a hair-removal session round-trips with no episode reference, ordered by day', async () => {
   const { journal } = await journalWithBuiltIns();
@@ -1062,7 +758,6 @@ test('a hair-removal session round-trips with no episode reference, ordered by d
     area: 'legs',
     method: 'laser',
     painRating: 2,
-    cost: '300 PLN',
     provider: 'Klinika Laserowa'
   });
   const id = await journal.hairRemoval.upsertSession({
@@ -1070,7 +765,7 @@ test('a hair-removal session round-trips with no episode reference, ordered by d
     area: 'upper_lip',
     method: 'electrolysis',
     painRating: 4,
-    cost: '',
+    minutes: 60,
     provider: ''
   });
 
@@ -1082,8 +777,10 @@ test('a hair-removal session round-trips with no episode reference, ordered by d
     area: 'upper_lip',
     method: 'electrolysis',
     painRating: 4,
-    cost: '',
-    provider: ''
+    minutes: 60,
+    cost: NO_COST,
+    provider: '',
+    note: null
   });
 });
 
@@ -1094,61 +791,20 @@ test('hair-removal sessions update by id, throw on unknown ids and delete idempo
     area: 'chin',
     method: 'laser',
     painRating: 2,
-    cost: '',
     provider: ''
   });
 
-  await journal.hairRemoval.upsertSession({ id, epochDay: 100, area: 'chin', method: 'laser', painRating: 3, cost: '', provider: '' });
+  await journal.hairRemoval.upsertSession({ id, epochDay: 100, area: 'chin', method: 'laser', painRating: 3, provider: '' });
   assert.equal((await journal.hairRemoval.getSessions())[0].painRating, 3);
 
   await assert.rejects(
-    journal.hairRemoval.upsertSession({ id: 'nope', epochDay: 1, area: 'chin', method: 'laser', painRating: 1, cost: '', provider: '' }),
+    journal.hairRemoval.upsertSession({ id: 'nope', epochDay: 1, area: 'chin', method: 'laser', painRating: 1, provider: '' }),
     /unknown hair removal session/
   );
 
   await journal.hairRemoval.deleteSession(id);
   await journal.hairRemoval.deleteSession(id); // idempotent
   assert.deepEqual(await journal.hairRemoval.getSessions(), []);
-});
-
-test('the latest hair-removal session comes back as one row, ignoring a day after today', async () => {
-  const { journal } = await journalWithBuiltIns();
-  assert.equal(await journal.hairRemoval.latestSession(300), null);
-
-  await journal.hairRemoval.upsertSession({ epochDay: 100, area: 'legs', method: 'laser', painRating: 2, cost: '', provider: '' });
-  const newest = await journal.hairRemoval.upsertSession({
-    epochDay: 200,
-    area: 'chin',
-    method: 'electrolysis',
-    painRating: 4,
-    cost: '',
-    provider: ''
-  });
-  await journal.hairRemoval.upsertSession({ epochDay: 900, area: 'legs', method: 'laser', painRating: 1, cost: '', provider: '' });
-
-  const latest = await journal.hairRemoval.latestSession(300);
-  assert.equal(latest?.id, newest);
-  assert.equal(latest?.area, 'chin');
-});
-
-test('two hair-removal sessions on the newest day answer with the one written first', async () => {
-  const { journal } = await journalWithBuiltIns();
-  const first = await journal.hairRemoval.upsertSession({ epochDay: 200, area: 'legs', method: 'laser', painRating: 2, cost: '', provider: '' });
-  await journal.hairRemoval.upsertSession({ epochDay: 200, area: 'chin', method: 'laser', painRating: 2, cost: '', provider: '' });
-
-  assert.equal((await journal.hairRemoval.latestSession(300))?.id, first);
-});
-
-test('measurements count themselves without reading a row back', async () => {
-  const { journal } = await journalWithBuiltIns();
-  assert.equal(await journal.measurements.countAll(), 0);
-
-  await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 100, value: 82, unit: 'cm' });
-  const id = await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 200, value: 79, unit: 'cm' });
-  assert.equal(await journal.measurements.countAll(), 2);
-
-  await journal.measurements.deleteMeasurement(id);
-  assert.equal(await journal.measurements.countAll(), 1);
 });
 
 test('an area outside the closed vocabulary is refused before it reaches the schema', async () => {
@@ -1159,8 +815,7 @@ test('an area outside the closed vocabulary is refused before it reaches the sch
       area: 'face_jaw', // a BODY_REGION_KEYS key, not a hair-removal area
       method: 'laser',
       painRating: 2,
-      cost: '',
-      provider: ''
+        provider: ''
     }),
     /invalid hair-removal area/
   );
@@ -1169,37 +824,35 @@ test('an area outside the closed vocabulary is refused before it reaches the sch
 test('a pain rating outside the 1-5 scale is refused before it reaches the schema', async () => {
   const { journal } = await journalWithBuiltIns();
   await assert.rejects(
-    journal.hairRemoval.upsertSession({ epochDay: 100, area: 'chin', method: 'laser', painRating: 0, cost: '', provider: '' }),
+    journal.hairRemoval.upsertSession({ epochDay: 100, area: 'chin', method: 'laser', painRating: 0, provider: '' }),
     /invalid pain rating/
   );
   await assert.rejects(
-    journal.hairRemoval.upsertSession({ epochDay: 100, area: 'chin', method: 'laser', painRating: 6, cost: '', provider: '' }),
+    journal.hairRemoval.upsertSession({ epochDay: 100, area: 'chin', method: 'laser', painRating: 6, provider: '' }),
     /invalid pain rating/
   );
 });
 
-test('cost and provider are stored as typed, with no list and no normalization', async () => {
+/* The cost is a typed amount since (costs.test.ts); the provider is still the person's own
+   text. */
+test('provider is stored as typed, with no list and no normalization', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.hairRemoval.upsertSession({
     epochDay: 100,
     area: 'chin',
     method: 'laser',
     painRating: 2,
-    cost: '  250 PLN ',
-    provider: 'diagnostyka'
+    provider: ' diagnostyka'
   });
   await journal.hairRemoval.upsertSession({ epochDay: 101, area: 'chin', method: 'laser', painRating: 2 });
 
   assert.deepEqual(
-    (await journal.hairRemoval.getSessions()).map((s) => [s.cost, s.provider]),
-    [
-      ['  250 PLN ', 'diagnostyka'],
-      ['', '']
-    ]
+    (await journal.hairRemoval.getSessions()).map((s) => s.provider),
+    [' diagnostyka', '']
   );
 });
 
-test('a session photo writes both files and its own row, distinct from `photo` and `hair_photo`', async () => {
+test('a session photo writes both files and its own row, distinct from `photo`', async () => {
   const db = await migratedDb();
   const files = fakeFileStore();
   const journal = openJournal(db, files);
@@ -1208,7 +861,6 @@ test('a session photo writes both files and its own row, distinct from `photo` a
     area: 'chin',
     method: 'laser',
     painRating: 2,
-    cost: '',
     provider: ''
   });
 
@@ -1218,7 +870,6 @@ test('a session photo writes both files and its own row, distinct from `photo` a
   assert.deepEqual(await journal.hairRemoval.getPhotos(sessionId), [{ id, sessionId, fileName: `${id}.jpg` }]);
   assert.deepEqual(files.names(), [`${id}-thumb.jpg`, `${id}.jpg`]);
   assert.equal((db.raw.prepare('SELECT COUNT(*) AS n FROM photo').get() as { n: number }).n, 0, 'not a third owner on `photo`');
-  assert.equal((db.raw.prepare('SELECT COUNT(*) AS n FROM hair_photo').get() as { n: number }).n, 0, 'not hair_photo either');
 });
 
 test('adding a photo to an unknown session throws before any file lands', async () => {
@@ -1241,7 +892,6 @@ test('session photos order oldest first and delete takes the row and its files; 
     area: 'chin',
     method: 'laser',
     painRating: 2,
-    cost: '',
     provider: ''
   });
 
@@ -1268,7 +918,6 @@ test('deleting a session cascades to its photos', async () => {
     area: 'chin',
     method: 'laser',
     painRating: 2,
-    cost: '',
     provider: ''
   });
   await journal.hairRemoval.addPhoto(sessionId, { full: new Uint8Array([1]), thumb: new Uint8Array([2]) });
@@ -1286,11 +935,10 @@ test('deleting a session cascades to its photos', async () => {
 
 test('every rule shape written by the journal passes the schema recurrence CHECK', async () => {
   const { journal } = await journalWithBuiltIns();
-  const base = { title: 'x', type: 'med' as const, time: '20:00', enabled: true };
+  const base = { title: 'x', time: '20:00', enabled: true };
   const none = { interval: null, anchorEpochDay: null, epochDay: null };
 
   await journal.reminders.upsertReminder({ ...base, ...none, recurrence: 'DAILY' });
-  await journal.reminders.upsertReminder({ ...base, ...none, recurrence: 'WEEKLY' });
   await journal.reminders.upsertReminder({ ...base, ...none, recurrence: 'EVERY_N_DAYS', interval: 3, anchorEpochDay: 100 });
   await journal.reminders.upsertReminder({ ...base, ...none, recurrence: null, epochDay: 200 });
 
@@ -1299,20 +947,52 @@ test('every rule shape written by the journal passes the schema recurrence CHECK
     stored.map((r) => [r.recurrence, r.interval, r.anchorEpochDay, r.epochDay]),
     [
       ['DAILY', null, null, null],
-      ['EVERY_N_DAYS', 7, todayEpochDay(), null],
       ['EVERY_N_DAYS', 3, 100, null],
       [null, null, null, 200]
     ]
   );
 });
 
+/* The type only ever picked an icon, and medication and injection already shared one. */
+test('a reminder carries no type, in the row or in the table', async () => {
+  const { db, journal } = await journalWithBuiltIns();
+  const id = await journal.reminders.upsertReminder({
+    title: 'Patch', time: '20:00', enabled: true, recurrence: 'DAILY', interval: null, anchorEpochDay: null, epochDay: null
+  });
+  const [stored] = await journal.reminders.getReminders();
+  assert.equal(stored.id, id);
+  assert.ok(!('type' in stored));
+  const columns = (await db.query<{ name: string }>('PRAGMA table_info(reminder)')).map((c) => c.name);
+  assert.ok(!columns.includes('type'));
+});
+
+/* A medication reminder names its drug, which is what sends its notification to that drug's
+   dose log and gives it Taken and Skip. Every other reminder stores none. */
+test('a medication reminder keeps its drug, and a save that names none clears it', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const rule = { time: '08:00', enabled: true, recurrence: 'DAILY' as const, interval: null, anchorEpochDay: null, epochDay: null };
+  const id = await journal.reminders.upsertReminder({ ...rule, title: 'Estradiol', drug: 'Estradiol valerate' });
+  const plain = await journal.reminders.upsertReminder({ ...rule, title: 'Water the plants' });
+  const read = async () => new Map((await journal.reminders.getReminders()).map((r) => [r.id, r.drug]));
+  assert.equal((await read()).get(id), 'Estradiol valerate');
+  assert.equal((await read()).get(plain), null);
+
+  await journal.reminders.upsertReminder({ ...rule, id, title: 'Estradiol' });
+  assert.equal((await read()).get(id), null);
+});
+
 test("the seed's old vocabulary is rejected before it reaches the schema", async () => {
   const { journal } = await journalWithBuiltIns();
-  const base = { title: 'x', type: 'med' as const, time: '20:00', enabled: true };
+  const base = { title: 'x', time: '20:00', enabled: true };
   const none = { interval: null, anchorEpochDay: null, epochDay: null };
 
   await assert.rejects(
     journal.reminders.upsertReminder({ ...base, ...none, recurrence: 'EVERY_3_DAYS' as never }),
+    /invalid reminder rule/
+  );
+  // The pre-rc weekly shape has no reader left, so it is refused like any other unknown word.
+  await assert.rejects(
+    journal.reminders.upsertReminder({ ...base, ...none, recurrence: 'WEEKLY' as never }),
     /invalid reminder rule/
   );
   // A recurrence that needs its parts cannot be written without them.
@@ -1327,7 +1007,6 @@ test('reminders update by id, toggle enabled, throw on unknown ids and delete id
   const none = { interval: null, anchorEpochDay: null, epochDay: null };
   const id = await journal.reminders.upsertReminder({
     title: 'Patch',
-    type: 'med',
     time: '20:00',
     enabled: true,
     ...none,
@@ -1340,11 +1019,12 @@ test('reminders update by id, toggle enabled, throw on unknown ids and delete id
   await journal.reminders.upsertReminder({
     id,
     title: 'Patch',
-    type: 'med',
     time: '21:00',
     enabled: false,
     ...none,
-    recurrence: 'WEEKLY'
+    recurrence: 'EVERY_N_DAYS',
+    interval: 7,
+    anchorEpochDay: 100
   });
   assert.equal((await journal.reminders.getReminders())[0].time, '21:00');
 
@@ -1355,7 +1035,7 @@ test('reminders update by id, toggle enabled, throw on unknown ids and delete id
   assert.deepEqual(await journal.reminders.getReminders(), []);
 });
 
-/* procedures (phase 5 ticket 07) */
+/* procedures */
 
 test('a procedure round-trips with a free-text name and an optional surgery date, ordered by that date', async () => {
   const { journal } = await journalWithBuiltIns();
@@ -1377,7 +1057,8 @@ test('a procedure round-trips with a free-text name and an optional surgery date
     consults: [],
     kind: 'custom',
     dilationOptIn: false,
-    archived: false
+    archived: false,
+    cost: NO_COST
   });
   assert.equal(procedures[2].surgeryEpochDay, null);
   assert.equal(procedures[2].id, unscheduled);
@@ -1502,19 +1183,4 @@ test("a procedure's checklist is an ordinary owned checklist, created on the fir
   assert.equal((await journal.procedures.getChecklist(id))?.items.length, 2, 'the second item joins the same checklist');
 
   await assert.rejects(journal.procedures.addChecklistItem('nope', 'x'), /unknown procedure/);
-});
-
-test('editing a legacy Weekly input preserves its existing seven-day anchor', async () => {
-  const { journal } = await journalWithBuiltIns();
-  const base = { title: 'Injection', type: 'injection' as const, time: '20:00', enabled: true, epochDay: null };
-  const id = await journal.reminders.upsertReminder({
-    ...base, recurrence: 'EVERY_N_DAYS', interval: 7, anchorEpochDay: 20675
-  });
-  await journal.reminders.upsertReminder({
-    ...base, id, title: 'Renamed', recurrence: 'WEEKLY', interval: null, anchorEpochDay: null
-  });
-  const [stored] = await journal.reminders.getReminders();
-  assert.equal(stored.anchorEpochDay, 20675);
-  assert.equal(stored.recurrence, 'EVERY_N_DAYS');
-  assert.equal(stored.interval, 7);
 });

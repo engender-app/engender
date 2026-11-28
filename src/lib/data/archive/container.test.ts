@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
-import { test } from 'vitest';
+import { test, vi } from 'vitest';
 import { DecryptionFailedError, encrypt } from '../../crypto/aesGcm.ts';
 import { ARCHIVE_ARGON2_PARAMS } from '../../crypto/params.ts';
 import {
   ARCHIVE_FORMAT_VERSION,
   CorruptArchiveError,
+  MIN_CHUNK_SIZE,
   UnsupportedArchiveError,
   byteReader,
   chunkCountFor,
@@ -33,6 +34,8 @@ async function* body(length: number, piece = 7000): AsyncGenerator<Uint8Array> {
 
 const expected = async (length: number) => collect(body(length));
 
+const CHUNK = MIN_CHUNK_SIZE;
+
 function headerFor(length: number, chunkSize: number): ArchiveHeader {
   return {
     formatVersion: ARCHIVE_FORMAT_VERSION,
@@ -43,7 +46,7 @@ function headerFor(length: number, chunkSize: number): ArchiveHeader {
   };
 }
 
-async function framed(length: number, chunkSize = 1024): Promise<{ k: Uint8Array<ArrayBuffer>; bytes: Uint8Array<ArrayBuffer> }> {
+async function framed(length: number, chunkSize = CHUNK): Promise<{ k: Uint8Array<ArrayBuffer>; bytes: Uint8Array<ArrayBuffer> }> {
   const k = key();
   return { k, bytes: await collect(frameArchive(k, headerFor(length, chunkSize), body(length))) };
 }
@@ -81,7 +84,7 @@ function validHeaderJson(overrides: Record<string, unknown> = {}): Record<string
   return {
     kdf: ARCHIVE_ARGON2_PARAMS,
     salt: base64(salt()),
-    chunkSize: 1024,
+    chunkSize: CHUNK,
     totalChunks: 1,
     ...overrides
   };
@@ -90,7 +93,7 @@ function validHeaderJson(overrides: Record<string, unknown> = {}): Record<string
 test('an archive framed before seal/open existed - each chunk hand-concatenated from encrypt() - still unframes', async () => {
   const k = key();
   const length = 3000;
-  const chunkSize = 1024;
+  const chunkSize = CHUNK;
   const header = headerFor(length, chunkSize);
 
   // headerBytes is otherwise private to encodeHeader(); recovered off a real
@@ -148,8 +151,8 @@ function concatAll(pieces: Uint8Array[]): Uint8Array<ArrayBuffer> {
 }
 
 test('round-trips a body that spans several chunks', async () => {
-  const { k, bytes } = await framed(5000);
-  assert.deepEqual(await unframe(k, bytes), await expected(5000));
+  const { k, bytes } = await framed(CHUNK * 4 + 904);
+  assert.deepEqual(await unframe(k, bytes), await expected(CHUNK * 4 + 904));
 });
 
 test('round-trips a body shorter than one chunk', async () => {
@@ -158,14 +161,14 @@ test('round-trips a body shorter than one chunk', async () => {
 });
 
 test('round-trips a body that is an exact multiple of the chunk size', async () => {
-  const { k, bytes } = await framed(4096, 1024);
-  assert.deepEqual(await unframe(k, bytes), await expected(4096));
+  const { k, bytes } = await framed(CHUNK * 4, CHUNK);
+  assert.deepEqual(await unframe(k, bytes), await expected(CHUNK * 4));
 });
 
 test('the header is plaintext: magic, version, KDF parameters and salt read without a key', async () => {
   const k = key();
-  const header = headerFor(5000, 1024);
-  const bytes = await collect(frameArchive(k, header, body(5000)));
+  const header = headerFor(CHUNK * 4 + 904, CHUNK);
+  const bytes = await collect(frameArchive(k, header, body(CHUNK * 4 + 904)));
 
   assert.equal(new TextDecoder().decode(bytes.subarray(0, 6)), 'GDIARY');
 
@@ -173,7 +176,7 @@ test('the header is plaintext: magic, version, KDF parameters and salt read with
   assert.equal(read.formatVersion, ARCHIVE_FORMAT_VERSION);
   assert.deepEqual(read.kdf, ARCHIVE_ARGON2_PARAMS);
   assert.deepEqual(read.salt, header.salt);
-  assert.equal(read.chunkSize, 1024);
+  assert.equal(read.chunkSize, CHUNK);
   assert.equal(read.totalChunks, 5);
 });
 
@@ -200,15 +203,15 @@ test('forged KDF output lengths are refused before derivation', async () => {
   }
 });
 
-test('forged KDF parallelism above four is refused before derivation', async () => {
-  for (const parallelism of [5, 1_000_000]) {
+test('forged KDF parallelism above one is refused before derivation', async () => {
+  for (const parallelism of [2, 4, 1_000_000]) {
     const json = validHeaderJson({ kdf: { ...ARCHIVE_ARGON2_PARAMS, parallelism } });
     await assert.rejects(readArchiveHeader(byteReader(oneShot(rawHeader(json)))), CorruptArchiveError);
   }
 });
 
-test('a header merely heavier than today\'s profile still imports, so the cap does not defeat re-tuning', async () => {
-  const heavier = { ...ARCHIVE_ARGON2_PARAMS, memorySize: ARCHIVE_ARGON2_PARAMS.memorySize * 4, iterations: ARCHIVE_ARGON2_PARAMS.iterations * 4 };
+test('the measured two-times profile is accepted without doubling memory', async () => {
+  const heavier = { memorySize: 65536, iterations: 6, parallelism: 1, hashLength: 32 };
   const json = validHeaderJson({ kdf: heavier });
   const { header } = await readArchiveHeader(byteReader(oneShot(rawHeader(json))));
   assert.deepEqual(header.kdf, heavier);
@@ -223,12 +226,12 @@ test('an invalid base64 salt fails as CorruptArchiveError, not a raw DOMExceptio
 });
 
 test('every chunk gets its own nonce', async () => {
-  const { bytes } = await framed(5000, 1024);
+  const { bytes } = await framed(CHUNK * 4 + 904, CHUNK);
   const nonces = new Set<string>();
   let at = 12 + headerJsonLength(bytes);
   for (let i = 0; i < 5; i++) {
     nonces.add(String(bytes.subarray(at, at + 12)));
-    at += 12 + 1024 + 16;
+    at += 12 + CHUNK + 16;
   }
   assert.equal(nonces.size, 5);
 });
@@ -238,52 +241,65 @@ function headerJsonLength(bytes: Uint8Array): number {
 }
 
 test('a wrong password fails, and says only that', async () => {
-  const { bytes } = await framed(5000);
+  const { bytes } = await framed(CHUNK * 4 + 904);
   await assert.rejects(unframe(key(), bytes), DecryptionFailedError);
 });
 
 test('a file that is not an archive is refused before anything is decrypted', async () => {
   const notAnArchive = new TextEncoder().encode('PK this is a zip, actually, and quite a long one');
-  await assert.rejects(unframe(key(), notAnArchive), UnsupportedArchiveError);
+  await assert.rejects(unframe(key(), notAnArchive), (error: unknown) => {
+    assert.ok(error instanceof UnsupportedArchiveError);
+    assert.equal(error.kind, 'not-an-archive');
+    return true;
+  });
 });
 
 test('a file too short to hold a header is refused as not an archive', async () => {
-  await assert.rejects(unframe(key(), new Uint8Array([1, 2, 3])), UnsupportedArchiveError);
+  await assert.rejects(unframe(key(), new Uint8Array([1, 2, 3])), (error: unknown) => {
+    assert.ok(error instanceof UnsupportedArchiveError);
+    assert.equal(error.kind, 'not-an-archive');
+    return true;
+  });
 });
 
 test('a higher format version is refused, without deriving a key or decrypting', async () => {
-  const { bytes } = await framed(5000);
+  const { bytes } = await framed(CHUNK * 4 + 904);
   const newer = new Uint8Array(bytes);
   new DataView(newer.buffer).setUint16(6, ARCHIVE_FORMAT_VERSION + 1);
 
   await assert.rejects(
     readArchiveHeader(byteReader(oneShot(newer))),
-    (error: Error) => error instanceof UnsupportedArchiveError && /newer version/.test(error.message)
+    (error: unknown) => {
+      assert.ok(error instanceof UnsupportedArchiveError);
+      assert.equal(error.kind, 'newer-version');
+      assert.match(error.message, /newer version/);
+      return true;
+    }
   );
 });
 
 test('truncating the last chunk mid-way fails authentication', async () => {
-  const { k, bytes } = await framed(5000, 1024);
+  const { k, bytes } = await framed(CHUNK * 4 + 904, CHUNK);
   await assert.rejects(unframe(k, bytes.subarray(0, bytes.length - 200)), DecryptionFailedError);
 });
 
 test('dropping a whole chunk fails, rather than yielding a short body', async () => {
-  const { k, bytes } = await framed(5000, 1024);
+  const { k, bytes } = await framed(CHUNK * 4 + 904, CHUNK);
   // Exactly one framed chunk off the end: the bytes that remain are all
   // individually valid, so only the chunk count in the AAD catches this.
-  const short = bytes.subarray(0, bytes.length - (12 + 1024 + 16));
+  const short = bytes.subarray(0, bytes.length - (12 + CHUNK + 16));
   await assert.rejects(unframe(k, short), (error: Error) => error instanceof CorruptArchiveError || error instanceof DecryptionFailedError);
 });
 
 test('bytes appended to the end fail authentication', async () => {
-  const { k, bytes } = await framed(5000, 1024);
+  const { k, bytes } = await framed(CHUNK * 4 + 904, CHUNK);
   const longer = new Uint8Array(bytes.length + 32);
   longer.set(bytes);
   await assert.rejects(unframe(k, longer), DecryptionFailedError);
 });
 
 test('an oversized final frame is refused without pulling its 8 MiB tail', async () => {
-  const { k, bytes } = await framed(1024);
+  const { k, bytes } = await framed(CHUNK);
   let pulled = 0;
   async function* oversized() {
     yield bytes;
@@ -299,8 +315,9 @@ test('an oversized final frame is refused without pulling its 8 MiB tail', async
   assert.equal(pulled, 1);
 });
 
-test('a final frame and oversized tail split into small pieces stop after bounded reads', async () => {
-  const { k, bytes } = await framed(1024);
+// Pulls the archive one byte at a time: 1.4 s locally, over 5 s on a CI runner.
+test('a final frame and oversized tail split into small pieces stop after bounded reads', { timeout: 20_000 }, async () => {
+  const { k, bytes } = await framed(CHUNK);
   let pulled = 0;
   async function* pieces() {
     for (const byte of bytes) {
@@ -320,14 +337,14 @@ test('a final frame and oversized tail split into small pieces stop after bounde
 });
 
 test('an oversized final frame already buffered in one piece is refused', async () => {
-  const { k, bytes } = await framed(1024);
+  const { k, bytes } = await framed(CHUNK);
   const oversized = new Uint8Array(bytes.length + 8 * 1024 * 1024);
   oversized.set(bytes);
   await assert.rejects(unframe(k, oversized), CorruptArchiveError);
 });
 
 test('a final frame too short for plaintext retains its corruption failure', async () => {
-  const { k, bytes } = await framed(1024);
+  const { k, bytes } = await framed(CHUNK);
   const short = bytes.subarray(0, 12 + headerJsonLength(bytes) + 28);
   await assert.rejects(unframe(k, short), {
     name: 'CorruptArchiveError',
@@ -336,14 +353,14 @@ test('a final frame too short for plaintext retains its corruption failure', asy
 });
 
 test('a bad tag on a full final frame retains its authentication failure', async () => {
-  const { k, bytes } = await framed(1024);
+  const { k, bytes } = await framed(CHUNK);
   bytes[bytes.length - 1] ^= 0xff;
   await assert.rejects(unframe(k, bytes), DecryptionFailedError);
 });
 
 test('reordering two chunks fails authentication', async () => {
-  const { k, bytes } = await framed(5000, 1024);
-  const framedChunk = 12 + 1024 + 16;
+  const { k, bytes } = await framed(CHUNK * 4 + 904, CHUNK);
+  const framedChunk = 12 + CHUNK + 16;
   const start = 12 + headerJsonLength(bytes);
   const swapped = new Uint8Array(bytes);
   const first = bytes.subarray(start, start + framedChunk);
@@ -355,7 +372,7 @@ test('reordering two chunks fails authentication', async () => {
 });
 
 test('editing the chunk count in the plaintext header fails authentication', async () => {
-  const { k, bytes } = await framed(5000, 1024);
+  const { k, bytes } = await framed(CHUNK * 4 + 904, CHUNK);
   const text = new TextDecoder().decode(bytes.subarray(12, 12 + headerJsonLength(bytes)));
   const tampered = new TextEncoder().encode(text.replace('"totalChunks":5', '"totalChunks":4'));
   assert.equal(tampered.length, headerJsonLength(bytes), 'the tampered header must be the same length');
@@ -366,11 +383,107 @@ test('editing the chunk count in the plaintext header fails authentication', asy
 });
 
 test('a body longer than the header declares is refused rather than written', async () => {
-  const header = headerFor(1000, 1024);
-  await assert.rejects(collect(frameArchive(key(), header, body(5000))), /longer than/);
+  const header = headerFor(CHUNK - 24, CHUNK);
+  await assert.rejects(collect(frameArchive(key(), header, body(CHUNK * 4 + 904))), /longer than/);
 });
 
 test('a body shorter than the header declares is refused rather than written', async () => {
-  const header = headerFor(5000, 1024);
-  await assert.rejects(collect(frameArchive(key(), header, body(1000))), /shorter than/);
+  const header = headerFor(CHUNK * 4 + 904, CHUNK);
+  await assert.rejects(collect(frameArchive(key(), header, body(CHUNK - 24))), /shorter than/);
+});
+
+
+for (const index of [0, 5]) {
+  test(`a wrong magic byte at index ${index} is refused as not-an-archive`, async () => {
+    const bytes = rawHeader(validHeaderJson());
+    bytes[index] ^= 0xff;
+    await assert.rejects(readArchiveHeader(byteReader(oneShot(bytes))), (error: unknown) => {
+      assert.ok(error instanceof UnsupportedArchiveError);
+      assert.equal(error.kind, 'not-an-archive');
+      return true;
+    });
+  });
+}
+
+test('format version zero is refused as not-an-archive', async () => {
+  const bytes = rawHeader(validHeaderJson());
+  new DataView(bytes.buffer).setUint16(6, 0);
+  await assert.rejects(readArchiveHeader(byteReader(oneShot(bytes))), (error: unknown) => {
+    assert.ok(error instanceof UnsupportedArchiveError);
+    assert.equal(error.kind, 'not-an-archive');
+    return true;
+  });
+});
+
+test('unreadable header JSON is refused as corrupt', async () => {
+  const bytes = rawHeader(validHeaderJson());
+  bytes[12] = '!'.charCodeAt(0);
+  await assert.rejects(readArchiveHeader(byteReader(oneShot(bytes))), CorruptArchiveError);
+});
+
+for (const field of ['memorySize', 'iterations', 'parallelism', 'hashLength', 'chunkSize', 'totalChunks']) {
+  for (const value of [0, -1, 1.5, '1', null, undefined]) {
+    test(`header ${field} refuses ${String(value)} as corrupt`, async () => {
+      const json = field === 'chunkSize' || field === 'totalChunks'
+        ? validHeaderJson({ [field]: value })
+        : validHeaderJson({ kdf: { ...ARCHIVE_ARGON2_PARAMS, [field]: value } });
+      await assert.rejects(readArchiveHeader(byteReader(oneShot(rawHeader(json)))), CorruptArchiveError);
+    });
+  }
+}
+
+test('a missing KDF object is refused as corrupt', async () => {
+  await assert.rejects(readArchiveHeader(byteReader(oneShot(rawHeader(validHeaderJson({ kdf: undefined }))))), CorruptArchiveError);
+});
+
+test('a non-string salt is refused even when its coercion would be valid base64', async () => {
+  for (const salt of [1234, null]) {
+    await assert.rejects(readArchiveHeader(byteReader(oneShot(rawHeader(validHeaderJson({ salt }))))), CorruptArchiveError);
+  }
+});
+
+test('the chunk-size ceiling accepts 16 MiB and refuses one byte more', async () => {
+  const maximum = 16 * 1024 * 1024;
+  const { header } = await readArchiveHeader(byteReader(oneShot(rawHeader(validHeaderJson({ chunkSize: maximum })))));
+  assert.equal(header.chunkSize, maximum);
+  await assert.rejects(readArchiveHeader(byteReader(oneShot(rawHeader(validHeaderJson({ chunkSize: maximum + 1 }))))), CorruptArchiveError);
+});
+
+test('the header JSON ceiling accepts 64 KiB and refuses one byte more', async () => {
+  for (const length of [64 * 1024, 64 * 1024 + 1]) {
+    const bytes = new Uint8Array(12 + length).fill(0x20);
+    bytes.set(rawHeader(validHeaderJson()));
+    new DataView(bytes.buffer).setUint32(8, length);
+    const reading = readArchiveHeader(byteReader(oneShot(bytes)));
+    if (length === 64 * 1024) assert.equal((await reading).header.totalChunks, 1);
+    else await assert.rejects(reading, CorruptArchiveError);
+  }
+});
+
+test('the chunk-size floor accepts 64 KiB and refuses one byte less', async () => {
+  const floor = MIN_CHUNK_SIZE;
+  const { header } = await readArchiveHeader(byteReader(oneShot(rawHeader(validHeaderJson({ chunkSize: floor })))));
+  assert.equal(header.chunkSize, floor);
+  await assert.rejects(readArchiveHeader(byteReader(oneShot(rawHeader(validHeaderJson({ chunkSize: floor - 1 }))))), CorruptArchiveError);
+  await assert.rejects(readArchiveHeader(byteReader(oneShot(rawHeader(validHeaderJson({ chunkSize: 1 }))))), CorruptArchiveError);
+});
+
+test('the chunk count is capped so the body cannot exceed 8 GiB, whatever the chunk size', async () => {
+  const GiB = 1024 ** 3;
+  for (const [chunkSize, ok] of [[1024 * 1024, 8192], [64 * 1024, 131072], [16 * 1024 * 1024, 512]] as const) {
+    const { header } = await readArchiveHeader(byteReader(oneShot(rawHeader(validHeaderJson({ chunkSize, totalChunks: ok })))));
+    assert.equal(header.totalChunks * header.chunkSize, 8 * GiB);
+    await assert.rejects(readArchiveHeader(byteReader(oneShot(rawHeader(validHeaderJson({ chunkSize, totalChunks: ok + 1 }))))), CorruptArchiveError);
+  }
+  await assert.rejects(readArchiveHeader(byteReader(oneShot(rawHeader(validHeaderJson({ chunkSize: 1, totalChunks: 4_000_000 }))))), CorruptArchiveError);
+});
+
+test('a header with a one-byte chunk and millions of chunks is refused before a key is derived or a chunk is read', async () => {
+  const { openArchive } = await import('./pack.ts');
+  const argon2 = await import('../../crypto/argon2id.ts');
+  const derive = vi.spyOn(argon2, 'deriveKey').mockRejectedValue(new Error('unexpected KDF derivation'));
+  try {
+    await assert.rejects(openArchive(oneShot(rawHeader(validHeaderJson({ chunkSize: 1, totalChunks: 4_000_000 }))), 'synthetic-password'), CorruptArchiveError);
+    assert.equal(derive.mock.calls.length, 0);
+  } finally { derive.mockRestore(); }
 });

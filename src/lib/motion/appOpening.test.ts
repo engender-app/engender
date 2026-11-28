@@ -20,13 +20,14 @@ const el = () => {
 /** A document with one field, a root that records what is stamped on it, and
     a `startViewTransition` that hands back the callback so a test can drive
     the frames itself. */
-function fakeDocument({ present = true, readyRejects = false } = {}) {
+function fakeDocument({ present = true, readyRejects = false, gateSun = false } = {}) {
   const blind = el();
+  const ring = { ...el(), getBoundingClientRect: () => ({ bottom: 0 }) };
   const field = {
     ...el(),
-    getBoundingClientRect: () => ({ height: 78, top: 0 }),
+    getBoundingClientRect: () => ({ height: 78, top: 0, bottom: 78 }),
     querySelector: () => blind,
-    querySelectorAll: () => []
+    querySelectorAll: (selector: string) => (selector.includes('data-flag-sun') ? [ring] : [])
   };
   const root = {
     dataset: {} as Record<string, string>,
@@ -46,7 +47,10 @@ function fakeDocument({ present = true, readyRejects = false } = {}) {
   const doc = {
     documentElement: root,
     querySelectorAll: () => [field],
-    querySelector: () => ({ scrollTop: 0, getBoundingClientRect: () => ({ top: 0 }) }),
+    querySelector: (selector: string) =>
+      selector.includes('data-gate-sun')
+        ? gateSun ? {} : null
+        : { scrollTop: 0, getBoundingClientRect: () => ({ top: 0 }) },
     ...(present
       ? {
           startViewTransition(update: () => Promise<void>) {
@@ -64,6 +68,7 @@ function fakeDocument({ present = true, readyRejects = false } = {}) {
   };
   return {
     blind,
+    ring,
     root,
     as: doc as unknown as Document,
     /** One frame of the transition: the browser calling the update callback. */
@@ -98,9 +103,9 @@ describe('the app opening', () => {
   it('publishes --blind-from before capture and the settle delta once the app has mounted', async () => {
     const doc = fakeDocument();
     openApp(() => {}, doc.as);
-    /* Published before the outgoing capture so the blind-slide keyframe
-       does not fallback to 0px (Alicja, 2026-09-10). The delta between the
-       two heights is published in swap() once the incoming screen has mounted. */
+    /* Published before the outgoing capture so the blind-slide keyframe does not fallback
+       to 0px. The delta between the two heights is published in swap() once the incoming
+       screen has mounted. */
     expect(doc.root.style.props.get('--blind-from')).toBe('78px');
     expect(doc.root.style.props.get('--blind-delta')).toBeUndefined();
     await doc.update();
@@ -117,6 +122,21 @@ describe('the app opening', () => {
     await Promise.resolve();
     expect(doc.root.dataset.nav).toBeUndefined();
     expect(doc.blind.style.viewTransitionName).toBe('');
+  });
+
+  /* An unlock without disguise draws Today's own sun, and the opening holds it - its rings
+     stay unnamed on both sides, so each rides its side's blind capture as one picture in
+     one place. */
+  it("holds the sun when the gate drew Today's sun", () => {
+    const doc = fakeDocument({ gateSun: true });
+    openApp(() => {}, doc.as);
+    expect(doc.ring.style.viewTransitionName ?? '').toBe('');
+  });
+
+  it('names the rings per side when the gate drew no sun', () => {
+    const doc = fakeDocument();
+    openApp(() => {}, doc.as);
+    expect(doc.ring.style.viewTransitionName).toBe('sun-a-0');
   });
 
   it('gives the blind back when the transition is superseded, not only when it settles', async () => {
@@ -162,7 +182,7 @@ describe('the app opening', () => {
   });
 });
 
-describe('a boot failing over the drawn route (ux-carpet 213)', () => {
+describe('a boot failing over the drawn route', () => {
   it('commits inside a fade-through and takes the pattern off after', async () => {
     const doc = fakeDocument();
     let committed = false;

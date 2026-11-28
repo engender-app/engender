@@ -1,18 +1,17 @@
-/* Where the blind's edge is painted, frame by frame, read off the pixels of
-   a field-text probe recording (ticket 285, Android half).
+/* Where the blind's edge is painted, frame by frame, read off the pixels of a field-text
+   probe recording.
 
-   The probe's sampler reads the edge from computed style, which is the
-   main thread's value. A compositor animation would draw something else
-   (a straight ramp between the ends) without the style ever saying so, so
-   the question "is the edge drawn on the curve?" has to be answered on
-   the pixels. For every kept screencast frame this finds the lowest pure
-   blue row in a few columns clear of the type and the rings, in CSS
-   pixels, and sets it against (a) the sampler's edge at the same moment
-   and (b) a straight line between the pixel edge at the start and the end
-   of the travel. Whichever model the pixels sit closer to is the answer.
+   The probe's sampler reads the edge from computed style, which is the main thread's value.
+   A compositor animation would draw something else (a straight ramp between the ends)
+   without the style ever saying so, so the question "is the edge drawn on the curve?" has
+   to be answered on the pixels. For every kept screencast frame this finds the lowest pure
+   blue row in a few columns clear of the type and the rings, in CSS pixels, and sets it
+   against (a) the sampler's edge at the same moment and (b) a straight line between the
+   pixel edge at the start and the end of the travel. Whichever model the pixels sit closer
+   to is the answer.
 
-   Run: node tests/field-text-edge-series.mjs <frames dir> [<frames dir>...]
-   where each dir was written by field-text-probe.mjs --frames (--keep-all). */
+   Run: node tests/field-text-edge-series.mjs <frames dir> [<frames dir>...] where each dir
+   was written by field-text-probe.mjs --frames (--keep-all). */
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { decodePng } from './png-decode.mjs';

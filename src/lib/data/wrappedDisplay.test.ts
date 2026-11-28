@@ -1,7 +1,6 @@
-/* Carpet ticket 18: a bar's length and its printed number used to come from
-   two different precisions - `amount` off the raw delta, `value` off
-   `nativeValue`'s rounding - so two rows that printed the same figure could
-   draw at different lengths. */
+/* A bar's length and its printed number used to come from two different precisions -
+   `amount` off the raw delta, `value` off `nativeValue`'s rounding - so two rows that
+   printed the same figure could draw at different lengths. */
 
 import assert from 'node:assert/strict';
 import { test, vi } from 'vitest';

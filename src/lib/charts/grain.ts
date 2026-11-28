@@ -1,21 +1,7 @@
-/* How coarse a chart draws, and why.
-
-   The area chart used to be a timeline you scrolled: every reading kept a
-   14px slot, so a year was 365 slots and you read it a week at a time by
-   dragging. On a phone that turned out to be the wrong trade. A chart in a
-   card is something you glance at, and a chart you have to drag has no
-   shape at all until you have dragged all of it - Alicja, 2026-08-25: "the
-   graph shouldn't be scrollable".
-
-   So the whole range fits the card, and what changes with the range is the
-   grain: a month is read day by day, a year is read week by week, several
-   years month by month. The choice is made from the number of positions the
-   card can hold rather than from the length of the range, so it is one rule
-   rather than a table of ranges.
-
-   This is calendar arithmetic, so it lives beside the other calendar
-   arithmetic and takes today's clock from nobody: a day arrives as an epoch
-   day and a bucket comes back as one. */
+/* Fit the whole chart into its card. Choose day, week or month grain
+   from the number of positions the card can hold. Keep the range
+   visible without horizontal scrolling. Calendar arithmetic takes and
+   returns epoch days without reading the clock. */
 
 import type { PatternPoint } from '../data/dayKeying';
 import { localDateFromEpochDay, epochDayFromLocalDate, weekdayOfEpochDay } from '../data/epochDay';
@@ -41,7 +27,7 @@ const DAYS_PER_BUCKET: Record<Grain, number> = { day: 1, week: 7, month: 30.44 }
     with four entries in it is still a month, and drawing those four as four
     positions across a card would space them as though they were
     consecutive. */
-/* chooseGrain stays exported only for its own test (AU-09 test-only review). */
+/* chooseGrain stays exported only for its own test. */
 export function chooseGrain(spanInDays: number, maxPositions: number = MAX_POSITIONS): Grain {
   for (const grain of ['day', 'week'] as const) {
     if (spanInDays / DAYS_PER_BUCKET[grain] <= maxPositions) return grain;
@@ -80,7 +66,7 @@ interface GrainPoint {
     Empty buckets are absent rather than zero. "Said nothing" is not "said
     none", which is the rule the whole stats area is built on - and it is
     what keeps a gap in the journal from drawing as a crash in the line. */
-/* bucketByGrain stays exported only for its own test (AU-09 test-only review). */
+/* bucketByGrain stays exported only for its own test. */
 export function bucketByGrain(points: { x: number; y: number }[], grain: Grain): GrainPoint[] {
   const buckets = new Map<number, { total: number; days: number }>();
   for (const point of points) {
@@ -121,22 +107,9 @@ interface AlignedPoint {
   b: number | null;
 }
 
-/** Two bucketed series read onto one set of positions, oldest first.
-
-    Two metrics have their own days and their own gaps, so bucketing them
-    separately leaves two arrays that agree about nothing. A chart places by
-    position rather than by date, so drawing those two as they come would
-    space one series' four buckets across the same width as the other's
-    forty and put a Tuesday above a March - which is precisely the reading a
-    person putting two metrics on one plot is trying to make.
-
-    So the positions are the union of both, and each series keeps its own
-    readings against them. A position the other metric introduced is `null`
-    here rather than filled in: the line still crosses it, but it crosses it
-    as geometry (charts/geometry's bridgeGaps), and the readout under a
-    finger has nothing to say there. "Said nothing" is not "said none", and
-    that rule does not stop applying because a second metric was logged that
-    day. */
+/** Align both bucketed series to the sorted union of their positions. Keep a
+    null where one metric has no reading. bridgeGaps connects its line across
+    that position without fabricating a value for the readout. */
 export function alignSeries(a: GrainPoint[], b: GrainPoint[]): AlignedPoint[] {
   const first = new Map(a.map((p) => [p.x, p.y]));
   const second = new Map(b.map((p) => [p.x, p.y]));

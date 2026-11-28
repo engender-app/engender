@@ -21,7 +21,12 @@ const TEXTS = {
   channelReminders: 'Reminders',
   channelCheckIn: 'Check-in',
   checkInTitle: 'Daily check-in',
-  checkInBody: 'How are you today?'
+  checkInBody: 'How are you today?',
+  checkInMoods: ['awful', 'bad', 'meh', 'good', 'great'],
+  doseTaken: 'Taken',
+  doseDone: 'Done',
+  doseSkip: 'Skip',
+  doseNoted: 'Noted'
 };
 
 /* The registry's reminder switches and the quiet window, at the settings a
@@ -41,62 +46,26 @@ const ALL_ON = {
 const REMINDER = {
   id: 'r-1',
   title: 'Estradiol patch',
-  type: 'med' as const,
   time: '20:00',
   recurrence: 'EVERY_N_DAYS' as const,
   interval: 3,
   anchorEpochDay: 20300,
   epochDay: null,
   enabled: true,
-  autoSource: null
+  autoSource: null,
+  drug: null
 };
 
 describe('assembleReminderSyncPayload', () => {
-  test('drops in an empty affirmation list when the toggle is off, regardless of what was fetched', () => {
-    const payload = assembleReminderSyncPayload({
-      reminders: [REMINDER],
-      recentEntries: [{ epochDay: 20309 }],
-      checkInEnabled: true,
-      checkInTime: '21:30',
-      checkInAffirmationsEnabled: false,
-      affirmationLines: ['You are enough.'],
-      hideNotificationTitles: false,
-      ...ALL_ON,
-      journalingPauses: [],
-      texts: TEXTS
-    });
-
-    expect(payload.checkInAffirmations).toEqual([]);
-  });
-
-  test('carries the affirmation lines through when the toggle is on', () => {
-    const payload = assembleReminderSyncPayload({
-      reminders: [REMINDER],
-      recentEntries: [{ epochDay: 20309 }],
-      checkInEnabled: true,
-      checkInTime: '21:30',
-      checkInAffirmationsEnabled: true,
-      affirmationLines: ['You are enough.', 'Your pace is the right pace.'],
-      hideNotificationTitles: false,
-      ...ALL_ON,
-      journalingPauses: [],
-      texts: TEXTS
-    });
-
-    expect(payload.checkInAffirmations).toEqual(['You are enough.', 'Your pace is the right pace.']);
-  });
-
   test('takes the latest entry day from the most recent entry', () => {
     const payload = assembleReminderSyncPayload({
       reminders: [],
       recentEntries: [{ epochDay: 20309 }],
       checkInEnabled: false,
       checkInTime: '21:30',
-      checkInAffirmationsEnabled: false,
-      affirmationLines: [],
       hideNotificationTitles: false,
       ...ALL_ON,
-      journalingPauses: [],
+      checkInPausedThrough: null,
       texts: TEXTS
     });
 
@@ -109,47 +78,29 @@ describe('assembleReminderSyncPayload', () => {
       recentEntries: [],
       checkInEnabled: false,
       checkInTime: '21:30',
-      checkInAffirmationsEnabled: false,
-      affirmationLines: [],
       hideNotificationTitles: false,
       ...ALL_ON,
-      journalingPauses: [],
+      checkInPausedThrough: null,
       texts: TEXTS
     });
 
     expect(payload.latestEntryEpochDay).toBeNull();
   });
 
-  test('carries dated pauses without changing the check-in preference', () => {
+  test('carries the check-in pause without changing the check-in preference', () => {
     const payload = assembleReminderSyncPayload({
       reminders: [REMINDER],
       recentEntries: [],
       checkInEnabled: true,
       checkInTime: '21:30',
-      checkInAffirmationsEnabled: false,
-      affirmationLines: [],
+      checkInPausedThrough: 20311,
       hideNotificationTitles: false,
       ...ALL_ON,
-      journalingPauses: [{ startEpochDay: 20309, endEpochDay: 20311 }],
       texts: TEXTS
     });
 
     expect(payload.checkInEnabled).toBe(true);
-    expect(payload.journalingPauses).toEqual([{ startEpochDay: 20309, endEpochDay: 20311 }]);
-  });
-
-  test('carries future and open-ended pauses for native scheduling', () => {
-    const journalingPauses = [
-      { startEpochDay: 20315, endEpochDay: 20317 },
-      { startEpochDay: 20320, endEpochDay: null }
-    ];
-    const payload = assembleReminderSyncPayload({
-      reminders: [], recentEntries: [], checkInEnabled: true, checkInTime: '21:30',
-      checkInAffirmationsEnabled: false, affirmationLines: [], hideNotificationTitles: false,
-      ...ALL_ON, journalingPauses, texts: TEXTS
-    });
-    expect(payload.checkInEnabled).toBe(true);
-    expect(payload.journalingPauses).toEqual(journalingPauses);
+    expect(payload.checkInPausedThrough).toBe(20311);
   });
 
   test('checkInEnabled stays false when it was already off, regardless of a pause', () => {
@@ -158,28 +109,24 @@ describe('assembleReminderSyncPayload', () => {
       recentEntries: [],
       checkInEnabled: false,
       checkInTime: '21:30',
-      checkInAffirmationsEnabled: false,
-      affirmationLines: [],
       hideNotificationTitles: false,
       ...ALL_ON,
-      journalingPauses: [],
+      checkInPausedThrough: null,
       texts: TEXTS
     });
 
     expect(payload.checkInEnabled).toBe(false);
   });
 
-  test('a fresh install hides both the reminder title and the check-in affirmation', () => {
+  test('a fresh install hides reminder titles', () => {
     const payload = assembleReminderSyncPayload({
       reminders: [REMINDER],
       recentEntries: [],
       checkInEnabled: true,
       checkInTime: '21:30',
-      checkInAffirmationsEnabled: true,
-      affirmationLines: ['You are enough.'],
       hideNotificationTitles: PREFERENCE_DEFAULTS.hideNotificationTitles,
       ...ALL_ON,
-      journalingPauses: [],
+      checkInPausedThrough: null,
       texts: TEXTS
     });
 
@@ -192,15 +139,33 @@ describe('assembleReminderSyncPayload', () => {
       recentEntries: [],
       checkInEnabled: true,
       checkInTime: '21:30',
-      checkInAffirmationsEnabled: true,
-      affirmationLines: ['You are enough.'],
       hideNotificationTitles: false,
       ...ALL_ON,
-      journalingPauses: [],
+      checkInPausedThrough: null,
       texts: TEXTS
     });
 
     expect(payload.hideNotificationTitles).toBe(false);
+  });
+});
+
+describe('what a reminder notification says', () => {
+  /* A medication reminder says what it reminds about. The words come from
+     doseReminderLabel.ts; this is that they reach the native side, which shows `title` and
+     `text` as they arrive. */
+  test('each reminder carries the title and text its notification shows', () => {
+    const payload = assembleReminderSyncPayload({
+      reminders: [{ ...REMINDER, title: 'Sertraline', drug: 'Sertraline' }],
+      recentEntries: [],
+      checkInEnabled: false,
+      checkInTime: '21:30',
+      hideNotificationTitles: false,
+      ...ALL_ON,
+      checkInPausedThrough: null,
+      texts: TEXTS,
+      notificationWords: (reminder) => ({ title: `${reminder.title} 50 mg, oral`, text: `Dose 2 of 2 a day · ${reminder.time}` })
+    });
+    expect(payload.reminders[0]).toMatchObject({ id: 'r-1', title: 'Sertraline 50 mg, oral', text: 'Dose 2 of 2 a day · 20:00', drug: 'Sertraline' });
   });
 });
 
@@ -272,11 +237,9 @@ describe('what the payload carries about the registry', () => {
       recentEntries: [],
       checkInEnabled: true,
       checkInTime: '21:30',
-      checkInAffirmationsEnabled: false,
-      affirmationLines: [],
       hideNotificationTitles: false,
       ...ALL_ON,
-      journalingPauses: [],
+      checkInPausedThrough: null,
       texts: TEXTS,
       ...over
     });
@@ -356,11 +319,12 @@ function makeDeps(overrides: Partial<PlatformSyncDeps> = {}): PlatformSyncDeps {
   return {
     isAndroid: () => true,
     isReady: () => true,
+    isGateActive: () => false,
     todayEpochDay: () => 20313,
     prefs: {
       checkInEnabled: true,
       checkInTime: '21:30',
-      checkInAffirmationsEnabled: false,
+      checkInPausedThrough: null,
       hideNotificationTitles: false,
       remindersEnabled: true,
       wearElapsedEnabled: true,
@@ -377,13 +341,24 @@ function makeDeps(overrides: Partial<PlatformSyncDeps> = {}): PlatformSyncDeps {
       reminders: { getReminders: vi.fn().mockResolvedValue([REMINDER]) },
       entries: { recentDays: vi.fn().mockResolvedValue([{ epochDay: 20309 }]) },
       stock: { reconcileRunOutReminders: vi.fn().mockResolvedValue(undefined) },
-      journalingPauses: { getPauses: vi.fn().mockResolvedValue([]) },
+      doses: {
+        reconcileDoseReminders: vi.fn().mockResolvedValue(undefined),
+        getSchedules: vi.fn().mockResolvedValue([])
+      },
+      regimen: { getEpisodes: vi.fn().mockResolvedValue([]) },
       areaStates: { getAreaStates: vi.fn().mockResolvedValue({}) }
     },
     onTablesWritten: vi.fn(),
     androidReminders: {
       sync: vi.fn().mockResolvedValue(undefined),
-      consumeLaunchRoute: vi.fn().mockResolvedValue({ route: null })
+      consumeLaunchRoute: vi.fn().mockResolvedValue({ route: null }),
+      pendingDoseActions: vi.fn().mockResolvedValue({ actions: [] }),
+      clearDoseActions: vi.fn().mockResolvedValue(undefined)
+    },
+    doseActions: {
+      apply: vi.fn(),
+      confirm: vi.fn(),
+      resolveLaunchRoute: vi.fn(async (route: string) => route)
     },
     androidDisguise: { setLauncherIdentity: vi.fn().mockResolvedValue(undefined) },
     androidLockTiming: { setTiming: vi.fn().mockResolvedValue(undefined) },
@@ -392,8 +367,8 @@ function makeDeps(overrides: Partial<PlatformSyncDeps> = {}): PlatformSyncDeps {
       addListener: vi.fn().mockResolvedValue({ remove: vi.fn().mockResolvedValue(undefined) }),
       minimizeApp: vi.fn().mockResolvedValue(undefined)
     },
-    affirmationLines: () => ['You are enough.'],
     reminderTexts: () => TEXTS,
+    reminderNotification: (reminder) => ({ title: reminder.title, text: reminder.time }),
     isValidLaunchRoute: () => true,
     currentPathname: () => '/',
     goto: vi.fn(),
@@ -445,6 +420,103 @@ describe('startAndroidPlatformSync / stopAndroidPlatformSync', () => {
   afterEach(() => {
     platformSync.stopAndroidPlatformSync();
     vi.unstubAllGlobals();
+  });
+
+  test.each([true, false])('Back backgrounds a gate without changing its deep route (ready: %s)', (ready) => {
+    let gated = true;
+    const deps = makeDeps({ isReady: () => ready, isGateActive: () => gated, navigationDepth: () => 2 });
+    window.location.pathname = '/health/appointments';
+    platformSync.startAndroidPlatformSync(deps);
+    const back = vi.mocked(deps.androidBackButton.addListener).mock.calls[0][1];
+    back();
+    expect(deps.androidBackButton.minimizeApp).toHaveBeenCalledTimes(1);
+    expect(window.history.back).not.toHaveBeenCalled();
+    expect(deps.replaceRoute).not.toHaveBeenCalled();
+    gated = false;
+    back();
+    expect(window.history.back).toHaveBeenCalledTimes(1);
+  });
+
+  test('a gate takes priority over an overlay and reads the current lock state', async () => {
+    let gated = false;
+    const deps = makeDeps({ isGateActive: () => gated });
+    platformSync.startAndroidPlatformSync(deps);
+    const back = vi.mocked(deps.androidBackButton.addListener).mock.calls[0][1];
+    const { registerOverlay } = await import('../components/overlayLock');
+    const dismiss = vi.fn();
+    const release = registerOverlay({} as HTMLElement, { dismiss });
+    gated = true;
+    back();
+    expect(deps.androidBackButton.minimizeApp).toHaveBeenCalledTimes(1);
+    expect(dismiss).not.toHaveBeenCalled();
+    release();
+  });
+
+  /* The release of a back gesture comes in as this same Back. A step back drawn under it is
+     committed by its owner; anything that takes the Back first returns the drawing to rest. */
+  test('the release of a drawn step back commits it through the owner', async () => {
+    const deps = makeDeps({ navigationDepth: () => 1 });
+    window.location.pathname = '/entry/new';
+    platformSync.startAndroidPlatformSync(deps);
+    const back = vi.mocked(deps.androidBackButton.addListener).mock.calls[0][1];
+    const { registerStepBack } = await import('../navigation/stepBack');
+    const preview = { begin: vi.fn(() => true), progress: vi.fn(), cancel: vi.fn() };
+    const owner = vi.fn(() => true);
+    const unregister = registerStepBack(owner, preview);
+    back();
+    expect(owner).toHaveBeenCalledTimes(1);
+    expect(preview.cancel).not.toHaveBeenCalled();
+    expect(window.history.back).not.toHaveBeenCalled();
+    unregister();
+  });
+
+  test('a Back taken by an overlay, the gate or the route returns a drawn step back to rest', async () => {
+    let gated = false;
+    const deps = makeDeps({ navigationDepth: () => 1, isGateActive: () => gated });
+    window.location.pathname = '/entry/new';
+    platformSync.startAndroidPlatformSync(deps);
+    const back = vi.mocked(deps.androidBackButton.addListener).mock.calls[0][1];
+    const { registerStepBack } = await import('../navigation/stepBack');
+    const { registerOverlay } = await import('../components/overlayLock');
+    const preview = { begin: vi.fn(() => true), progress: vi.fn(), cancel: vi.fn() };
+    const unregister = registerStepBack(() => false, preview);
+    const release = registerOverlay({} as HTMLElement, { dismiss: vi.fn() });
+    back();
+    expect(preview.cancel).toHaveBeenCalledTimes(1);
+    release();
+    gated = true;
+    back();
+    expect(preview.cancel).toHaveBeenCalledTimes(2);
+    gated = false;
+    back();
+    expect(preview.cancel).toHaveBeenCalledTimes(3);
+    expect(window.history.back).toHaveBeenCalledTimes(1);
+    unregister();
+  });
+
+  test('the step back bridge is armed off at start and disarmed on stop', async () => {
+    const setArmed = vi.fn().mockResolvedValue(undefined);
+    const addListener = vi.fn().mockResolvedValue({ remove: vi.fn().mockResolvedValue(undefined) });
+    const deps = makeDeps({ androidStepBack: { setArmed, addListener } as unknown as PlatformSyncDeps['androidStepBack'] });
+    platformSync.startAndroidPlatformSync(deps);
+    expect(setArmed).toHaveBeenLastCalledWith({ armed: false });
+    expect(addListener.mock.calls.map((c) => c[0]).sort()).toEqual(['backCancelled', 'backProgress', 'backStarted']);
+    platformSync.stopAndroidPlatformSync();
+    expect(setArmed).toHaveBeenCalledTimes(2);
+  });
+
+  test('does not mirror unhydrated preferences or read the journal before it opens', async () => {
+    const deps = makeDeps({ isReady: () => false, isGateActive: () => true });
+    platformSync.startAndroidPlatformSync(deps);
+    await flush();
+    expect(deps.androidBackButton.addListener).toHaveBeenCalledTimes(1);
+    expect(deps.androidDisguise.setLauncherIdentity).not.toHaveBeenCalled();
+    expect(deps.androidLockTiming.setTiming).not.toHaveBeenCalled();
+    expect(deps.androidScreenCapture.setAllowed).not.toHaveBeenCalled();
+    expect(deps.journal.reminders.getReminders).not.toHaveBeenCalled();
+    expect(deps.journal.stock.reconcileRunOutReminders).not.toHaveBeenCalled();
+    expect(deps.journal.doses.reconcileDoseReminders).not.toHaveBeenCalled();
+    expect(deps.androidReminders.consumeLaunchRoute).not.toHaveBeenCalled();
   });
 
   test('Back closes the nested calendar and sheet before navigating', async () => {
@@ -502,6 +574,49 @@ describe('startAndroidPlatformSync / stopAndroidPlatformSync', () => {
     expect(deps.androidBackButton.minimizeApp).not.toHaveBeenCalled();
   });
 
+  test('setup Back delegates to its mounted stepper and Welcome minimizes', async () => {
+    const { registerSetupBack } = await import('../onboarding/back');
+    const deps = makeDeps();
+    window.location.pathname = '/onboarding';
+    platformSync.startAndroidPlatformSync(deps);
+    const back = vi.mocked(deps.androidBackButton.addListener).mock.calls[0][1];
+    const previous = vi.fn().mockReturnValue(true);
+    const unregister = registerSetupBack(previous);
+    try {
+      back();
+      expect(previous).toHaveBeenCalledTimes(1);
+      expect(window.history.back).not.toHaveBeenCalled();
+      expect(deps.androidBackButton.minimizeApp).not.toHaveBeenCalled();
+      previous.mockReturnValue(false);
+      back();
+      expect(deps.androidBackButton.minimizeApp).toHaveBeenCalledTimes(1);
+    } finally {
+      unregister();
+    }
+  });
+
+  test('a new entry past its first step goes one step back, with or without history behind it', async () => {
+    const { registerStepBack } = await import('../navigation/stepBack');
+    const deps = makeDeps();
+    window.location.pathname = '/entry/new/today';
+    platformSync.startAndroidPlatformSync(deps);
+    const back = vi.mocked(deps.androidBackButton.addListener).mock.calls[0][1];
+    const stepped = vi.fn().mockReturnValue(true);
+    const unregister = registerStepBack(stepped);
+    try {
+      back();
+      expect(stepped).toHaveBeenCalledTimes(1);
+      expect(deps.replaceRoute).not.toHaveBeenCalled();
+      expect(window.history.back).not.toHaveBeenCalled();
+      // On the first step the owner declines and Back leaves as it always has.
+      stepped.mockReturnValue(false);
+      back();
+      expect(deps.replaceRoute).toHaveBeenCalledExactlyOnceWith('/');
+    } finally {
+      unregister();
+    }
+  });
+
   test('Back replaces a deep link with home when no surface or history remains', () => {
     const deps = makeDeps();
     window.location.pathname = '/health/appointments';
@@ -513,23 +628,24 @@ describe('startAndroidPlatformSync / stopAndroidPlatformSync', () => {
     expect(deps.androidBackButton.minimizeApp).not.toHaveBeenCalled();
   });
 
-  test('runs the initial reminder sync, stock reconciliation, disguise, lock-timing and screen-capture sync on start', async () => {
+  test('runs the initial reminder sync, stock and dose reminder reconciliation, disguise, lock-timing and screen-capture sync on start', async () => {
     const deps = makeDeps();
     platformSync.startAndroidPlatformSync(deps);
     await flush();
 
     expect(deps.androidReminders.sync).toHaveBeenCalledTimes(1);
     expect(deps.journal.stock.reconcileRunOutReminders).toHaveBeenCalledWith(20313);
+    // An episode whose end day came while the app was closed.
+    expect(deps.journal.doses.reconcileDoseReminders).toHaveBeenCalledWith(20313);
     expect(deps.androidDisguise.setLauncherIdentity).toHaveBeenCalledWith({ disguised: false, palette: 'trans', shape: 'current' });
     expect(deps.androidLockTiming.setTiming).toHaveBeenCalledWith({ timing: 'restart' });
     expect(deps.androidScreenCapture.setAllowed).toHaveBeenCalledWith({ allowed: false });
   });
 
   test('hands the launcher both halves of its identity, so the icon follows the flag', async () => {
-    /* Ticket 50: the launcher alias is the palette's unless disguise is on,
-       in which case it is the disguised one whatever the flag says. Both
-       values travel on one call rather than two, because the native side
-       has to decide between them - a flag cannot quietly outrank a
+    /* The launcher alias is the palette's unless disguise is on, in which case it is the
+       disguised one whatever the flag says. Both values travel on one call rather than two,
+       because the native side has to decide between them - a flag cannot quietly outrank a
        disguise by arriving second. */
     const deps = makeDeps({ prefs: { ...makeDeps().prefs, palette: 'nonbinary' } });
     platformSync.startAndroidPlatformSync(deps);
@@ -591,20 +707,30 @@ describe('startAndroidPlatformSync / stopAndroidPlatformSync', () => {
     expect(deps.androidReminders.sync).toHaveBeenCalledTimes(2);
   });
 
-  test('resyncs reminder schedules when a journaling pause write is announced', async () => {
-    const onTablesWritten = vi.fn();
-    const deps = makeDeps({ onTablesWritten });
-    const pauses = [{ startEpochDay: 20314, endEpochDay: 20316 }];
-    vi.mocked(deps.journal.journalingPauses.getPauses).mockResolvedValue(pauses);
+  test('words each notification from the journal\'s regimens and schedules as they are now', async () => {
+    const episode = { id: 'ep-1', drug: 'Sertraline' };
+    const schedule = { id: 's-1', episodeId: 'ep-1' };
+    const reminderNotification = vi.fn((reminder: { title: string; time: string }) => ({ title: `${reminder.title} 50 mg, oral`, text: reminder.time }));
+    const deps = makeDeps({ reminderNotification: reminderNotification as unknown as PlatformSyncDeps['reminderNotification'] });
+    vi.mocked(deps.journal.regimen.getEpisodes).mockResolvedValue([episode] as never);
+    vi.mocked(deps.journal.doses.getSchedules).mockResolvedValue([schedule] as never);
     platformSync.startAndroidPlatformSync(deps);
     await flush();
-    expect(vi.mocked(deps.androidReminders.sync).mock.calls[0][0].journalingPauses).toEqual(pauses);
-    const notifyReminderWrites = onTablesWritten.mock.calls[0][0] as (tables: string[]) => void;
+    expect(reminderNotification).toHaveBeenCalledWith(REMINDER, {
+      reminders: [REMINDER],
+      episodes: [episode],
+      schedules: [schedule],
+      todayEpochDay: 20313
+    });
+    expect(vi.mocked(deps.androidReminders.sync).mock.calls[0][0].reminders[0]).toMatchObject({ title: 'Estradiol patch 50 mg, oral', text: '20:00' });
+  });
 
-    notifyReminderWrites(['journalingPause']);
+  test('hands the native side the check-in pause from the preference', async () => {
+    const deps = makeDeps();
+    deps.prefs.checkInPausedThrough = 20316;
+    platformSync.startAndroidPlatformSync(deps);
     await flush();
-
-    expect(deps.androidReminders.sync).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(deps.androidReminders.sync).mock.calls[0][0].checkInPausedThrough).toBe(20316);
   });
 
   test('area-state writes cancel finished wear reminders and restore them when tracking resumes', async () => {
@@ -614,7 +740,7 @@ describe('startAndroidPlatformSync / stopAndroidPlatformSync', () => {
     vi.mocked(deps.journal.reminders.getReminders).mockResolvedValue([REMINDER, wear]);
     platformSync.startAndroidPlatformSync(deps);
     await flush();
-    expect(vi.mocked(deps.androidReminders.sync).mock.calls[0][0].reminders).toEqual([REMINDER, wear]);
+    expect(vi.mocked(deps.androidReminders.sync).mock.calls[0][0].reminders).toMatchObject([REMINDER, wear]);
 
     const notifyReminderWrites = onTablesWritten.mock.calls[0][0] as (tables: string[]) => void;
     vi.mocked(deps.journal.areaStates.getAreaStates).mockResolvedValue({
@@ -623,13 +749,13 @@ describe('startAndroidPlatformSync / stopAndroidPlatformSync', () => {
     notifyReminderWrites(['areaState']);
     await flush();
     expect(deps.androidReminders.sync).toHaveBeenCalledTimes(2);
-    expect(vi.mocked(deps.androidReminders.sync).mock.calls[1][0].reminders).toEqual([REMINDER]);
+    expect(vi.mocked(deps.androidReminders.sync).mock.calls[1][0].reminders).toMatchObject([REMINDER]);
 
     vi.mocked(deps.journal.areaStates.getAreaStates).mockResolvedValue({});
     notifyReminderWrites(['areaState']);
     await flush();
     expect(deps.androidReminders.sync).toHaveBeenCalledTimes(3);
-    expect(vi.mocked(deps.androidReminders.sync).mock.calls[2][0].reminders).toEqual([REMINDER, wear]);
+    expect(vi.mocked(deps.androidReminders.sync).mock.calls[2][0].reminders).toMatchObject([REMINDER, wear]);
   });
 
   test('reconciles stock run-out reminders when a dose or stock write is announced', async () => {
@@ -661,6 +787,80 @@ describe('startAndroidPlatformSync / stopAndroidPlatformSync', () => {
 
     expect(deps.androidReminders.sync).toHaveBeenCalledTimes(1);
     expect(deps.goto).toHaveBeenCalledWith('/entry/new/today');
+  });
+
+  /* A face on the check-in notification, touched while the app is already in front, brings
+     no focus or visibility event (the activity never paused), so the route it stored waited
+     for the next one. MainActivity.onNewIntent calls this hook instead. */
+  test('opens a launch route the moment native reports a new one, with no focus event', async () => {
+    const deps = makeDeps({ isValidLaunchRoute: (route) => route === '/entry/new/today?seedMood=3' });
+    platformSync.startAndroidPlatformSync(deps);
+    await flush();
+    expect(deps.goto).not.toHaveBeenCalled();
+
+    (deps.androidReminders.consumeLaunchRoute as ReturnType<typeof vi.fn>).mockResolvedValue({
+      route: '/entry/new/today?seedMood=3'
+    });
+    (window as unknown as { __launchRouteFromNative: () => void }).__launchRouteFromNative();
+    await flush();
+    expect(deps.goto).toHaveBeenCalledWith('/entry/new/today?seedMood=3');
+
+    platformSync.stopAndroidPlatformSync();
+    expect((window as unknown as { __launchRouteFromNative?: () => void }).__launchRouteFromNative).toBeUndefined();
+  });
+
+  /* A Taken or Skip tap kept while the journal was locked is written, cleared and said out
+     loud once it is open. */
+  const tap = (id: string, action: 'taken' | 'skipped') => ({
+    id, reminderId: 'r-1', drug: 'Estradiol', action, postedAt: 1, at: 2
+  });
+
+  test('applies kept dose taps once the journal is open, clears them and confirms each', async () => {
+    const deps = makeDeps();
+    (deps.androidReminders.pendingDoseActions as ReturnType<typeof vi.fn>).mockResolvedValue({
+      actions: [tap('a1', 'taken'), tap('a2', 'skipped')]
+    });
+    (deps.doseActions.apply as ReturnType<typeof vi.fn>).mockImplementation(async (action: { id: string }) => ({
+      id: action.id, result: 'logged', doseId: `d-${action.id}`
+    }));
+    platformSync.startAndroidPlatformSync(deps);
+    await flush();
+    await flush();
+
+    expect((deps.doseActions.apply as ReturnType<typeof vi.fn>).mock.calls.map(([a]) => a.id)).toEqual(['a1', 'a2']);
+    expect(deps.androidReminders.clearDoseActions).toHaveBeenCalledWith({ ids: ['a1', 'a2'] });
+    expect((deps.doseActions.confirm as ReturnType<typeof vi.fn>).mock.calls.map(([o]) => o.id)).toEqual(['a1', 'a2']);
+  });
+
+  test('keeps a dose tap whose write failed, for the next time the app comes back', async () => {
+    const deps = makeDeps();
+    (deps.androidReminders.pendingDoseActions as ReturnType<typeof vi.fn>).mockResolvedValue({
+      actions: [tap('a1', 'taken'), tap('a2', 'skipped')]
+    });
+    (deps.doseActions.apply as ReturnType<typeof vi.fn>).mockImplementation(async (action: { id: string }) => {
+      if (action.id === 'a1') throw new Error('write failed');
+      return { id: action.id, result: 'logged', doseId: 'd' };
+    });
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    platformSync.startAndroidPlatformSync(deps);
+    await flush();
+    await flush();
+    error.mockRestore();
+
+    expect(deps.androidReminders.clearDoseActions).toHaveBeenCalledWith({ ids: ['a2'] });
+    expect((deps.doseActions.confirm as ReturnType<typeof vi.fn>).mock.calls.map(([o]) => o.id)).toEqual(['a2']);
+  });
+
+  test('a dose reminder route is resolved to its drug before the app navigates', async () => {
+    const deps = makeDeps({ isValidLaunchRoute: () => true });
+    (deps.androidReminders.consumeLaunchRoute as ReturnType<typeof vi.fn>).mockResolvedValue({
+      route: '/care/doses?add=1&reminder=r-1'
+    });
+    (deps.doseActions.resolveLaunchRoute as ReturnType<typeof vi.fn>).mockResolvedValue('/care/doses?add=1&episode=e-1');
+    platformSync.startAndroidPlatformSync(deps);
+    await flush();
+    await flush();
+    expect(deps.goto).toHaveBeenCalledWith('/care/doses?add=1&episode=e-1');
   });
 
   test('leaves nothing behind after stop: every removable listener it attached is removed', async () => {

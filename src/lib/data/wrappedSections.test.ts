@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import type { DayAverage, TagInsight } from './journal/stats';
+import type { TagInsight } from './journal/stats';
 import {
   WRAPPED_TAG_INSIGHT_CAP,
-  wrappedTagInsights,
-  wrappedTallyCounts
+  wrappedTagInsights
 } from './wrappedSections';
 
 const insight = (id: string, withAvg: number, withoutAvg: number, count = 5): TagInsight => ({
@@ -13,8 +12,6 @@ const insight = (id: string, withAvg: number, withoutAvg: number, count = 5): Ta
   withAvg,
   withoutAvg
 });
-const points = (...values: number[]): DayAverage[] =>
-  values.map((value, i) => ({ day: 20000 + i, value, count: value }));
 
 describe('tag insights on a wrapped', () => {
   it('says nothing where the period has no insight to give', () => {
@@ -47,23 +44,4 @@ describe('tag insights on a wrapped', () => {
   });
 });
 
-describe('the tally counts on a wrapped', () => {
-  it('says nothing where neither direction was tapped', () => {
-    expect(wrappedTallyCounts([], [])).toBeNull();
-    expect(wrappedTallyCounts(points(0), points(0))).toBeNull();
-  });
-
-  it('totals each kind over the period', () => {
-    expect(wrappedTallyCounts(points(1, 2), points(3, 4, 5))).toEqual({
-      misgendered: 3,
-      correctlyGendered: 12
-    });
-  });
-
-  /* One direction with nothing in it is a reading, not an empty section. */
-  it('shows a period where only one direction happened', () => {
-    expect(wrappedTallyCounts([], points(2, 2))).toEqual({ misgendered: 0, correctlyGendered: 4 });
-    expect(wrappedTallyCounts(points(1), [])).toEqual({ misgendered: 1, correctlyGendered: 0 });
-  });
-});
 

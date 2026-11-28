@@ -1,11 +1,12 @@
-/* entryDraft's transition rules (ticket 29): draft edits, photo add/remove
+/* entryDraft's transition rules: draft edits, photo add/remove
    with removed-stored-id tracking, isEmpty and toUpsert() - all rune-free,
    so EntryEditor.svelte only needs a thin $state wrapper around this. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
+import { timestampAtLocalTime } from './epochDay';
 import { createEntryDraft } from './entryDraft.ts';
-import type { Entry, EntryTemplate } from './types.ts';
+import type { Entry } from './types.ts';
 import type { NormalizedPhoto } from './journal/photos.ts';
 import { journalWithBuiltIns } from './journal/test-support.ts';
 import { openJournal } from './journal/journal.ts';
@@ -15,12 +16,14 @@ const photo = (n: number): NormalizedPhoto => ({ full: new Uint8Array([n]), thum
 
 test('a committed draft cannot repeat attachments or a contextual dose after navigation fails', async () => {
   const { journal } = await journalWithBuiltIns();
+  // A real appointment the day before: the save links only an offered one.
+  const appointment = await journal.appointments.upsertAppointment({ epochDay: 99, procedureId: null, kind: null, place: null, note: null });
   const draft = createEntryDraft(100, undefined, 4);
   draft.addPhoto(photo(1));
   draft.addRecording(new Uint8Array([2]));
   draft.addVideo(new Uint8Array([3]));
   draft.setDoseLog({ dose: 2, doseUnit: 'mg' });
-  const creation = { starred: true, debriefForAppointment: 'appointment-1' };
+  const creation = { starred: true, debriefForAppointment: appointment };
   const saveAndNavigate = async () => {
     const id = await draft.save(journal.entries, creation);
     assert.equal(draft.savedId, id);
@@ -39,7 +42,7 @@ test('a committed draft cannot repeat attachments or a contextual dose after nav
   assert.equal(entry.recordings.length, 1);
   assert.equal(entry.videos.length, 1);
   assert.equal((await journal.doses.getDoses(100, 100)).length, 1);
-  assert.equal(await journal.checklists.getDebriefEntryId('appointment-1'), entry.id);
+  assert.equal(await journal.checklists.getDebriefEntryId(appointment), entry.id);
   assert.throws(() => draft.toUpsert(), /already saved/);
 });
 
@@ -55,7 +58,7 @@ test('a failed commit preserves an edited draft and its removals for retry', asy
     })
   }, fakeFileStore());
   const id = await journal.entries.upsertEntry({
-    epochDay: 100, timestamp: 8_640_000_000, mood: 4, attachPhotos: [photo(1)],
+    epochDay: 100, timestamp: timestampAtLocalTime(100, '12:00'), mood: 4, attachPhotos: [photo(1)],
     attachRecordings: [new Uint8Array([2])], attachVideos: [new Uint8Array([3])]
   });
   const original = (await journal.entries.getEntry(id))!;
@@ -115,18 +118,6 @@ test('saving consumes every contextual creation action', async () => {
   assert.equal((await journal.cycleEvents.getCycleEvents()).length, 1);
 });
 
-const template = (overrides: Partial<EntryTemplate> = {}): EntryTemplate => ({
-  id: 'tpl',
-  name: 'Template',
-  tags: [],
-  dims: {},
-  noteScaffold: '',
-  presentationId: null,
-  builtIn: true,
-  hidden: false,
-  ...overrides
-});
-
 const existingEntry = (): Entry => ({
   id: 7,
   epochDay: 20_000,
@@ -170,7 +161,7 @@ test('a draft hydrated from an existing entry copies its fields and stored photo
   assert.deepEqual(draft.bodyRegions, { chest: 20 });
 });
 
-test('setMood, setNote, setDim and toggleTag each make an empty draft non-empty', () => {
+test('setMood, setNote, setDim and setTags each make an empty draft non-empty', () => {
   assert.equal(createEntryDraft(1).isEmpty, true);
 
   const byMood = createEntryDraft(1);
@@ -192,13 +183,13 @@ test('setMood, setNote, setDim and toggleTag each make an empty draft non-empty'
   assert.deepEqual(byDim.dims, { masculinity: 50 });
 
   const byTag = createEntryDraft(1);
-  byTag.toggleTag('e-happy');
+  byTag.setTags(['e-happy']);
   assert.equal(byTag.isEmpty, false);
   assert.equal(byTag.hasMoodOnlyContent, false);
   assert.deepEqual(byTag.tags, ['e-happy']);
 
   // Picking a region only puts its slider on screen at the midpoint
-  // (ticket 31). Content arrives when it moves, so the draft is still
+  //. Content arrives when it moves, so the draft is still
   // empty until then.
   const byBodyRegion = createEntryDraft(1);
   byBodyRegion.toggleBodyRegion('chest');
@@ -215,13 +206,14 @@ test('setDim merges into the existing dims without clobbering the others', () =>
   assert.deepEqual(draft.dims, { masculinity: 40, femininity: 60 });
 });
 
-test('toggleTag adds an absent tag and removes a present one', () => {
+test('setTags takes the whole selection, as a copy', () => {
   const draft = createEntryDraft(1);
-  draft.toggleTag('e-happy');
-  draft.toggleTag('e-sad');
-  assert.deepEqual(draft.tags, ['e-happy', 'e-sad']);
+  const picked = ['e-anxious', 'e-worried'];
+  draft.setTags(picked);
+  picked.push('e-sad');
+  assert.deepEqual(draft.tags, ['e-anxious', 'e-worried']);
 
-  draft.toggleTag('e-happy');
+  draft.setTags(['e-sad']);
   assert.deepEqual(draft.tags, ['e-sad']);
 });
 
@@ -244,7 +236,7 @@ test('setBodyRegionFeeling overwrites a region\'s position outright', () => {
   draft.setBodyRegionFeeling('chest', 70);
   assert.deepEqual(draft.bodyRegions, { chest: 70 });
 
-  // Overwrite, not merge: the picker's slider (ticket 99) only ever
+  // Overwrite, not merge: the picker's slider only ever
   // produces one position, so a later write replaces it outright, the
   // same as dragging the slider itself would.
   draft.setBodyRegionFeeling('chest', 30);
@@ -294,7 +286,7 @@ test('toUpsert() produces the exact upsertEntry payload for a new entry', () => 
   draft.setMood(4);
   draft.setNote('a note');
   draft.setDim('masculinity', 30);
-  draft.toggleTag('e-happy');
+  draft.setTags(['e-happy']);
   draft.addPhoto(photo(9));
 
   assert.deepEqual(draft.toUpsert(), {
@@ -359,7 +351,7 @@ test('hydrating copies the existing entry, so a later mutation of it cannot disc
   const draft = createEntryDraft(1, original);
 
   draft.setNote('typed after load');
-  draft.toggleTag('e-sad');
+  draft.setTags([...draft.tags, 'e-sad']);
 
   original.note = 'clobbered';
   original.dims.masculinity = 999;
@@ -400,57 +392,6 @@ test('a fresh draft can be seeded with a mood and the seed survives hydration', 
 
   const hydrated = createEntryDraft(1, existingEntry(), 1);
   assert.equal(hydrated.mood, 3);
-});
-
-test('applyTemplate adds its tags without duplicating one already selected', () => {
-  const draft = createEntryDraft(1);
-  draft.toggleTag('g-euphoria');
-
-  draft.applyTemplate(template({ tags: ['g-euphoria', 'g-body-eu'] }));
-
-  assert.deepEqual(draft.tags, ['g-euphoria', 'g-body-eu']);
-});
-
-test('applyTemplate sets dims without clobbering a value the draft already had', () => {
-  const draft = createEntryDraft(1);
-  draft.setDim('masculinity', 40);
-
-  draft.applyTemplate(template({ dims: { euphoria_dysphoria: 85 } }));
-
-  assert.deepEqual(draft.dims, { masculinity: 40, euphoria_dysphoria: 85 });
-});
-
-test('applyTemplate pre-fills a fresh draft, and every value stays editable afterwards', () => {
-  const draft = createEntryDraft(1);
-
-  draft.applyTemplate(template({ tags: ['g-euphoria', 'g-body-eu'], dims: { euphoria_dysphoria: 85 } }));
-  assert.deepEqual(draft.tags, ['g-euphoria', 'g-body-eu']);
-  assert.deepEqual(draft.dims, { euphoria_dysphoria: 85 });
-
-  draft.toggleTag('g-euphoria');
-  draft.setDim('euphoria_dysphoria', 60);
-  assert.deepEqual(draft.tags, ['g-body-eu']);
-  assert.deepEqual(draft.dims, { euphoria_dysphoria: 60 });
-});
-
-test('applyTemplate fills an empty note from the scaffold but never overwrites what is already written', () => {
-  const blank = createEntryDraft(1);
-  blank.applyTemplate(template({ noteScaffold: 'What felt euphoric today?' }));
-  assert.equal(blank.note, 'What felt euphoric today?');
-
-  const written = createEntryDraft(1);
-  written.setNote('already writing');
-  written.applyTemplate(template({ noteScaffold: 'What felt euphoric today?' }));
-  assert.equal(written.note, 'already writing');
-});
-
-test('applyTemplate sets the presentation when the template carries one, and leaves it otherwise', () => {
-  const draft = createEntryDraft(1);
-  draft.applyTemplate(template({ presentationId: 'p1' }));
-  assert.equal(draft.presentationId, 'p1');
-
-  draft.applyTemplate(template());
-  assert.equal(draft.presentationId, 'p1', 'a template with no presentation is not an error and changes nothing');
 });
 
 test('toUpsert() drops a zero timestamp, matching upsertEntry\'s own fallback', () => {
@@ -497,7 +438,7 @@ test('draft holds contextual sub-records and attaches them to toUpsert payload',
   assert.equal(clearedUpsert.cycleEvent, undefined);
 });
 
-test('a picked photo carrying an epochDayOverride (ticket 47) passes through toUpsert() untouched', () => {
+test('a picked photo carrying an epochDayOverride passes through toUpsert() untouched', () => {
   // The add-photo day prompt bakes the override onto the NormalizedPhoto
   // itself (EntryEditor.svelte); nothing in the draft needs to know about
   // it beyond carrying the object through unchanged, the same as it does
@@ -509,25 +450,7 @@ test('a picked photo carrying an epochDayOverride (ticket 47) passes through toU
   assert.deepEqual(draft.toUpsert().attachPhotos, [{ ...photo(9), epochDayOverride: 19000 }]);
 });
 
-
-test('applyTemplate fills its chips and opens none (ticket 19)', () => {
-  const draft = createEntryDraft(20_001);
-  draft.setOpenSection('tags');
-  draft.applyTemplate({
-    id: 't',
-    name: 't',
-    tags: ['e-happy'],
-    dims: {},
-    noteScaffold: '',
-    presentationId: null,
-    builtIn: false,
-    hidden: false
-  } as never);
-  assert.deepEqual(draft.tags, ['e-happy']);
-  assert.equal(draft.openSection, null);
-});
-
-test('effect markers toggle on and off, keep their order, and never double up (ticket 289)', () => {
+test('effect markers toggle on and off, keep their order, and never double up', () => {
   const draft = createEntryDraft(20_000);
   draft.toggleEffectMarker('skin_softening', 20_000);
   draft.toggleEffectMarker('hair_changes', 20_000);
@@ -541,4 +464,24 @@ test('effect markers toggle on and off, keep their order, and never double up (t
     draft.toUpsert().effectMarkers?.map((marker) => marker.effect),
     ['hair_changes', 'breast_development']
   );
+});
+
+test('contextual text keeps its draft whitespace and trims only the save payload', () => {
+  const draft = createEntryDraft(19000);
+  draft.setTryoutFeltSense({ tryoutId: 'tryout-1', mood: 4, note: '  felt like me  ' });
+  draft.setProcedureRecovery({ procedureId: 'proc-1', notes: '  felt like me\nmore today  ' });
+  const payload = draft.toUpsert();
+  assert.equal(payload.tryoutFeltSense?.note, 'felt like me');
+  assert.equal(payload.procedureRecovery?.notes, 'felt like me\nmore today');
+  assert.equal(draft.tryoutFeltSense?.note, '  felt like me  ');
+  assert.equal(draft.procedureRecovery?.notes, '  felt like me\nmore today  ');
+  draft.setTryoutFeltSense({ tryoutId: 'tryout-1', mood: 4, note: '  ' });
+  draft.setProcedureRecovery({ procedureId: 'proc-1', notes: ' \n ' });
+  assert.equal(draft.toUpsert().tryoutFeltSense?.note, null);
+  assert.equal(draft.toUpsert().procedureRecovery, undefined);
+  const recoveryPhoto = photo(1);
+  draft.setProcedureRecovery({ procedureId: 'proc-1', notes: ' \n ', photo: recoveryPhoto });
+  assert.deepEqual(draft.toUpsert().procedureRecovery, {
+    procedureId: 'proc-1', notes: undefined, photo: recoveryPhoto
+  });
 });

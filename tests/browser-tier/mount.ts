@@ -1,23 +1,6 @@
-/* Mounting a real component in this tier, for the two things pages here do
-   with one (phase 8 audit ticket 25).
-
-   Five gallery pages already mounted a component and stamped a ready
-   attribute by hand, each spelling the attribute out as a string beside a
-   `name` that probe-handshake.mjs derives the same string from. They were
-   built to be photographed, so a published result was never part of the
-   shape - and that is why the app's largest concentration of branching sits
-   behind grep tests: there was no way to mount a screen, drive it, and
-   answer with a value.
-
-   `publishFixture` is that shape: whatever the page does, published under
-   the page's own name. A gallery's work is a mount and nothing else, so it
-   answers `undefined` and the driving script gets the ready attribute alone,
-   exactly what it had. A probe's work is a mount, some clicks and a read,
-   and it answers with the read.
-
-   Nothing here argues with ADR-0016. That rule keeps the *Node* tier away
-   from paraglide; this tier runs the real bundle in a real browser, so a
-   component's own message calls resolve the way they do in the app. */
+/* Mount real browser-tier components with their message runtime. publishFixture publishes
+   under the name probe-handshake.mjs expects. A gallery returns undefined for readiness
+   only. A probe returns its measured result after interacting. */
 import { mount, unmount, type Component } from 'svelte';
 import { publish } from '../probe-handshake.mjs';
 

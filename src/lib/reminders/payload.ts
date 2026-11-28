@@ -6,8 +6,7 @@ export function buildAndroidReminderPayload(input: {
   reminders: Reminder[];
   checkInEnabled: boolean;
   checkInTime: string;
-  journalingPauses: Array<{ startEpochDay: number; endEpochDay: number | null }>;
-  checkInAffirmations: string[];
+  checkInPausedThrough: number | null;
   latestEntryEpochDay: number | null;
   hideNotificationTitles: boolean;
   quietHours: QuietHours;
@@ -17,8 +16,7 @@ export function buildAndroidReminderPayload(input: {
     reminders: input.reminders.map((reminder) => ({ ...reminder })),
     checkInEnabled: input.checkInEnabled,
     checkInTime: input.checkInTime,
-    journalingPauses: input.journalingPauses.map((pause) => ({ ...pause })),
-    checkInAffirmations: [...input.checkInAffirmations],
+    checkInPausedThrough: input.checkInPausedThrough,
     latestEntryEpochDay: input.latestEntryEpochDay,
     hideNotificationTitles: input.hideNotificationTitles,
     quietHours: { ...input.quietHours },

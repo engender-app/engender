@@ -1,50 +1,15 @@
-/* A Daylio `.daylio` backup becomes an archive-shaped merge (phase 7
-   ticket 09), the same way daylio.ts does it for the CSV: parse and
-   resolve here, hand the resolved journal to the ordinary skip-existing
-   merge, and never write on the way to finding a bad record.
+/* Preview a Daylio backup as an Archive-shaped merge without writing.
+   The backup supplies mood definitions and their positions. CSV
+   provides localized labels, so its importer resolves them separately.
 
-   Why a second Daylio source at all, when the CSV importer works. The CSV
-   carries a mood as a localised label, so daylio.ts has to guess a mood's
-   position from a hardcoded English and Polish table and give up on
-   anything it cannot match. In the file this format was learned from, 10
-   of 15 moods were user-defined and in Polish - every one of them a mood
-   the CSV path mismaps or refuses. The backup carries the mood definition
-   table itself, so the position is a stated fact rather than a guess.
-   It also carries milestones, the person's own tag groups, custom scales,
-   writing templates, and the photos and voice notes a CSV has no room
-   for.
+   The format is undocumented. Accept unknown keys and report unexpected
+   versions in the preview. dayEntries.month is zero-based and
+   milestones.month is one-based. Malformed records fail with context.
+   Semantic gaps show up for review. Commit applies the previewed result.
 
-   The format is undocumented by its vendor, so the shape it is read at is
-   the ticket's own field reference, extracted from a real backup that has
-   since been deleted. Two consequences run through this file:
-
-     - **Every field is optional and every unknown key is tolerated.**
-       Android stayed at `version: 15` for years while the schema gained
-       fields, so the version number cannot gate anything. It is reported
-       when it is not the expected one and the import proceeds.
-     - **The two month conventions are real.** `dayEntries.month` is
-       0-based and `milestones.month` is 1-based, in the same file. Each
-       has its own test, because getting one wrong shifts dates
-       plausibly and raises nothing.
-
-   The failure split is daylio.ts's, unchanged: a structural problem
-   throws with the record named, a semantic gap is listed in the preview
-   and confirmed with the person looking at it, and the preview is the
-   exact work a commit performs.
-
-   Unzipping goes through fflate rather than the platform's own
-   DecompressionStream, for the reason transtracks.ts found first: this
-   app's WebView floor is Chrome 87 (capacitor.config.ts) and the
-   'deflate-raw' format only arrived in Chrome 103, so the platform
-   decoder would fail on the devices this app supports. One zip reader in
-   the repo, and it is that one.
-
-   Identity is derived from content (ADR-0002), because Daylio's ids are
-   per-collection integers unique only inside one backup. One limit worth
-   stating: these uuids are not the CSV path's. A journal that imported
-   the CSV and then imports the backup gets both copies, because the two
-   files do not carry a shared identifier for the same day and the CSV's
-   own mood label cannot be reconstructed from the backup's table. */
+   Use fflate for ZIP handling. Derive identity from content because
+   Daylio IDs are local to one backup (ADR-0002). CSV and backup IDs
+   differ, so importing both can duplicate days. */
 
 import { dateInputValueFromEpochDay, epochDayFromDateInputValue, localDateFromEpochDay } from '../epochDay';
 import { foldText } from '../fold';
@@ -52,18 +17,18 @@ import { emptyArchiveJournal } from '../journal/archiveSections';
 import { contentUuid } from '../journal/support';
 import { photoFileName } from '../photos/names';
 import { audioMimeOf } from '../voiceRecordings/mime';
+import { checkDaylioField, DAYLIO_BUDGET } from './daylioInputBudget';
 import { htmlToText } from './html';
 import { tagMatches, type DaylioNaming } from './daylio';
 import type {
   ArchiveDimension,
   ArchiveEntry,
-  ArchiveEntryTemplate,
   ArchiveJournal,
   ArchiveMilestone,
   ArchiveTag,
   ArchiveTagGroup
 } from './payload';
-import { openZip, ZipTooLargeError, type ZipReader } from './zipReader';
+import { openZip, ZipFormatError, type ZipReader } from './zipReader';
 
 /** Why a backup could not be read, for a screen that words its own
     message from it - the same split normalize.ts's UnsupportedImageError
@@ -82,8 +47,8 @@ type DaylioBackupErrorKind = 'unreadable' | 'platform' | 'record';
 export class DaylioBackupError extends Error {
   readonly kind: DaylioBackupErrorKind;
 
-  constructor(kind: DaylioBackupErrorKind, message: string) {
-    super(`Daylio backup ${message}`);
+  constructor(kind: DaylioBackupErrorKind, message: string, options?: ErrorOptions) {
+    super(`Daylio backup ${message}`, options);
     this.name = 'DaylioBackupError';
     this.kind = kind;
   }
@@ -115,6 +80,7 @@ export type DaylioSkipKind =
   | 'achievements'
   | 'preferences'
   | 'reminders'
+  | 'templates'
   | 'icons'
   | 'anniversaries'
   | 'scales'
@@ -136,7 +102,8 @@ const OUT_OF_SCOPE: readonly (readonly [DaylioSkipKind, readonly string[]])[] = 
   ['statistics', ['goalSuccessWeeks', 'goalEntries']],
   ['achievements', ['achievements']],
   ['preferences', ['prefs']],
-  ['reminders', ['reminders']]
+  ['reminders', ['reminders']],
+  ['templates', ['writingTemplates']]
 ];
 
 /** One mood as the backup defines it: the person's own name where there
@@ -166,7 +133,6 @@ export interface DaylioBackupPreview {
   newTagCount: number;
   milestoneCount: number;
   dimensionCount: number;
-  templateCount: number;
   photoCount: number;
   audioCount: number;
   moods: DaylioMoodResolution[];
@@ -205,11 +171,15 @@ const flag = (value: unknown): boolean => value === true;
     under neither, depending on which form the caller happened to hold. */
 const zipName = (name: string): string => name.replace(/^\/+/, '');
 
-/** Every entry name in the archive, normalised, decompressing none of
-    them: `names()`'s own filter always says no, which walks the central
-    directory and stops there. */
-function zipNames(reader: ZipReader): string[] {
-  return reader.names().map(zipName);
+/** Retain the first raw member for each normalised name, matching the
+    former lookup even when distinct raw names share a leading-slash alias. */
+function zipNames(reader: ZipReader): Map<string, string> {
+  const names = new Map<string, string>();
+  for (const raw of reader.names()) {
+    const name = zipName(raw);
+    if (!names.has(name)) names.set(name, raw);
+  }
+  return names;
 }
 
 /** One entry's bytes, or null when the archive has no such entry. Named
@@ -219,9 +189,20 @@ function zipNames(reader: ZipReader): string[] {
     to the shared reader's ceiling, which is what keeps a preview off the
     500 full attachments it is not retaining, and off a member declaring more than
     this app will hold in memory at once. */
-function zipRead(reader: ZipReader, name: string, prefix = false): Uint8Array | null {
-  const raw = reader.names().find((candidate) => zipName(candidate) === name);
-  return raw ? prefix ? reader.readPrefix(raw, 12) : reader.read(raw) : null;
+function zipRead(
+  reader: ZipReader,
+  names: Map<string, string>,
+  name: string,
+  prefix = false,
+  maxBytes?: number
+): Uint8Array | null {
+  const raw = names.get(name);
+  try {
+    return raw ? prefix ? reader.readPrefix(raw, 12) : reader.read(raw, maxBytes) : null;
+  } catch (cause) {
+    if (cause instanceof ZipFormatError) throw new DaylioBackupError('unreadable', 'has a damaged ZIP member', { cause });
+    throw cause;
+  }
 }
 
 /** Is this a zip carrying a `backup.daylio`? A sniff, not a validation:
@@ -232,7 +213,7 @@ function zipRead(reader: ZipReader, name: string, prefix = false): Uint8Array | 
     decompresses nothing - only the directory of names is read. */
 export function detectDaylioBackup(file: Uint8Array): boolean {
   try {
-    return zipNames(openZip(file)).includes(BACKUP_MEMBER);
+    return zipNames(openZip(file)).has(BACKUP_MEMBER);
   } catch {
     return false;
   }
@@ -245,35 +226,53 @@ export function detectDaylioBackup(file: Uint8Array): boolean {
     read for this same file has to go through the one reader, so the
     ceiling's running total covers the whole backup rather than resetting
     per member. */
-function openBackup(file: Uint8Array): { payload: Record_; names: Set<string>; reader: ZipReader } {
+function openBackup(file: Uint8Array): { payload: Record_; names: Map<string, string>; reader: ZipReader } {
   let reader: ZipReader;
-  let names: Set<string>;
+  let names: Map<string, string>;
   let member: Uint8Array | null;
   try {
     reader = openZip(file);
-    names = new Set(zipNames(reader));
-    member = names.has(BACKUP_MEMBER) ? zipRead(reader, BACKUP_MEMBER) : null;
+    names = zipNames(reader);
+    member = zipRead(reader, names, BACKUP_MEMBER, false, DAYLIO_BUDGET.backupJsonBytes);
   } catch (cause) {
-    if (cause instanceof ZipTooLargeError) throw cause;
-    throw new DaylioBackupError('unreadable', 'is not a zip file');
+    if (cause instanceof ZipFormatError) throw new DaylioBackupError('unreadable', 'is not a zip file', { cause });
+    throw cause;
   }
 
   if (!member) throw new DaylioBackupError('unreadable', `has no ${BACKUP_MEMBER} member, so it is not a Daylio backup`);
 
+  // Base64 text may be newline-wrapped in a vendor export.
+  const encoded = new TextDecoder().decode(member).replace(/\s+/g, '');
+  let raw: string;
+  try {
+    raw = atob(encoded);
+  } catch (cause) {
+    if (cause instanceof DOMException && cause.name === 'InvalidCharacterError') {
+      throw new DaylioBackupError('unreadable', `holds a ${BACKUP_MEMBER} that is not base64-encoded UTF-8`, { cause });
+    }
+    throw cause;
+  }
+  const decoded = Uint8Array.from(raw, (char) => char.charCodeAt(0));
+  const decoder = new TextDecoder('utf-8', { fatal: true });
   let json: string;
   try {
-    // Newline-wrapped in the observed file, which atob will not accept.
-    const raw = atob(new TextDecoder().decode(member).replace(/\s+/g, ''));
-    json = new TextDecoder('utf-8', { fatal: true }).decode(Uint8Array.from(raw, (char) => char.charCodeAt(0)));
+    json = decoder.decode(decoded);
   } catch (cause) {
-    throw new DaylioBackupError('unreadable', `holds a ${BACKUP_MEMBER} that is not base64-encoded UTF-8`);
+    if (cause instanceof TypeError) {
+      throw new DaylioBackupError('unreadable', `holds a ${BACKUP_MEMBER} that is not base64-encoded UTF-8`, { cause });
+    }
+    throw cause;
   }
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(json);
   } catch (cause) {
-    throw new DaylioBackupError('unreadable', 'holds a backup.daylio that is not valid JSON');
+    if (cause instanceof SyntaxError) {
+      // Parser diagnostics can echo the backup's cleartext PIN.
+      throw new DaylioBackupError('unreadable', 'holds a backup.daylio that is not valid JSON');
+    }
+    throw cause;
   }
   if (!isRecord(parsed)) throw new DaylioBackupError('unreadable', 'holds a backup.daylio that is not a JSON object');
 
@@ -380,7 +379,8 @@ function assetRows(payload: Record_): Map<number, AssetRow> {
     try {
       const metadata: unknown = JSON.parse(str(asset.android_metadata));
       if (isRecord(metadata)) sourceName = str(metadata.Name);
-    } catch {
+    } catch (cause) {
+      if (!(cause instanceof SyntaxError)) throw cause;
       // Not present, not a string, or not JSON after all. The bytes are
       // the primary answer about a file's type; this was the fallback.
     }
@@ -426,9 +426,32 @@ export async function daylioBackupPreview(
   const unimported = new Set<number>();
   const plannedAssets = new Map<string, DaylioAsset>();
   const assetPaths = new Map<number, string>();
+  const photos = new Map<string, string>();
+  const audio = new Map<string, string>();
+  const wantedPhotos = new Map<string, Set<string>>();
+  const wantedAudio = new Map<string, Set<string>>();
+  for (const asset of assets.values()) {
+    const wanted = asset.type === AUDIO_ASSET ? wantedAudio : wantedPhotos;
+    const tail = asset.checksum.slice(asset.checksum.lastIndexOf('/') + 1);
+    const checksums = wanted.get(tail) ?? new Set<string>();
+    checksums.add(asset.checksum);
+    wanted.set(tail, checksums);
+  }
+  for (const name of zipEntries.keys()) {
+    const paths = name.startsWith(PHOTO_DIRECTORY) ? photos : name.startsWith(AUDIO_DIRECTORY) ? audio : null;
+    if (!paths) continue;
+    const wanted = paths === photos ? wantedPhotos : wantedAudio;
+    const checksums = wanted.get(name.slice(name.lastIndexOf('/') + 1));
+    // Preserve slash-containing checksums without retaining every path suffix.
+    for (const checksum of checksums ?? []) {
+      if (name.endsWith(`/${checksum}`)) {
+        paths.set(checksum, name);
+        checksums!.delete(checksum);
+      }
+    }
+  }
   for (const [id, asset] of assets) {
-    const directory = asset.type === AUDIO_ASSET ? AUDIO_DIRECTORY : PHOTO_DIRECTORY;
-    const path = [...zipEntries].find((name) => name.startsWith(directory) && name.endsWith(`/${asset.checksum}`));
+    const path = (asset.type === AUDIO_ASSET ? audio : photos).get(asset.checksum);
     if (!path) {
       missingAssets.add(id);
       continue;
@@ -438,7 +461,7 @@ export async function daylioBackupPreview(
 
   const readAsset = async (id: number, prefix = false): Promise<Uint8Array> => {
     const path = assetPaths.get(id)!;
-    const bytes = zipRead(reader, path, prefix);
+    const bytes = zipRead(reader, zipEntries, path, prefix);
     if (!bytes) throw new DaylioBackupError('record', `could not read the file for asset ${id}`);
     return bytes;
   };
@@ -536,6 +559,7 @@ export async function daylioBackupPreview(
      values would be an empty dimension nobody logged anything on. */
   const dimensionOf = new Map<number, { key: string; position: Map<number, number> }>();
   const existingDimensions = new Set(existing.dimensions.map((dimension) => dimension.key));
+  const incomingDimensions = new Set<string>();
   let unreadableScales = 0;
   for (const scale of list(payload.scales)) {
     const id = int(scale.id);
@@ -552,6 +576,8 @@ export async function daylioBackupPreview(
     // when the dimension itself is already here and travels as nothing.
     dimensionOf.set(id, { key, position: new Map(ids.map((valueId, index) => [valueId, index + 1])) });
     if (existingDimensions.has(key)) continue;
+    if (incomingDimensions.has(key)) throw new DaylioBackupError('record', `repeats scale ${name}`);
+    incomingDimensions.add(key);
     journal.dimensions.push({
       key,
       name,
@@ -593,8 +619,8 @@ export async function daylioBackupPreview(
       mood = resolved.mood;
     }
 
-    const title = htmlToText(str(record.note_title));
-    const body = htmlToText(str(record.note));
+    const title = htmlToText(checkDaylioField(str(record.note_title)));
+    const body = htmlToText(checkDaylioField(str(record.note)));
     const note = [title, body].filter((part) => part.trim().length > 0).join('\n');
 
     const tags: string[] = [];
@@ -673,6 +699,7 @@ export async function daylioBackupPreview(
      app's milestone cannot hold - so the origin date arrives and the
      recurrence is named as dropped rather than invented somewhere. */
   const existingMilestones = new Set(existing.milestones.map((milestone) => milestone.id));
+  const incomingMilestones = new Set<string>();
   let anniversaries = 0;
   for (const record of list(payload.milestones)) {
     const id = int(record.id);
@@ -689,6 +716,8 @@ export async function daylioBackupPreview(
 
     const uuid = await contentUuid(['daylio-milestone', name, epochDay]);
     if (existingMilestones.has(uuid)) continue;
+    if (incomingMilestones.has(uuid)) throw new DaylioBackupError('record', `repeats ${named}`);
+    incomingMilestones.add(uuid);
 
     const assetId = int(record.assetId);
     let photo: ArchiveMilestone['photo'] = null;
@@ -720,28 +749,6 @@ export async function daylioBackupPreview(
   }
   if (anniversaries > 0) skipped.push({ kind: 'anniversaries', count: anniversaries });
 
-  /* Writing templates: a title and an HTML body, which is what an entry
-     template is here once the body is text. */
-  const existingTemplates = new Set(existing.entryTemplates.map((template) => template.id));
-  for (const record of list(payload.writingTemplates)) {
-    const name = str(record.title);
-    const noteScaffold = htmlToText(str(record.body));
-    if (!name && !noteScaffold) continue;
-
-    const id = await contentUuid(['daylio-template', name, noteScaffold]);
-    if (existingTemplates.has(id)) continue;
-    journal.entryTemplates.push({
-      id,
-      name,
-      tags: [],
-      dims: {},
-      noteScaffold,
-      presentationId: null,
-      builtIn: false,
-      hidden: false
-    } satisfies ArchiveEntryTemplate);
-  }
-
   /* Named as skipped, in the order the ticket puts them out of scope.
      Goals carry a repeat that this app has no recurring-goal concept for,
      including a `repeat_value` of 127 that is a seven-bit weekday mask
@@ -763,7 +770,6 @@ export async function daylioBackupPreview(
     newTagCount,
     milestoneCount: journal.milestones.length,
     dimensionCount: journal.dimensions.length,
-    templateCount: journal.entryTemplates.length,
     photoCount: attached.filter((asset) => asset.kind === 'photo').length,
     audioCount: attached.filter((asset) => asset.kind === 'audio').length,
     moods,

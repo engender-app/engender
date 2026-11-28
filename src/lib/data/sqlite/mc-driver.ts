@@ -17,25 +17,24 @@
    composition holds. What the worker's ordering does not give is one
    transaction at a time - a transaction spans several messages with the
    caller's own awaits between them - so that comes from
-   oneTransactionAtATime() (ticket 134). */
+   oneTransactionAtATime(). */
 
 import type { SqliteDriver } from './driver.ts';
 import type { MigrationFileOps } from './migration-runner.ts';
 import type { WebSqlite } from './driver.ts';
 import { oneTransactionAtATime, withReadSnapshots } from './transactor.ts';
-import { InterruptedRestoreError, JournalBelowBaselineError, SchemaTooNewError } from './migration-runner';
+import { InterruptedRestoreError, JournalBelowBaselineError, JournalBetweenStepsError, SchemaTooNewError } from './migration-runner';
 
 const toHex = (bytes: Uint8Array): string =>
   Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 
-/* The recovery worker in flight, if any (ux-carpet 222). The pool's access
-   handles belong to one worker at a time, and after a failed boot the copy
-   check holds them on a worker of its own for a few hundred ms (219). A
-   "Try opening again" pressed in that window started a new worker that
-   asked for the pool at once and failed with "Access Handles cannot be
-   created" - every time, measured, while a retry a moment later worked. So
-   a new connection holds its messages until that worker has closed. Settled
-   either way: a recovery that failed has still let the pool go. */
+/* The recovery worker in flight, if any. The pool's access handles belong to one worker at
+   a time, and after a failed boot the copy check holds them on a worker of its own for a
+   few hundred ms. A "Try opening again" pressed in that window started a new worker
+   that asked for the pool at once and failed with "Access Handles cannot be created" -
+   every time, measured, while a retry a moment later worked. So a new connection holds its
+   messages until that worker has closed. Settled either way: a recovery that failed has
+   still let the pool go. */
 let recovering: Promise<void> | null = null;
 let releasing: Promise<void> | null = null;
 
@@ -75,11 +74,10 @@ function connectWorker(wasmBinary?: Promise<ArrayBuffer>) {
      every caller waiting on it would wait for the rest of the session.
      Failing them all is the only honest answer, and it is what turns that
      class of fault into a boot error the layout can show. */
-  /* And every caller after it: a worker started ahead of the key (ticket
-     209, `prewarmJournalWorker`) can die before anything but `attach` has
-     been posted, and a message posted to a dead worker is never answered.
-     Remembered, so the `open` that comes later fails with the same cause
-     and boot reports it rather than waiting forever. */
+  /* And every caller after it: a worker started ahead of the key can die before anything
+     but `attach` has been posted, and a message posted to a dead worker is never answered.
+     Remembered, so the `open` that comes later fails with the same cause and boot reports
+     it rather than waiting forever. */
   let stopped: Error | null = null;
   function fail(failure: Error) {
     stopped = failure;
@@ -122,11 +120,10 @@ function connectWorker(wasmBinary?: Promise<ArrayBuffer>) {
     });
   }
 
-  /* Closed is stopped too (ux-carpet 215). A terminated worker answers
-     nothing, so a message posted after terminate() waited for the rest of
-     the session - and a failed boot closes its driver twice, once in boot()
-     and once in closeActiveDriver(), so the second close never came back
-     and the boot sat at 'booting' with no notice. */
+  /* Closed is stopped too. A terminated worker answers nothing, so a message posted after
+     terminate() waited for the rest of the session - and a failed boot closes its driver
+     twice, once in boot() and once in closeActiveDriver(), so the second close never came
+     back and the boot sat at 'booting' with no notice. */
   function terminate() {
     worker.terminate();
     stopped ??= new Error('the database worker was closed');
@@ -135,41 +132,27 @@ function connectWorker(wasmBinary?: Promise<ArrayBuffer>) {
     liveConnections.delete(connection);
   }
 
-  const connection = { post, terminate, gone: () => stopped !== null };
+  const connection = { post, terminate, gone: () => stopped !== null, release: () => post<void>('close') };
   liveConnections.add(connection);
   return connection;
 }
 
 type Connection = ReturnType<typeof connectWorker>;
 
-/* A tab that navigates away or reloads while a connection is open leaves its
-   access handles for the browser to reclaim from a worker it is about to
-   kill outright - which a moment later is late enough for the next boot's
-   own `attach()` (ux-carpet 243): "Access Handles cannot be created if there
-   is another open Access Handle", thrown while the handles this tab's own
-   worker held are still being torn down. Real, not a fixture of one probe -
-   `pagehide` fires for exactly this tab's own reload or navigation, on both
-   the archive-restore path this was found on and any ordinary reload of an
-   open Journal.
+/* Post close to live workers on pagehide so pauseVfs releases their OPFS
+   handles before another attach on navigation or reload. The page cannot
+   wait for a reply. The worker's close handler is idempotent.
 
-   `pauseVfs()` (mc-worker.ts's `close`) is what actually lets go of the pool,
-   synchronously once the worker's message reaches it - so posting `close` to
-   every live connection here, ahead of the browser's own teardown, is what
-   the next `attach()` needs already done rather than raced. Fire-and-forget
-   deliberately: a page hiding for good has nothing to wait for an answer
-   with, and one still open in another tab (`gone()` false, not yet asked to
-   close otherwise) tolerates a second `close` later - the worker's own
-   handler is idempotent, `db` and `poolUtil` already null.
-
-   A retained document must retire these workers too. Once every close has
-   answered, a new worker can reacquire the pool; connections created during
-   that release wait for it. The prewarm slot cannot retain a closed worker. */
-export function releaseOnPageHide(): Promise<void> {
+   Drain retained documents before closing so an admitted transaction
+   can finish. Session disposal bounds a stalled drain. New connections
+   wait until releases settle to reacquire the pool, and prewarm must
+   discard a closed worker. */
+export function releaseOnPageHide(retained = false): Promise<void> {
   prewarmed = null;
   const closing = [...liveConnections];
   const done = Promise.all(closing.map(async (connection) => {
     try {
-      if (!connection.gone()) await connection.post('close');
+      if (!connection.gone()) await (retained ? connection.release() : connection.post('close'));
     } catch {
       // A failed worker still needs to be retired.
     } finally {
@@ -184,7 +167,7 @@ export function releaseOnPageHide(): Promise<void> {
 }
 
 if (typeof window !== 'undefined') {
-  window.addEventListener('pagehide', () => { void releaseOnPageHide(); });
+  window.addEventListener('pagehide', (event) => { void releaseOnPageHide(event.persisted); });
 }
 
 /* Start the worker and compile WASM beside the survey and key derivation.
@@ -283,18 +266,18 @@ export function createEncryptedWebSqlite(databasePath: string, dataKey: Uint8Arr
     },
     dispose: terminate
   });
+  // The wrapped driver owns transaction draining and bounded-disposal rejection.
+  connection.release = () => driver.close();
 
-  /* The copy check and the restore, which are what a failed boot does next
-     (ux-carpet 219). boot() closes this driver when migrating fails, and
-     closing terminates the worker, so the failure screen's question - is
-     there a copy to go back to? - and the restore itself were both sent to
-     a worker that was gone: the answer was always "no copy", and the safety
-     net ticket 04 built never caught anything on the web. Once this
-     driver's worker has gone they run on one of their own, pointed at the
-     same files and key without opening the live database, and closed again
-     before the answer is handed back so the next boot's worker can take
-     the pool. While it is still alive - the runner asks before migrating -
-     they go through it as before, since the pool is its. */
+  /* The copy check and the restore, which are what a failed boot does next. boot closes
+     this driver when migrating fails, and closing terminates the worker, so the failure
+     screen's question - is there a copy to go back to? - and the restore itself were both
+     sent to a worker that was gone: the answer was always "no copy", and the safety net
+     built never caught anything on the web. Once this driver's worker has gone they run on
+     one of their own, pointed at the same files and key without opening the live database,
+     and closed again before the answer is handed back so the next boot's worker can take
+     the pool. While it is still alive - the runner asks before migrating - they go through
+     it as before, since the pool is its. */
   async function recover<T>(op: string): Promise<T> {
     if (!connection.gone()) return post<T>(op);
     const own = connectWorker();
@@ -357,7 +340,13 @@ export function createEncryptedWebSqlite(databasePath: string, dataKey: Uint8Arr
         .then((result) => {
           if (typeof result === 'boolean') return result;
           if ('foundVersion' in result) throw new SchemaTooNewError(result.foundVersion, result.knownVersion);
-          if ('belowBaseline' in result) throw new JournalBelowBaselineError(result.belowBaseline, result.baselineVersion);
+          /* Above the baseline means between two steps; the worker sends both kinds in one
+             shape. */
+          if ('belowBaseline' in result) {
+            throw result.belowBaseline > result.baselineVersion
+              ? new JournalBetweenStepsError(result.belowBaseline, result.baselineVersion)
+              : new JournalBelowBaselineError(result.belowBaseline, result.baselineVersion);
+          }
           throw new InterruptedRestoreError();
         }) } : {})
   };

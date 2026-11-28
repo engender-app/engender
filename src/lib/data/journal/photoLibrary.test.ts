@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
+import { chipsFor, narrowTo } from '../photos/library.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { openJournal } from './journal.ts';
 
-/* journal.photoLibrary (phase 11 ticket 14): the one read behind "every
+/* journal.photoLibrary: the one read behind "every
    photo in your journal". Six tables, one dated list, each row saying
    where it came from.
 
@@ -40,7 +41,7 @@ async function oneOfEach(journal: ReturnType<typeof openJournal>) {
   const milestonePhoto = (await journal.milestones.getMilestones()).find((one) => one.id === milestoneId)!
     .photo!.id;
 
-  const hairPhoto = await journal.hairProgress.addPhoto(20002, shot('h'));
+  const progressPhoto = await journal.progressPhotos.addPhoto(20002, 'hair', shot('h'));
 
   const sessionId = await journal.hairRemoval.upsertSession({
     epochDay: 20003,
@@ -75,7 +76,7 @@ async function oneOfEach(journal: ReturnType<typeof openJournal>) {
     ids: {
       entryPhoto,
       milestonePhoto,
-      hairPhoto,
+      progressPhoto,
       removalPhoto,
       tryoutPhoto,
       procedurePhoto,
@@ -90,14 +91,14 @@ test('every photograph in the journal appears once, dated, with its source and o
 
   const library = await journal.photoLibrary.inJournal();
 
-  assert.deepEqual(library.map((p) => p.ownerId), [String(entryId), owners.milestoneId, ids.hairPhoto, owners.sessionId, owners.tryoutId, owners.procedureId, String(videoEntry)]);
+  assert.deepEqual(library.map((p) => p.ownerId), [String(entryId), owners.milestoneId, ids.progressPhoto, owners.sessionId, owners.tryoutId, owners.procedureId, String(videoEntry)]);
 
   assert.deepEqual(
     library.map((photo) => [photo.id, photo.source, photo.epochDay, photo.ownerName]),
     [
       [ids.entryPhoto, 'entry', 20000, null],
       [ids.milestonePhoto, 'milestone', 20001, 'First appointment'],
-      [ids.hairPhoto, 'hair', 20002, null],
+      [ids.progressPhoto, 'progress', 20002, null],
       [ids.removalPhoto, 'hairRemoval', 20003, null],
       [ids.tryoutPhoto, 'tryout', 20004, 'Wren'],
       [ids.procedurePhoto, 'procedure', 20005, 'Orchiectomy'],
@@ -112,7 +113,7 @@ test('a photograph carries the file its own table stores, and a video note its w
 
   const byId = new Map((await journal.photoLibrary.inJournal()).map((photo) => [photo.id, photo]));
 
-  assert.equal(byId.get(ids.hairPhoto)!.fileName, `${ids.hairPhoto}.jpg`);
+  assert.equal(byId.get(ids.progressPhoto)!.fileName, `${ids.progressPhoto}.jpg`);
   assert.equal(byId.get(ids.videoNote)!.fileName, `${ids.videoNote}.webm`);
 });
 
@@ -159,8 +160,8 @@ test('order is by day, then by source, then by the order a table was written in'
   const entryId = await journal.entries.upsertEntry({ epochDay: 20000, mood: 4 });
   const second = await journal.photos.attach({ entryId }, shot('b'));
   const first = await journal.photos.attach({ entryId }, shot('a'));
-  const hair = await journal.hairProgress.addPhoto(20000, shot('h'));
-  const older = await journal.hairProgress.addPhoto(19000, shot('o'));
+  const hair = await journal.progressPhotos.addPhoto(20000, 'hair', shot('h'));
+  const older = await journal.progressPhotos.addPhoto(19000, 'hair', shot('o'));
 
   assert.deepEqual(
     (await journal.photoLibrary.inJournal()).map((photo) => photo.id),
@@ -184,13 +185,23 @@ test('an empty journal yields an empty library, not a broken join', async () => 
   assert.deepEqual(await journal.photoLibrary.inJournal(), []);
 });
 
-test('starred reads the library shape, and only the photo table can be starred', async () => {
+test('starred reads entry and milestone photos, excluding unstarred and trashed rows', async () => {
   const { journal } = await journalWithFiles();
-  const { ids, owners } = await oneOfEach(journal);
+  const { ids, owners, entryId } = await oneOfEach(journal);
 
+  await journal.photos.setStarred(ids.entryPhoto, true);
   await journal.photos.setStarred(ids.milestonePhoto, true);
 
   assert.deepEqual(await journal.photoLibrary.starred(), [
+    {
+      id: ids.entryPhoto,
+      fileName: `${ids.entryPhoto}.jpg`,
+      epochDay: 20000,
+      source: 'entry',
+      ownerId: String(entryId),
+      ownerName: null,
+      starred: true
+    },
     {
       id: ids.milestonePhoto,
       fileName: `${ids.milestonePhoto}.jpg`,
@@ -201,6 +212,15 @@ test('starred reads the library shape, and only the photo table can be starred',
       starred: true
     }
   ]);
+  const library = await journal.photoLibrary.inJournal();
+  assert.equal(chipsFor(library).includes('starred'), true);
+  assert.deepEqual(narrowTo(library, 'starred').map((photo) => photo.id), [ids.entryPhoto, ids.milestonePhoto]);
+
+  await journal.entries.deleteEntry(entryId);
+  assert.deepEqual((await journal.photoLibrary.starred()).map((photo) => photo.id), [ids.milestonePhoto]);
+
+  await journal.photos.setStarred(ids.milestonePhoto, false);
+  assert.deepEqual(await journal.photoLibrary.starred(), []);
 });
 
 test('the library agrees with the tables it reads: nothing is dropped and nothing is doubled', async () => {
@@ -211,7 +231,7 @@ test('the library agrees with the tables it reads: nothing is dropped and nothin
     (await db.query<{ n: number }>(`SELECT COUNT(*) AS n FROM ${table}`))[0].n;
   const stored =
     (await counted('photo')) +
-    (await counted('hair_photo')) +
+    (await counted('progress_photo')) +
     (await counted('hair_removal_photo')) +
     (await counted('tryout_photo')) +
     (await counted('procedure_photo')) +
@@ -233,6 +253,6 @@ test('hasAny is false on an empty library, true with one photograph, and ignores
   await journal.entries.deleteEntry(entryId);
   assert.equal(await journal.photoLibrary.hasAny(), false, 'a trashed entry has no photographs in the library');
 
-  await journal.hairProgress.addPhoto(20002, shot('h'));
+  await journal.progressPhotos.addPhoto(20002, 'hair', shot('h'));
   assert.equal(await journal.photoLibrary.hasAny(), true, 'any of the six tables counts');
 });

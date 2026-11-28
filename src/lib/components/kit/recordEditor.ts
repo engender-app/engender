@@ -1,9 +1,8 @@
-/* The state machine every settings screen that logs a dated record
-   hand-rolled for itself (phase 5 UX ticket 39a): an editor draft, a
-   delete-confirm target, and the four moves between them. Framework-free
-   and unit-testable on its own - recordEditor.svelte.ts wraps it in
-   `$state` and is where the reactive object screens actually import lives.
-   Same split kit/barRow.ts already makes from BarRows.svelte. */
+/* The state machine every settings screen that logs a dated record hand-rolled for itself:
+   an editor draft, a delete-confirm target, and the four moves between them. Framework-free
+   and unit-testable on its own - recordEditor.svelte.ts wraps it in `$state` and is where
+   the reactive object screens actually import lives. Same split kit/barRow.ts already makes
+   from BarRows.svelte. */
 
 export type RecordEditorOptions<TRecord extends { id: string }, TDraft extends { id?: string } = TRecord> = {
   /** Build a fresh draft for "add new". Omit for a delete-only record type
@@ -19,14 +18,17 @@ export type RecordEditorOptions<TRecord extends { id: string }, TDraft extends {
       that does not parse). Anything else, including a void return, closes
       it. Omit for a delete-only record type. */
   upsert?: (draft: TDraft) => boolean | void | Promise<boolean | void>;
-  /** Delete a record by id. Omit for records that can only be hidden. */
-  remove?: (id: string) => void | Promise<void>;
-  /** What the toast says once a save lands (after-release ticket 06).
+  /** Delete a record by id. Omit for records that can only be hidden. A
+      journal record is deleted through `undoable` (stores/deleteUndo.ts) and
+      the handle returned, so the toast can offer Undo; a removal from a draft returns nothing. */
+  remove?: (id: string) => unknown;
+  /** What the toast says once a save lands.
       Omitted, it says "Saved."; `null` for a screen whose own result line or
       notice already says more. */
   saved?: (draft: TDraft) => string | null;
   /** The same for a delete: omitted, "Deleted."; `null` where the screen
-      says it itself. */
+      says it itself. A deletion that can be undone always says so, with
+      "Deleted." in place of a `null`. */
   deleted?: (record: TRecord) => string | null;
   /** Look up the current record behind a draft's id, for the delete-confirm
       sheet - the draft holds an edit-friendly shape (e.g. a date input

@@ -1,5 +1,7 @@
 import { expect, test, vi } from 'vitest';
 import { spawn } from 'node:child_process';
+import { EventEmitter } from 'node:events';
+import type { ChildProcess } from 'node:child_process';
 import { assertOwnedEmulator, startOwnedEmulator, stopOwnedEmulator } from './emulator.mjs';
 
 const absent = { status: 1, stdout: '' };
@@ -58,4 +60,27 @@ test('verified owned emulator boots and shutdown waits for its exit', async () =
   await stopOwnedEmulator(child, 'disposable', query);
   expect(query).toHaveBeenCalledWith(['emu', 'kill']);
   expect(child.signalCode).toBe('SIGTERM');
+});
+
+test.each([20_000, null])('shutdown permits native grace but refuses a stuck emulator: %s', async (delay) => {
+  vi.useFakeTimers();
+  try {
+    const child = Object.assign(new EventEmitter(), { pid: process.pid, exitCode: null as number | null, signalCode: null, kill: vi.fn() });
+    const query = (args: string[]) => {
+      if (args[0] === 'emu' && args[1] === 'kill' && delay !== null) setTimeout(() => {
+        child.exitCode = 0;
+        child.emit('close', 0);
+      }, delay);
+      return { status: 0, stdout: 'disposable\nOK' };
+    };
+    const stopped = stopOwnedEmulator(child as unknown as ChildProcess, 'disposable', query).then(() => null, error => error);
+    await vi.advanceTimersByTimeAsync(30_001);
+    if (delay !== null) {
+      expect(await stopped).toBeNull();
+      expect(child.kill).not.toHaveBeenCalledWith('SIGKILL');
+    } else {
+      expect(await stopped).toEqual(new Error('owned emulator did not shut down'));
+      expect(child.kill).toHaveBeenCalledWith('SIGKILL');
+    }
+  } finally { vi.useRealTimers(); }
 });

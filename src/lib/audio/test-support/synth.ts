@@ -148,7 +148,7 @@ export function clipped(signal: Signal, drive = 3): Signal {
   return { samples, sampleRate: signal.sampleRate };
 }
 
-export function normalize(samples: Float32Array, peak: number): Float32Array {
+function normalize(samples: Float32Array, peak: number): Float32Array {
   let max = 0;
   for (const sample of samples) max = Math.max(max, Math.abs(sample));
   if (max === 0) return samples;

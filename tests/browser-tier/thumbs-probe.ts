@@ -1,13 +1,13 @@
-/* Browser-tier check for the phase 5 audit's ticket 03, finding 04.
+/* Browser-tier check for the audit's, finding 04.
 
-   Two halves of that ticket can only be proved with a real layout and a
-   real IntersectionObserver: that a tile which has never come near the
-   screen reads nothing, and that scrolling the whole grid and back leaves
-   no blob URL behind. A Node-tier test has no viewport to be outside of.
+   Two halves of that ticket can only be proved with a real layout and a real
+   IntersectionObserver: that a tile which has never come near the screen reads nothing, and
+   that scrolling the whole grid and back leaves no blob URL behind. A Node-tier test has no
+   viewport to be outside of.
 
-   The store here is a fake that records what it was asked for - the point
-   is which names were read and in how many calls, which is a property of
-   the queue in photoFiles.ts and of the gate in PhotoThumb, not of OPFS. */
+   The store here is a fake that records what it was asked for - the point is which names
+   were read and in how many calls, which is a property of the queue in photoFiles.ts and of
+   the gate in PhotoThumb, not of OPFS. */
 
 import { mount } from 'svelte';
 import PhotoThumb from '../../src/lib/components/PhotoThumb.svelte';

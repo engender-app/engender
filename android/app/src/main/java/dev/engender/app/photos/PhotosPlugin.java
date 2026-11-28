@@ -47,7 +47,7 @@ public class PhotosPlugin extends Plugin {
         the number hold() checks a content provider's declared size against
         before a token for that file is ever handed out. */
     private static final long DOCUMENT_SIZE_CEILING = 25L * 1024 * 1024;
-    private static final long PHOTO_SIZE_CEILING = 32L * 1024 * 1024;
+    static final long PHOTO_SIZE_CEILING = 50L * 1024 * 1024;
 
     @Override
     public void load() {
@@ -55,12 +55,11 @@ public class PhotosPlugin extends Plugin {
     }
 
     /**
-     * One image, or several in one trip when the call asks for
-     * {@code multiple}, the way the web's file input picks them
-     * (after-release 27, audit L10-10). The photo picker takes at most
-     * {@link MediaStore#getPickImagesMaxLimit()} and refuses a larger
-     * {@code EXTRA_PICK_IMAGES_MAX}; the document picker on older Android
-     * takes {@code EXTRA_ALLOW_MULTIPLE}. pickedImages already reads
+     * One image, or several in one trip when the call asks for {@code
+     * multiple}, the way the web's file input picks them. The photo picker
+     * takes at most {@link MediaStore#getPickImagesMaxLimit()} and refuses a
+     * larger {@code EXTRA_PICK_IMAGES_MAX}; the document picker on older
+     * Android takes {@code EXTRA_ALLOW_MULTIPLE}. pickedImages already reads
      * either shape of result.
      */
     @PluginMethod
@@ -220,40 +219,22 @@ public class PhotosPlugin extends Plugin {
         that is 34 calls. */
     private static final int CHUNK_BYTES = 3 * 256 * 1024;
 
-    /**
-     * The floor's transport for a picked file's bytes: base64 over the
-     * bridge, for the WebView versions {@link PhotoPickChannel} cannot
-     * register on (ADR-0023). picker.ts calls this only where
-     * {@code window.androidPhotoPickChannel} does not exist, and loops on
-     * it until {@code done}.
+    /** Makes a token the page just read redeemable once more: the app locked
+        while the file was being read and the page keeps only the token. */
+    @PluginMethod
+    public void reopenPicked(PluginCall call) {
+        call.resolve(new JSObject().put("reopened", PickedFiles.reopen(call.getString("token"))));
+    }
+
+    /** Reads one base64 chunk per call when the WebView cannot register
+     * {@link PhotoPickChannel} (ADR-0023). picker.ts calls this fallback
+     * until {@code done}. A single JSON response for a 25 MB document
+     * could exceed the Java heap limit.
      *
-     * <p><b>A piece per call, because a plugin response is one string by
-     * construction</b> (phase 9 audit ticket 14). Handing back a whole file
-     * meant {@code toString("US-ASCII")} materialising the entire encoding
-     * as a Java String - two bytes a character, so 34 MB for a file at the
-     * 25 MB document ceiling - and on the API 35 emulator's 192 MB growth
-     * limit that allocation is refused and the pick is refused with it. A
-     * scan really does reach the ceiling, because a document is stored
-     * exactly as it arrived (ADR-0065), so this was the ceiling failing on
-     * every WebView below 105 rather than a corner of it.
-     *
-     * <p><b>Why this and not the other two routes.</b> Raising the WebView
-     * floor from 87 to 105 would delete this method, and ADR-0023 has
-     * already answered that shape: a capability the floor does not cover is
-     * a bug to fix while it is cheap, not a reason to raise the floor and
-     * lose the devices in between. Having native write the picked file into
-     * the app-private directory and hand JavaScript a name would work at the
-     * floor, and loses for the reason android-pick-channel.ts's header gives
-     * at length: files at rest are encrypted per file in JavaScript
-     * (ADR-0018/ADR-0020), so a name means a picked scan sitting on disk in
-     * plaintext until the encrypt finishes and past a crash. Chunking is the
-     * one of the three that changes no version condition and no security
-     * property - it is only slower, on the path that was already the slow
-     * one.
-     *
-     * <p>{@link PickedFiles#readChunk} owns the stream between calls and
-     * every way a read ends. {@code PhotoPickChannelTest} records what this
-     * costs against the channel.
+     * <p>Chunking keeps memory bounded while preserving JS-side file
+     * encryption (ADR-0018, ADR-0020). Documents retain their original bytes
+     * (ADR-0065). {@link PickedFiles#readChunk} owns the stream between calls.
+     * {@code PhotoPickChannelTest} measures both transports.
      */
     @PluginMethod
     public void readPickedChunk(PluginCall call) {
@@ -397,8 +378,8 @@ public class PhotosPlugin extends Plugin {
         }
     }
 
-    /** The reset's half of the photos (ux-carpet 214): the whole directory,
-        before the key they are sealed under is erased. */
+    /** The reset's half of the photos: the whole directory, before the key they are sealed
+        under is erased. */
     @PluginMethod
     public void removeDirectory(PluginCall call) {
         try {
@@ -450,7 +431,8 @@ public class PhotosPlugin extends Plugin {
         return -1;
     }
 
-    /** Every URI's declared size is checked before any of them is held, so
+    /** Every URI's declared size is checked before any of them is held, as
+        are the selection's count and total ({@link PickBudget}), so
         one oversized file in a multi-pick refuses the batch before a token
         for any of them exists - the same "none of them read" the web half
         gets from checking every File.size before the first arrayBuffer()
@@ -461,9 +443,13 @@ public class PhotosPlugin extends Plugin {
         ask for the bytes, and a static map holding an Activity would be a
         leak. */
     private List<String> hold(List<Uri> uris, long ceiling) throws IOException {
+        long total = 0;
         for (Uri uri : uris) {
-            if (querySize(uri) > ceiling) throw new IOException("too-large");
+            long size = querySize(uri);
+            if (size > ceiling) throw new IOException("too-large");
+            if (size > 0) total += size;
         }
+        PickBudget.check(uris.size(), total);
 
         Context context = getContext().getApplicationContext();
         List<PickedFiles.Source> sources = new ArrayList<>(uris.size());

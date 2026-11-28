@@ -15,7 +15,7 @@ function failStatement(driver: SqliteDriver, refused: RegExp): SqliteDriver {
   };
 }
 
-test.each(['adoption', 'procedure', 'snapshot', 'trash', 'restore', 'wear'] as const)(
+test.each(['adoption', 'procedure', 'trash', 'restore', 'wear'] as const)(
   '%s rolls back every write when its final statement fails', async (operation) => {
     const db = await migratedDb();
     const files = fakeFileStore();
@@ -26,7 +26,7 @@ test.each(['adoption', 'procedure', 'snapshot', 'trash', 'restore', 'wear'] as c
     if (operation === 'adoption') {
       const id = await journal.tryouts.upsertTryout({ kind: 'name', label: 'Robin', startEpochDay: 20000, endEpochDay: null });
       await journal.feltSense.add({ tryoutId: id }, { epochDay: 20001, mood: 4, note: 'comfortable' });
-      refused = /INSERT INTO felt_sense/;
+      refused = /INSERT INTO milestone/;
       act = (target) => target.tryouts.adoptTryout(id, { endEpochDay: 20002, createMilestone: true });
     } else if (operation === 'procedure') {
       const id = await journal.procedures.upsertProcedure({ name: 'consultation' });
@@ -35,10 +35,6 @@ test.each(['adoption', 'procedure', 'snapshot', 'trash', 'restore', 'wear'] as c
       await journal.documents.setDocumentTarget(document, { kind: 'procedure', id });
       refused = /DELETE FROM checklist WHERE/;
       act = (target) => target.procedures.deleteProcedure(id);
-    } else if (operation === 'snapshot') {
-      const id = await journal.doubtJournal.saveSnapshot(20000, [{ epochDay: 19999, mood: 4, note: 'good day' }]);
-      refused = /DELETE FROM doubt_snapshot WHERE/;
-      act = (target) => target.doubtJournal.deleteSnapshot(id);
     } else if (operation === 'wear') {
       refused = /INSERT INTO reminder/;
       act = (target) => target.wearSessions.upsertSession({ kind: 'binder', startTimestamp: Date.now(), durationMs: null, reminderHoursAfterStart: 2, reminderTitle: 'Pause' });

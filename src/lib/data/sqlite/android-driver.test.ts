@@ -1,8 +1,8 @@
-/* The Android driver's half of pipelining (ux-carpet 200, ADR-0089): every
-   call crosses the bridge the moment it is made, numbered in call order, and
-   the plugin's CallSequencer (CallSequencerTest.java) runs them in that
-   order. The bridge here is a fake that answers nothing until told to, so a
-   call that waited for the one before it would never be sent at all. */
+/* The Android driver's half of pipelining (ADR-0089): every call crosses the bridge the
+   moment it is made, numbered in call order, and the plugin's CallSequencer
+   (CallSequencerTest.java) runs them in that order. The bridge here is a fake that answers
+   nothing until told to, so a call that waited for the one before it would never be sent at
+   all. */
 
 import { beforeEach, expect, test, vi } from 'vitest';
 
@@ -113,9 +113,9 @@ test('a statement that fails on its own reports its own error', async () => {
 });
 
 test('the two calls made with no driver open carry no number', async () => {
-  const { deleteAndroidDatabase, androidJournalIsPlaintext } = await import('./android-driver.ts');
+  const { deleteAndroidDatabase, inspectAndroidJournal } = await import('./android-driver.ts');
   void deleteAndroidDatabase('journal');
-  void androidJournalIsPlaintext('journal');
+  void inspectAndroidJournal('journal');
   await flush();
 
   expect(sent.map((call) => [call.method, call.options.seq])).toEqual([
@@ -124,13 +124,48 @@ test('the two calls made with no driver open carry no number', async () => {
   ]);
 });
 
-/* ux-carpet 210: the start-over wipe runs from a locked gate, in a process
-   where nothing has opened the journal, so the plugin has no open of its own
-   to learn the file from. It has to be told. */
+/* The start-over wipe runs from a locked gate, in a process where nothing has opened the
+   journal, so the plugin has no open of its own to learn the file from. It has to be told. */
 test('the start-over wipe names the database it deletes', async () => {
   const { deleteAndroidDatabase } = await import('./android-driver.ts');
   void deleteAndroidDatabase('engender.sqlite3');
   await flush();
 
   expect(sent.find((call) => call.method === 'deleteDatabase')?.options).toEqual({ name: 'engender.sqlite3' });
+});
+
+/* The failure screen's file operations come after boot() closed the
+   driver, and the plugin refuses a closed session. They go on a second
+   session, sent only once the close has answered, since the plugin orders
+   calls within a session and not across two. */
+test('a file operation made after the close waits for it, then goes on a session of its own', async () => {
+  const { driver, fileOps } = createAndroidSqlite('journal');
+  const closed = driver.close();
+  const check = fileOps.preMigrationCopyIsUsable();
+  await flush();
+  expect(sent.map((call) => call.method)).toEqual(['open', 'close']);
+
+  sent[0].answer();
+  sent[1].answer();
+  await closed;
+  await flush();
+  const asked = sent[2];
+  expect(asked.method).toBe('preMigrationCopyIsUsable');
+  expect(asked.options.session).not.toBe(sent[0].options.session);
+  expect(asked.options.seq).toBe(0);
+
+  asked.answer({ usable: true });
+  await expect(check).resolves.toBe(true);
+
+  void fileOps.restorePreMigrationCopy();
+  await flush();
+  expect(sent[3].options).toMatchObject({ session: asked.options.session, seq: 1 });
+});
+
+test('storage survey reports retained ciphertext without opening a connection', async () => {
+  const { inspectAndroidJournal } = await import('./android-driver');
+  const result = inspectAndroidJournal('journal');
+  expect(sent.map(call => call.method)).toEqual(['isPlaintextDatabase']);
+  sent[0].answer({ exists: true, plaintext: false });
+  await expect(result).resolves.toEqual({ exists: true, plaintext: false });
 });

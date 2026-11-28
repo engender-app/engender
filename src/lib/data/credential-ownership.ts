@@ -1,9 +1,19 @@
 import { isAndroid } from '../platform';
+import { UnlockCancelledError } from '../lock/unlock-attempt';
 
 // Keep the setup lock name so existing setup clients share this boundary.
 const LOCK_NAME = 'engender-journal-initialization';
-let nativeTurn: Promise<unknown> = Promise.resolve();
+let nativeTurn: Promise<void> = Promise.resolve();
 let nativePending = 0;
+let generation = 0;
+
+/** Reset revokes outstanding prompts before waiting for credential ownership. */
+export function invalidateCredentialApprovals(): void { generation++; }
+
+export function currentCredentials(): () => void {
+  const mine = generation;
+  return () => { if (mine !== generation) throw new UnlockCancelledError(); };
+}
 
 export class CredentialsBusyError extends Error {
   constructor() {
@@ -17,7 +27,8 @@ async function ownCredentials<T>(work: () => Promise<T>, wait: boolean): Promise
     if (!wait && nativePending > 0) return Promise.reject(new CredentialsBusyError());
     nativePending++;
     const pending = nativeTurn.then(work).finally(() => { nativePending--; });
-    nativeTurn = pending.catch(() => {});
+    // The queue keeps completion only, never an authentication result or key.
+    nativeTurn = pending.then(() => {}, () => {});
     return pending;
   }
   return await navigator.locks.request(LOCK_NAME, { ifAvailable: !wait }, (lock) => {
@@ -31,9 +42,18 @@ export function initializeCredentials<T>(work: () => Promise<T>): Promise<T> {
   return ownCredentials(work, true);
 }
 
+/** Authentication waits for the current owner, then reads its committed state.
+    PIN unlock may rebind an older wrap, so it owns that whole operation too. */
+export function authenticateCredentials<T>(work: () => Promise<T>): Promise<T> {
+  return ownCredentials(work, true);
+}
+
 /** Own the complete mutation, including old-binding cleanup. Reject overlap
     rather than queue a change captured by a page that may lock or reset.
     Low-level wrap and binding helpers run inside this boundary, never nest it. */
 export async function changeCredentials<T>(work: () => Promise<T>): Promise<T> {
-  return ownCredentials(work, false);
+  return ownCredentials(async () => {
+    try { return await work(); }
+    finally { invalidateCredentialApprovals(); }
+  }, false);
 }

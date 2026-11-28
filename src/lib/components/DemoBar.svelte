@@ -17,7 +17,6 @@
     ['/day/today', 'Day detail (today)'],
     ['/search', 'Search'],
     ['/stats', 'Stats'],
-    ['/wrapped/range', 'Wrapped range'],
     ['/settings', 'Settings'],
     ['/settings/tags', 'Manage tags'],
     ['/settings/reminders', 'Reminders'],
@@ -25,7 +24,8 @@
     ['/transition/milestones', 'New milestone'],
     ['/settings/dimension', 'Custom dimension'],
     ['/settings/export', 'Export & import'],
-    ['/media/photos', 'Progress photos'],
+    ['/media/photos', 'Photos'],
+    ['/transition/progress-photos', 'Progress photos'],
     ['/care/labs', 'Lab results'],
   ];
 
@@ -33,25 +33,14 @@
     prefs.theme = t;
   }
 
-  /* One state jump at a time (ticket 135). A jump is a journal clear and a
-     reseed through the worker, a second or more of writes, and the seed
-     writes presentations before the entries that name them. A second jump
-     starting inside the first deletes those presentations between the two
-     steps, `assertKnownPresentation` throws, and what is left is a journal
-     missing whatever the persona had not written yet - with nothing on
-     screen to say so.
+  /* Serialize demo jumps. Each clears and reseeds the journal.
+     Interleaving can delete presentations before entries use them
+     and leave a partial seed.
 
-     `data-demo-busy` on the bar is the signal that means finished, and the
-     reason it has to exist: `[data-home-hello]` is already on screen when
-     the button is clicked, and `/more` is reached by the goto that runs
-     after the seed, so a harness waiting on either was waiting on
-     something that was already true. The disabled state is the same answer
-     for a person with a mouse.
-
-     The two jumps that `goto` hold it until the navigation lands, so the
-     screen a harness reads is the one the jump meant. The five-weeks jump
-     reloads instead, and `location.assign` returns before it does, so its
-     window ends at the call and the document goes away a moment later. */
+     data-demo-busy and disabled controls cover writes and awaited
+     navigation. A harness must wait for busy to clear because target
+     markup can already exist. The five-week jump ends at
+     location.assign, which returns before the reload. */
   let busy = $state(false);
   async function stateJump(run: () => Promise<void>) {
     if (busy) return;
@@ -104,10 +93,10 @@
     return () => document.body.classList.remove('demo-phone-frame');
   });
 
-  let failMisgendered = $state(false);
+  let failWear = $state(false);
   $effect(() => {
     const root = document.documentElement;
-    if (failMisgendered) root.dataset.demoFail = 'tally-misgendered';
+    if (failWear) root.dataset.demoFail = 'wear';
     else delete root.dataset.demoFail;
     return () => delete root.dataset.demoFail;
   });
@@ -150,9 +139,9 @@
   <div class="demo-group" role="group" aria-label="Quick add">
     <button
       class="demo-btn"
-      aria-pressed={failMisgendered}
-      class:is-active={failMisgendered}
-      onclick={() => (failMisgendered = !failMisgendered)}>Fail misgendered</button
+      aria-pressed={failWear}
+      class:is-active={failWear}
+      onclick={() => (failWear = !failWear)}>Fail wear</button
     >
   </div>
   <div class="demo-group" role="group" aria-label="Safe area">
@@ -164,7 +153,7 @@
     >
   </div>
   <!-- A handle like its two neighbours below, so a harness grips this the
-       way it grips them rather than by matching the label (ticket 135). -->
+       way it grips them rather than by matching the label. -->
   <button
     class="demo-btn"
     data-reset-demo
@@ -175,10 +164,10 @@
         await goto('/');
       })}>Reset demo state</button
   >
-  <!-- Ticket 36: the persona alone leaves most of the More hub empty, which
-       is the state "Reset demo state" above still gives on purpose - this is
-       the second jump, layering every other area on top for a pass that
-       needs real content everywhere rather than the designed empty states. -->
+  <!-- The persona alone leaves most of the More hub empty, which is the state "Reset demo
+       state" above still gives on purpose - this is the second jump, layering every other
+       area on top for a pass that needs real content everywhere rather than the designed
+       empty states. -->
   <button
     class="demo-btn"
     data-fill-every-feature
@@ -189,20 +178,17 @@
         await goto('/more');
       })}>Fill every feature</button
   >
-  <!-- Ticket 05: the one state neither jump above can produce, because both
-       stop on today and the return surface only exists after three weeks of
-       nothing. Lands on Home rather than on /coming-back, because being
-       taken there is the feature - the shell's own gate is what a reviewer
-       is here to see.
+  <!-- The one state neither jump above can produce, because both stop on today and the
+       return surface only exists after three weeks of nothing. Lands on Home rather than on
+       /coming-back, because being taken there is the feature - the shell's own gate is what
+       a reviewer is here to see.
 
-       A reload rather than the `goto` its two neighbours use, and the reason
-       is the gate rather than the seed. It runs when somebody arrives at
-       Home, so replacing the journal underneath a page that is *already* on
-       Home leaves it with nothing to react to; the other two jumps get away
-       with `goto` because what they feed is live queries, which their own
-       writes invalidate. A state jump that wants a boot is also the honest
-       shape here: this one is pretending the app was opened after five weeks
-       away. -->
+       A reload rather than the `goto` its two neighbours use, and the reason is the gate
+       rather than the seed. It runs when somebody arrives at Home, so replacing the journal
+       underneath a page that is *already* on Home leaves it with nothing to react to; the
+       other two jumps get away with `goto` because what they feed is live queries, which
+       their own writes invalidate. A state jump that wants a boot is also the honest shape
+       here: this one is pretending the app was opened after five weeks away. -->
   <button
     class="demo-btn"
     data-fill-coming-back
@@ -227,8 +213,7 @@
 
 <style>
   /* Lived in styles/app.css, which ships. Here it belongs to the component,
-     so a production build that drops DemoBar drops its styling too (ticket
-     05) - verify-build.mjs greps the emitted CSS as well as the JavaScript.
+     so a production build that drops DemoBar drops its styling too - verify-build.mjs greps the emitted CSS as well as the JavaScript.
      Every selector reaches outside this component, hence :global(). */
   :global(body.has-demo-bar) { display: flex; flex-direction: column; height: 100dvh; }
   :global(body.has-demo-bar .app-viewport) { flex: 1; min-height: 0; }
@@ -251,7 +236,7 @@
   }
   :global(.demo-btn:hover) { background: light-dark(#e8e4df, #45403a); }
   /* A state jump is a second or more of writes and nothing else may start
-     one while it runs (ticket 135), so say so rather than swallowing the
+     one while it runs, so say so rather than swallowing the
      click in silence. */
   :global(.demo-btn:disabled), :global(.demo-jump select:disabled) { opacity: 0.45; cursor: progress; }
   :global(.demo-btn:disabled:hover) { background: none; }

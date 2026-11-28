@@ -1,11 +1,9 @@
-/* What the glance table has to be true of for the row to read as five faces
-   rather than as one mechanism running five times (phase 9 carpet ticket 01,
-   Alicja: "make sure that each animation is delayed against others, so that
-   they dont all move exactly the same at the same time").
+/* What the glance table has to be true of for the row to read as five faces rather than as
+   one mechanism running five times.
 
-   Every check here is about the row as a whole. Any one face's numbers are a
-   designer's choice and nothing holds them; what is held is that no two faces
-   can end up doing the same thing at the same moment. */
+   Every check here is about the row as a whole. Any one face's numbers are a designer's
+   choice and nothing holds them; what is held is that no two faces can end up doing the
+   same thing at the same moment. */
 
 import { describe, expect, it } from 'vitest';
 import { BLINKS_PER_GLANCE, MOOD_GLANCE, blinkCycle } from './moodGlance';

@@ -1,17 +1,14 @@
-/* The debrief offer's descriptive list (phase 8 features ticket 19, What to
-   Build #2): labs and side effects since the last appointment, merged into
-   one chronological list of plain facts - no severity word, no post-dose
-   timing context, nothing beyond what the range's own two reads already
-   produce (readLabResultsInRange in clinicianSummary.ts, sideEffects.ts's
-   own getSideEffectsInRange - the same pair the appointment prep screen
-   already reads for its "since last time" cards). A descriptive list, not
-   an interpretation (ticket 19, Out of Scope), so a severity stays the raw
-   number out of 5 rather than a word like "moderate".
+/* The debrief offer's descriptive list: labs and side effects since the last appointment,
+   merged into one chronological list of plain facts - no severity word, no post-dose timing
+   context, nothing beyond what the range's own two reads already produce
+   (readLabResultsInRange in clinicianSummary.ts, sideEffects.ts's own getSideEffectsInRange
+   - the same pair the appointment prep screen already reads for its "since last time"
+   cards). A descriptive list, not an interpretation, so a severity stays the raw number out
+   of 5 rather than a word like "moderate".
 
-   Node-tier safe: no paraglide (ADR-0016). The date on each line and the
-   line-joining happen in EntryEditor.svelte, which is where the wording
-   and the locale-aware formatting already live for everything else this
-   module's caller writes into a note. */
+   Node-tier safe: no paraglide. The date on each line and the line-joining happen in
+   EntryEditor.svelte, which is where the wording and the locale-aware formatting already
+   live for everything else this module's caller writes into a note. */
 
 import type { ChecklistItem, LabResult, SideEffect } from '../types';
 
@@ -20,8 +17,7 @@ interface DebriefListItem {
   text: string;
 }
 
-/** One prep question and what got jotted under it in the room (phase 8
-    features ticket 60). Not a record: it exists between the in-the-room
+/** One prep question and what got jotted under it in the room. Not a record: it exists between the in-the-room
     screen and the debrief's pre-fill and nowhere else. */
 export interface DebriefAnswer {
   question: string;
@@ -44,7 +40,7 @@ export function debriefListItems(labs: LabResult[], sideEffects: SideEffect[]): 
 }
 
 /** The questions that got an answer, in the prep list's own order rather
-    than the order somebody moved through them (ticket 60).
+    than the order somebody moved through them.
 
     Blank is not an answer. Advancing past a question without typing has to
     leave nothing behind - the screen exists to be readable while somebody

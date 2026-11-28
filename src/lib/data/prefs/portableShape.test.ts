@@ -3,13 +3,10 @@ import type { PortablePreferences } from '../archive/payload';
 import { PORTABLE_KEYS, PREFERENCE_DEFAULTS } from './catalogue';
 import { portablePreferencePatch, portableValueForKey } from './portableShape';
 
-/* portablePreferencePatch is the whole of what applyPortablePreferences
-   (store.svelte.ts) does with an archive: it applies exactly the keys the
-   patch names and touches nothing else, so a key the patch omits is a key
-   this device's own value survives untouched. store.svelte.ts is a
-   `.svelte.ts` file and cannot be node-tested directly (svelte-ts-reactive-
-   wrappers-cannot-be-node-tested), so this is the real boundary a test can
-   reach - as close to "import this archive" as a node test gets. */
+/* Archive Replace writes exactly the validated keys in this patch. A key
+   omitted here keeps the destination value. These tests exercise malformed
+   portable input; restore.preferences-atomic.test.ts covers its real SQLite
+   transaction with the journal rows. */
 
 describe('importing the archive named in the audit (S6)', () => {
   test('keeps the device theme, palette and check-in time', () => {
@@ -42,7 +39,29 @@ describe('importing the archive named in the audit (S6)', () => {
   test('an archived cycle choice survives restore, while an older archive returns to automatic', () => {
     expect(portablePreferencePatch({ cycleTrackingChoice: false }).cycleTrackingChoice).toBe(false);
     expect(portablePreferencePatch({ cycleTrackingChoice: true }).cycleTrackingChoice).toBe(true);
-    expect(portablePreferencePatch({ cycleTrackingEnabled: false }).cycleTrackingChoice).toBe(null);
+    expect(portablePreferencePatch({ cycleTrackingEnabled: false } as never).cycleTrackingChoice).toBe(null);
+  });
+
+  test('an older archive with the legacy cycle opt-in on restores as an explicit yes', () => {
+    expect(portablePreferencePatch({ cycleTrackingEnabled: true } as never).cycleTrackingChoice).toBe(true);
+    expect(portablePreferencePatch({ cycleTrackingEnabled: true, cycleTrackingChoice: false } as never).cycleTrackingChoice)
+      .toBe(false);
+  });
+
+  test('the legacy opt-in itself is no longer a key the patch carries', () => {
+    expect(portablePreferencePatch({ cycleTrackingEnabled: true } as never)).not.toHaveProperty('cycleTrackingEnabled');
+  });
+});
+
+describe('the surface overrides map', () => {
+  test('a map of booleans is accepted', () => {
+    expect(portableValueForKey('surfaceOverrides', { 'wear-timer': false })).toEqual({ 'wear-timer': false });
+  });
+
+  test('anything else is rejected, so the device keeps its own', () => {
+    for (const bad of [null, [], 'off', { 'wear-timer': 'no' }, { a: null }]) {
+      expect(portableValueForKey('surfaceOverrides', bad), JSON.stringify(bad)).toBeUndefined();
+    }
   });
 });
 
@@ -66,8 +85,8 @@ describe('a hostile or corrupted value, key by key', () => {
 
   test('a type-confused value is rejected for a boolean, a number and an array key', () => {
     expect(portableValueForKey('checkInEnabled', 'true')).toBeUndefined();
-    expect(portableValueForKey('hairAnchorEpochDay', 'soon')).toBeUndefined();
-    expect(portableValueForKey('hairAnchorEpochDay', Number.NaN)).toBeUndefined();
+    expect(portableValueForKey('hrtStartEpochDay', 'soon')).toBeUndefined();
+    expect(portableValueForKey('hrtStartEpochDay', Number.NaN)).toBeUndefined();
     expect(portableValueForKey('activeScales', 'euphoria_dysphoria')).toBeUndefined();
   });
 
@@ -81,6 +100,20 @@ describe('a hostile or corrupted value, key by key', () => {
     expect(portableValueForKey('preferredLabUnits', { estradiol: 'pg/mL', testosterone: 'made-up' })).toEqual({
       estradiol: 'pg/mL'
     });
+  });
+});
+
+describe('the acknowledgements', () => {
+  test('an object is accepted and sanitised field by field', () => {
+    expect(
+      portableValueForKey('acknowledgements', { snoozes: { a: 1 }, readLetterIds: ['x'], hasEntries: 'maybe' })
+    ).toEqual({ snoozes: { a: 1 }, readLetterIds: [], greetedLetterIds: [], hasEntries: null });
+  });
+
+  test('anything that is not an object is rejected, so the device keeps its own', () => {
+    expect(portableValueForKey('acknowledgements', null)).toBeUndefined();
+    expect(portableValueForKey('acknowledgements', ['x'])).toBeUndefined();
+    expect(portableValueForKey('acknowledgements', 'x')).toBeUndefined();
   });
 });
 
@@ -100,14 +133,13 @@ describe('a valid archive', () => {
     expect(portablePreferencePatch({ palette: 'polish' })).toEqual({ palette: 'polish', cycleTrackingChoice: null });
     expect(portableValueForKey('moodPreset', 'plum')).toBe('plum');
     expect(portableValueForKey('checkInTime', '07:05')).toBe('07:05');
-    expect(portableValueForKey('measurementUnit', 'in')).toBe('in');
     expect(portableValueForKey('metricKind', 'dimension')).toBe('dimension');
   });
 
   test('a null answer stays null on every nullable key', () => {
     expect(portableValueForKey('metricDimension', null)).toBeNull();
     expect(portableValueForKey('journeyAnchorMilestoneId', null)).toBeNull();
-    expect(portableValueForKey('hairAnchorEpochDay', null)).toBeNull();
+    expect(portableValueForKey('hrtStartEpochDay', null)).toBeNull();
     expect(portableValueForKey('pinnedRows', null)).toBeNull();
   });
 });

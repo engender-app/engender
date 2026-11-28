@@ -1,19 +1,7 @@
-/* Leaving changed work asks first (CONTEXT: "Draft", interaction-language
-   spec rule on deliberate discard).
-
-   Four screens used to carry their own copy of the same `beforeNavigate`
-   sequence: cancel, keep the departure, replay it on Discard with
-   `history.go(delta)` or `goto`. The copies drifted. Only the tryouts copy
-   learned (2acb6196) that a replay can fail, and that a guard which
-   switches itself off before replaying stays off for good when it does;
-   the other three still fired the replay and forgot it. And the screens
-   built on detailDraft had no copy at all, so a reminder or a document
-   rename vanished on Back.
-
-   This is the decision, rune-free so it can be node-tested against a fake
-   navigation the way readGate.ts and recordEditor.ts are.
-   leaveGuard.svelte.ts registers it with SvelteKit and DiscardSheet.svelte
-   is the question it asks. */
+/* Cancel navigation away from a dirty draft and keep it for a confirmed
+   discard. Replay through history.go or goto and re-arm the guard if replay
+   fails. leaveGuard.svelte.ts wires SvelteKit and DiscardSheet asks the
+   question. This module stays runnable in Node. */
 
 /** The part of SvelteKit's `BeforeNavigate` the guard reads. */
 export type Departure = {
@@ -42,6 +30,13 @@ export type LeaveGuardOptions = {
       departure that needs the draft to find its way - a delete reading the
       record off an open editor - still has it. */
   onDiscard?: () => void;
+  /** A departure the screen takes as its own move rather than as leaving:
+      the browser's Back on a stepped editor's second step goes one step
+      back. Answering true cancels the departure and asks nothing. */
+  ownsDeparture?: (departure: Departure) => boolean;
+  /** A navigation that keeps this screen and its draft where they are: a query that opens a
+      sheet over it. Answering true lets it through and asks nothing. */
+  staysOnScreen?: (departure: Departure) => boolean;
 };
 
 export type LeaveGuardState = {
@@ -86,6 +81,11 @@ export function leaveGuardCore(
         replaying = false;
         return;
       }
+      if (options.staysOnScreen?.(departure)) return;
+      if (options.ownsDeparture?.(departure)) {
+        departure.cancel();
+        return;
+      }
       const saving = busy();
       if (!saving && !options.holding()) return;
       departure.cancel();
@@ -117,5 +117,3 @@ export function leaveGuardCore(
     }
   };
 }
-
-export type LeaveGuardCore = ReturnType<typeof leaveGuardCore>;

@@ -3,7 +3,7 @@
    as a label (see roles.ts).
 
    The palette itself is authored by hand and checked by
-   tests/palette-contrast.test.ts, which reads these same functions, so the
+   tests/node/ui/palette-contrast.test.ts, which reads these same functions, so the
    arithmetic that decides a colour at runtime and the arithmetic that
    guards the stylesheet are one implementation rather than two that agree
    until they do not.
@@ -19,8 +19,7 @@ interface Rgb {
   b: number;
 }
 
-/* toRgb stays exported only for kit-roles.test.ts, which cross-checks
-   against it (AU-09 test-only review). */
+/* toRgb stays exported only for kit-roles.test.ts, which cross-checks against it. */
 export function toRgb(hex: string): Rgb {
   const raw = hex.trim().replace('#', '');
   return {
@@ -40,9 +39,8 @@ function linearToSrgb(c: number): number {
   return clamped <= 0.0031308 ? clamped * 12.92 : 1.055 * clamped ** (1 / 2.4) - 0.055;
 }
 
-/* Not exported: palette-contrast.test.ts read it directly until ticket 27
-   put mood's band behind `contrast` and the polar readings below, and
-   nothing else ever wanted a raw luminance. */
+/* Not exported: palette-contrast.test.ts read it directly put mood's band behind `contrast`
+   and the polar readings below, and nothing else ever wanted a raw luminance. */
 function luminance(hex: string): number {
   const { r, g, b } = toRgb(hex);
   return 0.2126 * srgbToLinear(r) + 0.7152 * srgbToLinear(g) + 0.0722 * srgbToLinear(b);
@@ -127,8 +125,8 @@ export function chromaOf(hex: string): number {
 }
 
 /** Which hue a colour is, 0 to 360 in OKLab. Exported for
-    tests/palette-contrast.test.ts, which holds mood's two-hue ramp to a
-    minimum travel and to one direction round the wheel (ADR-0077): "two
+    tests/node/ui/palette-contrast.test.ts, which holds mood's two-hue ramp to a
+    minimum travel and to one direction round the wheel: "two
     colours, not one tinted" is a claim about hue, so it is measured as one
     rather than eyeballed off a render. */
 export function hueOf(hex: string): number {

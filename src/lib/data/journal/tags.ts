@@ -11,9 +11,11 @@ export interface TagsArea {
   getTagGroups(): Promise<TagGroup[]>;
   addGroup(name: string): Promise<TagGroup>;
   setGroupEnabled(key: string, enabled: boolean): Promise<void>;
-  addTag(groupKey: string, label: string): Promise<Tag>;
+  addTag(groupKey: string, label: string, icon?: string | null): Promise<Tag>;
   renameTag(id: string, label: string): Promise<void>;
   setTagHidden(id: string, hidden: boolean): Promise<void>;
+  /** Update the supplied fields of an own tag. A null icon clears it. */
+  editOwnTag(id: string, changes: { label?: string; icon?: string | null }): Promise<void>;
   /** Customs only; built-ins hide. Removes the tag's entry links too.
       Idempotent: deleting an already-gone tag is success. */
   deleteTag(id: string): Promise<void>;
@@ -30,6 +32,7 @@ type TagRow = {
   key: string | null;
   label: string;
   hidden: number;
+  icon: string | null;
   group_id: number;
 };
 
@@ -37,7 +40,8 @@ const toTag = (row: TagRow): Tag => ({
   id: domainIdOf(row, 'tag'),
   label: row.label,
   builtIn: row.key !== null,
-  hidden: bool(row.hidden)
+  hidden: bool(row.hidden),
+  ...(row.icon !== null ? { icon: row.icon } : {})
 });
 
 export function makeTagsArea(driver: SqliteDriver): TagsArea {
@@ -46,7 +50,7 @@ export function makeTagsArea(driver: SqliteDriver): TagsArea {
      NULL, so exactly the addressed row matches either way. */
   const byDomainId = async (id: string): Promise<TagRow | undefined> => {
     const rows = await driver.query<TagRow>(
-      'SELECT id, uuid, key, label, hidden, group_id FROM tag WHERE key = ? OR uuid = ?',
+      'SELECT id, uuid, key, label, hidden, icon, group_id FROM tag WHERE key = ? OR uuid = ?',
       [id, id]
     );
     return rows[0];
@@ -64,7 +68,7 @@ export function makeTagsArea(driver: SqliteDriver): TagsArea {
         'SELECT id, uuid, key, name, enabled FROM tag_group ORDER BY order_index, id'
       );
       const tags = await driver.query<TagRow>(
-        'SELECT id, uuid, key, label, hidden, group_id FROM tag ORDER BY order_index, id'
+        'SELECT id, uuid, key, label, hidden, icon, group_id FROM tag ORDER BY order_index, id'
       );
       return groups.map((g) => ({
         key: g.key,
@@ -98,15 +102,24 @@ export function makeTagsArea(driver: SqliteDriver): TagsArea {
       assertChanged(result, `tag group: ${key}`);
     },
 
-    async addTag(groupKey, label) {
+    async addTag(groupKey, label, icon = null) {
       const groupId = await groupIdByKey(groupKey);
       const uuid = mintUuid();
       await driver.run(
-        `INSERT INTO tag (uuid, group_id, label, order_index, updated_at)
-         VALUES (?, ?, ?, (SELECT COALESCE(MAX(order_index), -1) + 1 FROM tag WHERE group_id = ?), ?)`,
-        [uuid, groupId, label, groupId, now()]
+        `INSERT INTO tag (uuid, group_id, label, icon, order_index, updated_at)
+         VALUES (?, ?, ?, ?, (SELECT COALESCE(MAX(order_index), -1) + 1 FROM tag WHERE group_id = ?), ?)`,
+        [uuid, groupId, label, icon, groupId, now()]
       );
-      return { id: uuid, label, builtIn: false, hidden: false };
+      return { id: uuid, label, builtIn: false, hidden: false, ...(icon !== null ? { icon } : {}) };
+    },
+
+    async editOwnTag(id, { label, icon }) {
+      const result = await driver.run(
+        `UPDATE tag SET label = COALESCE(?, label), icon = CASE WHEN ? THEN ? ELSE icon END, updated_at = ?
+         WHERE uuid = ? AND key IS NULL`,
+        [label ?? null, icon === undefined ? 0 : 1, icon ?? null, now(), id]
+      );
+      assertChanged(result, `own tag: ${id}`);
     },
 
     async renameTag(id, label) {
@@ -142,7 +155,7 @@ export function makeTagsArea(driver: SqliteDriver): TagsArea {
     async reorder(groupKey, orderedIds) {
       const groupId = await groupIdByKey(groupKey);
       const rows = await driver.query<TagRow>(
-        'SELECT id, uuid, key, label, hidden, group_id FROM tag WHERE group_id = ?',
+        'SELECT id, uuid, key, label, hidden, icon, group_id FROM tag WHERE group_id = ?',
         [groupId]
       );
       const current = new Set(rows.map((r) => domainIdOf(r, 'tag')));

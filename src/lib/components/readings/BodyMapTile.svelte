@@ -1,10 +1,8 @@
 <script lang="ts">
-  /* The body map's tile on the Look back door (phase 11 ticket 07). The
-     screen is `/body-map`, which took the span in redesign ticket 05; this
-     is only the way in, with the region marked most often in the span as
-     its figure and where that region's reading mostly sat under it. A
-     tile only: the screen already exists and this component draws nothing
-     of it. */
+  /* The body map's tile on the Look back door. The screen is `/body-map`, which took the
+     span; this is only the way in, with the region marked most often in the span as its
+     figure and where that region's reading mostly sat under it. A tile only: the screen
+     already exists and this component draws nothing of it. */
   import { fmtNumber } from '$lib/data/dates';
   import { m } from '$lib/paraglide/messages';
   import { liveList } from '$lib/data/live/journal.svelte';
@@ -27,11 +25,10 @@
     region ? (vocabulary.visibleBodyRegions.find((r) => r.id === region.region)?.name ?? region.region) : ''
   );
   /* Which way the region mostly sat, and how strongly: the figure's own
-     line. A region that went both ways evenly has no side, and says only
-     how often it was marked. */
+     line. A region that went both ways evenly has no side, and has no
+     line: a count of entries said nothing the name needed. */
   let note = $derived.by(() => {
-    if (!region) return '';
-    if (region.side === null || region.value === null) return m.n_entries({ n: region.count });
+    if (!region || region.side === null || region.value === null) return undefined;
     const axis = region.side === 'dysphoria' ? m.body_region_axis_dysphoria() : m.body_region_axis_euphoria();
     return m.reading_body_region_value({ axis, value: fmtNumber(Math.round(region.value)) });
   });

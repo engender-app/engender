@@ -3,13 +3,14 @@ import { readFileSync } from 'node:fs';
 import { test } from 'vitest';
 import { UnsupportedArchiveError, collect } from '../archive/container.ts';
 import { archiveFailureKind } from '../archive/failure.ts';
-import { packArchive } from '../archive/pack.ts';
+import { openArchive, packArchive } from '../archive/pack.ts';
 import { portablePreferences } from '../archive/payload.ts';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { PREFERENCE_DEFAULTS } from '../prefs/catalogue.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { openJournal } from './journal.ts';
 import { CHEAP_KDF, GOLDEN_PASSWORD, oneShot } from './golden-archive-fixture.ts';
+import { ARCHIVE_SECTION_NAMES, DROPPED_ARCHIVE_SECTION_NAMES } from './archiveSections.ts';
 import { verifyArchive } from './restore.ts';
 
 const newerVersion = (error: unknown): boolean => {
@@ -18,6 +19,14 @@ const newerVersion = (error: unknown): boolean => {
   assert.match(error.message, /newer version of the app/);
   return true;
 };
+
+test('removed areas are dropped from archives while letters remain', () => {
+  for (const name of ['affirmations', 'revisits']) {
+    assert.ok(DROPPED_ARCHIVE_SECTION_NAMES.includes(name));
+    assert.ok(!ARCHIVE_SECTION_NAMES.some((section) => section === name));
+  }
+  assert.ok(ARCHIVE_SECTION_NAMES.includes('letters'));
+});
 
 for (const mode of ['replace', 'merge'] as const) {
   test(`${mode} refuses unknown archive sections before writing rows or files`, async () => {
@@ -54,6 +63,76 @@ test('the backup drill refuses an unknown section even under the current format 
   }, GOLDEN_PASSWORD, CHEAP_KDF));
   await assert.rejects(verifyArchive(oneShot(packed), GOLDEN_PASSWORD), newerVersion);
   await driver.close();
+});
+
+test('an older archive carrying tally events, hair stages and hair photos restores without them', async () => {
+  for (const name of ['tallyEvents', 'hairStages', 'hairPhotos']) {
+    assert.ok(DROPPED_ARCHIVE_SECTION_NAMES.includes(name), name);
+    assert.ok(!(ARCHIVE_SECTION_NAMES as readonly string[]).includes(name), name);
+  }
+  const driver = await migratedDb();
+  try {
+    const journal = openJournal(driver, fakeFileStore());
+    await journal.reconcileBuiltIns();
+    const snapshot = await journal.archive.snapshot();
+    const incoming = {
+      ...snapshot.journal,
+      tallyEvents: [{ id: 't1', epochDay: 100, kind: 'misgendered' }],
+      hairStages: [{ id: 'h1', epochDay: 100, description: 'thinner at the crown' }],
+      hairPhotos: [{ id: 'p1', epochDay: 100, fileName: 'p1.enc' }],
+      areaStates: [...snapshot.journal.areaStates, { area: 'hairPhotos', hidden: true, updatedAt: 1 }]
+    } as unknown as typeof snapshot.journal;
+    const packed = await collect(packArchive({
+      ...snapshot, journal: incoming, preferences: portablePreferences(PREFERENCE_DEFAULTS)
+    }, GOLDEN_PASSWORD, CHEAP_KDF));
+    await verifyArchive(oneShot(packed), GOLDEN_PASSWORD);
+    await journal.archive.replace({ journal: (await openArchive(oneShot(packed), GOLDEN_PASSWORD)).payload.journal,
+      files: (async function* () {})() });
+    assert.deepEqual((await journal.archive.snapshot()).journal, snapshot.journal);
+  } finally {
+    await driver.close();
+  }
+});
+
+test('restore and verification ignore a newly listed dropped section and its rows', async () => {
+  const dropped = DROPPED_ARCHIVE_SECTION_NAMES as string[];
+  dropped.push('retiredForTest');
+  const driver = await migratedDb();
+  try {
+    const files = fakeFileStore();
+    const journal = openJournal(driver, files);
+    await journal.reconcileBuiltIns();
+    const snapshot = await journal.archive.snapshot();
+    const incoming = { ...snapshot.journal, retiredForTest: [{ id: 'lost-row' }] };
+    const packed = await collect(packArchive({
+      ...snapshot, journal: incoming, preferences: portablePreferences(PREFERENCE_DEFAULTS)
+    }, GOLDEN_PASSWORD, CHEAP_KDF));
+    await verifyArchive(oneShot(packed), GOLDEN_PASSWORD);
+    await journal.archive.replace({ journal: (await openArchive(oneShot(packed), GOLDEN_PASSWORD)).payload.journal,
+      files: (async function* () {})() });
+    assert.deepEqual((await journal.archive.snapshot()).journal, snapshot.journal);
+  } finally {
+    dropped.pop();
+    await driver.close();
+  }
+});
+
+test('an absent known section restores as empty', async () => {
+  const driver = await migratedDb();
+  try {
+    const journal = openJournal(driver, fakeFileStore());
+    const snapshot = await journal.archive.snapshot();
+    const incoming = { ...snapshot.journal };
+    delete (incoming as Partial<typeof incoming>).eraMutes;
+    const packed = await collect(packArchive({
+      ...snapshot, journal: incoming, preferences: portablePreferences(PREFERENCE_DEFAULTS)
+    }, GOLDEN_PASSWORD, CHEAP_KDF));
+    await verifyArchive(oneShot(packed), GOLDEN_PASSWORD);
+    await journal.archive.replace({ journal: incoming, files: (async function* () {})() });
+    assert.deepEqual((await journal.archive.snapshot()).journal.eraMutes, []);
+  } finally {
+    await driver.close();
+  }
 });
 
 test('newer-version refusals explain the update in both catalogues', () => {

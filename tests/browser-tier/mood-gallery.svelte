@@ -1,29 +1,8 @@
 <script lang="ts">
-  /* Mood's ramp and mood's faces, and nothing else on the page (phase 10
-     ticket 27).
-
-     The two things this has to answer, both of which are claims about a
-     drawing rather than about code:
-
-     - does each preset read as two colours end to end, rather than as one
-       hue tinted five ways (ADR-0077)
-     - do the five faces still tell apart at 28px, the smallest any surface
-       draws them, now that every mark is a filled shape instead of a
-       stroked arc
-
-     The picker and the chip row are the real components, not mock-ups of
-     them: they carry the dimming, the ring on the picked face and the
-     labels, and a copy of those rules here would be a second
-     implementation with nothing keeping the two honest.
-
-     Faces are held still by default. Three animations run on a live picker
-     (blink, idle glance, the gaze) and a screenshot of a face mid-saccade
-     is a screenshot of an eye 1.05 units off centre - the reduce switch is
-     the app's own way of stopping exactly those two loops, so the shots are
-     of the drawing rather than of a moment in it.
-
-     tests/mood-gallery.mjs drives this across all 4 presets and both
-     themes. */
+  /* Render the actual mood picker and chip row across four presets and
+     both themes (tests/tools/mood-gallery.mjs). Check the two-colour ramp
+      and distinct faces at 28px. Use the app's reduced-motion
+     option to hold the expressions steady for screenshots. */
   import MoodChips from '$lib/components/kit/MoodChips.svelte';
   import MoodFace from '$lib/components/MoodFace.svelte';
   import MoodPicker from '$lib/components/MoodPicker.svelte';
@@ -42,9 +21,8 @@
   let theme = $state('dark');
   let preset = $state('amber');
   let still = $state(true);
-  /* One face, big, for the round where the drawing itself is what is being
-     signed off rather than the set (Alicja, 2026-09-08: "give me a screen
-     with just one face for sign off"). */
+  /* One face, big, for the round where the drawing itself is what is being signed off
+     rather than the set. */
   let one = $state(4);
   let picked = $state<number | null>(4);
   let chipped = $state<number | null>(null);

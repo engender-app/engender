@@ -1,5 +1,4 @@
-/* Which Getting started rows Home last drew crossed, for this session only
-   (ux-carpet ticket 288).
+/* Which Getting started rows Home last drew crossed, for this session only.
 
    A row that is already done when Home arrives paints crossed from its first
    frame. A row that became done while Home was off screen - a milestone

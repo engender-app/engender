@@ -1,5 +1,6 @@
 package dev.engender.app.disguise;
 
+import android.app.Activity;
 import android.os.Process;
 
 import com.getcapacitor.Plugin;
@@ -8,11 +9,13 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
+import dev.engender.app.screencapture.ScreenCapturePlugin;
 import dev.engender.app.widgets.DisguisableWidgetProvider;
 import dev.engender.app.widgets.DoubtWidgetProvider;
 import dev.engender.app.widgets.QuickLogWidgetProvider;
-import dev.engender.app.widgets.TallyWidgetProvider;
 
 /**
  * Mirrors disguise, palette and icon shape into the alias PackageManager
@@ -24,13 +27,13 @@ import dev.engender.app.widgets.TallyWidgetProvider;
 @CapacitorPlugin(name = "Disguise")
 public class DisguisePlugin extends Plugin {
 
-    /** Every at-rest widget surface (tickets 26, 33, 34) that must go
+    /** Every at-rest widget surface that must go
         neutral the moment disguise flips - adding a widget here is all
         DisguisePlugin needs to pick it up. These instances are only ever
         used to call updateAll; the system creates its own separate
         instances to deliver the real onUpdate broadcasts. */
     private static final List<DisguisableWidgetProvider> WIDGET_PROVIDERS = List.of(
-        new QuickLogWidgetProvider(), new TallyWidgetProvider(), new DoubtWidgetProvider()
+        new QuickLogWidgetProvider(), new DoubtWidgetProvider()
     );
 
     /** A palette change that arrived while running, queued rather than
@@ -88,11 +91,12 @@ public class DisguisePlugin extends Plugin {
             // the next cold start - disguise_app_sub_android's "the app
             // closes briefly to switch". Only when the alias actually
             // flipped: prefs sync onto every boot, and a restart nobody
-            // asked for is its own kind of leak. Already-placed quick-log,
-            // tally and doubt-entry widgets (tickets 26, 33, 34) are the
+            // asked for is its own kind of leak. Already-placed quick-log
+            // and doubt-entry widgets are the
             // same category of exposure as the launcher icon, so they get
             // the same immediate refresh rather than waiting on their own
             // system-scheduled update.
+            coverWindowForIdentityChange(disguised);
             boolean changed = DisguiseAlias.apply(getContext(), disguised, palette, shape);
             clearPendingPalette();
             if (changed) {
@@ -102,26 +106,33 @@ public class DisguisePlugin extends Plugin {
             return;
         }
 
-        // A flag change flips an alias too, and it must not restart the app
-        // under somebody - hiding the app has to take effect now, wearing a
-        // different flag does not (ticket 50, ADR-0088). That's still true,
-        // but applying it immediately isn't the same thing as applying it
-        // without a restart: disabling an activity-alias tears down a task
-        // that's currently running under it even with DONT_KILL_APP, which
-        // only protects the process, not the window - Android does this
-        // itself, nothing here calls killProcess or finish(). Whenever the
-        // palette just picked happens to disable the alias this task is
-        // still live under, the running screen goes with it (ticket 245:
-        // reproduced on-device, {@code tests/android-tier/palette-switch-crash-check.mjs}).
-        //
-        // So the flip waits for a moment nothing is watching: queued here,
-        // applied from handleOnStop(). The cost is exactly what this method
-        // already used to say out loud - "the launcher shows the new icon
-        // from the next cold start rather than the same second" - the code
-        // just wasn't keeping that promise. The widgets are not branded by
-        // the flag either (see above), so there is nothing of theirs to
-        // refresh here.
+        // Queue palette alias changes until handleOnStop() (ADR-0088).
+        // Disabling the running alias can remove its task even with
+        // DONT_KILL_APP. Apply disguise immediately. The next cold start
+        // shows the new flag, and widgets carry no flag branding.
         queuePendingPalette(disguised, palette, shape);
+    }
+
+    /** The window takes on the Recents state of the new identity before the alias flips.
+        Capacitor calls this on its plugin thread and window flags belong to the main one,
+        so it waits, briefly: a window that was never updated is only a missed cover, not a
+        reason to hold the switch up. */
+    private void coverWindowForIdentityChange(boolean disguised) {
+        Activity activity = getActivity();
+        if (activity == null) return;
+        CountDownLatch done = new CountDownLatch(1);
+        activity.runOnUiThread(() -> {
+            try {
+                ScreenCapturePlugin.coverForIdentityChange(activity, disguised);
+            } finally {
+                done.countDown();
+            }
+        });
+        try {
+            done.await(1, TimeUnit.SECONDS);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     @Override

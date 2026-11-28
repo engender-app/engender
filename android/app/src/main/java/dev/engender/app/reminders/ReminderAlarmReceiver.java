@@ -16,10 +16,10 @@ import dev.engender.app.R;
 import dev.engender.app.disguise.DisguiseAlias;
 import dev.engender.app.launch.AppLaunch;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.time.ZonedDateTime;
+import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 
@@ -44,6 +44,10 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
             }
             if (ReminderScheduler.KIND_CHECK_IN.equals(kind)) {
                 handleCheckIn(context, payload);
+                return;
+            }
+            if (ReminderScheduler.KIND_DOSE_ACTION.equals(kind)) {
+                handleDoseAction(context, payload, intent);
             }
         }
     }
@@ -51,11 +55,10 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
     private void handleReminder(Context context, JSONObject payload, String reminderId) {
         if (reminderId == null || reminderId.isBlank()) return;
 
-        JSONObject reminder = findReminder(payload.optJSONArray("reminders"), reminderId);
+        JSONObject reminder = ReminderScheduler.findReminder(payload, reminderId);
         if (reminder == null || !reminder.optBoolean("enabled", false)) return;
 
-        postReminderNotification(context, payload, reminder);
-        ReminderScheduler.scheduleOneReminder(context, payload, reminder, ZonedDateTime.now());
+        ReminderScheduler.deliverReminder(context, payload, reminder, ZonedDateTime.now());
     }
 
     private void handleCheckIn(Context context, JSONObject payload) {
@@ -65,53 +68,144 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
             fireAt -> ReminderScheduler.scheduleCheckInAt(context, fireAt));
     }
 
+    /** The one rule for whether today still wants a check-in: today has no
+        entry yet, check-ins are on and not paused through today. The alarm
+        asks it, and so does CheckInFaces when it replaces or cancels faces
+        that are already in the shade. */
+    static boolean checkInDue(JSONObject payload, int today) {
+        return payload.optInt("latestEntryEpochDay", Integer.MIN_VALUE) != today
+            && ReminderPlanner.checkInAllowedOn(payload, today);
+    }
+
     static void handleCheckIn(JSONObject payload, ZonedDateTime now,
                               IntConsumer postNotification, Consumer<ZonedDateTime> scheduleAlarm) {
         int today = (int) now.toLocalDate().toEpochDay();
-        boolean skip = payload.optInt("latestEntryEpochDay", Integer.MIN_VALUE) == today
-            || !ReminderPlanner.checkInAllowedOn(payload, today);
 
-        if (!skip) postNotification.accept(today);
+        if (checkInDue(payload, today)) postNotification.accept(today);
         ReminderScheduler.scheduleCheckIn(payload, now, scheduleAlarm);
     }
 
-    private void postReminderNotification(Context context, JSONObject payload, JSONObject reminder) {
+    /** Where tapping the notification lands, once the app is unlocked. A
+        medication reminder opens its drug's dose log with the add form open;
+the route carries the reminder's id
+        only, and the app looks the drug up. Any other reminder opens its
+        editor. */
+    static String routeFor(JSONObject reminder) {
+        String id = reminder.optString("id", "");
+        if (isDoseReminder(reminder) && !id.isBlank()) return "/care/doses?add=1&reminder=" + id;
+        return "/settings/reminders" + (id.isBlank() ? "" : "/" + id);
+    }
+
+    static boolean isDoseReminder(JSONObject reminder) {
+        return !ReminderScheduler.drugOf(reminder).isEmpty();
+    }
+
+    /** Taken and Skip, kept until the journal is open (ReminderScheduler.
+        recordDoseAction). The notification is then replaced by a quiet one
+        that says where the answer went, and that goes by itself. */
+    private void handleDoseAction(Context context, JSONObject payload, Intent intent) {
+        String reminderId = intent.getStringExtra(ReminderScheduler.EXTRA_REMINDER_ID);
+        String action = intent.getStringExtra(ReminderScheduler.EXTRA_DOSE_ACTION);
+        long postedAt = intent.getLongExtra(ReminderScheduler.EXTRA_POSTED_AT, System.currentTimeMillis());
+        if (reminderId == null || reminderId.isBlank()) return;
+
+        boolean kept;
+        try {
+            kept = ReminderScheduler.recordDoseAction(context, UUID.randomUUID().toString(), reminderId, action,
+                postedAt, System.currentTimeMillis(), intent.getStringExtra(ReminderScheduler.EXTRA_RULE),
+                intent.hasExtra(ReminderScheduler.EXTRA_SLOT_DAY)
+                    ? Long.valueOf(intent.getLongExtra(ReminderScheduler.EXTRA_SLOT_DAY, 0L)) : null);
+        } catch (Exception failedStore) {
+            kept = false;
+        }
+        NotificationManagerCompat manager = NotificationManagerCompat.from(context);
+        JSONObject reminder = ReminderScheduler.findReminder(payload, reminderId);
+        if (!kept || reminder == null || !notificationsAllowed(context)) {
+            manager.cancel("reminder:" + reminderId, 7000);
+            return;
+        }
+        JSONObject texts = payload.optJSONObject("texts");
+        Notification noted = new NotificationCompat.Builder(context, ReminderScheduler.CHANNEL_REMINDERS)
+            .setSmallIcon(DisguiseAlias.isDisguised(context)
+                    ? R.drawable.ic_launcher_disguised_foreground : R.drawable.ic_stat_mark)
+            .setContentTitle(resolveNotificationTitle(payload, reminder))
+            .setContentText(texts != null ? texts.optString("doseNoted", "Noted") : "Noted")
+            .setOnlyAlertOnce(true)
+            .setSilent(true)
+            .setAutoCancel(true)
+            .setTimeoutAfter(8000)
+            .addExtras(noted())
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+            .setContentIntent(AppLaunch.openAppIntent(context, routeFor(reminder), "reminder:" + reminderId, 1))
+            .build();
+        manager.notify("reminder:" + reminderId, 7000, noted);
+    }
+
+    /** Marks the quiet "Noted" line a dose button leaves, so the sync can tell
+        it from a reminder. Not the timeout: Android 17 gives every
+        notification a default one. */
+    static final String EXTRA_NOTED = "gd_dose_noted";
+
+    private static android.os.Bundle noted() {
+        android.os.Bundle extras = new android.os.Bundle();
+        extras.putBoolean(EXTRA_NOTED, true);
+        return extras;
+    }
+
+    static void postReminderNotification(Context context, JSONObject payload, JSONObject reminder) {
+        postReminderNotification(context, payload, reminder, false);
+    }
+
+    /** {@code replacing} is a repost of one that was in the shade: it must
+        not buzz, light the screen or heads-up a second time. */
+    static void postReminderNotification(Context context, JSONObject payload, JSONObject reminder, boolean replacing) {
         if (!notificationsAllowed(context)) return;
 
         String title = resolveNotificationTitle(payload, reminder);
         String id = reminder.optString("id", "");
-        String time = reminder.optString("time", "");
+        String text = resolveNotificationText(payload, reminder);
 
-        String route = "/settings/reminders" + (id.isBlank() ? "" : "/" + id);
-        Notification notification = new NotificationCompat.Builder(context, ReminderScheduler.CHANNEL_REMINDERS)
+        String route = routeFor(reminder);
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, ReminderScheduler.CHANNEL_REMINDERS)
             .setSmallIcon(DisguiseAlias.isDisguised(context)
                     ? R.drawable.ic_launcher_disguised_foreground : R.drawable.ic_stat_mark)
             .setContentTitle(title)
-            .setContentText(time)
+            .setContentText(text)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setOnlyAlertOnce(replacing)
+            .setSilent(replacing)
             .setAutoCancel(true)
-            /* Audit finding F-05, corrected by a later audit pass:
-               VISIBILITY_PRIVATE does not hide this title on a lock
-               screen by itself. It only asks the OS to conceal a
-               notification's content, and the OS only honours that where
-               the lock screen itself is set to hide sensitive content -
-               under Android's default "show all notification content", a
-               private notification still shows title and text in full. What
-               actually keeps a reminder's title off a locked phone's
-               screen is hideNotificationTitles, which resolveNotificationTitle
-               below applies unconditionally: it does not know whether the
-               screen is locked, so it hides the title whether it is or not.
-               This call is kept anyway, for the phones that do have
-               concealment configured, and RetrospectiveNotificationsPlugin
-               and AutoExportPlugin already make the same call. */
+            /* VISIBILITY_PRIVATE does not hide this title on a lock screen by itself. It
+               only asks the OS to conceal a notification's content, and the OS only honours
+               that where the lock screen itself is set to hide sensitive content - under
+               Android's default "show all notification content", a private notification
+               still shows title and text in full. What actually keeps a reminder's title
+               off a locked phone's screen is hideNotificationTitles, which
+               resolveNotificationTitle below applies unconditionally: it does not know
+               whether the screen is locked, so it hides the title whether it is or not.
+               This call is kept anyway, for the phones that do have concealment configured.
+               AutoExportPlugin makes the same call. */
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
-            .setContentIntent(AppLaunch.openAppIntent(context, route, "reminder:" + id, 1))
-            .build();
+            .setContentIntent(AppLaunch.openAppIntent(context, route, "reminder:" + id, 1));
 
-        NotificationManagerCompat.from(context).notify("reminder:" + id, 7000, notification);
+        if (isDoseReminder(reminder) && !id.isBlank()) {
+            /* Under disguise the first button says Done rather than Taken: a notification
+               is one of the outside surfaces disguise still covers. */
+            JSONObject texts = payload.optJSONObject("texts");
+            String taken = texts == null ? "Taken"
+                : texts.optString(DisguiseAlias.isDisguised(context) ? "doseDone" : "doseTaken", "Taken");
+            String skip = texts == null ? "Skip" : texts.optString("doseSkip", "Skip");
+            long postedAt = System.currentTimeMillis();
+            String rule = ReminderScheduler.ruleOf(reminder);
+            Long slotDay = ReminderScheduler.slotDayOf(reminder);
+            builder.addAction(0, taken, ReminderScheduler.doseActionIntent(context, id, "taken", postedAt, rule, slotDay));
+            builder.addAction(0, skip, ReminderScheduler.doseActionIntent(context, id, "skipped", postedAt, rule, slotDay));
+        }
+
+        NotificationManagerCompat.from(context).notify("reminder:" + id, 7000, builder.build());
     }
 
-    private void postCheckInNotification(Context context, JSONObject payload, int epochDay) {
+    static void postCheckInNotification(Context context, JSONObject payload, int epochDay) {
         if (!notificationsAllowed(context)) return;
 
         JSONObject texts = payload.optJSONObject("texts");
@@ -125,33 +219,20 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
             .setContentText(body)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
-            // Same reason as the reminder above (F-05), and the affirmation
-            // line this one can carry says what the app is for even when
-            // the title does not.
+            // Same reason as the reminder above (F-05).
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setContentIntent(AppLaunch.openAppIntent(context, "/entry/new/" + epochDay, "check-in", 13));
 
-        String affirmation = resolveCheckInAffirmation(payload, epochDay);
-        if (affirmation != null) {
-            builder.setStyle(new NotificationCompat.BigTextStyle().bigText(body + "\n" + affirmation));
+        /* The five faces: the question
+           moves into the header beside the app's name, and the faces take
+           the body. setContentTitle and setContentText above stay, for
+           whatever reads the notification rather than draws it. */
+        if (CheckInFaces.show(payload, DisguiseAlias.isDisguised(context))) {
+            builder.setSubText(body);
+            CheckInFaces.apply(context, builder, payload, CHECK_IN_NOTIFICATION_ID);
         }
 
         NotificationManagerCompat.from(context).notify(CHECK_IN_NOTIFICATION_ID, builder.build());
-    }
-
-    /** The affirming line for this day, or null
-        when the prompt stays plain: the pool arrives empty when the
-        preference is off, and hideNotificationTitles suppresses the line the
-        same way it hides reminder titles - an affirmation on a lock screen
-        says what the app is for. Indexed by epoch day rather than any stored
-        state, so the line rotates even across days the app is never
-        opened. */
-    static String resolveCheckInAffirmation(JSONObject payload, int epochDay) {
-        if (payload.optBoolean("hideNotificationTitles", false)) return null;
-        JSONArray pool = payload.optJSONArray("checkInAffirmations");
-        if (pool == null || pool.length() == 0) return null;
-        String line = pool.optString(epochDay % pool.length(), "");
-        return line.isBlank() ? null : line;
     }
 
     /** The reminder's own title, unless hideNotificationTitles is
@@ -166,17 +247,17 @@ public class ReminderAlarmReceiver extends BroadcastReceiver {
         return reminder.optString("title", fallbackTitle);
     }
 
-    private JSONObject findReminder(JSONArray reminders, String reminderId) {
-        if (reminders == null) return null;
-        for (int i = 0; i < reminders.length(); i++) {
-            JSONObject reminder = reminders.optJSONObject(i);
-            if (reminder == null) continue;
-            if (reminderId.equals(reminder.optString("id", ""))) return reminder;
-        }
-        return null;
+    /** The line under the title: what the app wrote for this reminder,
+or the time alone. Hiding sensitive
+        titles keeps only the time, since the app's line names the drug. */
+    static String resolveNotificationText(JSONObject payload, JSONObject reminder) {
+        String time = reminder.optString("time", "");
+        if (payload.optBoolean("hideNotificationTitles", false)) return time;
+        String text = reminder.optString("text", "");
+        return text.isBlank() ? time : text;
     }
 
-    private boolean notificationsAllowed(Context context) {
+    private static boolean notificationsAllowed(Context context) {
         if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return false;
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true;
         return ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)

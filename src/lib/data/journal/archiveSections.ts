@@ -1,56 +1,20 @@
-/* Which areas travel in an archive, and in what order they are inserted back
-   (ADR-0027).
+/* Declare each Archive section once (ADR-0027). The name is the
+   wire key. Entries supply read and apply methods, or declare a flat
+   table once for both directions. The registry's order controls the
+   wire and snapshot order. The after dependencies order restore rows
+   that need a foreign row ID. A section can insert its own children.
 
-   Before this registry the answer was spelled out three times - once in the
-   wire type (archive/payload.ts), once in the snapshot that reads the rows
-   out (archive.ts) and once in the restore that writes them back
-   (restore.ts) - plus once more in every test that builds an empty journal.
-   Nothing checked the four against each other, so a new area that got three
-   of them and missed the fourth simply did not travel, and no test failed:
-   the archive was short an area and every expectation was built from the
-   same code that had just forgotten it.
-
-   One entry here is now what makes an area travel. What it declares:
-
-     name      the section's key in ArchiveJournal, which is also its key on
-               the wire
-     after     the sections whose rows must already be in the tables before
-               this one's can be written, because this one resolves a rowid
-               against them. Not "children go last" as a general rule -
-               a hair photo and a counterevidence snapshot both own child
-               rows and depend on no other section, because they insert
-               those children themselves
-     travels   what of this area may leave in a structure file handed to
-               someone else (phase 7, ADR-0049) - a different question from
-               whether it is backed up, which every section above already
-               is. 'none', 'whole', or the named few fields of a row that
-               do. The boundary is not "has a date" but "is a record of
-               something that happened to you", which is a judgement made
-               per area rather than a property a type can expose - so this
-               is required the same way `discard` is, and a section added
-               without an answer is a compile error
-     read      how the area's rows come out of the journal (archiveRead.ts)
-     apply     how they go back in, mode and all (archiveApply.ts)
-
-   A flat area declares none of the last two. It declares its table instead -
-   the columns, the column a present row is matched by, and the read's order
-   (archiveTable.ts) - and both directions are derived from that one
-   declaration. `flat` below is that form, `section` the hand-written one.
-
-   The order sections are declared in is the order they travel in and the
-   order they are read in. `after` is what re-orders them for the restore,
-   so a section can be declared next to the area it belongs with rather than
-   wherever the insert happens to have to go.
-
-   Merge semantics stay inside each apply function. They genuinely differ per
-   area, the reasoning is recorded where the differences are, and a policy
-   language expressive enough to state all of them would be a wider interface
-   over less behaviour. The registry decides which areas exist and in what
-   order they insert, never what merging one of them means. */
+   The travels field controls structure-file export (ADR-0049).
+   Declare none, whole, or the explicit shareable fields for each
+   section independently of backup support. archiveMerge.ts chooses
+   which copy of a row wins. Section application owns any additional
+   merge rules. */
 
 import type { ArchiveJournal } from '../archive/payload';
+import { inferDrugClass } from '../drugClass';
 import * as read from './archiveRead';
 import * as apply from './archiveApply';
+import { applyDeletions, readDeletions } from './archiveMerge';
 import type { SectionRead } from './archiveRead';
 import type { Restoring } from './archiveApply';
 import type { FlatColumn, FlatTable } from './archiveTable';
@@ -60,7 +24,7 @@ export type { Restoring } from './archiveApply';
 
 export type ArchiveSectionName = keyof ArchiveJournal;
 
-/** What one area contributes to a structure file (ticket 04, ADR-0049) -
+/** What one area contributes to a structure file (ADR-0049) -
     a plaintext container a person hands to someone else, unlike the
     encrypted archive every section above already travels in whole. Never
     the fields that stay behind, so a row that grows a new field defaults to
@@ -76,8 +40,7 @@ type Travel<Row> = 'none' | 'whole' | { fields: readonly (keyof Row & string)[] 
 /** One area's declaration that it travels. Erased over the row type, because
     the list holds every section at once and because a test registers
     sections `ArchiveJournal` has never heard of. */
-/* ArchiveSection stays exported only for its own test (AU-09 test-only
-   review). */
+/* ArchiveSection stays exported only for its own test. */
 export interface ArchiveSection {
   name: string;
   /** Sections that must be applied before this one. Empty for most. */
@@ -147,7 +110,83 @@ function flat<
   };
 }
 
+/** A flat section whose rows need one more statement once they have
+    landed. */
+function withAfterApply<Section extends { apply: (restoring: Restoring) => Promise<void> }>(
+  section: Section,
+  after: (restoring: Restoring) => Promise<void>
+): Section {
+  return {
+    ...section,
+    apply: async (restoring: Restoring) => {
+      await section.apply(restoring);
+      await after(restoring);
+    }
+  };
+}
+
+/* A cost's three columns, absent on an archive
+   written before it and read as no cost. */
+const COST_COLUMNS = {
+  cost_amount: { field: 'costAmount', whenAbsent: null },
+  cost_currency: { field: 'costCurrency', whenAbsent: null },
+  cost_refunded: { field: 'costRefunded', bool: true, whenAbsent: false }
+} as const;
+
+const MEDICATION_STOCK = {
+  table: 'medication_stock',
+  identity: 'drug',
+  orderBy: 'drug',
+  columns: {
+    uuid: 'id',
+    drug: 'drug',
+    quantity: 'quantity',
+    unit: 'unit',
+    recorded_epoch_day: 'recordedEpochDay',
+    reminder_ever_created: { field: 'reminderEverCreated', bool: true },
+    reminder_dismissed: { field: 'reminderDismissed', bool: true },
+    opened_epoch_day: { field: 'openedEpochDay', whenAbsent: null },
+    in_use_window_days: { field: 'inUseWindowDays', whenAbsent: null },
+    in_use_end_epoch_day: { field: 'inUseEndEpochDay', whenAbsent: null },
+    lead_time_days: { field: 'leadTimeDays', whenAbsent: null },
+    doses_per_unit: { field: 'dosesPerUnit', whenAbsent: null },
+    expiry_epoch_day: { field: 'expiryEpochDay', whenAbsent: null },
+    pharmacy_note: { field: 'pharmacyNote', whenAbsent: null },
+    ...COST_COLUMNS
+  }
+} as const satisfies FlatTable<ArchiveJournal['medicationStock'][number]>;
+
+const REMINDERS = {
+  table: 'reminder',
+  identity: 'uuid',
+  orderBy: 'id',
+  columns: {
+    uuid: 'id',
+    title: 'title',
+    time: 'time',
+    recurrence: 'recurrence',
+    interval: 'interval',
+    anchor_epoch_day: 'anchorEpochDay',
+    epoch_day: 'epochDay',
+    enabled: { field: 'enabled', bool: true },
+    auto_source: { field: 'autoSource', whenAbsent: null },
+    drug: { field: 'drug', whenAbsent: null }
+  }
+} as const satisfies FlatTable<ArchiveJournal['reminders'][number]>;
+
 const SECTIONS = [
+  /* What this device has deleted (archiveMerge.ts). Declared first and depending on
+     nothing, so it is applied before every other section and discarded after all of them:
+     the deletion trigger records every row a Replace's discard removes, and this statement
+     is what empties those again. */
+  section({
+    name: 'deletions',
+    discard: ['DELETE FROM deletion'],
+    // Which records a person deleted is a record about them.
+    travels: 'none',
+    read: readDeletions,
+    apply: applyDeletions
+  }),
   section({
     name: 'dimensions',
     // Only the customs. A built-in dimension the archive does not carry keeps
@@ -157,7 +196,7 @@ const SECTIONS = [
     // `apply` afterwards, row by row.
     discard: ['DELETE FROM gender_dimension WHERE is_built_in = 0'],
     // A custom gender dimension is exactly the shape of thing a structure
-    // file exists for (ticket 04's own worked case).
+    // file exists for.
     travels: 'whole',
     read: read.readDimensions,
     apply: apply.applyDimensions
@@ -196,11 +235,9 @@ const SECTIONS = [
     read: read.readTagGroups,
     apply: apply.applyTagGroups
   }),
-  /* The fluidity engine's presentations (phase 5 deepening ticket 17,
-     ADR-0048). Flat: one table, no children, no built-ins to preserve -
-     every row is a custom, so unlike dimensions/tagGroups/affirmations
+  /* The fluidity engine's presentations (ADR-0048). Flat: one table, no children, no built-ins to preserve -
      there is no "only the customs" discard statement. No `after`: an
-     entry's own `presentation_id` is plain text (entries' own section
+     entry's own `presentation_uuid` is plain text (entries' own section
      resolves no rowid against it), the same reason milestones needs none
      for procedureId/tryoutId. */
   flat({
@@ -218,47 +255,13 @@ const SECTIONS = [
       hidden: { field: 'hidden', bool: true }
     }
   }),
-  /* Entry templates (phase 6 ticket 07, ADR-0002): the six original
-     built-ins and the eight folded-in guided prompts, plus anything the
-     person authored. `after` dimensions and tagGroups: a template's own
-     tag and dimension links resolve rowids against them, the same reason
-     `entries` needs both. Discard only the customs' rows and links, the
-     same reasoning `presets`' own statement gives - a built-in the archive
-     does not carry keeps whatever reconciling gave it rather than losing
-     its row and every entry-creation flow that offers it. */
-  section({
-    name: 'entryTemplates',
-    after: ['dimensions', 'tagGroups'],
-    discard: [
-      'DELETE FROM entry_template_tag WHERE template_id IN (SELECT id FROM entry_template WHERE key IS NULL)',
-      'DELETE FROM entry_template_dimension_value WHERE template_id IN (SELECT id FROM entry_template WHERE key IS NULL)',
-      'DELETE FROM entry_template WHERE key IS NULL'
-    ],
-    // Authored vocabulary with no chronology - the same reasoning
-    // `dimensions` above gives, and a template is exactly the kind of
-    // thing worth handing to someone else setting up their own journal.
-    travels: 'whole',
-    read: read.readEntryTemplates,
-    apply: apply.applyEntryTemplates
-  }),
-  section({
-    name: 'affirmations',
-    // Only the customs, the same reasoning dimensions' own statement gives: a
-    // built-in line the archive does not carry keeps the wording reconciling
-    // gave it rather than losing its row entirely.
-    discard: ['DELETE FROM affirmation WHERE key IS NULL'],
-    // Custom vocabulary, the same reasoning `dimensions` above gives.
-    travels: 'whole',
-    read: read.readAffirmations,
-    apply: apply.applyAffirmations
-  }),
   // No `after`: entry_body_region.region stores a region's domain id
   // directly (a plain string, not a rowid FK), so applyEntries never
   // resolves a body region against this section's rows the way it does
   // dimensions and tags.
   section({
     name: 'bodyRegions',
-    // Same reasoning as affirmations' own statement: only the customs.
+    // Same reasoning as dimensions' own statement: only the customs.
     discard: ['DELETE FROM body_region WHERE key IS NULL'],
     // Custom vocabulary, the same reasoning `dimensions` above gives.
     travels: 'whole',
@@ -291,8 +294,8 @@ const SECTIONS = [
     read: read.readEntries,
     apply: apply.applyEntries
   }),
-  /* A margin note hangs off an entry's rowid (phase 8 features ticket 07),
-     the same reasoning `feltSenseEntries` gives for its own owners: it
+  /* A margin note hangs off an entry's rowid,
+     the same reasoning `feltSenseEntries` gives for its tryout: it
      resolves a rowid against a section already applied, so `entries` has
      to be there first. `travels: 'none'`, the same call `entries` itself
      makes just above - a margin note is the person's own record of what
@@ -306,24 +309,7 @@ const SECTIONS = [
     read: read.readMarginNotes,
     apply: apply.applyMarginNotes
   }),
-  /* Which words the words screen has been told to stop counting (phase 8
-     features ticket 48, ADR-0003). Flat, and the same smallest kind
-     `eraMutes` above is: one column, no `after` - the word is free text
-     naming nothing else in the journal, so nothing here resolves a rowid
-     against it.
-
-     A word someone chose to stop seeing about their own note-taking is not
-     something to hand to someone else in a structure file - the same
-     reasoning `eraMutes` gives for its own `travels: 'none'`. */
-  flat({
-    name: 'wordIgnore',
-    travels: 'none',
-    table: 'word_frequency_ignore',
-    identity: 'word',
-    orderBy: 'word',
-    columns: { word: 'word' }
-  }),
-  /* The paper the person keeps (phase 8 features ticket 52, ADR-0065).
+  /* The paper the person keeps (ADR-0065).
      Flat: one table, no children, no owner to resolve a rowid against, so
      it needs no `after` either.
 
@@ -349,7 +335,7 @@ const SECTIONS = [
       title: 'title',
       file_path: 'fileName',
       // `whenAbsent: null` for the reason `passage_key`/`pitch_track` (v67,
-      // v74) have one: an archive written before ticket 56 carries no
+      // v74) have one: an older archive carries no
       // target at all, and the CHECK the schema puts over the pair (schema
       // v77) is exactly "both or neither". No FK to resolve against another
       // section, and no `after` either - `target_id` is a plain uuid (or,
@@ -362,39 +348,38 @@ const SECTIONS = [
   section({
     name: 'milestones',
     // A milestone linked to a procedure or a tryout stores that owner's
-    // uuid directly (applyMilestones inserts procedure_id/tryout_id as
+    // uuid directly (applyMilestones inserts procedure_uuid/tryout_uuid as
     // given), and neither column carries ON DELETE CASCADE - so applying a
     // milestone before its owner exists fails the same FK the reverse
     // order would fail on discard. `after` fixes both at once: reversed,
     // it clears milestones before tryout or procedure can be discarded out
-    // from under one (ticket 02's sweep found this empty by never having
+    // from under one (sweep found this empty by never having
     // linked either owner before running a full replace).
     after: ['tryouts', 'procedures'],
     // The other half of the photo table, per entries' own note above.
     discard: ['DELETE FROM photo WHERE milestone_id IS NOT NULL', 'DELETE FROM milestone'],
-    // Ticket 04's own worked case: a milestone set travels as names, not as
+    // The worked case: a milestone set travels as names, not as
     // dates. Everything else here is either a date (epochDay), a link into
     // this device's own records (roadmapGoalKey, procedureId, tryoutId,
     // photo), or the person's own record of what happened (description,
-    // ticket 15 - "cried in the car after" fails the shareable-structure
+    // - "cried in the car after" fails the shareable-structure
     // test far more often than it passes it), so `name` is the whole of
     // what is structure rather than record.
     travels: { fields: ['name'] },
     read: read.readMilestones,
     apply: apply.applyMilestones
   }),
-  /* The dosing context comes across as it was written, never re-derived
-     against this device's dose log: the log it was measured on is not the
-     one being imported into (ticket 03, and the argument at schema.ts).
+  /* The dosing context comes across as it was written, never re-derived against this
+     device's dose log: the log it was measured on is not the one being imported into (and
+     the argument at schema.ts).
 
-     Its last five columns declare what they are written from when the field
-     is absent, unlike every other column here, because they arrived after
-     lab results did. An archive is JSON.parse output cast to ArchivePayload
-     - the type is a claim about the file, not a guarantee - so a lab row
-     written by a build from before ticket 03 reaches the insert with the
-     fields simply missing, and `provider` is NOT NULL besides. An older
-     archive restores with an empty context instead, which is the same thing
-     a result logged before the feature carries. */
+     Its last five columns declare what they are written from when the field is absent,
+     unlike every other column here, because they arrived after lab results did. An archive
+     is JSON.parse output cast to ArchivePayload - the type is a claim about the file, not a
+     guarantee - so a lab row written by a build from reaches the insert with the fields
+     simply missing, and `provider` is NOT NULL besides. An older archive restores with an
+     empty context instead, which is the same thing a result logged before the feature
+     carries. */
   flat({
     name: 'labResults',
     travels: 'none',
@@ -412,57 +397,17 @@ const SECTIONS = [
       provider: { field: 'provider', whenAbsent: '' },
       timing_route: { field: 'timingRoute', whenAbsent: null },
       timing_hours: { field: 'timingHours', whenAbsent: null },
-      timing_day_of_interval: { field: 'timingDayOfInterval', whenAbsent: null }
+      timing_day_of_interval: { field: 'timingDayOfInterval', whenAbsent: null },
+      ...COST_COLUMNS
     }
   }),
-  section({
-    name: 'measurementTypes',
-    /* Only the customs. A measurement references its type by key
-       (measurements.ts), not by rowid, so unlike a child table this needs no
-       companion statement for rows that named a custom type just removed
-       here - they simply keep a key nothing resolves any more, the same
-       forward-compatible treatment lab_result.analyte already gets. */
-    discard: ['DELETE FROM measurement_type WHERE is_built_in = 0'],
-    // Custom vocabulary, the same reasoning `dimensions` above gives.
-    travels: 'whole',
-    read: read.readMeasurementTypes,
-    apply: apply.applyMeasurementTypes
-  }),
-  // `type` names a measurement type by key rather than by rowid
-  // (measurements.ts), so there is nothing here to resolve against the
-  // section above and no `after` to declare.
-  flat({
-    name: 'measurements',
-    travels: 'none',
-    table: 'measurement',
-    identity: 'uuid',
-    orderBy: 'epoch_day, id',
-    columns: { uuid: 'id', type: 'type', epoch_day: 'epochDay', value: 'value', unit: 'unit' }
-  }),
-  flat({
-    name: 'sizeRecords',
-    travels: 'none',
-    table: 'size_record',
-    identity: 'uuid',
-    orderBy: 'epoch_day, id',
-    columns: {
-      uuid: 'id',
-      epoch_day: 'epochDay',
-      category: 'category',
-      size: 'size',
-      brand: 'brand',
-      fit_note: 'fitNote'
-    }
-  }),
-  /* The dilation taper schedule (ticket 12) - a plan the person typed in,
-     not a record of anything that happened to them, so `travels: 'none'`
-     the same way a dose schedule would if it were archive-registered at
-     all.
+  /* The dilation taper schedule - a plan the person typed in, not a record of anything that
+     happened to them, so `travels: 'none'` the same way a dose schedule would if it were
+     archive-registered at all.
 
-     Not `flat` since schema v83 (audit item 7), and after `procedures` for
-     the same reason `appointments` is both: the procedure it dilates for is
-     a rowid on this device and a uuid on the wire, and the rows it resolves
-     against have to be written first. */
+     Not `flat` since schema v83, and after `procedures` for the same reason `appointments`
+     is both: the procedure it dilates for is a rowid on this device and a uuid on the wire,
+     and the rows it resolves against have to be written first. */
   section({
     name: 'taper',
     after: ['procedures'],
@@ -485,7 +430,13 @@ const SECTIONS = [
     table: 'side_effect',
     identity: 'uuid',
     orderBy: 'epoch_day, id',
-    columns: { uuid: 'id', name: 'name', severity: 'severity', epoch_day: 'epochDay' }
+    columns: {
+      uuid: 'id',
+      name: 'name',
+      severity: 'severity',
+      epoch_day: 'epochDay',
+      resolved_epoch_day: { field: 'resolvedEpochDay', whenAbsent: null }
+    }
   }),
   flat({
     name: 'cycleEvents',
@@ -495,74 +446,16 @@ const SECTIONS = [
     orderBy: 'epoch_day, id',
     columns: { uuid: 'id', kind: 'kind', epoch_day: 'epochDay' }
   }),
-  flat({
-    name: 'journalingPauses',
-    travels: 'none',
-    table: 'journaling_pause',
-    identity: 'uuid',
-    orderBy: 'start_epoch_day, id',
-    columns: { uuid: 'id', start_epoch_day: 'startEpochDay', end_epoch_day: 'endEpochDay' }
-  }),
-  flat({
-    name: 'savedQuestions',
-    // A saved search is a tool the person built for themselves, not a
-    // record of something that happened to them - the same judgement
-    // journalingPauses and cycleEvents above already made.
-    travels: 'none',
-    table: 'saved_question',
-    identity: 'uuid',
-    orderBy: 'updated_at DESC, id',
-    columns: {
-      uuid: 'id',
-      name: 'name',
-      query_text: 'queryText',
-      tag_ids: 'tagIds',
-      moods: 'moods',
-      start_epoch_day: 'startEpochDay',
-      end_epoch_day: 'endEpochDay',
-      has_note: { field: 'hasNote', bool: true },
-      has_photo: { field: 'hasPhoto', bool: true },
-      // Added in v88 (after-release ticket 16). A bool column writes 0 when
-      // the field is absent, so an older archive restores it as not starred.
-      starred: { field: 'starred', bool: true }
-    }
-  }),
-  section({
-    name: 'revisits',
-    // A day chosen once to read an entry again is scheduling metadata about
-    // this device, not something the person would hand to a clinician in a
-    // structure file - the same judgement letters and reminders above
-    // already made. Older archives may carry a revisit without its trashed
-    // entry, so restore checks the owner before inserting it.
-    travels: 'none',
-    after: ['entries'],
-    discard: ['DELETE FROM revisit'],
-    read: read.readRevisits,
-    apply: apply.applyRevisits
-  }),
-  /* The person's named eras (phase 6 ticket 01, ADR-0049). Flat: one table,
-     no children, no built-ins - nothing ships seeded, so every row is the
-     person's own and `uuid` alone tells two devices' rows apart. No `after`:
-     nothing resolves a rowid against an era, and the resurfacing consent
-     layer that will reference one holds its uuid as plain text.
+  /* Export named eras as a flat section keyed by UUID (ADR-0049).
+     Sort the open start first. Nothing resolves an era by row ID, so
+     the section has no restore dependency.
 
-     The read's order puts the era with no start first, which is the order
-     the screen shows them in and the order they read as a timeline.
-
-     A merge can leave two eras overlapping, and does so knowingly. The two
-     invariants are enforced where an era is authored (eras.ts), and a merge
-     writes rows this device never saw being authored: two devices that each
-     named "before I knew" mint two uuids for it, so neither matches the
-     other and both land. The alternative is dropping an incoming era that
-     collides, which loses a name the person gave a stretch of their life
-     with nothing on screen to say so. An overlap is visible on
-     /settings/eras and editable there, and every read stays total meanwhile
-     - `eraForDay` answers with the first era covering the day, so a day
-     still resolves to at most one. */
-  /* Does not travel (ticket 04's own worked case). An era carries a name
-     and two dates and nothing else, so what would travel is a name with no
-     bounds - nearly nothing, and not worth a structure section over. Said
-     explicitly here rather than left to be rediscovered. */
+     Merge may keep two independently named overlapping eras. Dropping
+     one would silently lose a name. The settings editor lets a person
+     resolve the overlap. eraForDay returns the first covering era. */
+  /* Does not travel. An era carries a name and two dates and nothing else, so what would
+     travel is a name with no bounds - nearly nothing, and not worth a structure section
+     over. Said explicitly here rather than left to be rediscovered. */
   flat({
     name: 'eras',
     travels: 'none',
@@ -576,7 +469,7 @@ const SECTIONS = [
       end_epoch_day: 'endEpochDay'
     }
   }),
-  /* Which of those eras are muted (phase 6 ticket 05, ADR-0049). Flat, and
+  /* Which of those eras are muted (ADR-0049). Flat, and
      the smallest kind of flat: one column, no `after` - `era_uuid` is free
      text the same way `era` itself carries no foreign key to anything, so
      nothing here has to resolve against the `eras` section landing first.
@@ -596,11 +489,10 @@ const SECTIONS = [
   }),
   section({
     name: 'effectCategories',
-    /* The one section with nothing to discard, and not by omission: the
-       table is built-in only - no custom-category creation is asked for,
-       ticket 41's own scope - so there is never a custom row to remove, and
-       a built-in row keeps what reconciling gave it the same way every other
-       reference row does. */
+    /* The one section with nothing to discard, and not by omission: the table is built-in
+       only - no custom-category creation is asked for, the scope - so there is never a
+       custom row to remove, and a built-in row keeps what reconciling gave it the same way
+       every other reference row does. */
     discard: [],
     // Every row is built-in, but `enabled` is the person's own toggle over
     // it - the same reference-vocabulary shape `dimensions`' own `hidden`
@@ -611,8 +503,7 @@ const SECTIONS = [
   }),
   section({
     name: 'personalEffectTypes',
-    // Only the customs, the same reasoning measurementTypes' own statement
-    // gives: a marker naming a custom effect just removed here simply keeps a
+    // Only custom rows. A marker naming a custom effect just removed here keeps a
     // key nothing resolves any more.
     discard: ['DELETE FROM personal_effect_type WHERE is_built_in = 0'],
     // Custom vocabulary, the same reasoning `dimensions` above gives. Not to
@@ -646,36 +537,28 @@ const SECTIONS = [
     orderBy: 'effect',
     columns: { uuid: 'id', effect: 'effect', first_noticed_epoch_day: 'firstNoticedEpochDay' }
   }),
-  /* A row with no `scale` came out of an archive written before phase 5
-     ticket 33, when Norwood-Hamilton was the only vocabulary there was, so
-     it is one - the same reading schema.ts gives the rows it holds
-     across. Defaulting rather than dropping is what keeps an old backup
-     whole; a scale this build does not know is left as it is and the
-     schema's CHECK refuses it, which is the honest failure for an archive
-     from a future build. */
-  flat({
-    name: 'hairStages',
-    travels: 'none',
-    table: 'hair_stage',
-    identity: 'uuid',
-    orderBy: 'epoch_day, id',
-    columns: {
-      uuid: 'id',
-      epoch_day: 'epochDay',
-      scale: { field: 'scale', whenAbsent: 'norwood_hamilton' },
-      stage: 'stage',
-      description: { field: 'description', whenAbsent: '' }
-    }
-  }),
+  // A posed photograph of the person, so it stays out of a structure file
+  // the way every other photograph does.
   section({
-    name: 'hairPhotos',
-    discard: ['DELETE FROM hair_photo'],
+    name: 'progressPhotos',
+    discard: ['DELETE FROM progress_photo'],
     travels: 'none',
-    read: read.readHairPhotos,
-    apply: apply.applyHairPhotos
+    read: read.readProgressPhotos,
+    apply: apply.applyProgressPhotos
   }),
-  // Inserts its own photo children, the same reasoning `hairPhotos` and
-  // `counterevidenceSnapshots` give - it depends on no other section.
+  // The poses the photographs above are filed under: a custom pose is the
+  // person's own vocabulary, so it travels the way `bodyRegions` does, and
+  // a Replace discards only the customs, built-ins keeping what reconcile
+  // gave them.
+  section({
+    name: 'progressPoses',
+    discard: ['DELETE FROM progress_pose WHERE key IS NULL'],
+    travels: 'whole',
+    read: read.readProgressPoses,
+    apply: apply.applyProgressPoses
+  }),
+  // Inserts its own photo children itself, so it depends on no other
+  // section.
   section({
     name: 'hairRemovalSessions',
     discard: ['DELETE FROM hair_removal_photo', 'DELETE FROM hair_removal_session'],
@@ -695,7 +578,7 @@ const SECTIONS = [
     read: read.readProcedures,
     apply: apply.applyProcedures
   }),
-  /* Appointments (ticket 57, ADR-0066). Declared here rather than nested
+  /* Appointments (ADR-0066). Declared here rather than nested
      under a procedure the way consults were: most appointments belong to no
      procedure, and the link is a uuid this section resolves against the rows
      `procedures` has already written - which is what `after` is for.
@@ -703,13 +586,25 @@ const SECTIONS = [
      Not `flat`: a descriptor maps columns, and this one's procedure link is
      a rowid on this device and a uuid on the wire.
 
-     An archive written before this section existed still restores -
-     `aliasLegacyConsults` (archiveApply.ts) lifts its nested consults up
-     here before anything reads the payload. */
+     Archives without this section restore with an empty appointment list.
+     A wait's status updates travel nested in their appointment
+     and are discarded with it. */
+  /* The person's own notes on the people they see. Flat: one table, uuid-identified, nothing ships. Declared before
+     appointments, which resolve their `providerId` against it. Never shared:
+     the whole point is that a judgement of a named doctor stays with the
+     person who made it. */
+  flat({
+    name: 'providers',
+    travels: 'none',
+    table: 'provider',
+    identity: 'uuid',
+    orderBy: 'id',
+    columns: { uuid: 'id', name: 'name', contact: 'contact', competence: 'competence', impressions: 'impressions' }
+  }),
   section({
     name: 'appointments',
-    after: ['procedures'],
-    discard: ['DELETE FROM appointment'],
+    after: ['procedures', 'providers'],
+    discard: ['DELETE FROM appointment_status', 'DELETE FROM appointment_debrief', 'DELETE FROM appointment'],
     // Where somebody's medical appointments were and what they were about.
     travels: 'none',
     read: read.readAppointments,
@@ -718,46 +613,18 @@ const SECTIONS = [
   // No rule validation of its own: the schema's recurrence CHECK is the same
   // rule reminderRule.ts states, and the insert is inside the transaction.
   // `auto_source` declares what it is written from when absent, the way lab
-  // results' dosing columns do - an archive written before ticket 04 has no
-  // such field at all.
-  flat({
-    name: 'reminders',
-    // Not structure to hand a stranger: `auto_source` ties a reminder to
-    // this device's own stock or wear-session state (reminderAutoSource has
-    // two writers), which means nothing on a receiving device.
-    travels: 'none',
-    table: 'reminder',
-    identity: 'uuid',
-    orderBy: 'id',
-    columns: {
-      uuid: 'id',
-      title: 'title',
-      type: 'type',
-      time: 'time',
-      recurrence: 'recurrence',
-      interval: 'interval',
-      anchor_epoch_day: 'anchorEpochDay',
-      epoch_day: 'epochDay',
-      enabled: { field: 'enabled', bool: true },
-      auto_source: { field: 'autoSource', whenAbsent: null }
-    }
-  }),
-  flat({
-    name: 'tallyEvents',
-    travels: 'none',
-    table: 'tally_event',
-    identity: 'uuid',
-    orderBy: 'epoch_day, id',
-    columns: { uuid: 'id', epoch_day: 'epochDay', kind: 'kind' }
-  }),
-  section({
-    name: 'counterevidenceSnapshots',
-    discard: ['DELETE FROM doubt_snapshot_entry', 'DELETE FROM doubt_snapshot'],
-    travels: 'none',
-    read: read.readCounterevidenceSnapshots,
-    apply: apply.applyCounterevidenceSnapshots
-  }),
-
+  // results' dosing columns do - older archives omit the field.
+  {
+    ...flat({
+      name: 'reminders',
+      // Not structure to hand a stranger: `auto_source` ties a reminder to
+      // this device's own stock or wear-session state (reminderAutoSource has
+      // two writers), which means nothing on a receiving device.
+      travels: 'none',
+      ...REMINDERS
+    }),
+    apply: (restoring: Restoring) => apply.applyReminders(REMINDERS, restoring)
+  },
   flat({
     name: 'letters',
     // A private letter to your own future or past self.
@@ -786,57 +653,74 @@ const SECTIONS = [
   section({
     name: 'roadmapChecks',
     discard: ['DELETE FROM roadmap_check'],
-    // Ticket 04's own worked case: a tick names bundled built-in content and
+    // The worked case: a tick names bundled built-in content and
     // records that the person did it, so unlike `roadmapGoals` below it does
     // not travel.
     travels: 'none',
     read: read.readRoadmapChecks,
     apply: apply.applyRoadmapChecks
   }),
-  /* A track somebody has said is not their path (phase 8 features ticket
-     49). Named by bundled structure rather than by anything the person
-     wrote, so it does not travel, for the same reason roadmapChecks above
-     does not: it records a fact about this person against content every
-     install already has.
-
-     A descriptor rather than a hand-written pair, unlike roadmapChecks: a
-     tick is identified by a pack/goal couple, which `identity` has no way
-     to name, and a dismissed track is one column of one table - exactly
-     what eraMutes above is. */
+  /* The person's own roadmap categories, ahead of the goals that name them.
+     Uuid-identified, so a merge matches one already here and keeps whichever name was given
+     last (archiveMerge.ts). Absent from an archive written before them, which reads as
+     none. */
   flat({
-    name: 'roadmapTracks',
-    travels: 'none',
-    table: 'roadmap_track',
-    identity: 'track',
-    orderBy: 'track',
-    columns: { track: 'track' }
-  }),
-  /* Uuid-identified like a checklist, so unlike roadmapChecks a goal already
-     present locally is simply skipped rather than compared column by column.
-     Its track is fixed at creation (roadmap.ts has no move-track setter),
-     and its text and status are both this device's own to say since ticket
-     69 gave a custom goal a rewording - so skipping is the same rule
-     applyRoadmapChecks keeps, that a merge must not overwrite what the
-     person did on the device doing the importing. A replace carries all
-     three columns as they now stand, which is what makes a rewording and a
-     delete travel at all (restore.test.ts). */
-  flat({
-    name: 'roadmapGoals',
-    // Ticket 04's own worked case: a custom goal carries its own text and
-    // track rather than naming bundled content, so it travels whether or
-    // not it is checked - unlike `roadmapChecks` above.
+    name: 'roadmapCategories',
     travels: 'whole',
-    table: 'roadmap_goal',
+    table: 'roadmap_category',
     identity: 'uuid',
     orderBy: 'id',
-    columns: { uuid: 'id', track: 'track', text: 'text', status: 'status' }
+    columns: { uuid: 'id', name: 'name' }
   }),
-  // `end_epoch_day` is absent on an archive from before ticket 38 - read as
+  /* Uuid-identified like a checklist. A merge takes the copy of a goal written last, its
+     rewording and status together, and a deleted goal's deletion the same way
+     (archiveMerge.ts). Its track is 'legal' or a category's uuid; a goal from an older
+     archive under a cut track gets that track's nameless category once the goals land
+     (adoptLegacyRoadmapTracks). */
+  withAfterApply(
+    flat({
+      name: 'roadmapGoals',
+      // The worked case: a custom goal carries its own text and
+      // group rather than naming bundled content, so it travels whether or
+      // not it is checked - unlike `roadmapChecks` above.
+      travels: 'whole',
+      table: 'roadmap_goal',
+      identity: 'uuid',
+      orderBy: 'id',
+      columns: { uuid: 'id', track: 'track', text: 'text', status: 'status' }
+    }),
+    apply.adoptLegacyRoadmapTracks
+  ),
+  /* The institutions the person added to the roadmap's list of name and
+     document changes, and the dated changes at
+     every institution, built-in or added. Both uuid-identified, so a merge
+     matches a row already here and keeps the copy written last. Changes name their institution by a built-in
+     key or an added one's uuid, the way a goal names its group, so the
+     institutions land first. An added institution is structure the way a
+     category is; the changes are what happened to this person, and stay. */
+  flat({
+    name: 'roadmapInstitutions',
+    travels: 'whole',
+    table: 'roadmap_institution',
+    identity: 'uuid',
+    orderBy: 'id',
+    columns: { uuid: 'id', name: 'name' }
+  }),
+  flat({
+    name: 'roadmapInstitutionChanges',
+    travels: 'none',
+    table: 'roadmap_institution_change',
+    identity: 'uuid',
+    orderBy: 'id',
+    columns: { uuid: 'id', institution: 'institution', status: 'status', epoch_day: 'epochDay', note: 'note' }
+  }),
+  // `end_epoch_day` is absent on an archive from - read as
   // still ongoing, the same as every pre-existing episode's backfill (v40).
-  // `end_reason` is absent the same way on an archive from before ticket 43 -
+  // `end_reason` is absent the same way on an archive from -
   // read as no reason recorded, which is what every episode ended before
-  // this shipped actually has. `hidden` is absent before after-release 07
-  // and reads as shown, which is all an episode could be then.
+  // this shipped actually has. Older archives omit `hidden` and restore those episodes as shown. `drug_class`
+  // is absent and is inferred from the
+  // drug, the same rule the v93 migration applied to every stored episode.
   flat({
     name: 'regimenEpisodes',
     travels: 'none',
@@ -846,6 +730,7 @@ const SECTIONS = [
     columns: {
       uuid: 'id',
       drug: 'drug',
+      drug_class: { field: 'drugClass', whenAbsent: (row) => inferDrugClass(row.drug) },
       ester: 'ester',
       dose: 'dose',
       dose_unit: 'doseUnit',
@@ -857,10 +742,10 @@ const SECTIONS = [
       hidden: { field: 'hidden', bool: true }
     }
   }),
-  // Carries no episode link: which episode a dose belongs to is resolved
-  // from its own timestamp above the seam (regimenEpisode.ts), so unlike the
-  // schedules and pauses below this needs no `after`. `drug` is absent on an
-  // archive from before ticket 38 - null, same as every dose ever logged
+  // Person-logged doses resolve their episode by timestamp above the seam
+  // (regimenEpisode.ts). Automatic provenance carries a travelling episode
+  // uuid, not a local rowid, so this still needs no `after`. `drug` is absent on an
+  // archive from - null, same as every dose ever logged
   // without one.
   flat({
     name: 'doseEvents',
@@ -882,11 +767,13 @@ const SECTIONS = [
       scheduled_route: 'scheduledRoute',
       scheduled_timestamp: 'scheduledTimestamp',
       drug: { field: 'drug', whenAbsent: null },
-      /* `whenAbsent: 'person'`, not null: an archive written before ticket
-         11 carries no source at all, and every row in one was logged by
-         hand, because nothing else could write a dose then. The column's
-         own default says the same thing (schema v82). */
-      source: { field: 'source', whenAbsent: 'person' }
+      /* `whenAbsent: 'person'`, not null: an older archive carries no source at all, and
+         every row in one was logged by hand, because nothing else could write a dose then.
+         The column's own default says the same thing (schema v82). */
+      source: { field: 'source', whenAbsent: 'person' },
+      auto_log_episode_uuid: { field: 'autoLogEpisodeId', whenAbsent: null },
+      auto_log_epoch_day: { field: 'autoLogEpochDay', whenAbsent: null },
+      auto_log_index: { field: 'autoLogIndex', whenAbsent: null }
     }
   }),
   // Both hang off an episode rowid, and the rows applyRegimenEpisodes just
@@ -920,34 +807,22 @@ const SECTIONS = [
     read: read.readDosePauses,
     apply: apply.applyDosePauses
   }),
-  /* Identified by `drug`, not by uuid: medication_stock is UNIQUE per drug
-     (schema.ts), one row that a fresh count replaces in place rather
-     than a log of past ones - the same shape personalEffects has for an
-     effect. The reminder bookkeeping travels as recorded: restoring a
-     device's own backup should restore its own hand-off state, not a blank
-     one (see ArchiveMedicationStock's own comment). */
-  flat({
-    name: 'medicationStock',
-    // Your own current inventory count, not structure to hand a stranger.
-    travels: 'none',
-    table: 'medication_stock',
-    identity: 'drug',
-    orderBy: 'drug',
-    columns: {
-      uuid: 'id',
-      drug: 'drug',
-      quantity: 'quantity',
-      unit: 'unit',
-      recorded_epoch_day: 'recordedEpochDay',
-      reminder_ever_created: { field: 'reminderEverCreated', bool: true },
-      reminder_dismissed: { field: 'reminderDismissed', bool: true },
-      opened_epoch_day: { field: 'openedEpochDay', whenAbsent: null },
-      in_use_window_days: { field: 'inUseWindowDays', whenAbsent: null },
-      in_use_end_epoch_day: { field: 'inUseEndEpochDay', whenAbsent: null },
-      lead_time_days: { field: 'leadTimeDays', whenAbsent: null },
-      doses_per_unit: { field: 'dosesPerUnit', whenAbsent: null }
-    }
-  }),
+  /* A destination stock row keeps its count when either its travelling uuid
+     or its trimmed, case-insensitive drug key is present. Renaming preserves
+     the uuid; a fresh count is still one row per drug, not a log of past
+     ones. The descriptor keeps the column mapping and defaults while this rule has its
+     own applier. Reminder bookkeeping travels as recorded, so Replace
+     restores the device's own hand-off state (ArchiveMedicationStock). */
+  {
+    ...flat({
+      name: 'medicationStock',
+      after: ['reminders'],
+      // Your own current inventory count, not structure to hand a stranger.
+      travels: 'none',
+      ...MEDICATION_STOCK
+    }),
+    apply: (restoring: Restoring) => apply.applyMedicationStock(MEDICATION_STOCK, restoring)
+  },
   // Inserts its own photo children, the same reasoning `hairRemovalSessions`
   // and `procedures` above give.
   section({
@@ -957,13 +832,13 @@ const SECTIONS = [
     read: read.readTryouts,
     apply: apply.applyTryouts
   }),
-  // A felt-sense row hangs off a tryout or a milestone rowid (phase 5
-  // ticket 24), the same way a dose schedule hangs off an episode's.
+  // A felt-sense row hangs off a tryout's rowid, the
+  // same way a dose schedule hangs off an episode's.
   section({
     name: 'feltSenseEntries',
-    after: ['tryouts', 'milestones'],
-    // Clears before both tryout and milestone, which is `after` reversed
-    // again rather than anything stated here.
+    after: ['tryouts'],
+    // Clears before tryout, which is `after` reversed again rather than
+    // anything stated here.
     discard: ['DELETE FROM felt_sense'],
     travels: 'none',
     read: read.readFeltSenseEntries,
@@ -972,18 +847,16 @@ const SECTIONS = [
   section({
     name: 'checklists',
     discard: ['DELETE FROM checklist_item', 'DELETE FROM checklist'],
-    /* Ticket 04's own worked case: an appointment question list travels
-       whole. One `ArchiveChecklist` shape covers both the standalone
-       appointment checklist and a procedure's owned recovery list, so
-       there is no section boundary between the two to declare separately
-       - splitting them into two sections would be changing what a section
-       contains, which is out of this ticket's scope. `ownerKind`/`ownerId`,
-       `appointmentEpochDay` and each item's `checked`/`carriedForward` ride
-       along as a consequence: this declaration says the shape may travel,
-       the same way `Travel` cannot say "keep an item's text but not
-       whether it is checked" (it names top-level fields, not a nested
-       item's). Which checklist an export actually offers, and whether a
-       finer per-field cut is ever worth adding, is ticket 07's decision. */
+    /* The worked case: an appointment question list travels whole. One `ArchiveChecklist`
+       shape covers both the standalone appointment checklist and a procedure's owned
+       recovery list, so there is no section boundary between the two to declare separately
+       - splitting them into two sections would be changing what a section contains, which
+       is out of scope. `ownerKind`/`ownerId`, `appointmentEpochDay` and each item's
+       `checked`/`carriedForward` ride along as a consequence: this declaration says the
+       shape may travel, the same way `Travel` cannot say "keep an item's text but not
+       whether it is checked" (it names top-level fields, not a nested item's). Which
+       checklist an export actually offers, and whether a finer per-field cut is ever worth
+       adding, is decision. */
     travels: 'whole',
     read: read.readChecklists,
     apply: apply.applyChecklists
@@ -1000,19 +873,18 @@ const SECTIONS = [
     orderBy: 'start_timestamp, id',
     columns: {
       uuid: 'id',
-      /* `whenAbsent` for the reason voiceBenchmarks' `passage_key` has one:
-         no archive written before ticket 50 carries the field, and the flat
-         writer binds an undefined as a raw driver error rather than a null.
-         The value matches the column's own v71 default, so a session
-         restored from an older archive and one that was already in the
-         journal end up saying the same thing. */
+      /* `whenAbsent` for the reason voiceBenchmarks' `passage_key` has one: older archives
+         omit the field, and the flat writer binds an undefined as a raw driver
+         error rather than a null. The value matches the column's own v71 default, so a
+         session restored from an older archive and one that was already in the journal end
+         up saying the same thing. */
       kind: { field: 'kind', whenAbsent: 'binder' },
       start_timestamp: 'startTimestamp',
       duration_ms: 'durationMs',
       note: 'note'
     }
   }),
-  /* Voice benchmarks (phase 5 deepening ticket 15). Flat: one row per take,
+  /* Voice benchmarks. Flat: one row per take,
      no children, no rowid resolved against another section. Its two audio
      files travel in the body the way a recording's does - archive.ts's
      manifest reads their names off this table - and the file names in these
@@ -1043,40 +915,34 @@ const SECTIONS = [
       f2_hz: 'f2Hz',
       snr_db: 'snrDb',
       note: 'note',
-      /* `pitch_track` has a `whenAbsent` for the same reason `passage_key`
-         does, and one of its own: archives written before ticket 09 do not
-         carry the field, and neither does a benchmark taken before schema
-         v58 that is still in the journal. Both restore as no track. */
+      /* `pitch_track` has a `whenAbsent` for the same reason `passage_key` does, and one of
+         its own: archives written do not carry the field, and neither does a benchmark
+         taken before schema v58 that is still in the journal. Both restore as no track. */
       pitch_track: { field: 'pitchTrack', whenAbsent: null },
-      /* `capture_chain` the same way, one ticket later (ticket 28,
-         ADR-0061): an archive written before it carries no chain, and
+      /* `capture_chain` the same way, one ticket later (ADR-0061): an archive written before it carries no chain, and
          neither does a benchmark from before schema v65. */
       capture_chain: { field: 'captureChain', whenAbsent: null },
-      /* `resonance_scale` the same way again (ticket 30): an archive
+      /* `resonance_scale` the same way again: an archive
          written before it carries no factor, and neither does a benchmark
          from before schema v66 or one that held fewer than two vowels. */
       resonance_scale: { field: 'resonanceScale', whenAbsent: null }
     }
   }),
-  /* The person's own comfort list (phase 6 ticket 14, CONTEXT: "Comfort
-     list"). Flat: one table, no children, no built-ins - nothing ships
-     seeded, so every row is the person's own and `uuid` alone tells two
-     devices' rows apart, the same reasoning `eras` above gives. `position`
-     travels as an ordinary column rather than being derived from array
-     order, so a merge that interleaves two devices' lists is at least
-     stable rather than silently reshuffled on every read. */
+  /* The person's own comfort list. Flat: one table, no children, no built-ins - nothing
+     ships seeded, so every row is the person's own and `uuid` alone tells two devices' rows
+     apart, the same reasoning `eras` above gives. `position` travels as an ordinary column
+     rather than being derived from array order, so a merge that interleaves two devices'
+     lists is at least stable rather than silently reshuffled on every read. */
   flat({
     name: 'comfortItems',
-    // Authored text with no chronology, the same reasoning `affirmations`
-    // above gives - not a record of what happened to you.
+    // Authored text with no chronology, not a record of what happened to you.
     travels: 'whole',
     table: 'comfort_item',
     identity: 'uuid',
     orderBy: 'position, id',
     columns: { uuid: 'id', text: 'text', position: 'position' }
   }),
-  /* Hidden, finished and suspended, per area (phase 8 deepening ticket 13,
-     phase 8 features ticket 51, ADR-0052). Identified by `area` - a natural
+  /* Hidden, finished and suspended, per area (ADR-0052). Identified by `area` - a natural
      key like `personal_effect.effect`, and already a wire key because it is
      a section name from this very list. `updated_at` stays behind like
      every other table's.
@@ -1100,7 +966,7 @@ const SECTIONS = [
       suspended_epoch_day: 'suspendedEpochDay'
     }
   }),
-  /* The import log (phase 7 ticket 03, ADR-0027). Hand-written rather than
+  /* The import log (ADR-0027). Hand-written rather than
      `flat()`: `counts` is a small map rather than a scalar column, which the
      descriptor has no transform for. Never `whole` - a structure file is
      something one person hands another (ADR-0049), and an import record is
@@ -1122,14 +988,20 @@ const SECTIONS = [
    makes that a compile error instead. */
 type Unregistered = Exclude<ArchiveSectionName, (typeof SECTIONS)[number]['name']>;
 type AssertNoneUnregistered<Missing extends never> = Missing;
-export type EverySectionRegistered = AssertNoneUnregistered<Unregistered>;
+type EverySectionRegistered = AssertNoneUnregistered<Unregistered>;
 
-/* ARCHIVE_SECTIONS stays exported for its own test, and cross-checked in
-   archive.test.ts (AU-09 test-only review). */
+/* ARCHIVE_SECTIONS stays exported for its own test, and cross-checked in archive.test.ts. */
 export const ARCHIVE_SECTIONS: readonly ArchiveSection[] = SECTIONS;
 
 /** Every section's key, in wire order. */
 export const ARCHIVE_SECTION_NAMES: readonly ArchiveSectionName[] = SECTIONS.map((s) => s.name);
+
+/** Wire sections removed before 1.0. Their rows no longer have an owner here. */
+export const DROPPED_ARCHIVE_SECTION_NAMES: readonly string[] = [
+  'doubtEntries', 'savedQuestions', 'counterevidenceSnapshots',
+  'measurementTypes', 'measurements', 'sizeRecords', 'affirmations', 'revisits', 'wordIgnore',
+  'journalingPauses', 'roadmapTracks', 'entryTemplates', 'tallyEvents', 'hairStages', 'hairPhotos'
+];
 
 /** A journal with every section present and empty - what an importer builds
     on and what a test that cares about one section starts from. */
@@ -1172,41 +1044,17 @@ export function orderedSections(sections: readonly ArchiveSection[] = ARCHIVE_SE
   return ordered;
 }
 
-/** Everything an archive is about to install, gone: every section's own
-    statements, sections in the reverse of the order they insert in.
-
-    What makes this derived rather than maintained is that each section owns
-    its own statements - the 51 that used to be hand-ordered in restore.ts
-    named tables no section admitted to, and the demo kept a second copy of
-    the list that reached only seven of the thirty-six sections. The registry
-    now supplies both the statements and their order, and its oracle checks
-    them against the schema table by table (archiveSections.test.ts).
-
-    The reverse of the insert order, specifically, because that is the order
-    that stays correct as statements get more particular. A section that
-    resolves a rowid against another's rows says so with `after`, so it
-    inserts second and therefore clears first, before the rows it points at
-    are gone; children inside one section are that section's own business and
-    are declared children-first. Today the reversal is what keeps the six
-    foreign keys that do not cascade (entry.presentation_id,
-    milestone.procedure_id and tryout_id, personal_effect_type.category_key,
-    doubt_snapshot_entry.snapshot_id, revisit.entry_id) from firing: each
-    child's section (or, for doubt_snapshot_entry, its own statements) inserts
-    after its parent's, so it clears first, by
-    `after` for milestones and by declaration order for the rest. A seventh,
-    checklist.debrief_entry_id, sets null. The rest cascade, and every child
-    table is emptied wholesale anyway. The one ordering a statement does
-    depend on is inside a section: `presets` filters preset_dimension by a
-    subselect over gender_preset, and has to run before it empties that.
-
-    Not a caller's list to compose: restore.ts runs it inside its Replace
-    transaction and `Journal.discardEverything` runs it on its own (journal.ts,
-    for the demo bar's state jumps), and both mean the same thing by emptying
-    the journal.
-
-    Built-in reference rows survive, per the statements themselves: an
-    archive's entries reference dimensions and tags by key, and deleting those
-    rows would leave the references nothing to resolve against. */
+/**
+ * Clear each registered section before Replace, in reverse restore
+ * order. A section that resolves a parent row ID inserts after that
+ * parent and clears first. Within each section, clear children first.
+ * For presets, delete preset_dimension before its gender_preset
+ * subquery loses the rows it references.
+ *
+ * Restore and Journal.discardEverything share this list. Keep
+ * built-in rows that incoming tags and dimensions resolve by key.
+ * archiveSections.test.ts checks coverage against the schema.
+ */
 export function discardStatements(sections: readonly ArchiveSection[] = ARCHIVE_SECTIONS): string[] {
   return orderedSections(sections)
     .reverse()
@@ -1235,7 +1083,7 @@ export async function readArchiveJournal(
 export async function applyArchiveJournal(
   restoring: Restoring,
   sections: readonly ArchiveSection[] = ARCHIVE_SECTIONS,
-  /** How far through the sections this is (phase 9 audit ticket 11). The
+  /** How far through the sections this is. The
       section is the unit rather than the row: rows go in as batched
       inserts per section, so there is no per-row moment to report from,
       and the registry is the only thing that knows how many sections

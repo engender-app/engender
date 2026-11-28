@@ -1,6 +1,5 @@
 <script lang="ts">
-  /* The progress-photo journey export, on the surface kit (phase 5 UX
-     ticket 25).
+  /* The progress-photo journey export, on the surface kit.
 
      Three cards became three named areas. Each of them held one control
      and a line of hint under a `.row-title` borrowed from a list row, so
@@ -12,8 +11,9 @@
   import { scrollBehavior } from '$lib/motion/tokens';
   import { tick } from 'svelte';
   import { page } from '$app/state';
-  import { replaceRoute, smartBackSettled } from '$lib/navigation/smart-back';
+  import { replaceRoute } from '$lib/navigation/smart-back';
   import { m } from '$lib/paraglide/messages';
+  import { outsideDisguise } from '$lib/disguise/identity';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { liveList } from '$lib/data/live/journal.svelte';
   import { fmtDay, photoCaptionDate } from '$lib/data/dates';
@@ -66,25 +66,23 @@
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
-  /* Ticket 27. Two steps, deliberately not one: this screen makes a file and
-     holds it, and it takes a second press to hand that file to the share
-     sheet. Nothing here writes to storage - the collage exists in a Blob
-     until somebody shares it or leaves the screen, which is what keeps the
-     export off the device unless a person asked for it. */
+  /* Two steps, deliberately not one: this screen makes a file and holds it, and it takes a
+     second press to hand that file to the share sheet. Nothing here writes to storage - the
+     collage exists in a Blob until somebody shares it or leaves the screen, which is what
+     keeps the export off the device unless a person asked for it. */
 
-  /* The whole library (phase 11 ticket 14), minus its video notes: a
+  /* The whole library, minus its video notes: a
      collage and a timelapse are made by decoding each frame as a
      photograph (journey-render.ts), and a note's `.webm` is not one. So
-     the grid below reads every photograph the journal holds - hair,
+     the grid below reads every photograph the journal holds - progress,
      tryouts, surgery recovery included - and the chip row narrows it, but
      Video is never one of the chips here. */
-  let fromHair = $derived(page.url.searchParams.get('from') === 'hair-progress');
-  let returnTo = $derived(fromHair ? '/body/hair-progress' : '/media/photos');
+  const returnTo = '/media/photos';
   // Recording support does not change while this screen is open.
   const canRecord = timelapseSupported();
 
   let libraryQuery = liveList((j) => j.photoLibrary.inJournal());
-  let photos = $derived(libraryQuery.rows.filter((photo) => photo.source !== 'video' && (!fromHair || photo.source === 'hair')));
+  let photos = $derived(libraryQuery.rows.filter((photo) => photo.source !== 'video'));
   let bounds = $derived(journeyRangeBounds(photos));
 
   let startInput = $state('');
@@ -106,7 +104,7 @@
   });
 
   /** Narrowing moves the grid rather than repainting it, the same three
-      frames the library's own chip row plays (ADR-0078, motion/narrow.ts). */
+      frames the library’s chip row plays (motion/narrow.ts). */
   async function pickChip(next: PhotoChip) {
     const before = measureCells(gridEl, 'data-photo-key');
     const url = new URL(page.url);
@@ -117,11 +115,12 @@
     // read from, and a replacing navigation owes the back-depth count a word.
     await replaceRoute(url, { noScroll: true, keepFocus: true });
     await tick();
-    travelCells(before, gridEl, 'data-photo-key');
+    /* The keyed grid needs the same post-navigation frame as the library. */
+    requestAnimationFrame(() => travelCells(before, gridEl, 'data-photo-key'));
   }
 
   let running = $state(false);
-  /* The shared bar (ADR-0070). This screen had the app's only honest
+  /* The shared bar. This screen had the app's only honest
      (done, total) already and was spending it on button-label text; what
      it gains here is the bar, the throttle and the hold at full. */
   const progress = createProgress();
@@ -196,16 +195,8 @@
     }));
 
     const from = recipe;
-    /* Live only while an export is being made, so the stop button on the
-       bar and the render loop are talking about the same run.
-
-       A fourth cancellable operation beyond the three phase-9 audit ticket
-       11 enumerates, and deliberately: this screen already shipped a stop
-       button, and it sits squarely inside ADR-0070's own rule, which
-       decides cancel by whether the journal has been written to rather
-       than by which operation is running. Rendering a collage writes
-       nothing anywhere. Taking the button away to match a list would have
-       been a regression dressed as compliance. */
+    /* One stop control and render loop per export. Rendering the collage
+       writes nothing to the journal, so stopping it is safe. */
     const controller = new AbortController();
     running = true;
     made = null;
@@ -221,20 +212,13 @@
           ? await renderCollage(frames, readPhoto, options)
           : await recordTimelapse(frames, readPhoto, options);
       // Before the preview replaces the picker, so the bar is not cut off
-      // mid-thought by the thing it was counting down to (ADR-0070).
+      // mid-thought by the thing it was counting down to.
       await progress.finish();
-      if (controller.signal.aborted) {
-        if (fromHair) await smartBackSettled(returnTo);
-        return;
-      }
+      if (controller.signal.aborted) return;
       made = { blob, from };
     } catch (error) {
       progress.abandon();
-      // Stop returns to Hair progress when it opened the export, or to
-      // the picker for an export opened from the library.
-      if (controller.signal.aborted && fromHair) {
-        await smartBackSettled(returnTo);
-      } else if (!controller.signal.aborted) {
+      if (!controller.signal.aborted) {
         console.error(`the ${output} export failed`, error);
         toast(output === 'timelapse' ? m.pj_timelapse_failed() : m.pj_failed(), { kind: 'failed' });
       }
@@ -250,13 +234,11 @@
   async function share() {
     if (!showing) return;
     try {
-      const delivery = await deliverBlob(journeyFileName(prefs.name, output, undefined, prefs.disguise), showing.blob);
+      const delivery = await deliverBlob(journeyFileName(prefs.name, output, undefined, outsideDisguise(prefs)), showing.blob);
       if (delivery === 'cancelled') {
         toast(m.exp_cancelled());
-        if (fromHair) await smartBackSettled(returnTo);
         return;
       }
-      if (fromHair) await smartBackSettled(returnTo);
       toast(delivery === 'shared' ? m.pj_shared() : m.pj_downloaded());
     } catch (error) {
       console.error('sharing the journey export failed', error);
@@ -283,23 +265,20 @@
             key="journey-output"
           />
         {/if}
-        <p class="muted small">
-          {#if output === 'collage'}
-            {m.pj_collage_hint()}
-            {#if !canRecord}{' '}{m.pj_timelapse_unavailable()}{/if}
-          {:else}
-            {m.pj_timelapse_hint()} {m.pj_timelapse_length({ n: seconds })}
-          {/if}
-        </p>
+        {#if output !== 'collage'}
+          <p class="muted small">{m.pj_timelapse_length({ n: seconds })}</p>
+        {:else if !canRecord}
+          <p class="muted small">{m.pj_timelapse_unavailable()}</p>
+        {/if}
 
         <SectionHeading text={m.pj_range_title()} />
-        <!-- The date rows compare and the wrapped custom range draw (release
-             audit U13): the day in words, with the picker spread over the
-             row, where two read-only text boxes used to show "2024-09-18". -->
+        <!-- The date rows compare and the wrapped custom range draw (release): the day in
+             words, with the picker spread over the row, where two read-only text boxes used
+             to show "2024-09-18". -->
         <div>
           {#each [
-            { id: 'pj-start', label: m.recap_custom_start_label(), value: startInput, min: undefined, max: dayRangeStartMax(endInput), set: (next: string) => (startInput = next) },
-            { id: 'pj-end', label: m.recap_custom_end_label(), value: endInput, min: dayRangeEndMin(startInput), max: undefined, set: (next: string) => (endInput = next) }
+            { id: 'pj-start', label: m.start_date_label(), value: startInput, min: undefined, max: dayRangeStartMax(endInput), set: (next: string) => (startInput = next) },
+            { id: 'pj-end', label: m.end_date_label(), value: endInput, min: dayRangeEndMin(startInput), max: undefined, set: (next: string) => (endInput = next) }
           ] as field (field.id)}
             {@const day = epochDayFromDateInputValue(field.value)}
             <div class="rows-divide date-row">
@@ -322,16 +301,15 @@
             </div>
           {/each}
         </div>
-        {#if fromHair}<p class="muted small" data-journey-origin>{m.hair_progress()}</p>{/if}
         <PhotoChipRow {chips} {chip} onPick={pickChip} />
 
-        <!-- The count is said once, in the bar with the button it counts
-             for (release audit U13: it was here as well). -->
+        <!-- The count is said once, in the bar with the button it counts for (release: it
+             was here as well). -->
         <p class="muted small">
           {#if photos.length === 0}
             {m.pj_none_in_range()}
           {:else if !range}
-            {m.recap_custom_range_required()}
+            {m.range_required()}
           {:else if shown.length === 0}
             {m.pj_none_in_range()}
           {:else if selected.length === 0}
@@ -370,7 +348,7 @@
             {#if output === 'collage'}
               <img src={previewUrl} alt={m.pj_preview_collage_alt()} style:background={JOURNEY_SURROUND} />
             {:else}
-              <!-- The app's own video player (ticket 46), not the browser's
+              <!-- The app's own video player, not the browser's
                    transport: a timelapse this app just rendered is played
                    with the same control, scrub and materials as a video note
                    and a recording. The URL stays this screen's to revoke. -->
@@ -379,15 +357,12 @@
             <p class="muted small">{m.pj_stays_here()}</p>
             <div class="journey-actions">
               <button class="btn btn-primary press" data-share onclick={share}>
-                <Icon name="share" size={20} /><span>{m.pj_share()}</span>
+                <Icon name="share" size={20} /><span>{m.share_or_save()}</span>
               </button>
               <button class="btn btn-soft press" data-again onclick={() => (made = null)}>
                 <span>{m.pj_again()}</span>
               </button>
             </div>
-            {#if fromHair}
-              <button class="btn btn-ghost press" data-journey-done onclick={() => smartBackSettled(returnTo)}>{m.done()}</button>
-            {/if}
           </div>
         {:else}
           <SaveBar arrange="stack">
@@ -411,7 +386,6 @@
           key="journey-read-failed"
           role={roleAt(activeFlag.roles, 0)}
           title={m.pj_read_failed_title()}
-          text={m.pj_read_failed_body()}
         />
       </div>
     {/snippet}
@@ -442,7 +416,7 @@
     margin-top: var(--space-4);
   }
 
-  /* The collage only: a timelapse is VideoNotePlayer now (ticket 46), which
+  /* The collage only: a timelapse is VideoNotePlayer now, which
      brings its own frame and its own corner. */
   .journey-preview img {
     display: block;

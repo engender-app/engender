@@ -6,9 +6,8 @@ import static org.junit.Assert.assertNull;
 import org.junit.Test;
 
 /**
- * sanitizeLaunchRoute's allowlist (phase 4 features ticket 04 added the
- * wrapped and on-this-day shapes to the existing reminder/check-in ones).
- * Pure string logic, so a plain JVM test covers it without an emulator.
+ * SanitizeLaunchRoute's allowlist. Pure string logic, so a plain JVM test
+ * covers it without an emulator.
  */
 public class ReminderSchedulerRouteTest {
 
@@ -69,16 +68,9 @@ public class ReminderSchedulerRouteTest {
     }
 
     @Test
-    public void allowsEachTallyWidgetKind() {
-        assertEquals("/?tally=misgendered", ReminderScheduler.sanitizeLaunchRoute("/?tally=misgendered"));
-        assertEquals("/?tally=correctly_gendered", ReminderScheduler.sanitizeLaunchRoute("/?tally=correctly_gendered"));
-    }
-
-    @Test
-    public void rejectsATallyWidgetKindOutsideTheTwoAllowed() {
-        assertNull(ReminderScheduler.sanitizeLaunchRoute("/?tally=neutral"));
-        assertNull(ReminderScheduler.sanitizeLaunchRoute("/?tally="));
-        assertNull(ReminderScheduler.sanitizeLaunchRoute("/?tally=misgendered&extra=1"));
+    public void rejectsTheRemovedTallyWidgetRoute() {
+        assertNull(ReminderScheduler.sanitizeLaunchRoute("/?tally=misgendered"));
+        assertNull(ReminderScheduler.sanitizeLaunchRoute("/?tally=correctly_gendered"));
     }
 
     @Test

@@ -108,9 +108,8 @@ const spokenTake = () =>
   );
 
 test('the room floor is read off dB bins, and the bin is all it costs', () => {
-  // AU-05 turned the two SNR ranks - the voiced median and the room's quiet
-  // quarter - from sorted lists into a 0.01 dB histogram, so that a poll
-  // costs the same however long the take is. This is the one number in the
+  // The two SNR ranks use a 0.01 dB histogram, so polling costs the same
+  // however long the take is. This is the one number in the
   // gate that moved, so it is pinned: the sorted lists answered 31.4608 dB
   // on this take and the bins answer 31.4600, which is the whole cost. A
   // sweep of 168 room-and-voice combinations put the worst drift anywhere at
@@ -122,14 +121,13 @@ test('the room floor is read off dB bins, and the bin is all it costs', () => {
   );
 });
 
-/* Redesign ticket 41: the two tasks answer to two floors.
+/* The two tasks answer to two floors.
 
-   `spokenTake` above is the shape of a read - three voiced bursts under
-   0.6s each with pauses between them - and it existed here for the SNR test
-   before anything asserted what the gate said about it. What the gate said
-   was `tooShort`, because the passage and the vowel shared one constant
-   over the longest *unbroken* run, and an honest read has no unbroken run
-   longer than a syllable or two. */
+   `spokenTake` above is the shape of a read - three voiced bursts under 0.6s each with
+   pauses between them - and it existed here for the SNR test before anything asserted what
+   the gate said about it. What the gate said was `tooShort`, because the passage and the
+   vowel shared one constant over the longest *unbroken* run, and an honest read has no
+   unbroken run longer than a syllable or two. */
 
 /** A read of a passage this many words long. 1.5s of voice carried, against
     English's 0.083s a word: fifteen words ask for 1.24s and clear, thirty
@@ -182,7 +180,7 @@ test('the floor scales with the passage, and per language', () => {
   // 82 Polish words and 98 English ones are the two bundled passages, and
   // Polish asks for more voice per word because its words are longer.
   assert.ok(readingFloorSeconds(1, 'pl') > readingFloorSeconds(1, 'en'));
-  // The measured numbers themselves, pinned: ADR-0082 has where they came
+  // The measured numbers themselves, pinned: quality.ts explains where they came
   // from, and a change to either is a change to what the app accepts.
   assert.ok(Math.abs(readingFloorSeconds(98, 'en') - 8.134) < 0.001);
   assert.ok(Math.abs(readingFloorSeconds(82, 'pl') - 9.184) < 0.001);

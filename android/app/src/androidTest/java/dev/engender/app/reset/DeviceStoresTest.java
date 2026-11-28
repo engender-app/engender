@@ -1,6 +1,7 @@
 package dev.engender.app.reset;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import android.content.Context;
@@ -19,6 +20,7 @@ import java.security.KeyStore;
 import java.io.File;
 
 import dev.engender.app.photos.CameraCapture;
+import dev.engender.app.keystore.CredentialWrapStore;
 
 import javax.crypto.KeyGenerator;
 
@@ -71,6 +73,15 @@ public class DeviceStoresTest {
     }
 
     @Test
+    public void aResetRemovesTheCredentialWithoutAllowingReadoption() throws Exception {
+        CredentialWrapStore credentials = new CredentialWrapStore(context);
+        credentials.write("{\"credential\":\"synthetic\"}");
+        wipe();
+        credentials.adopt("{\"credential\":\"stale OPFS copy\"}");
+        assertEquals("null", new CredentialWrapStore(context).read());
+    }
+
+    @Test
     public void aResetLeavesNoPreferenceFileBehind() {
         write(REMINDERS_PREFS, "payload-v1", "{\"reminders\":[{\"title\":\"Estradiol patch\"}]}");
         write(AUTO_EXPORT_PREFS, "destinationLabel", "Journal backups");
@@ -102,11 +113,10 @@ public class DeviceStoresTest {
 
     @Test
     public void aResetDeletesTheKeystoreAliasTheRemindersWereWrappedUnder() throws Exception {
-        /* Audit finding G-02: the reminder payload gained a
-           wrapping key of its own, and it leaves for the same reason the
-           backup password's does. The ciphertext is only gone because the
-           preference file went with it, so a key left behind opens any copy
-           of that file taken before the reset. */
+        /* The reminder payload gained a wrapping key of its own, and it leaves for the same
+           reason the backup password's does. The ciphertext is only gone because the
+           preference file went with it, so a key left behind opens any copy of that file
+           taken before the reset. */
         createAlias(REMINDERS_ALIAS);
         assertTrue("the alias was not created", aliasExists(REMINDERS_ALIAS));
 

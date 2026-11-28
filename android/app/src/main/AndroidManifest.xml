@@ -1,9 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <queries>
         <intent>
             <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+        <!-- The other handlers the app opens for a result: leaving to one
+             that is not a system app gets no lock grace (HandlerTrust), which
+             needs the app to be able to see who would answer. -->
+        <intent>
+            <action android:name="android.intent.action.OPEN_DOCUMENT" />
+            <data android:mimeType="*/*" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.CREATE_DOCUMENT" />
+            <data android:mimeType="*/*" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.OPEN_DOCUMENT_TREE" />
+        </intent>
+        <intent>
+            <action android:name="android.provider.action.PICK_IMAGES" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.GET_CONTENT" />
+            <data android:mimeType="*/*" />
         </intent>
     </queries>
 
@@ -25,36 +47,14 @@
          resolveAndroidBackAction; this changes how the gesture is drawn,
          not where it goes. -->
 
-    <!-- The platform's backup service (F-02). Off, by both of the two
-         attributes it takes.
-
-         The default is on, and with no dataExtractionRules or
-         fullBackupContent to narrow it the whole private directory was
-         eligible for Google's cloud backup and for device-to-device
-         transfer. The journal itself survived that harmlessly - the RSA
-         private half never leaves the platform keystore and is not backed
-         up, so a restored copy is ciphertext nobody can open, which is what
-         AndroidEncryptionClaimTest proves by reading the bytes. The leak was
-         everything beside it: the WebView's localStorage draft, the reminder
-         titles, the backup destination's label. Those left the device
-         without anyone choosing it, and CONTEXT.md's claim is that journal
-         data stays on the device unless the person deliberately creates or
-         delivers an archive.
-
-         Rules excluding sharedpref and the WebView directory would have kept
-         backup for the encrypted database alone. Not taken: what a backup of
-         it would restore is a database whose key is gone, on a phone whose
-         keystore never had it - nothing recoverable, in exchange for a
-         surface that has to be re-audited every time the app writes
-         somewhere new. The archive export is the recovery path, and it is
-         the one the app tells people about.
-
-         dataExtractionRules beside it rather than instead of it: from
-         Android 12 the flag below only stops cloud backup, and the rules
-         file is what stops device-to-device transfer. The flag still covers
-         the Android 11 and older half of the range, which starts at the
-         app's floor of API 26. -->
+    <!-- Disable platform backup to keep app storage on the device.
+         allowBackup covers Android 11 and older (minimum API 26) and
+         cloud backup on Android 12+. dataExtractionRules also blocks
+         device-to-device transfer on Android 12+. The journal key is
+         bound to the Keystore, while WebView drafts and other state
+         can contain private data. Export an archive for recovery. -->
     <application
+        android:name=".JournalApplication"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:enableOnBackInvokedCallback="true"
@@ -63,6 +63,24 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
+
+        <!-- Opt out of per-app diagnostic uploads. Safe Browsing keeps
+             WebView's enabled default. -->
+        <meta-data android:name="android.webkit.WebView.MetricsOptOut"
+            android:value="true" />
+
+        <!-- BackupWork uses ordinary delayed jobs without network constraints
+             or foreground execution. Keep WorkManager's job and rescheduling
+             owners; omit the two components those unused features add. -->
+        <provider android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            tools:node="merge">
+            <meta-data android:name="androidx.work.WorkManagerInitializer" tools:node="remove" />
+        </provider>
+        <service android:name="androidx.work.impl.foreground.SystemForegroundService"
+            tools:node="remove" />
+        <receiver android:name="androidx.work.impl.background.systemalarm.ConstraintProxy$NetworkStateProxy"
+            tools:node="remove" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -87,482 +105,673 @@
 
         </activity>
 
-        <!-- The launcher identity. The LAUNCHER category
-             lives on these aliases rather than on MainActivity itself, so
-             which icon and label the system shows is a matter of which
-             alias is enabled, not a string this app renders. Exactly one
-             is enabled at a time - dev.engender.app.disguise.DisguiseAlias
-             is what flips that, and it enumerates these aliases off this
-             file rather than keeping a second list of them.
+        <!-- Keep LAUNCHER on the aliases. DisguiseAlias enumerates them from
+             this manifest and enables exactly one. Launch01 is the default.
+             LAUNCHER_IDENTITY names the palette, round variant or disguise.
+             Use new neutral numbers for new aliases. Keep existing numbers
+             stable because Android exposes component names.
 
-             Each flag has current and round artwork aliases, plus one
-             disguised alias. LauncherDefault is the default palette's
-             current artwork, so an untouched install never flips an alias.
-
-             Android kills and restarts the app process on the disguise
-             flip, which is the "closes briefly to switch"
-             disguise_app_sub_android warns about. A flag change does not:
-             it is not urgent the way hiding the app is, so the launcher
-             picks the new icon up by the next cold start (ADR-0088). -->
+             Disguise restarts the process. A flag-only change updates the
+             launcher by the next cold start (ADR-0088). Route widget and
+             notification actions through the enabled alias so Recents and
+             TalkBack use its identity. Keep OPEN_ROUTE off MainActivity. -->
         <activity-alias
-            android:name=".disguise.LauncherDefault"
+            android:name=".Launch01"
             android:targetActivity=".MainActivity"
             android:enabled="true"
             android:exported="true"
             android:icon="@mipmap/ic_launcher"
             android:roundIcon="@mipmap/ic_launcher_round"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="trans" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherDefaultRound"
+            android:name=".Launch02"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_trans_round"
             android:roundIcon="@mipmap/ic_launcher_trans_round"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="trans-round" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherDisguised"
+            android:name=".Launch03"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_disguised"
             android:roundIcon="@mipmap/ic_launcher_disguised"
             android:label="@string/app_name_disguised">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="disguised" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherNonbinary"
+            android:name=".Launch04"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_nonbinary"
             android:roundIcon="@mipmap/ic_launcher_nonbinary"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="nonbinary" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherNonbinaryRound"
+            android:name=".Launch05"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_nonbinary_round"
             android:roundIcon="@mipmap/ic_launcher_nonbinary_round"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="nonbinary-round" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherGenderfluid"
+            android:name=".Launch06"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_genderfluid"
             android:roundIcon="@mipmap/ic_launcher_genderfluid"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="genderfluid" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherGenderfluidRound"
+            android:name=".Launch07"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_genderfluid_round"
             android:roundIcon="@mipmap/ic_launcher_genderfluid_round"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="genderfluid-round" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherBisexual"
+            android:name=".Launch08"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_bisexual"
             android:roundIcon="@mipmap/ic_launcher_bisexual"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="bisexual" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherBisexualRound"
+            android:name=".Launch09"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_bisexual_round"
             android:roundIcon="@mipmap/ic_launcher_bisexual_round"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="bisexual-round" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherLesbian"
+            android:name=".Launch10"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_lesbian"
             android:roundIcon="@mipmap/ic_launcher_lesbian"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="lesbian" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherLesbianRound"
+            android:name=".Launch11"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_lesbian_round"
             android:roundIcon="@mipmap/ic_launcher_lesbian_round"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="lesbian-round" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherPansexual"
+            android:name=".Launch12"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_pansexual"
             android:roundIcon="@mipmap/ic_launcher_pansexual"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="pansexual" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherPansexualRound"
+            android:name=".Launch13"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_pansexual_round"
             android:roundIcon="@mipmap/ic_launcher_pansexual_round"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="pansexual-round" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherRainbow"
+            android:name=".Launch14"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_rainbow"
             android:roundIcon="@mipmap/ic_launcher_rainbow"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="rainbow" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherRainbowRound"
+            android:name=".Launch15"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_rainbow_round"
             android:roundIcon="@mipmap/ic_launcher_rainbow_round"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="rainbow-round" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherAgender"
+            android:name=".Launch16"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_agender"
             android:roundIcon="@mipmap/ic_launcher_agender"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="agender" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherAgenderRound"
+            android:name=".Launch17"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_agender_round"
             android:roundIcon="@mipmap/ic_launcher_agender_round"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="agender-round" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherGaymen"
+            android:name=".Launch18"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_gaymen"
             android:roundIcon="@mipmap/ic_launcher_gaymen"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="gaymen" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherGaymenRound"
+            android:name=".Launch19"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_gaymen_round"
             android:roundIcon="@mipmap/ic_launcher_gaymen_round"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="gaymen-round" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherGenderqueer"
+            android:name=".Launch20"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_genderqueer"
             android:roundIcon="@mipmap/ic_launcher_genderqueer"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="genderqueer" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherGenderqueerRound"
+            android:name=".Launch21"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_genderqueer_round"
             android:roundIcon="@mipmap/ic_launcher_genderqueer_round"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="genderqueer-round" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherIntersex"
+            android:name=".Launch22"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_intersex"
             android:roundIcon="@mipmap/ic_launcher_intersex"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="intersex" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherIntersexRound"
+            android:name=".Launch23"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_intersex_round"
             android:roundIcon="@mipmap/ic_launcher_intersex_round"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="intersex-round" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherAsexual"
+            android:name=".Launch24"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_asexual"
             android:roundIcon="@mipmap/ic_launcher_asexual"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="asexual" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherAsexualRound"
+            android:name=".Launch25"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_asexual_round"
             android:roundIcon="@mipmap/ic_launcher_asexual_round"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="asexual-round" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherDemiboy"
+            android:name=".Launch26"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_demiboy"
             android:roundIcon="@mipmap/ic_launcher_demiboy"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="demiboy" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherDemiboyRound"
+            android:name=".Launch27"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_demiboy_round"
             android:roundIcon="@mipmap/ic_launcher_demiboy_round"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="demiboy-round" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherDemigirl"
+            android:name=".Launch28"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_demigirl"
             android:roundIcon="@mipmap/ic_launcher_demigirl"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="demigirl" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherDemigirlRound"
+            android:name=".Launch29"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_demigirl_round"
             android:roundIcon="@mipmap/ic_launcher_demigirl_round"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="demigirl-round" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherTrigender"
+            android:name=".Launch30"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_trigender"
             android:roundIcon="@mipmap/ic_launcher_trigender"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="trigender" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherTrigenderRound"
+            android:name=".Launch31"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_trigender_round"
             android:roundIcon="@mipmap/ic_launcher_trigender_round"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="trigender-round" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherPolish"
+            android:name=".Launch32"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_polish"
             android:roundIcon="@mipmap/ic_launcher_polish"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="polish" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
+            </intent-filter>
         </activity-alias>
 
         <activity-alias
-            android:name=".disguise.LauncherPolishRound"
+            android:name=".Launch33"
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
             android:icon="@mipmap/ic_launcher_polish_round"
             android:roundIcon="@mipmap/ic_launcher_polish_round"
             android:label="@string/app_name">
+            <meta-data android:name="dev.engender.app.LAUNCHER_IDENTITY" android:value="polish-round" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="dev.engender.app.action.OPEN_ROUTE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="engender" android:host="open" />
             </intent-filter>
         </activity-alias>
 
@@ -582,20 +791,6 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/quick_log_widget_info" />
-        </receiver>
-
-        <!-- The tally widget, same reasoning as the quick-log
-             widget above: exported so the launcher can deliver
-             APPWIDGET_UPDATE. -->
-        <receiver
-            android:name=".widgets.TallyWidgetProvider"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/tally_widget_info" />
         </receiver>
 
         <!-- The doubt-entry widget, same reasoning as the
@@ -620,48 +815,31 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.TIMEZONE_CHANGED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
             </intent-filter>
         </receiver>
     </application>
 
     <!-- Permissions -->
 
-    <!-- No android.permission.INTERNET, and that absence is the point. The
-         app makes no off-origin request anywhere -
-         tests/browser-tier/verify-build.mjs asserts that online and offline -
-         and the bundle it runs is served out of the APK by Capacitor's asset
-         loader, which intercepts the request before any socket exists. So the
-         permission bought nothing, and dropping it turns "no telemetry" into
-         something a reader of the permission list can verify rather than take
-         on trust.
+    <!-- The app omits android.permission.INTERNET (ADR-0100). Capacitor
+         intercepts bundled asset requests before they reach a socket, including
+         the language data OCR loads. verify-build.mjs checks for off-origin
+         app requests online and offline.
 
-         Answered with a build rather than an opinion. With this line removed,
-         the connected suite was run on a Pixel 10a and then compared against
-         the same suite with the line restored: the two runs fail the same
-         tests. Nothing regressed on removal, and what passes covers the paths
-         that could plausibly have wanted a socket - the WebView boots the real
-         bundle, the native driver opens the journal and passes the whole
-         contract suite over SQLCipher, the photo write channel writes and reads
-         its files, the keystore holds the data key, the three widgets render,
-         print reaches the spooler, and WebViewCspEnforcementTest fetches a
-         bundled Tesseract asset off the app's own origin, which is the
-         mechanism OCR loads its language data through.
-
-         Four tests fail on that phone in both runs and none of them is about
-         this: DisguiseAliasTest.mainActivityIsExcludedFromRecents asserts the
-         opposite of what the manifest now says and of what
-         tests/android-manifest-recents.test.ts asserts, two JournalKeystoreTest
-         cases need a phone with no lock screen, and
-         ArchiveCrossPlatformRoundTripTest cannot create its probe photo
-         directory. The archive one is the only gap worth naming here, since an
-         export is a path this question is about; it fails with the permission
-         present too, on the same device, in the same isolated run.
-
-         If something here ever does need a socket, put the line back with a
-         comment naming what needed it. -->
+         An isolated Pixel 10a comparison found the same instrumentation
+         results with the permission present and absent. The archive round-trip
+         test could not create its probe photo directory in either run.
+         A new socket dependency needs a decision superseding ADR-0100. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- WorkManager holds a wake lock during scheduled encrypted delivery.
+         BackupWork never requests network constraints or foreground work. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" tools:node="remove" />
     <!-- Voice notes. Recording itself needs no native code: it
          is plain getUserMedia/MediaRecorder, the same as the web build, and
          Capacitor's own BridgeWebChromeClient.onPermissionRequest already

@@ -1,19 +1,19 @@
-/* "I forgot my PIN": the one way back into the app, and it costs the whole
-   journal (ADR-0014). There is no data-preserving recovery to offer -
-   the PIN only derives the key that wraps the data key (ADR-0041), and a
-   forgotten one cannot be brought back - so the honest escape hatch
-   is this one, clearly labeled, with the loss stated before it happens.
+/* "I forgot my PIN": the one way back into the app, and it costs the whole journal. There
+   is no data-preserving recovery to offer - the PIN only derives the key that wraps the
+   data key (ADR-0041), and a forgotten one cannot be brought back - so the honest escape
+   hatch is this one, clearly labeled, with the loss stated before it happens.
 
-   It wipes what this installation holds, not what an archive holds: an
-   export made earlier still restores everything, and the reset screen says
-   so. Everything is injected so the destructive part can be tested against
-   fakes rather than against a real OPFS. */
+   It wipes what this installation holds, not what an archive holds: an export made earlier
+   still restores everything, and the reset screen says so. Everything is injected so the
+   destructive part can be tested against fakes rather than against a real OPFS. */
 
+import { KEYSTORE_FILE } from './keystore-file';
+import { DEVICE_BOUND_FILE } from './journal-initialization';
+import { PENDING_RECOVERY_KEY_FILE, RECOVERY_KEY_FILE } from './recovery-key-file';
 import { BOOT_MIRROR_KEYS } from './prefs/boot-cache.ts';
 import type { ListableDirectory } from './photos/opfs-file-store.ts';
 
-/* LocalDataTargets stays exported only for its own test (AU-09 test-only
-   review). */
+/* LocalDataTargets stays exported only for its own test. */
 export interface LocalDataTargets {
   /** Lets go of the database file; OPFS will not delete a file whose sync
       access handle is still open. */
@@ -25,8 +25,8 @@ export interface LocalDataTargets {
   storageRoot: () => Promise<ListableDirectory>;
   /** What a platform holds outside that root, where it holds anything. On
       Android the journal itself is an app-private file and the data key is
-      in the platform key store, and the WebView's storage reaches neither
-      (ticket 13). Absent on the web, where the root is everything. */
+      in the platform key store, and the WebView's storage reaches neither.
+Absent on the web, where the root is everything. */
   wipePlatformStorage?: () => Promise<void>;
   /** What a platform holds that is not the journal and not in that root
       either: on Android the reminder, auto-export and lock-timing preference
@@ -61,11 +61,10 @@ export function clearBrowserMirrors(storage: Storage): void {
   for (const key of doomed) storage.removeItem(key);
 }
 
-/** What Android keeps in app-private storage for the journal, taken in the
-    order that leaves a retryable reset if any step fails: the database, then
-    the photo files sealed under the same key (ux-carpet 214; until then they
-    outlived every start-over), and the key last. A key erased first would
-    leave ciphertext nothing can open or clean up (ticket 13, ux-carpet 210). */
+/** What Android keeps in app-private storage for the journal, taken in the order that
+    leaves a retryable reset if any step fails: the database, then the photo files sealed
+    under the same key, and the key last. A key erased first would leave ciphertext nothing
+    can open or clean up. */
 export async function wipeAndroidJournalFiles(steps: {
   deleteDatabase: () => Promise<void>;
   deletePhotos: () => Promise<void>;
@@ -92,6 +91,8 @@ export function androidResetTargets(bridges: {
 }
 
 export async function wipeLocalData(targets: LocalDataTargets): Promise<void> {
+  // Web Storage has no flush primitive. Start its cleanup before file deletion.
+  targets.clearBrowserMirrors();
   // A worker that is already gone is not a reason to abandon the reset;
   // the delete below will tell us soon enough if the file is still held.
   await targets.closeDatabase().catch((error) => {
@@ -109,11 +110,14 @@ export async function wipeLocalData(targets: LocalDataTargets): Promise<void> {
   await targets.wipeDeviceState?.();
 
   const root = await targets.storageRoot();
+  const credentials: string[] = [];
+  const credentialFiles = new Set<string>([KEYSTORE_FILE, DEVICE_BOUND_FILE, RECOVERY_KEY_FILE, PENDING_RECOVERY_KEY_FILE]);
   for await (const name of root.keys()) {
-    await root.removeEntry(name, { recursive: true });
+    if (credentialFiles.has(name)) credentials.push(name);
+    else await root.removeEntry(name, { recursive: true });
   }
-
-  targets.clearBrowserMirrors();
+  // A failed data deletion must leave every remaining way to open it.
+  for (const name of credentials) await root.removeEntry(name, { recursive: true });
 
   /* Last, and only if the files really went. The mirror is what tells the
      next cold start there is a PIN at all: dropping it while the database

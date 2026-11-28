@@ -1,9 +1,9 @@
-/* The counter the update guard reads (ticket 04). Part of the Node tier; run
+/* The counter the update guard reads. Part of the Node tier; run
    with `npm test`. */
 
 import assert from 'node:assert/strict';
-import { test } from 'vitest';
-import { markJournalBusy, onJournalBusyChange, journalIsBusy, watchJournalWrites, prepareJournalHandover } from './journal-busy.ts';
+import { test, vi } from 'vitest';
+import { markJournalBusy, onJournalBusyChange, journalIsBusy, watchJournalWrites, prepareJournalHandover, waitForJournalIdle } from './journal-busy.ts';
 
 test('nothing in flight until something enters', () => {
   assert.equal(journalIsBusy(), false);
@@ -68,7 +68,7 @@ test('a stopped listener hears nothing further', () => {
 
 test('the write watch answers yes for a write already in flight, and for one that starts later', () => {
   // What boot's two housekeeping passes ask before each step they cannot take
-  // back (phase 5 audit ticket 02).
+  // back.
   const duringAWrite = markJournalBusy();
   const started = watchJournalWrites();
   assert.equal(started.sawWrite(), true, 'a write already open counts');
@@ -109,4 +109,27 @@ test('handover remembers a failed write even if it finished before activation', 
   assert.equal(await handover(() => { ran = true; }), false);
   assert.equal(ran, false);
   assert.equal(await prepareJournalHandover()(() => { ran = true; }), true);
+});
+
+test('idle wait includes overlapping writes and removes its listener after settling', async () => {
+  vi.useFakeTimers();
+  const first = markJournalBusy();
+  const second = markJournalBusy();
+  try {
+    let settled = false;
+    const idle = waitForJournalIdle().then(() => { settled = true; });
+    first();
+    await vi.runAllTimersAsync();
+    assert.equal(settled, false);
+    second();
+    await vi.runAllTimersAsync();
+    await idle;
+    assert.equal(settled, true);
+    markJournalBusy()();
+    assert.equal(vi.getTimerCount(), 0, 'a completed waiter must not schedule more checks');
+  } finally {
+    first();
+    second();
+    vi.useRealTimers();
+  }
 });

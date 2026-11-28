@@ -16,14 +16,12 @@ export function endTabArrival(): void {
   tabRevealBy = undefined;
 }
 
-/* A read answering during the field's travel shares what is left of it,
-   but never below --dur-fast. Look back's rail used to be squeezed into
-   whatever remained: answering about 40ms before the stop, it went from
-   skeleton to almost fully drawn in one frame, which Alicja rejected as a
-   yank. An answer with less than that left keeps
-   its placeholder until the field stops and then reveals at full length
-   (arrivalHold.svelte.ts); one with more is fitted into the travel, no
-   shorter than --dur-fast. */
+/* A read answering during the field's travel shares what is left of it, but never below
+   --dur-fast. Look back's rail used to be squeezed into whatever remained: answering about
+   40ms before the stop, it went from skeleton to almost fully drawn in one frame, which
+   rejected as a yank. An answer with less than that left keeps its placeholder until the
+   field stops and then reveals at full length (arrivalHold.svelte.ts); one with more is
+   fitted into the travel, no shorter than --dur-fast. */
 function revealFloor(): number {
   return motionDuration('--dur-fast');
 }
@@ -107,7 +105,7 @@ export function markScreenArrival(now: number = performance.now()): void {
 /**
  * Closes the window early, for an arrival that outlasts it.
  *
- * The app opening is the one (redesign ticket 34): it runs for --dur-slow
+ * The app opening is the one: it runs for --dur-slow
  * and the boot marks an arrival part-way through it, when the journal
  * finishes opening, so the window was still standing after the screen had
  * stopped moving.

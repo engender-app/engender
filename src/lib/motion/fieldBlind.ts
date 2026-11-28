@@ -1,58 +1,25 @@
-/* The field as a blind over the content (redesign ticket 28).
+/* Animate the field as a viewport-height paint layer with a moving
+   clip. Snapshot the outgoing field content as fp-a-* and incoming
+   content as fp-b-* so items fade on their own. Give each sun ring a
+   name so the stylesheet can close the rings outermost first.
 
-   Ticket 25 made the field the shared element between the doors: one name
-   on both sides, so the browser tweened its box between the two heights and
-   crossfaded what was on it. That crossfade is a photograph of the whole
-   field, contents included, stretched between two heights - the smear
-   Alicja named at frame 5 of Journal to Look back (2026-09-08).
-
-   So the card is split in two. Its paint is a flat block that carries one
-   name across every screen and never has anything drawn on it, which is
-   what lets the edge move without deforming a corner: the block itself is a
-   window tall and its bottom edge is a clip, so what animates is where the
-   clip is rather than how big the picture is. Everything painted on the
-   field - title, wordmark, month strip, icon controls, search box, back
-   control, actions - is named per side, `fp-a-*` leaving and `fp-b-*`
-   arriving, so no element can pair with one on the other screen: the
-   browser has an old with no new and a new with no old, fades each on its
-   own, and nothing morphs into anything.
-
-   The sun's rings are named one by one for the same reason. A ring inside
-   the screen's own snapshot can only fade with it; a ring with a name of
-   its own can close, and the stylesheet closes them outermost first.
-
-   Script rather than a stylesheet rule, and the reason is ticket 25's
-   measurement: `[data-field-blind] { view-transition-name: blind }` names
-   both blinds at the new capture, because the outgoing screen is still in
-   the DOM finishing its outros, and Chromium refuses a duplicate name by
-   aborting the whole transition. The name is handed over instead - the
-   outgoing side wears it for the old capture, gives it up once the new
-   screen has mounted, and the incoming side takes it before the new
-   capture. Held to that order by fieldBlind.test.ts.
-
-   Inline styles rather than classes, since a class needs a rule and a rule
-   is what cannot tell the two sides apart. All of them are released when
-   the transition finishes: a view-transition-name makes its element a
-   stacking context, and a field that stayed one would trap every z-index
-   inside its screen. */
+   Hand off the blind's view-transition-name between captures. The
+   outgoing node can still be in the DOM when the next screen mounts,
+   and Chromium aborts on duplicate names. Clear the inline styles
+   after the transition so the field stops creating a stacking context. */
 
 import { ACTIVE_DOOR_CONTENT } from '../navigation/doorActivity';
 import { blindSettle, EASE_OUT_SOFT_VAR } from './blindSettle';
 
-/* Every box that measures a field, so the blind is one object across every
-   navigation the app makes. Setup's own field was missing from this list
-   until redesign ticket 33, which meant the outgoing side of setup's
-   handover contributed nothing: the blind opened from no height at all
-   while setup's field crossfaded away inside the screen's snapshot, so what
-   a person saw at the end of ten steps was one field fading out and another
-   appearing. Alicja, on the ticket's own renders: "the field must always
-   stay a single object that transitions to other states only by moving up
-   or down".
+/* Every box that measures a field, so the blind is one object across every navigation the
+   app makes. Setup's own field was missing from this list, which meant the outgoing side of
+   setup's handover contributed nothing: the blind opened from no height at all while
+   setup's field crossfaded away inside the screen's snapshot, so what a person saw at the
+   end of setup was one field fading out and another appearing.
 
-   The gates joined it the same way one ticket later, and the change they
-   need is not only this line: a gate is not a route, so there is no
-   navigation for the layout to catch. $lib/motion/appOpening is what runs
-   this carry when the secret is accepted. */
+   The gates joined it the same way one ticket later, and the change they need is not only
+   this line: a gate is not a route, so there is no navigation for the layout to catch.
+   $lib/motion/appOpening is what runs this carry when the secret is accepted. */
 const FIELD = `:is([data-screen-field], [data-home-field], [data-setup-field], [data-gate-field])${ACTIVE_DOOR_CONTENT}`;
 const REGION = '[data-app-scroll-region]';
 const BLIND = '[data-field-blind]';
@@ -62,41 +29,33 @@ const RING = '[data-flag-sun] > i';
 /** The blind itself, which is one object on both sides of a navigation. */
 const BLIND_NAME = 'blind';
 
-/** The field, named only to contain what is painted on it (ticket 99 round
-    2's real fix, not the cap below it): `view-transition-group: contain`
-    plus `overflow: clip` on `::view-transition-group-children(field)`
-    (components.css) is Chrome's own answer to a promoted child ignoring
-    its ancestor's overflow: hidden - confirmed against the W3C spec and
-    Chrome's own docs, which name this exact symptom ("becomes unbounded
-    and can freely move across the entire viewport"), shipped stable since
-    Chrome 140. The field's own capture is hidden rather than left to
-    crossfade (components.css again): naming it for containment must not
-    reintroduce the whole-field photograph ticket 25 split this file apart
-    to stop ("the smear"). */
+/** The field, named only to contain what is painted on it: `view-transition-group: contain`
+    plus `overflow: clip` on `::view-transition-group-children(field)` (components.css) is
+    Chrome's own answer to a promoted child ignoring its ancestor's overflow: hidden -
+    confirmed against the W3C spec and Chrome's own docs, which name this exact symptom
+    ("becomes unbounded and can freely move across the entire viewport"), shipped stable
+    since Chrome 140. The field's own capture is hidden rather than left to crossfade
+    (components.css again): naming it for containment must not reintroduce the whole-field
+    photograph split this file apart to stop ("the smear"). */
 const FIELD_NAME = 'field';
 
-/** A capture bound generous enough for every real field's height, not a
-    measurement of any one of them - see the comment where it is used.
-    Home's is the tallest measured (239px, ticket 99's own traces); 260
-    leaves a 21px margin rather than the 161px the first attempt at this
-    left, which at this phone's 2.625 device pixel ratio was itself most
-    of the glitch's visible height (Alicja, round four: "now about 50%",
-    a match for 400px's own footprint, not a smaller residual bug). */
+/** A capture bound generous enough for every real field's height, not a measurement of any
+    one of them - see the comment where it is used. Home's is the tallest measured; 260
+    leaves a 21px margin rather than the 161px the first attempt at this left, which at this
+    phone's 2.625 device pixel ratio was itself most of the glitch's visible height. */
 const BLIND_CAPTURE_MAX = 260;
 /** What the capture keeps below a field taller than that: the settle's 8px of
     overshoot and a little more. */
 const BLIND_CAPTURE_ROOM = 40;
 
-/** How far a thing painted on the field travels as it leaves or arrives, on
-    top of the ride it takes with the blind. Under the field's own 16px of
-    bottom padding, so an element travelling towards the edge cannot reach
-    it: nothing painted on the blind ever sticks out of it (Alicja, round
-    one, 2026-09-09).
+/** How far a thing painted on the field travels as it leaves or arrives, on top of the ride
+    it takes with the blind. Under the field's own 16px of bottom padding, so an element
+    travelling towards the edge cannot reach it: nothing painted on the blind ever sticks
+    out of it.
 
-    Exported because `fieldPart` in navigation.ts writes the same distance as
-    a var() fallback, for the frame before this module has published one -
-    and a second literal there would be a second source of truth for one
-    number. */
+    Exported because `fieldPart` in navigation.ts writes the same distance as a var()
+    fallback, for the frame before this module has published one - and a second literal
+    there would be a second source of truth for one number. */
 export const PART_TRAVEL = 12;
 
 /* Which carry owns the variables on the root. A navigation superseded by
@@ -107,15 +66,13 @@ export const PART_TRAVEL = 12;
    published them may remove them. */
 let current: BlindCarry | null = null;
 
-/* The newest carry made, which owns every name and variable while it lives.
-   A navigation that lands on another one skips it, and the skipped
-   transition's `finished` settles the moment the new one starts - before the
-   new one has captured its outgoing side. Its late release took the names off
-   the very elements the new carry had just named, so the new transition had
-   no outgoing blind, field or type: the edge stood at its destination from
-   its first frame while the incoming type rode in from the old one, up to
-   12px below it (ticket 285, interrupted and reversed door changes). Only the
-   newest carry may name, or give names back. */
+/* The newest carry made, which owns every name and variable while it lives. A navigation
+   that lands on another one skips it, and the skipped transition's `finished` settles the
+   moment the new one starts - before the new one has captured its outgoing side. Its late
+   release took the names off the very elements the new carry had just named, so the new
+   transition had no outgoing blind, field or type: the edge stood at its destination from
+   its first frame while the incoming type rode in from the old one, up to 12px below it.
+   Only the newest carry may name, or give names back. */
 let latest: BlindCarry | null = null;
 
 export interface CarryOptions {
@@ -126,14 +83,14 @@ export interface CarryOptions {
       scrolls it up out of the window under its own parts: the month strip
       hung 30px below a 65px sliver of blue on a return to a Journal that had
       been scrolled to its foot, and the type was up to 700px from the edge
-      it was riding (ticket 285). A screen that is going to be scrolled
+      it was riding. A screen that is going to be scrolled
       contributes no field, exactly as one that already is. */
   restoring?: boolean;
 
   /** The one navigation where the sun is the same object at the same size on
       both sides, and so must not be drawn twice.
 
-      Setup's finish (redesign ticket 33): the sun has grown one step's worth
+      Setup's finish: the sun has grown one step's worth
       per step and arrives at exactly the scale Home draws it at, which is
       what rule 12 means by "one object at one size rather than two suns".
       Named per side, its rings would close outermost-first and open again
@@ -177,27 +134,21 @@ export function carryBlind(doc: Document = document, options: CarryOptions = {})
   const flight = current ? inFlight(doc) : null;
   const before = name(doc, 'a', undefined, options);
   /* Where the edge is drawn, when a navigation lands on one that has not
-     finished (ticket 285). The DOM is already the earlier navigation's
+     finished. The DOM is already the earlier navigation's
      destination, so `before.height` is where that edge was going; starting
      from it takes the edge from wherever it had got to, to there, in the one
      frame the earlier transition is skipped - a 43px yank of the blue with
      the type on it. The new transition starts from what was on screen. */
   const fromEdge = flight?.edge ?? before.height;
-  /* Published here, not only in swap() (Alicja, 2026-09-10, on a phone
-     recording, two rounds: "the field completely glitches out ... for 1-2
-     frames", then "the field teleporting up at the end of the
-     transition"). The browser captures the outgoing side, and the
-     blind-slide animation attaches to it, the instant startViewTransition
-     is called - which is before swap() ever runs, since that only fires
-     once the incoming screen has mounted. Until now that left
-     --blind-from unset for that whole window, so blind-slide's own
-     fallback (var(--blind-from, 0px)) played the outgoing side's "from"
-     keyframe as fully clipped away rather than as its real height - the
-     glitch - until swap() corrected it a moment later, which is the
-     teleport: the animation's start suddenly moving out from under it.
-     --blind-to is set to the same value rather than left unset for the
-     same reason; swap() overwrites both the instant it knows the real
-     pair. */
+  /* Published here, not only in swap(). The browser captures the outgoing side, and the
+     blind-slide animation attaches to it, the instant startViewTransition is called - which
+     is before swap() ever runs, since that only fires once the incoming screen has mounted.
+     Until now that left --blind-from unset for that whole window, so blind-slide's own
+     fallback (var(--blind-from, 0px)) played the outgoing side's "from" keyframe as fully
+     clipped away rather than as its real height - the glitch - until swap() corrected it a
+     moment later, which is the teleport: the animation's start suddenly moving out from
+     under it. --blind-to is set to the same value rather than left unset for the same
+     reason; swap() overwrites both the instant it knows the real pair. */
   root.style.setProperty('--blind-from', `${fromEdge}px`);
   root.style.setProperty('--blind-to', `${fromEdge}px`);
   /* The outgoing type was photographed at the DOM's resting positions, which
@@ -311,8 +262,7 @@ export const VARIABLES = [
  *
  * A navigation publishes them on the root, where a view transition's pseudo
  * elements are the only thing that can read them. Setup's step machine
- * publishes the same six on its own screen element instead (redesign
- * ticket 33): a step change is not a navigation, so it moves real elements
+ * publishes the same six on its own screen element instead: a step change is not a navigation, so it moves real elements
  * rather than photographs of them, and the arithmetic of how far and on
  * which curve is the same question either way. One owner, so the two can
  * never disagree about which way a part travels.
@@ -334,10 +284,9 @@ export function blindVariables({
        and travels up to its own place. */
     '--blind-delta': `${from - to}px`,
     '--blind-ease': settle.easing,
-    /* Which way the things painted on the field leave and arrive: with the
-       blind, so on a blind being pulled down the old text drops and the new
-       comes from above, and on one being pulled up they both go the other
-       way (Alicja, round one). */
+    /* Which way the things painted on the field leave and arrive: with the blind, so on a
+       blind being pulled down the old text drops and the new comes from above, and on one
+       being pulled up they both go the other way. */
     '--part-travel': `${to > from ? PART_TRAVEL : -PART_TRAVEL}px`
   };
 }
@@ -362,24 +311,14 @@ function name(doc: Document, side: 'a' | 'b', skip?: Side, options: CarryOptions
   /* The field starts below the status bar; its bottom must reach the scroll
      viewport's top before the outgoing capture disappears. */
   const scrollTravel = height + Math.max(0, box.top - (region?.getBoundingClientRect().top ?? 0));
-  /* Nested under the field's own group (`contain`, set below) rather than
-     becoming an independent root-level group, only where that is what the
-     name is FOR: the blind is larger than what is ever visible of it at rest,
-     so its capture needs a clipping ancestor or it escapes it (`FIELD_NAME`'s
-     own comment). A field-part has no such excess - it is exactly its own
-     visible text or icon, named only so it can fade on its own clock apart
-     from its neighbour - and nesting it added a second ancestor between it
-     and the root for no reason this bug ever needed, which is what carried
-     the ghost: Home's wordmark still fading out, visible through the
-     incoming screen, reported straight after this fix on a recording of
-     Home to a new entry (Alicja, 2026-09-10, round five).
-     The sun rings carry their own clip-path: inset(50% 50% 0 0) (components.css)
-     and are ordered above both the field and its parts (app.css z-index 5 > 4 > 3);
-     lifting them out of the field group keeps that ordering across view
-     transitions, where nesting them trapped them under the field group's
-     z-index 3 (ux-carpet 241). `nearest` finds whichever named ancestor is
-     closest, so callers that do want it never have to know the field's own
-     name or that it changed hands mid-navigation. */
+  /* Nest the blind under its named group so its larger snapshot
+     keeps a clipping ancestor. Field parts fade in independent groups.
+     Nesting them would let a departing title remain visible behind
+     incoming content.
+
+     Sun rings have their own clip and paint above the field and its
+     parts. Keep them outside the field group to preserve that order.
+     Use nearest to find the ancestor without naming it directly. */
   const take = (el: HTMLElement | null, as: string, nest = false) => {
     if (!el) return;
     el.style.viewTransitionName = as;
@@ -387,46 +326,18 @@ function name(doc: Document, side: 'a' | 'b', skip?: Side, options: CarryOptions
     named.push(el);
   };
 
-  /* The field's own paint is still not named - only what is painted on it,
-     for the same reason as ever: its box is the measurement, and the blind
-     is what stands in for its paint. What IS named now is the field as a
-     bare container, solely so its overflow: hidden survives its children
-     being promoted (see FIELD_NAME's own comment) - `components.css` hides
-     its own crossfade so this never becomes a second whole-field
-     photograph.
+  /* Name the field as a container so its overflow clip survives promotion of its children. `components.css` suppresses the container's crossfade so the blind supplies the background.
 
-     A collapsed header's blind is left out, along with a scrolled screen's
-     above, and that is what keeps the
-     blind moving up and down and nowhere else. A collapsed field drops the
-     bleed that takes every other field out to the window's edges, so its
-     blind is 350px wide starting 20px in; the group holds one box for both
-     sides, so naming it made the whole blind jump 20px right for the length
-     of the navigation (Alicja, round one). A screen with no field has
-     nothing to contribute to the blind anyway - the other side's blind is
-     the one that moves, and it closes to nothing. */
+     Skip the collapsed header's blind. It is 350px wide and inset 20px, so sharing its box would shift the other blind sideways. When a screen contributes no blind, the opposite blind closes to nothing. */
   if (height > 0) {
     field.style.viewTransitionName = FIELD_NAME;
     field.style.setProperty('view-transition-group', 'contain');
     const blind = field.querySelector<HTMLElement>(BLIND);
-    /* Capped, not clipped to this side's own height (Alicja, 2026-09-10, a
-       third round, on a fresh recording: "it first yanks and takes up the
-       whole screen, then it yanks back to its target state"). The capture
-       is a screenshot of the element alone, ancestor overflow: hidden not
-       included, and the blind is a window tall so the slide has real pixel
-       data to reveal as it grows - which a first attempt at this fix broke
-       by clipping each side to its own rest height, starving the reveal on
-       whichever side turns out to be the shorter of the two. Which side
-       that is is not yet known here: `before` is measured and captured
-       long before `after` ever is, so there is no max(before, after) to
-       clip to at this point, only a bound generous enough for every real
-       field in the app - the tallest measured (Home's, ticket 99's own
-       traces) is 239px, and reduced-height clamps below 360px scale it
-       down further, never up. Nowhere near "the whole screen" is the only
-       property this needs. */
+    /* The browser captures the blind without its ancestor's overflow clip, so a viewport-height blind briefly covers the whole screen. Keep enough pixels for the reveal on either side. Each side is captured before both heights are known, and clipping to the shorter side starves the reveal. The tallest measured field is 239px. Viewports below 360px shrink it further. */
     /* Never less than this side's own field, and its swell: setup's last
        step is 290px tall with a two-line title, and the capture cut it at
        260, so the blue ended 14px above the type printed on it for the first
-       frames of the handover to Today (ticket 285). */
+       frames of the handover to Today. */
     const capture = Math.max(BLIND_CAPTURE_MAX, Math.ceil(height) + BLIND_CAPTURE_ROOM);
     if (blind) blind.style.clipPath = `inset(0 0 calc(100vh - ${capture}px) 0 round 0 0 var(--r-block) var(--r-block))`;
     take(blind, BLIND_NAME, true);
@@ -438,8 +349,8 @@ function name(doc: Document, side: 'a' | 'b', skip?: Side, options: CarryOptions
          group instead - except while a scrolled side has switched that clip
          off, where the whole field arrives from above and a small field's
          sun (Settings': 175px of ring in 154px of field) hung 21 to 71px
-         below the blue until the transition let go and cut it in one frame
-         (ticket 285). The cut travels in the ring's own clip, which is in its
+         below the blue until the transition let go and cut it in one frame.
+         The cut travels in the ring's own clip, which is in its
          capture and rides with it. */
       if (options.shareSun) {
         take(el, `sun-shared-${i}`);

@@ -1,4 +1,4 @@
-/* The journal book (phase 5 ticket 17): a keepsake assembly over rows
+/* The journal book: a keepsake assembly over rows
    entries, milestones and side effects own, recomputed on every read. The
    inclusion picker is what these tests are mostly about - what a book
    carries has to be decided by the choice, not by the renderer deciding
@@ -50,8 +50,8 @@ async function seeded(): Promise<Journal> {
   await journal.entries.upsertEntry({ epochDay: 19_000, mood: 2, note: 'before the range' });
   await journal.milestones.upsertMilestone({ name: 'first appointment', epochDay: 20_002 });
   await journal.milestones.upsertMilestone({ name: 'long before', epochDay: 19_001 });
-  await journal.sideEffects.upsertSideEffect({ name: 'headache', severity: 2, epochDay: 20_004 });
-  await journal.sideEffects.upsertSideEffect({ name: 'older headache', severity: 2, epochDay: 19_003 });
+  await journal.sideEffects.upsertSideEffect({ name: 'headache', severity: 2, epochDay: 20_004, resolvedEpochDay: null });
+  await journal.sideEffects.upsertSideEffect({ name: 'older headache', severity: 2, epochDay: 19_003, resolvedEpochDay: null });
   return journal;
 }
 
@@ -164,10 +164,9 @@ test('a trashed entry stays out of the book', async () => {
   assert.deepEqual(book.entries, []);
 });
 
-/* The summary line the screen shows instead of the whole document (phase 12
-   final-audit ticket 20). Counted off the assembled book rather than asked
-   for separately, which is the only way the line and the pages can never
-   disagree. */
+/* The summary line the screen shows instead of the whole document. Counted off the
+   assembled book rather than asked for separately, which is the only way the line and the
+   pages can never disagree. */
 
 test('the counts are the book\'s own entries, their photos and its milestones', async () => {
   const journal = await journalWithFiles();

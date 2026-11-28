@@ -1,4 +1,4 @@
-/* The one query behind every annotated chart (phase 5 deepening ticket 23). */
+/* The one query behind every annotated chart. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
@@ -6,21 +6,12 @@ import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { openJournal } from './journal.ts';
 import { SURGERY_RECOVERY_CUTOFF_DAYS } from '../recoveryDay.ts';
-import { startOfDayTimestamp } from '../epochDay.ts';
 
 const TODAY = 20200;
 
 async function journalWith() {
   const db = await migratedDb();
   return openJournal(db, fakeFileStore());
-}
-
-/** The same, with the built-in body regions seeded: an entry may only name a
-    region the journal knows (entries.ts's assertKnownBodyRegions). */
-async function journalWithRegions() {
-  const journal = await journalWith();
-  await journal.reconcileBuiltIns();
-  return journal;
 }
 
 test('gathers every dated area a chart can be annotated with', async () => {
@@ -39,7 +30,6 @@ test('gathers every dated area a chart can be annotated with', async () => {
     endReason: null
   });
   await journal.doses.upsertPause({ episodeId: episode, startEpochDay: 20120, endEpochDay: 20125, reason: 'planned' });
-  await journal.journalingPauses.upsertPause({ startEpochDay: 20130, endEpochDay: 20134 });
   await journal.tryouts.upsertTryout({ kind: 'name', label: 'Ada', startEpochDay: 20140, endEpochDay: 20150 });
   await journal.procedures.upsertProcedure({ name: 'top surgery', surgeryEpochDay: 20160 });
   await journal.eras.upsertEra({ name: 'first year', startEpochDay: 20155, endEpochDay: null });
@@ -48,13 +38,12 @@ test('gathers every dated area a chart can be annotated with', async () => {
 
   assert.deepEqual(
     found.map((a) => a.kind),
-    ['regimen', 'milestone', 'dosePause', 'journalingPause', 'tryout', 'era', 'surgery', 'recovery']
+    ['regimen', 'milestone', 'dosePause', 'tryout', 'era', 'surgery', 'recovery']
   );
 });
 
-/* Phase 6 ticket 03: an era joins the six other areas, but only where it has
-   a day to mark. An open start reaches back before the journal and has no
-   boundary of its own to draw. */
+/* An era joins the six other areas, but only where it has a day to mark. An open start
+   reaches back before the journal and has no boundary of its own to draw. */
 test('a bounded era marks the day it starts, and an open start marks nothing', async () => {
   const journal = await journalWith();
 
@@ -91,8 +80,8 @@ test('a dose pause is named by the drug of the episode it belongs to', async () 
   assert.equal(pause?.name, 'estradiol valerate');
 });
 
-/* Ticket 43: the regimen source carries the episode's end reason straight
-   through, null on every episode that is still open or has none. */
+/* The regimen source carries the episode's end reason straight through, null on every
+   episode that is still open or has none. */
 test('a regimen annotation carries its episode\'s end reason', async () => {
   const journal = await journalWith();
 
@@ -154,8 +143,8 @@ test('a procedure with no date set annotates nothing', async () => {
   assert.deepEqual(await journal.chartAnnotations.getAnnotations(20000, 20199, TODAY), []);
 });
 
-/* Phase 8 features ticket 59: a past appointment joins the seam like any
-   other dated area, named by the person's own kind. */
+/* A past appointment joins the seam like any other dated area, named by the person's own
+   kind. */
 test('a past appointment marks the day it happened, named by its own kind', async () => {
   const journal = await journalWith();
 
@@ -257,329 +246,12 @@ test('an unfinished episode reaches to today and not to the end of the range', a
   assert.equal(found.endsInRange, false);
 });
 
-/* Phase 8 features ticket 15: the hormone curve's own four kinds, which are a
-   separate ask so that no chart that opted into annotations starts drawing
-   them (the ticket rules out rendering any of this on /stats). */
-
-/** A day inside the window that sets the threshold, counting back from
-    TODAY. Written this way so a test says how recent a reading is rather
-    than doing the arithmetic in its head. */
-const daysAgo = (n: number) => TODAY - n;
-
-/** Enough steady readings for there to be a spread at all (ownSpread.ts's
-    OWN_SPREAD_MIN_READINGS), spaced a day apart under the run of interest. */
-async function steadyTallies(journal: Awaited<ReturnType<typeof journalWith>>, count: number) {
-  for (let i = 0; i < count; i++) {
-    await journal.tally.log({ epochDay: daysAgo(20 + i), kind: 'misgendered' });
-  }
-}
-
-test('the four extra kinds are the curve markers and never the ordinary annotations', async () => {
-  const journal = await journalWith();
-
-  await journal.sideEffects.upsertSideEffect({ name: 'headaches', severity: 3, epochDay: daysAgo(10) });
-  await journal.milestones.upsertMilestone({ name: 'first shot', epochDay: daysAgo(10) });
-
-  const annotations = await journal.chartAnnotations.getAnnotations(daysAgo(90), TODAY, TODAY);
-  const markers = await journal.chartAnnotations.getCurveMarkers(daysAgo(90), TODAY, TODAY);
-
-  assert.deepEqual(
-    annotations.map((a) => a.kind),
-    ['milestone']
-  );
-  assert.deepEqual(
-    markers.map((a) => a.kind),
-    ['sideEffect']
-  );
-});
-
-test('a side effect marks its own day and goes to the changes screen', async () => {
-  const journal = await journalWith();
-
-  await journal.sideEffects.upsertSideEffect({ name: 'headaches', severity: 2, epochDay: daysAgo(10) });
-  await journal.sideEffects.upsertSideEffect({ name: 'long gone', severity: 2, epochDay: daysAgo(300) });
-
-  const markers = await journal.chartAnnotations.getCurveMarkers(daysAgo(90), TODAY, TODAY);
-
-  assert.deepEqual(
-    markers.map((a) => ({ name: a.name, day: a.fromEpochDay, href: a.href })),
-    [{ name: 'headaches', day: daysAgo(10), href: '/care/changes' }]
-  );
-});
-
-const at = (day: number) => startOfDayTimestamp(day) + 36000000;
-
-const injection = (day: number, extra: Record<string, unknown> = {}) => ({
-  timestamp: at(day),
-  dose: 4,
-  doseUnit: 'mg',
-  route: 'im' as const,
-  injectionSite: 'thigh-left' as const,
-  vehicle: 'oil' as const,
-  ...extra
-});
-
-/* Every chart on the screen is built from a subset of the dose log, so the
-   marks under one have to be that same subset: a tick under a band that did
-   not count the dose is the card disagreeing with itself. */
-test('an injection marks under the ester its own episode resolves to', async () => {
-  const journal = await journalWith();
-
-  await journal.regimen.upsertEpisode({
-    drug: 'estradiol valerate',
-    ester: 'valerate',
-    dose: 4,
-    doseUnit: 'mg',
-    route: 'im',
-    interval: 'every 7 days',
-    startEpochDay: daysAgo(60),
-    endEpochDay: daysAgo(30),
-    endReason: null
-  });
-  await journal.regimen.upsertEpisode({
-    drug: 'estradiol enanthate',
-    ester: 'enanthate',
-    dose: 5,
-    doseUnit: 'mg',
-    route: 'im',
-    interval: 'every 7 days',
-    startEpochDay: daysAgo(29),
-    endEpochDay: null,
-    endReason: null
-  });
-
-  await journal.doses.upsertDose(injection(daysAgo(45)));
-  await journal.doses.upsertDose(injection(daysAgo(14)));
-
-  const markers = await journal.chartAnnotations.getCurveMarkers(daysAgo(90), TODAY, TODAY);
-
-  assert.deepEqual(
-    markers.map((a) => ({ day: a.fromEpochDay, series: a.series, name: a.name })),
-    [
-      { day: daysAgo(45), series: 'valerate', name: 'estradiol valerate' },
-      { day: daysAgo(14), series: 'enanthate', name: 'estradiol enanthate' }
-    ]
-  );
-});
-
-test('a dose no chart draws is marked by none of them', async () => {
-  const journal = await journalWith();
-
-  await journal.regimen.upsertEpisode({
-    drug: 'estradiol valerate',
-    ester: 'valerate',
-    dose: 4,
-    doseUnit: 'mg',
-    route: 'im',
-    interval: 'every 7 days',
-    startEpochDay: daysAgo(60),
-    endEpochDay: null,
-    endReason: null
-  });
-
-  // Nothing was taken, so nothing reached the bloodstream the chart is about.
-  await journal.doses.upsertDose(injection(daysAgo(20), { status: 'skipped' }));
-  // Logged by volume, which is what both curve modules drop it for.
-  await journal.doses.upsertDose(injection(daysAgo(15), { dose: 0.2, doseUnit: 'mL' }));
-  // Before any episode, so nothing attributes it to an ester.
-  await journal.doses.upsertDose(injection(daysAgo(80)));
-
-  assert.deepEqual(await journal.chartAnnotations.getCurveMarkers(daysAgo(90), TODAY, TODAY), []);
-});
-
-/* A pill is not an injection. The illustrative curve an oral dose draws is
-   still marked - side effects and the days that stood out reach every chart
-   on the screen - but nothing there claims an injection happened. */
-test('an oral dose is no injection and marks nothing', async () => {
-  const journal = await journalWith();
-
-  await journal.regimen.upsertEpisode({
-    drug: 'estradiol valerate',
-    ester: 'valerate',
-    dose: 2,
-    doseUnit: 'mg',
-    route: 'oral',
-    interval: 'daily',
-    startEpochDay: daysAgo(60),
-    endEpochDay: null,
-    endReason: null
-  });
-  await journal.doses.upsertDose({ timestamp: at(daysAgo(10)), dose: 2, doseUnit: 'mg', route: 'oral' });
-
-  assert.deepEqual(await journal.chartAnnotations.getCurveMarkers(daysAgo(90), TODAY, TODAY), []);
-});
-
-/* A testosterone ester has no published posterior, so its injections are
-   drawn by an illustrative curve rather than a band - and the mark has to
-   follow the dose to that chart, not sit under a band that does not exist. */
-test('an injection with no band of its own marks under its illustrative curve', async () => {
-  const journal = await journalWith();
-
-  await journal.regimen.upsertEpisode({
-    drug: 'testosterone cypionate',
-    ester: 'cypionate',
-    dose: 80,
-    doseUnit: 'mg',
-    route: 'im',
-    interval: 'every 7 days',
-    startEpochDay: daysAgo(60),
-    endEpochDay: null,
-    endReason: null
-  });
-  await journal.doses.upsertDose(injection(daysAgo(10), { dose: 80 }));
-
-  const markers = await journal.chartAnnotations.getCurveMarkers(daysAgo(90), TODAY, TODAY);
-
-  assert.deepEqual(
-    markers.map((a) => ({ kind: a.kind, series: a.series })),
-    [{ kind: 'injection', series: 'testosterone:injected' }]
-  );
-});
-
-/* Everything that is about the person rather than about one drug goes under
-   every chart, which is what an absent series means. */
-test('a side effect carries no series, so every chart draws it', async () => {
-  const journal = await journalWith();
-
-  await journal.sideEffects.upsertSideEffect({ name: 'headaches', severity: 2, epochDay: daysAgo(10) });
-
-  const [marker] = await journal.chartAnnotations.getCurveMarkers(daysAgo(90), TODAY, TODAY);
-  assert.equal(marker.series, undefined);
-});
-
-test('a tally day above the person\'s own recent counts marks, and the steady ones do not', async () => {
-  const journal = await journalWith();
-
-  await steadyTallies(journal, 10);
-  for (let i = 0; i < 5; i++) await journal.tally.log({ epochDay: daysAgo(5), kind: 'misgendered' });
-
-  const markers = await journal.chartAnnotations.getCurveMarkers(daysAgo(90), TODAY, TODAY);
-
-  assert.deepEqual(
-    markers.map((a) => ({ kind: a.kind, day: a.fromEpochDay, href: a.href })),
-    [{ kind: 'tallyMisgendered', day: daysAgo(5), href: '/tally' }]
-  );
-});
-
-test('the two counters are two kinds, so a mark never means the opposite of what it says', async () => {
-  const journal = await journalWith();
-
-  for (let i = 0; i < 10; i++) {
-    await journal.tally.log({ epochDay: daysAgo(20 + i), kind: 'correctly_gendered' });
-  }
-  for (let i = 0; i < 5; i++) await journal.tally.log({ epochDay: daysAgo(5), kind: 'correctly_gendered' });
-
-  const markers = await journal.chartAnnotations.getCurveMarkers(daysAgo(90), TODAY, TODAY);
-
-  assert.deepEqual(
-    markers.map((a) => a.kind),
-    ['tallyCorrectlyGendered']
-  );
-});
-
-test('nothing is marked while there is too little of the person\'s own to have a spread', async () => {
-  const journal = await journalWith();
-
-  await steadyTallies(journal, 3);
-  for (let i = 0; i < 20; i++) await journal.tally.log({ epochDay: daysAgo(5), kind: 'misgendered' });
-
-  assert.deepEqual(await journal.chartAnnotations.getCurveMarkers(daysAgo(90), TODAY, TODAY), []);
-});
-
-test('a region reading above that region\'s own spread goes to the entry it was logged on', async () => {
-  const journal = await journalWithRegions();
-
-  for (let i = 0; i < 10; i++) {
-    await journal.entries.upsertEntry({
-      epochDay: daysAgo(20 + i),
-      mood: 3,
-      bodyRegions: { chest: 40 } // dysphoria intensity 20
-    });
-  }
-  const stoodOut = await journal.entries.upsertEntry({
-    epochDay: daysAgo(4),
-    mood: 3,
-    bodyRegions: { chest: 5 } // dysphoria intensity 90
-  });
-
-  const markers = await journal.chartAnnotations.getCurveMarkers(daysAgo(90), TODAY, TODAY);
-
-  assert.deepEqual(
-    markers.map((a) => ({ kind: a.kind, name: a.name, day: a.fromEpochDay, href: a.href })),
-    [{ kind: 'bodyRegionDysphoria', name: 'chest', day: daysAgo(4), href: `/entry/${stoodOut}` }]
-  );
-});
-
-test('euphoria is marked on its own terms', async () => {
-  const journal = await journalWithRegions();
-
-  for (let i = 0; i < 10; i++) {
-    await journal.entries.upsertEntry({
-      epochDay: daysAgo(20 + i),
-      mood: 3,
-      bodyRegions: { chest: 60 } // euphoria intensity 20
-    });
-  }
-  await journal.entries.upsertEntry({
-    epochDay: daysAgo(4),
-    mood: 3,
-    bodyRegions: { chest: 95 } // euphoria intensity 90
-  });
-
-  const markers = await journal.chartAnnotations.getCurveMarkers(daysAgo(90), TODAY, TODAY);
-
-  assert.deepEqual(
-    markers.map((a) => a.kind),
-    ['bodyRegionEuphoria']
-  );
-});
-
-/* Two regions on different scales pooled into one sample would give a fence
-   in the middle: every ordinary chest reading marked, and a hand reading
-   marked by nothing it did. */
-test('each region is judged against itself', async () => {
-  const journal = await journalWithRegions();
-
-  // Chest sits far from the midpoint and moves about; hands sit close to
-  // it and barely move (dysphoria intensities 60-80 and 2-10, as slider
-  // positions on the dysphoria side: 50 - intensity / 2).
-  const chestRun = [20, 18, 15, 13, 10, 20, 18, 15, 13, 10];
-  const handsRun = [49, 48, 47, 46, 45, 49, 48, 47, 46, 45];
-  for (let i = 0; i < chestRun.length; i++) {
-    await journal.entries.upsertEntry({
-      epochDay: daysAgo(20 + i),
-      mood: 3,
-      bodyRegions: {
-        chest: chestRun[i],
-        hands_feet: handsRun[i]
-      }
-    });
-  }
-  // 11 is an ordinary day for this chest and 20 is nothing this hand has ever
-  // been. Pooled into one sample the fence sits between the two runs, which
-  // would mark the chest reading and miss the hand one entirely.
-  await journal.entries.upsertEntry({
-    epochDay: daysAgo(4),
-    mood: 3,
-    bodyRegions: { chest: 11, hands_feet: 20 }
-  });
-
-  const markers = await journal.chartAnnotations.getCurveMarkers(daysAgo(90), TODAY, TODAY);
-
-  assert.deepEqual(
-    markers.map((a) => a.name),
-    ['hands_feet']
-  );
-});
-
-/* Phase 8 features ticket 04: the day a stream ended. */
+/* The day a stream ended. */
 
 test('a finished area marks the day it ended, on any chart covering it', async () => {
   const journal = await journalWith();
-  // Both halves of the row: since redesign ticket 61 `measurements` fronts
-  // the readings and the size log, and a group half-finished is not
-  // finished (areaGroups.ts).
-  await journal.areaStates.setAreasFinished(['measurements', 'sizeRecords'], 20100);
+  // Both halves of the effects row must be finished.
+  await journal.areaStates.setAreasFinished(['personalEffects', 'sideEffects'], 20100);
 
   const marks = await journal.chartAnnotations.getAnnotations(20000, TODAY, TODAY);
   const finished = marks.filter((a) => a.kind === 'finishedArea');
@@ -589,25 +261,22 @@ test('a finished area marks the day it ended, on any chart covering it', async (
   assert.equal(finished[0].fromEpochDay, 20100);
   // The group's key, not a section name: the words are the kit's
   // (kit/chartAnnotation.ts), and one hub row can front two sections.
-  assert.equal(finished[0].name, 'measurements');
-  // Nowhere to tap through to. Every chart this can land on already belongs
-  // to some area, and a milestone's mark makes the same call.
-  assert.equal(finished[0].href, undefined);
+  assert.equal(finished[0].name, 'effects');
 });
 
 test('a row fronting two areas marks once, and not at all until both are finished', async () => {
   const journal = await journalWith();
-  await journal.areaStates.setAreasFinished(['hairStages'], 20100);
+  await journal.areaStates.setAreasFinished(['personalEffects'], 20100);
 
   const half = await journal.chartAnnotations.getAnnotations(20000, TODAY, TODAY);
   assert.equal(half.filter((a) => a.kind === 'finishedArea').length, 0);
 
-  await journal.areaStates.setAreasFinished(['hairPhotos'], 20100);
+  await journal.areaStates.setAreasFinished(['sideEffects'], 20100);
   const whole = await journal.chartAnnotations.getAnnotations(20000, TODAY, TODAY);
   const finished = whole.filter((a) => a.kind === 'finishedArea');
 
   assert.equal(finished.length, 1, 'one gesture, one mark');
-  assert.equal(finished[0].name, 'hair-progress');
+  assert.equal(finished[0].name, 'effects');
 });
 
 test('a finish day outside the range is not drawn, like everything else', async () => {
@@ -620,23 +289,15 @@ test('a finish day outside the range is not drawn, like everything else', async 
 
 test('hiding an area draws nothing: only a finish day is a day', async () => {
   const journal = await journalWith();
-  await journal.areaStates.setAreasHidden(['sizeRecords'], true);
+  await journal.areaStates.setAreasHidden(['wearSessions'], true);
 
   const marks = await journal.chartAnnotations.getAnnotations(20000, TODAY, TODAY);
   assert.equal(marks.filter((a) => a.kind === 'finishedArea').length, 0);
 });
 
-test('the curve markers do not pick it up', async () => {
-  const journal = await journalWith();
-  await journal.areaStates.setAreasFinished(['measurements'], 20100);
-
-  const markers = await journal.chartAnnotations.getCurveMarkers(20000, TODAY, TODAY);
-  assert.equal(markers.filter((a) => a.kind === 'finishedArea').length, 0);
-});
-
-/* Phase 8 features ticket 51: the day a stream was paused. Same shape as the
-   finished mark above, on the one area here with a real case for it
-   (hairRemovalSessions is not fronted by anything else, unlike voice). */
+/* The day a stream was paused. Same shape as the finished mark above, on the one area here
+   with a real case for it (hairRemovalSessions is not fronted by anything else, unlike
+   voice). */
 
 test('a suspended area marks the day it was paused, distinct from a finished one', async () => {
   const journal = await journalWith();
@@ -667,10 +328,10 @@ test('a row fronting two areas marks suspended once, and not at all until both a
   assert.equal(suspended[0].name, 'voice');
 });
 
-/* Phase 11 UI/UX ticket 49: a tick carries what the record behind it says,
-   raw. The words are kit/chartAnnotation.ts's - this tier imports no
-   paraglide (ADR-0016) - so what is asserted here is which field reached the
-   annotation, and that a record with nothing written on it carries nothing. */
+/* A tick carries what the record behind it says, raw. The words are
+   kit/chartAnnotation.ts's - this tier imports no paraglide - so what is asserted here is
+   which field reached the annotation, and that a record with nothing written on it carries
+   nothing. */
 
 test('a milestone, a procedure and an appointment carry their own text', async () => {
   const journal = await journalWith();
@@ -721,39 +382,4 @@ test('a record with nothing written on it carries nothing to print', async () =>
   for (const annotation of found) {
     assert.equal(annotation.detail, undefined, `${annotation.kind} invented text nobody wrote`);
   }
-});
-
-test('a side effect carries its grade, and an ungraded one carries none', async () => {
-  const journal = await journalWith();
-
-  await journal.sideEffects.upsertSideEffect({ name: 'headaches', severity: 3, epochDay: daysAgo(10) });
-  await journal.sideEffects.upsertSideEffect({ name: 'itching', severity: null, epochDay: daysAgo(9) });
-
-  const markers = await journal.chartAnnotations.getCurveMarkers(daysAgo(90), TODAY, TODAY);
-
-  assert.deepEqual(
-    markers.map((a) => a.detail),
-    [{ type: 'severity', severity: 3 }, undefined]
-  );
-});
-
-test('an injection carries the dose and the site it went into', async () => {
-  const journal = await journalWith();
-
-  await journal.regimen.upsertEpisode({
-    drug: 'estradiol valerate',
-    ester: 'valerate',
-    dose: 4,
-    doseUnit: 'mg',
-    route: 'im',
-    interval: 'every 7 days',
-    startEpochDay: daysAgo(60),
-    endEpochDay: null,
-    endReason: null
-  });
-  await journal.doses.upsertDose(injection(daysAgo(20)));
-
-  const [marker] = await journal.chartAnnotations.getCurveMarkers(daysAgo(90), TODAY, TODAY);
-
-  assert.deepEqual(marker.detail, { type: 'dose', amount: 4, unit: 'mg', site: 'thigh-left' });
 });

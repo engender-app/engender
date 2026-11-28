@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* The bundled directory, on the surface kit (phase 5 UX ticket 25).
+  /* The bundled directory, on the surface kit.
 
      Reference data, not the journal's: the list is compiled in, so there is
      nothing to wait for and nothing that can be empty. What changes here is
@@ -9,27 +9,40 @@
      one long column.
 
      The rows stay presentational and keep growing to fit four stacked
-     things. They are written out rather than `<ListRow static>` (ticket 40)
+     things. They are written out rather than `<ListRow static>`
      because the row and its text each carry a class of this screen's own -
      scoped styles that a component boundary would not reach - and because
      the third thing in the text is a pair of links, not a subtitle. */
-  import SectionJump from '$lib/components/kit/SectionJump.svelte';
+  import Segmented from '$lib/components/Segmented.svelte';
   import { m } from '$lib/paraglide/messages';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
+  import ListRow from '$lib/components/kit/ListRow.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { fmtDay } from '$lib/data/dates';
   import { epochDayFromDateInputValue } from '$lib/data/epochDay';
   import { RESOURCES_REVIEWED_ON, resourcesFor, type ResourceRegion } from '$lib/resources/directory';
+  import { crossfade, resize } from '$lib/motion/reveal';
+  import { crossfadeDuration, fadeOnly } from '$lib/motion/tokens';
   import { resourceDescription, resourceHours } from '$lib/resources/labels';
 
-  const GROUPS: { region: ResourceRegion; id: string; title: () => string }[] = [
-    { region: 'pl', id: 'resources-pl', title: m.resources_group_pl },
-    { region: 'int', id: 'resources-int', title: m.resources_group_int }
+  const GROUPS: { region: ResourceRegion; title: () => string }[] = [
+    { region: 'pl', title: m.resources_group_pl },
+    { region: 'int', title: m.resources_group_int }
   ];
+
+  /* One country at a time. The switch used to jump down one long page, so each country's
+     name was written twice - on the switch and again as the heading it jumped to - and the
+     list ran as one column of identical cards. Within a country, the ways to talk to
+     someone come first and the things to read after, each in its own shape: a helpline is a
+     number to call and when it is answered, a site is a link. */
+  let region = $state<ResourceRegion>('pl');
+  let talk = $derived(resourcesFor(region).filter((resource) => resource.kind !== 'info'));
+  let read = $derived(resourcesFor(region).filter((resource) => resource.kind === 'info'));
+  const panelIn = (_node: Element) => fadeOnly(crossfadeDuration());
 
   /* A tel: URI takes no spaces, but the number on screen keeps them: one is
      for the dialler and one is for a person reading it off to someone. */
@@ -49,152 +62,123 @@
 </script>
 
 <div class="screen">
-  <ScreenHeader title={m.resources_title()} back="/more" subtitle={m.resources_intro()} />
+  <ScreenHeader title={m.resources_title()} back="/more" />
 
-  <!-- The kit's in-page jump (after-release 28): these were outline blocks
-       drawn like the contact buttons under each service, a third look for
-       the same move. -->
-  <SectionJump
+  <Segmented
     name={m.resources_jump_label()}
-    sections={GROUPS.map((group) => ({ value: group.region, label: group.title(), target: group.id }))}
+    options={GROUPS.map((group) => ({ value: group.region, label: group.title() }))}
+    value={region}
+    onChange={(value) => (region = value as ResourceRegion)}
     key="resource-groups"
   />
 
-  {#each GROUPS as group, i (group.region)}
-    <SectionHeading id={group.id} focusable text={group.title()} />
-    <ListCard role={roleAt(activeFlag.roles, i)}>
-      {#each resourcesFor(group.region) as resource (resource.key)}
-        <!-- Hand-rolled rather than ListRow (ticket 16): a third band of
-             contact pills under the description, which title/subtitle have
-             no room for - ListRow's text slot is exactly those two. -->
-        <div class="kit-row is-static resource-row" data-resource={resource.key}>
-          <span class="kit-row-text resource-text">
-            <span class="kit-row-title">{resource.name}</span>
-            <span class="kit-row-sub resource-desc">{resourceDescription(resource.key)}</span>
-            <span class="resource-links">
-              {#if resource.phone}
-                <!-- No icon: icons.ts has no phone glyph, and the nearest
-                     ones already mean something else across the app (a bell
-                     is a reminder). A number reads as a number. -->
-                <!-- The number and when it is answered travel together, so
-                     the hours cannot end up on a line between the two ways
-                     in. No icon on it either: icons.ts has no phone glyph
-                     and the nearest ones already mean something else across
-                     the app - a bell is a reminder. A number reads as a
-                     number. -->
-                <span class="resource-way">
-                  <a class="resource-link" href={dial(resource.phone)} aria-label={m.resources_call({ name: resource.name })}>
-                    {resource.phone}
-                  </a>
-                  {#if resourceHours(resource.key)}
+  <!-- One slot the two countries travel through: `resize` on the box,
+       `crossfade` on the list leaving it (the wear screen's pairing). -->
+  <div use:resize>
+    {#key region}
+      <div class="resource-panel" data-resource-region={region} in:panelIn out:crossfade>
+        {#if talk.length}
+          <SectionHeading text={m.resources_talk()} />
+          <ListCard role={roleAt(activeFlag.roles, 0)}>
+            {#each talk as resource (resource.key)}
+              <div class="kit-row is-static resource-row" data-resource={resource.key}>
+                <span class="kit-row-text resource-text">
+                  <span class="kit-row-title">{resource.name}</span>
+                  <span class="kit-row-sub">{resourceDescription(resource.key)}</span>
+                  {#if resource.phone && resourceHours(resource.key)}
                     <span class="resource-hours">{resourceHours(resource.key)}</span>
                   {/if}
+                  {#if resource.phone}
+                    <!-- The number is the one thing to press, at full width.
+                         No icon: icons.ts has no phone glyph, and a number
+                         reads as a number. -->
+                    <a class="btn btn-soft resource-call" href={dial(resource.phone)} aria-label={m.resources_call({ name: resource.name, phone: resource.phone })}>
+                      {resource.phone}
+                    </a>
+                  {/if}
+                  {#if resource.url}
+                    <!-- target="_blank" is load-bearing: without it the app
+                         itself would navigate to the third party. -->
+                    <a class="resource-site" href={resource.url} target="_blank" rel="noreferrer"
+                      aria-label={m.resources_open({ name: resource.name, domain: shownUrl(resource.url) })}>
+                      <span>{shownUrl(resource.url)}</span>
+                      <Icon name="external" size={16} />
+                    </a>
+                  {/if}
                 </span>
-              {/if}
-              {#if resource.url}
-                <!-- target="_blank" is load-bearing, not habit. Without it
-                     the anchor navigates this tab to the third party, which
-                     is the app itself making the request the screen promises
-                     it will not, and on the web it would drop the person out
-                     of the app with no way back. -->
-                <a
-                  class="resource-link"
-                  href={resource.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  aria-label={m.resources_open({ name: resource.name })}
-                >
-                  <Icon name="globe" size={16} />
-                  <span>{shownUrl(resource.url)}</span>
-                </a>
-              {/if}
-            </span>
-          </span>
-        </div>
-      {/each}
-    </ListCard>
-  {/each}
+              </div>
+            {/each}
+          </ListCard>
+        {/if}
+
+        {#if read.length}
+          <SectionHeading text={m.resources_read()} />
+          <ListCard role={roleAt(activeFlag.roles, 1)}>
+            {#each read as resource (resource.key)}
+              <ListRow
+                key={`resource-${resource.key}`}
+                data-resource={resource.key}
+                title={resource.name}
+                subtitle={resourceDescription(resource.key)}
+                href={resource.url}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={resource.url ? m.resources_open({ name: resource.name, domain: shownUrl(resource.url) }) : undefined}
+                chevron={false}
+                trailing={external}
+              />
+            {/each}
+          </ListCard>
+        {/if}
+      </div>
+    {/key}
+  </div>
+
+  {#snippet external()}<Icon name="external" size={20} />{/snippet}
 
   <p class="muted small">{m.resources_reviewed({ date: reviewedOn })}</p>
   <p class="muted small">{m.resources_leaving()}</p>
 </div>
 
 <style>
-  /* Fragments keep every bundled resource in one offline document. They do
-     not select or hide a group, and native links retain keyboard navigation
-     without a second focus or scroll state to keep in sync. */
-  :global(#resources-pl),
-  :global(#resources-int) {
-    scroll-margin-top: var(--space-5);
-  }
-
-  /* The row holds a name, what the service is, and the ways to reach it,
-     so it grows instead of centring in one touch target. */
   .resource-row {
     align-items: flex-start;
     padding-top: var(--space-4);
     padding-bottom: var(--space-4);
   }
 
-  /* Three bands, each with its own separation. The name and the description
-     were a line apart with nothing between them, so the name read as the
-     first line of its own description (Alicja, 2026-08-26). */
+  /* Name, what it is, when it is answered, then the ways in: each its own
+     band, so the name never reads as the first line of its description. */
   .resource-text {
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
   }
 
-  .resource-desc {
-    margin-bottom: var(--space-2);
-  }
-
-  /* Always a row of its own under the description, never trailing the end of
-     it. Wrapping inside a text column put the ways to reach a service beside
-     a short description and under a long one, so no two rows in the list
-     agreed on where to look for a phone number. */
-  .resource-links {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2);
-  }
-
-  /* Each way in is a control rather than a run of coloured words: same pill,
-     same order every time - the number first, then the site. A 16px glyph
-     and a label do not reach a touch target on their own, so the pill
-     carries the height. */
-  .resource-link {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
-    min-height: var(--touch-target);
-    padding: 0 var(--space-4);
-    border-radius: var(--r-block);
-    border: 1px solid var(--outline);
-    background: var(--surface-2);
-    color: var(--role-ink);
-    text-decoration: none;
-    font-size: var(--text-sm);
-    font-weight: var(--weight-medium);
-  }
-
-  .resource-link:hover { border-color: var(--outline); }
-
-  /* The number and its opening hours are one way in, so they wrap as one.
-     Loose in the row, the hours landed between the phone and the site and
-     split the two apart. */
-  .resource-way {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
-    flex-wrap: wrap;
-  }
-
-  /* Beside the pill rather than inside it: when a helpline is answered is a
-     fact about the number, not a second thing to press. */
   .resource-hours {
     font-size: var(--text-sm);
     color: var(--text-2);
   }
+
+  .resource-call {
+    margin-top: var(--space-2);
+    width: 100%;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The site, quieter than the number: a link with its own target height,
+     not a second button competing with the call. */
+  .resource-site {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    align-self: flex-start;
+    min-height: var(--touch-target);
+    color: var(--role-ink);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    text-decoration: none;
+  }
+
+  .resource-site:hover { text-decoration: underline; }
 </style>

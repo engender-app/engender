@@ -1,43 +1,22 @@
-/* What recorded a benchmark.
+/* Record a benchmark's microphone and processing chain. Mean pitch and
+   durations remain comparable across devices; cepstral and formant measures,
+   including resonance, need the same chain.
 
-   `CONTEXT.md` already says a benchmark is comparable only to benchmarks
-   read from the same passage. For some of the figures the microphone
-   matters as much as the words: mean pitch and the durations survive a
-   change of phone, cepstral and formant measures do not, and a formant is
-   what this app's resonance figure is. Without a recorded chain nothing
-   downstream can tell those two cases apart at read time, so a trend line
-   would run straight through a change of phone and look like a voice
-   changing.
+   openMicrophone(true) requests echo cancellation, noise suppression and
+   automatic gain control off. Read actual flags from getSettings(), since
+   the device may still process audio. Noise suppression changes broadband
+   high-frequency energy and gain control changes levels.
 
-   **And asking for unprocessed capture is not the same as getting it.**
-   `openMicrophone(true)` requests `echoCancellation`, `noiseSuppression`
-   and `autoGainControl` all false and says in its own comment that this is
-   a request rather than a guarantee, because a device offering only the
-   processed path still opens. `MediaStreamTrack.getSettings()` reports what
-   was actually applied, which is why the three flags below are read back
-   rather than assumed from what was asked for. Noise suppression works
-   hardest on broadband high-frequency energy and automatic gain control
-   exists to destroy level differences, so a take recorded under either is a
-   different chain from one without on the same phone.
-
-   One string, not a row of columns: nothing compares two chains part by
-   part - the only question ever asked of it is whether two takes share one
-   (`sameCaptureChain`), and the whole value is what travels in one nullable
-   column and through the archive. Written so it reads at the sqlite prompt,
-   the same call `pitch_track` makes for a comma-separated track over a BLOB
-   of floats.
-
-   Pure, and node-tested. What reads a live microphone is
-   `captureChainOfStream` in stores/voiceRecording.ts, which is also where
-   the model comes from; what arrives here is a device name, a label and
-   three booleans. */
+   Store the chain as one nullable, readable value in SQLite and Archives.
+   sameCaptureChain compares it as a whole. captureChainOfStream in
+   stores/voiceRecording.ts reads the live microphone; this module stays pure. */
 
 /** The three constraints `UNPROCESSED_AUDIO` asks for, as the track says
     they were actually applied. `undefined` is a real answer and not an
     absent one: a browser that reports nothing about a constraint has not
     said it was honoured, which is not the same as saying it was off. */
 /* CaptureSettings stays exported for its own test, and cross-checked in
-   benchmarkDelta.test.ts (AU-09 test-only review). */
+   benchmarkDelta.test.ts. */
 export type CaptureSettings = Pick<
   MediaTrackSettings,
   'echoCancellation' | 'noiseSuppression' | 'autoGainControl'
@@ -107,28 +86,15 @@ export function captureChainOf(device: string, label: string, settings: CaptureS
     what recorded it, and two unknowns are not evidence of one phone. Every benchmark this build
     writes carries a chain, and the app has no users, so the case this
     refuses is a fixture rather than a person's history. */
-/* sameCaptureChain stays exported only for its own test (AU-09 test-only
-   review). */
+/* sameCaptureChain stays exported only for its own test. */
 export function sameCaptureChain(a: string | null, b: string | null): boolean {
   return a !== null && b !== null && a === b;
 }
 
-/** Why two chains are not one, for the sentence that breaks an own series.
-
-    `device` covers the microphone as well as the phone, because a headset
-    plugged into one handset is as much a change of equipment as a second
-    handset: what the person did is swap what the sound went through, and
-    the app cannot say which of the two parts mattered. `processing` is the
-    same equipment that stopped granting unprocessed capture, or started
-    reporting nothing about a constraint - the take is still a take, and
-    it is not on the same chain.
-
-    `unrecorded` is either side having no chain at all, and it names no
-    equipment on purpose: a row from before capture chains were tracked is
-    not evidence of one phone or of two, so the only honest sentence is
-    that the app does not
-    know what recorded it. Null where the two match, which is the caller's
-    signal that the series carries on. */
+/** A phone or microphone change is a device break. Changed or missing
+    reported capture constraints on the same equipment are a processing
+    break. If either chain is absent, report unrecorded. Return null when
+    both match. */
 export type ChainBreak = 'device' | 'processing' | 'unrecorded';
 
 export function captureChainBreak(a: string | null, b: string | null): ChainBreak | null {

@@ -1,45 +1,14 @@
 <script lang="ts">
-  /* One Own-series figure over every benchmark that can be read together
-     (phase 8 features ticket 29, ADR-0060, ADR-0061).
+  /* Six benchmark figures use the person's own takes for comparison (ADR-0061). The picker
+     changes the figure in one card. Passage and capture chain determine run boundaries.
+     Keep plots mounted across figure changes so their lines can move to the new values.
 
-     Six of the seven figures a benchmark reports have no dependable typical
-     range, so there is nothing to compare them against but the person's
-     own earlier takes. Ticket 27 says that in words on the reference
-     screen; this is where the earlier takes actually appear.
+     A change of run leaves a gap with an explanation between plots. Runs for a figure share
+     one axis so equal measurements align. The pitch span's ends share a scale. F1 and F2
+     each need their own hertz axis to preserve their ranges and value gutters.
 
-     **One card with a picker rather than five cards.** Switching the
-     figure is the switch somebody makes most, which is the case
-     ChartPicker and the area chart's re-tween were built for - and five
-     stacked charts on a 390px column is a screen nobody scrolls to the
-     bottom of. The runs' own boundaries do not move when the figure does
-     (they come from the passage and the chain, not from the numbers), so
-     the plots stay mounted across a switch and the lines travel to the new
-     figure instead of being torn down.
-
-     **A break is a gap with a sentence in it.** Where the passage or the
-     capture chain changes, the app will not join two takes, and what says
-     so is a line of words between two plots rather than a dashed segment
-     the reader has to interpret. Every plot is drawn against one scale, so
-     a value sits at the same height above and below a break even though
-     the two runs are not a line.
-
-     **Two numbers are two plots unless they are two ends of one range.**
-     The pitch band's top and bottom belong on one scale and read as a band
-     there. The two formants do not: F1 near 620 Hz against F2 near 1740
-     would draw F1 as a flat line on one scale, and placing each against
-     its own bounds on one plot costs the value gutter (kit/AreaChart's own
-     rule - one of two ranges printed beside both lines would have the
-     other read against numbers that are not its own). A figure with no
-     numbers on it at rest is the thing ticket 09's own rejected strip was:
-     "no way to tell what it measures at all". So they get a plot each, and
-     each plot keeps its hertz.
-
-     **Nothing here draws a band, a target region or a worse-to-better
-     colour**, and no axis is normalised: ADR-0060 is explicit that these
-     five figures have no typical range the app may imply, and ADR-0012
-     keeps every figure in the unit it was measured in. What the card offers
-     instead of a verdict is the way into the reference screen's own
-     section for whichever figure is showing. */
+     Keep the measured units and omit target bands or ranked colours (ADR-0012). Link the
+     current metric to its reference section. */
   import { m } from '$lib/paraglide/messages';
   import { fmtDay, fmtRangeEnds } from '$lib/data/dates';
   import type { ComponentProps } from 'svelte';
@@ -68,7 +37,7 @@
     /** Oldest first, the order the journal reads them in. */
     benchmarks: BenchmarkForSeries[];
     /** Which of `benchmarks`, by position, are the two picked for
-        comparison (redesign ticket 42). Ringed on whichever run they fall
+        comparison. Ringed on whichever run they fall
         in, so choosing a pair reads on every figure this card can draw and
         not only on the pitch trend beside it. Positions rather than ids
         because that is what this card is handed: a benchmark arrives here
@@ -273,11 +242,10 @@
       {/if}
     {/each}
 
-    <!-- The way in, once, at the foot of the card: the figure showing has
-         no band on it, and ADR-0060's own instruction is that a missing
-         band nobody explains reads as an omission. Straight into that
-         figure's own section rather than the top of the screen, which is
-         what the per-figure anchors are for. -->
+    <!-- The way in, once, at the foot of the card: the figure showing has no band on it,
+         and a missing band nobody explains reads as an omission. Straight into that
+         figure's own section rather than the top of the screen, which is what the
+         per-figure anchors are for. -->
     <p class="vos-more">
       <a href={metricHref(figure)}>
         <span>{m.vm_title()}</span>

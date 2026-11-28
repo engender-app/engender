@@ -1,25 +1,8 @@
-/* The mood row's magnifier: five faces that grow under a travelling finger
-   (phase 5 ticket 31).
-
-   Quick add can be worked without ever lifting a finger - press the add
-   control, slide onto a target, let go (spec 04). The mood row is the
-   nearest thing to the thumb and the one most often wanted, and while a
-   finger crossed it the only answer it got was a background colour arriving
-   on whichever face was armed. That says which one is armed. It does not say
-   the row is being crossed, and it gives a finger nothing to aim with,
-   because the target it is aiming at looks exactly like the four it is not.
-
-   So the faces answer the finger continuously: the one under it at its
-   fullest, its neighbours part of the way, the rest at rest. Tier 1, the
-   response tier - this is a control answering a touch, and it spends
-   --dur-fast like every other control does. The scale is re-aimed on every
-   pointermove and the transition smooths it, which is what makes 150ms read
-   as attachment rather than as lag: the value is never more than a frame
-   old, so the easing is a filter on the finger rather than a delay after it.
-
-   Under reduced motion none of this runs and the armed colour is the whole
-   answer, which is the substitution the contract asks for: what goes is the
-   movement, not the cue. */
+/* Scale the five mood faces as a finger crosses the Quick add row.
+   The face under the finger grows most, its neighbours grow partly.
+   Retarget every pointermove and ease over --dur-fast (150 ms) so the
+   motion follows the current pointer. With reduced motion, retain only
+   the armed colour cue. */
 
 /** The scale of the face directly under the finger. Enough to be unmistakable
     next to its neighbours, and small enough that the face grows into the row
@@ -27,12 +10,9 @@
     grew far enough would lose its own top. */
 const PEAK = 1.24;
 
-/** The plain rows' peak. The fan's 1.24 rides on a small face in a card
-    that frames it; the same number on a bare row read as barely anything -
-    "still no sliding zoom animation like in quick add" survived 1.4 for
-    the same reason (Alicja, phase 5 ticket 99, round 4). 1.6 under the
-    finger, on the sweep the fan's slide already answers, is what makes the
-    row read as the same control. */
+/** The plain rows' peak. The fan's 1.24 rides on a small face in a card that frames it; the
+    same scale on a bare row is hard to see. 1.6 under the finger, on the sweep
+    the fan's slide already answers, is what makes the row read as the same control. */
 const ROW_PEAK = 1.6;
 
 /** How far the lift reaches, in mood cells. Under 2 on purpose: at 1.7 an
@@ -60,17 +40,16 @@ export function magnify(x: number, centre: number, spread: number, peak: number 
     because it also arms a target mid-gesture; a plain mood row (Home's
     chips, the entry editor's picker) only ever wants the scales themselves,
     on hover or under a held finger, which is what this is for - one shared
-    answer rather than a third copy of the cell math (ticket 99). */
+    answer rather than a third copy of the cell math. */
 export function magnifyRow(x: number, row: DOMRect, count: number): number[] {
   const cell = row.width / count;
-  /* Cells, times a cell. MAGNIFIER_SPREAD is a count of cells and `magnify`'s
-     spread is in the coordinates' own units, and this handed the bare 1.7
-     across - so the reach was 1.7 pixels, about three per cent of a cell, and
-     the `cell` computed on the line above went into the centres and nowhere
-     else. Every face was at rest unless the pointer was within two pixels of
-     its exact middle. The fan's own copy of this loop always multiplied
-     (QuickAdd's magnifyMoods), which is why the fan was the row that looked
-     right and these two were the rows Alicja kept calling wrong. */
+  /* Cells, times a cell. MAGNIFIER_SPREAD is a count of cells and `magnify`'s spread is in
+     the coordinates' own units, and this handed the bare 1.7 across - so the reach was 1.7
+     pixels, about three per cent of a cell, and the `cell` computed on the line above went
+     into the centres and nowhere else. Every face was at rest unless the pointer was within
+     two pixels of its exact middle. The fan's own copy of this loop always multiplied
+     (QuickAdd's magnifyMoods), which is why the fan was the row that looked right and these
+     two were the rows kept calling wrong. */
   return Array.from({ length: count }, (_, i) =>
     magnify(x, row.left + cell * (i + 0.5), cell * MAGNIFIER_SPREAD, ROW_PEAK)
   );
@@ -78,7 +57,7 @@ export function magnifyRow(x: number, row: DOMRect, count: number): number[] {
 
 /* ---------- the gaze ----------
 
-   The magnifier's second channel (phase 9 carpet ticket 01). Size is the
+   The magnifier's second channel. Size is the
    answer only the face under the finger can give; every one of the other four
    is left at rest by it, which is why a row being crossed used to read as one
    face growing rather than as a row noticing. Direction is an answer all five

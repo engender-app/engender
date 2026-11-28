@@ -1,9 +1,8 @@
-/* Browser-tier check for ticket 156: `blindEdge` reads the border box but
-   used to subscribe to the content box, so a change to a field's padding
-   alone never fired the observer callback. A real ResizeObserver's box
-   semantics cannot be faked in a node-tier test - this drives the real
-   API against a real element, changing only padding, and reads
-   `--blind-edge` off the DOM before and after. */
+/* Browser-tier check for `blindEdge` reads the border box but used to subscribe to the
+   content box, so a change to a field's padding alone never fired the observer callback. A
+   real ResizeObserver's box semantics cannot be faked in a node-tier test - this drives the
+   real API against a real element, changing only padding, and reads `--blind-edge` off the
+   DOM before and after. */
 import { blindEdge } from '../../src/lib/motion/stepBlind.ts';
 import { publish } from '../probe-handshake.mjs';
 

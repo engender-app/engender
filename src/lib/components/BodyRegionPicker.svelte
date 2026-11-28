@@ -16,9 +16,9 @@
     onFeeling: (id: string, value: number) => void;
   } = $props();
 
-  /* One bipolar scale per picked region (ticket 99): dysphoria at the low
+  /* One bipolar scale per picked region: dysphoria at the low
      end, euphoria at the high end, the same shape the day-level dimension
-     takes. Storage is that same slider position now (ticket 39), so there
+     takes. Storage is that same slider position now, so there
      is no projection left to own. */
 </script>
 
@@ -36,14 +36,11 @@
     {/each}
   </div>
   {#each regions.filter((r) => r.id in values) as r (r.id)}
-    <!-- `disclose`, not svelte/transition's `slide` (ticket 99 item 20,
-         "body map sliders come out with a very slight yank, they also hide
-         like that"). `slide` animates height and padding and leaves margin
-         alone, and this row carries 16px of margin-top - so the box
-         travelled smoothly and then gained or lost that 16px in the single
-         frame at the end. `disclose` is this app's own answer to exactly
-         that, margin and border included, and it is what every other
-         opening box here already uses. -->
+    <!-- `disclose`, not svelte/transition's `slide`. `slide` animates height and padding
+         and leaves margin alone, and this row carries 16px of margin-top - so the box
+         travelled smoothly and then gained or lost that 16px in the single frame at the
+         end. `disclose` is this app's own answer to exactly that, margin and border
+         included, and it is what every other opening box here already uses. -->
     <div class="body-region-feeling" transition:disclose>
       <DimensionSlider
         dim={{

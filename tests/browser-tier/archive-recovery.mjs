@@ -1,5 +1,5 @@
 /** Independent contexts never share profiles, keys, recovery wraps or private files. */
-export async function recoveryCommand(page, name, input) {
+async function recoveryCommand(page, name, input) {
   await page.waitForFunction(() => window.recoveryProbe?.ready);
   await page.evaluate(({ name, input }) => { void window.recoveryProbe.command(name, input); }, { name, input });
   await page.waitForFunction(() => window.recoveryProbe.ready, null, { timeout: 180000 });
@@ -30,7 +30,7 @@ export async function browserRecoveryDestination(browser, origin, input) {
 }
 
 export function assertRecoveryResult(result) {
-  if (result.sections !== 54 || result.attachments < 10 || result.failures?.length !== 4 ||
+  if (!(result.archiveSections > 0) || result.sections !== result.archiveSections || result.attachments < 10 || result.failures?.length !== 4 ||
       !result.interruptedRestart || !result.restarted || !result.merge ||
       !result.localPreserved || result.accessMode !== 'passphrase' || !result.destinationCredentialVerified || !result.portableApplied ||
       !result.media?.image || !result.media.audioPlayback || !result.media.videoPlayback || !result.media.documentRendered) {

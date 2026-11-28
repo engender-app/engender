@@ -1,4 +1,4 @@
-/* When the app is allowed to ask a waiting worker to take over (ticket 04).
+/* When the app is allowed to ask a waiting worker to take over.
    The decision is all that is tested here; that a real browser then does
    activate the new release is tests/browser-tier/update-probe.ts. */
 
@@ -209,7 +209,7 @@ test('applying nothing is refused rather than reloading for no reason', async ()
   assert.equal(env.reloads(), 0);
 });
 
-/* The rollback-refusal screen's way out (ticket 04): older code has met a
+/* The rollback-refusal screen's way out: older code has met a
    newer Journal, and what fixes it is getting the newer release back. */
 
 test('looking for a newer release finds one that arrives while it waits', async () => {

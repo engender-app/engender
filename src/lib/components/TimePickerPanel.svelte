@@ -1,33 +1,13 @@
 <script lang="ts">
-  /* The time picker's body (phase 12 pickers, ticket 02), the same in the
-     phone's sheet and the desktop's popover (PickerHost.svelte).
+  /* Hours and minutes use native mandatory snap in two scrollers.
+     The fixed surface band leaves the moving digits unchanged, so
+     scrolling needs no repaint to switch their colour. Programmatic
+     moves smooth-scroll. Reduced motion fades out, moves and fades in.
 
-     **Two drums.** The hour and the minute are each a column of rows that
-     scrolls under a fixed band, the row in the band being the one chosen.
-     The column is the browser's own scroller with mandatory snap, so a
-     flick carries on under its own momentum and comes to rest on a row,
-     and nothing of ours runs per frame while it does: the band and the
-     fade at the column's ends are drawn still, over and under a scroll the
-     compositor owns. A drum the picker turns itself - a key, a tap on a
-     row, a typed time - travels there on the browser's smooth scroll, and
-     under reduced motion fades out, moves, and fades back instead.
-
-     The band is a block of the second surface rather than the ink the
-     date picker's chosen day wears. Ink would need the digit crossing it
-     to turn pale exactly where it crosses, and every way of drawing that
-     either repaints out of step with the scroll (a copy of the column
-     moved from a scroll handler) or does not repaint at all in Chromium
-     (text clipped to a background on a scrolled box). A band the digits
-     pass over unchanged has nothing to fall behind.
-
-     **One value.** The typed entry under the drums says what the drums
-     do: a drum coming to rest writes its time there, and a time typed
-     there turns the drums to it. Use time takes whichever was touched
-     last - the drums' own value, so an arrow and Enter in quick
-     succession commit the stepped time even though the drum is still on
-     its way and the entry not yet written; or the entry from editing onward,
-     so a settling drum cannot rewrite a selection before typing starts
-     and a half-typed time is refused rather than half applied. */
+     The input and drums share one time. The last edited control
+     owns commit. A quick arrow then Enter uses the drum's pending
+     selection. Once typing begins, a settling drum cannot overwrite
+     the input and incomplete time cannot commit. */
   import { untrack } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { crossfadeDuration, isReducedMotion } from '$lib/motion/tokens';
@@ -343,7 +323,7 @@
     pointer-events: none;
   }
   .tp-col:has(.tp-drum:focus-visible) .tp-ring {
-    outline: 2px solid var(--focus-ring);
+    outline: var(--focus-ring-width) solid var(--focus-ring);
     outline-offset: -2px;
   }
 

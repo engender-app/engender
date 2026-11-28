@@ -1,7 +1,5 @@
-/* The body-region area (phase 5 ticket 30, CONTEXT: "Reference data" -
-   amended): id-or-key addressing, the same built-in/custom split
-   affirmations.ts draws - except a body region has no delete at all, built-in
-   or custom, so there is nothing to test there. */
+/* The body-region area: id-or-key addressing and the built-in/custom split. A body region
+   has no delete, so there is nothing to test there. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
@@ -22,7 +20,9 @@ test('the built-in regions are seeded by key, with empty names', async () => {
   const builtIns = regions.filter((r) => r.builtIn);
 
   assert.equal(builtIns.length, 10);
-  assert.ok(builtIns.every((r) => r.name === '' && !r.hidden));
+  assert.ok(builtIns.every((r) => r.name === ''));
+  // Whole body seeds hidden in a new journal; every other one shows.
+  assert.deepEqual(builtIns.filter((r) => r.hidden).map((r) => r.id), ['whole_body']);
   assert.ok(builtIns.some((r) => r.id === 'chest'));
   assert.ok(builtIns.some((r) => r.id === 'shoulders'));
   assert.ok(builtIns.some((r) => r.id === 'whole_body'));

@@ -1,30 +1,12 @@
-/* The bundled resource directory (ticket 32): trans organisations, helplines
-   and reading, in the app rather than fetched from anywhere. Something a
-   person reaches for at three in the morning with no signal has to be there
-   with no signal, and this is the only screen in the app whose whole content
-   is other people's phone numbers and addresses.
+/* Bundle the resource directory so it opens offline. List trans services first. Poland's
+   general crisis lines extend coverage outside limited hours and for minors. Their labels
+   identify them as general services.
 
-   Trans-specific only. No 112, no 999, no general crisis line: a person in
-   Poland already knows those numbers, and a directory that opens with them
-   buries the three entries they came here for.
+   Keep names, phone numbers and addresses here. labels.ts owns the translated description
+   and hours. The const key list makes label coverage a type check.
 
-   Keys and language-neutral facts only. A name like "Fundacja Trans-Fuzja" is
-   a proper noun and reads the same in both catalogues, and a number is a
-   number, so those live here; what an entry offers and when it answers does
-   not survive translation, so labels.ts holds it (the same split as
-   vocabulary/builtins.ts, ADR-0016). This file takes nothing but types, so
-   the Node tier can check it without dragging in paraglide.
-
-   `as const`, so the key list also produces the union labels.ts has to cover
-   exhaustively: an entry added here without its wording is a typecheck
-   failure rather than a raw key in front of someone who needs the number.
-
-   RESOURCES_REVIEWED_ON is a claim, not a build stamp. It says a person
-   opened every site below and read the number and the hours off what the
-   organisation itself publishes. Hours are what rots: Mindline Trans+ went
-   from three evenings a week to one and Trans Lifeline stopped being a
-   24-hour line, both while their numbers stayed put. Do not bump the date
-   without doing the pass. */
+   Set RESOURCES_REVIEWED_ON only after checking numbers and opening hours against each
+   provider's own publications. Hours can change while numbers stay the same. */
 
 export type ResourceRegion = 'pl' | 'int';
 
@@ -38,16 +20,19 @@ interface ResourceShape {
   kind: ResourceKind;
   /** As the organisation writes it. Never translated. */
   name: string;
-  /** Dialable as written, spaces and all: it goes into a tel: URI. Always
-      with its country code, because the person holding the phone is in
-      Poland and a UK line published as 0300 330 5468 does not ring from
-      there. */
+  /** Dialable as written, spaces and all: it goes into a tel: URI. With its
+      country code, because the person holding the phone is in Poland and a
+      UK line published as 0300 330 5468 does not ring from there. Polish
+      116 short codes and 800 freephone numbers are the exception: they
+      exist only inside the Polish network, the operators publish them
+      without +48, and a short code is not guaranteed to route with it. */
   phone?: string;
   url?: string;
 }
 
-/** The day a person last checked every number and address below. */
-export const RESOURCES_REVIEWED_ON = '2026-08-19';
+/** The day a person last checked every number and address below. The
+    release-time guard in reviewedContent.ts warns six months after it. */
+export const RESOURCES_REVIEWED_ON = '2026-10-21';
 
 const ENTRIES = [
   {
@@ -56,7 +41,34 @@ const ENTRIES = [
     kind: 'helpline',
     name: 'Telefon Zaufania Lambda Warszawa',
     phone: '+48 22 628 52 22',
-    url: 'https://lambdawarszawa.org/wsparcie'
+    url: 'https://www.lambdawarszawa.org/wsparcie'
+  },
+  {
+    key: 'pl-116123',
+    region: 'pl',
+    kind: 'helpline',
+    name: 'Telefon Zaufania dla Dorosłych',
+    phone: '116 123',
+    /* NASK's site for the line, never 116123.pl (a parked domain for sale)
+       or 116123.edu.pl (a certificate for another host, and behind it a page
+       still giving the old 14:00 to 22:00 hours). */
+    url: 'https://116sos.pl/'
+  },
+  {
+    key: 'pl-centrum-wsparcia',
+    region: 'pl',
+    kind: 'helpline',
+    name: 'Centrum Wsparcia, Fundacja ITAKA',
+    phone: '800 70 2222',
+    url: 'https://centrumwsparcia.pl/'
+  },
+  {
+    key: 'pl-116111',
+    region: 'pl',
+    kind: 'helpline',
+    name: 'Telefon Zaufania dla Dzieci i Młodzieży',
+    phone: '116 111',
+    url: 'https://116111.pl/'
   },
   {
     key: 'pl-transfuzja',
@@ -93,21 +105,16 @@ const ENTRIES = [
     url: 'https://translifeline.org/'
   },
   {
-    key: 'int-trevor',
-    region: 'int',
-    kind: 'helpline',
-    name: 'The Trevor Project',
-    phone: '+1 866 488 7386',
-    url: 'https://www.thetrevorproject.org/'
-  },
-  {
     key: 'int-mindline-trans',
     region: 'int',
     kind: 'helpline',
     name: 'Mindline Trans+',
     phone: '+44 300 330 5468',
     /* Under Mind in Somerset, not mindlinetrans.org.uk. That domain lapsed
-       and now serves casino spam. */
+       and now serves casino spam. The Mind in Somerset page refuses
+       headless browsers, so on 2026-10-21 the Friday 20:00 to 23:00 hours
+       came from Frome Town Council's directory (updated 21 May 2026). Open
+       it in a real browser at the next review. */
     url: 'https://www.mindinsomerset.org.uk/our-services/mindline-trans/'
   },
   {
@@ -140,7 +147,7 @@ const ENTRIES = [
 export type ResourceKey = (typeof ENTRIES)[number]['key'];
 
 /* What a reader gets: one type with optional phone and url, rather than the
-   union of eight literal shapes ENTRIES has, half of which carry no `phone`
+   union of literal shapes ENTRIES has, half of which carry no `phone`
    property to read at all. The key stays narrow through that widening, which
    is what lets labels.ts index its maps directly instead of casting them back
    to strings and carrying a fallback for a key that cannot exist. */
@@ -148,7 +155,7 @@ interface Resource extends ResourceShape {
   key: ResourceKey;
 }
 
-/* RESOURCES stays exported only for its own test (AU-09 test-only review). */
+/* RESOURCES stays exported only for its own test. */
 export const RESOURCES: readonly Resource[] = ENTRIES;
 
 export function resourcesFor(region: ResourceRegion): readonly Resource[] {

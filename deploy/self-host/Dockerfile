@@ -1,4 +1,4 @@
-# nginx with engender's serving rules (phase 13 self-hosting ticket 01).
+# nginx with engender's serving rules.
 # Build from the repository's deploy/ directory:
 #
 #   docker build -t engender -f deploy/self-host/Dockerfile deploy

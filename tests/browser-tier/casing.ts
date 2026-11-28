@@ -1,4 +1,4 @@
-/* What a chart line's casing looks like once drawn (phase 15 ticket 20):
+/* What a chart line's casing looks like once drawn:
    the element right under the line, read through computed style, so a probe
    can say the line is edged in the role's edge rather than only that the
    role carries one. A node test can prove the colour; only a render can

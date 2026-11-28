@@ -1,46 +1,14 @@
 <script lang="ts">
-  /* One mood's face, drawn once, for every surface that shows one (phase 5
-     ticket 31).
+  /* Use one mood drawing across readers and pickers. Size, disc and
+     animation are props. alive defaults off so a list of entries stays
+     still. Pickers can opt in while the user is choosing a mood.
 
-     ## The two components are now one
-
-     Ticket 18 built this for quick add's fan; ticket 20's surface kit landed
-     its own `kit/MoodFace.svelte` for a day card and a chip. The two shared
-     `moodFace.ts` and nothing else: one carried the picker's classes and its
-     blink, the other was still and took a `disc` prop, and ticket 18's own
-     comment left the question of whether they should converge to the kit.
-
-     They converge. The reason is the eyes: the moment the drawing changed at
-     all, the same change had to be made twice, in two files, in two shapes -
-     which is the drift the shared mouth table existed to prevent and did not.
-     What actually differed between them was a size, a disc and whether the
-     eyes blink, and all three are props. What is left is one drawing, one set
-     of classes, and one place in the stylesheet.
-
-     `alive` is off by default, which is the important half of that. A day
-     card can carry six entries, and six faces looking around on one screen is
-     an ambient loop where nothing is being chosen. The surfaces that ask for
-     it are the ones where five faces are being chosen between rather than
-     read: the picker in the entry editor, Home's chips, and quick add's fan.
-
-     ## The eyes, and the two groups they sit in (phase 9 carpet ticket 01)
-
-     The prop used to be called `blink`, and it turned on a 4.6s loop that
-     closed the lids and nothing else - the same loop on every face, so a row
-     of five was one blink crossing it over and over. It is now `alive`, and
-     what it turns on is a face that looks around the room: three positions per
-     cycle, each arrived at behind a closed lid the way a real saccade is, on
-     five periods and five delays that never agree (moodGlance.ts). ADR-0071
-     has why the app now spends two ambient loops instead of one.
-
-     The eyes sit in two nested groups because two different things move them
-     and neither should have to know about the other. The outer one is the
-     gaze: where the row says to look, which is the finger crossing it or the
-     face that was just picked. The inner one is the idle glance, which is the
-     face's own business and pauses the moment the row has something to say.
-     One `transform` on one group would have made those two authors of the same
-     property, which is the mistake `.mood-face` already documents about its
-     own `scale` and `translate`. */
+     The outer eye group follows the row's gaze, such as a moving finger
+     or the selected face. The inner group runs the idle glance and
+     pauses when the row supplies a gaze. Separate groups let both move
+     without competing for a transform. moodGlance.ts assigns each face
+     its own period and delay, with three gaze positions per cycle.
+     Transitions happen behind closed lids. */
   import { GAZE_REACH } from '$lib/motion/magnifier';
   import { MOOD_GLANCE, blinkCycle } from '$lib/motion/moodGlance';
   import { MOOD_BLOCK, MOOD_EYES, MOOD_EYE_RADIUS, MOOD_FACES } from './moodFace';
@@ -54,10 +22,9 @@
   }: {
     /** 1 to 5 on the mood ramp. */
     step: number;
-    /** A number is pixels. A CSS length lets a fluid cell hand it "100%":
-        the calendar's cells are a seventh of whatever width the screen has,
-        so the one surface that cannot name a pixel size is the one that
-        most wants a face (phase 6 unprompted ticket 11). */
+    /** A number is pixels. A CSS length lets a fluid cell hand it "100%": the calendar's
+        cells are a seventh of whatever width the screen has, so the one surface that cannot
+        name a pixel size is the one that most wants a face. */
     size?: number | string;
     /** Whether this face looks around and blinks when nothing is happening.
         On for the three surfaces where a mood is being chosen; off, and so
@@ -103,10 +70,8 @@
   style={vars}
   aria-hidden="true"
 >
-  <!-- A rounded block rather than a disc (ticket 27): the circle was the one
-       shape phase 10's language does not use, and a block holds a bigger
-       drawing at the same size. `disc` keeps its name - what it means is
-       "draw your own background", and a split calendar cell still says no. -->
+  <!-- The rounded block fits a larger drawing. The `disc` prop draws that background. Split
+       calendar cells supply their own. -->
   {#if disc}
     <rect
       x={MOOD_BLOCK.x}

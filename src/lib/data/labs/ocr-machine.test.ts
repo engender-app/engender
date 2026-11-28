@@ -1,12 +1,8 @@
-import { describe, expect, test, vi } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import { createOcrMachine, type OcrImageSource, type OcrMachineState, type OcrRecognizer, type OcrSaver } from './ocr-machine';
+import { PhotoTooLargeError } from '../photos/limits';
 import { epochDayFromDateInputValue } from '../epochDay';
 import type { OcrReviewRow } from './ocr';
-
-vi.mock('./units', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./units')>();
-  return { ...actual, PREFERRED_UNIT_ANALYTES: [...actual.PREFERRED_UNIT_ANALYTES, 'progesterone'] };
-});
 
 // ---------------------------------------------------------------------------
 // Stub adapters
@@ -268,6 +264,21 @@ describe('OcrMachine – recognition-failed path', () => {
     expect(m.state.tag).toBe('recognition-failed');
   });
 
+  /* A photo the app refuses to open is a photo it could not read, which is what this state
+     already says - not a silent return to the picker, which would look like the pick did
+     nothing. */
+  test('lands in recognition-failed when the picked image is refused as too big', async () => {
+    const refused: OcrImageSource = {
+      async pickImage() {
+        throw new PhotoTooLargeError();
+      }
+    };
+    const m = createOcrMachine(refused, recognizerThat(''), saverWith());
+    m.open();
+    await m.pickSource('gallery');
+    expect(m.state.tag).toBe('recognition-failed');
+  });
+
   test('retry from recognition-failed returns to picking with no stale rows', async () => {
     const m = createOcrMachine(
       imageSourceThat(new Uint8Array([1])),
@@ -495,23 +506,23 @@ describe('OcrMachine – save-failed path', () => {
   });
 });
 
-describe('OcrMachine – preferred-unit default derives from the allowlist', () => {
-  test('asks the saver for every allowlisted analyte, including one added after this code was written', async () => {
-    const getPreferredUnit = vi.fn(() => null);
-    const saver: OcrSaver = { ...saverWith(), getPreferredUnit };
+describe('OcrMachine – source units', () => {
+  test('saves the scanned value in the unit the report printed', async () => {
+    const saver = saverWith();
     const m = createOcrMachine(imageSourceThat(new Uint8Array([1])), recognizerThat(GOOD_OCR_TEXT), saver);
 
     m.open();
     await m.pickSource('gallery');
-
-    expect(getPreferredUnit).toHaveBeenCalledWith('progesterone');
+    if (m.state.tag !== 'review') throw new Error(`expected review, got ${m.state.tag}`);
+    expect(m.state.rows[0]).toMatchObject({ value: '123.4', unit: 'pg/mL' });
+    await m.save();
+    expect(saver.saved[0]).toMatchObject({ value: 123.4, unit: 'pg/mL' });
   });
 });
 
-/* Phase 9 audit ticket 11. Recognition on a phone photo of a lab report is
-   seconds to tens of seconds and said nothing but "Reading…" while it ran.
-   Tesseract's own logger reports {status, progress} through the pass
-   (ocr-engine.ts), so this state carries the fraction rather than the
+/* Recognition on a phone photo of a lab report is seconds to tens of seconds and said
+   nothing but "Reading…" while it ran. Tesseract's own logger reports {status, progress}
+   through the pass (ocr-engine.ts), so this state carries the fraction rather than the
    screen keeping a second copy of it beside the machine. */
 describe('recognition progress and cancelling', () => {
   test('starts with no fraction and carries whatever the recognizer reports', async () => {
@@ -564,7 +575,7 @@ describe('recognition progress and cancelling', () => {
 
     /* Not 'recognition-failed': nothing failed, the person stopped it, and
        the picker is where stopping leaves them. Safe to offer at all only
-       because this state has written nothing (ADR-0070) - `saving` has,
+       because this state has written nothing - `saving` has,
        and cancel() below leaves it alone. */
     expect(stopped).toBe(true);
     expect(m.state).toEqual({ tag: 'picking' });
@@ -585,7 +596,7 @@ describe('recognition progress and cancelling', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Stale writes, failed lookups and partial saves (after-release 05, L02-03)
+// Stale writes, failed lookups and partial saves
 // ---------------------------------------------------------------------------
 
 /** A promise the test settles by hand, to land a step after close(). */

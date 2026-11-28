@@ -6,16 +6,18 @@
 export interface Migration {
   version: number;
   sql: string;
-  /** Builds the whole schema rather than stepping from the version before it
-      (the squash: ticket 34, then after-release ticket 42). Only an empty database can take it, so a
-      journal that already has a schema below it is refused by name. */
+  /** Parameterized data repair inside the same transaction, before advancing the version. */
+  apply?: (db: MigrationDb) => Promise<void>;
+  /** Builds the whole schema rather than stepping from the version before it. Only an empty
+      database can take it, so a journal that already has a schema below it is refused by
+      name. */
   baseline?: boolean;
 }
 
 /** Where the runner gets the migrations from.
 
     An array is the plain case and what every test hands over. The lazy form is
-    what boot passes (phase 5 audit ticket 02): the latest version as a plain
+    what boot passes: the latest version as a plain
     integer, and the array itself behind a loader only a journal that is behind
     the schema ever pays for. The list is 27KB of SQL text, and a journal on the
     current version needs one integer comparison to know it has nothing to do. */
@@ -29,6 +31,8 @@ type MigrationSource =
 export interface MigrationDb {
   exec(sql: string): void | Promise<void>;
   query<Row extends Record<string, unknown> = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<Row[]>;
+  /** Runs a parameterized statement that does not return rows. */
+  run(sql: string, params?: unknown[]): Promise<{ changes: number; lastInsertRowid: number }>;
   getUserVersion(): number | Promise<number>;
   setUserVersion(version: number): void | Promise<void>;
   transaction<T>(fn: (db: MigrationDb) => T | Promise<T>): T | Promise<T>;
@@ -42,7 +46,7 @@ export interface MigrationFileOps {
   preMigrationCopyIsUsable(): boolean | Promise<boolean>;
   copyDatabaseFile(): void | Promise<void>;
   /** Puts the copy back as the live database, discarding whatever the failed
-      migration left (ticket 04). Never called from here - the caller does it,
+      migration left. Never called from here - the caller does it,
       because on the web it closes the connection this runner is holding. */
   restorePreMigrationCopy(): void | Promise<void>;
   cleanupPreMigrationCopy(): void | Promise<void>;
@@ -65,15 +69,12 @@ export class SchemaTooNewError extends Error {
   }
 }
 
-/** Thrown when the database is a journal from before the chain's first
-    migration, which since the squash (ticket 34, redone at 88 by after-release
-    ticket 42) means a development build's journal on a schema between 1 and
-    the baseline. The steps that would carry
-    it forward are gone, so it cannot be opened here, and running the baseline
-    over its tables only fails with a SQLite message nobody can act on. Named
-    so the failure screen can say where the journal came from and offer the
-    way out instead (after-release ticket 09). Thrown before anything is
-    copied or written. */
+/** Thrown when the database is a journal from before the chain's first migration, which
+    since the squash means a development build's journal on a schema between 1 and the
+    baseline. The steps that would carry it forward are gone, so it cannot be opened here,
+    and running the baseline over its tables only fails with a SQLite message nobody can act
+    on. Named so the failure screen can say where the journal came from and offer the way
+    out instead. Thrown before anything is copied or written. */
 export class JournalBelowBaselineError extends Error {
   foundVersion: number;
   baselineVersion: number;
@@ -88,8 +89,23 @@ export class JournalBelowBaselineError extends Error {
   }
 }
 
+/** Thrown when the journal sits between two migrations of the chain: a development or test
+    build ran steps one at a time that a release runs as one. folded 89 to 119 into the step
+    at 119, so a journal at 89 to 118 has no step that starts from it, and running the step
+    over its tables would fail halfway. It is refused before anything is copied or written,
+    and it reaches the same failure screen as a journal below the baseline - the same
+    development-build sentence, the same way out through an archive - which is why it is one
+    of those rather than a sibling: every place that names that failure names this one too. */
+export class JournalBetweenStepsError extends JournalBelowBaselineError {
+  constructor(foundVersion: number, baselineVersion: number) {
+    super(foundVersion, baselineVersion);
+    this.name = 'JournalBetweenStepsError';
+    this.message = `Database schema version ${foundVersion} lies between two steps of this build's migrations (baseline ${baselineVersion}). It comes from a development build and cannot be migrated.`;
+  }
+}
+
 /** Thrown when the live database has no schema at all while a readable copy is
-    sitting beside it (ticket 04) - the window inside restorePreMigrationCopy,
+    sitting beside it - the window inside restorePreMigrationCopy,
     where the database has been unlinked and the copy is being written over it.
 
     Refusing matters because the alternative is silent: every migration applies
@@ -111,15 +127,14 @@ export class InterruptedRestoreError extends Error {
 
 /** Thrown when the running SQLite build lacks FTS5. The schema depends on it
     (`entry_fts`); there is no degraded search mode to fall back to. */
-/* Fts5UnavailableError stays exported only for its own test (AU-09 test-only
-   review). */
+/* Fts5UnavailableError stays exported only for its own test. */
 export class Fts5UnavailableError extends Error {
   constructor(cause: unknown) {
     // The cause's own message rides along on this error's message, not just
     // its `.cause` - callers that only serialize `message`/`stack` (a test
     // harness reporting a probe failure, say) would otherwise see "FTS5 is
     // not available" even when the real problem was that the connection
-    // never opened at all (ticket 11).
+    // never opened at all.
     const reason = cause instanceof Error ? cause.message : String(cause);
     super(`FTS5 is not available in this SQLite build. The schema requires it. (${reason})`);
     this.name = 'Fts5UnavailableError';
@@ -130,13 +145,12 @@ export class Fts5UnavailableError extends Error {
 /** Proves FTS5 is compiled in before anything else touches the database, so
     a missing module fails as one clear error rather than as a cryptic
     "no such module" thrown from deep inside a migration step. */
-/* assertFts5Available stays exported only for its own test (AU-09 test-only
-   review). */
+/* assertFts5Available stays exported only for its own test. */
 export async function assertFts5Available(db: MigrationDb): Promise<void> {
   try {
     /* In the temp schema, so the probe never writes to the journal file: a
        journal about to be refused (too new, or below the baseline) is left
-       exactly as it was, schema cookie included (after-release ticket 42). */
+       exactly as it was, schema cookie included. */
     await db.exec('CREATE VIRTUAL TABLE IF NOT EXISTS temp.__fts5_probe USING fts5(x)');
     await db.exec('DROP TABLE IF EXISTS temp.__fts5_probe');
   } catch (err) {
@@ -185,6 +199,13 @@ export async function runMigrations(
     throw new JournalBelowBaselineError(current, baseline.version);
   }
 
+  /* A journal above the baseline at a version no migration carries: a
+     development build's, from a step the chain has since folded into a later
+     one. Nothing in the chain starts from it. */
+  if (current > 0 && baseline?.baseline && current > baseline.version && !chain.some((m) => m.version === current)) {
+    throw new JournalBetweenStepsError(current, baseline.version);
+  }
+
   const pending = chain.filter((m) => m.version > current);
 
   async function checkForeignKeys(): Promise<void> {
@@ -206,7 +227,7 @@ export async function runMigrations(
     return;
   }
 
-  /* Unless one is already there (ticket 04). A copy on disk at this point was
+  /* Unless one is already there. A copy on disk at this point was
      left by a boot that tried these same steps and did not finish them, and it
      is the better of the two: taken before the attempt that failed, from a
      file nothing had been at. Copying again would spend it - and if the
@@ -223,6 +244,7 @@ export async function runMigrations(
     for (const migration of pending) {
       await db.transaction(async (db) => {
         await db.exec(migration.sql);
+        await migration.apply?.(db);
         await db.setUserVersion(migration.version);
       });
     }

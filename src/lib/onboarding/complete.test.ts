@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { completeSetup, type SetupCompletion } from './complete';
 
@@ -23,19 +23,43 @@ function recorder(overrides: Partial<SetupCompletion> = {}) {
   return { completion, order };
 }
 
+afterEach(() => vi.useRealTimers());
+
 describe('finishing setup without turning disguise on', () => {
-  it('writes the answers and goes, and never touches the launcher', async () => {
+  /* `onboarded` is written to the pref table without being awaited. A tab
+     closed or reloaded in the next moments (Firefox, a stale bookmark opened
+     at once) killed the worker mid-write, and the finished journal came back
+     asking for setup again. The flush is what makes it durable first. */
+  it('lands the answers before leaving, and never touches the launcher', async () => {
     const { completion, order } = recorder();
     await completeSetup(completion);
+    expect(order).toEqual(['write', 'flush', 'leave']);
+  });
+
+  it('keeps completion pending until setup history has been replaced', async () => {
+    let leave!: () => void;
+    let completed = false;
+    const { completion } = recorder({ leaveSetup: () => new Promise<void>(resolve => { leave = resolve; }) });
+    const pending = completeSetup(completion).then(() => { completed = true; });
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+    expect(completed).toBe(false);
+    leave();
+    await pending;
+    expect(completed).toBe(true);
+  });
+
+  it('does not hold the finish screen for a flush that never settles', async () => {
+    vi.useFakeTimers();
+    const { completion, order } = recorder({ flushWrites: () => new Promise<void>(() => {}) });
+    const done = completeSetup(completion);
+    await vi.advanceTimersByTimeAsync(5000);
+    await done;
     expect(order).toEqual(['write', 'leave']);
   });
 
-  it('does not wait on SQLite for a branch it is not taking', async () => {
-    /* A flush that never settles. The un-disguised path has nothing to
-       race, so it must not be holding a person on the finish screen while
-       the pref table catches up. */
-    const { completion, order } = recorder({ flushWrites: () => new Promise<void>(() => {}) });
-    await completeSetup(completion);
+  it('leaves setup when the flush fails', async () => {
+    const { completion, order } = recorder({ flushWrites: () => Promise.reject(new Error('SQLite said no')) });
+    await expect(completeSetup(completion)).resolves.toBeUndefined();
     expect(order).toEqual(['write', 'leave']);
   });
 
@@ -48,7 +72,7 @@ describe('finishing setup without turning disguise on', () => {
       }
     });
     await completeSetup(completion);
-    expect(order).toEqual(['write-start', 'write-landed', 'leave']);
+    expect(order).toEqual(['write-start', 'write-landed', 'flush', 'leave']);
   });
 });
 

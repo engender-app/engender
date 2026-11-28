@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* What a failed boot says (after-release ticket 09). Moved out of
+  /* What a failed boot says. Moved out of
      +layout.svelte so the gates fixture can draw it for each failure; the
      layout still decides when it shows.
 
@@ -13,6 +13,8 @@
      a retry is pointless for a development build's journal, and putting the
      previous copy back would reopen that same journal, so that failure gets
      the start-over way out instead, like a journal the key cannot read. */
+  import { appWordmark } from '$lib/disguise/identity';
+  import { prefs } from '$lib/data/prefs/store.svelte';
   import { m } from '$lib/paraglide/messages';
   import { bootState, restorePreviousJournal, retryBoot } from '$lib/stores/boot.svelte';
   import type { BootFailure } from '$lib/stores/boot-state';
@@ -25,9 +27,10 @@
 
   const SENTENCE: Record<BootFailure, () => string> = {
     unreadable: m.boot_failed_unreadable,
-    'below-baseline': m.boot_failed_below_baseline,
+    'below-baseline': () => m.boot_failed_below_baseline({ appName: appWordmark(prefs.disguise, m.app_name(), m.disguise_name()) }),
     'android-plaintext': m.ak_plaintext_journal,
     engine: m.boot_failed_engine,
+    'storage-full': m.boot_failed_storage_full,
     unknown: m.boot_failed_unknown
   };
 
@@ -35,9 +38,9 @@
       or the file comes from a build this one cannot carry forward. */
   let offersWayOut = $derived(failure === 'unreadable' || failure === 'below-baseline');
 
-  /* Putting the pre-migration copy back (ticket 04). Only reachable from
+  /* Putting the pre-migration copy back. Only reachable from
      here, and only when boot found a copy to put back. Indeterminate, and
-     it will stay that way (phase 9 audit ticket 11): the restore is one file
+     it will stay that way: the restore is one file
      copy inside the SQLite worker or the native driver with no callback out
      of it, so a sweep says the honest thing where a bar would have to make a
      number up. Immediate rather than delayed, because this notice is the
@@ -92,24 +95,33 @@
   <div class="notice-body">
     <span class="notice-title">{m.boot_db_failed_title()}</span>
     <span data-boot-failure-sentence>{SENTENCE[failure]()}</span>
-    <!-- The way back out of a migration that could not finish (ticket 04,
-         ADR-0006): the copy taken before it started is still on the device,
+    <!-- The way back out of a migration that could not finish (ADR-0006): the copy taken before it started is still on the device,
          and this puts it back. Offered only when there is one, so the button
          never lies about having something to restore. -->
     {#if bootState.recoverable}
-      <p style="margin-top:var(--space-2)" data-restore-offer>{m.boot_restore_offer()}</p>
-      <!-- The button keeps naming its action while it is disabled and the
-           bar under it says what is happening, rather than the two of them
-           saying the same sentence twice. -->
-      <button class="btn btn-soft" data-restore-previous disabled={restoring} onclick={restore}>
-        <span>{m.boot_restore_action()}</span>
-      </button>
-      {#await import('$lib/components/Progress.svelte') then { default: Progress }}
-        <Progress run={restoreProgress} label={m.boot_restore_running()} handle="restore-previous" />
-      {/await}
-      {#if restoreFailed}
-        <p style="margin-top:var(--space-2)" data-restore-failed transition:disclose>{m.boot_restore_failed()}</p>
-      {/if}
+      <!-- Opens its own height rather than landing at full size: the answer
+           comes after the failure is already on screen (the disk is asked
+           once the boot has failed), so without this the offer appeared in
+           one frame and pushed "Try opening again" down under the finger.
+           The gap above is the group's own margin, not the
+           sentence's: a first child's margin that collapses through the
+           group at rest lands inside it while it opens, and disclose then
+           left everything under it 8px short until its last frame. -->
+      <div data-restore-group style="margin-top:var(--space-2)" transition:disclose>
+        <p data-restore-offer>{m.boot_restore_offer()}</p>
+        <!-- The button keeps naming its action while it is disabled and the
+             bar under it says what is happening, rather than the two of them
+             saying the same sentence twice. -->
+        <button class="btn btn-soft" data-restore-previous disabled={restoring} onclick={restore}>
+          <span>{m.boot_restore_action()}</span>
+        </button>
+        {#await import('$lib/components/Progress.svelte') then { default: Progress }}
+          <Progress run={restoreProgress} label={m.boot_restore_running()} handle="restore-previous" />
+        {/await}
+        {#if restoreFailed}
+          <p style="margin-top:var(--space-2)" data-restore-failed transition:disclose>{m.boot_restore_failed()}</p>
+        {/if}
+      </div>
     {/if}
     {#if failure !== 'below-baseline'}
       <div style="margin-top:var(--space-2)">

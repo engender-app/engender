@@ -1,4 +1,4 @@
-/* The area record (phase 8 deepening ticket 13, ADR-0052): what a row says,
+/* The area record (ADR-0052): what a row says,
    and what an absent row says. */
 
 import { test } from 'vitest';
@@ -27,21 +27,21 @@ test('a journal nobody has said anything about holds no rows and reads as restin
 test('hiding an area reads back, and hiding it does not finish it', async () => {
   const { journal } = await journalWithBuiltIns();
 
-  await journal.areaStates.setAreasHidden(['measurements'], true);
+  await journal.areaStates.setAreasHidden(['wearSessions'], true);
 
   const states = await journal.areaStates.getAreaStates();
-  assert.deepEqual(states.measurements, { hidden: true, finishedEpochDay: null, suspendedEpochDay: null });
-  assert.equal(areaHidden('measurements', states), true);
+  assert.deepEqual(states.wearSessions, { hidden: true, finishedEpochDay: null, suspendedEpochDay: null });
+  assert.equal(areaHidden('wearSessions', states), true);
 });
 
 test('one hub row fronting two sections finishes both, in one call', async () => {
   const { journal, db } = await journalWithBuiltIns();
 
-  await journal.areaStates.setAreasFinished(['hairStages', 'hairPhotos'], 19900);
+  await journal.areaStates.setAreasFinished(['personalEffects', 'sideEffects'], 19900);
 
   const states = await journal.areaStates.getAreaStates();
-  assert.deepEqual(states.hairStages, { hidden: false, finishedEpochDay: 19900, suspendedEpochDay: null });
-  assert.deepEqual(states.hairPhotos, { hidden: false, finishedEpochDay: 19900, suspendedEpochDay: null });
+  assert.deepEqual(states.personalEffects, { hidden: false, finishedEpochDay: 19900, suspendedEpochDay: null });
+  assert.deepEqual(states.sideEffects, { hidden: false, finishedEpochDay: 19900, suspendedEpochDay: null });
   assert.equal(await rowCount(db), 2);
 });
 
@@ -58,7 +58,7 @@ test('one hub row fronting two sections suspends both, in one call', async () =>
 
 test('a finished area is not hidden by finishing, and stays readable and searchable', async () => {
   const { journal } = await journalWithBuiltIns();
-  await journal.sideEffects.upsertSideEffect({ name: 'dry skin', severity: 2, epochDay: 19800 });
+  await journal.sideEffects.upsertSideEffect({ name: 'dry skin', severity: 2, epochDay: 19800, resolvedEpochDay: null });
 
   await journal.areaStates.setAreasFinished(['sideEffects'], 19850);
 
@@ -73,8 +73,7 @@ test('a finished area is not hidden by finishing, and stays readable and searcha
   const hits = await journal.textSearch.search({ query: 'dry skin', today: 19900, limit: 10 });
   assert.ok(hits.hits.some((hit) => hit.area === 'sideEffects'), 'a finished area is still searched');
 
-  /* And the day it was written on still shows it (phase 8 features ticket
-     04). The cascade takes away prompts and tiles; a day someone opens to
+  /* And the day it was written on still shows it. The cascade takes away prompts and tiles; a day someone opens to
      read is neither, and a record that vanished from it would be the app
      quietly losing something they remember writing. */
   const day = await journal.day.getDay(19800);
@@ -109,10 +108,9 @@ test('hiding is independent of finishing in both directions, and un-finishing le
   });
 });
 
-/* Phase 8 features ticket 51: a stream is active, suspended or finished,
-   never two of those at once. Both directions, since a writer clearing the
-   other column wrong in either direction would leave a row this build's own
-   gate (`areaQuiet`) would still read as quiet either way - the kind of bug
+/* A stream is active, suspended or finished, never two of those at once. Both directions,
+   since a writer clearing the other column wrong in either direction would leave a row this
+   build's own gate (`areaQuiet`) would still read as quiet either way - the kind of bug
    that hides behind its own safety net. */
 test('finishing a suspended area clears the suspended day, and suspending a finished one clears the finished day', async () => {
   const { journal } = await journalWithBuiltIns();
@@ -147,18 +145,17 @@ test('un-suspending an area leaves hiding and a resting finish day alone, and hi
   });
 });
 
-test('a cycle row an archive carried in is not readable back out (ADR-0043)', async () => {
+test('a cycle row an archive carried in is not readable back out', async () => {
   const { journal, db } = await journalWithBuiltIns();
 
-  /* No setter in this build can write this - `cycleEvents` is not a key of
-     the record - but an area_state row travels, so an archive written
-     somewhere else is a way in. ADR-0043's rule is one-directional, and an
-     imported row must not be what reverses it. */
+  /* No setter in this build can write this - `cycleEvents` is not a key of the record - but
+     an area_state row travels, so an archive written somewhere else is a way in. rule is
+     one-directional, and an imported row must not be what reverses it. */
   await db.run('INSERT INTO area_state (area, hidden, updated_at) VALUES (?, 1, ?)', ['cycleEvents', 1_700_000_000_000]);
-  await db.run('INSERT INTO area_state (area, hidden, updated_at) VALUES (?, 1, ?)', ['measurements', 1_700_000_000_000]);
+  await db.run('INSERT INTO area_state (area, hidden, updated_at) VALUES (?, 1, ?)', ['wearSessions', 1_700_000_000_000]);
 
   const states = await journal.areaStates.getAreaStates();
-  assert.deepEqual(Object.keys(states), ['measurements']);
+  assert.deepEqual(Object.keys(states), ['wearSessions']);
 
   // The row is still there: nothing was deleted, it is only unreadable
   // through the gate, so it travels on the way it travelled in.
@@ -168,12 +165,12 @@ test('a cycle row an archive carried in is not readable back out (ADR-0043)', as
 test('an area that goes back to saying nothing keeps no row saying so', async () => {
   const { journal, db } = await journalWithBuiltIns();
 
-  await journal.areaStates.setAreasHidden(['sizeRecords'], true);
-  await journal.areaStates.setAreasFinished(['sizeRecords'], 19500);
+  await journal.areaStates.setAreasHidden(['wearSessions'], true);
+  await journal.areaStates.setAreasFinished(['wearSessions'], 19500);
   assert.equal(await rowCount(db), 1);
 
-  await journal.areaStates.setAreasHidden(['sizeRecords'], false);
-  await journal.areaStates.setAreasFinished(['sizeRecords'], null);
+  await journal.areaStates.setAreasHidden(['wearSessions'], false);
+  await journal.areaStates.setAreasFinished(['wearSessions'], null);
 
   assert.deepEqual(await journal.areaStates.getAreaStates(), {});
   assert.equal(await rowCount(db), 0);

@@ -16,43 +16,19 @@ import org.json.JSONObject;
 
 import java.util.Collections;
 
-/**
- * The write half of the photo bridge, moved off the Capacitor
- * plugin-call queue the same way reads were moved off it earlier. Reads escaped
- * by fetching from Capacitor's local server, but that server only serves
- * files - it has no matching path for the WebView to hand bytes back in - so
- * writes need a transport of their own rather than the read fix's mirror
- * image.
+/** Writes WebView photo bytes off the Capacitor plugin-call queue. A
+ * structured-clone {@code ArrayBuffer} avoids the JSON and base64 conversion
+ * measured at 0.8 MB/s on the bridge.
  *
- * <p>A {@code WebMessageListener} carries a JS {@code ArrayBuffer} across as
- * a structured-clone byte array. That is the mechanism: it never becomes a
- * JSON string, so it never pays the cost the base64 bridge measured at
- * 0.8MB/s regardless of encoding. The protocol is a small handshake per write,
- * because a single WebMessage carries either a string or bytes, never both:
+ * <p>JavaScript posts the name and directory as JSON and transfers a port.
+ * {@link #onPostMessage} reads the header, then receives the bytes on the
+ * transferred port. A worker writes them to disk and the port acknowledges
+ * success only after the write lands. Restore relies on that ordering.
+ * A failed write returns a JSON error.
  *
- * <ol>
- *   <li>JS opens a {@code MessageChannel} and posts the write's name and
- *       directory, as JSON, to {@code window.androidPhotoWriteChannel},
- *       transferring one port along with it.</li>
- *   <li>This class reads that header on {@link #onPostMessage}, then listens
- *       on the transferred port for the second message.</li>
- *   <li>JS posts the photo bytes as an {@code ArrayBuffer} on its remaining
- *       port. This class writes them to the file the header named, on a
- *       worker thread so concurrent writes actually run concurrently rather
- *       than queuing behind the WebView's callback dispatch.</li>
- *   <li>The port replies with a small JSON ack, {@code {"ok":true}} or
- *       {@code {"ok":false,"error":...}}, once the bytes are on disk - so a
- *       caller that awaits the reply never sees success before the write
- *       lands, which is what keeps restore's ordering guarantee intact.</li>
- * </ol>
- *
- * <p>{@link #registerIfSupported} is a no-op below the WebView versions that
- * carry {@code WEB_MESSAGE_LISTENER} and {@code WEB_MESSAGE_ARRAY_BUFFER}.
- * The app's floor is WebView 87, below both, so
- * {@code window.androidPhotoWriteChannel} is not always there - exactly the
- * gap {@code Object.hasOwn} and {@code crypto.randomUUID} left, closed the
- * same way: {@code android-file-store.ts} falls back to the base64 bridge
- * call when the fast channel does not exist.
+ * <p>{@link #registerIfSupported} requires WEB_MESSAGE_LISTENER and
+ * WEB_MESSAGE_ARRAY_BUFFER. When unavailable, android-file-store.ts writes
+ * through the base64 bridge.
  */
 public final class PhotoWriteChannel {
     private static final String TAG = "PhotoWriteChannel";

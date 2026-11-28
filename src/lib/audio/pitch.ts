@@ -1,36 +1,10 @@
-/* Fundamental frequency over a take, by YIN (CONTEXT: "Voice benchmark").
+/* Measure fundamental frequency with YIN. Report the median, p10 to p90
+   span, semitone spread and note name without scoring the voice. The
+   percentiles keep extremes from dominating the span. All voiced frames
+   still contribute to the median.
 
-   Pure arithmetic over a buffer of samples: no clock, no database, nothing
-   from $lib/paraglide, so the Node tier can prove it against
-   synthesized input with no browser anywhere near it. The browser half -
-   turning a recorded file into these samples - lives in
-   stores/voiceBenchmark.ts and does nothing this module could be asked to do.
-
-   What it reports and what it deliberately does not: a median, a percentile
-   span, a spread in semitones, a note name. No comparison to a range, no
-   label, no direction of travel (PRODUCT.md:109). The number is the answer.
-
-   **One exception, and it is not this module's.** The voice screen's pitch
-   graph narrows that rule, drawing two cited speaking-pitch ranges behind
-   the trace. The bands live in bands.ts with
-   their source and their caveat; nothing here knows about them, and this
-   module still reports a frequency and stops.
-
-   **Why the span is percentiles and not a filter.** The tenth and ninetieth
-   percentiles of the voiced frames are the reported span, and the frames
-   outside them are still in the median. Vocal fry at the end of a sentence,
-   a cough, a chair creak and the octave-down flip a tired voice makes are
-   all real parts of a real take, and every one of them would move a plain
-   min/max by an octave. The next reader will want to add a hand-tuned
-   plausibility filter in front of this - a Hz floor, an "ignore frames more
-   than N semitones from the median" pass. That filter is what the percentiles
-   already are, done without a threshold somebody has to defend, and a second
-   one on top would only hide the takes where the fry is the interesting part.
-
-   Sample rate: the analysis is written for 16 kHz, which is what the browser
-   half decodes to (formants of interest sit under 4 kHz, and YIN's cost is
-   quadratic in the search range). Nothing here assumes it - every bound is
-   derived from the rate passed in. */
+   The browser normally decodes at 16 kHz. Bounds derive from the supplied
+   sample rate. stores/voiceBenchmark.ts owns browser decoding. */
 
 import { percentileOfSorted } from './series';
 

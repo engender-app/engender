@@ -1,43 +1,19 @@
-/* Wording for the transition roadmap (phase 4 ticket 23): a track name, a
-   pack name, and a title plus an optional note per goal. roadmap.ts holds
-   the keys and takes no paraglide, the same split builtins.ts and this
-   file's neighbour labels.ts keep (ADR-0002, ADR-0016).
+/* Localize pack names and goal titles, with optional procedural notes. roadmap.ts contains
+   stable keys without Paraglide (ADR-0002). An exhaustive title map catches a missing
+   translation at typecheck.
 
-   The title map is a full Record over every bundled goal key, so a goal
-   added to a pack without wording is a typecheck failure rather than a raw
-   key on screen. Notes are Partial on purpose: a social step like telling
-   one person has nothing procedural to add, and a forced note there would
-   be filler.
-
-   The Polish pack's legal and procedural wording was checked against
-   tranzycja.pl (the step-by-step guides on medical transition, the court
-   case and the USC name change), the Supreme Court's own announcement of
-   resolution III CZP 6/24 of 4 March 2025, the Ombudsman's guide to
-   ustalenie plci proceedings, and the relevant gov.pl pages, on the date
-   POLISH_PACK.reviewedOn records. What that check turned up is said out
-   loud rather than hidden: roadmap_caveat_pl names that there is still no
-   gender recognition statute and that whether identity alone grounds a
-   change is pending before the Supreme Court as III CZP 20/26, and
-   roadmap_marker_note_pl names that the recorded sex marker itself only
-   ever holds K or M, so no procedure produces a third value. Both are
-   their own strings rather than one long caveat, on docs/ui-copy.md's
-   sentence-count rule for an explanation.
-
-   Every item describes procedure. None of them tells anyone what to do
-   about their own case, which is the ticket's out-of-scope line and the
-   reason the notes carry deadlines and fees rather than recommendations. */
+   POLISH_PACK.reviewedOn dates the review against tranzycja.pl, Supreme Court resolution
+   III CZP 6/24 of 4 March 2025, the Ombudsman's ustalenie płci guide, and gov.pl. The
+   separate caveats record the law as reviewed: no gender recognition statute, III CZP 20/26
+   pending on whether identity alone grounds a change, and K/M as the only recorded marker
+   values. Notes cover procedure, deadlines and fees. */
 
 import { m } from '$lib/paraglide/messages';
-import type { RoadmapGoalKey, RoadmapPackKey, RoadmapTrack } from '../roadmap';
+import { INSTITUTION_STATUSES, isOneOf } from '../rowValues';
+import type { LEGACY_ROADMAP_TRACKS, RoadmapGoalKey, RoadmapInstitutionKey, RoadmapPackKey } from '../roadmap';
+import type { RoadmapCategory } from '../types';
 
 type Message = (inputs?: {}, options?: { locale?: 'en' | 'pl' }) => string;
-
-const TRACK_NAME: Record<RoadmapTrack, Message> = {
-  social: m.roadmap_track_social,
-  legal: m.roadmap_track_legal,
-  presentational: m.roadmap_track_presentational,
-  medical: m.roadmap_track_medical
-};
 
 const PACK_NAME: Record<RoadmapPackKey, Message> = {
   pl: m.roadmap_pack_pl
@@ -50,10 +26,7 @@ const PACK_CAVEAT: Record<RoadmapPackKey, Message> = {
   pl: m.roadmap_caveat_pl
 };
 
-/* The recorded sex marker's binary range, said as its own sentence pair
-   rather than folded into PACK_CAVEAT, which was already at
-   docs/ui-copy.md's two-sentence cap for an explanation before this fact
-   existed. */
+/* State the recorded marker’s range separately so PACK_CAVEAT stays at two sentences. */
 const PACK_MARKER_NOTE: Record<RoadmapPackKey, Message> = {
   pl: m.roadmap_marker_note_pl
 };
@@ -63,24 +36,10 @@ const PACK_SOURCES: Record<RoadmapPackKey, Message> = {
 };
 
 const GOAL_TITLE: Record<RoadmapGoalKey, Message> = {
-  'pl-social-tell-one-person': m.roadmap_goal_pl_social_tell_one_person,
-  'pl-social-close-people': m.roadmap_goal_pl_social_close_people,
-  'pl-social-name-at-work': m.roadmap_goal_pl_social_name_at_work,
-  'pl-social-community': m.roadmap_goal_pl_social_community,
-  'pl-presentational-clothes': m.roadmap_goal_pl_presentational_clothes,
-  'pl-presentational-voice': m.roadmap_goal_pl_presentational_voice,
-  'pl-presentational-hair': m.roadmap_goal_pl_presentational_hair,
-  'pl-presentational-photo': m.roadmap_goal_pl_presentational_photo,
-  'pl-medical-two-specialists': m.roadmap_goal_pl_medical_two_specialists,
-  'pl-medical-psychologist': m.roadmap_goal_pl_medical_psychologist,
-  'pl-medical-psych-opinion': m.roadmap_goal_pl_medical_psych_opinion,
-  'pl-medical-doctor-opinion': m.roadmap_goal_pl_medical_doctor_opinion,
-  'pl-medical-diagnosis-code': m.roadmap_goal_pl_medical_diagnosis_code,
-  'pl-medical-bloodwork': m.roadmap_goal_pl_medical_bloodwork,
-  'pl-medical-keep-opinions': m.roadmap_goal_pl_medical_keep_opinions,
   'pl-legal-birth-certificate': m.roadmap_goal_pl_legal_birth_certificate,
   'pl-legal-which-court': m.roadmap_goal_pl_legal_which_court,
   'pl-legal-court-fee': m.roadmap_goal_pl_legal_court_fee,
+  'pl-legal-opinions': m.roadmap_goal_pl_legal_opinions,
   'pl-legal-application': m.roadmap_goal_pl_legal_application,
   'pl-legal-file-it': m.roadmap_goal_pl_legal_file_it,
   'pl-legal-formal-defects': m.roadmap_goal_pl_legal_formal_defects,
@@ -91,32 +50,23 @@ const GOAL_TITLE: Record<RoadmapGoalKey, Message> = {
   'pl-legal-written-reasons': m.roadmap_goal_pl_legal_written_reasons,
   'pl-legal-appeal': m.roadmap_goal_pl_legal_appeal,
   'pl-legal-final-copy': m.roadmap_goal_pl_legal_final_copy,
-  'pl-legal-pesel': m.roadmap_goal_pl_legal_pesel,
   'pl-legal-new-birth-copy': m.roadmap_goal_pl_legal_new_birth_copy,
   'pl-legal-name-usc': m.roadmap_goal_pl_legal_name_usc,
-  'pl-legal-id-card': m.roadmap_goal_pl_legal_id_card,
-  'pl-legal-passport': m.roadmap_goal_pl_legal_passport,
-  'pl-legal-driving-licence': m.roadmap_goal_pl_legal_driving_licence,
-  'pl-legal-zus-ceidg': m.roadmap_goal_pl_legal_zus_ceidg,
-  'pl-legal-diplomas': m.roadmap_goal_pl_legal_diplomas,
-  'pl-legal-institutions': m.roadmap_goal_pl_legal_institutions,
-  'pl-legal-document-set': m.roadmap_goal_pl_legal_document_set
+  'pl-legal-document-set': m.roadmap_goal_pl_legal_document_set,
+  'social-family': m.roadmap_goal_social_family,
+  'social-friends': m.roadmap_goal_social_friends,
+  'social-work': m.roadmap_goal_social_work,
+  'social-name-pronouns': m.roadmap_goal_social_name_pronouns,
+  'social-accounts': m.roadmap_goal_social_accounts,
+  'social-clothes': m.roadmap_goal_social_clothes,
+  'social-voice': m.roadmap_goal_social_voice,
+  'social-hair-makeup': m.roadmap_goal_social_hair_makeup
 };
 
 const GOAL_NOTE: Partial<Record<RoadmapGoalKey, Message>> = {
-  'pl-social-name-at-work': m.roadmap_note_pl_social_name_at_work,
-  'pl-presentational-voice': m.roadmap_note_pl_presentational_voice,
-  'pl-presentational-hair': m.roadmap_note_pl_presentational_hair,
-  'pl-presentational-photo': m.roadmap_note_pl_presentational_photo,
-  'pl-medical-two-specialists': m.roadmap_note_pl_medical_two_specialists,
-  'pl-medical-psychologist': m.roadmap_note_pl_medical_psychologist,
-  'pl-medical-psych-opinion': m.roadmap_note_pl_medical_psych_opinion,
-  'pl-medical-doctor-opinion': m.roadmap_note_pl_medical_doctor_opinion,
-  'pl-medical-diagnosis-code': m.roadmap_note_pl_medical_diagnosis_code,
-  'pl-medical-bloodwork': m.roadmap_note_pl_medical_bloodwork,
-  'pl-medical-keep-opinions': m.roadmap_note_pl_medical_keep_opinions,
   'pl-legal-which-court': m.roadmap_note_pl_legal_which_court,
   'pl-legal-court-fee': m.roadmap_note_pl_legal_court_fee,
+  'pl-legal-opinions': m.roadmap_note_pl_legal_opinions,
   'pl-legal-application': m.roadmap_note_pl_legal_application,
   'pl-legal-file-it': m.roadmap_note_pl_legal_file_it,
   'pl-legal-formal-defects': m.roadmap_note_pl_legal_formal_defects,
@@ -127,32 +77,20 @@ const GOAL_NOTE: Partial<Record<RoadmapGoalKey, Message>> = {
   'pl-legal-written-reasons': m.roadmap_note_pl_legal_written_reasons,
   'pl-legal-appeal': m.roadmap_note_pl_legal_appeal,
   'pl-legal-final-copy': m.roadmap_note_pl_legal_final_copy,
-  'pl-legal-pesel': m.roadmap_note_pl_legal_pesel,
   'pl-legal-new-birth-copy': m.roadmap_note_pl_legal_new_birth_copy,
   'pl-legal-name-usc': m.roadmap_note_pl_legal_name_usc,
-  'pl-legal-id-card': m.roadmap_note_pl_legal_id_card,
-  'pl-legal-passport': m.roadmap_note_pl_legal_passport,
-  'pl-legal-driving-licence': m.roadmap_note_pl_legal_driving_licence,
-  'pl-legal-zus-ceidg': m.roadmap_note_pl_legal_zus_ceidg,
-  'pl-legal-diplomas': m.roadmap_note_pl_legal_diplomas,
-  'pl-legal-institutions': m.roadmap_note_pl_legal_institutions,
   'pl-legal-document-set': m.roadmap_note_pl_legal_document_set
 };
 
 /* A second, independent note for a goal whose first note is already at the
    two-sentence cap. Partial and keyed the same way GOAL_NOTE is.
-   pl-medical-diagnosis-code's says what F64.0's own criteria describe.
    pl-legal-application's points at roadmap_marker_note_pl rather than
    repeating it, since its title ("the application to change the sex
    marker") is the one legal-track sentence the ticket found reading as a
    route open to every reader now that the caveat says otherwise. */
 const GOAL_NOTE_SECONDARY: Partial<Record<RoadmapGoalKey, Message>> = {
-  'pl-medical-diagnosis-code': m.roadmap_note_pl_medical_diagnosis_code_criteria,
   'pl-legal-application': m.roadmap_note_pl_legal_application_marker
 };
-
-/** The name of a track: social, legal, presentational or medical. */
-export const roadmapTrackName = (track: RoadmapTrack): string => TRACK_NAME[track]();
 
 /** The country a pack describes. */
 export const roadmapPackName = (pack: RoadmapPackKey): string => PACK_NAME[pack]();
@@ -175,3 +113,72 @@ export const roadmapGoalNote = (goal: RoadmapGoalKey): string | null => GOAL_NOT
 /** A second, independent line for a goal whose first note has one. */
 export const roadmapGoalNoteSecondary = (goal: RoadmapGoalKey): string | null =>
   GOAL_NOTE_SECONDARY[goal]?.() ?? null;
+
+/* The names of the cut, for the nameless categories migration 111 made out of them
+   (roadmap.ts, LEGACY_ROADMAP_TRACKS). Said in the current language until somebody renames
+   the category. */
+const LEGACY_CATEGORY_NAME: Record<(typeof LEGACY_ROADMAP_TRACKS)[number], Message> = {
+  social: m.roadmap_category_social,
+  presentational: m.roadmap_category_presentational,
+  medical: m.roadmap_category_medical
+};
+
+/** A category's heading: what the person named it, or a cut track's own
+    name for a category migration 111 made and nobody has renamed. */
+export const roadmapCategoryName = (category: RoadmapCategory): string =>
+  category.name || (LEGACY_CATEGORY_NAME[category.id as keyof typeof LEGACY_CATEGORY_NAME]?.() ?? '');
+
+/* The institutions. Every one has a note:
+   each says who acts and on what, which is what somebody standing at that
+   office needs. The notes for the ID card, passport and driving licence
+   are the post-ruling steps' own, unchanged; the rest were checked against
+   gov.pl, ZUS and the Ombudsman on INSTITUTIONS_REVIEWED_ON. */
+const INSTITUTION_NAME: Record<RoadmapInstitutionKey, Message> = {
+  'pl-legal-pesel': m.roadmap_institution_pl_legal_pesel,
+  'pl-legal-id-card': m.roadmap_institution_pl_legal_id_card,
+  'pl-legal-passport': m.roadmap_institution_pl_legal_passport,
+  'pl-legal-driving-licence': m.roadmap_institution_pl_legal_driving_licence,
+  'pl-legal-bank': m.roadmap_institution_pl_legal_bank,
+  'pl-legal-zus-ceidg': m.roadmap_institution_pl_legal_zus_ceidg,
+  'pl-legal-employer': m.roadmap_institution_pl_legal_employer,
+  'pl-legal-diplomas': m.roadmap_institution_pl_legal_diplomas
+};
+
+const INSTITUTION_NOTE: Record<RoadmapInstitutionKey, Message> = {
+  'pl-legal-pesel': m.roadmap_institution_note_pl_legal_pesel,
+  'pl-legal-id-card': m.roadmap_institution_note_pl_legal_id_card,
+  'pl-legal-passport': m.roadmap_institution_note_pl_legal_passport,
+  'pl-legal-driving-licence': m.roadmap_institution_note_pl_legal_driving_licence,
+  'pl-legal-bank': m.roadmap_institution_note_pl_legal_bank,
+  'pl-legal-zus-ceidg': m.roadmap_institution_note_pl_legal_zus_ceidg,
+  'pl-legal-employer': m.roadmap_institution_note_pl_legal_employer,
+  'pl-legal-diplomas': m.roadmap_institution_note_pl_legal_diplomas
+};
+
+/** A built-in institution's name. */
+export const roadmapInstitutionName = (key: RoadmapInstitutionKey): string => INSTITUTION_NAME[key]();
+
+/** What a built-in institution does with the ruling, in a sentence or two. */
+export const roadmapInstitutionNote = (key: RoadmapInstitutionKey): string => INSTITUTION_NOTE[key]();
+
+const STATUS_WORD: Record<(typeof INSTITUTION_STATUSES)[number], Message> = {
+  submitted: m.roadmap_institution_status_submitted,
+  waiting: m.roadmap_institution_status_waiting,
+  done: m.roadmap_institution_status_done
+};
+
+/** One change's status as a word. A stored word outside the three (the
+    column has no CHECK) reads as "changed", the CHECK policy's "other";
+    writes and archive import both refuse one. */
+export const institutionStatusWord = (status: string): string =>
+  isOneOf(INSTITUTION_STATUSES, status) ? STATUS_WORD[status]() : m.roadmap_institution_status_other();
+
+/** Where an institution stands, as the line under its name. */
+export function institutionStateLine(state: { status: string | null; epochDay: number | null }, day: (epochDay: number) => string): string {
+  if (state.status === null || state.epochDay === null) return m.roadmap_institution_not_started();
+  const date = day(state.epochDay);
+  if (state.status === 'submitted') return m.roadmap_institution_submitted_on({ date });
+  if (state.status === 'waiting') return m.roadmap_institution_waiting_since({ date });
+  if (state.status === 'done') return m.roadmap_institution_done_on({ date });
+  return m.roadmap_institution_changed_on({ date });
+}

@@ -1,5 +1,4 @@
-/* The comfort list area, exercised through the driver interface (phase 6
-   ticket 14): minted uuids, insertion order, idempotent delete, reorder's
+/* The comfort list area, exercised through the driver interface: minted uuids, insertion order, idempotent delete, reorder's
    permutation check. */
 
 import { test } from 'vitest';

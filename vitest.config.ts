@@ -4,8 +4,10 @@
    real browser for OPFS/WASM SQLite, which this Node-only config cannot
    provide. */
 import { defineConfig } from 'vitest/config';
+import { appVersion } from './scripts/app-version.mjs';
 
 export default defineConfig({
+  define: { __APP_VERSION__: JSON.stringify(appVersion()) },
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts', 'tests/**/*.test.ts'],

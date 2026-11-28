@@ -1,24 +1,11 @@
-/* Every way a copy of the journal can leave the device (ticket 15, PRD
-   F21), and the timestamp that says one did. How old that timestamp is
-   allowed to get is backupHealth.ts.
+/* List delivery paths that update `lastBackupAt` after a copy leaves
+   the device. Register each in `EXPORT_PATHS` so backup.test.ts checks
+   its timestamp. `backupHealth.ts` decides when the timestamp is stale.
+   Android scheduled exports deliver to an SAF folder using a
+   Keystore-wrapped key.
 
-   The paths are a list rather than three call sites, because the promise
-   F21 makes is about all of them at once - Home tells someone their
-   journal is safe on the strength of `lastBackupAt`, so a path that
-   forgets to stamp it is a screen that lies. Adding a path means adding it
-   to EXPORT_PATHS, which is what backup.test.ts enumerates: a new one is
-   under the timestamp test the moment it exists, and one that isn't in the
-   list isn't wired to the screen either.
-
-   Android's scheduled auto-export joins this list when the shell lands.
-   It is the same shape - produce a file, hand it off, stamp the time -
-   with a Keystore-wrapped key and a SAF folder in place of the share
-   sheet.
-
-   Nothing here writes a preference. The recorder is passed in: this module
-   is under Node-tier tests and the preference store is a Svelte $state
-   projection, and the seam is honest anyway - what a delivered export
-   means for the journal's settings is the screen's business. */
+   Pass in the timestamp recorder so this module stays testable in
+   Node without a Svelte preference store. */
 
 import type { PreferenceValues } from '../prefs/catalogue';
 import type { ArchiveSnapshot } from '../journal/archive';
@@ -31,12 +18,12 @@ import { portablePreferences } from './payload';
 export type { Delivery };
 
 /** Every way a backup leaves the app (F21). */
-/* EXPORT_PATHS stays exported only for its own test (AU-09 test-only review). */
+/* EXPORT_PATHS stays exported only for its own test. */
 export const EXPORT_PATHS = ['encrypted', 'csv', 'json'] as const;
 
 export type ExportPath = (typeof EXPORT_PATHS)[number];
 
-/* ExportSource stays exported only for its own test (AU-09 test-only review). */
+/* ExportSource stays exported only for its own test. */
 export interface ExportSource {
   /** The journal in the shape an archive carries it, and a reader for its
       photo files. Taken already open so the screen reads it once. */
@@ -51,8 +38,9 @@ export interface ExportSource {
 
 /** A file on its way off the device. The body is a stream so the encrypted
     path stays bounded (ADR-0007); the plain paths are one piece. */
-/* OutgoingFile stays exported only for its own test (AU-09 test-only review). */
+/* OutgoingFile stays exported only for its own test. */
 export interface OutgoingFile {
+  recordBackup?: boolean;
   fileName: string;
   type: string;
   body: AsyncIterable<Uint8Array>;
@@ -101,8 +89,7 @@ interface ExportDeps {
       its own way of handing a file over would be an export path that
       never came through here. */
   deliver?(file: OutgoingFile): Promise<Delivery>;
-  /** How far the encrypted path has packed, and a way to stop it (phase 9
-      audit ticket 11). The plain paths ignore it: journalCsv and
+  /** How far the encrypted path has packed, and a way to stop it. The plain paths ignore it: journalCsv and
       journalJson are one string each, produced before the body is pulled,
       so there is no unit of work to count and nothing to interrupt
       between. Their bar runs indeterminate. */
@@ -110,7 +97,7 @@ interface ExportDeps {
 }
 
 export async function runExport(path: ExportPath, source: ExportSource, deps: ExportDeps): Promise<Delivery> {
-  const delivery = await (deps.deliver ?? deliverFile)(PRODUCERS[path](source, deps.watch ?? {}));
+  const delivery = await (deps.deliver ?? deliverFile)({ ...PRODUCERS[path](source, deps.watch ?? {}), recordBackup: true });
   // A cancelled share sheet is not a backup. Stamping it would tell
   // someone they have a copy of their journal that does not exist.
   if (delivery !== 'cancelled') deps.recordBackup(Date.now());

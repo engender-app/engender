@@ -1,18 +1,16 @@
-/* Browser-tier check for after-release ticket 10: a web lock closes the
-   real encrypted database and lets go of the key, and the unlock opens it
-   again under the same key without losing a write.
+/* Browser-tier a web lock closes the real encrypted database and lets go of the key, and
+   the unlock opens it again under the same key without losing a write.
 
-   Here rather than in the Node tier for the parts the Node tier cannot
-   reach: the sqlite3mc worker over OPFS that the lock terminates, the live
-   facade and the reference mirror, which are runes. The session itself is
-   the real one (journal-session.ts), wired with the same ports boot.svelte.ts
-   gives it, minus what needs the app shell - preferences, the photo stores
-   and the paraglide-bound content caches, which journal-session.test.ts
-   and forget-content.test.ts cover.
+   Here rather than in the Node tier for the parts the Node tier cannot reach: the sqlite3mc
+   worker over OPFS that the lock terminates, the live facade and the reference mirror,
+   which are runes. The session itself is the real one (journal-session.ts), wired with the
+   same ports boot.svelte.ts gives it, minus what needs the app shell - preferences, the
+   photo stores and the paraglide-bound content caches, which journal-session.test.ts and
+   forget-content.test.ts cover.
 
-   Also where the reopen is timed, since a lock now puts a database open
-   between the derived key and the journal: run.mjs loads this page twice,
-   the second time with the CPU throttled. */
+   Also where the reopen is timed, since a lock now puts a database open between the derived
+   key and the journal: run.mjs loads this page twice, the second time with the CPU
+   throttled. */
 
 import { flushSync } from 'svelte';
 import { createEncryptedWebSqlite, prewarmJournalWorker } from '../../src/lib/data/sqlite/mc-driver.ts';
@@ -123,7 +121,7 @@ async function run() {
 
   const stored = (await journal.tags.getTagGroups()).flatMap((g) => g.tags.map((tag) => tag.label));
 
-  /* L02-09: the mirror's refresh after a write has to read the journal open
+  /* The mirror's refresh after a write has to read the journal open
      now, not the one the first hydrate was handed. */
   await journal.tags.addTag(group, 'after the reopen');
   let mirrorFollowed: string | null = null;
@@ -133,7 +131,7 @@ async function run() {
     mirrorFollowed = (error as Error).message;
   }
 
-  /* More rounds for the timing, which is what the sign-off reports. */
+  /* Repeat to sample lock and reopen times. */
   const rounds: { lockMs: number; reopenMs: number }[] = [{ lockMs, reopenMs }];
   for (let round = 0; round < 4; round++) {
     await journal.tags.addTag(group, `round ${round}`);

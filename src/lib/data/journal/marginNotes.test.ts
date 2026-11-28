@@ -1,7 +1,6 @@
-/* The margin note area (phase 8 features ticket 07, CONTEXT: "Margin
-   note"): one table, exactly one owner, an entry - and the entry's own note
-   untouched by everything here (the byte-identical contract is
-   contract-suite.ts's own assertion, run against a real driver). */
+/* The margin note area: one table, exactly one owner, an entry - and the entry's own note
+   untouched by everything here (the byte-identical contract is contract-suite.ts's own
+   assertion, run against a real driver). */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

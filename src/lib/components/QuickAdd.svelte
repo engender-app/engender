@@ -1,68 +1,28 @@
 <script lang="ts">
-  /* Quick add (phase 5 ticket 18, closing spec 04).
+  /* Quick add contains actions that make sense across the app. Each feature
+     keeps its own add control for records that belong on that screen.
 
-     The bottom bar's centre button opened a sheet with two choices, "today"
-     and a backdate, and both landed on the same new-entry screen. A control
-     in the most reachable place on the screen did one thing.
+     Release chooses the action under the pointer. Release over the add
+     button leaves the fan open for a second tap. Holding and sliding can
+     choose an action within the opening gesture.
 
-     What earns a slot here is being cross-cutting, not being popular
-     (CONTEXT: "Quick add"). A log belongs because you might want it while
-     looking at something unrelated; adding a lab result while reading your
-     lab results should not route through a global sheet. So every feature
-     surface keeps its own in-context add control and this never replaces
-     one.
-
-     ## Why a fan and not a sheet
-
-     Two gestures have to reach the same targets, and only one shape serves
-     both. Tap the add button and the options are there to tap. Or press it
-     and keep pressing: the options come out under your thumb and you slide
-     onto the one you want and let go, without ever lifting a finger. The
-     second is the whole reason this is not a bottom sheet - a sheet is a
-     surface you arrive at, and it cannot be crossed in one gesture from the
-     button that opened it.
-
-     Both gestures resolve through one rule, which is why there is no mode
-     flag anywhere below: on release, whatever target the pointer is over
-     wins. Let go over the button itself and nothing is chosen, so the fan
-     stays up and the next tap picks - that is the tap flow, falling out of
-     the same line of code as the slide.
-
-     ## The motion
-
-     Focal moment: the button throws its options out and takes them back.
-     Every row starts at the button's own position and travels to its place,
-     nearest the thumb first, so the fan reads as the button's contents
-     rather than as a menu that happened to appear above it. Coming back
-     they collapse into the button together and faster, because an exit that
-     takes as long as an entrance reads as hesitation.
-
-     Continuity: the plus turns 45 degrees into a cross while the fan is up
-     (AppNav.svelte), so the control that opened it is visibly the control
-     that closes it.
-
-     Feedback: the row under the pointer lifts and fills with the accent
-     inside --dur-fast, and a slide re-targets continuously, so the answer
-     to "what will this do if I let go" is always on screen.
-
-     Budget: transform and opacity only, seven rows, one stagger capped
-     under 200ms, played once per open. The scrim is .scrim-withdraw, whose
-     cost ticket 28 already bounded.
-
-     Reduced motion substitutes rather than deletes: the rows arrive where
-     they belong with no travel and no stagger, and the highlight keeps its
-     colour and loses its lift. Both gestures still work, which is the part
-     that matters. */
+     Options travel from the button, nearest the thumb first, and collapse
+     back together on close. AppNav.svelte rotates the plus 45 degrees while
+     the fan is open. The current target lifts and fills on --dur-fast.
+     Entrance uses transform and opacity, and newly available cards disclose
+     their height. Reduced motion drops travel, stagger and lift while
+     preserving colour feedback and both gestures. */
   import { beforeNavigate, goto } from '$app/navigation';
   import { fade } from 'svelte/transition';
   import { m } from '$lib/paraglide/messages';
   import { todayEpochDay, epochDayFromDateInputValue, dateInputValueFromEpochDay } from '$lib/data/epochDay';
-  import { isHrtOnsetWindowCurrent } from '$lib/data/personalEffectWindow';
+  import { areaHidden } from '$lib/data/areaState';
+  import { activeEpisodesAt } from '$lib/data/regimenEpisode';
   import { journal } from '$lib/data/live/journal.svelte';
   import { moodName } from '$lib/data/vocabulary/labels';
-  import type { TallyKind, WearKind, WearSession } from '$lib/data/types';
-  import { crossfade } from '$lib/motion/reveal';
-  import { EASE_OUT_CSS, crossfadeDuration, isReducedMotion, motionDistance, motionDuration } from '$lib/motion/tokens';
+  import type { WearKind, WearSession } from '$lib/data/types';
+  import { disclose } from '$lib/motion/reveal';
+  import { crossfadeDuration, isReducedMotion, motionDistance, motionDuration } from '$lib/motion/tokens';
   import { MAGNIFIER_SPREAD, gazeRow, magnify } from '$lib/motion/magnifier';
   import { ui } from '$lib/stores/ui.svelte';
   import Icon from './Icon.svelte';
@@ -84,32 +44,13 @@
     restMoods();
   }
 
-  /* Telling you it landed, for the two things that never leave the screen
-     (phase 5 ticket 18).
+  /* A successful in-place wear write closes the fan and flies the chosen
+     row back into the add button, which shows a tick. Start after the write
+     returns. The overlay takes no pointer events and delays no new action.
+     Under reduced motion, show static marks for the same duration.
 
-     A tally and a wear session both resolve in place, which is the whole
-     reason they are worth reaching from anywhere - and it left them with
-     nothing to show for it where the thumb that pressed actually was. The row you chose flies into the add
-     button instead, and the button catches it with a tick: the exact
-     reverse of the fan coming out of it, so the gesture closes the loop it
-     opened. Tier 3, change within a screen - something was written, and
-     this is the mark moving rather than a new surface arriving to say so.
-
-     Nothing waits for it. The fan is already shut and the app is already
-     usable; the flight is an overlay with no pointer events that happens to
-     still be on screen. It starts when the write comes back rather than
-     when the finger lifts, so it means "this is recorded" and not "this was
-     sent" - the round trip is tens of milliseconds, so the honesty is free.
-
-     Under reduced motion nothing travels and the marks still appear, for
-     the same duration.
-
-     Neither outcome raises a toast. The control says both things where the
-     thumb already is, and a line of text at the far end of the screen was
-     the same news a second time. What a toast was also doing, though, is
-     the part an animation cannot do at all: it was role="status", so a
-     screen reader spoke it. That half stays, as a visually hidden live
-     region below - the announcement without the notification. */
+     The button gives visual feedback. A hidden role="status" region
+     announces both outcomes without a toast. */
   /* The beats, and why they are sequenced rather than stacked. The first
      version started the flight the instant the write came back, which was
      while the fan was still on its way out - so two things moved at once
@@ -178,7 +119,7 @@
       return;
     }
     land(from);
-    announcement = m.quick_saved();
+    announcement = m.saved();
   }
 
   let caughtTimer: ReturnType<typeof setTimeout> | null = null;
@@ -265,25 +206,8 @@
     backdateOpen = true;
   }
 
-  /* The tap logs the counter with no context and waits on nothing after it
-     (CONTEXT: "Tally event"), which is what makes it worth reaching from
-     any screen: the fan closes and you are still where you were. */
-  async function logTally(kind: TallyKind) {
-    const from = flightFrom(`tally-${kind}`);
-    close();
-    /* Read here rather than captured when the component mounted: the app
-       survives backgrounding, so a value taken at init logs to yesterday
-       for anyone who leaves it open across midnight. */
-    await confirmed(
-      from,
-      () => journal.tally.log({ epochDay: todayEpochDay(), kind }),
-      'tally',
-      `tally-${kind}`
-    );
-  }
-
   /* The wear session, and the reason it earns a slot the others would not
-     (CONTEXT: "Wear session"). Starting one writes a row with no duration
+. Starting one writes a row with no duration
      and stopping it later fills the duration in, so the moment you log it
      is the data rather than a note about when you remembered. Everything
      else in this fan can be reached a screen later at no cost; a session
@@ -296,140 +220,68 @@
      the fan covers the app, and the only way to start or stop a session
      from anywhere else is to close it first. */
   let running = $state<WearSession | null>(null);
-  /* Whether the read above has ever landed. `running` defaults to null,
-     "nothing running", which is a specific claim rather than "not known
-     yet" - so before this is true the label below cannot say either
-     "Start wearing" or "Stop" without a chance of being wrong (ticket 189:
-     a persona with a running session read "Start wearing" for 322ms-2.5s
-     on a device, then cut straight to "Stop" mid-fan-opening). Set once
-     and never unset: a refresh after this always has something true to
-     show, the same distinction readState.ts's `loading` draws for every
-     other read in the app, and ticket 176 already fixed this exact shape
-     on the export screen's backup ages. */
-  let runningKnown = $state(false);
-  /* The wear row's own arriving icon/label, for the fade-in below - the
-     same two elements `out:crossfade` already animates on their way out. */
-  let wearIconArriveEl = $state<HTMLElement>();
-  let wearLabelArriveEl = $state<HTMLElement>();
-  /* The arriving side of the crossfade above was still popping in at
-     opacity 1 the instant `runningKnown` flips true, on top of the
-     skeleton still fading out beside it (ticket 189, coordinator
-     follow-up) - `out:crossfade` only ever handles the leaving half.
-     Same gap `ReadGate.svelte` closed for every gated read (ticket 184b,
-     0b7b7001): no `in:` transition can do it here either, for the same
-     reason - the icon and the label are two independent `{#key}` blocks,
-     not one element a transition directive could sit on. An `$effect`
-     runs after the DOM update lands the new icon/label and before the
-     next paint, so their first painted frame already has the fade
-     started rather than showing opacity 1 for one frame first. Only the
-     swap out of pending, mirroring ReadGate's `wasLoading`: a later
-     refresh (already known, one word to another) still just crossfades
-     the old value out, which is what the previous commit already proved
-     clean. */
-  let wasRunningKnown = false;
-  $effect(() => {
-    const known = runningKnown;
-    if (!wasRunningKnown && known) {
-      const duration = motionDuration('--dur-fast');
-      if (duration > 0) {
-        const fade = [{ opacity: 0 }, { opacity: 1 }];
-        wearIconArriveEl?.animate(fade, { duration, easing: EASE_OUT_CSS });
-        wearLabelArriveEl?.animate(fade, { duration, easing: EASE_OUT_CSS });
-      }
+  let doseAvailable = $state(false);
+  let wearAvailable = $state(false);
+  let availabilityPending = $state(true);
+  /* A start repeats the last kind. No kind means wear has not been used, so
+     there is no quick start row. */
+  let lastKind = $state<WearKind | null>(null);
+  /* Fetch before the first press, then refresh each time the fan opens.
+     These are small point reads rather than live subscriptions on every
+     screen. One result sets both gates together, so the card's height can
+     travel as one change if the journal changed while the fan was closed. */
+  let availabilityRead = 0;
+  async function refreshAvailability() {
+    const read = ++availabilityRead;
+    availabilityPending = true;
+    try {
+      const [session, kind, states, episodes] = await Promise.all([
+        journal.wearSessions.getRunningSession(),
+        journal.wearSessions.latestKind(),
+        journal.areaStates.getAreaStates(),
+        journal.regimen.getEpisodes()
+      ]);
+      if (read !== availabilityRead) return;
+      running = session;
+      if (kind) lastKind = kind;
+      wearAvailable = kind !== null && !areaHidden('wearSessions', states);
+      doseAvailable = activeEpisodesAt(episodes, Date.now()).length > 0;
+      availabilityPending = false;
+    } catch (error) {
+      if (read !== availabilityRead) return;
+      wearAvailable = false;
+      doseAvailable = false;
+      availabilityPending = false;
+      console.error('quick add: could not read available actions', error);
     }
-    wasRunningKnown = known;
-  });
-  /* Which kind a start from here writes (ticket 50). This is the one place
-     a session is created with no picker in front of the person, so it
-     repeats whatever they logged last rather than choosing for them, and
-     falls back to binder only when there is nothing to repeat. The wear
-     screen's own sheet is where a kind gets corrected. */
-  let lastKind = $state<WearKind>('binder');
-  /* The personal effects onset nudge (phase 5 ticket 49).
-     Read once each time the fan opens, the same running-style pattern
-     wearSessions uses above: active only while at least one tier-1
-     literature onset window for the earliest regimen episode's drug is
-     current, gone once every onset window has passed. Tapping navigates to
-     /care/changes. */
-  let showEffects = $state(false);
-
-  /* One place both reads below land, so the ok/error handling is written
-     once. `stale` is only ever set by the per-open effect's own cleanup
-     (the mount-time call below has nothing to go stale against - the
-     component it belongs to is never torn down). */
-  function landRunningSession(session: WearSession | null, stale: () => boolean) {
-    if (stale()) return;
-    running = session;
-    runningKnown = true;
   }
 
-  /* Fired once at creation, not gated on the fan opening (ticket 189):
+  /* Fired once at creation, not gated on the fan opening:
      this component mounts once for the app's whole life, so a read kicked
      off here has the entire time before the first press to land, rather
      than starting the same round trip only once the fan is already up.
      Not a live subscription - one read, same as the per-open refresh below
      - so it does not reopen the cost the comment above the effect already
      ruled out. */
-  void journal.wearSessions
-    .getRunningSession()
-    .then((session) => landRunningSession(session, () => false))
-    .catch((error) => {
-      console.error('quick add: could not read the running wear session', error);
-    });
+  void refreshAvailability();
 
   $effect(() => {
     if (!ui.chooserOpen) return;
-    let stale = false;
-    void journal.wearSessions
-      .getRunningSession()
-      .then((session) => landRunningSession(session, () => stale))
-      /* A journal that cannot be read is a journal that cannot be written
-         either, so the write behind this row will fail and say so. What
-         this catch is for is the rejection itself: unhandled, it reaches
-         the window as a page error, and the walkthrough fails its whole run
-         on one of those. The row falls back to offering a start, which is
-         what it says with nothing running. */
-      .catch((error) => {
-        console.error('quick add: could not read the running wear session', error);
-      });
-    void journal.wearSessions
-      .latestKind()
-      .then((kind) => {
-        if (!stale && kind) lastKind = kind;
-      })
-      .catch((error) => {
-        console.error('quick add: could not read the last wear kind', error);
-      });
-    void journal.regimen
-      .getEpisodes()
-      .then((episodes) => {
-        if (!stale) showEffects = isHrtOnsetWindowCurrent(episodes, todayEpochDay());
-      })
-      .catch((error) => {
-        console.error('quick add: could not read regimen episodes', error);
-      });
-    return () => {
-      stale = true;
-    };
+    void refreshAvailability();
   });
 
   /* One target, two things, and the label says which: nothing is running so
      this starts, or something is and this stops it. Both are a single write
-     with nothing left to choose, which is what lets it resolve in place the
-     way a tally does.
+     with nothing left to choose, which is what lets it resolve in place.
 
      `reminderHoursAfterStart` is omitted on purpose in both directions. On
      a start that means no reminder, which matches the wear log's own line
      that any reminder is entirely your own call; on a stop, omitting it is
      what leaves a reminder the wear screen set alone (wearSessions.ts). */
   async function toggleWear() {
-    /* Whether to start or stop is read off `running`, which is only a
-       real answer once `runningKnown` is true (ticket 189) - before that
-       it is still the default, and writing against a default risks
-       starting a second session over one already running. The row's own
-       label says the same thing is still unknown, so a press here while
-       it does simply does nothing rather than act on a guess. */
-    if (!runningKnown) return;
+    /* Never start from a stale target after the area was hidden. */
+    const kind = lastKind;
+    if (availabilityPending || !wearAvailable || !kind) return;
     const session = running;
     const from = flightFrom('wear');
     close();
@@ -444,44 +296,28 @@
               durationMs: Date.now() - session.startTimestamp,
               note: session.note
             })
-          : journal.wearSessions.upsertSession({ kind: lastKind, startTimestamp: Date.now(), durationMs: null }),
+          : journal.wearSessions.upsertSession({ kind, startTimestamp: Date.now(), durationMs: null }),
       'wear',
       'wear'
     );
   }
 
   function logDose() {
+    if (availabilityPending || !doseAvailable) return;
     close();
     goto('/care/doses?add=1');
   }
 
-  function logEffects() {
-    close();
-    goto('/care/changes');
-  }
-
-  /* Nearest the thumb first, because the order is a reachability decision
-     rather than an editorial one: the mood row is where a slide lands with
-     the least travel, and a dose is the one of these nobody logs in a
-     hurry.
-
-     Grouped as three cards rather than six floating pills. A card per group
-     is the app's own list surface - one plane, hairline separators, the
-     icon in the accent - so the fan reads as three things the button can
-     make rather than as a stack of identical rounded rectangles, which is
-     the generic shape DIRECTION.md's decision 2b exists to avoid. It also
-     gives the slide a better target: the highlight moves inside one plane
-     instead of jumping between separate objects. */
+  /* Order groups by thumb reach so the mood row takes the least travel.
+     The fan uses three list cards with hairline separators and accented
+     icons. A slide highlights rows on the same plane within each card. */
   const MOODS = [1, 2, 3, 4, 5];
   const MOOD_TARGET = 'mood-';
 
   const ACTIONS: Record<string, () => void> = {
     'another-day': openBackdate,
-    'tally-misgendered': () => void logTally('misgendered'),
-    'tally-correctly_gendered': () => void logTally('correctly_gendered'),
     dose: logDose,
-    wear: () => void toggleWear(),
-    effects: logEffects
+    wear: () => void toggleWear()
   };
 
   function runTarget(key: string) {
@@ -519,6 +355,26 @@
     };
   }
 
+  /* The action card sits in its own `{#if}`, so a transition written plainly on it never
+     plays when the fan opens or closes: the block that changed is the fan's, an ancestor
+     (the card painted opaque in the first frame and gone opaque in one). Global, and it
+     picks its motion by what changed. While the fan is arriving or leaving it travels with
+     the other cards; a change of availability while the fan stays up discloses its height. */
+  let fanSettled = false;
+  $effect(() => {
+    if (!ui.chooserOpen) fanSettled = false;
+  });
+  function fanArrived() {
+    fanSettled = true;
+    focusFirstTarget();
+  }
+  function availableIn(node: Element) {
+    return fanSettled ? disclose(node) : fanIn(node);
+  }
+  function availableOut(node: Element) {
+    return ui.chooserOpen ? disclose(node) : fanOut(node);
+  }
+
   /* Press-and-slide. Listened for on the window rather than on the button,
      because the gesture starts on the add control and finishes wherever the
      finger got to, which is a different component and usually a different
@@ -528,17 +384,10 @@
     const key = document
       .elementFromPoint(e.clientX, e.clientY)
       ?.closest<HTMLElement>('[data-fan-target]')?.dataset.fanTarget;
-    /* Not yet a real target while its own answer isn't known (ticket 189):
-       arming it would light up the row and answer "this is where letting
-       go does something" for a press that is about to do nothing, the same
-       wrong-content shape the label fix above exists to rule out. Reads as
-       the gap between cards until `runningKnown` catches up, which
-       `toggleWear()` already guards for the tap flow this slide flow
-       shares a release path with. */
-    return key === 'wear' && !runningKnown ? undefined : key;
+    return key;
   }
 
-  /* The mood row's magnifier (phase 5 ticket 31). The falloff is in
+  /* The mood row's magnifier. The falloff is in
      $lib/motion/magnifier.ts with its own tests; what is here is the
      measuring, and the two decisions that need the fan in front of them.
 
@@ -554,7 +403,7 @@
      the moment it crosses the hairline. Approach is part of the gesture. */
   let moodScale = $state<number[]>(MOODS.map(() => 1));
 
-  /* The fan's faces answer the slide twice over (phase 9 carpet ticket 01):
+  /* The fan's faces answer the slide twice over:
      with size, which only the one under the finger can do, and with a look,
      which all five do at once. moodMagnifier.svelte.ts carries the same pair
      for the two plain rows; the fan keeps its own copy of the loop because it
@@ -640,28 +489,13 @@
     if (key) runTarget(key);
   }
 
-  /* The fan is a modal, for the keyboard and for assistive tech as well as
-     for the eye (audit A11Y-01). It looked like one and was not: focus
-     stayed on the add button, fifteen Tabs walked the dimmed screen under
-     the scrim before the sixteenth reached the fan, and Escape was a window
-     listener that dropped focus to the body. It takes a sheet's contract
-     now, through the same module (overlayLock.ts): the rest of the app is
-     inert, the overlay stack owns Tab and Escape (and Android's back, which
-     goes through the same stack), and the release puts focus back on
-     whatever opened it.
+  /* The fan uses overlayLock's modal stack for inert background, Tab,
+     Escape, Android back and focus restoration. Keep its outside-click
+     scrim, opener and live region active. AppNav makes the other bar
+     controls inert.
 
-     Two things stay live, because the fan is drawn over them on purpose.
-     The scrim is how a tap outside closes it. The bar is lifted above the
-     scrim so the add button reads as the control that closes what it
-     opened; AppNav makes the bar's own tabs inert while the fan is up, so
-     only the button in it can be reached. So does the fan's own live region
-     below, which an inert subtree would silence. Neither withdraws with a blur of
-     its own either: the scrim already blurs everything under it.
-
-     Released the moment the fan starts closing rather than after its exit,
-     so a target that navigates finds the new screen live and can take focus
-     on it (the layout's arrival focus), instead of focusing into a screen
-     that is still inert. */
+     Release the lock as closing begins so landing focus can reach the
+     next screen while the exit animation finishes. */
   let fanEl = $state<HTMLElement>();
   let scrimEl = $state<HTMLElement>();
   let statusEl: HTMLElement;
@@ -678,11 +512,10 @@
     };
   });
 
-  /* Focus moves in once the cards have arrived, the way a sheet's does:
-     focusing while the entrance is being set up forces a layout before its
-     keyframes attach, which ticket 115 measured as a teleport on Android.
-     Not while a press is still sliding, where focus would only chase the
-     finger, and not if Tab already went in. */
+  /* Focus moves in once the cards have arrived, the way a sheet's does: focusing while the
+     entrance is being set up forces a layout before its keyframes attach, which measured as
+     a teleport on Android. Not while a press is still sliding, where focus would only chase
+     the finger, and not if Tab already went in. */
   function focusFirstTarget() {
     if (!fanEl || ui.chooserPressing || fanEl.contains(document.activeElement)) return;
     firstFocusable(fanEl)?.focus({ preventScroll: true });
@@ -700,9 +533,8 @@
 />
 
 {#if ui.chooserOpen}
-  <!-- The scrim is the withdrawal ticket 28 built and nothing had spent yet:
-       the screen behind the fan is plainly still there and plainly not what
-       is being read. -->
+  <!-- The scrim is the withdrawal built and nothing had spent yet: the screen behind the
+       fan is plainly still there and plainly not what is being read. -->
   <div
     bind:this={scrimEl}
     class="fan-scrim scrim-withdraw"
@@ -720,7 +552,7 @@
     <!-- The entry card. Everything in it makes an entry, and the mood row
          at the bottom is the one that makes today's - which is why "Today"
          is not a row of its own any more. -->
-    <div class="fan-card" in:fanIn out:fanOut onintroend={focusFirstTarget}>
+    <div class="fan-card" in:fanIn out:fanOut onintroend={fanArrived}>
       <button
         class="fan-item"
         class:is-armed={armed === 'another-day'}
@@ -748,115 +580,43 @@
       </div>
     </div>
 
-    <!-- One question asked twice, so one card holding both halves, the way
-         the five moods are one scale. -->
-    <div class="fan-card is-pair" in:fanIn out:fanOut>
-      <button
-        class="fan-item"
-        class:is-armed={armed === 'tally-misgendered'}
-        data-fan-target="tally-misgendered"
-        data-choose="tally-misgendered"
-        onclick={ACTIONS['tally-misgendered']}
-      >
-        <span class="fan-icon"><Icon name="x" size={22} /></span>
-        <span class="fan-label">{m.tally_misgendered()}</span>
-      </button>
-      <button
-        class="fan-item"
-        class:is-armed={armed === 'tally-correctly_gendered'}
-        data-fan-target="tally-correctly_gendered"
-        data-choose="tally-correctly_gendered"
-        onclick={ACTIONS['tally-correctly_gendered']}
-      >
-        <span class="fan-icon"><Icon name="check" size={22} /></span>
-        <span class="fan-label">{m.tally_correctly_gendered()}</span>
-      </button>
-    </div>
-
-    <div class="fan-card" in:fanIn out:fanOut>
-      <button
-        class="fan-item"
-        class:is-armed={armed === 'dose'}
-        data-fan-target="dose"
-        data-choose="dose"
-        onclick={ACTIONS.dose}
-      >
-        <span class="fan-icon"><Icon name="clock" size={22} /></span>
-        <span class="fan-label">{m.doses_empty_action()}</span>
-      </button>
-      <!-- The icon changes with the label because they are saying the same
-           thing: a running session is a thing to stop. `timeline` for the
-           other half is not a stand-in - it is a start dot, a span and an
-           end dot, which is exactly the shape of a wear session, and it is
-           already the app's mark for something measured between two
-           moments. It is a lighter glyph than the ones above it, which is
-           the icon set's own weight rather than this row's. -->
-      <button
-        class="fan-item"
-        class:is-armed={armed === 'wear'}
-        data-fan-target="wear"
-        data-choose="wear"
-        data-wear-running={running ? '' : undefined}
-        onclick={ACTIONS.wear}
-      >
-        <!-- One `{#key}` spanning the pending state too, not a separate
-             `{#if}/{:else}` with the crossfade only inside the known
-             branch: two sibling blocks swap with no transition at all
-             unless each carries its own, and the transition that matters
-             most is exactly this first one - pending to the first real
-             answer - not a later refresh. Keying "pending" alongside
-             "stop"/"timeline" puts all three departures through the same
-             `out:crossfade` (ticket 189). -->
-        <span class="fan-icon">
-          {#key runningKnown ? (running ? 'stop' : 'timeline') : 'pending'}
-            <span out:crossfade bind:this={wearIconArriveEl}>
-              {#if runningKnown}
-                <Icon name={running ? 'stop' : 'timeline'} size={22} />
-              {:else}
-                <!-- Neither glyph until it's known which is true: the
-                     label already withholds its word (below), and
-                     showing 'timeline' here in the meantime would make
-                     the same wrong claim through the icon channel
-                     instead. -->
-                <span class="skeleton skeleton-dot" style="width: 22px; height: 22px" aria-hidden="true"></span>
-              {/if}
-            </span>
-          {/key}
-        </span>
-        <span class="fan-label">
-          {#key runningKnown ? (running ? 'stop' : 'start') : 'pending'}
-            <span out:crossfade bind:this={wearLabelArriveEl}>
-              {#if runningKnown}
-                {running ? m.wear_session_stop_action() : m.wear_session_start_action()}
-              {:else}
-                <!-- Neither word until it's known which is true (ticket
-                     189) - "Start wearing" was the wrong half of that
-                     guess for a persona already wearing something, shown
-                     for up to 2.5s on a device before cutting straight to
-                     "Stop". A fixed width rather than `is-short`'s 40%:
-                     this span is itself the flex item (`.fan-label`'s own
-                     box), so a percentage here would be resolving
-                     against a width its only child is also deciding -
-                     the same size either word wants. -->
-                <span class="skeleton skeleton-line" style="width: 96px" aria-hidden="true"></span>
-              {/if}
-            </span>
-          {/key}
-        </span>
-      </button>
-      {#if showEffects}
-        <button
-          class="fan-item"
-          class:is-armed={armed === 'effects'}
-          data-fan-target="effects"
-          data-choose="effects"
-          onclick={ACTIONS.effects}
-        >
-          <span class="fan-icon"><Icon name="sparkle" size={22} /></span>
-          <span class="fan-label">{m.effects_timeline()}</span>
-        </button>
-      {/if}
-    </div>
+    {#if doseAvailable || wearAvailable}
+      <div class="fan-card" in:availableIn|global out:availableOut|global>
+        {#if doseAvailable}
+          <button
+            class="fan-item"
+            class:is-armed={armed === 'dose' && !availabilityPending}
+            data-fan-target="dose"
+            data-choose="dose"
+            disabled={availabilityPending}
+            transition:disclose={{ skip: !wearAvailable }}
+            onclick={ACTIONS.dose}
+          >
+            <span class="fan-icon"><Icon name="pill" size={22} /></span>
+            <span class="fan-label">{m.log_a_dose()}</span>
+          </button>
+        {/if}
+        <!-- The icon changes with the label because they are saying the same
+             thing: a running session is a thing to stop. The other half is
+             the wear log's own `watch`, and the dose above it Meds' `pill`,
+             so each action wears the mark of the module it writes to. -->
+        {#if wearAvailable}
+          <button
+            class="fan-item"
+            class:is-armed={armed === 'wear' && !availabilityPending}
+            data-fan-target="wear"
+            data-choose="wear"
+            disabled={availabilityPending}
+            data-wear-running={running ? '' : undefined}
+            transition:disclose={{ skip: !doseAvailable }}
+            onclick={ACTIONS.wear}
+          >
+            <span class="fan-icon"><Icon name={running ? 'stop' : 'watch'} size={22} /></span>
+            <span class="fan-label">{running ? m.wear_session_stop_action() : m.wear_session_start_action()}</span>
+          </button>
+        {/if}
+      </div>
+    {/if}
   </div>
 {/if}
 

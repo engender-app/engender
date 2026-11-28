@@ -1,0 +1,2532 @@
+{
+  "terms": [
+    {
+      "id": "appointment",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "appointment",
+          "pl": "appointments"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "wizyta",
+          "gen.sg": "wizyty",
+          "dat.sg": "wizycie",
+          "acc.sg": "wizytę",
+          "ins.sg": "wizytą",
+          "loc.sg": "wizycie",
+          "voc.sg": "wizyto",
+          "nom.pl": "wizyty",
+          "gen.pl": "wizyt",
+          "dat.pl": "wizytom",
+          "acc.pl": "wizyty",
+          "ins.pl": "wizytami",
+          "loc.pl": "wizytach",
+          "voc.pl": "wizyty"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "backup",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "Use “backup” for the file. Polish currently uses “archiwum” and “kopia”.",
+      "en": {
+        "forms": {
+          "sg": "backup",
+          "pl": "backups"
+        },
+        "avoid": [
+          "archive",
+          "dump",
+          "snapshot"
+        ]
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "kopia zapasowa",
+          "gen.sg": "kopii zapasowej",
+          "dat.sg": "kopii zapasowej",
+          "acc.sg": "kopię zapasową",
+          "ins.sg": "kopią zapasową",
+          "loc.sg": "kopii zapasowej",
+          "voc.sg": "kopio zapasowa",
+          "nom.pl": "kopie zapasowe",
+          "gen.pl": "kopii zapasowych",
+          "dat.pl": "kopiom zapasowym",
+          "acc.pl": "kopie zapasowe",
+          "ins.pl": "kopiami zapasowymi",
+          "loc.pl": "kopiach zapasowych",
+          "voc.pl": "kopie zapasowe"
+        },
+        "avoid": [
+          "archiw"
+        ]
+      },
+      "ignore": {
+        "am_export_note": "flsvk0",
+        "dlb_file_too_large": "1nxoaji",
+        "dlb_no_moods": "3o00q7",
+        "dlb_nothing_new": "1acnmz4",
+        "dlb_sheet_title": "g393vg",
+        "dlb_unreadable": "bko3bm",
+        "dlb_version_note": "1yusfoy",
+        "exp_auto_failed": "qrn5lc",
+        "exp_auto_running_writing": "uouhyz",
+        "exp_auto_saved_toast": "1ppetmi",
+        "exp_last_backup": "1qt25jq",
+        "imp_file_placeholder": "10j97t7",
+        "imp_log_source_daylio_backup": "r5f4y9",
+        "imp_not_an_archive": "1d2059w",
+        "imp_pick_first": "bunojv",
+        "perm_backup_folder_why": "35vjc3",
+        "rko_body_android": "8l7wph",
+        "settings_backup_age": "1j7djng",
+        "storage_notice_body": "1egr322",
+        "verify_not_an_archive": "hy049k",
+        "android:backup_failure_description": "7cc2x3",
+        "android:backup_failure_title": "1auxk69",
+        "privacy:07": "1mzg0oh",
+        "privacy:14": "jcephc",
+        "privacy:27": "m5afw4",
+        "privacy:34": "9bjhvg",
+        "ak_forgot_gate_note": "sf5g6f",
+        "ak_forgot_key_note": "1nn61ke",
+        "ak_invalidated_body": "1dys9qe",
+        "am_passphrase_detail": "1hjk55e",
+        "bm_forgot_gate_note": "uwxg57",
+        "bm_forgot_key_note": "14l6luw",
+        "dbr_archive_body": "1tvxmwb",
+        "dbr_archive_open": "xdhc3",
+        "exp_auto_destination_note": "nazq1x",
+        "exp_auto_password_missing": "1ur5siw",
+        "exp_auto_password_saved": "13nz6km",
+        "exp_encrypted_body": "iayocm",
+        "exp_warning_body": "nkmc9b",
+        "exp_warning_title": "1c2x67f",
+        "imp_merged_toast": "19hcyjg",
+        "imp_mode_replace_sub": "cgj0w5",
+        "imp_replace_note": "1yx6tu5",
+        "imp_replaced_toast": "6233ts",
+        "journal_book_intro": "l4fuz3",
+        "pin_forgot_gate_note": "1ihffp",
+        "plain_notice_body": "10bozfe",
+        "pp_change_body": "9gctsj",
+        "pp_forgot_gate_note": "1m4nfaq",
+        "reset_offer_archive_password": "1i5x2s1",
+        "rk_revoke_body": "t6wqak",
+        "rk_row_sub_none_consequence": "obgh7z",
+        "surgery_archive_title": "qbjr6l",
+        "surgery_archive_toggle_label": "illrf1",
+        "surgery_archived_title": "8jm9od",
+        "surgery_phase_archived": "1q4wqyo",
+        "verify_ok_toast": "10ar3l",
+        "store:changelogs/1000000999": "1mqm7go",
+        "store:full_description": "1gr8786",
+        "exp_auto_deferred": "1qtzns0",
+        "privacy:13": "j75pbz",
+        "privacy:06": "125d5al",
+        "settings_backup_none": "cpr1jp",
+        "provider_private": "zut1qh",
+        "exp_auto_staged": "gsjwhf",
+        "exp_auto_title": "1ruchmf",
+        "exp_backup_password_change_body": "k91ktb",
+        "exp_backup_password_change_title": "s17z9f",
+        "exp_backup_password_changed_toast": "epvecw",
+        "exp_backup_password_new": "119sj8d",
+        "exp_backup_password_saved_toast": "1x15a1s",
+        "exp_backup_password_set_body": "6gbmkv",
+        "exp_backup_password_set_title": "x3qoik",
+        "exp_backup_password_wrong": "10tc9mi",
+        "exp_folder_failed_toast": "rruc4u",
+        "exp_folder_last_failed": "1uz4ml1",
+        "exp_folder_last_wrong_password": "1bgwgs1",
+        "exp_folder_merged_toast": "1sw3l5d",
+        "exp_folder_no_space_toast": "76j1te",
+        "exp_folder_note": "1my23ap",
+        "exp_folder_title": "wrob0n",
+        "exp_folder_wrong_password_toast": "wqoffb"
+      }
+    },
+    {
+      "id": "benchmark",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "A voice benchmark (a set of takes).",
+      "en": {
+        "forms": {
+          "sg": "benchmark",
+          "pl": "benchmarks"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "próbka",
+          "gen.sg": "próbki",
+          "dat.sg": "próbce",
+          "acc.sg": "próbkę",
+          "ins.sg": "próbką",
+          "loc.sg": "próbce",
+          "voc.sg": "próbko",
+          "nom.pl": "próbki",
+          "gen.pl": "próbek",
+          "dat.pl": "próbkom",
+          "acc.pl": "próbki",
+          "ins.pl": "próbkami",
+          "loc.pl": "próbkach",
+          "voc.pl": "próbki"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "binder",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "The garment. Binding as an activity is \"bindowanie\" in 1 string and \"binding\" in 1.",
+      "en": {
+        "forms": {
+          "sg": "binder",
+          "pl": "binders"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "binder",
+          "gen.sg": "bindera",
+          "dat.sg": "binderowi",
+          "acc.sg": "binder",
+          "ins.sg": "binderem",
+          "loc.sg": "binderze",
+          "voc.sg": "binderze",
+          "nom.pl": "bindery",
+          "gen.pl": "binderów",
+          "dat.pl": "binderom",
+          "acc.pl": "bindery",
+          "ins.pl": "binderami",
+          "loc.pl": "binderach",
+          "voc.pl": "bindery"
+        },
+        "avoid": []
+      },
+      "ignore": {
+        "wear_session_reminder_title_binder": "of2kwx"
+      }
+    },
+    {
+      "id": "birth-certificate",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "birth certificate",
+          "pl": "birth certificates"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "akt urodzenia",
+          "gen.sg": "aktu urodzenia",
+          "dat.sg": "aktowi urodzenia",
+          "acc.sg": "akt urodzenia",
+          "ins.sg": "aktem urodzenia",
+          "loc.sg": "akcie urodzenia",
+          "voc.sg": "akcie urodzenia",
+          "nom.pl": "akty urodzenia",
+          "gen.pl": "aktów urodzenia",
+          "dat.pl": "aktom urodzenia",
+          "acc.pl": "akty urodzenia",
+          "ins.pl": "aktami urodzenia",
+          "loc.pl": "aktach urodzenia",
+          "voc.pl": "akty urodzenia"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "button-add",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "base": "Add"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Dodaj"
+        },
+        "avoid": []
+      },
+      "ignore": {
+        "dilation_no_procedure_body": "3nrcex",
+        "in_the_room_empty_body": "199skdp",
+        "regimen_pause_save_failed": "3peb6l",
+        "roadmap_milestone_prompt_title": "1bc59za",
+        "tryout_adopt_confirm_add": "1me08vx"
+      }
+    },
+    {
+      "id": "button-back",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "\"Plecy\" under an English \"Back\" is the body part, not this button.",
+      "en": {
+        "forms": {
+          "base": "Back"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Wstecz"
+        },
+        "avoid": []
+      },
+      "ignore": {
+        "backup_now": "1sjgui3",
+        "document_missing_action": "zcmuao",
+        "dose_app_site_back": "faij2d",
+        "exp_auto_backup_now": "dadd9s",
+        "hair_removal_area_back": "faij2d",
+        "home_edit_reset": "oyj7zd",
+        "rem_missing_action": "1d3ovb",
+        "source_record_return": "18bxmog",
+        "vb_passage_own_clear": "1819jg0",
+        "vc_back_to_all": "hdq1ri",
+        "checkin_pause_back": "106o0i1",
+        "pph_pose_back": "1de00vp"
+      }
+    },
+    {
+      "id": "button-cancel",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "base": "Cancel"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Anuluj"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "button-close",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "base": "Close"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Zamknij"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "button-continue",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "base": "Continue"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Dalej"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "button-delete",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "English \"Remove\" is also \"Usuń\" in 3 keys.",
+      "en": {
+        "forms": {
+          "base": "Delete"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Usuń"
+        },
+        "avoid": []
+      },
+      "ignore": {
+        "appointment_prep_delete_q": "1fhpae9",
+        "appointments_delete_q": "2zczvh",
+        "cycle_event_delete_q": "xdn7w2",
+        "delete_entry_q": "1lcl6gn",
+        "dilation_session_delete_q": "1hp7fiz",
+        "document_delete_q": "5507bm",
+        "dose_delete_question": "243ahv",
+        "era_delete_q": "1g5ez7o",
+        "hair_removal_delete_q": "9pt57z",
+        "labs_delete_q": "1ex4rwo",
+        "letters_delete_q": "jwwcuw",
+        "margin_note_delete_q": "v03msi",
+        "ms_delete_q": "yrotwv",
+        "regimen_pause_delete_q": "qur394",
+        "rem_delete_q": "19vrl67",
+        "roadmap_goal_delete_q": "1lluizy",
+        "side_effect_delete_q": "4rwflv",
+        "surgery_checklist_delete_q": "143tqnh",
+        "surgery_consult_delete_q": "12yh3x0",
+        "surgery_delete_q": "aexs6u",
+        "tags_delete_q": "3a7jin",
+        "tryout_delete_q": "3g31wv",
+        "tryout_feeling_delete_q": "1fxn8k5",
+        "vb_practice_delete_q": "169ym6b",
+        "vc_benchmark_delete_q": "1dtmnfc",
+        "wear_session_delete_q": "hyj246",
+        "delete_entry_hint": "1ef3fos",
+        "photo_delete_q": "4247gg",
+        "photos_select_delete_q": "1qxzig",
+        "pph_pose_delete_q": "73outl",
+        "provider_delete_q": "1btt5gb",
+        "roadmap_category_delete_q": "124t212",
+        "trash_delete_forever_q": "ndwmyj"
+      }
+    },
+    {
+      "id": "button-done",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "One key says \"Zrobione\".",
+      "en": {
+        "forms": {
+          "base": "Done"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Gotowe"
+        },
+        "avoid": [
+          "Zrobione"
+        ]
+      },
+      "ignore": {
+        "coming_back_done_action": "1v35d3o",
+        "home_start_done": "6g4idd",
+        "perm_take_photo_why": "1triv5f",
+        "roadmap_institution_done_on": "tu6i3x",
+        "roadmap_institution_status_done": "1jtrcx1",
+        "privacy:09": "qrczwt"
+      }
+    },
+    {
+      "id": "button-edit",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "base": "Edit"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Edytuj"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "button-not-now",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "base": "Not now"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Nie teraz"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "button-save",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "base": "Save"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Zapisz"
+        },
+        "avoid": []
+      },
+      "ignore": {
+        "hair_removal_photo_hint": "tiiq2n",
+        "regimen_schedule_after_episode": "1vug0ye",
+        "tryout_photo_save_first": "23mf28",
+        "update_ready_body": "1dvliqb",
+        "store:full_description": "1gr8786"
+      }
+    },
+    {
+      "id": "button-skip",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "base": "Skip"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Pomiń"
+        },
+        "avoid": []
+      },
+      "ignore": {
+        "photo_day_prompt_hint_entry": "1bh5ivd",
+        "photo_day_prompt_hint_milestone": "cxoyfd"
+      }
+    },
+    {
+      "id": "button-try-again",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "base": "Try again"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Spróbuj ponownie"
+        },
+        "avoid": []
+      },
+      "ignore": {
+        "boot_schema_too_new_still_old": "1a4niln",
+        "vb_retry_lead": "16zi061"
+      }
+    },
+    {
+      "id": "button-undo",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "base": "Undo"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Cofnij"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "consult",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "consult",
+          "pl": "consults"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "konsultacja",
+          "gen.sg": "konsultacji",
+          "dat.sg": "konsultacji",
+          "acc.sg": "konsultację",
+          "ins.sg": "konsultacją",
+          "loc.sg": "konsultacji",
+          "voc.sg": "konsultacjo",
+          "nom.pl": "konsultacje",
+          "gen.pl": "konsultacji",
+          "dat.pl": "konsultacjom",
+          "acc.pl": "konsultacje",
+          "ins.pl": "konsultacjami",
+          "loc.pl": "konsultacjach",
+          "voc.pl": "konsultacje"
+        },
+        "avoid": []
+      },
+      "ignore": {
+        "surgery_consults_empty": "1rucj2d",
+        "store:full_description": "1gr8786"
+      }
+    },
+    {
+      "id": "cycle",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "cycle",
+          "pl": "cycles"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "cykl",
+          "gen.sg": "cyklu",
+          "dat.sg": "cyklowi",
+          "acc.sg": "cykl",
+          "ins.sg": "cyklem",
+          "loc.sg": "cyklu",
+          "voc.sg": "cyklu",
+          "nom.pl": "cykle",
+          "gen.pl": "cykli",
+          "dat.pl": "cyklom",
+          "acc.pl": "cykle",
+          "ins.pl": "cyklami",
+          "loc.pl": "cyklach",
+          "voc.pl": "cykle"
+        },
+        "avoid": []
+      },
+      "ignore": {
+        "regimen_schedule_amounts_hint": "7dnvfn"
+      }
+    },
+    {
+      "id": "device",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "Polish says \"telefon\" in 6 of 59 strings. Keep \"telefon\" only where the copy really means the phone.",
+      "en": {
+        "forms": {
+          "sg": "device",
+          "pl": "devices"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "urządzenie",
+          "gen.sg": "urządzenia",
+          "dat.sg": "urządzeniu",
+          "acc.sg": "urządzenie",
+          "ins.sg": "urządzeniem",
+          "loc.sg": "urządzeniu",
+          "voc.sg": "urządzenie",
+          "nom.pl": "urządzenia",
+          "gen.pl": "urządzeń",
+          "dat.pl": "urządzeniom",
+          "acc.pl": "urządzenia",
+          "ins.pl": "urządzeniami",
+          "loc.pl": "urządzeniach",
+          "voc.pl": "urządzenia"
+        },
+        "avoid": []
+      },
+      "ignore": {
+        "ak_no_lock_body": "1bmu976",
+        "am_device_no_lock": "j4mmm0",
+        "am_device_unavailable": "1qfotdh",
+        "privacy:11": "jigl4e",
+        "privacy:13": "j75pbz"
+      }
+    },
+    {
+      "id": "dilation",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "dilation",
+          "pl": ""
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "",
+          "gen.sg": "",
+          "dat.sg": "",
+          "acc.sg": "",
+          "ins.sg": "",
+          "loc.sg": "",
+          "voc.sg": "",
+          "nom.pl": "",
+          "gen.pl": "",
+          "dat.pl": "",
+          "acc.pl": "",
+          "ins.pl": "",
+          "loc.pl": "",
+          "voc.pl": ""
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "disguise",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "disguise",
+          "pl": "disguises"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "kamuflaż",
+          "gen.sg": "kamuflażu",
+          "dat.sg": "kamuflażowi",
+          "acc.sg": "kamuflaż",
+          "ins.sg": "kamuflażem",
+          "loc.sg": "kamuflażu",
+          "voc.sg": "kamuflażu",
+          "nom.pl": "kamuflaże",
+          "gen.pl": "kamuflaży",
+          "dat.pl": "kamuflażom",
+          "acc.pl": "kamuflaże",
+          "ins.pl": "kamuflażami",
+          "loc.pl": "kamuflażach",
+          "voc.pl": "kamuflaże"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "document",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "document",
+          "pl": "documents"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "dokument",
+          "gen.sg": "dokumentu",
+          "dat.sg": "dokumentowi",
+          "acc.sg": "dokument",
+          "ins.sg": "dokumentem",
+          "loc.sg": "dokumencie",
+          "voc.sg": "dokumencie",
+          "nom.pl": "dokumenty",
+          "gen.pl": "dokumentów",
+          "dat.pl": "dokumentom",
+          "acc.pl": "dokumenty",
+          "ins.pl": "dokumentami",
+          "loc.pl": "dokumentach",
+          "voc.pl": "dokumenty"
+        },
+        "avoid": []
+      },
+      "ignore": {
+        "hub_sub_roadmap": "1vsanhg",
+        "roadmap_institutions_title": "19zdtay"
+      }
+    },
+    {
+      "id": "dose",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "dose",
+          "pl": "doses"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "dawka",
+          "gen.sg": "dawki",
+          "dat.sg": "dawce",
+          "acc.sg": "dawkę",
+          "ins.sg": "dawką",
+          "loc.sg": "dawce",
+          "voc.sg": "dawko",
+          "nom.pl": "dawki",
+          "gen.pl": "dawek",
+          "dat.pl": "dawkom",
+          "acc.pl": "dawki",
+          "ins.pl": "dawkami",
+          "loc.pl": "dawkach",
+          "voc.pl": "dawki"
+        },
+        "avoid": []
+      },
+      "ignore": {
+        "adherence_multiple_episodes": "dlzy5q"
+      }
+    },
+    {
+      "id": "drug",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "English uses “drug”, “medication” and “med”. Use “lek” in Polish.",
+      "en": {
+        "forms": {
+          "sg": "drug",
+          "pl": "drugs"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "lek",
+          "gen.sg": "leku",
+          "dat.sg": "lekowi",
+          "acc.sg": "lek",
+          "ins.sg": "lekiem",
+          "loc.sg": "leku",
+          "voc.sg": "leku",
+          "nom.pl": "leki",
+          "gen.pl": "leków",
+          "dat.pl": "lekom",
+          "acc.pl": "leki",
+          "ins.pl": "lekami",
+          "loc.pl": "lekach",
+          "voc.pl": "leki"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "dysphoria",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "dysphoria",
+          "pl": "dysphorias"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "dysforia",
+          "gen.sg": "dysforii",
+          "dat.sg": "dysforii",
+          "acc.sg": "dysforię",
+          "ins.sg": "dysforią",
+          "loc.sg": "dysforii",
+          "voc.sg": "dysforio",
+          "nom.pl": "dysforie",
+          "gen.pl": "dysforii",
+          "dat.pl": "dysforiom",
+          "acc.pl": "dysforie",
+          "ins.pl": "dysforiami",
+          "loc.pl": "dysforiach",
+          "voc.pl": "dysforie"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "entry",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "Use “entry” for the noun. “Log” and “record” still work as verbs.",
+      "en": {
+        "forms": {
+          "sg": "entry",
+          "pl": "entries"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "wpis",
+          "gen.sg": "wpisu",
+          "dat.sg": "wpisowi",
+          "acc.sg": "wpis",
+          "ins.sg": "wpisem",
+          "loc.sg": "wpisie",
+          "voc.sg": "wpisie",
+          "nom.pl": "wpisy",
+          "gen.pl": "wpisów",
+          "dat.pl": "wpisom",
+          "acc.pl": "wpisy",
+          "ins.pl": "wpisami",
+          "loc.pl": "wpisach",
+          "voc.pl": "wpisy"
+        },
+        "avoid": []
+      },
+      "ignore": {
+        "cd_added_toast": "1124wd4",
+        "features_to_show_sub": "zqgbft",
+        "surgery_compare_no_data": "enxz8z",
+        "store:short_description": "1md5gy2"
+      }
+    },
+    {
+      "id": "episode",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "A regimen episode: one stretch on the same drug, dose and route. Polish says \"okres\" in 2 of 25 strings.",
+      "en": {
+        "forms": {
+          "sg": "episode",
+          "pl": "episodes"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "etap",
+          "gen.sg": "etapu",
+          "dat.sg": "etapowi",
+          "acc.sg": "etap",
+          "ins.sg": "etapem",
+          "loc.sg": "etapie",
+          "voc.sg": "etapie",
+          "nom.pl": "etapy",
+          "gen.pl": "etapów",
+          "dat.pl": "etapom",
+          "acc.pl": "etapy",
+          "ins.pl": "etapami",
+          "loc.pl": "etapach",
+          "voc.pl": "etapy"
+        },
+        "avoid": [
+          "epizod"
+        ]
+      }
+    },
+    {
+      "id": "era",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "era",
+          "pl": "eras"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "era",
+          "gen.sg": "ery",
+          "dat.sg": "erze",
+          "acc.sg": "erę",
+          "ins.sg": "erą",
+          "loc.sg": "erze",
+          "voc.sg": "ero",
+          "nom.pl": "ery",
+          "gen.pl": "er",
+          "dat.pl": "erom",
+          "acc.pl": "ery",
+          "ins.pl": "erami",
+          "loc.pl": "erach",
+          "voc.pl": "ery"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "euphoria",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "euphoria",
+          "pl": "euphorias"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "euforia",
+          "gen.sg": "euforii",
+          "dat.sg": "euforii",
+          "acc.sg": "euforię",
+          "ins.sg": "euforią",
+          "loc.sg": "euforii",
+          "voc.sg": "euforio",
+          "nom.pl": "euforie",
+          "gen.pl": "euforii",
+          "dat.pl": "euforiom",
+          "acc.pl": "euforie",
+          "ins.pl": "euforiami",
+          "loc.pl": "euforiach",
+          "voc.pl": "euforie"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "file",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "file",
+          "pl": "files"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "plik",
+          "gen.sg": "pliku",
+          "dat.sg": "plikowi",
+          "acc.sg": "plik",
+          "ins.sg": "plikiem",
+          "loc.sg": "pliku",
+          "voc.sg": "pliku",
+          "nom.pl": "pliki",
+          "gen.pl": "plików",
+          "dat.pl": "plikom",
+          "acc.pl": "pliki",
+          "ins.pl": "plikami",
+          "loc.pl": "plikach",
+          "voc.pl": "pliki"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "folder",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "folder",
+          "pl": "folders"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "folder",
+          "gen.sg": "folderu",
+          "dat.sg": "folderowi",
+          "acc.sg": "folder",
+          "ins.sg": "folderem",
+          "loc.sg": "folderze",
+          "voc.sg": "folderze",
+          "nom.pl": "foldery",
+          "gen.pl": "folderów",
+          "dat.pl": "folderom",
+          "acc.pl": "foldery",
+          "ins.pl": "folderami",
+          "loc.pl": "folderach",
+          "voc.pl": "foldery"
+        },
+        "avoid": [
+          "katalog"
+        ]
+      }
+    },
+    {
+      "id": "injection",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "injection",
+          "pl": "injections"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "zastrzyk",
+          "gen.sg": "zastrzyku",
+          "dat.sg": "zastrzykowi",
+          "acc.sg": "zastrzyk",
+          "ins.sg": "zastrzykiem",
+          "loc.sg": "zastrzyku",
+          "voc.sg": "zastrzyku",
+          "nom.pl": "zastrzyki",
+          "gen.pl": "zastrzyków",
+          "dat.pl": "zastrzykom",
+          "acc.pl": "zastrzyki",
+          "ins.pl": "zastrzykami",
+          "loc.pl": "zastrzykach",
+          "voc.pl": "zastrzyki"
+        },
+        "avoid": [
+          "iniekcj"
+        ]
+      }
+    },
+    {
+      "id": "journal",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "Call the person’s data a journal.",
+      "en": {
+        "forms": {
+          "sg": "journal",
+          "pl": "journals"
+        },
+        "avoid": [
+          "database"
+        ]
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "dziennik",
+          "gen.sg": "dziennika",
+          "dat.sg": "dziennikowi",
+          "acc.sg": "dziennik",
+          "ins.sg": "dziennikiem",
+          "loc.sg": "dzienniku",
+          "voc.sg": "dzienniku",
+          "nom.pl": "dzienniki",
+          "gen.pl": "dzienników",
+          "dat.pl": "dziennikom",
+          "acc.pl": "dzienniki",
+          "ins.pl": "dziennikami",
+          "loc.pl": "dziennikach",
+          "voc.pl": "dzienniki"
+        },
+        "avoid": []
+      },
+      "ignore": {
+        "am_setup_body": "1f846jl",
+        "exp_warning_body": "1k07jhh",
+        "search_elsewhere_heading": "1lyoja0",
+        "surgery_compare_no_data": "enxz8z",
+        "surgery_compare_too_short": "1eyy3am",
+        "tryout_compare_too_short": "6e62pu",
+        "boot_failed_engine": "zn33g2",
+        "privacy:09": "qrczwt",
+        "privacy:12": "18ew632",
+        "privacy:28": "pzbcjp",
+        "privacy:08": "bq8wpv"
+      }
+    },
+    {
+      "id": "lab-result",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "lab result",
+          "pl": "lab results"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "wynik badań",
+          "gen.sg": "wyniku badań",
+          "dat.sg": "wynikowi badań",
+          "acc.sg": "wynik badań",
+          "ins.sg": "wynikiem badań",
+          "loc.sg": "wyniku badań",
+          "voc.sg": "wyniku badań",
+          "nom.pl": "wyniki badań",
+          "gen.pl": "wyników badań",
+          "dat.pl": "wynikom badań",
+          "acc.pl": "wyniki badań",
+          "ins.pl": "wynikami badań",
+          "loc.pl": "wynikach badań",
+          "voc.pl": "wyniki badań"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "letter",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "A time-capsule letter.",
+      "en": {
+        "forms": {
+          "sg": "letter",
+          "pl": "letters"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "list",
+          "gen.sg": "listu",
+          "dat.sg": "listowi",
+          "acc.sg": "list",
+          "ins.sg": "listem",
+          "loc.sg": "liście",
+          "voc.sg": "liście",
+          "nom.pl": "listy",
+          "gen.pl": "listów",
+          "dat.pl": "listom",
+          "acc.pl": "listy",
+          "ins.pl": "listami",
+          "loc.pl": "listach",
+          "voc.pl": "listy"
+        },
+        "avoid": []
+      },
+      "ignore": {
+        "appointments_update_placeholder": "xb3e42"
+      }
+    },
+    {
+      "id": "measurement",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "measurement",
+          "pl": "measurements"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "pomiar",
+          "gen.sg": "pomiaru",
+          "dat.sg": "pomiarowi",
+          "acc.sg": "pomiar",
+          "ins.sg": "pomiarem",
+          "loc.sg": "pomiarze",
+          "voc.sg": "pomiarze",
+          "nom.pl": "pomiary",
+          "gen.pl": "pomiarów",
+          "dat.pl": "pomiarom",
+          "acc.pl": "pomiary",
+          "ins.pl": "pomiarami",
+          "loc.pl": "pomiarach",
+          "voc.pl": "pomiary"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "milestone",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "Use “milestone”, including on the site. Keep “event” for cycle events.",
+      "en": {
+        "forms": {
+          "sg": "milestone",
+          "pl": "milestones"
+        },
+        "avoid": [
+          "occasion"
+        ]
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "kamień milowy",
+          "gen.sg": "kamienia milowego",
+          "dat.sg": "kamieniowi milowemu",
+          "acc.sg": "kamień milowy",
+          "ins.sg": "kamieniem milowym",
+          "loc.sg": "kamieniu milowym",
+          "voc.sg": "kamieniu milowy",
+          "nom.pl": "kamienie milowe",
+          "gen.pl": "kamieni milowych",
+          "dat.pl": "kamieniom milowym",
+          "acc.pl": "kamienie milowe",
+          "ins.pl": "kamieniami milowymi",
+          "loc.pl": "kamieniach milowych",
+          "voc.pl": "kamienie milowe"
+        },
+        "avoid": []
+      },
+      "ignore": {
+        "tagdesc_dt_existential": "tuhsm8"
+      }
+    },
+    {
+      "id": "module-appointments",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "base": "Appointments"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Wizyty"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "module-care",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "base": "Care"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Opieka"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "module-cycle",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "base": "Cycle"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Cykl"
+        },
+        "avoid": []
+      },
+      "ignore": {
+        "clinician_summary_section_cycle_events": "1szn698",
+        "cycle_event_history_title": "r9o25e",
+        "cycle_tracking_toggle_title": "1p4keza",
+        "effect_cycle_cessation": "f88qmr"
+      }
+    },
+    {
+      "id": "module-dilation",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "base": "Dilation"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Rozszerzanie"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "module-documents",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "base": "Documents"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Dokumenty"
+        },
+        "avoid": []
+      },
+      "ignore": {
+        "document_linked_here_title": "1wvmcma",
+        "roadmap_institution_delete_detail": "1mvphda"
+      }
+    },
+    {
+      "id": "module-effects",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "Call the module “Changes you’ve noticed”. Qualify “effect” when a specific effect needs naming.",
+      "en": {
+        "forms": {
+          "base": "Changes you've noticed"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Zauważone zmiany"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "module-hair-removal",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "base": "Hair removal"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Depilacja"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "module-letters",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "base": "Time-capsule letters"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Listy w kapsule czasu"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "module-measurements",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "base": "Measurements and sizes"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Pomiary i rozmiary"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "module-milestones",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "base": "Milestones"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Kamienie milowe"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "module-progress-photos",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "base": "Progress photos"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Zdjęcia zmian"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "module-resources",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "base": "Support and resources"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Wsparcie i kontakty"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "module-roadmap",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "base": "Transition roadmap"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Mapa tranzycji"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "module-safe-space",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "base": "Safe space"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Bezpieczna przestrzeń"
+        },
+        "avoid": []
+      },
+      "ignore": {
+        "tile_safe_space_nudge_dismiss": "1fnj4hr",
+        "tile_safe_space_sub": "ikp1tz",
+        "tile_safe_space_title": "gnvp8w"
+      }
+    },
+    {
+      "id": "module-surgery",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "base": "Surgery journey"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Operacje"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "module-tryouts",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "base": "Tryouts"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Próby genderowe"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "module-voice",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "base": "Voice"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Głos"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "module-wear",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "base": "Wear log"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Czas noszenia"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "mood",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "mood",
+          "pl": "moods"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "nastrój",
+          "gen.sg": "nastroju",
+          "dat.sg": "nastrojowi",
+          "acc.sg": "nastrój",
+          "ins.sg": "nastrojem",
+          "loc.sg": "nastroju",
+          "voc.sg": "nastroju",
+          "nom.pl": "nastroje",
+          "gen.pl": "nastrojów",
+          "dat.pl": "nastrojom",
+          "acc.pl": "nastroje",
+          "ins.pl": "nastrojami",
+          "loc.pl": "nastrojach",
+          "voc.pl": "nastroje"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "note",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "English \"note\" is also a verb. \"Notatki\" is also the disguise name.",
+      "en": {
+        "forms": {
+          "sg": "note",
+          "pl": "notes"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "notatka",
+          "gen.sg": "notatki",
+          "dat.sg": "notatce",
+          "acc.sg": "notatkę",
+          "ins.sg": "notatką",
+          "loc.sg": "notatce",
+          "voc.sg": "notatko",
+          "nom.pl": "notatki",
+          "gen.pl": "notatek",
+          "dat.pl": "notatkom",
+          "acc.pl": "notatki",
+          "ins.pl": "notatkami",
+          "loc.pl": "notatkach",
+          "voc.pl": "notatki"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "notification",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "notification",
+          "pl": "notifications"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "powiadomienie",
+          "gen.sg": "powiadomienia",
+          "dat.sg": "powiadomieniu",
+          "acc.sg": "powiadomienie",
+          "ins.sg": "powiadomieniem",
+          "loc.sg": "powiadomieniu",
+          "voc.sg": "powiadomienie",
+          "nom.pl": "powiadomienia",
+          "gen.pl": "powiadomień",
+          "dat.pl": "powiadomieniom",
+          "acc.pl": "powiadomienia",
+          "ins.pl": "powiadomieniami",
+          "loc.pl": "powiadomieniach",
+          "voc.pl": "powiadomienia"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "passage",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "The reading passage for a voice take.",
+      "en": {
+        "forms": {
+          "sg": "passage",
+          "pl": "passages"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "tekst",
+          "gen.sg": "tekstu",
+          "dat.sg": "tekstowi",
+          "acc.sg": "tekst",
+          "ins.sg": "tekstem",
+          "loc.sg": "tekście",
+          "voc.sg": "tekście",
+          "nom.pl": "teksty",
+          "gen.pl": "tekstów",
+          "dat.pl": "tekstom",
+          "acc.pl": "teksty",
+          "ins.pl": "tekstami",
+          "loc.pl": "tekstach",
+          "voc.pl": "teksty"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "passphrase",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "Use “passphrase” for the journal in English. Polish “hasło” can also name the phone credential.",
+      "en": {
+        "forms": {
+          "sg": "passphrase",
+          "pl": "passphrases"
+        },
+        "avoid": [
+          "password"
+        ]
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "hasło",
+          "gen.sg": "hasła",
+          "dat.sg": "hasłu",
+          "acc.sg": "hasło",
+          "ins.sg": "hasłem",
+          "loc.sg": "haśle",
+          "voc.sg": "hasło",
+          "nom.pl": "hasła",
+          "gen.pl": "haseł",
+          "dat.pl": "hasłom",
+          "acc.pl": "hasła",
+          "ins.pl": "hasłami",
+          "loc.pl": "hasłach",
+          "voc.pl": "hasła"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "password-manager",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "password manager",
+          "pl": "password managers"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "menedżer haseł",
+          "gen.sg": "menedżera haseł",
+          "dat.sg": "menedżerowi haseł",
+          "acc.sg": "menedżer haseł",
+          "ins.sg": "menedżerem haseł",
+          "loc.sg": "menedżerze haseł",
+          "voc.sg": "menedżerze haseł",
+          "nom.pl": "menedżery haseł",
+          "gen.pl": "menedżerów haseł",
+          "dat.pl": "menedżerom haseł",
+          "acc.pl": "menedżery haseł",
+          "ins.pl": "menedżerami haseł",
+          "loc.pl": "menedżerach haseł",
+          "voc.pl": "menedżery haseł"
+        },
+        "avoid": [
+          "menadżer"
+        ]
+      }
+    },
+    {
+      "id": "photo",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "Use “photo” in the interface.",
+      "en": {
+        "forms": {
+          "sg": "photo",
+          "pl": "photos"
+        },
+        "avoid": [
+          "image",
+          "asset"
+        ]
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "zdjęcie",
+          "gen.sg": "zdjęcia",
+          "dat.sg": "zdjęciu",
+          "acc.sg": "zdjęcie",
+          "ins.sg": "zdjęciem",
+          "loc.sg": "zdjęciu",
+          "voc.sg": "zdjęcie",
+          "nom.pl": "zdjęcia",
+          "gen.pl": "zdjęć",
+          "dat.pl": "zdjęciom",
+          "acc.pl": "zdjęcia",
+          "ins.pl": "zdjęciami",
+          "loc.pl": "zdjęciach",
+          "voc.pl": "zdjęcia"
+        },
+        "avoid": [
+          "fotk",
+          "obraz"
+        ]
+      }
+    },
+    {
+      "id": "pitch",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "Voice pitch, often \"wysokość głosu\" in full. Polish says \"tony\" in 2 of 19 strings.",
+      "en": {
+        "forms": {
+          "sg": "pitch",
+          "pl": "pitches"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "wysokość",
+          "gen.sg": "wysokości",
+          "dat.sg": "wysokości",
+          "acc.sg": "wysokość",
+          "ins.sg": "wysokością",
+          "loc.sg": "wysokości",
+          "voc.sg": "wysokości",
+          "nom.pl": "wysokości",
+          "gen.pl": "wysokości",
+          "dat.pl": "wysokościom",
+          "acc.pl": "wysokości",
+          "ins.pl": "wysokościami",
+          "loc.pl": "wysokościach",
+          "voc.pl": "wysokości"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "prep-list",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "The questions gathered before an appointment.",
+      "en": {
+        "forms": {
+          "sg": "prep list",
+          "pl": "prep lists"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "lista pytań",
+          "gen.sg": "listy pytań",
+          "dat.sg": "liście pytań",
+          "acc.sg": "listę pytań",
+          "ins.sg": "listą pytań",
+          "loc.sg": "liście pytań",
+          "voc.sg": "listo pytań",
+          "nom.pl": "listy pytań",
+          "gen.pl": "list pytań",
+          "dat.pl": "listom pytań",
+          "acc.pl": "listy pytań",
+          "ins.pl": "listami pytań",
+          "loc.pl": "listach pytań",
+          "voc.pl": "listy pytań"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "procedure",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "Polish says \"operacja\" in 13 of 17 strings, which is the surgery term. Decide whether a procedure is a zabieg or whether these strings should say surgery in English too.",
+      "en": {
+        "forms": {
+          "sg": "procedure",
+          "pl": "procedures"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "zabieg",
+          "gen.sg": "zabiegu",
+          "dat.sg": "zabiegowi",
+          "acc.sg": "zabieg",
+          "ins.sg": "zabiegiem",
+          "loc.sg": "zabiegu",
+          "voc.sg": "zabiegu",
+          "nom.pl": "zabiegi",
+          "gen.pl": "zabiegów",
+          "dat.pl": "zabiegom",
+          "acc.pl": "zabiegi",
+          "ins.pl": "zabiegami",
+          "loc.pl": "zabiegach",
+          "voc.pl": "zabiegi"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "pronoun",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "pronoun",
+          "pl": "pronouns"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "zaimek",
+          "gen.sg": "zaimka",
+          "dat.sg": "zaimkowi",
+          "acc.sg": "zaimek",
+          "ins.sg": "zaimkiem",
+          "loc.sg": "zaimku",
+          "voc.sg": "zaimku",
+          "nom.pl": "zaimki",
+          "gen.pl": "zaimków",
+          "dat.pl": "zaimkom",
+          "acc.pl": "zaimki",
+          "ins.pl": "zaimkami",
+          "loc.pl": "zaimkach",
+          "voc.pl": "zaimki"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "recovery-key",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "recovery key",
+          "pl": "recovery keys"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "klucz odzyskiwania",
+          "gen.sg": "klucza odzyskiwania",
+          "dat.sg": "kluczowi odzyskiwania",
+          "acc.sg": "klucz odzyskiwania",
+          "ins.sg": "kluczem odzyskiwania",
+          "loc.sg": "kluczu odzyskiwania",
+          "voc.sg": "kluczu odzyskiwania",
+          "nom.pl": "klucze odzyskiwania",
+          "gen.pl": "kluczy odzyskiwania",
+          "dat.pl": "kluczom odzyskiwania",
+          "acc.pl": "klucze odzyskiwania",
+          "ins.pl": "kluczami odzyskiwania",
+          "loc.pl": "kluczach odzyskiwania",
+          "voc.pl": "klucze odzyskiwania"
+        },
+        "avoid": []
+      },
+      "ignore": {
+        "rk_leave_title": "1t62xpv",
+        "privacy:11": "jigl4e",
+        "privacy:31": "172ti8e"
+      }
+    },
+    {
+      "id": "regimen",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "Catalogue mostly says kuracja (38 keys) but also \"schemat leczenia\" (home_start_regimen_title, exposure_regimen_days_*) and \"etap\". Pick one.",
+      "en": {
+        "forms": {
+          "sg": "regimen",
+          "pl": "regimens"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "kuracja",
+          "gen.sg": "kuracji",
+          "dat.sg": "kuracji",
+          "acc.sg": "kurację",
+          "ins.sg": "kuracją",
+          "loc.sg": "kuracji",
+          "voc.sg": "kuracjo",
+          "nom.pl": "kuracje",
+          "gen.pl": "kuracji",
+          "dat.pl": "kuracjom",
+          "acc.pl": "kuracje",
+          "ins.pl": "kuracjami",
+          "loc.pl": "kuracjach",
+          "voc.pl": "kuracje"
+        },
+        "avoid": [
+          "schemat"
+        ]
+      },
+      "ignore": {
+        "adherence_no_schedule": "yuyxzy",
+        "regimen_ended": "xnyx45",
+        "regimen_episode_legend": "jauxq5",
+        "regimen_episode_unchanged": "h3tzgs",
+        "regimen_episode_unsaved": "1fvobal",
+        "regimen_hide_action": "1loe4ys",
+        "regimen_schedule_after_episode": "1vug0ye",
+        "tile_dose_sub": "i5gb9n"
+      }
+    },
+    {
+      "id": "reminder",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "reminder",
+          "pl": "reminders"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "przypomnienie",
+          "gen.sg": "przypomnienia",
+          "dat.sg": "przypomnieniu",
+          "acc.sg": "przypomnienie",
+          "ins.sg": "przypomnieniem",
+          "loc.sg": "przypomnieniu",
+          "voc.sg": "przypomnienie",
+          "nom.pl": "przypomnienia",
+          "gen.pl": "przypomnień",
+          "dat.pl": "przypomnieniom",
+          "acc.pl": "przypomnienia",
+          "ins.pl": "przypomnieniami",
+          "loc.pl": "przypomnieniach",
+          "voc.pl": "przypomnienia"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "scale",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "Use “scale” in the interface.",
+      "en": {
+        "forms": {
+          "sg": "scale",
+          "pl": "scales"
+        },
+        "avoid": [
+          "dimension",
+          "axis",
+          "axes",
+          "metric"
+        ]
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "skala",
+          "gen.sg": "skali",
+          "dat.sg": "skali",
+          "acc.sg": "skalę",
+          "ins.sg": "skalą",
+          "loc.sg": "skali",
+          "voc.sg": "skalo",
+          "nom.pl": "skale",
+          "gen.pl": "skal",
+          "dat.pl": "skalom",
+          "acc.pl": "skale",
+          "ins.pl": "skalami",
+          "loc.pl": "skalach",
+          "voc.pl": "skale"
+        },
+        "avoid": []
+      },
+      "ignore": {
+        "vm_pitch_typical": "1tha8g8"
+      }
+    },
+    {
+      "id": "screen-lock",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "screen lock",
+          "pl": "screen locks"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "blokada ekranu",
+          "gen.sg": "blokady ekranu",
+          "dat.sg": "blokadzie ekranu",
+          "acc.sg": "blokadę ekranu",
+          "ins.sg": "blokadą ekranu",
+          "loc.sg": "blokadzie ekranu",
+          "voc.sg": "blokado ekranu",
+          "nom.pl": "blokady ekranu",
+          "gen.pl": "blokad ekranu",
+          "dat.pl": "blokadom ekranu",
+          "acc.pl": "blokady ekranu",
+          "ins.pl": "blokadami ekranu",
+          "loc.pl": "blokadach ekranu",
+          "voc.pl": "blokady ekranu"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "screen-look-back",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "Polish says \"Statystyki\" in 2 strings and \"wstecz\" in 1; the store listing uses Statystyki.",
+      "en": {
+        "forms": {
+          "base": "Look back"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Statystyki"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "screen-settings",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "base": "Settings"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Ustawienia"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "screen-today",
+      "kind": "phrase",
+      "confirmed": true,
+      "note": "The home door. Polish also says \"dzisiaj\" in 4 of 13 strings, some of them meaning the day rather than the screen.",
+      "en": {
+        "forms": {
+          "base": "Today"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "base": "Dzień dzisiejszy"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "session",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "A hair-removal session. Polish also says \"zabieg\" in 9 keys.",
+      "en": {
+        "forms": {
+          "sg": "session",
+          "pl": "sessions"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "sesja",
+          "gen.sg": "sesji",
+          "dat.sg": "sesji",
+          "acc.sg": "sesję",
+          "ins.sg": "sesją",
+          "loc.sg": "sesji",
+          "voc.sg": "sesjo",
+          "nom.pl": "sesje",
+          "gen.pl": "sesji",
+          "dat.pl": "sesjom",
+          "acc.pl": "sesje",
+          "ins.pl": "sesjami",
+          "loc.pl": "sesjach",
+          "voc.pl": "sesje"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "side-effect",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "Keep side effects distinct from “changes you’ve noticed”.",
+      "en": {
+        "forms": {
+          "sg": "side effect",
+          "pl": "side effects"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "skutek uboczny",
+          "gen.sg": "skutku ubocznego",
+          "dat.sg": "skutkowi ubocznemu",
+          "acc.sg": "skutek uboczny",
+          "ins.sg": "skutkiem ubocznym",
+          "loc.sg": "skutku ubocznym",
+          "voc.sg": "skutku uboczny",
+          "nom.pl": "skutki uboczne",
+          "gen.pl": "skutków ubocznych",
+          "dat.pl": "skutkom ubocznym",
+          "acc.pl": "skutki uboczne",
+          "ins.pl": "skutkami ubocznymi",
+          "loc.pl": "skutkach ubocznych",
+          "voc.pl": "skutki uboczne"
+        },
+        "avoid": [
+          "efekt uboczn"
+        ]
+      }
+    },
+    {
+      "id": "stock",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "Medication on hand.",
+      "en": {
+        "forms": {
+          "sg": "stock",
+          "pl": "stocks"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "zapas",
+          "gen.sg": "zapasu",
+          "dat.sg": "zapasowi",
+          "acc.sg": "zapas",
+          "ins.sg": "zapasem",
+          "loc.sg": "zapasie",
+          "voc.sg": "zapasie",
+          "nom.pl": "zapasy",
+          "gen.pl": "zapasów",
+          "dat.pl": "zapasom",
+          "acc.pl": "zapasy",
+          "ins.pl": "zapasami",
+          "loc.pl": "zapasach",
+          "voc.pl": "zapasy"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "surgery",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "Use “surgery journey” and “procedure” in the interface. Polish also uses “operacja” for some procedure keys.",
+      "en": {
+        "forms": {
+          "sg": "surgery",
+          "pl": "surgeries"
+        },
+        "avoid": [
+          "patient"
+        ]
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "operacja",
+          "gen.sg": "operacji",
+          "dat.sg": "operacji",
+          "acc.sg": "operację",
+          "ins.sg": "operacją",
+          "loc.sg": "operacji",
+          "voc.sg": "operacjo",
+          "nom.pl": "operacje",
+          "gen.pl": "operacji",
+          "dat.pl": "operacjom",
+          "acc.pl": "operacje",
+          "ins.pl": "operacjami",
+          "loc.pl": "operacjach",
+          "voc.pl": "operacje"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "tag",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "tag",
+          "pl": "tags"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "tag",
+          "gen.sg": "tagu",
+          "dat.sg": "tagowi",
+          "acc.sg": "tag",
+          "ins.sg": "tagiem",
+          "loc.sg": "tagu",
+          "voc.sg": "tagu",
+          "nom.pl": "tagi",
+          "gen.pl": "tagów",
+          "dat.pl": "tagom",
+          "acc.pl": "tagi",
+          "ins.pl": "tagami",
+          "loc.pl": "tagach",
+          "voc.pl": "tagi"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "take",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "One recorded voice take. English \"take\" is also a verb, so expect false hits in English usage and leave those on rename. Polish currently mixes \"nagranie\", \"próba\" and \"zapis\".",
+      "en": {
+        "forms": {
+          "sg": "take",
+          "pl": "takes"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "nagranie",
+          "gen.sg": "nagrania",
+          "dat.sg": "nagraniu",
+          "acc.sg": "nagranie",
+          "ins.sg": "nagraniem",
+          "loc.sg": "nagraniu",
+          "voc.sg": "nagranie",
+          "nom.pl": "nagrania",
+          "gen.pl": "nagrań",
+          "dat.pl": "nagraniom",
+          "acc.pl": "nagrania",
+          "ins.pl": "nagraniami",
+          "loc.pl": "nagraniach",
+          "voc.pl": "nagrania"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "transition",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "transition",
+          "pl": "transitions"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "tranzycja",
+          "gen.sg": "tranzycji",
+          "dat.sg": "tranzycji",
+          "acc.sg": "tranzycję",
+          "ins.sg": "tranzycją",
+          "loc.sg": "tranzycji",
+          "voc.sg": "tranzycjo",
+          "nom.pl": "tranzycje",
+          "gen.pl": "tranzycji",
+          "dat.pl": "tranzycjom",
+          "acc.pl": "tranzycje",
+          "ins.pl": "tranzycjami",
+          "loc.pl": "tranzycjach",
+          "voc.pl": "tranzycje"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "tryout",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "Polish also says \"próba\" for a voice take (vb_*), and the hub row is \"Próby genderowe\". One of them needs another word.",
+      "en": {
+        "forms": {
+          "sg": "tryout",
+          "pl": "tryouts"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "próba",
+          "gen.sg": "próby",
+          "dat.sg": "próbie",
+          "acc.sg": "próbę",
+          "ins.sg": "próbą",
+          "loc.sg": "próbie",
+          "voc.sg": "próbo",
+          "nom.pl": "próby",
+          "gen.pl": "prób",
+          "dat.pl": "próbom",
+          "acc.pl": "próby",
+          "ins.pl": "próbami",
+          "loc.pl": "próbach",
+          "voc.pl": "próby"
+        },
+        "avoid": []
+      }
+    },
+    {
+      "id": "tucking",
+      "kind": "noun",
+      "confirmed": true,
+      "note": "",
+      "en": {
+        "forms": {
+          "sg": "tucking",
+          "pl": "tuckings"
+        },
+        "avoid": []
+      },
+      "pl": {
+        "forms": {
+          "nom.sg": "tucking",
+          "gen.sg": "tuckingu",
+          "dat.sg": "tuckingowi",
+          "acc.sg": "tucking",
+          "ins.sg": "tuckingiem",
+          "loc.sg": "tuckingu",
+          "voc.sg": "tuckingu",
+          "nom.pl": "tuckingi",
+          "gen.pl": "tuckingów",
+          "dat.pl": "tuckingom",
+          "acc.pl": "tuckingi",
+          "ins.pl": "tuckingami",
+          "loc.pl": "tuckingach",
+          "voc.pl": "tuckingi"
+        },
+        "avoid": []
+      }
+    }
+  ]
+}

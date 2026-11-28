@@ -1,20 +1,17 @@
-/* Browser-tier check for ticket 09: the at-rest encryption claim, proved
-   the only way the spec accepts - by closing the app and reading the raw
-   bytes of everything it left behind.
+/* Browser-tier check for the at-rest encryption claim, proved the only way the spec accepts
+   - by closing the app and reading the raw bytes of everything it left behind.
 
-   The probe walks the whole production key path: create a keystore from a
-   passphrase, open the encrypted driver under the unwrapped data key, run
-   the real migrations, seed protected content of every kind the claim
-   names (entry text, a lab value, a reminder title, a milestone name, a
-   preference, real JPEG photo bytes) through the real journal, force a
-   pre-migration copy so the copy is on disk too, leave a half-written
-   entry in the draft mirror, close - and then scan every OPFS file and
-   every localStorage value for any of it.
+   The probe walks the whole production key path: create a keystore from a passphrase, open
+   the encrypted driver under the unwrapped data key, run the real migrations, seed
+   protected content of every kind the claim names (entry text, a lab value, a reminder
+   title, a milestone name, a preference, real JPEG photo bytes) through the real journal,
+   force a pre-migration copy so the copy is on disk too, leave a half-written entry in the
+   draft mirror, close - and then scan every OPFS file and every localStorage value for any
+   of it.
 
-   The key model rides along: wrong passphrase fails as one
-   indistinguishable error, a rewrap changes the passphrase without
-   touching the database, and a wrong raw key is refused by SQLite rather
-   than read as garbage. */
+   The key model rides along: wrong passphrase fails as one indistinguishable error, a
+   rewrap changes the passphrase without touching the database, and a wrong raw key is
+   refused by SQLite rather than read as garbage. */
 
 import { boot } from '../../src/lib/data/sqlite/boot.ts';
 import { createEncryptedWebSqlite } from '../../src/lib/data/sqlite/mc-driver.ts';
@@ -65,12 +62,11 @@ async function sentinelJpeg(): Promise<Uint8Array> {
   const segment = new Uint8Array(4 + comment.length);
   segment.set([0xff, 0xfe, (comment.length + 2) >> 8, (comment.length + 2) & 0xff]);
   segment.set(comment, 4);
-  /* After the encoder's own first segment, not straight after SOI: a
-     comment inserted at byte 2 displaces the JFIF marker, and the file
-     stops beginning ff d8 ff e0 - which is exactly what the JPEG-signature
-     sentinel above matches on, atStartOnly. Ticket 10's probe scans the
-     same fixture before encrypting it and asserts every sentinel is found,
-     which is how this one turned out to have been inert. */
+  /* After the encoder's own first segment, not straight after SOI: a comment inserted at
+     byte 2 displaces the JFIF marker, and the file stops beginning ff d8 ff e0 - which is
+     exactly what the JPEG-signature sentinel above matches on, atStartOnly. probe scans the
+     same fixture before encrypting it and asserts every sentinel is found, which is how
+     this one turned out to have been inert. */
   const at = 4 + ((jpeg[4] << 8) | jpeg[5]);
   const withComment = new Uint8Array(jpeg.length + segment.length);
   withComment.set(jpeg.subarray(0, at));
@@ -95,7 +91,7 @@ async function run() {
   await freshOrigin();
 
   // --- F-08: a journal written under sqlite3mc's implicit cipher default
-  // still opens now that the cipher is pinned explicitly (ticket 04) -------
+  // still opens now that the cipher is pinned explicitly -------
   result.cipherCompat = await checkCipherCompat();
 
   // --- setup: the production first-run path --------------------------------
@@ -133,7 +129,6 @@ async function run() {
   });
   await journal.reminders.upsertReminder({
     title: 'sentinel-reminder-progynova-2114',
-    type: 'med',
     time: '09:00',
     recurrence: 'DAILY',
     interval: null,
@@ -150,7 +145,7 @@ async function run() {
   result.bootCachePresent = localStorage.getItem(BOOT_CACHE_KEY) !== null;
 
   /* The one writer that puts journal text in localStorage: the entry-draft
-     mirror an open editor keeps (sec-audit 02, finding G-01). Driven through
+     mirror an open editor keeps. Driven through
      the same store the editor uses rather than by mounting the editor, which
      would drag the whole component tree into a storage probe; what matters
      to the scan is the value the store leaves behind. Left in place on

@@ -1,27 +1,15 @@
-/* The boot sequence (ticket 04). Order is load-bearing for later tickets
-   and must not change without checking all four:
+/* Boot in this order:
 
-     1. Read boot-set preferences from localStorage (ticket 06 fills this
-        in - theme/palette/language need to apply before first paint, and
-        the lock screen needs to render before the database is even open).
-     2. Open the database and run migrations (ticket 02) - this ticket's
-        own job, fully implemented below.
-     3. Load mirrored reference data into reactive state (ticket 08).
-     4. Purge trash past its 30-day window, run the photo orphan sweep
-        (ticket 11; phase 5 ticket 19), then auto-log the doses any schedule
-        the person switched on still owes (phase 11 ticket 11) - off the
-        critical path since phase 5 audit ticket 02: scheduled as boot
-        reports ready rather than waited for, because no screen reads what
-        any of them produces.
+   1. Read localStorage boot preferences before first paint or unlock.
+   2. Open and migrate the database.
+   3. Load mirrored reference data into reactive state.
+   4. After reporting ready, purge trash older than 30 days, sweep
+      orphaned photos and auto-log outstanding doses.
 
-   Steps 1, 3 and 4 are dependency-injected no-ops until their tickets land
-   - boot() still calls them in order so the shape doesn't change later,
-   but nothing here decides what they do. Everything is injected (not
-   imported directly) so this file's ordering and error handling can be
-   unit-tested in the Node tier against a fake driver, while the real app
-   supplies createEncryptedWebSqlite() from mc-driver.ts. */
+   Inject the steps and driver so Node tests can verify ordering and
+   errors. The app supplies the encrypted web driver. */
 
-import { markJournalBusy } from '../journal-busy.ts';
+import { markJournalBusy, waitForJournalIdle } from '../journal-busy.ts';
 import type { SqliteDriver } from './driver.ts';
 import type { MigrationFileOps } from './migration-runner.ts';
 import { runMigrations } from './migration-runner.ts';
@@ -37,12 +25,12 @@ interface BootDeps {
   loadReferenceData?: (driver: SqliteDriver) => Promise<void>;
   purgeExpiredTrash?: (driver: SqliteDriver) => Promise<void>;
   sweepOrphanPhotos?: (driver: SqliteDriver) => Promise<void>;
-  /** The auto-log pass (phase 11 ticket 11, ADR-0086): each schedule the
-      person switched on gets a `taken` dose per slot it still owes, up to
-      yesterday. Last of the three, and here rather than on a clock of its
-      own, because a standing instruction has to be carried out on a device
-      that was closed for a week just as much as on one opened every day, and
-      boot is when the app finds out how long that was. */
+  shouldSweepOrphans?: () => boolean;
+  /** The auto-log pass: each schedule the person switched on gets a `taken` dose per slot
+      it still owes, up to yesterday. Last of the three, and here rather than on a clock of
+      its own, because a standing instruction has to be carried out on a device that was
+      closed for a week just as much as on one opened every day, and boot is when the app
+      finds out how long that was. */
   autoLogDueDoses?: (driver: SqliteDriver) => Promise<void>;
   /** When to run the housekeeping passes, given the work to run. The app
       passes an idle callback (whenIdle, ../../idle.ts); leave it out and they
@@ -62,15 +50,13 @@ export async function migrateJournal(driver: SqliteDriver, fileOps: MigrationFil
 function isDatabaseLockedError(error: unknown): boolean {
   if (!error) return false;
   const message = error instanceof Error ? error.message : String(error);
-  /* "Access Handles cannot be created" (ux-carpet 243) is the web driver's
-     own version of the same fact the rest of this pattern already covers:
-     something else still has the file. It shows up when a tab that just
-     navigated away or reloaded held the OPFS SAH pool a worker of this tab's
-     own is now trying to acquire, and the browser has not yet let go of the
-     old worker's access handles - a race `mc-driver.ts`'s `pagehide` release
-     narrows but cannot close, since nothing here can await another page's
-     teardown. A moment is what it needs, the same as a locked SQLite file
-     needing another connection's transaction to end. */
+  /* "Access Handles cannot be created" is the web driver's own version of the same fact the
+     rest of this pattern already covers: something else still has the file. It shows up
+     when a tab that just navigated away or reloaded held the OPFS SAH pool a worker of this
+     tab's own is now trying to acquire, and the browser has not yet let go of the old
+     worker's access handles - a race `mc-driver.ts`'s `pagehide` release narrows but cannot
+     close, since nothing here can await another page's teardown. A moment is what it needs,
+     the same as a locked SQLite file needing another connection's transaction to end. */
   const pattern =
     /database is locked|\bcode 5\b|sqlite_busy|database table is locked|SQLiteDatabaseLockedException|SQLiteBusyException|\bbusy\b|Access Handles cannot be created/i;
   if (pattern.test(message)) return true;
@@ -87,12 +73,12 @@ type BootResult =
       driver: SqliteDriver;
       /** Whether the persistence request came back denied, known whenever
           the browser answers - which for Firefox is only through a
-          permission prompt (ticket 202), so nothing here awaits it before
+          permission prompt, so nothing here awaits it before
           resolving. Whoever wants the answer awaits this on its own. */
       persistRequest: Promise<boolean>;
       /** Resolves when the housekeeping passes have finished, and never
           rejects - a failure in any of them is warned about and left for the
-          next boot. Nothing in the app awaits it; the benchmarks and the
+          next pass that is due. Nothing in the app awaits it; the benchmarks and the
           tests that prove the passes ran do. */
       housekeeping: Promise<void>;
     }
@@ -107,7 +93,7 @@ export async function boot(deps: BootDeps): Promise<BootResult> {
   let driver!: SqliteDriver;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    /* No service worker may activate over a migration in progress (ticket 04):
+    /* No service worker may activate over a migration in progress:
        the transaction covers a failed step, but nothing covers the code being
        replaced between two of them. Taken before createDriver() so the window
        starts where the file is first touched. */
@@ -120,7 +106,7 @@ export async function boot(deps: BootDeps): Promise<BootResult> {
       // getUserVersion calls, which are where opening the database and
       // applying schema changes actually happen.
       driver = deps.createDriver();
-      /* The list itself only where it is needed (phase 5 audit ticket 02): 27KB
+      /* The list itself only where it is needed: 27KB
          of SQL text across the full schema history, which a journal already on
          the current version has no use for. The dynamic import is what keeps it
          out of the first-load graph, so it has to stay inside this call. */
@@ -138,7 +124,7 @@ export async function boot(deps: BootDeps): Promise<BootResult> {
       // Migrations run before anything reads or writes app data, so a
       // failure here means the caller must show a handled error state
       // instead of going on to render screens over a database that isn't
-      // there (ticket 04's acceptance: not a blank screen).
+      // there.
       failed = true;
       return { phase: 'error', error };
     } finally {
@@ -146,13 +132,13 @@ export async function boot(deps: BootDeps): Promise<BootResult> {
          reconcileBuiltIns, which takes the guard itself on the way through the
          journal wrapper, and the photo sweep, which only ever deletes files no
          row references - so an update landing mid-sweep leaves orphans for the
-         next boot to reclaim, which is what its own failure path already
-         does. */
+         next due sweep to reclaim (weekly, after a restore or after a failed
+         delete), which is what its own failure path already does. */
       migrating(!failed);
     }
   }
 
-  /* Asked, not awaited (ticket 202): Firefox answers navigator.storage.
+  /* Asked, not awaited: Firefox answers navigator.storage.
      persist() only through a permission prompt, so a headless run (and a
      LibreWolf that clears site permissions) waited here with no bound
      before any journal read. The request still goes out; the reads go on
@@ -163,24 +149,13 @@ export async function boot(deps: BootDeps): Promise<BootResult> {
 
   await deps.loadReferenceData?.(driver);
 
-  /* Step 4, scheduled rather than awaited (phase 5 audit ticket 02). Neither
-     pass produces anything a screen reads, and both grow with the journal -
-     the sweep lists the whole attachment directory, which is 886 files on the
-     decade fixture - while the call that unparks every query in the app waits
-     on boot() resolving.
+  /* Schedule trash purge and orphan sweep after boot reports ready.
+     Both grow with the journal; the decade fixture has 886 attachments.
 
-     What changes for them is that they now run with the screens live, so each
-     one takes the write watch its own module documents (watchJournalWrites,
-     ../journal-busy.ts) and gives up rather than delete something a write is
-     in the middle of. The update guard is deliberately not extended over them:
-     it is the same counter the watch reads, so a pass holding it would see its
-     own write and decline every time. What that costs is a service worker
-     activating between the purge's commit and its file removals, which leaves
-     orphan files for the sweep - and what it buys is the pass declining when a
-     person is saving, which is the failure that would cost data.
-
-     The order stays: the purge runs first so an entry whose 30 days are up is
-     a real delete before the sweep asks what nothing references any more. */
+     Each pass watches journal writes and yields if someone saves.
+     Holding the update guard would trip its own write watch. A worker
+     change after the purge commit can leave files for the sweep. Purge
+     first so the sweep sees rows deleted after the 30-day trash window. */
   const housekeeping = new Promise<void>((resolve) => {
     const run = () => void housekeep(deps, driver).then(resolve);
     if (deps.scheduleHousekeeping) deps.scheduleHousekeeping(run);
@@ -195,18 +170,21 @@ export async function boot(deps: BootDeps): Promise<BootResult> {
     what they did not finish is still there for the next boot to retry. */
 async function housekeep(deps: BootDeps, driver: SqliteDriver): Promise<void> {
   try {
+    await waitForJournalIdle();
     await deps.purgeExpiredTrash?.(driver);
   } catch (error) {
     console.warn('trash purge failed; expired entries stay trashed until the next boot', error);
   }
 
   try {
-    await deps.sweepOrphanPhotos?.(driver);
+    await waitForJournalIdle();
+    if (deps.shouldSweepOrphans?.() !== false) await deps.sweepOrphanPhotos?.(driver);
   } catch (error) {
-    console.warn('photo orphan sweep failed; unreferenced files stay until the next boot', error);
+    console.warn('photo orphan sweep failed; unreferenced files stay until the next due sweep (weekly, after a restore or after a failed delete)', error);
   }
 
   try {
+    await waitForJournalIdle();
     await deps.autoLogDueDoses?.(driver);
   } catch (error) {
     console.warn('auto-logging doses failed; the slots stay open until the next boot', error);

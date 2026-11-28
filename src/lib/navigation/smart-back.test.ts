@@ -1,19 +1,7 @@
-/* NAV-005: `smartBack` is the fix for Search and Day hardcoding where "back"
-   goes, landing on a screen the user never visited. `goto` is mocked here
-   because this Node tier has no SvelteKit alias configured for `$app/*` (it
-   runs plain `.ts` modules, not routes) - the two branches below are the
-   whole of the decision `smartBack` makes, so they are what a unit test can
-   usefully isolate without a real browser. The end-to-end case - does the
-   button actually land on the right screen in the running app - belongs to
-   `tests/walkthrough.test.mjs`, which drives a real build.
-
-   These tests used to stub `history.state['sveltekit:index']`, which is a
-   key SvelteKit stopped writing: it stamps `sveltekit:history` and
-   `sveltekit:navigation` timestamps now. So the module read `undefined` on
-   every screen and took its fallback every time, and this file passed
-   against a fiction it supplied itself (phase 5 UX ticket 25). The depth is
-   the app's own count now, which is a thing the app controls and can
-   therefore keep testing. */
+/* Check smartBack's history and fallback branches using the app's
+   own depth. SvelteKit's history keys do not provide that count.
+   Mock goto because the Node tier cannot resolve $app aliases.
+   tests/walkthrough.test.mjs checks real app navigation. */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const goto = vi.fn();
@@ -144,6 +132,26 @@ describe('replaceRoute', () => {
     expect(goto).toHaveBeenCalledWith('/compare', { noScroll: true, keepFocus: true, replaceState: true });
   });
 
+  /* `noScroll` holds the window, which the app does not scroll: the region
+     has to be told as well, or the in-place swap opens it at the top.
+     */
+  it('holds the scroll region still for a noScroll replacement, and only then', async () => {
+    const { claimScrollHold, restoreScroll } = await import('./scroll-region.ts');
+    const el = { scrollTop: 500 };
+    vi.stubGlobal('document', { querySelector: () => el });
+    const to = new URL('http://localhost/compare?a=1');
+
+    await replaceRoute('/compare?a=1', { noScroll: true, keepFocus: true });
+    claimScrollHold(to);
+    restoreScroll(to, 'goto');
+    expect(el.scrollTop).toBe(500);
+
+    await replaceRoute('/compare?a=1');
+    claimScrollHold(to);
+    restoreScroll(to, 'goto');
+    expect(el.scrollTop).toBe(0);
+  });
+
   it('does not deepen the history it replaced into', () => {
     /* The case that motivates this: a notification opens the app straight
        onto a screen, so the app sits on its boot entry with nothing behind
@@ -170,9 +178,8 @@ describe('replaceRoute', () => {
   });
 });
 
-/* After-release 17 review: the tab a borrowing page lights is kept per
-   history entry, keyed by the depth that entry sits at, so the shell has to
-   know that depth before the navigation settles. */
+/* review: the tab a borrowing page lights is kept per history entry, keyed by the depth
+   that entry sits at, so the shell has to know that depth before the navigation settles. */
 describe('depthAfter', () => {
   it('answers what the settled navigation will record, without recording it', () => {
     recordNavigation('link');

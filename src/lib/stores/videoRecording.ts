@@ -1,25 +1,11 @@
-/* Recording a video note in the editor (ticket 22).
+/* Record video through getUserMedia and MediaRecorder on web and
+   Android. Capacitor's WebChromeClient handles native CAMERA and
+   RECORD_AUDIO permission requests.
 
-   One seam, both platforms, for voiceRecording.ts's reason: video capture is
-   plain `getUserMedia`/`MediaRecorder`, which the Chromium WebView Capacitor
-   wraps on Android handles exactly like the browser does. Capacitor's own
-   WebChromeClient requests CAMERA and RECORD_AUDIO at the OS level and grants
-   the WebView resource on approval - see AndroidManifest.xml's permission
-   block - so there is no native bridge here the way photos.ts needs one for
-   the still-camera intent.
-
-   Unlike a voice recording, a video note is not stored as MediaRecorder
-   produced it. Ticket 22 caps it at 30 seconds and 1080p and asks for a
-   re-encode when the file is still too big afterwards, so this store owns
-   three things a recording does not: the constraints that pin the
-   resolution, the timer that enforces the duration, and the wall clock the
-   re-encode's target is worked out from (limits.ts explains why the clock
-   has to be ours - WebM out of MediaRecorder carries no duration).
-
-   The codec fallback chain is journey-render.ts's rather than
-   voiceRecording.ts's single fixed type: video codec support genuinely
-   varies where audio/opus does not, and a WebView at this app's floor
-   (capacitor.config.ts's minWebViewVersion) may have VP8 without VP9. */
+   Cap notes at 30 seconds and 1080p. Re-encode oversized output using
+   wall-clock duration because MediaRecorder's WebM has no duration
+   metadata. Use the renderer's codec fallback chain because a
+   supported WebView may have VP8 without VP9. */
 
 import { chooseFiles } from '$lib/data/fileDialog';
 import { m } from '$lib/paraglide/messages';
@@ -66,8 +52,10 @@ const supportedMimeType = (): string | null =>
 /** Opens the camera and microphone and starts capturing. Null if the browser
     refused - permission denied, no camera, or no WebM encoder - which is
     reported with a toast and treated as an ordinary outcome rather than an
-    error, the treatment startRecording gives the same refusals. */
-export async function startVideoRecording(): Promise<ActiveVideoRecording | null> {
+    error, the treatment startRecording gives the same refusals. A cancelled
+    owner closes a late stream before any recorder or feedback is created. */
+export async function startVideoRecording(signal?: AbortSignal): Promise<ActiveVideoRecording | null> {
+  if (signal?.aborted) return null;
   const mimeType = supportedMimeType();
   if (typeof MediaRecorder === 'undefined' || !mimeType) {
     toast(m.video_unsupported());
@@ -79,61 +67,104 @@ export async function startVideoRecording(): Promise<ActiveVideoRecording | null
     stream = await navigator.mediaDevices.getUserMedia(videoCaptureConstraints());
   } catch (error) {
     console.error('the camera could not be opened', error);
-    toast(m.video_camera_failed());
+    if (!signal?.aborted) toast(m.video_camera_failed());
+    return null;
+  }
+  const stopTracks = () => {
+    for (const track of stream.getTracks()) track.stop();
+  };
+  if (signal?.aborted) {
+    stopTracks();
     return null;
   }
 
   const chunks: Blob[] = [];
-  const recorder = new MediaRecorder(stream, {
-    mimeType,
-    videoBitsPerSecond: VIDEO_CAPTURE_BITS.video,
-    audioBitsPerSecond: VIDEO_CAPTURE_BITS.audio
-  });
+  let recorder: MediaRecorder;
+  try {
+    recorder = new MediaRecorder(stream, {
+      mimeType,
+      videoBitsPerSecond: VIDEO_CAPTURE_BITS.video,
+      audioBitsPerSecond: VIDEO_CAPTURE_BITS.audio
+    });
+  } catch (error) {
+    stopTracks();
+    throw error;
+  }
   recorder.ondataavailable = (event) => {
     if (event.data.size > 0) chunks.push(event.data);
   };
-  const stopped = new Promise<void>((resolve) => {
-    recorder.onstop = () => resolve();
-  });
+  let cap: ReturnType<typeof setTimeout> | undefined;
+  let failure: unknown;
+  let failed = false;
+  let settle!: () => void;
+  const stopped = new Promise<void>((resolve) => { settle = resolve; });
+  const release = () => {
+    clearTimeout(cap);
+    stopTracks();
+    settle();
+  };
+  recorder.onstop = release;
+  recorder.onerror = (event) => {
+    failed = true;
+    failure = (event as Event & { error: DOMException }).error;
+    release();
+  };
+  const stopRecorder = () => {
+    try {
+      if (recorder.state !== 'inactive') recorder.stop();
+    } catch (error) {
+      failed = true;
+      failure = error;
+      release();
+    } finally {
+      clearTimeout(cap);
+      stopTracks();
+    }
+  };
 
   const startedAt = performance.now();
-  recorder.start();
+  try {
+    recorder.start();
+  } catch (error) {
+    release();
+    throw error;
+  }
 
   /* The duration cap, enforced here rather than trusted to the caller: the
      ceiling only holds if 30 seconds is the most that can ever be captured,
      and a screen that forgot its timer would quietly break it. Stopping the
      recorder is enough - `stop()` below awaits the same promise whether the
      timer or the user got there first. */
-  const cap = setTimeout(() => {
-    if (recorder.state !== 'inactive') recorder.stop();
-  }, VIDEO_MAX_DURATION_MS);
+  cap = setTimeout(stopRecorder, VIDEO_MAX_DURATION_MS);
 
+  const finish = async (): Promise<Uint8Array | null> => {
+    if (!failed) stopRecorder();
+    await stopped;
+    if (failed) throw failure;
+    const durationMs = performance.now() - startedAt;
+    if (chunks.length === 0) return null;
+
+    const captured = new Blob(chunks, { type: mimeType });
+    const target = reencodeTarget(captured.size, durationMs);
+    if (!target) return new Uint8Array(await captured.arrayBuffer());
+
+    /* Over the ceiling despite the bitrate hint, so it gets compressed
+       further rather than accepted as-is (ADR-0008's photo rule applied to
+       video). Whichever came out smaller is what gets stored: a re-encode
+       that somehow grew the file would be a worse outcome than keeping the
+       capture, and one comparison is cheaper than reasoning about when
+       that can happen. */
+    const smaller = await reencodeVideo(captured, target, mimeType);
+    const stored = smaller && smaller.size < captured.size ? smaller : captured;
+    return new Uint8Array(await stored.arrayBuffer());
+  };
+
+  let result: Promise<Uint8Array | null> | undefined;
   return {
     stream,
     capped: stopped,
-    async stop() {
-      clearTimeout(cap);
-      if (recorder.state !== 'inactive') recorder.stop();
-      await stopped;
-      const durationMs = performance.now() - startedAt;
-      // Closes the camera and mic indicators the OS shows while a stream is
-      // live - stopping the recorder alone leaves the tracks open.
-      for (const track of stream.getTracks()) track.stop();
-      if (chunks.length === 0) return null;
-
-      const captured = new Blob(chunks, { type: mimeType });
-      const target = reencodeTarget(captured.size, durationMs);
-      if (!target) return new Uint8Array(await captured.arrayBuffer());
-
-      /* Over the ceiling despite the bitrate hint, so it gets compressed
-         further rather than accepted as-is (ADR-0008's photo rule applied to
-         video). Whichever came out smaller is what gets stored: a re-encode
-         that somehow grew the file would be a worse outcome than keeping the
-         capture, and one comparison is cheaper than reasoning about when
-         that can happen. */
-      const smaller = await reencodeVideo(captured, target, mimeType);
-      const stored = smaller && smaller.size < captured.size ? smaller : captured;
-      return new Uint8Array(await stored.arrayBuffer());
+    stop() {
+      return result ??= finish();
     }
   };
 }

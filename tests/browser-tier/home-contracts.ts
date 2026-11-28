@@ -1,0 +1,583 @@
+import { flushSync } from 'svelte';
+import { mountScreen, until } from './mount-screen';
+import { mountInto } from './mount';
+import { prepareScreenJournal } from './screen-journal';
+import {
+  fixture,
+  assertions,
+  node,
+  style,
+  today,
+  heldReads,
+  countedReads,
+  type Result
+} from './screen-contracts/fixture';
+import { refreshActiveFlag } from '$lib/theme/activeFlag.svelte';
+import { prefs } from '$lib/data/prefs/store.svelte';
+import { m } from '$lib/paraglide/messages';
+import QuickAdd from '$lib/components/QuickAdd.svelte';
+import { ui } from '$lib/stores/ui.svelte';
+import { HOME_AREA_ROLE, tileRoleAt } from '$lib/theme/roles';
+import { activeFlag } from '$lib/theme/activeFlag.svelte';
+import { LIVE_TILE_ORDER } from '$lib/data/liveTiles';
+import { calendarDuration } from '$lib/data/epochDay';
+import { journeyAnchorLine } from '$lib/data/journeyAnchor';
+
+export async function homeContracts(): Promise<Result[]> {
+  const results: Result[] = [];
+  const check = assertions(results);
+  const f = await fixture('home', 0);
+  f.preferences!.pinnedRows = [];
+  f.preferences!.lastBackupAt = Date.now() - 60 * 86400000;
+  let screen = await mountScreen('/', f);
+  const root = () => screen.target;
+  await until(() => root().querySelector('[data-getting-started]'), 'day-one Home');
+  await until(() => !root().querySelector('[data-read-reserve-hold]') || null, 'Home reads');
+  await check(
+    'Home uses kit surfaces without old cards or empty placeholders',
+    () => !root().querySelector('.card,.list-group,.empty-state,.skeleton,.home-tiles')
+  );
+  for (const handle of ['home-header', 'home-hero', 'home-hello', 'home-log', 'home-pinned'])
+    await check(`Home keeps data-${handle}`, () => root().querySelector(`[data-${handle}]`));
+  await check(
+    'Home hides the count when no entry exists',
+    () => !root().querySelector('[data-home-count]')
+  );
+  await check(
+    'Home draws no time-since line without a journey anchor',
+    () => !root().querySelector('[data-home-anchor]')
+  );
+  await check('Getting started offers five destinations including More without dismiss', () => {
+    const section = node(root(), '[data-getting-started]');
+    return (
+      section.querySelectorAll('a').length === 5 &&
+      section.querySelector('a[href="/more"]') &&
+      !section.querySelector('button')
+    );
+  });
+  await check(
+    'Home keeps five shared mood handles',
+    () => root().querySelectorAll('[data-home-log] [data-mood]').length === 5
+  );
+  await check(
+    'Home keeps writes out of the mood strip',
+    () => !root().querySelector('[data-home-log-shape],[data-home-log] [data-choose]')
+  );
+  await check(
+    'Home has no entries, duplicate week, milestones, teasers or streak',
+    () =>
+      !root().querySelector(
+        '[data-entry-card],[data-week-strip],[data-milestone-rail],[data-wrapped-card],[data-on-this-day-card],a[href="/timeline"]'
+      ) && !/streak/i.test(root().textContent!)
+  );
+  await check(
+    'Home has no doubt, onset or effects card',
+    () =>
+      !root().querySelector(
+        '[data-live-tile="effects"],[data-live-tile="hrt-onset"],[data-doubt-card]'
+      )
+  );
+  await check('Home puts sun and wordmark in field and greeting and gear on page', () => {
+    const field = node(root(), '[data-home-field]');
+    const foot = node(root(), '[data-home-foot]');
+    return (
+      field.querySelector('[data-flag-sun]') &&
+      field.querySelector('[data-home-hero]') &&
+      !field.querySelector('[data-home-hello]') &&
+      foot.querySelector('[data-home-hello]') &&
+      foot.querySelector('[data-home-gear]')
+    );
+  });
+  for (const palette of ['trans', 'agender', 'nonbinary']) {
+    await check(`Home log and pins use current ${palette} roles`, () => {
+      prefs.palette = palette;
+      document.documentElement.dataset.palette = palette;
+      refreshActiveFlag(document);
+      flushSync();
+      const log = style(root(), '[data-home-log]').getPropertyValue('--role').trim();
+      const pins = style(root(), '[data-home-pinned] .kit-list').getPropertyValue('--role').trim();
+      return (
+        HOME_AREA_ROLE.log === 0 &&
+        log === activeFlag.roles[0].stripe &&
+        pins === tileRoleAt(activeFlag.roles, HOME_AREA_ROLE.pinned)?.stripe
+      );
+    });
+  }
+  await check('Disguise keeps flag, roles and Home name after unlock', () => {
+    prefs.disguise = true;
+    refreshActiveFlag(document);
+    flushSync();
+    return (
+      !!root().querySelector('[data-flag-sun]') &&
+      activeFlag.roles.length > 0 &&
+      node(root(), '[data-home-hero]').textContent === m.app_name()
+    );
+  });
+  await screen.remove();
+  for (let i = 0; i < 5; i++)
+    await f.journal.entries.upsertEntry({ epochDay: today - i, mood: 4, note: `Home entry ${i}` });
+  for (let i = 1; i <= 5; i++)
+    await f.journal.appointments.upsertAppointment({
+      epochDay: today + i,
+      procedureId: null,
+      kind: 'Contract appointment',
+      place: 'Private place',
+      note: null
+    });
+  f.hasEntries = true;
+  f.preferences!.pinnedRows = ['milestones', 'letters', 'wear'];
+  screen = await mountScreen('/', f);
+  await until(() => root().querySelector('[data-home-agenda-fold]'), 'Home agenda');
+  await until(() => root().querySelector('[data-pinned-row]'), 'Home pins');
+  await check(
+    'Five entries remove getting started and report whole journal',
+    () =>
+      !root().querySelector('[data-getting-started]') &&
+      /5/.test(node(root(), '[data-home-count]').textContent!)
+  );
+  await check('Agenda precedes log; notices and pins follow log', () => {
+    const agenda = node(root(), '[data-home-agenda]');
+    const log = node(root(), '[data-home-log]');
+    const pinned = node(root(), '[data-home-pinned]');
+    return (
+      !!(agenda.compareDocumentPosition(log) & Node.DOCUMENT_POSITION_FOLLOWING) &&
+      !!(log.compareDocumentPosition(pinned) & Node.DOCUMENT_POSITION_FOLLOWING) &&
+      !agenda.querySelector('[data-backup-notice],[data-stock-notice],[data-debrief-offer]')
+    );
+  });
+  await check(
+    'Agenda shows three upcoming items and fold is a named button',
+    () =>
+      root().querySelectorAll('[data-agenda-item]').length === 3 &&
+      node(root(), '[data-home-agenda-fold]').tagName === 'BUTTON' &&
+      node(root(), '[data-home-agenda-fold]').getAttribute('aria-expanded') === 'false'
+  );
+  await check('Agenda fold expands in place and collapses again', async () => {
+    node(root(), '[data-home-agenda-fold]').click();
+    await until(
+      () => root().querySelectorAll('[data-agenda-item]').length === 5,
+      'expanded agenda'
+    );
+    const expanded =
+      node(root(), '[data-home-agenda-fold]').getAttribute('aria-expanded') === 'true';
+    node(root(), '[data-home-agenda-fold]').click();
+    await until(
+      () => root().querySelectorAll('[data-agenda-item]').length === 3,
+      'collapsed agenda'
+    );
+    return expanded;
+  });
+  await check(
+    'Pinned rows preserve chosen order and resolve forward lines',
+    () =>
+      [...root().querySelectorAll('[data-pinned-row]')]
+        .map((n) => n.getAttribute('data-pinned-row'))
+        .join(',') === 'milestones,letters,wear'
+  );
+  await check('Empty pin arrangement keeps edit entry point', async () => {
+    prefs.pinnedRows = [];
+    flushSync();
+    await until(
+      () => root().querySelector('[data-edit-today]') && !root().querySelector('[data-pinned-row]'),
+      'empty pins'
+    );
+    return node(root(), '[data-edit-today]').textContent?.includes(m.home_pinned_edit_empty());
+  });
+  await check('Home editor opens in place', async () => {
+    node(root(), '[data-edit-today]').click();
+    return await until(() => root().querySelector('[data-home-editing]'), 'Home editor');
+  });
+  await screen.remove();
+  /* Midnight on a Home that stays mounted: the
+     greeting moves to the new day. The clock is shifted in the page and
+     the day store woken the way a page coming back to the foreground wakes
+     it. */
+  screen = await mountScreen('/', f);
+  await until(() => root().querySelector('[data-home-hello]'), 'Home greeting');
+  const greetingBefore = node(root(), '[data-home-hello]').textContent;
+  const RealDate = Date;
+  const shift = 86_400_000;
+  class ShiftedDate extends RealDate {
+    constructor(...args: unknown[]) {
+      super(...((args.length ? args : [RealDate.now() + shift]) as [number]));
+    }
+    static now() {
+      return RealDate.now() + shift;
+    }
+  }
+  globalThis.Date = ShiftedDate as DateConstructor;
+  try {
+    document.dispatchEvent(new Event('visibilitychange'));
+    await check('Home greeting follows the day across midnight without a reload', async () => {
+      await until(
+        () => node(root(), '[data-home-hello]').textContent !== greetingBefore || null,
+        'greeting on the new day'
+      );
+      return true;
+    });
+  } finally {
+    globalThis.Date = RealDate;
+  }
+  await screen.remove();
+  /* With a journey anchor, the foot says how long ago it was, and a Home that stays mounted
+     moves the count on when the day completes another month. The anchor sits 45 days back,
+     and the clock is walked to the eve of the second month and then onto it. */
+  const anchorDay = today - 45;
+  const anchorId = await f.journal.milestones.upsertMilestone({ name: 'Started HRT', epochDay: anchorDay });
+  f.preferences!.journeyAnchorMilestoneId = anchorId;
+  let monthDay = today + 1;
+  while (calendarDuration(anchorDay, monthDay).months < 2) monthDay++;
+  screen = await mountScreen('/', f);
+  await check('Home says how long ago the journey anchor was', async () => {
+    await until(() => root().querySelector('[data-home-anchor]'), 'anchor line');
+    return node(root(), '[data-home-anchor]').textContent === journeyAnchorLine({ name: 'Started HRT', epochDay: anchorDay }, today);
+  });
+  let anchorShift = 0;
+  class AnchorShiftedDate extends RealDate {
+    constructor(...args: unknown[]) {
+      super(...((args.length ? args : [RealDate.now() + anchorShift]) as [number]));
+    }
+    static now() {
+      return RealDate.now() + anchorShift;
+    }
+  }
+  globalThis.Date = AnchorShiftedDate as DateConstructor;
+  try {
+    const lineOn = async (day: number) => {
+      anchorShift = (day - today) * 86_400_000;
+      document.dispatchEvent(new Event('visibilitychange'));
+      const expected = journeyAnchorLine({ name: 'Started HRT', epochDay: anchorDay }, day);
+      await until(() => node(root(), '[data-home-anchor]').textContent === expected || null, `anchor line on ${day}`);
+      return expected;
+    };
+    await check('The time-since line moves on across a month boundary without a reload', async () => {
+      const eve = await lineOn(monthDay - 1);
+      const after = await lineOn(monthDay);
+      return eve === 'Started HRT, 1 month ago' && after === 'Started HRT, 2 months ago';
+    });
+  } finally {
+    globalThis.Date = RealDate;
+  }
+  await screen.remove();
+  f.preferences!.journeyAnchorMilestoneId = null;
+  screen = await mountScreen('/more', f);
+  await check('More keeps Safe Space and milestones destinations', async () => {
+    await until(() => root().querySelector('a[href="/doubt"]'), 'More rows');
+    return root().querySelector('a[href="/transition/milestones"]');
+  });
+  await screen.remove();
+  const promptEntry = (await f.journal.entries.entriesForDay(today))[0];
+  screen = await mountScreen(`/?quickLogDims=${promptEntry.id}`, f);
+  await until(() => root().querySelector('[data-home-log] [data-mood="4"]'), 'quick mood');
+  /* A mood-only save opens no follow-up sheet. The address the editor used to land on after
+     one is the old way in, so it is the one that has to open nothing now. */
+  await check('A mood-only save opens no scales follow-up sheet', async () => {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    return !root().querySelector('[data-quick-log-dims],[data-sheet] [data-qld-input]');
+  });
+  await screen.remove();
+  const quickAddEpisode = await f.journal.regimen.upsertEpisode({
+    drug: 'Contract estradiol',
+    ester: null,
+    dose: 4,
+    doseUnit: 'mg',
+    route: 'oral',
+    interval: 'daily',
+    startEpochDay: today - 10,
+    endEpochDay: null,
+    endReason: null
+  });
+  await f.journal.wearSessions.upsertSession({
+    kind: 'binder',
+    startTimestamp: Date.now() - 3600000,
+    durationMs: null
+  });
+  const fanTarget = document.createElement('div');
+  document.querySelector('#screens')!.replaceChildren(fanTarget);
+  const fan = mountInto(QuickAdd, {}, fanTarget);
+  flushSync();
+  await check('Quick add retains dose and wear write shapes', async () => {
+    ui.chooserOpen = true;
+    flushSync();
+    await until(() => fanTarget.querySelector('[data-choose="dose"]'), 'quick add');
+    return ['dose', 'wear'].every((key) =>
+      fanTarget.querySelector(`[data-choose="${key}"]`)
+    );
+  });
+  ui.chooserOpen = false;
+  await fan.remove();
+  const availabilityFixture = await fixture('quick-availability', 0);
+  const episodeId = await availabilityFixture.journal.regimen.upsertEpisode({
+    drug: 'Contract estradiol', ester: null, dose: 4, doseUnit: 'mg', route: 'oral',
+    interval: 'daily', startEpochDay: today - 10, endEpochDay: null, endReason: null
+  });
+  await availabilityFixture.journal.wearSessions.upsertSession({
+    kind: 'binder', startTimestamp: Date.now() - 3600000, durationMs: 60000
+  });
+  let holdAvailability = false;
+  let failAvailability = false;
+  const delayed = heldReads(
+    availabilityFixture,
+    ['wearSessions', 'areaStates', 'regimen'],
+    (method) => {
+      if (failAvailability && method === 'getAreaStates') throw new Error('injected availability failure');
+      return holdAvailability && ['getRunningSession', 'latestKind', 'getAreaStates', 'getEpisodes'].includes(method);
+    }
+  );
+  const observed = countedReads(delayed.fixture);
+  await prepareScreenJournal(observed.fixture.journal);
+  const availabilityTarget = document.createElement('div');
+  document.querySelector('#screens')!.replaceChildren(availabilityTarget);
+  const availabilityFan = mountInto(QuickAdd, {}, availabilityTarget);
+  ui.chooserOpen = true;
+  await until(() => availabilityTarget.querySelector('[data-choose="dose"]'), 'initial quick dose');
+  await until(() => availabilityTarget.querySelector('[data-choose="wear"]'), 'initial quick wear');
+  ui.chooserOpen = false;
+  flushSync();
+  await availabilityFixture.journal.areaStates.setAreasHidden(['wearSessions'], true);
+  await availabilityFixture.journal.regimen.endEpisode(episodeId, today - 1);
+  holdAvailability = true;
+  ui.chooserOpen = true;
+  flushSync();
+  const staleDose = availabilityTarget.querySelector<HTMLButtonElement>('[data-choose="dose"]');
+  const staleWear = availabilityTarget.querySelector<HTMLButtonElement>('[data-choose="wear"]');
+  await check('Quick add disables cached actions during reopen reads', () =>
+    staleDose?.disabled && staleWear?.disabled
+  );
+  staleDose?.click();
+  staleWear?.click();
+  flushSync();
+  await check('Quick add tap cannot activate cached actions', () =>
+    ui.chooserOpen && !observed.calls.has('wearSessions.upsertSession')
+  );
+  if (staleDose) {
+    const rect = staleDose.getBoundingClientRect();
+    ui.chooserPressing = true;
+    window.dispatchEvent(new PointerEvent('pointermove', {
+      clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2, bubbles: true
+    }));
+    window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+    flushSync();
+  }
+  await check('Quick add slide cannot activate cached dose', () => ui.chooserOpen);
+  delayed.release();
+  await until(() => !availabilityTarget.querySelector('[data-choose="dose"],[data-choose="wear"]') || null, 'unavailable quick actions');
+  await check('Quick add refresh removes unavailable actions without a wear write', () =>
+    ui.chooserOpen && !observed.calls.has('wearSessions.upsertSession')
+  );
+  ui.chooserOpen = false;
+  flushSync();
+  await availabilityFixture.journal.areaStates.setAreasHidden(['wearSessions'], false);
+  await availabilityFixture.journal.regimen.upsertEpisode({
+    id: episodeId, drug: 'Contract estradiol', ester: null, dose: 4, doseUnit: 'mg',
+    route: 'oral', interval: 'daily', startEpochDay: today - 10,
+    endEpochDay: null, endReason: null
+  });
+  holdAvailability = false;
+  ui.chooserOpen = true;
+  await until(() => {
+    const dose = availabilityTarget.querySelector<HTMLButtonElement>('[data-choose="dose"]');
+    const wear = availabilityTarget.querySelector<HTMLButtonElement>('[data-choose="wear"]');
+    return dose && wear && !dose.disabled && !wear.disabled;
+  }, 'restored quick actions');
+  const runningBefore = await availabilityFixture.journal.wearSessions.getRunningSession();
+  availabilityTarget.querySelector<HTMLButtonElement>('[data-choose="wear"]')!.click();
+  let validWearWorked = false;
+  const wearDeadline = performance.now() + 4000;
+  while (performance.now() < wearDeadline) {
+    const runningAfter = await availabilityFixture.journal.wearSessions.getRunningSession();
+    if (!!runningAfter !== !!runningBefore) {
+      validWearWorked = true;
+      break;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  failAvailability = true;
+  ui.chooserOpen = true;
+  await check('Quick add valid wear works and failed refresh removes cached actions', async () => {
+    await until(() => !availabilityTarget.querySelector('[data-choose="dose"],[data-choose="wear"]') || null, 'failed availability actions');
+    return validWearWorked && ui.chooserOpen;
+  });
+  ui.chooserOpen = false;
+  await availabilityFan.remove();
+  await f.journal.regimen.setEpisodeHidden(quickAddEpisode, true);
+  await f.journal.procedures.upsertProcedure({
+    name: 'Contract surgery',
+    surgeryEpochDay: today - 10
+  });
+  await f.journal.letters.addLetter({
+    epochDay: today - 3,
+    unlockEpochDay: today - 1,
+    text: 'Sealed contract letter'
+  });
+  await f.journal.appointments.upsertAppointment({
+    epochDay: today,
+    procedureId: null,
+    kind: 'Contract endocrinologist',
+    place: 'Contract clinic',
+    note: null
+  });
+  const initialReads: [string, string, number?][] = [
+    ['wearSessions', 'getRunningSession'],
+    ['regimen', 'getEpisodes'],
+    ['procedures', 'getProcedures'],
+    ['letters', 'getLetterSeals'],
+    ['entries', 'latestBadMomentEntryId'],
+    ['doses', 'getSchedules'],
+    ['doses', 'getPauses'],
+    ['doses', 'getDosesForSlots', today],
+    ['doses', 'getDoses', today - 1],
+    ['areaStates', 'getAreaStates'],
+    ['appointments', 'getDayRecords']
+  ];
+  for (const [area, operation, day] of initialReads) {
+    const held = heldReads(
+      f,
+      [area],
+      (method, args) => method === operation && (day === undefined || args[0] === day)
+    );
+    screen = await mountScreen('/', held.fixture);
+    await check(
+      `Home waits for initial ${area}.${operation}${day === undefined ? '' : `(${day})`}`,
+      async () => {
+        await until(() => root().querySelector('[data-home-log]'), 'held Home');
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        return (
+          !root().querySelector('[data-live-tile],[data-home-tiles-fold],[data-home-agenda]') &&
+          root().querySelector('[data-read-reserve-hold]')
+        );
+      }
+    );
+    held.release();
+    await until(
+      () => root().querySelector('[data-live-tile="wear-timer"]'),
+      'settled running wear tile'
+    );
+    await screen.remove();
+  }
+  screen = await mountScreen('/', f);
+  await until(() => root().querySelector('[data-live-tile="wear-timer"]'), 'running wear tile');
+  await check('Home live tiles retain registry keys and running versus waiting weights', () => {
+    const wear = node(root(), '[data-live-tile="wear-timer"]');
+    const surgery = node(root(), '[data-live-tile="surgery-countdown"]');
+    return (
+      wear.getAttribute('data-weight') === 'row' &&
+      surgery.getAttribute('data-weight') === 'card' &&
+      root().querySelector('[data-live-tile="ready-letter"]')
+    );
+  });
+  await check('Running tier leads agenda and mood log', () => {
+    const wear = node(root(), '[data-live-tile="wear-timer"]');
+    return !!(
+      wear.compareDocumentPosition(node(root(), '[data-home-agenda]')) &
+      Node.DOCUMENT_POSITION_FOLLOWING
+    );
+  });
+  await check("Agenda's today row names today's appointment and its place", () => {
+    const row = node(root(), `[data-agenda-item="appointment"][data-agenda-day="${today}"]`);
+    return (
+      row.textContent!.includes('Contract endocrinologist') &&
+      row.textContent!.includes('Contract clinic') &&
+      !root().querySelector('[data-live-tile="appointment-today"]')
+    );
+  });
+  await check('Backup notice stays below mood strip and out of agenda', () => {
+    const notice = node(root(), '[data-backup-notice]');
+    return (
+      !!(
+        node(root(), '[data-home-log]').compareDocumentPosition(notice) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+      ) && !node(root(), '[data-home-agenda]').contains(notice)
+    );
+  });
+  await screen.remove();
+
+  /* A tile whose kind is switched off, or whose area is hidden, issues no read at all - not
+     a read whose answer is then ignored. Each pair is a read only the tile grid makes on
+     Home. */
+  const TILE_READS = [
+    'wearSessions.getRunningSession',
+    'regimen.getEpisodes',
+    'procedures.getProcedures',
+    'letters.getLetterSeals',
+    'entries.latestBadMomentEntryId',
+    'doses.getSchedules',
+    'doses.getPauses',
+    'doses.getDosesForSlots',
+    'doses.getDoses'
+  ];
+  const settledHome = async () => {
+    await until(() => root().querySelector('[data-home-log]'), 'counted Home');
+    await until(() => !root().querySelector('[data-read-reserve-hold]') || null, 'counted Home reads');
+    await new Promise((resolve) => setTimeout(resolve, 300));
+  };
+  /* No pinned rows, because a pinned wear or letters row asks two of the
+     same questions for its own line (rowForwardReads.ts). */
+  const unpinned = { ...f.preferences, pinnedRows: [] };
+  const allTilesOff = { surfaceOverrides: Object.fromEntries(LIVE_TILE_ORDER.map((kind) => [kind, false])) };
+  let counted = countedReads({ ...f, preferences: { ...unpinned, ...allTilesOff } });
+  screen = await mountScreen('/', counted.fixture);
+  await settledHome();
+  await check('Home issues no tile read while every tile is switched off', () => {
+    const asked = TILE_READS.filter((name) => counted.calls.has(name));
+    if (asked.length) throw new Error(`asked ${asked.map((name) => `${name} x${counted.calls.get(name)}`).join(', ')}`);
+    return !root().querySelector('[data-live-tile]');
+  });
+  await screen.remove();
+  await f.journal.areaStates.setAreasHidden(['wearSessions'], true);
+  counted = countedReads({ ...f, preferences: unpinned });
+  screen = await mountScreen('/', counted.fixture);
+  await settledHome();
+  await check('Home issues no read for a tile whose area is hidden', () => {
+    const hiddenReads = ['wearSessions.getRunningSession'];
+    const asked = hiddenReads.filter((name) => counted.calls.has(name));
+    if (asked.length) throw new Error(`asked ${asked.join(', ')}`);
+    /* The other tiles still read: the gate is per tile, not a switch on
+       the whole grid. */
+    return counted.calls.has('procedures.getProcedures') && !root().querySelector('[data-live-tile="wear-timer"]');
+  });
+  await screen.remove();
+  await f.journal.areaStates.setAreasHidden(['wearSessions'], false);
+  await f.journal.entries.upsertEntry({ epochDay: today, mood: 1, note: 'Difficult contract day' });
+  screen = await mountScreen('/', f);
+  await until(() => root().querySelector('[data-home-tiles-fold]'), 'live tile overflow');
+  await check(
+    'Live tile overflow is named button with collapsed state',
+    () =>
+      node(root(), '[data-home-tiles-fold]').tagName === 'BUTTON' &&
+      node(root(), '[data-home-tiles-fold]').getAttribute('aria-expanded') === 'false'
+  );
+  await check('Live tile overflow expands in place without losing registry keys', async () => {
+    const before = root().querySelectorAll('[data-live-tile]').length;
+    node(root(), '[data-home-tiles-fold]').click();
+    await until(
+      () => root().querySelectorAll('[data-live-tile]').length > before,
+      'expanded tiles'
+    );
+    return (
+      node(root(), '[data-home-tiles-fold]').getAttribute('aria-expanded') === 'true' &&
+      root().querySelector('[data-live-tile="safe-space-nudge"]') &&
+      root().querySelector('[data-live-tile="ready-letter"]')
+    );
+  });
+  await screen.remove();
+  /* A milestone landing today, not `?celebrate=1`: this tier builds with
+     __DEMO__ off, where the parameter does nothing. */
+  await f.journal.milestones.upsertMilestone({ name: 'Started HRT', epochDay: today });
+  screen = await mountScreen('/', {
+    ...f,
+    preferences: { ...f.preferences, a11yMotionReduce: false }
+  });
+  // Held for the anniversary consent read, which answers after the mount.
+  await until(() => root().querySelector('.home-cheer i'), 'milestone celebration');
+  await check('Milestone celebration plays once and stops under reduced motion', () => {
+    const particles = [...root().querySelectorAll('.home-cheer i')];
+    const once =
+      particles.length > 0 &&
+      particles.every((n) => getComputedStyle(n).animationIterationCount === '1');
+    document.documentElement.dataset.a11yMotion = 'reduce';
+    return once && particles.every((n) => getComputedStyle(n).animationName === 'none');
+  });
+  await screen.remove();
+  return results;
+}

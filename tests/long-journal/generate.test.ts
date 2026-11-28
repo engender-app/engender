@@ -1,4 +1,4 @@
-/* The ten-year generator's own tests (phase 2 ticket 20). Node tier, over
+/* The ten-year generator's own tests. Node tier, over
    node:sqlite, at a scale that runs in a second - the ten-year run itself
    belongs to the browser tier, where a real encrypted driver and real OPFS
    are what the measurements are worth taking against.
@@ -94,9 +94,8 @@ test('it writes all five kinds of content the measurements read', async () => {
   expect(first.fileName).toBeTruthy();
 });
 
-/* Phase 8 features ticket 53: this fixture had never carried a document of
-   either kind until now, so the archive's file manifest had never seen
-   tens of megabytes of one un-normalisable file. */
+/* This fixture had never carried a document of either kind until now, so the archive's file
+   manifest had never seen tens of megabytes of one un-normalisable file. */
 test('it writes documents, one image and several PDFs sized in whole megabytes', async () => {
   const { journal, summary } = await generate({ seed: 1 });
 
@@ -158,7 +157,7 @@ test('every dimension the stats screen charts carries values', async () => {
   }
 });
 
-test('it writes the phase 5 content the new measurements read (ticket 01)', async () => {
+test('writes content for the long-journal measurements', async () => {
   const { journal, summary } = await generate({ seed: 8, days: 400 });
 
   expect(summary.regionEuphoriaEntries).toBeGreaterThan(0);
@@ -167,11 +166,9 @@ test('it writes the phase 5 content the new measurements read (ticket 01)', asyn
   expect(withRegions.length).toBeGreaterThan(0);
   expect(withRegions.some((e) => Object.values(e.bodyRegions).some((value) => value >= 75))).toBe(true);
 
-  expect(summary.hairStagings).toBeGreaterThan(0);
-  expect(await journal.hairProgress.getStages()).toHaveLength(summary.hairStagings);
-  expect((await journal.hairProgress.getPhotos()).length).toBeGreaterThan(0);
+  expect((await journal.progressPhotos.getPhotos()).filter((photo) => photo.pose === 'hair').length).toBeGreaterThan(0);
 
-  // Three episodes as of ticket 36: the original plus two more that overlap
+  // Three episodes as of the original plus two more that overlap
   // it (concurrent-episode coverage lives in the next test, below).
   const episodes = await journal.regimen.getEpisodes();
   expect(episodes).toHaveLength(3);
@@ -184,12 +181,12 @@ test('it writes the phase 5 content the new measurements read (ticket 01)', asyn
   expect(firstEpisodeDoses).toHaveLength(summary.doseEvents);
 });
 
-test('it writes the fixture every More-hub area reads (ticket 36)', async () => {
+test('it writes the fixture every More-hub area reads', async () => {
   const { journal, summary } = await generate({ seed: 9, days: 800 });
 
-  // Regimen: the ten-year episode above plus two ticket 36 adds - the
+  // Regimen: the ten-year episode above plus two adds - the
   // second overlaps it for a stretch, the third is the injectable one the
-  // hormone curve reads.
+  // regimen and dose screens read.
   const episodes = await journal.regimen.getEpisodes();
   expect(episodes).toHaveLength(3);
   expect(await journal.doses.getSchedules()).toHaveLength(3);
@@ -197,15 +194,6 @@ test('it writes the fixture every More-hub area reads (ticket 36)', async () => 
   const injectable = (await journal.doses.getDoses(0, summary.lastEpochDay)).filter((d) => d.route === 'im');
   expect(injectable.length).toBeGreaterThan(0);
   expect(injectable.every((d) => d.drug === 'Estradiol valerate')).toBe(true);
-
-  expect(summary.measurements).toBeGreaterThan(0);
-  const types = await journal.measurements.getMeasurementTypes();
-  const loggedTypes = (
-    await Promise.all(types.map(async (t) => ((await journal.measurements.getSeries(t.key)).length > 0 ? t.key : null)))
-  ).filter(Boolean);
-  expect(loggedTypes.length).toBeGreaterThan(0);
-
-  expect(summary.sizeRecords).toBeGreaterThan(0);
 
   expect(summary.hairRemovalSessions).toBeGreaterThan(0);
   const hairRemovalSessions = await journal.hairRemoval.getSessions();
@@ -236,7 +224,8 @@ test('it writes the fixture every More-hub area reads (ticket 36)', async () => 
 
   expect(summary.personalEffects).toBeGreaterThan(0);
   const enabledCategories = await journal.effectCategories.getEffectCategories();
-  expect(enabledCategories.find((c) => c.key === 'genital_sexual')?.enabled).toBe(true);
+  expect(enabledCategories.find((c) => c.key === 'genital')?.enabled).toBe(true);
+  expect(enabledCategories.find((c) => c.key === 'sexual')?.enabled).toBe(true);
 
   expect(summary.wearSessions).toBeGreaterThan(0);
   expect(summary.cycleEvents).toBeGreaterThan(0);
@@ -275,12 +264,10 @@ test('the summary reports the counts a benchmark run prints', async () => {
       'entries',
       'firstEpochDay',
       'hairRemovalSessions',
-      'hairStagings',
       'labResults',
       'lastEpochDay',
       'lastSingleEpisodeEpochDay',
       'letters',
-      'measurements',
       'milestones',
       'personalEffects',
       'photos',
@@ -289,7 +276,6 @@ test('the summary reports the counts a benchmark run prints', async () => {
       'regionEuphoriaEntries',
       'roadmapChecks',
       'sideEffects',
-      'sizeRecords',
       'stockEntries',
       'tagWord',
       'tagWordEntries',
@@ -306,7 +292,7 @@ test('the fixture exercises all photo owners through the unified photo library',
   const { journal } = await generate({ seed: 9, days: 800 });
   const library = await journal.photoLibrary.inJournal();
   const sources = new Set(library.map((p) => p.source));
-  expect(sources).toEqual(new Set(['entry', 'milestone', 'hair', 'hairRemoval', 'tryout', 'procedure', 'video']));
+  expect(sources).toEqual(new Set(['entry', 'milestone', 'progress', 'hairRemoval', 'tryout', 'procedure', 'video']));
 });
 
 test('the fixture exercises concurrent Care episodes, schedules, pauses, stock, doses and totals', async () => {
@@ -374,7 +360,7 @@ test('decade fixture retains its regimen, letter and tryout dates', async () => 
   expect((await journal.letters.getLetters(100)).map((l) => l.epochDay).sort((a, b) => a - b))
     .toEqual([first + 200, first + 900, last - 400, last - 30]);
   expect((await journal.tryouts.getTryouts()).map((t) => t.startEpochDay).sort((a, b) => a - b))
-    .toEqual([400, 490, 580, 670, 760, 850].map((offset) => first + offset));
+    .toEqual([400, 490, 580, 670].map((offset) => first + offset));
   expect(summary.entries).toBe(3300);
   expect(summary.photos).toBe(391);
   expect(summary.doseEvents).toBe(1466);

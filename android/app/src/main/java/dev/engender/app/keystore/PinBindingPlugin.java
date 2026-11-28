@@ -7,8 +7,8 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 /**
- * The bridge half of ticket sec-02-06: {@link PinBindingKeystore} as three
- * calls that {@code src/lib/data/device-secret.ts} reads.
+ * The bridge half of {@link PinBindingKeystore} as three calls that {@code
+ * src/lib/data/device-secret.ts} reads.
  *
  * <p>The key never crosses this bridge and cannot - Keystore does not hand
  * out key material - so what crosses is one signature over the label the

@@ -1,19 +1,7 @@
-/* Browser-tier check for the phase 5 audit's deepening ticket 03: a live
-   query resolves its own dependencies, so a screen the audit found showing
-   a stale number updates when the data behind it changes.
-
-   Here rather than in the Node tier because `liveQuery` is the rune-bearing
-   half of the reactive layer (ADR-0017): what has to be proved is that the
-   effect re-runs, which needs a real Svelte scheduler over a real journal.
-   The registry side - which tables each read declares - is covered in
-   writes.test.ts, and this is the other end of the same claim.
-
-   The query is the one the screen makes, copied verbatim from Care's own
-   stock sheet, so this fails if that read stops resolving what it reads.
-   The audit's other defect was settings/streak-goal, which phase 8
-   UX ticket 01 deleted along with the streak. Rune-bearing, hence the
-   .svelte.ts name: the plugin in browser-tier.vite.config.ts compiles
-   this. */
+/* Exercise Care's stock query against a real journal and Svelte scheduler
+   (ADR-0017). It must rerun when data it reads changes. writes.test.ts checks
+   the registry declarations separately. Use .svelte.ts so the plugin compiles
+   the runes. */
 
 import { flushSync } from 'svelte';
 import { createEncryptedWebSqlite } from '../../src/lib/data/sqlite/mc-driver.ts';
@@ -29,8 +17,8 @@ import {
   type LiveQuery
 } from '../../src/lib/data/live/journal.svelte.ts';
 import { readWhatIsWaiting, WAITING_TABLES } from '../../src/lib/data/comingBackReads.ts';
-import { entrySearchFiltersOf } from '../../src/lib/data/savedQuestionQuery.ts';
 import { spanCoversDay } from '../../src/lib/data/span.ts';
+import type { FeltSenseEntry } from '../../src/lib/data/types.ts';
 import { freshOrigin, PROBE_DATA_KEY } from './fresh-origin.ts';
 import { watchLock } from '../../src/lib/stores/lock.svelte.ts';
 import { prefs } from '../../src/lib/data/prefs/store.svelte.ts';
@@ -96,7 +84,7 @@ async function run() {
   let recapRuns = 0;
   let recapQuery: LiveQuery<number>;
   let feltSenseRuns = 0;
-  let feltSenseQuery!: LiveQuery<Map<string, number>>;
+  let feltSenseQuery!: LiveQuery<FeltSenseEntry[]>;
 
   $effect.root(() => {
     // Care's own stock-sheet read, counting its runs: what the screen shows is
@@ -116,17 +104,19 @@ async function run() {
       return recap.entryCount;
     });
 
-    /* Home's felt-sense read (phase 8 audit ticket 13): one batched question
-       fed the ids a `liveList` beside it already answered with, rather than a
-       second `getTryouts` and then one query per tryout. Its dependency on
-       that list is a synchronous read of `rows` before the first await, which
-       is a Svelte dependency and not a table version - so this is the check
-       that the two kinds of dependency reach the same effect. */
+    /* A read fed the ids a `liveList` beside it already answered with,
+       rather than a second `getTryouts`. Its dependency on that list is a
+       synchronous read of `rows` before the first await, which is a Svelte
+       dependency and not a table version - so this is the check that the
+       two kinds of dependency reach the same effect. Home's felt-sense read
+       was the first of this shape; it went with the active tryout tile,
+and the running tryout's readings are
+       the same question asked of one id. */
     const tryouts = liveList((j) => j.tryouts.getTryouts());
     feltSenseQuery = liveQuery((j) => {
-      const ids = tryouts.rows.filter((t) => spanCoversDay(t, TODAY)).map((t) => t.id);
+      const id = tryouts.rows.find((t) => spanCoversDay(t, TODAY))?.id;
       feltSenseRuns += 1;
-      return j.feltSense.latestDaysForTryouts(ids);
+      return id ? j.feltSense.forTryout(id) : Promise.resolve([]);
     });
   });
 
@@ -134,7 +124,7 @@ async function run() {
 
   await until(() => projectionRuns > 0, 'the stock projection query to answer');
   await until(() => recapRuns > 0, 'the narrowed recap query to answer');
-  await until(() => feltSenseQuery.value !== undefined, "Home's felt-sense query to answer");
+  await until(() => feltSenseQuery.value !== undefined, 'the felt-sense query to answer');
 
   const projectionRunsBefore = projectionRuns;
   const recapRunsBefore = recapRuns;
@@ -151,15 +141,15 @@ async function run() {
   });
   const feltSenseError = await reasonIfNotReached(
     until(
-      () => (feltSenseQuery.value?.size ?? 0) === 0 && feltSenseRuns > feltSenseRunsBefore,
-      "Home's felt-sense query to be re-read after a tryout was added"
+      () => (feltSenseQuery.value?.length ?? 0) === 0 && feltSenseRuns > feltSenseRunsBefore,
+      'the felt-sense query to be re-read after a tryout was added'
     )
   );
   await journal.feltSense.add({ tryoutId }, { epochDay: TODAY - 4, mood: 3 });
   const feltSenseWriteError = await reasonIfNotReached(
     until(
-      () => feltSenseQuery.value?.get(tryoutId) === TODAY - 4,
-      "Home's felt-sense query to answer with the day just written"
+      () => feltSenseQuery.value?.[0]?.epochDay === TODAY - 4,
+      'the felt-sense query to answer with the day just written'
     )
   );
 
@@ -195,14 +185,13 @@ async function run() {
     until(() => recapRuns > recapRunsAfterMilestone, 'the narrowed recap to be re-read after an entry write')
   );
 
-  /* Ticket 14: a query whose reads all sit past its first `await` costs a
-     wasted round trip unless seeded. `readWhatIsWaiting` is that shape only
-     once something unrelated is awaited first, the way `/coming-back` awaits
-     its gap before ever touching `j` - copied here rather than reduced away,
-     since a direct `await readWhatIsWaiting(j, ...)` call is itself the
-     query's first synchronous operation and never exhibits the bug at all.
-     An unseeded run of the real shape should settle at two closure runs, a
-     run seeded with WAITING_TABLES at one. */
+  /* A query whose reads all sit past its first `await` costs a wasted round trip unless
+     seeded. `readWhatIsWaiting` is that shape only once something unrelated is awaited
+     first, the way `/coming-back` awaits its gap before ever touching `j` - copied here
+     rather than reduced away, since a direct `await readWhatIsWaiting(j,...)` call is
+     itself the query's first synchronous operation and never exhibits the bug at all. An
+     unseeded run of the real shape should settle at two closure runs, a run seeded with
+     WAITING_TABLES at one. */
   const gap = Promise.resolve(TODAY - 40);
   let unseededRuns = 0;
   let unseededQuery: LiveQuery<number>;
@@ -256,14 +245,13 @@ async function run() {
   flushSync();
   await new Promise((resolve) => setTimeout(resolve, 200));
 
-  /* Phase 8 audit ticket 15: /search's own debounce, proved as a run count
-     rather than by timing (the ticket's own acceptance criterion). A
-     hand-wired $state + $effect + setTimeout rather than the real route:
-     what has to be proved is the reactivity contract itself (a closure's
-     dependency is whatever `$state` it reads before its first await), which
-     needs nothing from the journal. The interval here is the probe's own,
-     not /search's SEARCH_DEBOUNCE_MS - "many keystrokes settle at one run"
-     holds at any interval, not at one particular millisecond count. */
+  /* /search's own debounce, proved as a run count rather than by timing (the ticket's own
+     acceptance criterion). A hand-wired $state + $effect + setTimeout rather than the real
+     route: what has to be proved is the reactivity contract itself (a closure's dependency
+     is whatever `$state` it reads before its first await), which needs nothing from the
+     journal. The interval here is the probe's own, not /search's SEARCH_DEBOUNCE_MS - "many
+     keystrokes settle at one run" holds at any interval, not at one particular millisecond
+     count. */
   const DEBOUNCE_PROBE_MS = 60;
   let typedQuery = $state('');
   let debouncedQuery = $state('');
@@ -314,170 +302,9 @@ async function run() {
   const clearedWithoutWaitingTheDebounce = debouncedQuery === '';
   await until(() => debounceRuns > debounceRunsAfterTenKeystrokes, 'the cleared query to reach the counting query');
 
-  /* Phase 8 audit ticket 16: /stats's own custom-interval-length debounce -
-     its own acceptance criterion is "typing a three-digit interval length
-     fires one read rather than three", so this proves a run count over that
-     field's own shape rather than resting on the claim above, which is
-     `/search`'s. The one difference from `/search`'s shape: a length always
-     clamps to a valid number rather than going empty, so there is no
-     cleared-lands-immediately case to prove here, only the run count. */
-  const INTERVAL_DEBOUNCE_PROBE_MS = 60;
-  let typedIntervalLength = $state(28);
-  let debouncedIntervalLength = $state(28);
-  let intervalDebounceRuns = 0;
-  let intervalDebounceQuery: LiveQuery<number>;
-
-  $effect.root(() => {
-    $effect(() => {
-      const length = typedIntervalLength;
-      const timer = setTimeout(() => {
-        debouncedIntervalLength = length;
-      }, INTERVAL_DEBOUNCE_PROBE_MS);
-      return () => clearTimeout(timer);
-    });
-    intervalDebounceQuery = liveQuery(async () => {
-      const length = debouncedIntervalLength;
-      intervalDebounceRuns += 1;
-      return length;
-    });
-  });
-
-  await until(
-    () => intervalDebounceQuery.value !== undefined,
-    'the interval-length debounce-shaped query to settle its first run'
-  );
-  const intervalDebounceRunsBeforeTyping = intervalDebounceRuns;
-
-  // Three digits, each landing well inside the debounce interval of the one
-  // before it - the ticket's own "typing a three-digit interval length" line.
-  const TYPED_LENGTH = 182;
-  for (const soFar of [1, 18, 182]) {
-    typedIntervalLength = soFar;
-    flushSync();
-    await new Promise((resolve) => setTimeout(resolve, INTERVAL_DEBOUNCE_PROBE_MS / 3));
-  }
-  await until(
-    () => debouncedIntervalLength === TYPED_LENGTH,
-    'the debounced interval length to catch up once typing pauses'
-  );
-  flushSync();
-  await new Promise((resolve) => setTimeout(resolve, INTERVAL_DEBOUNCE_PROBE_MS * 2));
-  const intervalDebounceRunsAfterThreeDigits = intervalDebounceRuns;
-
-  /* Phase 8 audit ticket 15: /search/questions/[id]'s own version of the same
-     fix. getSavedQuestions() rebuilds every row from scratch on any write to
-     saved_question (savedQuestions.ts's toDomain, a new object per row on
-     every call), so a closure reading `questions.find(...)` directly re-runs
-     when a *different* saved question is renamed, even though nothing the
-     viewed question's own search reads changed. `stableSearch` (the actual
-     screen's fix, mirrored here) reads a JSON signature instead - the same
-     `criteria` idiom /search's own page uses - and only republishes when that
-     signature actually moves. */
-  const viewedId = await journal.savedQuestions.upsertSavedQuestion({
-    name: 'Kept name',
-    queryText: 'kept query',
-    tagIds: [],
-    moods: [],
-    startEpochDay: null,
-    endEpochDay: null,
-    hasNote: false,
-    hasPhoto: false,
-    starred: false
-  });
-  const otherId = await journal.savedQuestions.upsertSavedQuestion({
-    name: 'Other name',
-    queryText: 'other query',
-    tagIds: [],
-    moods: [],
-    startEpochDay: null,
-    endEpochDay: null,
-    hasNote: false,
-    hasPhoto: false,
-    starred: false
-  });
-
-  let unstableRuns = 0;
-  let stableRuns = 0;
-  let unstableQuery: LiveQuery<number>;
-  let stableQuery: LiveQuery<number>;
-  let stableSearchInput = $state<{ queryText: string } | null>(null);
-  let lastSavedQuestionSignature: string | null = null;
-
-  $effect.root(() => {
-    const questionsQuery = liveList((j) => j.savedQuestions.getSavedQuestions());
-
-    unstableQuery = liveQuery(async () => {
-      const question = questionsQuery.rows.find((q) => q.id === viewedId);
-      unstableRuns += 1;
-      return question?.queryText.length ?? -1;
-    });
-
-    $effect(() => {
-      const question = questionsQuery.rows.find((q) => q.id === viewedId);
-      const signature = question ? JSON.stringify([question.queryText, entrySearchFiltersOf(question)]) : null;
-      if (signature === lastSavedQuestionSignature) return;
-      lastSavedQuestionSignature = signature;
-      stableSearchInput = question ? { queryText: question.queryText } : null;
-    });
-
-    stableQuery = liveQuery(async () => {
-      const input = stableSearchInput;
-      stableRuns += 1;
-      return input?.queryText.length ?? -1;
-    });
-  });
-
-  await until(() => unstableQuery.value !== undefined, 'the unstable saved-question query to settle');
-  await until(() => stableQuery.value !== undefined, 'the stable saved-question query to settle');
-  flushSync();
-  await new Promise((resolve) => setTimeout(resolve, 200));
-
-  const unstableRunsBeforeUnrelatedRename = unstableRuns;
-  const stableRunsBeforeUnrelatedRename = stableRuns;
-
-  // Renaming a DIFFERENT saved question: nothing the viewed question's
-  // search reads has changed, but getSavedQuestions() rebuilds every row.
-  await journal.savedQuestions.upsertSavedQuestion({
-    id: otherId,
-    name: 'Renamed other',
-    queryText: 'other query',
-    tagIds: [],
-    moods: [],
-    startEpochDay: null,
-    endEpochDay: null,
-    hasNote: false,
-    hasPhoto: false,
-    starred: false
-  });
-  const unstableErrorAfterUnrelatedRename = await reasonIfNotReached(
-    until(() => unstableRuns > unstableRunsBeforeUnrelatedRename, 'the unstable query to re-run after an unrelated rename')
-  );
-  flushSync();
-  await new Promise((resolve) => setTimeout(resolve, 200));
-  const stableRunsAfterUnrelatedRename = stableRuns;
-
-  // And the fix still re-runs for a change that does matter: the viewed
-  // question's own queryText changing.
-  await journal.savedQuestions.upsertSavedQuestion({
-    id: viewedId,
-    name: 'Kept name',
-    queryText: 'changed query',
-    tagIds: [],
-    moods: [],
-    startEpochDay: null,
-    endEpochDay: null,
-    hasNote: false,
-    hasPhoto: false,
-    starred: false
-  });
-  const stableErrorAfterRealChange = await reasonIfNotReached(
-    until(() => stableRuns > stableRunsAfterUnrelatedRename, "the stable query to re-run after its own queryText changes")
-  );
-
-  /* ux-carpet 201: a query asked again paints the answer it gave last time,
-     in the frame it is created, while nothing it read has been written -
-     and a lock takes every such answer away. One call site, mounted four
-     times the way a tab is left and revisited. */
+  /* A query asked again paints the answer it gave last time, in the frame it is created,
+     while nothing it read has been written - and a lock takes every such answer away. One
+     call site, mounted four times the way a tab is left and revisited. */
   const mountEntryCount = () => {
     let read!: LiveQuery<number>;
     const destroy = $effect.root(() => {
@@ -525,7 +352,7 @@ async function run() {
     feltSense: {
       runsBefore: feltSenseRunsBefore,
       runsAfterTryout: feltSenseRuns,
-      latestDay: feltSenseQuery.value?.get(tryoutId) ?? null,
+      latestDay: feltSenseQuery.value?.[0]?.epochDay ?? null,
       expectedDay: TODAY - 4,
       error: feltSenseError ?? feltSenseWriteError
     },
@@ -533,18 +360,6 @@ async function run() {
       runsBeforeTyping: debounceRunsBeforeTyping,
       runsAfterTenKeystrokes: debounceRunsAfterTenKeystrokes,
       clearedWithoutWaitingTheDebounce
-    },
-    intervalLengthDebounce: {
-      runsBeforeTyping: intervalDebounceRunsBeforeTyping,
-      runsAfterThreeDigits: intervalDebounceRunsAfterThreeDigits
-    },
-    savedQuestionStability: {
-      unstableRunsBeforeUnrelatedRename,
-      unstableRunsAfterUnrelatedRename: unstableRuns,
-      unstableErrorAfterUnrelatedRename,
-      stableRunsBeforeUnrelatedRename,
-      stableRunsAfterUnrelatedRename,
-      stableErrorAfterRealChange
     }
   };
 

@@ -1,53 +1,58 @@
-/* The clinician visit summary (phase 4 ticket 12, CONTEXT: "Clinician
-   summary section", "Regimen episode", "Dose event", "Analyte", "Side
-   effect"). A view over rows regimen, doses, labs, exposure and sideEffects
-   own, not a sixth owner for any of them - the whole point of this area is
-   that it introduces no figure the tickets it draws from do not already
-   produce (ADR-0010). Selecting which rows fall in the requested range is
-   the only work done here; nothing is aggregated, interpreted or stored.
+/* Read the clinician summary through the journal areas that own its rows (ADR-0010). Each
+   section filters to the requested range without introducing a stored or interpreted
+   result.
 
-   Which parts the summary has is a registry rather than a hardcoded
-   assembly (phase 5 ticket 06, ADR-0031). One entry declares four things:
-
-     key    where the part lands in `ClinicianSummary`, and what the screen
-            looks its title up by
-     read   how the part is read, through its own area's existing read path
-     tables the tables that read touches, so the live layer's dependency
-            list for `getSummary` is derived from the registry rather than
-            maintained beside it (writes.ts, the same single-sourcing
-            DAY_TABLES gets)
-     order  where it is declared, which is the order it prints in
-
-   Wording is not here. Titles live in vocabulary/clinicianSummaryLabels.ts,
-   keyed by section, the same split roadmap.ts and builtins.ts keep and for
-   the same reason: this file stays Node-tier safe by importing no paraglide
-   (ADR-0002, ADR-0016).
-
-   What a section computes stays inside its own read function. Each one
-   still calls the area that owns the rows and filters to the range; the
-   registry decides which sections exist and in what order they print,
-   never what any one of them means. */
+   The registry fixes print order, section keys and include switches. A section declares its
+   area's read and tables. Their union is CLINICIAN_SUMMARY_TABLES, the live dependency
+   list. Localized names live in vocabulary/clinicianSummaryLabels.ts. */
 
 import type { TableName } from '../live/writes';
 import { finishedGroups, type AreaGroupKey } from '../areaGroups';
-import type { ChecklistItem, DoseEvent, LabResult, Procedure, RegimenEpisode, SideEffect } from '../types';
+import type {
+  ChecklistItem,
+  CycleEvent,
+  DoseEvent,
+  LabResult,
+  Procedure,
+  RegimenEpisode,
+  SideEffect
+} from '../types';
+import { todayEpochDay } from '../epochDay';
+import { daysOnEachRoute } from '../exposureCounters';
 import { attributeDrug, sameDrug } from '../regimenEpisode';
-import { spanOverlapsRange } from '../span';
+import { spanCoversDay, spanOverlapsRange } from '../span';
 import type { AreaStatesArea } from './areaStates';
 import type { ChecklistsArea } from './checklists';
+import type { CycleEventsArea } from './cycleEvents';
 import type { DosesArea } from './doses';
+import type { EffectCategoriesArea } from './effectCategories';
 import type { ExposureArea, ExposureCounters } from './exposure';
 import type { LabsArea } from './labs';
+import type { PersonalEffectsArea } from './personalEffects';
 import type { ProceduresArea } from './procedures';
 import type { RegimenArea } from './regimen';
 import type { SideEffectsArea } from './sideEffects';
 
-/** A regimen episode as the summary prints it - its own stored end day
-    (types.ts), unchanged: an episode's end no longer needs deriving
-    against the full history the way it did before ticket 38 stored it. */
-type ClinicianSummaryEpisode = RegimenEpisode;
+/** The person as the summary prints them: only what they typed for this
+    summary or already committed. An active pronoun tryout is by definition
+    not yet adopted, so it never fills this - a clinical document is not the
+    place for an in-progress experiment. */
+export interface ClinicianSummaryDemographics {
+  name: string;
+  pronouns: string | null;
+  dob: string | null;
+}
 
-/** A procedure as the summary prints it (phase 5 ticket 07): the record
+/** The regimen part: every episode overlapping the range (its own stored
+    end day, types.ts), the ones still running on the range's last day, and
+    the dose log for the range. */
+interface ClinicianSummaryRegimen {
+  current: RegimenEpisode[];
+  history: RegimenEpisode[];
+  doses: DoseEvent[];
+}
+
+/** A procedure as the summary prints it: the record
     itself, plus the two things it owns elsewhere - its recovery checklist's
     items (an ordinary owned Checklist) and the days its recovery photos were
     taken. Both are read through their own areas' paths; the photo days are
@@ -59,42 +64,74 @@ export interface ClinicianSummaryProcedure extends Procedure {
 }
 
 /** A stream the person has said they are done with, and the day they said it
-    ended (phase 8 features ticket 04, ADR-0052). Named by hub row rather than
+    ended (ADR-0052). Named by hub row rather than
     by archive section, because that is what the reader recognises and because
-    hair progress is two sections finished together. */
-export interface ClinicianSummaryFinishedArea {
+    voice is two sections finished together. */
+interface ClinicianSummaryFinishedArea {
   key: AreaGroupKey;
   epochDay: number;
 }
 
-interface ClinicianSummary {
-  regimenEpisodes: ClinicianSummaryEpisode[];
-  doses: DoseEvent[];
-  labResults: LabResult[];
+/** A change the person has noticed, as the summary prints it: the marker's effect and its first-noticed day, with
+    the catalogue's stored name. A built-in's printed name is the
+    vocabulary's, looked up by key on the page, because this file speaks
+    no paraglide; a custom one is the name the person gave it. */
+export interface ClinicianSummaryChange {
+  effect: string;
+  name: string;
+  builtIn: boolean;
+  firstNoticedEpochDay: number;
+}
+
+/** What each part holds when it is included. */
+interface ClinicianSummaryContents {
+  demographics: ClinicianSummaryDemographics;
+  regimen: ClinicianSummaryRegimen;
   exposure: ExposureCounters;
+  labs: LabResult[];
+  /** Side effects active at any point in the range, ongoing or resolved. */
   sideEffects: SideEffect[];
-  /** Every procedure and its recovery log (phase 5 ticket 07), not
+  /** Every change marked so far that the timeline shows, oldest first -
+      not range-filtered, see readChangesNoticed below. */
+  personalEffects: ClinicianSummaryChange[];
+  cycleEvents: CycleEvent[];
+  /** The appointment prep list's items, as they stand
+      right now - not range-filtered, since the list has no date of its own
+      to filter by. */
+  appointmentPrep: ChecklistItem[];
+  /** Every procedure and its recovery log, not
       range-filtered - see readProcedures below. */
   procedures: ClinicianSummaryProcedure[];
-  /** The appointment prep list's items (phase 5 ticket 11), as they stand
-      right now - not range-filtered like the sections above it, since the
-      list has no date of its own to filter by. */
-  appointmentPrepItems: ChecklistItem[];
-  /** Which streams have ended and when (phase 8 features ticket 04). A
+  /** Which streams have ended and when. A
       stopped treatment then reads as a decision with a date rather than as
-      missing data, which is the difference between a chart a clinician can
-      interpret and one they cannot. Not range-filtered, for the reason
-      `procedures` is not: a course that ended before the window is exactly
-      what explains a flat stretch inside it. */
+      missing data. Not range-filtered, for the reason `procedures` is not:
+      a course that ended before the window is exactly what explains a flat
+      stretch inside it. */
   finishedAreas: ClinicianSummaryFinishedArea[];
 }
 
-export type ClinicianSummarySectionKey = keyof ClinicianSummary;
+export type ClinicianSummarySectionKey = keyof ClinicianSummaryContents;
+
+/** Each part, or null when the person switched it off for this print. */
+export type ClinicianSummarySections = {
+  [Key in ClinicianSummarySectionKey]: ClinicianSummaryContents[Key] | null;
+};
+
+export interface ClinicianSummary {
+  fromEpochDay: number;
+  toEpochDay: number;
+  generatedAtEpochDay: number;
+  sections: ClinicianSummarySections;
+}
+
+/** Which parts this print carries. Every one of them is on by default; the
+    switches on the summary's sheet are this record. */
+export type ClinicianSummaryInclusion = Record<ClinicianSummarySectionKey, boolean>;
 
 /** The areas a section may read through: the ones `openJournal` already
     built, so a section reads exactly what its own screen does. One type
-    rather than five parameters, because every section is handed all of them
-    and the section that registers next will want a sixth. */
+    rather than a parameter each, because every section is handed all of
+    them and the section that registers next will want another. */
 interface ClinicianSummaryAreas {
   areaStates: AreaStatesArea;
   regimen: RegimenArea;
@@ -102,26 +139,28 @@ interface ClinicianSummaryAreas {
   labs: LabsArea;
   exposure: ExposureArea;
   sideEffects: SideEffectsArea;
+  cycleEvents: CycleEventsArea;
   checklists: ChecklistsArea;
   procedures: ProceduresArea;
+  personalEffects: PersonalEffectsArea;
+  effectCategories: EffectCategoriesArea;
 }
 
 /** What every section's read is given: the areas, the range to read for,
-    and the drugs a visit's printout has turned off (phase 8 features
-    ticket 39, ADR-0031). Empty by default - most sections ignore it
-    entirely, the same way most ignore fromEpochDay/toEpochDay's siblings
-    like `procedures` do. */
+    the drugs a visit's printout has turned off
+    and the personal details typed for this print. Most sections ignore most
+    of it. */
 interface ClinicianSummaryReading extends ClinicianSummaryAreas {
   fromEpochDay: number;
   toEpochDay: number;
   excludedDrugs: ReadonlySet<string>;
+  demographics: Partial<ClinicianSummaryDemographics>;
 }
 
 /** One part of the summary's declaration that it prints. Erased over what
     it reads, because the list holds every section at once and because a
     test registers sections `ClinicianSummary` has never heard of. */
-/* ClinicianSummarySection stays exported only for its own test (AU-09
-   test-only review). */
+/* ClinicianSummarySection stays exported only for its own test. */
 export interface ClinicianSummarySection {
   key: string;
   tables: readonly TableName[];
@@ -129,11 +168,11 @@ export interface ClinicianSummarySection {
 }
 
 /** Keeps the read honest at the declaration site: it has to return what
-    `ClinicianSummary` says the section holds. */
+    `ClinicianSummaryContents` says the section holds. */
 function section<Key extends ClinicianSummarySectionKey>(declared: {
   key: Key;
   tables: readonly TableName[];
-  read(reading: ClinicianSummaryReading): Promise<ClinicianSummary[Key]>;
+  read(reading: ClinicianSummaryReading): Promise<ClinicianSummaryContents[Key]>;
 }) {
   return declared;
 }
@@ -142,10 +181,21 @@ function excludesDrug(excludedDrugs: ReadonlySet<string>, drug: string): boolean
   return [...excludedDrugs].some((excluded) => sameDrug(excluded, drug));
 }
 
+/* Only committed values (see ClinicianSummaryDemographics). Reads no row:
+   the name is a preference and the other two are typed on the summary's
+   own sheet, so they arrive with the reading. */
+async function readDemographics({ demographics }: ClinicianSummaryReading): Promise<ClinicianSummaryDemographics> {
+  return {
+    name: demographics.name ?? '',
+    pronouns: demographics.pronouns ?? null,
+    dob: demographics.dob ?? null
+  };
+}
+
 /* An episode belongs in the history if any part of its dated range overlaps
    the window - the same overlap exposureCounters.ts's own overlapDays
    tests, kept here as a filter rather than a count. Composed with the
-   drug exclusion (phase 8 features ticket 39) in the same `.filter` rather
+   drug exclusion in the same `.filter` rather
    than as a second pass over the list. */
 async function readRegimenEpisodes({ regimen, fromEpochDay, toEpochDay, excludedDrugs }: ClinicianSummaryReading) {
   const episodes = await regimen.getEpisodes();
@@ -168,21 +218,78 @@ async function readDoses({ doses, regimen, fromEpochDay, toEpochDay, excludedDru
   });
 }
 
-/* Exposure counters, with the excluded drugs' rows dropped from the two
-   parts keyed by drug (phase 8 features ticket 39). `routeDays` is not
-   filtered: it is a route total, not a drug total (daysOnEachRoute merges
-   across whatever episodes used that route), and this ticket does not
-   conflate the two any more than it conflates an analyte with a drug.
-   `excludedDoses` stays as-is for the same reason - it counts doses the
-   drug log itself could not attribute, which a drug toggle does not
-   change. */
-async function readExposure({ exposure, fromEpochDay, toEpochDay, excludedDrugs }: ClinicianSummaryReading) {
+/* The episodes and the dose log print as one part under one switch, so they
+   are one section. "Current" is the episodes still running on the range's
+   last day, picked out of the same history rather than read again. */
+async function readRegimen(reading: ClinicianSummaryReading): Promise<ClinicianSummaryRegimen> {
+  const [history, doses] = await Promise.all([readRegimenEpisodes(reading), readDoses(reading)]);
+  return {
+    current: history.filter((episode) => spanCoversDay(episode, reading.toEpochDay)),
+    history,
+    doses
+  };
+}
+
+/* Exposure counters, with the excluded drugs' rows dropped. Route days are a route total,
+   not a drug total (daysOnEachRoute merges across whatever episodes used that route), so
+   they are recounted by that same function over the printed drugs' episodes only: they kept
+   every drug, and with a drug that is not HRT off by default an SSRI's oral days still
+   reached the page as "oral" days. `excludedDoses` stays as-is - it counts doses the drug
+   log itself could not attribute, which a drug toggle does not change. */
+async function readExposure({ exposure, regimen, fromEpochDay, toEpochDay, excludedDrugs }: ClinicianSummaryReading) {
   const counters = await exposure.getCounters(fromEpochDay, toEpochDay);
+  if (excludedDrugs.size === 0) return counters;
+  const printed = (await regimen.getEpisodes()).filter((episode) => !excludesDrug(excludedDrugs, episode.drug));
   return {
     ...counters,
     doseTotals: counters.doseTotals.filter((total) => !excludesDrug(excludedDrugs, total.drug)),
+    routeDays: daysOnEachRoute(printed, fromEpochDay, toEpochDay),
     regimenDays: counters.regimenDays.filter((days) => !excludesDrug(excludedDrugs, days.drug))
   };
+}
+
+/* A side effect is a span from the day it began to the day it resolved,
+   open while it goes on. It belongs on the
+   page if it was active on any day of the range: one that began before the
+   range and is still going on is exactly what a visit needs to hear about,
+   and one that resolved before the range began is not. The span arithmetic
+   is span.ts's, as for regimen episodes. */
+async function readSideEffects({ sideEffects, fromEpochDay, toEpochDay }: ClinicianSummaryReading) {
+  const all = await sideEffects.getSideEffects();
+  return all.filter((effect) =>
+    spanOverlapsRange({ startEpochDay: effect.epochDay, endEpochDay: effect.resolvedEpochDay }, fromEpochDay, toEpochDay)
+  );
+}
+
+/* Changes noticed. Every personal effect a
+   first-noticed day is marked for, oldest first. Not range-filtered, for
+   the reason procedures are not: a marker is one row per effect whose day
+   is replaced in place, so it records what has changed so far rather than
+   an event inside a window, and a change first noticed before the window
+   is still one the person has. Only what the changes timeline draws: an
+   effect hidden, or in a category switched off, stays off the page the way
+   it stays off the axis (reference.svelte.ts's visiblePersonalEffectTypes
+   asks the same two questions). A marker naming a key the catalogue no
+   longer has prints under that key, as the timeline names it. */
+async function readChangesNoticed({ personalEffects, effectCategories }: ClinicianSummaryReading) {
+  const [markers, types, categories] = await Promise.all([
+    personalEffects.getMarkers(),
+    personalEffects.getEffectTypes(),
+    effectCategories.getEffectCategories()
+  ]);
+  const off = new Set(categories.filter((category) => !category.enabled).map((category) => category.key));
+  const changes: ClinicianSummaryChange[] = [];
+  for (const marker of markers) {
+    const type = types.find((candidate) => candidate.key === marker.effect);
+    if (type && (type.hidden || (type.categoryKey !== null && off.has(type.categoryKey)))) continue;
+    changes.push({
+      effect: marker.effect,
+      name: type?.name ?? marker.effect,
+      builtIn: type?.builtIn ?? false,
+      firstNoticedEpochDay: marker.firstNoticedEpochDay
+    });
+  }
+  return changes.sort((a, b) => a.firstNoticedEpochDay - b.firstNoticedEpochDay || a.effect.localeCompare(b.effect));
 }
 
 /* Shared bounded read for the clinician summary and appointment prep. */
@@ -190,24 +297,10 @@ export async function readLabResultsInRange(labs: LabsArea, fromEpochDay: number
   return labs.getResultsInRange(fromEpochDay, toEpochDay);
 }
 
-/* Every procedure, unfiltered. A dose or a lab result is an event on a day,
-   so a range picks which ones to print; a procedure is an ongoing journey
-   whose recovery log keeps running, and filtering it out because the
-   operation fell before the window would hide the very thing a post-op
-   follow-up is about. So this selects nothing, the same way the appointment
-   prep list below prints whatever it currently holds.
-
-   Each part still comes from the area that owns it, through that area's own
-   read path: the record from procedures.getProcedures(), the checklist from
-   procedures.getChecklist() (which is checklists.getChecklistByOwner()), and
-   the photo days from procedures.getPhotos(). Nothing here computes a figure
-   one of them does not already produce - the day counter a screen shows is
-   derived at the point of display (recoveryDay.ts), off the surgery date
-   printed here.
-
-   Decision (ticket 19): "since last appointment" is a range like any
-   other, picked the same way any other pair of dates is - it does not
-   filter this section either, for the reason above, not a new one. */
+/* Print every procedure because a recovery can continue beyond the
+   date range, including since-last-appointment. Read the record,
+   checklist and photo dates from their own area APIs. recoveryDay.ts
+   derives the display counter from the printed operation date. */
 async function readProcedures({ procedures }: ClinicianSummaryReading): Promise<ClinicianSummaryProcedure[]> {
   const records = await procedures.getProcedures();
   return Promise.all(
@@ -221,29 +314,22 @@ async function readProcedures({ procedures }: ClinicianSummaryReading): Promise<
 
 /* The appointment prep list has no date to filter by - it prints whatever it
    currently holds, the same way its own screen shows it, rather than a slice
-   of some range (ticket 11). Declared last so it prints as the summary's
-   final page.
+   of some range.
 
-   Decision (ticket 19): "since last appointment" does not filter this
+   Decision: "since last appointment" does not filter this
    section either - the list has no date under any range, and the range
    this ticket adds is a shortcut for picking two dates, not a new kind of
    range with its own rules. */
-async function readAppointmentPrepItems({ checklists }: ClinicianSummaryReading) {
+async function readAppointmentPrep({ checklists }: ClinicianSummaryReading) {
   const checklist = await checklists.getStandaloneChecklist();
   return checklist?.items ?? [];
 }
 
 const SECTIONS = [
-  section({ key: 'regimenEpisodes', tables: ['regimen'], read: readRegimenEpisodes }),
-  // Reads the regimen table too now, for the same attribution readExposure
-  // below already depends on it for: a dose event usually names no drug of
-  // its own, so telling its rows apart needs the episode history.
-  section({ key: 'doses', tables: ['dose', 'regimen'], read: readDoses }),
-  section({
-    key: 'labResults',
-    tables: ['lab'],
-    read: ({ labs, fromEpochDay, toEpochDay }) => readLabResultsInRange(labs, fromEpochDay, toEpochDay)
-  }),
+  section({ key: 'demographics', tables: [], read: readDemographics }),
+  // The regimen table for the dose log too: a dose event usually names no
+  // drug of its own, so telling its rows apart needs the episode history.
+  section({ key: 'regimen', tables: ['regimen', 'dose'], read: readRegimen }),
   section({
     key: 'exposure',
     // Every counter is recomputed from the dose log and the episode history
@@ -252,17 +338,31 @@ const SECTIONS = [
     read: readExposure
   }),
   section({
-    key: 'sideEffects',
-    tables: ['sideEffect'],
-    read: ({ sideEffects, fromEpochDay, toEpochDay }) => sideEffects.getSideEffectsInRange(fromEpochDay, toEpochDay)
+    key: 'labs',
+    tables: ['lab'],
+    read: ({ labs, fromEpochDay, toEpochDay }) => readLabResultsInRange(labs, fromEpochDay, toEpochDay)
   }),
+  section({ key: 'sideEffects', tables: ['sideEffect'], read: readSideEffects }),
+  section({
+    key: 'personalEffects',
+    // The catalogue and its categories too: hiding an effect or switching
+    // its category off takes its row off the page.
+    tables: ['personalEffect', 'personalEffectType', 'effectCategory'],
+    read: readChangesNoticed
+  }),
+  section({
+    key: 'cycleEvents',
+    tables: ['cycleEvent'],
+    read: ({ cycleEvents, fromEpochDay, toEpochDay }) => cycleEvents.getCycleEventsInRange(fromEpochDay, toEpochDay)
+  }),
+  section({ key: 'appointmentPrep', tables: ['checklist'], read: readAppointmentPrep }),
   section({
     key: 'procedures',
     // 'appointment' because a journey prints its consults, which are
-    // appointments pointing at it (ticket 57). The summary's own "since
+    // appointments pointing at it. The summary's own "since
     // your last appointment" range is not this section's - it lives in the
     // route itself (clinician-summary/+page.svelte), reading
-    // appointments.ts's mostRecentPastAppointment since ticket 58.
+    // appointments.ts's mostRecentPastAppointment.
     //
     // The recovery checklist as well as the procedure: an item ticked off on
     // it changes what this section prints, and that checklist is an ordinary
@@ -274,48 +374,77 @@ const SECTIONS = [
     key: 'finishedAreas',
     tables: ['areaState'],
     read: async ({ areaStates }) => finishedGroups(await areaStates.getAreaStates())
-  }),
-  /* Last but one. The prep list stays the final page (ticket 11), and this
-     belongs beside the clinical sections it explains rather than after the
-     questions somebody wrote for the appointment. */
-  section({ key: 'appointmentPrepItems', tables: ['checklist'], read: readAppointmentPrepItems })
+  })
 ] as const;
 
-/* A part of `ClinicianSummary` with no entry above would be missing from
-   every summary the screen prints, silently. This line makes that a compile
-   error instead. */
+/* A part of `ClinicianSummaryContents` with no entry above would be missing
+   from every summary the screen prints, silently. This line makes that a
+   compile error instead. */
 type Unregistered = Exclude<ClinicianSummarySectionKey, (typeof SECTIONS)[number]['key']>;
 type AssertNoneUnregistered<Missing extends never> = Missing;
 export type EverySectionRegistered = AssertNoneUnregistered<Unregistered>;
 
-/* CLINICIAN_SUMMARY_SECTIONS stays exported only for its own test (AU-09
-   test-only review). */
+/* CLINICIAN_SUMMARY_SECTIONS stays exported only for its own test. */
 export const CLINICIAN_SUMMARY_SECTIONS: readonly ClinicianSummarySection[] = SECTIONS;
+
+/** Every part's key, in the order the parts print: what the screen walks to
+    draw the page and to list the include switches. */
+export const CLINICIAN_SUMMARY_SECTION_KEYS: readonly ClinicianSummarySectionKey[] = SECTIONS.map((s) => s.key);
+
+export const EVERY_CLINICIAN_SUMMARY_SECTION: ClinicianSummaryInclusion = Object.fromEntries(
+  CLINICIAN_SUMMARY_SECTION_KEYS.map((key) => [key, true])
+) as ClinicianSummaryInclusion;
 
 import { CLINICIAN_SUMMARY_TABLES } from '../live/writes';
 export { CLINICIAN_SUMMARY_TABLES };
 
-/** Every section read for one range, in the order they print. Concurrent
-    because the sections are independent - none of them reads what another
-    produced. */
+export interface ClinicianSummaryOptions {
+  /** Parts switched off for this print. A part left out reads as null and
+      costs no read. Defaults to every part. */
+  inclusion?: Partial<ClinicianSummaryInclusion>;
+  /** Drugs left out of the regimen and exposure parts - a printing choice about this visit, not portable journal
+      data (ADR-0003). Defaults to none. */
+  excludedDrugs?: ReadonlySet<string>;
+  demographics?: Partial<ClinicianSummaryDemographics>;
+  generatedAtEpochDay?: number;
+}
+
+/** Every included section read for one range, in the order they print.
+    Concurrent because the sections are independent - none of them reads
+    what another produced. */
 async function assembleClinicianSummary(
-  reading: ClinicianSummaryReading,
-  sections: readonly ClinicianSummarySection[] = CLINICIAN_SUMMARY_SECTIONS
+  areas: ClinicianSummaryAreas,
+  fromEpochDay: number,
+  toEpochDay: number,
+  options: ClinicianSummaryOptions,
+  sections: readonly ClinicianSummarySection[]
 ): Promise<ClinicianSummary> {
-  const contents = await Promise.all(sections.map((s) => s.read(reading)));
-  const summary: Record<string, unknown> = {};
-  sections.forEach((s, index) => {
-    summary[s.key] = contents[index];
-  });
-  return summary as unknown as ClinicianSummary;
+  const reading: ClinicianSummaryReading = {
+    ...areas,
+    fromEpochDay,
+    toEpochDay,
+    excludedDrugs: options.excludedDrugs ?? new Set(),
+    demographics: options.demographics ?? {}
+  };
+  const inclusion: Partial<Record<string, boolean>> = { ...options.inclusion };
+  const included = sections.filter((s) => inclusion[s.key] !== false);
+  const contents = await Promise.all(included.map((s) => s.read(reading)));
+  const read = new Map(included.map((s, index) => [s.key, contents[index]]));
+  const assembled: Record<string, unknown> = {};
+  for (const s of sections) assembled[s.key] = read.has(s.key) ? read.get(s.key) : null;
+  return {
+    fromEpochDay,
+    toEpochDay,
+    generatedAtEpochDay: options.generatedAtEpochDay ?? todayEpochDay(),
+    sections: assembled as ClinicianSummarySections
+  };
 }
 
 export interface ClinicianSummaryArea {
-  /** Every registered section read for `[fromEpochDay, toEpochDay]` and
-      assembled for printing - nothing here is stored (phase 4 ticket 12).
-      `excludedDrugs` (phase 8 features ticket 39) defaults to none, so
-      every existing caller keeps printing every drug. */
-  getSummary(fromEpochDay: number, toEpochDay: number, excludedDrugs?: ReadonlySet<string>): Promise<ClinicianSummary>;
+  /** Every registered section the options include, read for
+      `[fromEpochDay, toEpochDay]` and assembled for printing - nothing here
+      is stored. */
+  getSummary(fromEpochDay: number, toEpochDay: number, options?: ClinicianSummaryOptions): Promise<ClinicianSummary>;
 }
 
 /** The section list is a parameter, defaulting to the registry, so a test
@@ -326,7 +455,70 @@ export function makeClinicianSummaryArea(
   sections: readonly ClinicianSummarySection[] = CLINICIAN_SUMMARY_SECTIONS
 ): ClinicianSummaryArea {
   return {
-    getSummary: (fromEpochDay, toEpochDay, excludedDrugs = new Set()) =>
-      assembleClinicianSummary({ ...areas, fromEpochDay, toEpochDay, excludedDrugs }, sections)
+    getSummary: (fromEpochDay, toEpochDay, options = {}) =>
+      assembleClinicianSummary(areas, fromEpochDay, toEpochDay, options, sections)
   };
+}
+
+/* Printing choices the summary's sheet makes, kept beside the registry they
+   choose from. */
+
+/** Every distinct drug name across every regimen episode the person has
+    ever logged, active or past - what the drug-inclusion toggle on the
+    range sheet lists. Unbounded rather than
+    scoped to whatever range a summary itself reads for: the toggle is a
+    device preference set once, not a per-print control, so a drug outside
+    today's chosen range still gets a switch. */
+export function regimenDrugNames(episodes: readonly Pick<RegimenEpisode, 'drug'>[]): string[] {
+  const names: string[] = [];
+  for (const episode of episodes) {
+    if (!names.some((name) => sameDrug(name, episode.drug))) names.push(episode.drug);
+  }
+  return names.sort((a, b) => a.localeCompare(b));
+}
+
+/** The drugs this print leaves out. A drug the person has switched on or off
+    keeps that choice, under any spelling the deduplicated choices hide. One
+    never touched is off when it is not HRT:
+    the summary is the one thing made to leave the device, so an SSRI or
+    PrEP should not reach an endocrinologist unless the person says so. A
+    drug name with any HRT episode counts as HRT. */
+export function excludedClinicianDrugs(
+  episodes: readonly Pick<RegimenEpisode, 'drug' | 'drugClass'>[],
+  preferences: Partial<Record<string, boolean>>
+): Set<string> {
+  const saved = Object.entries(preferences);
+  return new Set(
+    regimenDrugNames(episodes).filter((drug) => {
+      const choices = saved.filter(([name]) => sameDrug(name, drug));
+      if (choices.length > 0) return choices.some(([, excluded]) => excluded);
+      return !episodes.some((episode) => episode.drugClass === 'hrt' && sameDrug(episode.drug, drug));
+    })
+  );
+}
+
+/** Update old spellings too, so an earlier exclusion cannot override this pick. */
+export function withClinicianDrugIncluded(
+  preferences: Partial<Record<string, boolean>>,
+  drug: string,
+  included: boolean
+): Partial<Record<string, boolean>> {
+  const next = { ...preferences, [drug]: !included };
+  for (const name of Object.keys(preferences)) {
+    if (sameDrug(name, drug)) next[name] = !included;
+  }
+  return next;
+}
+
+const spacedWords = (text: string) =>
+  ` ${text.toLocaleLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean).join(' ')} `;
+
+/** The ester a regimen row should name beside its drug, or null when there is none or the
+    drug's own name already says it ("Estradiol valerate" with the ester "valerate" printed
+    the ester twice). Whole words only, so a name that merely starts with the ester still
+    gets it. */
+export function regimenEsterNote(drug: string, ester: string | null): string | null {
+  const note = ester?.trim();
+  if (!note) return null;
+  return spacedWords(drug).includes(spacedWords(note)) ? null : note;
 }

@@ -1,11 +1,11 @@
-/* AES-256-GCM via WebCrypto (ticket 12), identical code on web and
+/* AES-256-GCM via WebCrypto, identical code on web and
    Android. Every call gets a fresh random nonce - reusing a nonce with
    the same key breaks GCM's confidentiality guarantee entirely.
 
    Both calls take optional additional authenticated data: bytes that are
    not encrypted but are covered by the tag, so decryption fails unless the
    same bytes are supplied again. The archive binds each chunk's position
-   and the file's header that way (ADR-0007, ticket 13). */
+   and the file's header that way (ADR-0007). */
 
 const NONCE_LENGTH = 12;
 /* WebCrypto's default AES-GCM tag length is 128 bits; aesGcm() never
@@ -23,11 +23,10 @@ interface Encrypted {
   ciphertext: Uint8Array<ArrayBuffer>;
 }
 
-/** Thrown on any decryption failure - a wrong key and a corrupted file
-    fail AES-GCM's authentication tag check identically, so this class
-    can't and doesn't distinguish them. Callers show the user only "wrong
-    password" (ticket 12's acceptance), never a more specific diagnosis
-    that would help an attacker probe for corruption vs a bad guess. */
+/** Thrown on any decryption failure - a wrong key and a corrupted file fail AES-GCM's
+    authentication tag check identically, so this class can't and doesn't distinguish them.
+    Callers show the user only "wrong password", never a more specific diagnosis that would
+    help an attacker probe for corruption vs a bad guess. */
 export class DecryptionFailedError extends Error {
   constructor(cause: unknown) {
     super('wrong password');

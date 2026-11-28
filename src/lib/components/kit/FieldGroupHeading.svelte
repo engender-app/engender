@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* Not a Field (ticket 10): the schedule, amounts and pauses legends in
+  /* Not a Field: the schedule, amounts and pauses legends in
      regimen and doses each name the group of controls below them - a
      ListCard, a set of fields, a disclosed block - rather than a control
      of their own, so there is no id to mint and no association to make.

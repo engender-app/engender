@@ -1,42 +1,18 @@
-/* The reactive layer over the journal (ticket 08, ADR-0004).
+/* Keep asynchronous journal reads reactive (ADR-0004). Screens use the
+   journal handle. writes.ts maps calls to tables, and writes bump those
+   tables' versions. liveQuery runs again when a table it read changes and
+   stores its result in Svelte state.
 
-   The demo store made every read synchronous over a deeply reactive `$state`
-   object, so a component wrapped it in `$derived` and stayed live for free.
-   SQLocal runs in a worker and is always async, and `$derived` cannot await,
-   so that pattern does not survive the port. This module is what replaces it
-   for the async half:
-
-     - `journal` is the handle screens read and write through. Same shape as
-       the journal itself, so a call site looks like it did when it was calling
-       a repository function.
-     - every write announces its tables (writes.ts); tableVersions.svelte.ts
-       turns that into a version bump per table and a notify.
-     - `liveQuery` re-runs when a table the read itself touched bumps, and
-       holds the result in `$state` so a template can read it synchronously.
-       Which tables those are comes from the same registry the write half
-       announces from, not from the call site (phase 5 audit ticket 03).
-
-   Invalidation is per table rather than global because the alternative is
-   visibly wasteful: saving one lab result would re-run the stats charts, the
-   Home's entry list and whatever search is on screen. A table version
-   is one integer and the scoping falls out of it.
-
-   The mirrored half - reference data read synchronously - is
-   reference.svelte.ts, which registers itself with `onTablesWritten`,
-   re-exported here from tableVersions.
-
-   Nothing here is tested in the Node tier: `$state` is not defined there
-   (ADR-0017), which is why the parts with a rule in them live rune-free
-   elsewhere - writes.ts for the table mapping, tableVersions.notify.ts for the
-   write-announcement notify, readState.ts for what a read shows and what each
-   outcome of a run does to it. What this file adds beyond that is covered from
-   the browser: `tests/walkthrough.test.mjs` driving the real screens, and
-   `tests/browser-tier/live-reads-probe.svelte.ts` for the dependency
-   resolution, which needs a real scheduler to be seen re-running at all. */
+   reference.svelte.ts mirrors synchronous reads through onTablesWritten.
+   Table mapping, notification and read-state rules live in rune-free files
+   so the Node tier can exercise them (ADR-0017). The browser walkthrough
+   and live-reads-probe.svelte.ts cover effects with the real scheduler. */
 
 import { untrack } from 'svelte';
+import { useDoorActivity } from '$lib/navigation/doorActivity.svelte';
+import { admitHiddenReads } from './hiddenReadAdmission';
 import { firstResult } from './firstResult';
-import { JOURNAL_WIDE, observeWrites, tablesReadBy, type TableName } from './writes';
+import { JOURNAL_WIDE, isJournalCommand, observeWrites, tablesReadBy, type TableName } from './writes';
 import { emptyOf, gaveUp, landed, pending, rowsOf, type ReadState } from './readState';
 import type { Journal } from '../journal/journal';
 import { bump, settledVersionOf, versionOf } from './tableVersions.svelte';
@@ -50,17 +26,15 @@ export { onTablesWritten, batchWrites } from './tableVersions.svelte';
    the journal is in another module. */
 const open = $state<{ journal: Journal | null }>({ journal: null });
 
-/* Same value as `open.journal`, reachable without a reactive read, behind
-   the gate everything queues on until it lands. A screen that rendered during
-   boot - Home's quick log is reachable at first paint - can then save without
-   knowing whether the worker has caught up. The preference store solves the
-   same problem by replaying writes; the journal only has to queue them,
-   because nothing here needs an answer before the database has one.
+/* Same value as `open.journal`, reachable without a reactive read, behind the gate
+   everything queues on until it lands. A screen that rendered during boot - Home's quick
+   log is reachable at first paint - can then save without knowing whether the worker has
+   caught up. The preference store solves the same problem by replaying writes; the journal
+   only has to queue them, because nothing here needs an answer before the database has one.
 
-   A gate rather than a promise resolved once since after-release ticket 10:
-   a lock on the web closes the database, and the gate is what lets every
-   call already running finish first, holds the ones made while locked, and
-   hands them the reopened journal instead of the closed one. */
+   A gate rather than a promise resolved a lock on the web closes the database, and the gate
+   is what lets every call already running finish first, holds the ones made while locked,
+   and hands them the reopened journal instead of the closed one. */
 const journals = sessionGate<Journal>();
 
 let wrapped: Journal | null = null;
@@ -89,7 +63,7 @@ export function journalIsOpen(): void {
   journals.open(wrapped);
 }
 
-/** The lock's half (after-release ticket 10): stops handing the journal out,
+/** The lock's half: stops handing the journal out,
     and resolves once every call already made through it has settled, so the
     database can close under nothing. Calls made from here on wait for the
     next `journalIsOpen()`. */
@@ -97,6 +71,13 @@ export async function journalIsClosing(): Promise<void> {
   open.journal = null;
   wrapped = null;
   await journals.close();
+}
+
+/** The lock's first, synchronous step on the web: the session is over for commands from
+    this instant, before the close that drains it has even started. */
+export function journalSessionEnded(): void {
+  open.journal = null;
+  journals.end();
 }
 
 type Operations = Record<string, (...args: unknown[]) => unknown>;
@@ -116,7 +97,9 @@ function facadeFor(areaName: string): unknown {
       get(_target, operation: string) {
         return (...args: unknown[]) => {
           const area = (journal: Journal) => journal[areaName as keyof Journal] as unknown as Operations;
-          return journals.run((ready) => area(ready)[operation](...args));
+          return journals.run((ready) => area(ready)[operation](...args), {
+            command: isJournalCommand(areaName, operation)
+          });
         };
       }
     }
@@ -136,7 +119,8 @@ export const journal: Journal = new Proxy({} as Journal, {
     // distinction (JOURNAL_WIDE).
     if ((JOURNAL_WIDE as readonly string[]).includes(name)) {
       const operation = name as (typeof JOURNAL_WIDE)[number];
-      return () => journals.run((ready) => ready[operation]());
+      return (...args: unknown[]) =>
+        journals.run((ready) => (ready[operation] as (...args: unknown[]) => unknown)(...args), { command: true });
     }
     return facadeFor(name);
   }
@@ -166,8 +150,7 @@ export interface LiveQuery<T> {
     writing itself: rows already defaulted to an empty list, and `empty` as a
     state rather than a `.length` test that a still-loading read passes. With
     `failed` beside them, the three-state gate a screen renders is the read's
-    own vocabulary rather than something the screen assembles (phase 5 audit
-    ticket 04). */
+    own vocabulary rather than something the screen assembles. */
 export interface LiveList<T> {
   /** The rows, `[]` until the first result lands. */
   readonly rows: T[];
@@ -180,37 +163,14 @@ export interface LiveList<T> {
   retry(): void;
 }
 
-/** A query that re-runs whenever a table it read is written.
+/** Run the query again when a table it read changes. The journal proxy uses
+    writes.ts to discover tables. Read reactive inputs before the first await
+    so Svelte tracks them. An awaited journal call still records its tables,
+    with discovery picked up one run later.
 
-    Which tables those are is not the call site's to know: `run` is handed a
-    journal that records the operations it calls and resolves each one's tables
-    from the registry (writes.ts), the same registry the write half announces
-    from. So a screen asks the Journal a question and a table added to that
-    question's answer reaches every screen asking it (phase 5 audit ticket 03).
-
-    `run` is called synchronously, so whatever it reads *before its first
-    `await`* becomes a dependency alongside the table versions - which is how a
-    query over an `epochDay` or a search box re-runs when those change. Reads
-    after an await are invisible to Svelte; take them in the synchronous part.
-    A journal operation called after an await is still picked up, one re-run
-    later: it is recorded on the query rather than on the effect, so nothing
-    goes stale, but a round trip is spent for nothing and the synchronous form
-    is the one to write.
-
-    `seed`, when given, is what a closure whose first operation sits past an
-    await already knows it depends on: those tables are subscribed to from the
-    first run, so the run that would otherwise "discover" them late costs
-    nothing (phase 8 audit ticket 14). Unlike `liveQueryWatchingOnly` below,
-    seeding never stops normal discovery - a table the closure reads that
-    is not in `seed` is still picked up the ordinary way, one re-run late.
-    Pass it from a registry constant, never a hand-written list: the risk
-    `liveQueryWatchingOnly` warns about is a table list going stale, and a
-    seed that is wrong only costs the round trip it was meant to save rather
-    than showing stale data, but it should still track what the closure
-    actually reads.
-
-    Must be called while a component is initialising, like any `$effect`: the
-    query lives and dies with the component that asked for it. */
+    Seed known tables from registry constants if a query must begin after an
+    await. Seeding keeps automatic discovery active. Call during component
+    initialization so the query effect follows that component's lifetime. */
 export function liveQuery<T>(run: (journal: Journal) => Promise<T>, seed?: TableName[]): LiveQuery<T> {
   return query(null, run, seed ?? null, callSite());
 }
@@ -219,7 +179,7 @@ export function liveQuery<T>(run: (journal: Journal) => Promise<T>, seed?: Table
     It waits the way every query waits for the journal to open, and a write
     in the meantime waits with it. From its first run on it is an ordinary
     liveQuery: `when` is not asked again. The curve's model is the first: it
-    waits for the screen to stop arriving (ticket 09). */
+    waits for the screen to stop arriving. */
 export function liveQueryWhen<T>(when: () => boolean, run: (journal: Journal) => Promise<T>): LiveQuery<T> {
   return query(null, run, null, callSite(), when);
 }
@@ -323,7 +283,7 @@ const liveQueries = new Set<number>();
 const isLiveQuery = (instance: number) => liveQueries.has(instance);
 
 /** How long a query's first-ever attempt waits before retrying a rejection,
-    once, before reporting `failed` (ticket 161) - long enough to cover "a
+    once, before reporting `failed` - long enough to cover "a
     couple of frames" at 60Hz with room to spare, short enough that a
     genuine failure isn't noticeably delayed. */
 const FIRST_ATTEMPT_RETRY_DELAY_MS = 50;
@@ -335,13 +295,12 @@ function query<T>(
   site: string | null,
   when: () => boolean = () => true
 ): LiveQuery<T> {
-  /* A warm revisit paints the answer this query gave last time, if nothing
-     it read has been written since (lastResults.ts, ux-carpet 201). Asked
-     here, while the component initialises, rather than in the effect: a
-     value set by the effect lands a flush after the first render, and the
-     read's skeleton and its reserve's crossfade would already be under way.
-     The closure is run once against a journal that answers nothing, only to
-     learn what it asks for. */
+  /* A warm revisit paints the answer this query gave last time, if nothing it read has been
+     written since (lastResults.ts). Asked here, while the component initialises, rather
+     than in the effect: a value set by the effect lands a flush after the first render, and
+     the read's skeleton and its reserve's crossfade would already be under way. The closure
+     is run once against a journal that answers nothing, only to learn what it asks for. */
+  const doorActive = useDoorActivity();
   const instance = ++queriesMade;
   liveQueries.add(instance);
   const asked = site && journals.current ? recallFor(site, run, journals.current) : null;
@@ -419,7 +378,8 @@ function query<T>(
       calls = [];
       let running: Promise<T>;
       try {
-        running = run(recordingJournal(ready, dependOn, calls));
+        const admitted = untrack(() => admitHiddenReads(ready, doorActive, () => mine === latest));
+        running = run(recordingJournal(admitted, dependOn, calls));
       } catch (error) {
         running = Promise.reject(error);
       } finally {
@@ -478,8 +438,8 @@ function query<T>(
     running.then(settle, (error) => {
       if (!firstEverAttempt) return fail(error);
       /* A route visited for the first time this session can reject once on
-         its table's first touch and recover a couple of frames later
-         (ticket 161): reporting that as `failed` flashes the read's error
+         its table's first touch and recover a couple of frames later.
+         Reporting that as `failed` flashes the read's error
          Notice in and back out. One bounded retry after a beat gives the
          table a chance to settle before this query's first answer is
          trusted either way. */

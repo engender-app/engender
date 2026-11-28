@@ -1,31 +1,18 @@
-/* The photos area (PRD F5/F27, ADR-0008). One table and one code path for
-   both owners: an entry's photos and a milestone's photo differ only in
-   which column the row hangs off, so there is no second implementation for
-   milestones to drift from this one.
-
-   Order is the rule that carries this module. Files land before the row
-   that names them, and the row goes before the files are forgotten:
-
-     attach  - write both files, then insert the row.
-     remove  - delete the row, then delete the files.
-
-   Either way a crash in the gap leaves a file no row references, never a
-   row pointing at a file that is not there. The first is reclaimed by
-   sweepOrphanPhotos() below; the second would be a photo the user can see
-   in the list and never open. That asymmetry is ADR-0011's rule - import
-   writes files first and never deletes - applied to the ordinary path.
-
-   deleteEntry and deleteMilestone follow the same order for the rows they
-   own, and hand their file paths to removeFilesOf() here so the rule about
-   what a photo's files are lives in one place. */
+/* Use one table and path for entry and milestone photos (ADR-0008).
+   On attach write both files, then insert the row. On removal delete
+   the row, then its files. A crash can leave an orphan that
+   sweepOrphanPhotos() reclaims, while referenced files remain available
+   (ADR-0011). Entry and milestone deletion share removeFilesOf(). */
 
 import type { SqliteDriver } from '../sqlite/driver';
+import { unownedNames } from './fileOwnership';
 import { afterCommit } from '../sqlite/transactor';
 import type { Photo } from '../types';
 import { filesOf, photoFileName } from '../photos/names';
 import { watchJournalWrites } from '../journal-busy';
 import type { PhotoFileStore } from '../photos/photo-file-store';
-import { readFileOwnership } from './fileOwnership';
+import { readCleanupFileNames } from './fileOwnership';
+import { markOrphanSweepComplete, markOrphanSweepDue, orphanSweepRequestVersion } from '../sqlite/orphan-sweep-schedule';
 import { assertChanged, bool, mintUuid, now } from './support';
 
 /** A photo that has been through normalize() (ADR-0008/0015): JPEG bytes,
@@ -35,14 +22,12 @@ import { assertChanged, bool, mintUuid, now } from './support';
 export interface NormalizedPhoto {
   full: Uint8Array;
   thumb: Uint8Array;
-  /** The day this photo shows on, when it differs from whatever its owner
-      (entry or milestone) is dated to (ticket 47, ADR-0008/0015). Every
-      photo this app normalizes has already had its capture date stripped,
-      so a picked file never carries one to read - this is where the
-      add-photo flow's day prompt puts what the person typed. Undefined or
-      null leaves the day inherited, exactly as before this column existed
-      (ADR-0010: nothing here is derived, and nothing derives from it beyond
-      the read queries below). */
+  /** The day this photo shows on, when it differs from whatever its owner (entry or
+      milestone) is dated to (ADR-0008/0015). Every photo this app normalizes has already
+      had its capture date stripped, so a picked file never carries one to read - this is
+      where the add-photo flow's day prompt puts what the person typed. Undefined or null
+      leaves the day inherited, exactly as before this column existed (ADR-0010: nothing
+      here is derived, and nothing derives from it beyond the read queries below). */
   epochDayOverride?: number | null;
 }
 
@@ -70,16 +55,13 @@ export interface PhotosArea {
       One query rather than a union assembled above the seam: both owners are
       rows in this one table (ADR-0008). */
   inJournal(): Promise<DatedPhoto[]>;
-  /** Starred photos only (CONTEXT: "Starred"), oldest first - the starred
-      shelf's photo half, reached from search. */
-  starredPhotos(): Promise<DatedPhoto[]>;
   /** Throws on an unknown id, the same way remove() does not but a toggle
       of curation metadata should: a typo'd id and a successful toggle must
       not look alike. */
   setStarred(id: string, starred: boolean): Promise<void>;
-  /** Sets or clears which day this photo shows on (ticket 47, ADR-0008/
-      0015): null reverts it to whatever its owning entry or milestone is
-      dated to. Throws on an unknown id, the same reason setStarred does. */
+  /** Sets or clears which day this photo shows on (ADR-0008/ 0015): null reverts it to
+      whatever its owning entry or milestone is dated to. Throws on an unknown id, the same
+      reason setStarred does. */
   setEpochDayOverride(id: string, epochDay: number | null): Promise<void>;
 }
 
@@ -94,15 +76,19 @@ const toPhoto = (row: PhotoRow): Photo => ({ id: row.uuid, fileName: row.file_pa
     Called after the rows are gone, by all three paths that delete photo
     rows - a failure here must not resurrect them, and what it leaves
     behind is the sweep's to reclaim. */
-async function removePhotoFiles(
-  files: PhotoFileStore,
-  rows: { file_path: string }[]
-): Promise<void> {
-  for (const row of rows) for (const name of filesOf(row.file_path)) await files.remove(name);
+async function removePhotoFiles(files: PhotoFileStore, names: string[]): Promise<void> {
+  for (const name of names) await files.remove(name);
 }
 
+/** The files of these photo rows that no committed row still names. Read inside the
+    deleting transaction, after the rows are gone, so a file two rows share outlives the
+    first delete. */
+const unownedPhotoFiles = (driver: SqliteDriver, rows: { file_path: string }[]) =>
+  unownedNames(driver, rows.flatMap((row) => filesOf(row.file_path)));
+
 export async function removeFilesOf(driver: SqliteDriver, files: PhotoFileStore, rows: { file_path: string }[]): Promise<void> {
-  await afterCommit(driver, () => removePhotoFiles(files, rows));
+  const names = await unownedPhotoFiles(driver, rows);
+  await afterCommit(driver, () => removePhotoFiles(files, names), markOrphanSweepDue);
 }
 
 /** Best-effort cleanup after an owner save has committed. The rows are
@@ -113,11 +99,12 @@ export async function removeFilesAfterCommit(
   files: PhotoFileStore,
   rows: { file_path: string }[]
 ): Promise<void> {
+  const names = await unownedPhotoFiles(driver, rows);
   await afterCommit(driver, async () => {
     try {
-      await removePhotoFiles(files, rows);
+      await removePhotoFiles(files, names);
     } catch {
-      // A committed save stays successful; sweepOrphanPhotos() owns retries.
+      markOrphanSweepDue();
     }
   });
 }
@@ -154,7 +141,7 @@ export async function photosByEntry(
 
     `milestoneIds` narrows it to the rows a caller actually holds, the same
     shape `photosByEntry` above already takes and for a reason that only
-    appeared with a second caller (phase 5 deepening ticket 21): the day view
+    appeared with a second caller: the day view
     reads the milestones dated to one day, and the whole-table read would
     grow with the journal on every day anyone opened. Omitted, it is every
     milestone, which is what the milestones screen wants. */
@@ -176,41 +163,21 @@ export async function photosByMilestone(
   return byMilestone;
 }
 
-/* Deletes every file in the store that no photo row references, on boot,
-   after the database opens (ADR-0008). This is the other half of the
-   ordering rule at the top of this file: attach, remove, deleteEntry and
-   ticket 14's import are all free to leave a loose file behind, because
-   this reclaims it on the next start. It is the only code that deletes a
-   file nobody asked to delete, which is why it reads the rows itself
-   rather than trusting a caller's list.
+/* Reclaim media files that no owner references after restore or a due
+   housekeeping pass (ADR-0008). Read live ownership, including derived
+   thumbnails and optional benchmark recordings. Limit the scan to the
+   media directory, since the database also lives in OPFS.
 
-   A row names only its full photo; the thumbnail's name is derived
-   (names.ts), so both sides of the comparison have to be expanded or
-   every thumbnail would look like an orphan.
-
-   It is also why the store's root is a directory of its own and never the
-   OPFS root: the database file lives in OPFS too, and no row references
-   it.
-
-   fileOwnership.ts supplies every owner's names, including derived
-   thumbnails and optional benchmark recordings.
-
-   Precondition: nothing may attach a photo while this runs. It reads the
-   rows and then lists the files, so a photo whose files landed after the
-   read but whose row landed before the list would look like an orphan.
-
-   Enforced rather than assumed since phase 5 audit ticket 02 took this off
-   boot's critical path: boot is still the only caller, but it no longer runs
-   before any screen can write, so the guard every journal write raises is what
-   the precondition rests on now (watchJournalWrites, journal-busy.ts). A write
-   in flight at any point means this stops where it is and leaves the rest to
-   the next boot - the same outcome its failure path has always had, and the
-   right way round: losing a photo's bytes is not a price worth paying to
-   reclaim a file nothing was reading. */
+   A concurrent write could put bytes in the store before this scan sees
+   their row. watchJournalWrites stops the pass when a write begins. Defer
+   remaining files until the next pass. */
 export async function sweepOrphanPhotos(driver: SqliteDriver, files: PhotoFileStore): Promise<void> {
   const writes = watchJournalWrites();
+  const startedAt = orphanSweepRequestVersion();
   try {
-    await sweepUnreferencedFiles(driver, files, writes.sawWrite);
+    if (await sweepUnreferencedFiles(driver, files, writes.sawWrite)) {
+      markOrphanSweepComplete(Date.now(), undefined, startedAt);
+    }
   } finally {
     writes.stop();
   }
@@ -220,15 +187,16 @@ async function sweepUnreferencedFiles(
   driver: SqliteDriver,
   files: PhotoFileStore,
   sawWrite: () => boolean
-): Promise<void> {
-  if (sawWrite()) return;
-  const referenced = new Set((await readFileOwnership(driver, 'cleanup')).names);
+): Promise<boolean> {
+  if (sawWrite()) return false;
+  const referenced = new Set(await readCleanupFileNames(driver));
   for (const name of await files.list()) {
     // Asked per file rather than once: a write that starts halfway through
     // must not have the rest of the listing deleted out from under it.
-    if (sawWrite()) return;
+    if (sawWrite()) return false;
     if (!referenced.has(name)) await files.remove(name);
   }
+  return !sawWrite();
 }
 
 /* Both owner columns, resolved before anything is written: an unknown
@@ -324,8 +292,8 @@ export function makePhotosArea(driver: SqliteDriver, files: PhotoFileStore): Pho
       /* Two left joins rather than two queries: exactly one of the owner
          columns is set (the table's CHECK), so COALESCE picks whichever day
          applies and the other side contributes nothing. A trashed entry's
-         photo is excluded the same way every other entry-owned read is
-         (phase 5 ticket 19); a milestone's has no such state to check. */
+         photo is excluded the same way every other entry-owned read is;
+         a milestone's has no such state to check. */
       const rows = await driver.query<PhotoRow & { epoch_day: number; milestone_name: string | null }>(
         `SELECT p.uuid, p.file_path, p.starred,
                 COALESCE(p.epoch_day_override, e.epoch_day, m.epoch_day) AS epoch_day,
@@ -334,24 +302,6 @@ export function makePhotosArea(driver: SqliteDriver, files: PhotoFileStore): Pho
          LEFT JOIN entry e ON e.id = p.entry_id
          LEFT JOIN milestone m ON m.id = p.milestone_id
          WHERE p.entry_id IS NULL OR e.trashed_at IS NULL
-         ORDER BY epoch_day, p.order_index, p.id`
-      );
-      return rows.map((row) => ({
-        ...toPhoto(row),
-        epochDay: row.epoch_day,
-        milestoneName: row.milestone_name
-      }));
-    },
-
-    async starredPhotos() {
-      const rows = await driver.query<PhotoRow & { epoch_day: number; milestone_name: string | null }>(
-        `SELECT p.uuid, p.file_path, p.starred,
-                COALESCE(p.epoch_day_override, e.epoch_day, m.epoch_day) AS epoch_day,
-                m.name AS milestone_name
-         FROM photo p
-         LEFT JOIN entry e ON e.id = p.entry_id
-         LEFT JOIN milestone m ON m.id = p.milestone_id
-         WHERE p.starred = 1 AND (p.entry_id IS NULL OR e.trashed_at IS NULL)
          ORDER BY epoch_day, p.order_index, p.id`
       );
       return rows.map((row) => ({

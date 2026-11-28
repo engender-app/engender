@@ -1,28 +1,11 @@
-/* Section colour, from the flag (DIRECTION.md's "Flag colour reaches the
-   whole app, categorically"). Each area of a screen takes one stripe of the
-   active flag as its own colour - the icon disc, the day bar, the tile -
-   and the assignment is categorical, never ordinal, so colour still judges
-   nothing (ADR-0012).
+/* A section takes a distinct stripe of the active flag. Stripe colours
+   identify categories (ADR-0012). Deduplicate palettes such as trans
+   blue/pink/white/pink/blue before allocating roles.
 
-   Two things have to happen to a stripe list before a screen can use it.
-
-   It is de-duplicated: trans reads blue/pink/white/pink/blue, which is
-   three roles rather than five, and a screen handed the raw list would give
-   two of its areas the same colour while believing they differed.
-
-   And each stripe gets an ink: the version of itself that can carry a
-   label. A flag has a white band and a near-black one, and each of those is
-   invisible against one of the two themes. The ink moves the stripe's
-   lightness until it clears 4.5:1 on every surface it can land on, and
-   moves nothing else, so a red stripe inks to a darker or lighter red
-   rather than to a pink. Mixing toward --text was the first attempt and it
-   desaturates on the way: on the dark theme every stripe came out a pastel
-   of itself, which loses the one thing decision 1 is about.
-
-   The CSS in kit.css derives an ink of its own from --role alone, for a
-   surface handed a bare stripe with no theme to read. That fallback is a
-   mix toward --text and does wash the colour out; it is a floor rather than
-   the intended path, and tests/kit-roles.test.ts holds both to 4.5:1. */
+   Adjust the stripe's lightness to produce ink at 4.5:1 on each supported
+   surface while preserving hue. kit.css mixes a bare --role towards
+   --text when no theme supplies the ink. tests/node/ui/kit-roles.test.ts checks
+   both contrast paths. */
 
 import { chromaOf, colorMixOklab, contrast, lightnessOf, washOver, withLightness } from './colour';
 
@@ -36,36 +19,20 @@ export interface Role {
       the difference is what keeps the app looking like the flag rather
       than like a darkened copy of it. */
   mark: string;
-  /** The stripe as a mark drawn beside another mark: the stripe itself
-      where it is a colour, and the nearest version of it that clears 3:1
-      where it is one of the flag's shades.
-
-      A lone mark on a card owes no ratio and takes the stripe exactly - that
-      is `--role-draw`, and it is the decision that stopped nonbinary's
-      yellow turning olive. It holds because a faint mark is still the only
-      mark there: nothing depends on separating it from something else. Two
-      chart lines on one plot do (phase 6 ticket 12), and a stripe that
-      cannot be seen against the card is not a faint line, it is no line at
-      all.
-
-      Only a shade is ever moved. A flag's white band on the light theme and
-      its near-black band on the dark theme sit on their own ground; a
-      colour, at any lightness, still reads as itself, so trans's pink stays
-      pink and rainbow's orange stays orange on both themes. Agender is why
-      this exists: its flag holds one colour and three shades, so a second
-      line on it lands on #1A1A1A, which on a dark card is the card. */
+  /** For marks sharing a plot, keep chromatic stripes and adjust white
+      or near-black shades just enough to clear 3:1. This keeps a
+      shade visible against its matching card surface. A lone mark
+      uses the exact stripe via --role-draw. */
   paired: string;
-  /** What a chart line drawn in the stripe is edged in, so it can be found
-      against the ground (WCAG 1.4.11, phase 15 ticket 20): the same hue at
-      the nearest lightness that clears 3:1 against everything a chart draws
-      under a line (see lineEdge), wherever the stripe itself does not. Null
-      where the stripe already reads, so a line that needs no edge is drawn
-      exactly as before.
+  /** What a chart line drawn in the stripe is edged in, so it can be found against the
+      ground: the same hue at the nearest lightness that clears 3:1 against everything a
+      chart draws under a line (see lineEdge), wherever the stripe itself does not. Null
+      where the stripe already reads, so a line that needs no edge is drawn exactly as
+      before.
 
-      An edge rather than a floored line because the line is the flag's
-      colour and stays it; the edge is the boundary the eye finds it by.
-      Nonbinary's yellow is still yellow, now with a darker yellow either
-      side of it, rather than one olive line. */
+      An edge rather than a floored line because the line is the flag's colour and stays it;
+      the edge is the boundary the eye finds it by. Nonbinary's yellow is still yellow, now
+      with a darker yellow either side of it, rather than one olive line. */
   edge: string | null;
   /** The same for a line drawn in `paired`: the stripe's edge where
       `paired` is the stripe, and otherwise the edge the shade's mark needs
@@ -104,9 +71,8 @@ const MARK_FLOOR = 3;
     role paints behind itself - the icon disc, and the wash under a pressed
     row. Declared here rather than only in the CSS because the ink has to
     clear its floor against those fills, and it cannot do that without
-    knowing them. tests/kit-roles.test.ts holds kit.css to these. */
-/* ROLE_TINT_PCT stays exported only for kit-roles.test.ts, which cross-checks
-   against it (AU-09 test-only review). */
+    knowing them. tests/node/ui/kit-roles.test.ts holds kit.css to these. */
+/* ROLE_TINT_PCT stays exported only for kit-roles.test.ts, which cross-checks against it. */
 export const ROLE_TINT_PCT = 15;
 export const ROLE_WASH_PCT = 12;
 
@@ -117,8 +83,7 @@ export const ROLE_WASH_PCT = 12;
     stripes around the middle. Both collapse to the colours the flag
     actually has, in the order they are first seen, so role 1 is always the
     outermost stripe. */
-/* stripeRoles stays exported only for kit-roles.test.ts, which cross-checks
-   against it (AU-09 test-only review). */
+/* stripeRoles stays exported only for kit-roles.test.ts, which cross-checks against it. */
 export function stripeRoles(stripes: string[]): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
@@ -145,8 +110,7 @@ export function stripeRoles(stripes: string[]): string[] {
     colour is the answer: an area with no colour reads as an area with no
     colour, which is worse than the flag and better than a label nobody can
     read. */
-/* legibleInk stays exported only for kit-roles.test.ts, which cross-checks
-   against it (AU-09 test-only review). */
+/* legibleInk stays exported only for kit-roles.test.ts, which cross-checks against it. */
 export function legibleInk(
   stripe: string,
   text: string,
@@ -185,33 +149,17 @@ export function legibleInk(
   return text;
 }
 
-/** The heat ramp's steps, as how much of the stripe is mixed into the
-    ground behind the cell. The same five numbers palettes.css writes for
-    --heat-0..4 and BareStrip.svelte lists for the week, so a week cell and
-    a calendar cell shade one day's reading the same way and only the hue
-    differs (ticket 20's review: "a cell here and a calendar cell are the
-    same scale in the flag's hue"). */
+/** The heat ramp's steps, as how much of the stripe is mixed into the ground behind the
+    cell. The same five numbers palettes.css writes for --heat-0..4 and BareStrip.svelte
+    lists for the week, so a week cell and a calendar cell shade one day's reading the same
+    way and only the hue differs. */
 export const HEAT_STEPS = [0, 22, 45, 70, 100];
 
-/** The one thing a role-hued heat cell needs that the accent ramp got by
-    hand. palettes.css pairs every --heat-N with an --on-heat-N, tuned per
-    palette and sometimes per theme, because a ramp from the page's own
-    surface up to a saturated colour crosses the lightness band where
-    neither --text nor its opposite clears 4.5:1. That table is sixteen
-    palettes times two themes; a role-hued ramp is that times however many
-    stripes the flag has, which is not a table anybody keeps in step.
-
-    So it is computed, the same way the hand-tuned overrides were reasoned
-    about: the theme's own text colour where it clears the floor, and
-    otherwise whichever of black and white contrasts more. That second
-    branch cannot fail - the two are furthest apart exactly where they are
-    equal, and there they are still 4.58:1 - which is what makes the ramp
-    safe on a stripe nobody has looked at.
-
-    The fill is never adjusted. A fill answers to no ratio (see legibleInk
-    above): it is the number that has to be read, not the cell. */
-/* heatRamp stays exported only for kit-roles.test.ts, which cross-checks
-   against it (AU-09 test-only review). */
+/** Choose ink for a role-hued heat cell without changing its fill.
+    Keep theme text where it reaches 4.5:1, else choose black or white,
+    whichever contrasts more. At their crossover both still reach
+    4.58:1. The accent ramp's hand-tuned pairs live in palettes.css. */
+/* heatRamp stays exported only for kit-roles.test.ts, which cross-checks against it. */
 export function heatRamp(stripe: string, text: string, ground: string): HeatStep[] {
   return HEAT_STEPS.map((pct) => {
     const fill = pct === 0 ? ground : pct === 100 ? stripe : colorMixOklab(stripe, pct, ground);
@@ -220,7 +168,7 @@ export function heatRamp(stripe: string, text: string, ground: string): HeatStep
 }
 
 /* heatInk stays exported only for palette-contrast.test.ts, which holds
-   mood's per-step inks to the same rule (ticket 279, ADR-0091). */
+   mood's per-step inks to the same rule. */
 export function heatInk(fill: string, text: string): string {
   if (contrast(text, fill) >= TEXT_FLOOR) return text;
   return contrast('#FFFFFF', fill) >= contrast('#000000', fill) ? '#FFFFFF' : '#000000';
@@ -241,8 +189,7 @@ const ACHROMATIC = 0.02;
     stripe still gets a turn - the shades follow the colours rather than
     being dropped - which keeps the white band a part of the palette without
     letting it be the first thing anyone sees of it. */
-/* flagRoles stays exported only for kit-roles.test.ts, which cross-checks
-   against it (AU-09 test-only review). */
+/* flagRoles stays exported only for kit-roles.test.ts, which cross-checks against it. */
 export function flagRoles(
   stripes: string[],
   text: string,
@@ -274,10 +221,9 @@ export function flagRoles(
 }
 
 /** What a chart can paint under one of its lines, on top of the surface
-    itself: a wash of the line's own stripe, at most 18% (PitchFigure's
-    reference bands; an area chart's fill is 16%), and the 7% of --text an
-    annotation band lays across the plot. tests/palette-contrast.test.ts
-    reads both out of the CSS and measures the edge against them. */
+    itself: a wash of the line's own stripe, at most 18% (an area chart's
+    fill is 16%), and the 7% of --text an annotation band lays across the
+    plot. tests/node/ui/palette-contrast.test.ts measures the edge against both. */
 const CHART_WASH_PCT = 18;
 const ANNOTATION_PCT = 7;
 
@@ -299,31 +245,46 @@ export function roleAt(roles: Role[], index: number): Role | undefined {
   return roles[index % roles.length];
 }
 
-/** The flag's colours, in the order `flagRoles` put them, with its shades
-    dropped rather than moved to the back.
+/** Whether a stripe reads as red: a saturated colour within 15 degrees of
+    pure red. Rainbow's #E40303 and lesbian's #D52D00 are; an orange such as
+    #EF7627 (22 degrees) and the pinks are not. */
+function isRed(hex: string): boolean {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  if (max === 0 || (max - min) / max < 0.5 || max !== r) return false;
+  const hue = (60 * (g - b)) / (max - min);
+  return hue <= 15 && hue >= -15;
+}
 
-    For the one consumer whose whole surface is the stripe undiluted: a tile
-    is a block of `--role-draw` now (phase 10 rule 3), and a block of a shade
-    is the page - agender's near-black band is a black rectangle on a
-    near-black page, held apart from it by a 1px line and nothing else. A
-    chart line or an icon glyph on the same band is faint and still a mark,
-    which is why `flagRoles` keeps the shades for everyone else.
+/** The first role whose stripe is not red, for a surface meant to calm: the breathing
+    exercise filled with rainbow's first stripe read as blood. The first role where no role
+    qualifies. */
+export function calmRole(roles: Role[]): Role | undefined {
+  return roles.find((role) => !isRed(role.stripe)) ?? roles[0];
+}
 
-    Every flag has at least one colour, so the list is never empty; the
-    fallback is there for a palette nobody has written yet. */
+/** The flag's colours, in the order `flagRoles` put them, with its shades dropped rather
+    than moved to the back.
+
+    For the one consumer whose whole surface is the stripe undiluted: a tile is a block of
+    `--role-draw` now, and a block of a shade is the page - agender's near-black band is a
+    black rectangle on a near-black page, held apart from it by a 1px line and nothing else.
+    A chart line or an icon glyph on the same band is faint and still a mark, which is why
+    `flagRoles` keeps the shades for everyone else.
+
+    Every flag has at least one colour, so the list is never empty; the fallback is there
+    for a palette nobody has written yet. */
 export function chromaticRoles(roles: Role[]): Role[] {
   const colours = roles.filter((role) => chromaOf(role.stripe) >= ACHROMATIC);
   return colours.length > 0 ? colours : roles;
 }
 
-/** One band of the flag per era, in order, wrapping over the flag's
-    colours - and, on a flag with a single colour (agender), over its
-    shades too, so a second and third era are drawn in black and grey
-    rather than the same green three times (Alicja, on the first Look back
-    render: "we can't have all eras in the same colour"). Shared by every
-    rail that bands eras (SpanTimeline, MilestoneRail) so the two agree on
-    which stripe a given era gets, with `roleAt` doing the wrap-around
-    indexing over whatever this returns. */
+/** One band of the flag per era, in order, wrapping over the flag's colours - and, on a
+    flag with a single colour (agender), over its shades too, so a second and third era are
+    drawn in black and grey rather than the same green three times. Shared by every rail
+    that bands eras (SpanTimeline, MilestoneRail) so the two agree on which stripe a given
+    era gets, with `roleAt` doing the wrap-around indexing over whatever this returns. */
 export function eraBandRoles(roles: Role[]): Role[] {
   const colours = chromaticRoles(roles);
   if (colours.length >= 2) return colours;
@@ -338,22 +299,9 @@ export function tileRoleAt(roles: Role[], index: number): Role | undefined {
   return roleAt(chromaticRoles(roles), index);
 }
 
-/** The stripe the bar under a tight tile's value is drawn in: another band
-    of the same flag, picked for being the one that can actually be seen on
-    the block it sits on.
-
-    It was the whole flag, the `flagFill` gradient the kit had always drawn
-    there - and on a block of one of that flag's own colours the matching
-    band disappears into the ground, so trans read as a pink block with a
-    pink-and-white bar and rainbow's orange band vanished entirely (Alicja,
-    2026-09-07: "instead of a trans colored underline, just pick another
-    colour from the flag"). One solid band instead, and the flag's own hex.
-
-    Colours before shades, as everywhere else a role is handed out, and
-    within them the highest contrast against the block: on a flag with one
-    colour and three shades - agender - there is no second colour to take,
-    so the shades are the candidates and its near-black band is what a green
-    block gets. */
+/** Draw the tile bar in a solid flag stripe that contrasts with its block.
+    Prefer another colour, then use the strongest contrasting shade when the
+    flag has only one colour. Keep the flag's literal value. */
 export function flagBarRole(roles: Role[], on: Role | undefined): Role | undefined {
   if (!on) return undefined;
   const others = roles.filter((role) => role.stripe.toUpperCase() !== on.stripe.toUpperCase());
@@ -366,37 +314,13 @@ export function flagBarRole(roles: Role[], on: Role | undefined): Role | undefin
   );
 }
 
-/** Which stripe each area of Home takes, named rather than written as a
-    number at the call site - one of them is not in reading order and the
-    reason is the ordering above.
+/** Resolve Home's stripe roles in one place. The log strip uses role 0
+    for a visible fill across palettes. Week-strip and day-card indices
+    remain with the Journal door.
 
-    The week strip takes role 0, the only index guaranteed to be a colour
-    on all palettes, because it is the one area on that screen where the
-    stripe is a value rather than a decoration: on trans, whose flag yields
-    three roles for four areas, reading order handed the strip the white
-    band, and a heat ramp from white into a white page is not a ramp.
-    Everything else takes its turn as normal.
-
-    Beside `roleAt` rather than in the screen for the same reason
-    wrappedDisplay.ts holds WRAPPED_AREA_ROLE: the index is only meaningful
-    against the list this module builds, and a table buried in markup is a
-    table nobody can check.
-
-    The two tile areas - `liveTiles` and `lookBack` - are resolved through
-    `tileRoleAt` rather than `roleAt`, so their index counts the flag's
-    colours only. Everything the area holds goes through the same call, tiles
-    and the list and the notice beside them, or one area of the screen would
-    be drawn in two stripes.
-
-    Phase 10 redesign ticket 13 turned Today around. The week strip and the
-    day cards left for the Journal door and keep their indices there; the
-    log strip takes the strip's slot on Today, for the strip's own reason -
-    its write shapes are icon squares, a block of the stripe with a glyph on
-    it, and a square of the flag's white band on a white page is not a
-    control. The agenda takes the milestones' old slot (a milestone still
-    ahead is one of its rows) and resolves it through `tileRoleAt`, since
-    its day blocks are blocks and a block is always a colour; the pinned
-    rows take the days' slot through `roleAt`, as the hub's rows do. */
+    Resolve liveTiles, lookBack and agenda blocks through tileRoleAt, which
+    looks up colored stripes. Use the same role for every part of each
+    area. Pinned rows resolve through roleAt. */
 export const HOME_AREA_ROLE = {
   week: 0,
   log: 0,
@@ -407,26 +331,10 @@ export const HOME_AREA_ROLE = {
   pinned: 3
 } as const;
 
-/** The whole flag as one CSS fill: hard-edged bands, left to right, in
-    stripe order and in the flag's own proportions.
-
-    A quarter turn from how a flag flies, because of where it is used: the
-    bar under a tile's number is wide and short, and a flag's own stripes
-    across it would be slivers a pixel tall. Turned, each band is as tall as
-    the bar and the count is read along it.
-
-    Hard stops rather than a gradient - it is a flag, not a wash - and built
-    from the stripe list at render time, so bisexual's doubled stops keep its
-    2:1:2 proportion for free and another palette needs nothing taught here.
-
-    **The colours are the flag's own, exactly.** Nothing here is nudged for a
-    theme, unlike the roles above and unlike the sun on Home: those are the
-    flag used as a screen's colour, and this is the flag being shown as
-    itself. A white band on a light card is faint, and that is what a white
-    band is.
-
-    Used where the flag is the material rather than one section's colour -
-    the bar under a tile's number. */
+/** Draw exact flag colours as hard stops from left to right, preserving
+    stripe order and proportions. Rotating the bands gives each full
+    height on a tile's short bar. Repeated stripes preserve widths such
+    as bisexual's 2:1:2 without theme adjustments. */
 export function flagFill(stripes: string[]): string {
   const bands = stripes.map((s) => s.trim()).filter(Boolean);
   if (bands.length === 0) return 'none';
@@ -473,26 +381,15 @@ function readStripes(doc: Document): string[] {
     .filter(Boolean);
 }
 
-/** The colour a door's field wears, and the ink on it (phase 10 direction,
-    rule 3): the first later chromatic band of `--motif-stripes` that
-    differs from the outermost band, preferring an inner band -
-    so bisexual's doubled outer stop is skipped by colour rather than by
-    index, and the whole flag stays drawn in the sun with no band stolen. Two
-    flags name their own band: the six-stripe rainbow takes its blue rather
-    than its orange (Alicja, 2026-09-07, round two), and bisexual takes its
-    dark blue rather than its purple (Alicja, 2026-09-07, on ticket 23's
-    renders). Where no inner band is chromatic, the first later colour
-    becomes the field. A flag with no such band falls back to its first
-    colour, then to its first stripe. Polish uses white in light mode and
-    red in dark mode, opposite its single sun disc.
+/** Choose the first later inner chromatic stripe distinct from the
+    outermost colour. Fall back to the first later colour, first colour,
+    then first stripe. Rainbow uses blue, bisexual dark blue, lesbian
+    light orange, and Polish white in light mode and red in dark mode.
 
-    The ink is the dark theme's near-black or white, whichever measures
-    higher on the hex. Only large text may sit on the field: nonbinary's
-    purple carries white at 4.41:1, which clears 3:1 and nothing smaller.
-    tests/palette-contrast.test.ts holds every flag's pair to that floor and
-    to the table DIRECTION.md prints. Ticket 23 publishes the pair beside the
-    roles; this is the arithmetic it publishes. */
-const FIELD_NAMED_BAND: Record<string, string> = { rainbow: '#004CFF', bisexual: '#0038A8' };
+    Pick near-black or white for higher contrast. Use large text only.
+    Nonbinary purple with white is 4.41:1. tests/node/ui/palette-contrast.test.ts
+    pins the field/ink pairs and 3:1 floor. */
+const FIELD_NAMED_BAND: Record<string, string> = { rainbow: '#004CFF', bisexual: '#0038A8', lesbian: '#FF9A56' };
 
 export interface FlagField {
   hex: string;

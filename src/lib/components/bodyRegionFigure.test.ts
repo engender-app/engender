@@ -1,16 +1,13 @@
-/* The figure's geometry (phase 10 redesign ticket 40, recast for phase 11
-   ticket 47). Four properties, each of them something a <style> block
-   cannot be asked about and a render will not reliably show: a tap lands on
-   exactly one region, every button clears the touch floor at the smallest
-   stage the component allows, every panel is a piece of the body it names,
-   and the panels tile that body without a gap.
+/* The figure's geometry. Four properties, each of them something a <style> block cannot be
+   asked about and a render will not reliably show: a tap lands on exactly one region, every
+   button clears the touch floor at the smallest stage the component allows, every panel is
+   a piece of the body it names, and the panels tile that body without a gap.
 
-   What moved out: neutrality. It used to live here because a panel was a
-   rectangle of its own and one drawn wider than its neighbour would have
-   put a bust back on a flat silhouette. A panel is now a band of the shared
-   path clipped to it, so it is exactly as wide as the body and cannot
-   disagree with it - the three measurements are in
-   `bodySilhouette.test.ts` (ADR-0087). */
+   What moved out: neutrality. It used to live here because a panel was a rectangle of its
+   own and one drawn wider than its neighbour would have put a bust back on a flat
+   silhouette. A panel is now a band of the shared path clipped to it, so it is exactly as
+   wide as the body and cannot disagree with it - the three measurements are in
+   `bodySilhouette.test.ts`. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
@@ -61,12 +58,8 @@ test('the panels run down the body, which is the order they arrive in', () => {
   assert.deepEqual([...tops].sort((a, b) => a - b), tops);
 });
 
-/* The body stays one unbroken object, which is the half of ticket 47 that
-   is about the seams rather than about the contour: the bands down the
-   middle column are flush, so no height between the crown and the crotch is
-   outside a band and none is inside two. Four bare white boxes stacked on a
-   grey body was the look this replaces, and a gap of card colour between
-   them was half of it. */
+/* The centre bands meet from crown to crotch. A gap exposes the ground
+   colour and an overlap makes two bands respond at the same height. */
 test('the bands down the middle of the body tile it from the crown to the crotch', () => {
   const column = REGION_PANELS.flatMap((panel) =>
     panel.bands.filter((area) => centre(area) === MIDLINE && area.top < CANON.crotch)
@@ -98,11 +91,8 @@ test('a region drawn in more than one place is drawn symmetrically', () => {
   }
 });
 
-/* Tap what you see, in both directions. This is the defect ticket 40 existed
-   to fix - the old HOTSPOTS table put `shoulders` on the left arm and
-   `hands_feet` between the ankles - and a band that clips to nothing is the
-   way it would come back: a button over a part of the figure with no body
-   under it answers for a region a person cannot see. */
+/* Each hit target must cover visible body ink. A clipped-away band could
+   respond for a region the person cannot see. */
 test('every band draws a piece of the body', () => {
   for (const panel of REGION_PANELS) {
     panel.bands.forEach((area, i) => {

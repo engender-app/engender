@@ -1,4 +1,4 @@
-/* The calendar-file builder (phase 10 redesign ticket 03, ADR-0067): one
+/* The calendar-file builder (ADR-0067): one
    `.ics` for one dated thing, asserted as text since the builder is pure. */
 import { test, expect } from 'vitest';
 import { epochDayFromLocalDate } from './epochDay.ts';

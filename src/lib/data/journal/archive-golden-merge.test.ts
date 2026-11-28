@@ -1,24 +1,7 @@
-/* Merge, swept across every registered archive section (ADR-0027, ticket
-   12).
-
-   Before this file, merge coverage was 45 hand-written assertions in
-   restore.test.ts, each naming its own section by calling into that area's
-   own read API - and eight sections were never named there at all
-   (affirmations, journaling pauses, effect categories, hair removal
-   sessions, procedures, letters, medication stock, wear sessions). A section
-   whose apply forgets its present-ids filter and double-inserts on a
-   repeated merge would pass every one of those 45 assertions, because none
-   of them counts rows.
-
-   This sweeps `ARCHIVE_SECTION_NAMES` - the live registry, not a copy of it -
-   so a section registered after this file is written is swept without
-   anyone having to come back and add it by hand. Two things it can state
-   generically for every section: merging the same archive twice must not
-   change a section's row count, and every row a device already had must
-   still be there afterwards. What it cannot state - a specific row's
-   *content* surviving a merge that has no opinion on it, such as a target's
-   own roadmap tick - stays hand-written in restore.test.ts, next to a note
-   on why. */
+/* Sweep the live ARCHIVE_SECTION_NAMES registry (ADR-0027).
+   Merging the same archive twice must preserve every section's
+   row count and existing rows. restore.test.ts owns field-level
+   checks such as a roadmap item's local tick. */
 
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
@@ -42,40 +25,33 @@ const SECTION_IDENTITY: { [K in keyof ArchiveJournal]: (row: ArchiveJournal[K][n
   presets: (r) => r.id,
   tagGroups: (r) => r.key,
   presentations: (r) => r.id,
-  entryTemplates: (r) => r.id,
-  affirmations: (r) => r.id,
   bodyRegions: (r) => r.id,
   entries: (r) => r.uuid,
   milestones: (r) => r.id,
   labResults: (r) => r.id,
-  measurementTypes: (r) => r.key,
-  measurements: (r) => r.id,
-  sizeRecords: (r) => r.id,
   taper: (r) => r.id,
   taperSessions: (r) => r.id,
   sideEffects: (r) => r.id,
   cycleEvents: (r) => r.id,
-  journalingPauses: (r) => r.id,
-  savedQuestions: (r) => r.id,
-  revisits: (r) => r.id,
   eras: (r) => r.id,
   eraMutes: (r) => r.eraUuid,
   effectCategories: (r) => r.key,
   personalEffectTypes: (r) => r.key,
   personalEffects: (r) => r.id,
-  hairStages: (r) => r.id,
-  hairPhotos: (r) => r.id,
+  progressPhotos: (r) => r.id,
+  progressPoses: (r) => r.id,
   hairRemovalSessions: (r) => r.id,
   procedures: (r) => r.id,
+  providers: (r) => r.id,
   appointments: (r) => r.id,
   reminders: (r) => r.id,
-  tallyEvents: (r) => r.id,
-  counterevidenceSnapshots: (r) => r.id,
   letters: (r) => r.id,
   voicePracticeTakes: (r) => r.id,
   roadmapChecks: (r) => `${r.packKey}:${r.goalKey}`,
-  roadmapTracks: (r) => r.track,
+  roadmapCategories: (r) => r.id,
   roadmapGoals: (r) => r.id,
+  roadmapInstitutions: (r) => r.id,
+  roadmapInstitutionChanges: (r) => r.id,
   regimenEpisodes: (r) => r.id,
   doseEvents: (r) => r.id,
   doseSchedules: (r) => r.id,
@@ -84,14 +60,14 @@ const SECTION_IDENTITY: { [K in keyof ArchiveJournal]: (row: ArchiveJournal[K][n
   tryouts: (r) => r.id,
   feltSenseEntries: (r) => r.id,
   marginNotes: (r) => r.id,
-  wordIgnore: (r) => r.word,
   documents: (r) => r.id,
   checklists: (r) => r.id,
   wearSessions: (r) => r.id,
   voiceBenchmarks: (r) => r.id,
   comfortItems: (r) => r.id,
   importLog: (r) => r.id,
-  areaStates: (r) => r.area
+  areaStates: (r) => r.area,
+  deletions: (r) => `${r.table}:${r.id}`
 };
 
 test('every registered section merges idempotently and keeps the target device its own rows', async () => {

@@ -1,23 +1,6 @@
 <script lang="ts">
-  /* The person's own comfort band (phase 8 features ticket 09, ADR-0059).
-
-     A different object from the reference bands, and both belong on the
-     figure. The reference bands are a citation: two published ranges and
-     the region where they coincide, drawn the same weight as each other so
-     none of them is a target. This one is a decision, and the app has
-     nothing to say about it - no default, no suggestion, no table of what
-     somebody's comfortable range ought to be for their height or their age
-     or how long they have been at it. Two numbers, typed in, cleared as
-     easily as set.
-
-     Which is why it ships empty and stays empty until somebody fills it in.
-     A default here would be the norm table the whole rule exists to keep
-     out, wearing the person's own name.
-
-     The pair is validated in audio/bands.ts (`comfortBand`) rather than
-     here: two ends the wrong way round are read the way they were meant,
-     and a number no voice reaches is refused. This screen only ever writes
-     a pair that came back from it. */
+  /* Optional comfort bracket. No default or suggested range; both ends
+     are set and cleared together. */
   import { m } from '$lib/paraglide/messages';
   import { comfortBand } from '$lib/audio/bands';
   import { prefs } from '$lib/data/prefs/store.svelte';
@@ -63,7 +46,7 @@
     data-comfort-band
     title={m.vb_comfort_heading()}
     onclick={open}
-    subtitle={band ? m.vb_comfort_value({ low: band.lowHz, high: band.highHz }) : m.vb_comfort_none()}
+    subtitle={band ? m.hz_range({ low: band.lowHz, high: band.highHz }) : m.vb_comfort_none()}
   >
     {#snippet leading()}<span class="kit-row-ico"><Icon name="ruler" size={20} /></span>{/snippet}
   </ListRow>
@@ -74,7 +57,6 @@
   title={band ? m.vb_comfort_edit() : m.vb_comfort_set()}
   onClose={() => (editing = false)}
 >
-  <p class="muted small">{m.vb_comfort_hint()}</p>
   <div class="cb-fields">
     <label class="field">
       <span class="field-label">{m.vb_comfort_low()}</span>

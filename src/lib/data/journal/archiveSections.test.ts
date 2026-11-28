@@ -13,7 +13,6 @@ import { openArchive, packArchive } from '../archive/pack.ts';
 import { portablePreferences, type ArchiveJournal } from '../archive/payload.ts';
 import { PREFERENCE_DEFAULTS } from '../prefs/catalogue.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
-import { makeRemindersArea } from './reminders.ts';
 import { readRowContext } from './archiveRead.ts';
 import {
   applyArchiveJournal,
@@ -91,7 +90,7 @@ test('the tryouts constraint is what keeps felt-sense rows from being dropped', 
     tryouts: [
       { id: 't-1', kind: 'name', label: 'Alex', description: null, startEpochDay: 19900, endEpochDay: null, photos: [] }
     ],
-    feltSenseEntries: [{ id: 'f-1', tryoutId: 't-1', milestoneId: null, epochDay: 19910, mood: 4, note: null }]
+    feltSenseEntries: [{ id: 'f-1', tryoutId: 't-1', epochDay: 19910, mood: 4, note: null }]
   };
   const tryouts = ARCHIVE_SECTIONS.find((s) => s.name === 'tryouts')!;
   const milestones = ARCHIVE_SECTIONS.find((s) => s.name === 'milestones')!;
@@ -286,11 +285,10 @@ test('every section declares its discard as single-table deletes or a native FTS
   }
 });
 
-/* What travels (ticket 04, ADR-0049): the real registry against the spec's
-   own worked cases, not a restatement of whatever archiveSections.ts
-   happens to say - each assertion below is a fact settled in
-   .scratch/phase-7/portability/spec.md, so a wrong declaration here fails
-   against the spec rather than against itself. */
+/* What travels (ADR-0049): the real registry against the spec's own worked cases, not a
+   restatement of whatever archiveSections.ts happens to say - each assertion below is a
+   fact settled in so a wrong declaration here fails against the spec rather than against
+   itself. */
 test('the registry answers the spec\'s worked cases for what travels', () => {
   const travelsOf = (name: string) => ARCHIVE_SECTIONS.find((s) => s.name === name)!.travels;
 
@@ -300,15 +298,14 @@ test('the registry answers the spec\'s worked cases for what travels', () => {
   assert.deepEqual(travelsOf('milestones'), { fields: ['name'] }, 'a milestone set travels as names, not dates');
   assert.equal(travelsOf('checklists'), 'whole', 'an appointment question list travels whole');
   assert.equal(travelsOf('eras'), 'none', 'an era would travel as a name with no bounds, so eras do not travel');
-  /* Phase 8 features ticket 52, ADR-0065. A structure file is a thing
-     people hand to someone else, and a document is the most personal record
-     the journal holds - an opinion, a diagnosis, a ruling. The ticket asks
+  /* ADR-0065. A structure file is a thing people hand to someone else, and a document is
+     the most personal record the journal holds - an opinion, a diagnosis, a ruling. asks
      for this one asserted rather than left to the declaration. */
   assert.equal(travelsOf('documents'), 'none', 'nothing about a document belongs in a structure file');
 
-  /* "Entries, photos, doses, labs, measurements and every other record of
-     what happened" - one section standing in for each of those five. */
-  for (const record of ['entries', 'hairPhotos', 'doseEvents', 'labResults', 'measurements']) {
+  /* "Entries, photos, doses, labs and every other record of
+     what happened" - one section standing in for each of those four. */
+  for (const record of ['entries', 'progressPhotos', 'doseEvents', 'labResults']) {
     assert.equal(travelsOf(record), 'none', `${record} is a record of what happened and must not travel`);
   }
 });
@@ -336,25 +333,4 @@ test('a fields declaration on the real registry keeps only the field it names', 
   const kept = Object.fromEntries(fields.map((field) => [field, (row as Record<string, unknown>)[field]]));
 
   assert.deepEqual(kept, { name: 'Started HRT' });
-});
-
-test('restoring legacy Weekly rows anchors them and merge preserves an existing anchor', async () => {
-  const driver = await migratedDb();
-  const journal = emptyArchiveJournal();
-  journal.reminders = [{
-    id: 'weekly-import', title: 'Injection', type: 'injection', time: '20:00',
-    recurrence: 'WEEKLY', interval: null, anchorEpochDay: null, epochDay: null, enabled: true, autoSource: null
-  }];
-  const reminders = makeRemindersArea(driver);
-  await driver.transaction((driver) => applyArchiveJournal({
-    driver, mode: 'replace', journal, ts: Date.parse('2026-08-10T12:00:00+02:00')
-  }, ARCHIVE_SECTIONS.filter((section) => section.name === 'reminders')));
-  const [imported] = await reminders.getReminders();
-  assert.equal(imported.recurrence, 'EVERY_N_DAYS');
-  assert.equal(imported.interval, 7);
-  assert.equal(imported.anchorEpochDay, 20675);
-  await driver.transaction((driver) => applyArchiveJournal({
-    driver, mode: 'merge', journal, ts: Date.parse('2026-08-12T12:00:00+02:00')
-  }, ARCHIVE_SECTIONS.filter((section) => section.name === 'reminders')));
-  assert.equal((await reminders.getReminders())[0].anchorEpochDay, 20675);
 });

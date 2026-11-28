@@ -1,30 +1,9 @@
 <script lang="ts">
-  /* The body map's figure in the four data states it has to tell apart
-     (phase 10 redesign ticket 40).
-
-     The route cannot be driven to these four without seeding four journals,
-     and three of the four are about what a *reading set* looks like rather
-     than about the screen around it - so what this mounts is
-     BodyRegionMap.svelte, the real component against the real tokens, and
-     what the fixture supplies is the readings.
-
-     The four are the ones the ticket names, and each exists because a pair
-     of them must not look alike:
-
-     - **empty**: nothing logged in the range. Every shape is its outline
-       and no fill, which has to be visibly different from `single` below.
-     - **single**: one region with one faint reading. This is the pale end of
-       the ramp, and the pair `empty`/`single` is the "neither a large number
-       nor zero reads as never" check.
-     - **mixed**: a region that went both ways in the range. The dashed edge
-       has to be legible at the palest fill as well as the deepest, so the
-       scene puts a mixed region at level 1 and another at level 4.
-     - **saturated**: every region deep on the ramp, which is where a mixed
-       edge has the least contrast to work with and where a fill is closest
-       to the stripe itself.
-
-     The stage is repeated per palette and theme by the html attributes the
-     driver stamps; tests/body-map-gallery.mjs walks the scenes. */
+  /* Mount BodyRegionMap against the real tokens. Empty shows outlines
+     only. Single needs visibly different fill for a faint reading.
+     Mixed checks dashed edges at levels 1 and 4. Saturated checks the
+     edge against deep fill. tests/tools/body-map-gallery.mjs captures each
+     reading set across palettes and themes. */
   import BodyRegionMap from '$lib/components/BodyRegionMap.svelte';
   import type { RegionSideReading } from '$lib/data/bodyMap';
   import type { BodyRegion } from '$lib/data/types';

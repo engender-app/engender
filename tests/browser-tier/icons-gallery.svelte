@@ -1,21 +1,7 @@
 <script lang="ts">
-  /* The two icon families the app is read through, at the sizes it draws
-     them, against the real tokens (phase 5 ticket 31).
-
-     A fixture rather than a route, for the reason the kit's own gallery
-     gives: a drawing nobody can look at is a drawing nobody has reviewed,
-     and the acceptance for this ticket is renders rather than code. What is
-     on the page is arranged around the two questions the ticket asks - do
-     the five navigation marks read as one set, and are the five mood faces
-     telling apart at the smallest size any surface uses.
-
-     Every mark also gets its measured optical centre drawn on it as a
-     crosshair, from the same tests/icon-ink.ts the test uses, so a glyph
-     that passes by 0.7 of a unit can be seen passing rather than taken on
-     trust.
-
-     tests/icon-gallery.mjs drives this across all 8 palettes and both
-     themes. */
+  /* Show navigation glyphs and mood faces at production sizes. Draw each
+     optical centre from tests/icon-ink.ts. Run tests/tools/icon-gallery.mjs across
+     all palettes and both themes. */
   import Icon from '$lib/components/Icon.svelte';
   import MoodFace from '$lib/components/MoodFace.svelte';
   import { PATHS } from '$lib/components/icons';
@@ -28,10 +14,8 @@
 
   let palette = $state('trans');
   let theme = $state('dark');
-  /* The axis that actually moves the faces. ADR-0025 gives mood its own
-     colour scale, keyed on [data-mood-preset] rather than on the flag, so
-     eight palettes leave the five discs identical and it is these four that
-     change them. The palette still matters to everything around them. */
+  /* Mood faces use [data-mood-preset]. Changing the flag palette changes
+     the surrounding UI while the face colours stay fixed. */
   const PRESETS = ['amber', 'teal', 'plum', 'moss'];
   let preset = $state('amber');
   /* Off by default: the crosshair is for checking one mark's centring, and

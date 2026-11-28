@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { revealTravel } from './sectionReveal';
 
-/* Phase 15 after-release ticket 04 (audit UX-05): how far the scroll
-   region moves on one frame of a section opening under the chip row. */
+/* How far the scroll region moves on one frame of a section opening under the chip row. */
 describe('revealTravel', () => {
   it('moves by what has grown past the region bottom, plus the 20 margin', () => {
     // section bottom 700, region bottom 647: 700 + 20 - 647 = 73

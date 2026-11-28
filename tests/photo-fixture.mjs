@@ -1,5 +1,4 @@
-/* A tiny real photo, drawn rather than checked in as a binary (redesign
-   ticket 17), for the suites that just need a file the app's own photo
+/* A tiny real photo, drawn rather than checked in as a binary, for the suites that just need a file the app's own photo
    picker will accept - normalize() only cares that it decodes as an image,
    not what it shows.
 

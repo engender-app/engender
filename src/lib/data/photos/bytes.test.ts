@@ -33,8 +33,8 @@ test('junk and truncated buffers are not mistaken for HEIC', () => {
   assert.equal(isHeic(ascii('ftyp')), false, 'the brand is past the end');
 });
 
-/* The metadata reader below is what proves ADR-0015 on real canvas output;
-   these tests are about the reader itself, so they run on built JPEGs. */
+/* The metadata reader checks what normalization removes from canvas output. These
+   tests exercise the reader on built JPEGs. */
 
 test('reports EXIF, XMP and comment segments by name', () => {
   const jpeg = jpegWith([

@@ -13,21 +13,11 @@ type BootStatus =
   | 'schema-too-new'
   | 'error';
 
-/** Which failure a boot ended in, in the terms the failure screen speaks
-    (after-release ticket 09). The raw text stays in `error`, which the screen
-    shows only behind its bug-report control.
-
-    - `unreadable`: the key does not read the journal file. SQLCipher reports a
-      wrong key and a file that is not a database the same way, SQLITE_NOTADB
-      (ADR-0020), and retrying cannot fix either (ux-carpet 210).
-    - `below-baseline`: a development build's journal from before the
-      squashed baseline (migrations.ts), which this build cannot carry forward.
-    - `android-plaintext`: a phone still holding a journal from before Android
-      encryption.
-    - `engine`: the database itself never started - the worker or its wasm
-      failed to load, or the SQLite build lacks FTS5.
-    - `unknown`: anything nobody has named yet. */
-export type BootFailure = 'unreadable' | 'below-baseline' | 'android-plaintext' | 'engine' | 'unknown';
+/** Name the boot failure for the screen. Keep raw error text behind its
+bug-report control. SQLITE_NOTADB covers an unreadable file or wrong key
+(ADR-0020). Separate old schemas, Android plaintext and engine failures.
+Offer retry when storage is full so the user can free space first. */
+export type BootFailure = 'unreadable' | 'below-baseline' | 'android-plaintext' | 'engine' | 'storage-full' | 'unknown';
 
 
 interface BootShape {
@@ -78,6 +68,7 @@ type NeedsAuthenticationState = BootShape & {
 
 type NeedsDeviceRecoveryState = BootShape & {
   status: 'needs-device-recovery';
+  recoveryReason: 'device-key' | 'missing-access';
   error: null;
   recoverable: false;
   persistDenied: false;
@@ -98,7 +89,7 @@ type ReadyState = BootShape & {
   status: 'ready';
   error: null;
   recoverable: false;
-  /** Null while a web lock has the journal closed (after-release ticket 10). */
+  /** Null while a web lock has the journal closed. */
   journal: Journal | null;
   androidKey: null;
 };
@@ -209,12 +200,13 @@ function needsAuthentication(state: BootState, androidKey: AndroidKeyRefusal | n
   };
 }
 
-function needsDeviceRecovery(state: BootState): NeedsDeviceRecoveryState {
+function needsDeviceRecovery(state: BootState, recoveryReason: NeedsDeviceRecoveryState['recoveryReason'] = 'device-key'): NeedsDeviceRecoveryState {
   if (state.status !== 'booting' && state.status !== 'needs-unlock') {
     invalidTransition(state, 'needs-device-recovery');
   }
   return {
     status: 'needs-device-recovery',
+    recoveryReason,
     accessMode: state.accessMode,
     ...base()
   };
@@ -228,7 +220,9 @@ function legacyRefused(state: BootState): LegacyRefusedState {
 }
 
 function schemaTooNew(state: BootState): SchemaTooNewState {
-  if (state.status !== 'booting') invalidTransition(state, 'schema-too-new');
+  if (state.status !== 'booting' && !(state.status === 'ready' && state.journal === null)) {
+    invalidTransition(state, 'schema-too-new');
+  }
   return {
     status: 'schema-too-new',
     accessMode: state.accessMode,
@@ -247,17 +241,16 @@ function ready(state: BootState, payload: { journal: Journal }): ReadyState {
 }
 
 /** Swaps the journal handle a ready boot holds: null when a web lock closes
-    it, the reopened one after the unlock (after-release ticket 10). Any
+    it, the reopened one after the unlock. Any
     other state is left as it is. */
 function withJournal(state: BootState, journal: Journal | null): BootState {
   if (state.status !== 'ready') return state;
   return { ...state, journal };
 }
 
-/** The persistence request's answer, arriving whenever the browser gets to
-    it (ticket 202: no longer awaited before `ready`). A no-op once the
-    journal has moved past `ready` - a late answer is still true, but there
-    is no `persistDenied` left on a state whose type pins it to `false`. */
+/** The persistence request's answer, arriving whenever the browser gets to it. A no-op once
+    the journal has moved past `ready` - a late answer is still true, but there is no
+    `persistDenied` left on a state whose type pins it to `false`. */
 function markPersistDenied(state: BootState): BootState {
   if (state.status !== 'ready') return state;
   return { ...state, persistDenied: true };
@@ -330,17 +323,15 @@ export function bootGate(state: BootState): BootGate {
 
 /** Whether the mid-session lock may render at all.
 
-    "Mid-session" is literally "the journal is open", and saying so here is
-    load-bearing rather than pedantic. `bootGate` returns 'none' while a boot
-    is still in flight, so nothing above the lock in the layout's chain claims
-    the screen during `booting` - and the moment the survey records an access
-    mode, that mode has a secret and the session has not been marked unlocked
-    yet, so the lock would render *over a boot that was about to finish on its
-    own*. Ticket 53 shipped exactly that for a moment: the old check read
-    `prefs.pinHash`, which is null until the real preferences load, so the
-    window existed and was never entered. Reading the access mode instead
-    opened it, and a cold start flashed the re-entry screen. The walkthrough
-    caught it as a draft lost across a reload. */
+    "Mid-session" is literally "the journal is open", and saying so here is load-bearing
+    rather than pedantic. `bootGate` returns 'none' while a boot is still in flight, so
+    nothing above the lock in the layout's chain claims the screen during `booting` - and
+    the moment the survey records an access mode, that mode has a secret and the session has
+    not been marked unlocked yet, so the lock would render *over a boot that was about to
+    finish on its own*. shipped exactly that for a moment: the old check read
+    `prefs.pinHash`, which is null until the real preferences load, so the window existed
+    and was never entered. Reading the access mode instead opened it, and a cold start
+    flashed the re-entry screen. The walkthrough caught it as a draft lost across a reload. */
 export function midSessionLockApplies(state: BootState): boolean {
   return state.status === 'ready';
 }

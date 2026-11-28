@@ -1,12 +1,12 @@
-/* The paraglide binding module: it's the one place that calls getLocale()
-   and turns what epochDay.ts computes into localized display strings. Not
-   a pass-through for epochDay.ts — it imports paraglide, which is why it
-   has no Node-tier tests (ADR-0016) and why the split exists at all. */
+/* The paraglide binding module: it's the one place that calls getLocale() and turns what
+   epochDay.ts computes into localized display strings. Not a pass-through for epochDay.ts.
+   it imports paraglide, which is why it has no Node-tier tests and why the split exists at
+   all. */
 
 import { formatNumber } from './numbers';
 import { getLocale } from '$lib/paraglide/runtime';
 import { m } from '$lib/paraglide/messages';
-import { crossesCalendarYear, durationParts, localDateFromEpochDay } from './epochDay';
+import { calendarDuration, crossesCalendarYear, durationParts, localDateFromEpochDay } from './epochDay';
 import type { CalendarDuration, DurationUnit } from './epochDay';
 
 export function intlLocale(): string {
@@ -34,20 +34,18 @@ export function fmtDay(epochDay: number, opts: Intl.DateTimeFormatOptions): stri
   return formatter(opts).format(localDateFromEpochDay(epochDay));
 }
 
-/** A day the person picked or typed, written the way the rest of the app
-    writes a date: "3 Oct 2026", "3 paź 2026". Date fields, the search
-    filter chips and a saved question's criteria all show this, so a field
-    never holds `2026-10-03` while the row under it says "3 Oct" (after-release
-    28, audit V12/UI-08/L08-10). The `yyyy-mm-dd` stays the stored value and
-    the picker's typed-entry format; it is just not what a person reads. */
+/** A day the person picked or typed, written the way the rest of the app writes a date: "3
+    Oct 2026", "3 paź 2026". Date fields and the search filter chips both show this, so a
+    field never holds `2026-10-03` while the row under it says "3 Oct". The `yyyy-mm-dd`
+    stays the stored value and the picker's typed-entry format; it is just not what a person
+    reads. */
 export function fmtDateValue(epochDay: number): string {
   return fmtDay(epochDay, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-/** A day card's bar: "Monday 5 October", with the year only when the day
-    is not in this one ("Saturday 5 September 2025"). The calendar, the
-    entry lists (search, Good moments, a tryout) and On this day each wrote
-    it their own way (after-release 28, audit UI-08); this is the one way. */
+/** A day card's bar: "Monday 5 October", with the year only when the day is not in this one
+    ("Saturday 5 September 2025"). The calendar, the entry lists (search, Good moments, a
+    tryout) and On this day each wrote it their own way; this is the one way. */
 export function fmtDayBar(epochDay: number, todayEpochDay: number): string {
   return fmtDay(epochDay, {
     weekday: 'long',
@@ -57,19 +55,9 @@ export function fmtDayBar(epochDay: number, todayEpochDay: number): string {
   });
 }
 
-/** The two ends of a chart's range, written so they cannot read backwards.
-
-    A gutter says what the ends of the scale are and nothing else
-    (DIRECTION.md's chart rules: no axis furniture), so a day and a short
-    month is all it needs - until the range crosses a year, at which point
-    "22 Jun" on the left and "17 Jun" on the right is a chart that appears
-    to run backwards. Found on the lab results screen (phase 5 UX ticket
-    25), whose range is however long somebody has been having blood drawn
-    rather than the fixed window the Stats hub plots.
-
-    The year goes on both ends or neither: one dated end beside an undated
-    one reads as the undated one being the current year, which is the same
-    wrong reading in a quieter form. */
+/** Label the chart endpoints with day and short month. If the range
+    crosses a calendar year, include the year at both ends so the dates
+    read in order. */
 export function fmtRangeEnds(fromEpochDay: number, toEpochDay: number): { from: string; to: string } {
   const opts: Intl.DateTimeFormatOptions = crossesCalendarYear(fromEpochDay, toEpochDay)
     ? { day: 'numeric', month: 'short', year: 'numeric' }
@@ -81,9 +69,8 @@ export function fmtTime(ts: number): string {
   return formatter({ hour: 'numeric', minute: '2-digit' }).format(new Date(ts));
 }
 
-/** "Jun 2026": a photograph's caption, and a search hit's place in time.
-    The year whole, because "Jun 26" reads as the 26th of June (release
-    audit U12). */
+/** "Jun 2026": a photograph's caption, and a search hit's place in time. The year whole,
+    because "Jun 26" reads as the 26th of June (release). */
 export function photoCaptionDate(epochDay: number): string {
   return fmtDay(epochDay, { month: 'short', year: 'numeric' });
 }
@@ -100,8 +87,7 @@ export function fmtMonthYear(year: number, month: number): string {
     "1 year 3 months", "5 months", or "12 days".
 
     Which units those are is `durationParts`' decision, not this function's -
-    a sealed letter's card draws the same parts as numbers on blocks (ticket
-    45) and the two must agree. This is only the rendering. */
+    a sealed letter's card draws the same parts as numbers on blocks and the two must agree. This is only the rendering. */
 const DURATION_WORD: Record<DurationUnit, (n: number) => string> = {
   years: (n) => m.n_years({ n }),
   months: (n) => m.n_months({ n }),
@@ -112,4 +98,12 @@ export function fmtDuration(d: CalendarDuration): string {
   return durationParts(d)
     .map((part) => DURATION_WORD[part.unit](part.n))
     .join(' ');
+}
+
+/** How far apart two compared things were made: "2 months apart", or "Same day" for two on
+    one day, where the span would read "0 days apart". Progress photos and voice benchmarks
+    both label a compared pair with it. */
+export function fmtApart(fromEpochDay: number, toEpochDay: number): string {
+  if (fromEpochDay === toEpochDay) return m.same_day();
+  return `${fmtDuration(calendarDuration(fromEpochDay, toEpochDay))} ${m.apart_suffix()}`;
 }

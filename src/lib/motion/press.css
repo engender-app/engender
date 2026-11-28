@@ -1,49 +1,15 @@
-/* Tier 1 of the motion system set out in DIRECTION.md, which lives on
-   ticket 15's branch: response.
+/* Press response uses CSS :active and the --ease-press spring.
+   Buttons, links and role="button" in the app
+   root opt out with data-no-press when another response or invisible
+   target makes scaling inappropriate. motion-system.test.ts checks
+   those exceptions. Reduced motion removes scale and keeps colour or
+   outline feedback. */
 
-   Every control answers a press by scaling down and springing back. This
-   is where an animator's hand actually shows - not in things arriving, but
-   in things having weight when touched - so it is the one tier that
-   applies to nearly every interactive element in the app, and it lives
-   next to the tier-2 transitions rather than in the component stylesheet.
-
-   It is CSS rather than a Svelte action because :active already tracks a
-   press correctly in the Chromium WebView this ships inside, and because
-   the release half - the overshoot on --ease-press - is the transition
-   playing backwards, which needs no JavaScript to arrange.
-
-   Reduced motion substitutes rather than deletes: the transform goes, and
-   whatever colour or outline change the control also carries stays. The
-   scale is the only part of a press that moves anything.
-
-   Ticket 15: this used to be opt-in, a `.press` class 81 call sites
-   remembered to add and 52 controls did not. It is opt-out now - any
-   button, link or role="button" inside the app root presses by default,
-   and a control that genuinely should not (the pill already answering for
-   .segment, an invisible SVG hit target) says so with [data-no-press],
-   enumerated with its reason in tests/motion-system.test.ts. */
-
-/* The three depths, and the only place in the app any of them is written.
-
-   Scale is a fraction, and a fraction is the wrong unit for this gesture:
-   0.94 moves a 48px key's edge 1.4px and a 320px button's edge 9.6px, so
-   one number applied everywhere presses the small controls faintly and
-   throws the large ones around. Phase 5 ticket 29 hit that on a Pixel 10a
-   and settled .btn at 0.97 by feel without naming the reason; the reason is
-   size, so there are three size classes and no fourth.
-
-     --press-depth       compact controls, up to about 64px: icon buttons,
-                         PIN keys, segments, chips. 1.4px at 48px.
-     --press-depth-wide  a control as wide as the screen: .btn. 4.8px at
-                         320px, which is the number ticket 29 chose.
-     --press-depth-add   the add button, deliberately deeper than its 56px
-                         asks for. It is the app's most-tapped control and
-                         its only floating one, and the shadow below goes
-                         with it.
-
-   Travel therefore grows with the control but far slower than
-   proportionally, and stays inside a few pixels at every size. A control
-   names its class; it does not pick a number. */
+/* Use --press-depth for controls up to about 64px. Its 0.94 scale
+   moves a 48px edge 1.4px. Use --press-depth-wide for full-width
+   buttons. Its 0.97 scale moves a 320px edge 4.8px. The floating
+   56px add button uses --press-depth-add with shadow collapse.
+   Choose the control class and keep the depths defined here. */
 :root {
   --press-depth: 0.94;
   --press-depth-wide: 0.97;
@@ -74,30 +40,14 @@
 }
 
 /* .press stays as a marker some markup still carries from before this was
-   opt-out (ticket 15); it names no rule of its own any more; the button or
+   opt-out; it names no rule of its own any more; the button or
    link underneath it is already covered by the default above. */
 
-/* The add button is the app's one floating control and takes the deeper
-   press, so the thing most often tapped is also the most physical.
-
-   It is also the only control with a shadow, so it is the only one whose
-   press can carry the second half of the gesture (phase 5 ticket 28): the
-   shadow collapses as the button goes down, and the two together read as
-   the button meeting the surface rather than shrinking in place. Held to
-   this one control on purpose - 56px of shadow repainting is the smallest
-   area any of this ticket's materials touches, and every other pressable
-   thing in the app is a flat surface with no elevation to lose.
-
-   Both ends of the collapse are declared here rather than left to the
-   shell that mounts the button. A material that animates between two
-   states owns both of them, or the primitive is half a definition and
-   whoever applies it has to remember the other half. Ticket 18 built the
-   bar this button sits in, and the bar declares --shadow-float for itself;
-   so the resting value below is now the agreeing half of a pair rather
-   than the only place the app's one shadow is named.
-
-   On --ease-press like the scale, so the shadow overshoots and settles with
-   it. One gesture, one curve. */
+/* The floating add button's deeper press collapses its shadow as it
+   scales. Repaint stays within this 56px control. Define both endpoints
+   here so the primitive owns the effect, with the rest value matching
+   the shell's --shadow-float. Share --ease-press with scale so the shadow
+   overshoots and settles in sync. */
 .press-add {
   box-shadow: var(--shadow-float);
   transition:

@@ -1,19 +1,10 @@
-/* The field half of a picker (phase 12 pickers, tickets 01 and 02): a
-   readonly field that opens the picker on a tap, Enter or ArrowDown, and
-   the picker's host (PickerHost.svelte) mounted behind it. DatePicker and
-   TimePicker each hold one.
+/* DatePicker and TimePicker use a readonly field that opens on tap,
+   Enter or ArrowDown. Mount PickerHost in the enclosing sheet scrim
+   or app frame to avoid scroll clipping and stacking issues.
+   Svelte owns the new host and its teardown.
 
-   The picker is mounted outside the screen, into whatever holds the field:
-   the scrim of the sheet it sits in, or the app frame. A sheet inside a
-   sheet's scroll box would scroll with it and be clipped by it, and a
-   popover inside a screen is spent inside `.app-main`'s stacking context
-   under the floating bar (overlayLock.ts). Svelte's `mount` does that
-   rather than moving a node the screen's markup owns - a moved node is not
-   between the anchors its block removes by (carpet 26). It is mounted on
-   the first opening, not with the field: 39 screens carry a date field,
-   and a picker for each would be built for nothing on most visits (ticket
-   165's reason). It is let go once it has closed and its exit has played,
-   which is when its host is empty again. */
+   Mount on first open to avoid unused hosts across 39 date-field
+   screens. Release it once the exit animation finishes. */
 import { flushSync, mount, unmount, type Snippet } from 'svelte';
 import PickerHost from './PickerHost.svelte';
 
@@ -21,20 +12,24 @@ import PickerHost from './PickerHost.svelte';
     a pointer is the likely hand and a popover beats a sheet. */
 const DESKTOP_WIDTH = 1024;
 
+/** What the picker holds: a day, a time, or a plain list of choices (the
+    currency picker). The anchor may be a readonly input or a button. */
+export type PickerKind = 'date' | 'time' | 'list';
+
 export class PickerField {
   open = $state(false);
   desktop = $state(false);
-  #field: HTMLInputElement | undefined;
+  #field: HTMLElement | undefined;
   #host: { instance: ReturnType<typeof mount>; target: HTMLElement; observer: MutationObserver } | null = null;
 
-  readonly #kind: 'date' | 'time';
+  readonly #kind: PickerKind;
   readonly #ariaLabel: () => string | undefined;
   readonly #title: () => string;
   readonly #panel: Snippet;
 
   /** The surface is named by the caller's aria-label, else the field's own
       label, else the picker's generic `title`. */
-  constructor(kind: 'date' | 'time', ariaLabel: () => string | undefined, title: () => string, panel: Snippet) {
+  constructor(kind: PickerKind, ariaLabel: () => string | undefined, title: () => string, panel: Snippet) {
     this.#kind = kind;
     this.#ariaLabel = ariaLabel;
     this.#title = title;
@@ -42,7 +37,7 @@ export class PickerField {
   }
 
   #label(): string {
-    return this.#ariaLabel() || this.#field?.labels?.[0]?.textContent?.trim() || this.#title();
+    return this.#ariaLabel() || (this.#field as HTMLInputElement | undefined)?.labels?.[0]?.textContent?.trim() || this.#title();
   }
 
   /** Close, handing focus back to the field on a desktop - on a phone the
@@ -92,7 +87,7 @@ export class PickerField {
     this.show();
   };
 
-  attach = (node: HTMLInputElement) => {
+  attach = (node: HTMLElement) => {
     this.#field = node;
     return () => this.#release();
   };

@@ -13,14 +13,14 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 /* Hosted web metadata only. Android loads the bundled app at https://localhost
    through server.hostname below; this constant does not set its origin. */
-export const JOURNAL_ORIGIN = 'app.engender.barankiewicz.dev';
+export const JOURNAL_ORIGIN = 'journal.engender.app';
 
 const config: CapacitorConfig = {
   appId: 'dev.engender.app',
   appName: 'engender',
   webDir: 'build',
   android: {
-    /* Zoom is a web capability and only a web capability (audit U2). The
+    /* Pinch zoom is a web capability. The
        bridge maps this to setBuiltInZoomControls(false), the WebView
        setting pinch input actually answers to, so two-finger gestures
        stay with the app's own surfaces (photo wipe, timeline drag) rather
@@ -35,13 +35,11 @@ const config: CapacitorConfig = {
        does not tell you what the app is running in. This is the number that
        decides whether it runs at all.
 
-       87 is where Vite compiles the bundle to - its default module target -
-       so below it the app is syntax the WebView cannot parse. Everything the
-       app needs at runtime is at or under that: OPFS at 86, Object.fromEntries
-       at 73. The one call that was above it, Object.hasOwn at 93, was
-       replaced in prefs/catalogue.ts rather than allowed to set the floor
-       six versions higher than the bundle needed. */
-    minWebViewVersion: 87
+       Navigation reads computed translate and scale, available from 104.
+       Shared door selectors also need :is() and complex :not() from 88.
+       Vite derives its Chromium syntax target from this same value;
+       webview-floor.test.ts checks runtime APIs, CSS reads and selectors. */
+    minWebViewVersion: 104
   },
   server: {
     androidScheme: 'https',
@@ -79,9 +77,7 @@ const config: CapacitorConfig = {
      quiet. */
   loggingBehavior: 'none',
   /* Left unset, `cap sync` writes res/xml/config.xml with a wildcard
-     <access origin="*" />, a Cordova-compat leftover no plugin here reads
-     (audit finding G-07). Empty skips the tag instead of
-     narrowing it, since nothing needs it at all. */
+     <access origin="*" />, a Cordova-compat leftover no plugin here reads. An empty list omits the tag. */
   cordova: {
     accessOrigins: []
   }

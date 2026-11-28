@@ -1,5 +1,5 @@
 /* The preceding window a tryout or a procedure's own stretch is compared
-   against (phase 8 features ticket 18). Pure arithmetic over epoch days,
+   against. Pure arithmetic over epoch days,
    kept apart from journal/stats.ts the same reason epochDay.ts's other
    range functions are: today and the journal's own edges arrive as
    arguments, and nothing here reads the clock or the database.
@@ -62,9 +62,8 @@ export type CompareStretchState =
 
 type CompareStretchOfferedState = Exclude<CompareStretchState, { status: 'hidden' }>;
 
-/** The words a screen supplies - its own message-key prefix, already bound
-    to `m`, so this file stays free of paraglide and testable under the
-    Node tier (ADR-0016 draws that same line at dates.ts). */
+/** The words a screen supplies - its own message-key prefix, already bound to `m`, so this
+    file stays free of paraglide and testable under the Node tier. */
 interface CompareStretchNoticeCopy {
   title: () => string;
   openHint: () => string;

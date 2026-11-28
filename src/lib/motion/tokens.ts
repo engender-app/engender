@@ -1,13 +1,12 @@
-/* Ticket 09 (MO-003): Svelte's JS-driven transitions (Sheet, Toasts) sit
-   outside CSS's reach, so neither reduced-motion selector in theme/base.css
-   can clamp their durations the way it clamps every CSS animation and
-   transition. These mirror the same --dur-* and --motion-distance- tokens
-   and the same html[data-a11y-motion] signal +layout.svelte already stamps, so
-   a Svelte transition and its CSS neighbours never drift apart.
+/* Svelte's JS-driven transitions (Sheet, Toasts) sit outside CSS's reach, so neither
+   reduced-motion selector in theme/base.css can clamp their durations the way it clamps
+   every CSS animation and transition. These mirror the same --dur-* and --motion-distance-
+   tokens and the same html[data-a11y-motion] signal +layout.svelte already stamps, so a
+   Svelte transition and its CSS neighbours never drift apart.
 
-   It also carries the two pieces every JS-driven transition here shares: the
-   easing, and opacity-alone, which is what both tier 2's reduced-motion
-   substitute and tier 3's no-clip-path fallback come down to. */
+   It also carries the two pieces every JS-driven transition here shares: the easing, and
+   opacity-alone, which is what both tier 2's reduced-motion substitute and tier 3's
+   no-clip-path fallback come down to. */
 
 import { quintOut } from 'svelte/easing';
 import type { TransitionConfig } from 'svelte/transition';
@@ -20,11 +19,9 @@ import type { TransitionConfig } from 'svelte/transition';
     look alike. */
 export const EASE_OUT = quintOut;
 
-/** The same --ease-out curve as EASE_OUT, as the string form WAAPI's own
-    `animate()` takes - `Animation` has no `css(t)` to hand a JS function to,
-    so the two constants exist for the two APIs and must be kept to the one
-    curve by hand (phase 5 ticket 32.17's `resize`, the first primitive that
-    animates via WAAPI rather than a Svelte transition). */
+/** The same --ease-out curve as EASE_OUT, as the string form WAAPI's own `animate()` takes
+    - `Animation` has no `css(t)` to hand a JS function to, so the two constants exist for
+    the two APIs and must be kept to the one curve by hand. */
 export const EASE_OUT_CSS = 'cubic-bezier(0.22, 1, 0.36, 1)';
 
 /** --ease-out-soft's control points: --ease-out with the instant off the
@@ -36,7 +33,7 @@ export const EASE_OUT_SOFT_POINTS = [0.38, 0.32, 0.2, 1] as const;
     two cannot drift apart. */
 export const EASE_OUT_SOFT_CSS = `cubic-bezier(${EASE_OUT_SOFT_POINTS.join(', ')})`;
 
-/** The opacity an arrival fades in from, instead of 0 (ticket 09). Blink
+/** The opacity an arrival fades in from, instead of 0. Blink
     does not draw a layer at opacity 0, so content fading in from 0 was first
     rastered, and its GPU pipelines first built, on the first frame of its
     own fade, and on the Pixel 10a that frame stalled for 50 to 130 ms. At
@@ -67,7 +64,7 @@ export function isReducedMotion(doc: MotionDocument | undefined = currentDocumen
 
 /** The `behavior` for a programmatic scroll: eased, or instant under reduced
     motion. One place, so a scroll jump cannot teleport in a single frame
-    without the motion setting having been asked (ticket 278). */
+    without the motion setting having been asked. */
 export function scrollBehavior(): 'auto' | 'smooth' {
   return isReducedMotion() ? 'auto' : 'smooth';
 }
@@ -79,46 +76,34 @@ function readCssNumber(token: string, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-export type DurationToken = '--dur-fast' | '--dur-med' | '--dur-slow' | '--dur-press' | '--dur-authored' | '--dur-sun-open';
+export type DurationToken = '--dur-fast' | '--dur-med' | '--dur-slow' | '--dur-press' | '--dur-authored' | '--dur-sun-open' | '--dur-bloom';
 type DistanceToken = '--motion-distance-sm' | '--motion-distance-md';
 
-/** The values base.css authors each token at, for the no-DOM path -
-    exported so tokens.test.ts can hold this table against base.css itself
-    rather than trusting it not to drift. Ticket 15 (MO-004): 27 call sites
-    used to restate one of these by hand, and --dur-fast (150ms) had
-    already drifted to 160 at two of them. One table, read once. */
+/** The values base.css authors each token at, for the no-DOM path - exported so
+    tokens.test.ts can hold this table against base.css itself rather than trusting it not
+    to drift. (MO-004): 27 call sites used to restate one of these by hand, and --dur-fast
+    (150ms) had already drifted to 160 at two of them. One table, read once. */
 export const DURATION_FALLBACK: Record<DurationToken, number> = {
   '--dur-fast': 150,
   '--dur-med': 240,
   '--dur-slow': 380,
   '--dur-press': 260,
   '--dur-authored': 700,
-  '--dur-sun-open': 900
+  '--dur-sun-open': 900,
+  '--dur-bloom': 800
 };
 
-/* DISTANCE_FALLBACK stays exported only for its own test (AU-09 test-only
-   review). */
+/* DISTANCE_FALLBACK stays exported only for its own test. */
 export const DISTANCE_FALLBACK: Record<DistanceToken, number> = {
   '--motion-distance-sm': 10,
   '--motion-distance-md': 24
 };
 
-/** A duration token in milliseconds, whatever unit it is written in.
-
-    The unit has to be read rather than assumed, and this cost the app every
-    JS-driven animation it has - in production only, which is why it survived
-    from ticket 09 to phase 5 ticket 31 without anyone seeing it. The tokens
-    are authored as `240ms`, and `npm run dev` serves exactly that, so
-    parseFloat gives 240 and every sheet, toast, fan and crossfade runs at its
-    real duration. A production build minifies the stylesheet, and a CSS
-    minifier is free to rewrite `240ms` as `.24s` because to CSS those are the
-    same value. To parseFloat they are 240 and 0.24. So every transition that
-    reads its duration through here has been running in about a quarter of a
-    millisecond in every build anyone could install, while looking correct on
-    the machine it was written on.
-
-    Found because the calendar's new month label would not animate on a phone
-    (phase 5 ticket 31) and animated perfectly in dev. */
+/**
+  * Return the duration in milliseconds. Production CSS minifiers
+  * can rewrite 240ms as .24s. Parse the unit so both yield 240
+  * instead of running JavaScript animations a thousand times faster.
+  */
 function readCssMs(token: string, fallback: number): number {
   if (typeof document === 'undefined' || typeof getComputedStyle === 'undefined') return fallback;
   const raw = getComputedStyle(document.documentElement).getPropertyValue(token).trim();

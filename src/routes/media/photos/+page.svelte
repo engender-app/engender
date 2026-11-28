@@ -3,35 +3,14 @@
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   import { photoOwnerHref } from '$lib/data/photos/library';
   import { withSourceReturn } from '$lib/navigation/sourceRecord';
-  /* The photo library: every photograph in the journal, wherever it is
-     kept, and the wipe over any two of them (phase 11 ticket 14).
+  /* journal.photoLibrary reads photos and video notes across all six
+     tables. This screen browses them. Compare lives in Progress
+     photos, where shots share a pose.
 
-     Until this the grid read the `photo` table, which is an entry's
-     photographs and a milestone's, and the line over it said "Every photo
-     in your journal". Four more tables hold photographs - hair progress,
-     hair removal, tryouts, surgery recovery - and `video_note` holds a
-     note recorded in the editor, and none of the five could be found again
-     except through the day it hangs off. `journal.photoLibrary` is the one
-     read across all six; this screen is where it is looked at.
-
-     What the chips do is narrow, not navigate. The grid is the same grid
-     either way and the selection is the same selection, so tapping "Hair"
-     moves the photographs rather than repainting the screen (ADR-0078,
-     motion/narrow.ts). The chip lives in the query, so a link can open the
-     library already narrowed and a reload keeps it.
-
-     COMPARE READS THE WHOLE LIBRARY, never the narrowed grid. Putting a
-     hair photograph beside a body one is the thing this screen offers that
-     neither the hair screen nor the surgery screen can, and an anchor
-     picked under one chip has to survive the next chip. So the wipe's list
-     is every photograph the library holds, in order, and the grid is only
-     where they are picked.
-
-     A video note is in the library and is not in that list: the wipe reads
-     full JPEG bytes through readPhoto (PhotoWipe.svelte) and a `.webm` is
-     not a frame. Its tile plays it instead of picking it. */
+     Filter the same grid and selection through the query. narrow.ts
+     moves surviving tiles. Video notes open the app player. */
   import { tick } from 'svelte';
-  import { collapse } from '$lib/motion/reveal';
+  import { crossfade } from '$lib/motion/reveal';
   import { page } from '$app/state';
   import { replaceRoute } from '$lib/navigation/smart-back';
   import { m } from '$lib/paraglide/messages';
@@ -39,43 +18,36 @@
   import { writer } from '$lib/stores/attempt.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
-  import { fmtDay, fmtDuration, photoCaptionDate } from '$lib/data/dates';
-  import { calendarDuration, dateInputValueFromEpochDay, epochDayFromDateInputValueOrToday } from '$lib/data/epochDay';
-  import type { ComparePair } from '$lib/data/photos/compare-state';
-  import {
-    orderAnchorsByJourney,
-    toComparePair
-  } from '$lib/data/photos/compare-state';
+  import { fmtDay, photoCaptionDate } from '$lib/data/dates';
+  import type { Journal } from '$lib/data/journal/journal';
+  import { dateInputValueFromEpochDay, epochDayFromDateInputValueOrToday } from '$lib/data/epochDay';
   import {
     chipsFor,
+    deleteFromOwner,
+    libraryDeletable,
     narrowTo,
     photoChipFromQuery,
     yearMarks,
     type LibraryPhoto,
     type PhotoChip
   } from '$lib/data/photos/library';
-  import { photoOwnerLine, photoSourceLabel } from '$lib/data/vocabulary/photoLibraryLabels';
-  import { vocabulary } from '$lib/data/vocabulary/vocabulary';
-  import type { Measurement } from '$lib/data/types';
+  import { photoSourceLabel } from '$lib/data/vocabulary/photoLibraryLabels';
   import Icon from '$lib/components/Icon.svelte';
   import PhotoChipRow from '$lib/components/PhotoChipRow.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
-  import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import VideoNotePlayer from '$lib/components/VideoNotePlayer.svelte';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import Field from '$lib/components/kit/Field.svelte';
-  import ListCard from '$lib/components/kit/ListCard.svelte';
-  import PhotoWipe from '$lib/components/kit/PhotoWipe.svelte';
-  import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
-  import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
-  import { measureCells, pinnedOut, tileIn, travelCells } from '$lib/motion/narrow';
+  import { measureCells, measureFollowers, pinnedOut, tileIn, travelCells, travelFollowers } from '$lib/motion/narrow';
   import { scrollBehavior } from '$lib/motion/tokens';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import ReadGate from '$lib/components/kit/ReadGate.svelte';
+  import HoldSelectBar from '$lib/components/HoldSelectBar.svelte';
+  import { checkIn, holdSelection } from '$lib/components/kit/holdSelect.svelte';
   import { batchesFor, nextCount, remainingCount, shownCount } from '$lib/components/kit/batchedList';
   import { rememberBatches, restoredBatches } from '$lib/navigation/scroll-region';
 
@@ -97,25 +69,10 @@
   let shown = $derived(narrowTo(library, chip));
   let marks = $derived(yearMarks(shown));
 
-  /* Every photograph the wipe can read, narrowed by nothing. See the header:
-     an anchor picked under one chip must still be there under the next. */
-  let comparable = $derived(library.filter((photo) => photo.source !== 'video'));
-
-  let selected = $state<string[]>([]);
-  let comparing = $state(false);
-  let selecting = $state(false);
   let viewingId = $derived(page.url.searchParams.get('photo'));
   let viewing = $derived(library.find((photo) => photo.id === viewingId) ?? null);
   let playing = $derived(viewing?.source === 'video' ? viewing : null);
   let ownerHref = $derived(viewing ? withSourceReturn(photoOwnerHref(viewing), page.url) : undefined);
-
-  export const snapshot = {
-    capture: () => ({ selected: [...selected], selecting }),
-    restore: (value: { selected: string[]; selecting: boolean }) => {
-      selected = value.selected;
-      selecting = value.selecting;
-    }
-  };
 
   function viewPhoto(id: string | null) {
     const url = new URL(page.url);
@@ -124,74 +81,29 @@
     void replaceRoute(url, { noScroll: true, keepFocus: true });
   }
 
-  let orderedSelected = $derived(orderAnchorsByJourney(selected, comparable));
-  let pair = $derived(toComparePair(selected, comparable));
-
-  let gapLabel = $derived.by(() => {
-    if (!pair) return '';
-    const duration = calendarDuration(comparable[pair.left].epochDay, comparable[pair.right].epochDay);
-    return `${fmtDuration(duration)} ${m.apart_suffix()}`;
-  });
-
-  /* The measurement combined view (ticket 08): the same date range the two
-     anchor photos span, so a number and an image answer "what changed"
-     side by side. */
-  let rangeQuery = liveList((j) =>
-    pair
-      ? j.measurements.getMeasurementsInRange(comparable[pair.left].epochDay, comparable[pair.right].epochDay)
-      : Promise.resolve([])
-  );
-  let rangeMeasurements = $derived(rangeQuery.rows);
-
-  let rangeSummaries = $derived.by(() => {
-    const byType = new Map<string, Measurement[]>();
-    for (const measurement of rangeMeasurements) {
-      const list = byType.get(measurement.type) ?? [];
-      list.push(measurement);
-      byType.set(measurement.type, list);
-    }
-    // Ordered by the vocabulary's own order, hidden types included: a
-    // range someone is comparing may still hold a measurement logged
-    // against a type since hidden, and this summary reads it back
-    // exactly as logged (CONTEXT: "Hidden").
-    return vocabulary.measurementTypes
-      .filter((t) => byType.has(t.key))
-      .map((t) => {
-        const list = byType.get(t.key)!;
-        return { type: t.key, first: list[0], last: list[list.length - 1] };
-      });
-  });
-
-  function toggle(id: string) {
-    if (selected.includes(id)) selected = selected.filter((anchor) => anchor !== id);
-    else if (selected.length < 2) selected = [...selected, id];
-  }
-
-  /* The wipe owns which two photographs it is showing and hands back the
-     pair a press of its own earlier/later controls landed on; this screen
-     holds them as ids, because the grid behind it is where they were
-     picked and a live update can drop one of them. */
-  function setPair(next: ComparePair) {
-    selected = [comparable[next.left].id, comparable[next.right].id];
-  }
-
-  function setSelecting(next: boolean) {
-    selecting = next;
-    if (!next) selected = [];
-  }
-
   let gridEl = $state<HTMLElement>();
 
-  /* Batches of the grid rendered into the DOM, so a journal with thousands
-     of photos paints as fast as one with a few hundred (this ticket, audit
-     finding P3). The same arithmetic and remembered-count store the dose
-     log's BatchedList uses (batchedList.ts, scroll-region.ts) - inlined
-     here rather than wrapped in that component, because BatchedList wraps
-     its rows in ListCard, a bordered list surface with a row hairline, and
-     this screen is a CSS grid of square tiles. What is bounded is the DOM
-     alone: `library` and `shown` stay full reads, so the source chips
-     (chipsFor, over `library`) and compare (`comparable`, over `library`)
-     both keep seeing every photo regardless of what the grid has painted. */
+  /* Holding a photograph picks photographs to delete, the same hold as on
+     Progress photos (holdSelect.svelte.ts). Each goes through the area
+     that owns it (library.ts, deleteFromOwner); a video note is left out,
+     since only its entry deletes one. */
+  const held = holdSelection();
+  let screenEl = $state<HTMLElement>();
+  async function removeHeld(j: Journal, ids: string[]) {
+    for (const id of ids) {
+      const photo = library.find((p) => p.id === id);
+      if (photo) await deleteFromOwner(j, photo);
+    }
+  }
+
+  /* Batches of the grid rendered into the DOM, so a journal with thousands of photos paints
+     as fast as one with a few hundred (this ticket). The same arithmetic and
+     remembered-count store the dose log's BatchedList uses (batchedList.ts,
+     scroll-region.ts) - inlined here rather than wrapped in that component, because
+     BatchedList wraps its rows in ListCard, a bordered list surface with a row hairline,
+     and this screen is a CSS grid of square tiles. What is bounded is the DOM alone:
+     `library` and `shown` stay full reads, so the source chips (chipsFor, over `library`)
+     keep seeing every photo regardless of what the grid has painted. */
   const photosPath = page.url.pathname;
   let batches = $state(restoredBatches(photosPath, 'photos'));
   let rendered = $derived(shown.slice(0, shownCount(batches, shown.length)));
@@ -221,7 +133,7 @@
 
   /* Whether the grid has been painted once. A tile that comes with the grid
      gets no entrance of its own, because the skeleton is already fading out
-     over it (ReadGate, tests/feature-screens.test.ts); a tile that arrives
+     over it (ReadGate, tests/node/ui/feature-screens.test.ts); a tile that arrives
      afterwards - a chip widening, a photograph added while this screen is
      open - fades in. The effect runs after the flush that created those
      first tiles, so they read false and everything later reads true. */
@@ -232,11 +144,20 @@
 
   /** Narrowing by a chip, as one move rather than a repaint: measure where
       the tiles stand, change the query, then walk the survivors back to
-      where they were and release them (ADR-0078, motion/narrow.ts). The
+      their old positions and release them (motion/narrow.ts). The
       tiles the chip drops leave the flow in the same frame, so the grid
       rewraps once instead of twice. */
+  /* The count's new number fading in. Only a change plays it: the {#key}
+     is created with the grid, so the screen's own arrival gets no second
+     entrance (feature-screens.test.ts). */
+  const countIn = (node: Element) => crossfade(node, undefined, { direction: 'in' });
+
   async function pickChip(next: PhotoChip) {
+    /* A chip narrows the grid, and a pick that the grid no longer shows
+       would be deleted unseen. */
+    held.clear();
     const before = measureCells(gridEl, 'data-photo-key');
+    const followers = measureFollowers(gridEl?.closest<HTMLElement>('.screen') ?? undefined);
     const url = new URL(page.url);
     if (next === 'everything') url.searchParams.delete(SOURCE_PARAM);
     else url.searchParams.set(SOURCE_PARAM, next);
@@ -250,13 +171,17 @@
        and the focus stay where the finger left them. */
     await replaceRoute(url, { noScroll: true, keepFocus: true });
     await tick();
-    travelCells(before, gridEl, 'data-photo-key');
+    /* The keyed grid finishes its query update after navigation resolves.
+       Measure its new boxes in the next frame, before that frame paints. */
+    requestAnimationFrame(() => {
+      travelCells(before, gridEl, 'data-photo-key');
+      travelFollowers(followers);
+    });
   }
 
-  /* The scrubber appears once the grid is taller than the screen, which is
-     the point at which scrolling to a year stops being something a thumb
-     can do (the ticket's own rule). Measured rather than counted: how many
-     thumbnails a screen holds depends on the width, the text size and
+  /* The scrubber appears once the grid is taller than the screen, which is the point at
+     which scrolling to a year stops being something a thumb can do. Measured rather than
+     counted: how many thumbnails a screen holds depends on the width, the text size and
      whether the grid is narrowed. */
   let gridTall = $state(false);
   $effect(() => {
@@ -275,15 +200,13 @@
     };
   });
 
-  /* The rail shows while the page is moving and for a moment after, and
-     fades away at rest (release audit U12): standing over the grid's last
-     column all the time, its pills covered x 313 to 360 of every third
-     photograph at 390px. A scrubber that answers a scroll is the shape the
-     photo apps use, and it is the scroll the rail is for - the ticket's
-     own rule above only offers it once the grid outgrows a screen. Hover
-     and keyboard focus hold it (CSS, :hover and :focus-within), so a mouse
-     on its way to a year and a Tab through them never chase a fading
-     target. */
+  /* The rail shows while the page is moving and for a moment after, and fades away at rest
+     (release): standing over the grid's last column all the time, its pills covered x 313
+     to 360 of every third photograph at 390px. A scrubber that answers a scroll is the
+     shape the photo apps use, and it is the scroll the rail is for - the ticket's own rule
+     above only offers it once the grid outgrows a screen. Hover and keyboard focus hold it
+     (CSS, :hover and :focus-within), so a mouse on its way to a year and a Tab through them
+     never chase a fading target. */
   const RAIL_REST_MS = 1500;
   let railAwake = $state(false);
   $effect(() => {
@@ -317,18 +240,17 @@
     });
   }
 
-  /* Editing a single photo's day (ticket 47, ADR-0008/0015): every photo
-     this app can normalize has had its capture date stripped on import, so
-     this is the only place after the fact to say when one is really from -
-     Persona 1's shoebox print, dated to 1994 rather than to the day it was
-     scanned in. Held by id rather than by the photo object itself: the
-     list is a live query, and re-opening the sheet after a write should
-     read the row it just changed rather than a stale copy of it.
+  /* Editing a single photo's day (ADR-0008/0015): every photo this app can normalize has
+     had its capture date stripped on import, so this is the only place after the fact to
+     say when one is really from - Persona 1's shoebox print, dated to 1994 rather than to
+     the day it was scanned in. Held by id rather than by the photo object itself: the list
+     is a live query, and re-opening the sheet after a write should read the row it just
+     changed rather than a stale copy of it.
 
-     Offered on an entry's and a milestone's photographs alone, because
-     `epoch_day_override` is a column the `photo` table alone has: the other
-     five tables date a row from the record it belongs to, and a photograph
-     dated to its hair-removal session has no day of its own to override. */
+     Offered on an entry's and a milestone's photographs alone, because `epoch_day_override`
+     is a column the `photo` table alone has: the other five tables date a row from the
+     record it belongs to, and a photograph dated to its hair-removal session has no day of
+     its own to override. */
   let dayEditorId = $state<string | null>(null);
   let dayEditorValue = $state('');
 
@@ -353,48 +275,27 @@
     fmtDay(photo.epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
 </script>
 
-<div class="screen">
-    <ScreenHeader title={m.progress_photos()} back="/more" />
-    <div class="screen-part">
-      <Segmented
-        name={m.progress_photos()}
-        options={[
-          { value: 'browse', label: m.ph_tab_browse() },
-          { value: 'compare', label: m.ph_tab_compare() }
-        ]}
-        value={selecting ? 'compare' : 'browse'}
-        onChange={(v) => setSelecting(v === 'compare')}
-        compact
-        key="photos-tab"
-      />
-    </div>
-    {#if selecting}
-      <div class="compare-selection" transition:collapse>
-        <p role="status" data-compare-progress>{m.ph_selection_count({ count: orderedSelected.length })}</p>
-        <p class="muted small">{selected.length < 2 ? m.ph_pick_two() : m.ph_selection_full()}</p>
-        {#each selected as id (id)}
-          {@const anchor = comparable.find((photo) => photo.id === id)}
-          <div class="compare-anchor" transition:collapse>
-            <span>
-              {#if anchor}
-                {photoSourceLabel(anchor.source)}, {cellDate(anchor)}
-                {#if !shown.some((photo) => photo.id === id)}<small class="muted">{m.ph_selection_filtered()}</small>{/if}
-              {:else}
-                <span role="status" data-anchor-unavailable>{m.ph_selection_unavailable()}</span>
-              {/if}
-            </span>
-            <button class="btn btn-soft press" data-anchor-remove={id} onclick={() => toggle(id)} aria-label={m.ph_selection_remove({ photo: anchor ? `${photoSourceLabel(anchor.source)}, ${cellDate(anchor)}` : m.ph_selection_unavailable() })}>{m.ph_selection_remove_short()}</button>
-          </div>
-        {/each}
-        <button class="btn btn-primary press" data-compare-open disabled={!pair} onclick={() => (comparing = true)}>{m.ph_compare()}</button>
-      </div>
-    {/if}
+<div class="screen" bind:this={screenEl}>
+    <ScreenHeader title={m.photos_label()} back="/more" />
     <ReadGate read={libraryQuery} variant="block" count={2}>
       {#snippet rows()}
         <PhotoChipRow {chips} {chip} onPick={pickChip} />
-        <p class="photo-count" data-photo-count>{m.ph_count({ count: shown.length })}</p>
+        <!-- The number changes with a chip, so it crossfades rather than swapping in the
+             frame of the press. -->
+        <div class="photo-count-row">
+          <p class="photo-count" data-photo-count>
+            {#key shown.length}<span in:countIn out:crossfade>{m.ph_count({ count: shown.length })}</span>{/key}
+          </p>
+          <button
+            class="select-start press"
+            data-hold-select-start
+            aria-label={m.photos_select_start_aria()}
+            inert={held.active}
+            onclick={() => held.start(gridEl)}
+          >{m.photos_select_start()}</button>
+        </div>
         <div class="photo-library">
-          <div class="photo-grid" bind:this={gridEl}>
+          <div class="photo-grid" class:is-picking={held.active} bind:this={gridEl}>
             {#each rendered as p (p.id)}
               <div class="photo-cell-wrap" data-photo-key={p.id} data-photo-source={p.source} in:tileIn={{ when: painted }} out:pinnedOut>
                 {#if p.source === 'video'}
@@ -410,7 +311,9 @@
                     data-photo-video={p.id}
                     data-photo-view={p.id}
                     aria-label={m.ph_video_open({ date: cellDate(p) })}
+                    aria-disabled={held.active ? 'true' : undefined}
                     onclick={() => viewPhoto(p.id)}
+                    {@attach held.cell(p.id, false)}
                   >
                     <span class="photo-thumb photo-video-thumb">
                       <Icon name="play" size={26} />
@@ -423,23 +326,23 @@
                   <button
                     class="photo-cell"
                     data-photo-cell
-                    class:is-selected={selecting && selected.includes(p.id)}
-                    aria-pressed={selecting ? selected.includes(p.id) : undefined}
-                    disabled={selecting && selected.length === 2 && !selected.includes(p.id)}
+                    data-photo-view={p.id}
+                    class:is-selected={held.has(p.id)}
+                    aria-pressed={held.active ? held.has(p.id) : undefined}
                     aria-label={m.ph_cell_aria_sourced({ source: photoSourceLabel(p.source), date: cellDate(p) })}
-                    onclick={() => selecting ? toggle(p.id) : viewPhoto(p.id)}
+                    onclick={() => viewPhoto(p.id)}
+                    {@attach held.cell(p.id, libraryDeletable(p))}
                   >
                     <PhotoThumb photo={p} size={104} label={photoSourceLabel(p.source)} />
                     <span class="photo-date">{photoCaptionDate(p.epochDay)}</span>
-                    {#if selecting && selected.includes(p.id)}<span class="photo-check"><Icon name="check" size={14} /></span>{/if}
+                    {#if held.has(p.id)}<span class="photo-check" transition:checkIn><Icon name="check" size={14} /></span>{/if}
                   </button>
                   {#if datedByItsOwner(p)}
-                    <button class="photo-edit-day" data-photo-edit-day aria-label={m.ph_edit_day()} onclick={() => openDayEditor(p)}>
+                    <button class="photo-edit-day" data-photo-edit-day aria-label={m.ph_edit_day()} inert={held.active} onclick={() => openDayEditor(p)}>
                       <Icon name="calendar" size={14} />
                     </button>
                   {/if}
                   </div>
-                  {#if selecting}<button class="btn btn-soft press photo-view-action" data-photo-view={p.id} onclick={() => viewPhoto(p.id)}>{m.photo_library_view()}</button>{/if}
                 {/if}
               </div>
             {/each}
@@ -450,7 +353,7 @@
                hidden: it is a position in the layout, not content. -->
           <div class="photo-grid-edge" bind:this={gridSentinel} aria-hidden="true"></div>
           {#if remaining > 0}
-            <button class="btn btn-soft press photo-grid-more" data-photo-grid-more onclick={growGrid}>
+            <button class="btn btn-soft press photo-grid-more" data-photo-grid-more data-narrow-follow onclick={growGrid}>
               <span>{moreLabel}</span>
             </button>
           {/if}
@@ -472,7 +375,7 @@
             </div>
           {/if}
         </div>
-        <div>
+        <div data-narrow-follow>
           <a class="btn btn-soft press" href="/media/photos/export" data-journey-export>
             <Icon name="image" size={20} /><span>{m.pj_open()}</span>
           </a>
@@ -483,49 +386,14 @@
           icon="image"
           key="photos-empty"
           role={roleAt(activeFlag.roles, 0)}
-          title={m.ph_empty_title()}
+          title={m.no_photos_title()}
           text={m.ph_empty_body()}
           action={{ label: m.ph_empty_action(), href: TODAY_PHOTO_HREF, primary: true }}
         />
       {/snippet}
     </ReadGate>
 
-  <Sheet open={comparing} title={m.ph_compare()} onClose={() => (comparing = false)}>
-    {#if pair}
-    <p class="compare-gap" data-compare-gap>{gapLabel}</p>
-    <PhotoWipe
-      photos={comparable}
-      {pair}
-      onPair={setPair}
-      role={roleAt(activeFlag.roles, 0)}
-      date={(photo) => fmtDay(photo.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}
-      note={photoOwnerLine}
-    />
-    {#if rangeSummaries.length}
-      <SectionHeading text={m.ph_measurements_title()} />
-      <ListCard role={roleAt(activeFlag.roles, 0)}>
-        {#each rangeSummaries as s (s.type)}
-          <ListRow
-            static
-            data-range-measurement={s.type}
-            title={vocabulary.measurementTypeName(s.type)}
-            subtitle={s.first.id === s.last.id
-              ? `${s.first.value} ${s.first.unit}`
-              : `${s.first.value} ${s.first.unit} → ${s.last.value} ${s.last.unit}`}
-          />
-        {/each}
-      </ListCard>
-    {/if}
-
-    <div>
-      <button class="btn btn-soft press" data-photos-back-to-all onclick={() => (comparing = false)}>
-        <span>{m.ph_back_to_all()}</span>
-      </button>
-    </div>
-    {:else}
-      <p role="status">{m.ph_selection_unavailable()}</p>
-    {/if}
-  </Sheet>
+  <HoldSelectBar selection={held} scope={screenEl} remove={removeHeld} />
 
   <SourceRecordHandoff id={viewingId} ready={!libraryQuery.loading && !libraryQuery.failed} found={!!viewing} />
   <PhotoViewer caption={viewing ? `${photoSourceLabel(viewing.source)}, ${cellDate(viewing)}` : undefined} photo={viewing?.source !== 'video' ? viewing : null} {ownerHref} onClose={() => viewPhoto(null)} />
@@ -542,41 +410,34 @@
     {#if dayEditorId !== null}
       <h3>{m.photo_day_edit_title()}</h3>
       <p class="muted small" style="margin-bottom:var(--space-4)">{m.photo_day_edit_hint()}</p>
-      <Field label={m.photo_day_label()} id="photo-day-edit">
+      <Field label={m.day_label()} id="photo-day-edit">
         {#snippet children(id)}
           <DatePicker name="photo-day-edit" bind:value={dayEditorValue} {id} />
         {/snippet}
       </Field>
       <button class="btn btn-primary press" data-photo-day-edit-save disabled={dayWrite.busy} onclick={saveDayEditor}>
-        <span>{m.photo_day_edit_save()}</span>
+        <span>{m.save()}</span>
       </button>
     {/if}
   </Sheet>
 </div>
 
 <style>
-  .compare-selection { display: grid; gap: var(--space-3); margin-bottom: var(--space-4); }
-  .compare-anchor { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
-  .compare-anchor small { display: block; }
-  .compare-anchor .btn { flex-shrink: 0; }
-
-  /* The day-edit affordance on a browse cell (ticket 47): a sibling of
-     .photo-cell rather than a change to it, so export/+page.svelte's own
-     .photo-cell button - screens.css's shared class - keeps meaning
-     exactly what it always has there.
-
-     Sized and lifted the same way .starred-photo-unstar already solves
-     the identical problem (screens.css): a real button here needs the
-     full --touch-target hit area, but a 44px disc would swallow half the
-     104px cell, so the tap target and the visual circle are two
-     differently-sized boxes - the outer button transparent and centred
-     on the corner, the smaller ::before disc carrying the surface fill
-     and the edge that separates it from whatever the photo underneath
-     happens to be. */
+  /* Put the day edit on the photo's top-left corner, clear of its date caption.
+     Use a full touch target with a smaller visible disc. Keep it a sibling of
+     .photo-cell so export can keep using that class for its own button. */
   .photo-cell-controls { position: relative; }
-  .photo-view-action { width: 100%; margin-top: var(--space-3); }
+  /* While picking, the day button steps back (a tap there would open a
+     sheet over the picking) and a video note's tile dims, since a note is
+     deleted in its entry and not here. Both fade: picking starts in the
+     frame of a hold, and nothing on the grid jumps with it. */
+  .photo-edit-day, .photo-grid :global([data-photo-video]) {
+    transition: opacity var(--dur-fast) var(--ease-out);
+  }
+  .photo-grid.is-picking .photo-edit-day { opacity: 0; }
+  .photo-grid.is-picking :global([data-photo-video]) { opacity: 0.4; }
   .photo-edit-day {
-    position: absolute; bottom: -8px; left: -8px;
+    position: absolute; top: -8px; left: -8px;
     width: var(--touch-target); height: var(--touch-target);
     border: none; cursor: pointer; background: none; color: var(--text);
     display: flex; align-items: center; justify-content: center;
@@ -603,17 +464,14 @@
      with the grid and leaves with it rather than riding the whole screen. */
   .photo-library { position: relative; }
 
-  /* The gap the grid and the card below it would have had as siblings of
-     the screen (screens.css's own .screen-part rhythm), now that this
-     control sits between them instead (Alicja, sign-off on this ticket:
-     wanted more room off the tiles' own date row above it). */
+  /* The gap the grid and the card below it would have had as siblings of the screen
+     (screens.css's own .screen-part rhythm), now that this control sits between them
+     instead. */
   .photo-grid-more { margin-top: var(--space-3); }
 
-  /* In the screen's own right gutter (.screen's --space-5), not over the
-     grid: a 47px pill at the grid's edge covered x 313 to 360 of every third
-     photograph while it was showing (release audit U12, and the review of
-     ticket 18). So the rail is a thin scrubber the width of the gutter, its
-     years set on their side. */
+  /* In the screen's own right gutter (.screen's --space-5), not over the grid: a 47px pill
+     at the grid's edge covered x 313 to 360 of every third photograph while it was showing.
+     So the rail is a thin scrubber the width of the gutter, its years set on their side. */
   .photo-years {
     position: absolute;
     top: 0; bottom: 0;
@@ -655,10 +513,12 @@
     color: var(--text-2);
     transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
   }
-  /* The drawn tab is 18px; the target is the 48px floor, reaching left
-     over the grid's edge. Only a target, never paint, and only while the
-     rail is awake: at rest the rail takes no pointer at all. */
-  .photo-year::after { content: ''; position: absolute; inset: -2px 0 -2px calc(18px - var(--touch-target)); }
+  /* The drawn tab is 18px; the target is the 48px floor, reaching left over the grid's
+     edge. Only a target, never paint, and only while the rail is awake: at rest the rail
+     takes no pointer at all. The insets count from inside the tab's 1px border, so the
+     right one takes the border in and the left one starts 17px in: measured from the
+     border's outside edge they left a 47px target. */
+  .photo-year::after { content: ''; position: absolute; inset: -2px -1px -2px calc(17px - var(--touch-target)); }
   .photo-year:hover { color: var(--text); border-color: var(--accent-border); }
 
   /* A video note's tile. Flat rather than the hue a photograph's
@@ -670,10 +530,9 @@
     width: 100%;
     aspect-ratio: 1;
   }
-  /* The label in the text colour on a solid strip of the card. The shared
-     .photo-label is a 35% black scrim made for a photograph, and over this
-     flat tile it left "Video note" at 1.9:1 (after-release 21, audit
-     A11Y-10). */
+  /* The label in the text colour on a solid strip of the card. The shared .photo-label is a
+     35% black scrim made for a photograph, and over this flat tile it left "Video note" at
+     1.9:1. */
   .photo-video-thumb .photo-label {
     background: var(--surface);
     color: var(--text);
@@ -682,12 +541,15 @@
   .photo-count {
     font-size: var(--text-sm);
     color: var(--text);
-    margin: 0 0 var(--space-1);
+    margin: 0;
   }
-
-  /* The two-up grid this screen drew before redesign ticket 55 went with
-     the wipe that replaced it, `.compare-wrap`/`.compare-side` and all:
-     both halves of that comparison now live inside PhotoWipe.svelte, which
-     is also where the fallback for two photographs it cannot wipe between
-     is drawn. */
+  /* The count and Select on one line; the gap under it clears Select's
+     touch area off the first row of tiles. */
+  .photo-count-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-3);
+  }
 </style>

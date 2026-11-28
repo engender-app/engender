@@ -1,22 +1,10 @@
-/* Getting the Journal's data key out of Android Keystore (ticket 13,
-   ADR-0018).
+/* Use Android Keystore authentication to unwrap the data key
+   (ADR-0018). Return it only when the platform reports
+   authenticated and provides 64 hex characters. Every refusal
+   gets a way forward from biometric-outcome.ts.
 
-   On the web a passphrase unwraps the key (data/journal-passphrase.ts). On
-   Android nobody types anything: the key is wrapped by a Keystore key that
-   cannot be used until the platform says someone authenticated, so this
-   module asks, and reads the answer.
-
-   The reading is the whole job, and it is written to fail closed. A key
-   comes back only when the platform said `authenticated` AND handed over 64
-   hex characters; every other combination - including the ones a bridge bug
-   would produce, like a success with no key attached - is a refusal with
-   something to do next. `biometric-outcome.ts` owns that vocabulary.
-
-   One state is not a biometric state and is kept out of it: a Keystore key
-   is destroyed when the screen lock it was bound to is removed, and no
-   retry brings it back. Calling that a failed finger would loop somebody
-   round the prompt for ever, so it comes back as `invalidated` and the gate
-   offers the reset instead. */
+   Removing the bound screen lock destroys its Keystore key.
+   Report invalidated so the gate offers reset instead of retry. */
 
 import { interpretAuthentication, type AuthenticationResult } from './biometric-outcome.ts';
 
@@ -25,7 +13,8 @@ import { interpretAuthentication, type AuthenticationResult } from './biometric-
     Android draws is in the language the app is in. */
 export interface UnlockRequest {
   title: string;
-  subtitle: string;
+  /** A second line under the title. The unlock prompt has none. */
+  subtitle?: string;
   /** The prompt's negative button, which Android requires unless the device
       credential is allowed - and forbids when it is. */
   cancel: string;
@@ -51,10 +40,10 @@ export interface KeystoreBridge {
   wrap(options: { hexKey: string; authRequired?: boolean }): Promise<{ outcome: 'wrapped' | 'noDeviceCredential' }>;
   /** Every later run: the prompt (or direct unwrap if unlocked), then the unwrap behind it. */
   unlock(request: UnlockRequest): Promise<{ outcome: string; hexKey?: string }>;
-  /** The same prompt with no key behind it, for the app-lock screen reached
-      mid-session, where the key is already in memory (ADR-0014). */
+  /** The same prompt with no key behind it, for the app-lock screen reached mid-session,
+      where the key is already in memory. */
   confirm(request: UnlockRequest): Promise<{ outcome: string }>;
-  /** The reset path (ADR-0014): both wrapped keys go with the Journal. */
+  /** The reset path: both wrapped keys go with the Journal. */
   erase(): Promise<void>;
 }
 
@@ -76,11 +65,10 @@ export type AndroidKeyRefusal =
     the only thing SQLCipher's raw-key open accepts. */
 const KEY_HEX = /^[0-9a-f]{64}$/i;
 
-/** `hasKey`, when the caller already asked the bridge (boot's survey does,
-    moments before auto-unlock), saves asking again: a cold launch's bridge
-    results reach JS through the Android UI thread, and each extra round trip
-    there can land behind the WebView's first frame (ux-carpet 207). The
-    answer means the same either way. */
+/** `hasKey`, when the caller already asked the bridge (boot's survey does, moments before
+    auto-unlock), saves asking again: a cold launch's bridge results reach JS through the
+    Android UI thread, and each extra round trip there can land behind the WebView's first
+    frame. The answer means the same either way. */
 export async function openAndroidDataKey(
   bridge: KeystoreBridge,
   request: UnlockRequest,
@@ -104,12 +92,10 @@ export async function openAndroidDataKey(
   return keyOrRefusal(hexKey);
 }
 
-/** The app-lock screen's biometric key (ticket 17's gate, on Android). No
-    data key is involved and none should be: by then the Journal is open and
-    its key is in memory, and app lock is a casual-access layer rather than an
-    encryption credential (ADR-0014). Only `authenticated` unlocks; everything
-    else is a state the screen can name, with the PIN pad still there behind
-    it either way. */
+/** The app-lock screen's biometric key. No data key is involved and none should be: by then
+    the Journal is open and its key is in memory, and app lock is a casual-access layer
+    rather than an encryption credential. Only `authenticated` unlocks; everything else is a
+    state the screen can name, with the PIN pad still there behind it either way. */
 export async function confirmWithBiometrics(
   bridge: KeystoreBridge,
   request: UnlockRequest

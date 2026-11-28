@@ -1,40 +1,11 @@
-/* The field's edge on a step machine (redesign ticket 33).
+/* Move setup's field edge whenever layout changes its height.
+   Observe the box so step changes, a keyboard resize, text wrapping
+   and the access-mode pad all follow the same motion rule.
 
-   Ticket 28 made the field a blind over the content and moved its bottom
-   edge on every navigation: the paint is split from the box that measures
-   it, so the edge is a clip rather than a box being resized, and everything
-   printed on the field rides down with it. That mechanism is a view
-   transition, because a navigation has two screens in the DOM at once and
-   the only thing that can animate between them is a photograph of each.
-
-   Setup has one screen and ten states of it. Nothing is being replaced, so
-   there is nothing to photograph: the question, the line and the answers
-   are real elements the whole way through, and what has to move is the
-   field's own height. So the edge is driven from the field itself here.
-
-   **Every change of the field's height moves, not every step change.** That
-   is the whole reason this is a ResizeObserver and not a call at the bottom
-   of `go()`. The height changes on a step change, and it also changes when
-   the access-mode step walks from its list to its pad, when a question
-   re-wraps because the text size grew, and when a raised keyboard drops the
-   flow into its short form. A mechanism wired to the step counter would let
-   the other three jump the edge in a single frame, which is the one defect
-   this ticket is not allowed to ship ("no yanks anywhere", Alicja,
-   2026-09-09: a yank is a thing teleporting or disappearing in one frame).
-
-   How the frame is kept honest. A ResizeObserver's callback runs after
-   layout and before the frame is painted, so what it writes lands in the
-   same frame the height changed in. What it writes is the *old* geometry -
-   the riders translated back by what the edge gained, the clip still at the
-   height it had - with transitions off, which is a frame identical to the
-   one before it. The rAF after it takes the hold off, and the transitions
-   run from there. Nothing is ever painted at its destination before it has
-   travelled to it.
-
-   The numbers come from $lib/motion/fieldBlind's `blindVariables`, which is
-   the same arithmetic a navigation publishes on the root, so a step change
-   and a door change cannot disagree about how far an edge settles past its
-   mark or which way a thing painted on it travels. */
+   ResizeObserver runs after layout and before paint. Hold the old clip
+   and translate riders back by the height change with transitions off.
+   Release the hold on the next frame. fieldBlind.blindVariables shares
+   the travel and settle geometry with navigation. */
 
 import type { Action } from 'svelte/action';
 
@@ -44,10 +15,9 @@ import { EASE_OUT_CSS, isReducedMotion, motionDuration } from './tokens';
 /** What the hold is stamped on while the old geometry is being painted. */
 const HOLD = 'blindHold';
 
-/** What is printed on the field and has to ride with its edge. The shared
-    class, not a per-surface one: setup and the gates wear the same field
-    (components.css, redesign ticket 34) and this action is the only thing
-    that measures where the words sit inside it. */
+/** What is printed on the field and has to ride with its edge. The shared class, not a
+    per-surface one: setup and the gates wear the same field (components.css) and this
+    action is the only thing that measures where the words sit inside it. */
 const ASK = '.step-field-ask';
 /** How long after a heading arrives its rest is left alone. */
 const ARRIVAL_SETTLE_MS = 600;
@@ -175,7 +145,7 @@ export const blindEdge: Action<HTMLElement> = (node) => {
      previous change's target instead, they teleport whatever had not
      arrived yet to where it was going - 7.7px, in one frame, on the
      incoming question when the outgoing one left the grid at 150ms and
-     the field's height changed a second time (ticket 285). */
+     the field's height changed a second time. */
   const shownEdge = () => {
     return edgeShown(getComputedStyle(host).getPropertyValue('--blind-edge'), edge);
   };
@@ -204,7 +174,7 @@ export const blindEdge: Action<HTMLElement> = (node) => {
 
     const vars = blindVariables({ from, to });
     /* Which way the printed words travel is one fact for the length of a
-       burst of changes, not one per change (ticket 285). A keyed question is
+       burst of changes, not one per change. A keyed question is
        in the grid beside its successor for 150ms, so the field grows to the
        taller of the two on the first frame and shrinks to the successor's when
        the outgoing one leaves: two changes in opposite directions for one step

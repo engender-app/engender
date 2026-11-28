@@ -1,11 +1,8 @@
 <script lang="ts">
-  /* Overhauled Clinician Summary / Clinical Dossier Generator (phase 5 ticket 09).
-     Synthesizes patient demographics, current regimen, dose history, cumulative
-     exposure, lab timeline with post-dose context, side effects, cycle events,
-     and appointment prep consultation questions.
-
-     Provides toggle switches to selectively include or redact sections before
-     printing or saving to PDF. */
+  import { journalTextAutocomplete } from '$lib/platform';
+  /* The clinician summary: a range, the registered sections (clinicianSummary.ts) and the
+     drugs to print, set in the sheet, over a preview that is the printed page. Each section
+     has a switch, so a part can be left off before printing or saving to PDF. */
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
@@ -24,16 +21,15 @@
   import { fmtDay } from '$lib/data/dates';
   import { printCurrentPage } from '$lib/print/print';
   import {
-    assembleClinicianDossier,
-    CLINICIAN_DOSSIER_INCLUSION_KEYS,
-    DEFAULT_CLINICIAN_DOSSIER_INCLUSION,
+    CLINICIAN_SUMMARY_SECTION_KEYS,
+    EVERY_CLINICIAN_SUMMARY_SECTION,
     excludedClinicianDrugs,
     regimenDrugNames,
     withClinicianDrugIncluded,
-    type ClinicianDossierInclusion,
-    type ClinicianDossierInclusionKey
-  } from '$lib/data/export/clinicianSummaryData';
-  import { clinicianDossierPartName } from '$lib/data/vocabulary/clinicianSummaryLabels';
+    type ClinicianSummaryInclusion,
+    type ClinicianSummarySectionKey
+  } from '$lib/data/journal/clinicianSummary';
+  import { clinicianSummarySectionName } from '$lib/data/vocabulary/clinicianSummaryLabels';
   import ClinicianSummaryDossier from '$lib/components/ClinicianSummaryDossier.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import PrintLetterhead from '$lib/components/PrintLetterhead.svelte';
@@ -57,49 +53,44 @@
   let startInput = $state(dateInputValueFromEpochDay(defaultRange.start));
   let endInput = $state(dateInputValueFromEpochDay(defaultRange.end));
   let dobInput = $state('');
-  /* Transient like the date of birth: typed for this summary, never kept as
-     a preference (after-release 22, confirmed in pre-release-human 03). */
+  /* Transient like the date of birth: typed for this summary, never kept as a preference. */
   let pronounsInput = $state('');
-  let inclusion = $state<ClinicianDossierInclusion>({ ...DEFAULT_CLINICIAN_DOSSIER_INCLUSION });
+  let inclusion = $state<ClinicianSummaryInclusion>({ ...EVERY_CLINICIAN_SUMMARY_SECTION });
 
-  /* Ticket 08: the range, the sections and the drugs are all still set on
-     this same screen - the sheet below just holds the controls now instead
-     of the screen's own scroll. Closed by default; the row above the
-     preview is the only thing that opens it. */
+  /* The range, the sections and the drugs are all still set on this same screen - the sheet
+     below just holds the controls now instead of the screen's own scroll. Closed by
+     default; the row above the preview is the only thing that opens it. */
   let controlsOpen = $state(false);
 
-  /* "Since last appointment" (ticket 19): the most recent past appointment
-     (appointments.ts's own pure selector, ticket 58), the same one the
-     debrief offer is about. Absent rather than defaulted when none is on
-     record - the button below does not render, instead of falling back to
-     some other window (ticket 19's own line). */
+  /* "Since last appointment": the most recent past appointment (appointments.ts's own pure
+     selector), the same one the debrief offer is about. Absent rather than defaulted when
+     none is on record - the button below does not render, instead of falling back to some
+     other window. */
   let appointmentsQuery = liveList((j) => j.appointments.getAppointments());
   let lastAppointment = $derived(mostRecentPastAppointment(appointmentsQuery.rows, today));
   let appointmentDate = $derived(lastAppointment?.epochDay ?? null);
 
-  /* Every drug the person has ever logged a regimen episode for (ticket
-     39), unbounded - not scoped to the range below, since the toggle is a
-     device preference set once rather than a per-print control. */
+  /* Every drug the person has ever logged a regimen episode for, unbounded - not scoped to the range below, since the toggle is a
+     device preference set once rather than a per-print control. A drug
+     that is not HRT starts switched off. */
   let regimenEpisodesQuery = liveQuery((j) => j.regimen.getEpisodes());
   let drugNames = $derived(regimenDrugNames(regimenEpisodesQuery.value ?? []));
   const rowEstimate = readReserve('clinician-summary-row');
   const rememberRow = (px: number) => rememberReserve('clinician-summary-row', px);
   let excludedDrugs = $derived(
-    excludedClinicianDrugs(drugNames, prefs.clinicianSummaryDrugExcluded)
+    excludedClinicianDrugs(regimenEpisodesQuery.value ?? [], prefs.clinicianSummaryDrugExcluded)
   );
 
   function toggleDrug(drug: string, included: boolean) {
     prefs.clinicianSummaryDrugExcluded = withClinicianDrugIncluded(prefs.clinicianSummaryDrugExcluded, drug, included);
   }
 
-  /* A shortcut for the two fields below, nothing else: it fills the same
-     start/end inputs any other pair of dates fills, so it changes no read
-     downstream. Two of clinicianSummary.ts's sections (procedures,
-     appointmentPrepItems) are already unfiltered by design (ADR-0031) -
-     this range does not change that, and does not special-case it either,
-     which is the "written decision" ticket 19 asks for: applying it
-     uniformly would change what those two sections mean, exactly what
-     ADR-0031's own comment there already rules out. */
+  /* A shortcut for the two fields below, nothing else: it fills the same start/end inputs
+     any other pair of dates fills, so it changes no read downstream. Two of
+     clinicianSummary.ts's sections (procedures, appointmentPrep) are already unfiltered by
+     design - this range does not change that, and does not special-case it either, which is
+     the "written decision" asks for: applying it uniformly would change what those two
+     sections mean, which the section registry forbids. */
   function useSinceLastAppointment() {
     if (appointmentDate === null) return;
     startInput = dateInputValueFromEpochDay(appointmentDate);
@@ -110,11 +101,9 @@
     customInclusiveRange(epochDayFromDateInputValue(startInput), epochDayFromDateInputValue(endInput))
   );
 
-  let dossierQuery = liveQuery((j) =>
+  let summaryQuery = liveQuery((j) =>
     range
-      ? assembleClinicianDossier(j, {
-          fromEpochDay: range.start,
-          toEpochDay: range.end,
+      ? j.clinicianSummary.getSummary(range.start, range.end, {
           demographics: {
             name: prefs.name,
             pronouns: pronounsInput.trim() || null,
@@ -125,7 +114,7 @@
         })
       : Promise.resolve(null)
   );
-  let dossier = $derived(dossierQuery.value);
+  let summary = $derived(summaryQuery.value);
 
   const dayLong = (epochDay: number) =>
     fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
@@ -133,16 +122,16 @@
   /* Both summaries read the selected sections and drugs. Only the print
      foot states the range, so the screen does not repeat its sentence. */
   let includedSections = $derived(
-    CLINICIAN_DOSSIER_INCLUSION_KEYS.filter((key) => inclusion[key])
+    CLINICIAN_SUMMARY_SECTION_KEYS.filter((key) => inclusion[key])
   );
   let includedDrugNames = $derived(drugNames.filter((drug) => !excludedDrugs.has(drug)));
   let sectionsScope = $derived(
     includedSections.length === 0
       ? m.clinician_summary_scope_sections_none()
-      : includedSections.length === CLINICIAN_DOSSIER_INCLUSION_KEYS.length
+      : includedSections.length === CLINICIAN_SUMMARY_SECTION_KEYS.length
         ? m.clinician_summary_scope_sections_all()
         : m.clinician_summary_scope_sections({
-            sections: includedSections.map(clinicianDossierPartName).join(', ')
+            sections: includedSections.map(clinicianSummarySectionName).join(', ')
           })
   );
   let drugsScope = $derived(
@@ -153,7 +142,7 @@
         : m.clinician_summary_scope_drugs({ drugs: includedDrugNames.join(', ') })
   );
   let scopeText = $derived.by(() => {
-    if (!range) return m.clinician_summary_range_required();
+    if (!range) return m.range_required();
     const rangeText = m.clinician_summary_settings_range({
       start: dayLong(range.start),
       end: dayLong(range.end)
@@ -171,7 +160,7 @@
     drugNames.length > 0 ? `${sectionsScope}. ${drugsScope}` : sectionsScope
   );
 
-  function include(key: ClinicianDossierInclusionKey, value: boolean) {
+  function include(key: ClinicianSummarySectionKey, value: boolean) {
     inclusion = { ...inclusion, [key]: value };
   }
 
@@ -186,7 +175,7 @@
   <!-- The settings row shows the included items and opens their controls. -->
   <!-- Held until the regimen read answers: the row names the drugs, and
        drawn before it knew them it grew a line in one frame on every cold
-       open, pushing the preview 21px (ux-carpet ticket 193). -->
+       open, pushing the preview 21px. -->
   <div class="no-print settings-row-wrap">
     <ReadReserve ready={!regimenEpisodesQuery.loading} estimate={rowEstimate} onrest={rememberRow}>
       <ListRow
@@ -198,53 +187,49 @@
     </ReadReserve>
   </div>
 
-  <!-- Generated dossier, shown as the page it will become rather than as
-       more screen (ticket 59, and ticket 08's own point: the preview is
-       the screen). The sheet under it stays flush (rule 4), with one
-       hairline at its foot marking where the dossier ends and the action
-       begins - that edge had nothing else beside it to be confused with,
-       and read clearly. Not `.card` (components.css): that is the box rule
-       4 is carpeting out screen by screen, and a document freshly
-       redesigned is not the place to add its fourteenth instance. -->
+  <!-- Generated dossier, shown as the page it will become rather than as more screen. The
+       sheet under it stays flush (rule 4), with one hairline at its foot marking where the
+       dossier ends and the action begins - that edge had nothing else beside it to be
+       confused with, and read clearly. Not `.card` (components.css): that is the box rule 4
+       is carpeting out screen by screen, and a document freshly redesigned is not the place
+       to add its fourteenth instance. -->
   {#if range}
     <div class="no-print"><SectionHeading text={m.clinician_summary_preview_title()} /></div>
     <!-- The document title stays visible while its sections load. -->
     <div class="summary-page" data-summary-page>
-      <div class="summary-heading" class:has-demographics={Boolean(dossier?.demographics)}>
+      <div class="summary-heading" class:has-demographics={Boolean(summary?.sections.demographics)}>
         <div class="print-heading"><PrintLetterhead /></div>
         <h1>{m.clinician_summary_title()}</h1>
-        <p>{m.clinician_summary_period_range({ from: dayLong(range.start), to: dayLong(range.end) })}</p>
+        <p>{m.range_from_to({ from: dayLong(range.start), to: dayLong(range.end) })}</p>
         <p class="muted small">{m.clinician_summary_generated({ date: dayLong(today) })}</p>
       </div>
-      {#if dossierQuery.loading || !dossier}
+      {#if summaryQuery.loading || !summary}
         <div out:crossfade><Skeleton variant="block" count={4} /></div>
       {:else}
         <div class="dossier-output">
-          <ClinicianSummaryDossier {dossier} />
+          <ClinicianSummaryDossier {summary} />
         </div>
       {/if}
     </div>
-    {#if dossier}
-      <!-- Ticket 34: the act of sending the page lives in the frame's foot
-           (SaveBar), beside the scope it would send - the preview runs for
-           many sections, and an action at its end is one every scroll has
-           to finish before it can be reached. The foot is the column's flex
-           sibling rather than a bar floating over it (carpet 26), so the
-           one verb this screen has (ticket 08) stays reachable at every
-           scroll position and covers nothing - and its scope line includes the
-           range alongside the same item choices the settings row reads. -->
+    {#if summary}
+      <!-- The act of sending the page lives in the frame's foot (SaveBar), beside the scope
+           it would send - the preview runs for many sections, and an action at its end is
+           one every scroll has to finish before it can be reached. The foot is the column's
+           flex sibling rather than a bar floating over it, so the one verb this screen has
+           stays reachable at every scroll position and covers nothing - and its scope line
+           includes the range alongside the same item choices the settings row reads. -->
       <SaveBar arrange="stack">
         <p class="small muted summary-scope no-print" role="status">{scopeText}</p>
         <button class="btn btn-primary no-print" data-summary-print onclick={printSummary}>
           <Icon name="print" size={18} />
-          <span>{m.clinician_summary_print()}</span>
+          <span>{m.print()}</span>
         </button>
       </SaveBar>
     {/if}
   {/if}
 </div>
 
-<!-- The controls sheet (ticket 08): every field the form on this screen
+<!-- The controls sheet: every field the form on this screen
      used to hold, unchanged in what it reads and what it defaults to -
      only where it lives moved. The intro paragraph comes with it, since
      the choices it explains are what's in here now, not what's on the
@@ -259,12 +244,12 @@
   <p class="muted small" style="margin-bottom:var(--space-4)">{m.clinician_summary_intro()}</p>
 
   <div class="kit-filter cd-endpoints">
-    <Field label={m.clinician_summary_range_start_label()} id="clinician-summary-start">
+    <Field label={m.start_date_label()} id="clinician-summary-start">
       {#snippet children(id)}
         <DatePicker max={dayRangeStartMax(endInput) ?? todayInput} bind:value={startInput} {id} />
       {/snippet}
     </Field>
-    <Field label={m.clinician_summary_range_end_label()} id="clinician-summary-end">
+    <Field label={m.end_date_label()} id="clinician-summary-end">
       {#snippet children(id)}
         <DatePicker min={dayRangeEndMin(startInput)} max={todayInput} bind:value={endInput} {id} />
       {/snippet}
@@ -278,13 +263,13 @@
     </div>
   {/if}
   {#if range === null}
-    <p class="muted small">{m.clinician_summary_range_required()}</p>
+    <p class="muted small">{m.range_required()}</p>
   {/if}
 
   <div class="cd-person">
     <Field label={m.clinician_summary_pronouns_optional()} id="clinician-summary-pronouns">
       {#snippet children(id)}
-        <input
+        <input autocomplete={journalTextAutocomplete()}
           {id}
           type="text"
           class="input"
@@ -295,7 +280,7 @@
     </Field>
     <Field label={m.clinician_summary_dob_optional()} id="clinician-summary-dob">
       {#snippet children(id)}
-        <input
+        <input autocomplete={journalTextAutocomplete()}
           {id}
           type="text"
           class="input"
@@ -309,15 +294,14 @@
   <!-- Section Inclusion / Redaction Toggles -->
   <div style="margin-bottom:var(--space-4)">
     <SectionHeading text={m.clinician_summary_include_title()} />
-    <p class="muted small" style="margin-bottom:var(--space-2)">{m.clinician_summary_include_note()}</p>
     <ListCard>
       <div class="inclusion-container" data-dossier-inclusion>
-        {#each CLINICIAN_DOSSIER_INCLUSION_KEYS as key (key)}
+        {#each CLINICIAN_SUMMARY_SECTION_KEYS as key (key)}
           <div class="spread inclusion-row" data-inclusion={key}>
-            <span>{clinicianDossierPartName(key)}</span>
+            <span>{clinicianSummarySectionName(key)}</span>
             <Switch
               checked={inclusion[key]}
-              label={clinicianDossierPartName(key)}
+              label={clinicianSummarySectionName(key)}
               onChange={(v) => include(key, v)}
             />
           </div>
@@ -352,8 +336,12 @@
 <style>
   /* Named so the settings-row test below can find it without depending on
      ListRow's own class names, and so the gap to the Preview heading below
-     is this screen's call rather than a bare margin on a shared kit row. */
+     is this screen's call rather than a bare margin on a shared kit row.
+     flow-root keeps the reserve's margins inside the wrap: empty, they
+     collapsed through it, and when the row arrived on a cold open the
+     preview dropped 16px in one frame before the reserve's travel began. */
   .settings-row-wrap {
+    display: flow-root;
     margin-bottom: var(--space-2);
   }
 
@@ -393,11 +381,11 @@
     margin-top: var(--space-2);
   }
 
-  /* Flush (DIRECTION.md rule 4): no `--surface` ground and no `--r-block`
+  /* Flush: no `--surface` ground and no `--r-block`
       corner - those are `.card`'s (components.css), the box rule 4 spends
       its own carpet tickets retiring screen by screen. Just the foot gets a
       hairline, marking where the dossier ends - the print action moved
-      below that edge into the frame's own foot (ticket 34); the top is
+      below that edge into the frame's own foot; the top is
       named instead, by the SectionHeading above, which is what
       actually reads (see the comment on the markup). */
   .summary-page {

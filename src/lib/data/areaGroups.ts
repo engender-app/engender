@@ -1,36 +1,18 @@
-/* What a person finishes, as opposed to what the journal stores it against
-   (phase 8 features ticket 04, ADR-0052).
+/* Map finishable archive sections to the areas people see (ADR-0052).
+   Grouped sections, such as Voice benchmarks and practice takes,
+   finish together in one transaction.
 
-   `areaState.ts` keys the record by `ArchiveSectionName`, because that is
-   what is compile-checkable and wire-stable. Nobody meets an archive section.
-   What somebody meets is a screen - the hair progress screen, the size log -
-   and hair progress is two sections, `hairStages` and `hairPhotos`, which
-   finish together in one transaction or not at all.
-
-   ADR-0052 calls that one-to-many mapping presentation and says it lives with
-   the hub. It is here rather than in `more/+page.svelte` because four things
-   now need it and none of them is the hub: the control on each area's own
-   screen, the mark a finished area draws on a chart, the line in the clinician
-   summary, and the offer. Written once and checked, rather than eight screens
-   each naming their own sections and a ninth quietly disagreeing.
-
-   This is not a second list of areas. `FINISHABLE_AREAS` remains the list;
-   `EveryFinishableAreaGrouped` below refuses to compile until whatever is
-   added there is grouped here, and areaGroups.test.ts refuses a section
-   grouped twice.
-
-   Node-tier safe: no clock, no driver, no paraglide. A group's own name is
-   `vocabulary/areaLabels.ts`'s, the same split `day.ts` keeps from
-   `vocabulary/dayLabels.ts`. */
+   `FINISHABLE_AREAS` is the source of truth. The type check requires
+   every finishable section to be grouped, and areaGroups.test.ts
+   rejects duplicates. Keep the mapping free of clocks, drivers and
+   Paraglide. Localized names live in `vocabulary/areaLabels.ts`. */
 
 import { areaQuiet, type AreaStates, type FinishableArea, type SuspendableArea, SUSPENDABLE_AREAS } from './areaState';
 
 /** One finishable thing, as a person addresses it. Named after the More hub's
     own row keys, because that is what the screens behind them are called. */
 export type AreaGroupKey =
-  | 'measurements'
   | 'wear'
-  | 'hair-progress'
   | 'hair-removal'
   | 'effects'
   | 'voice'
@@ -38,37 +20,19 @@ export type AreaGroupKey =
 
 /** Which areas each group finishes, together.
 
-    Four of the seven front exactly one area. Hair progress fronts two, and
-    so does voice (phase 8 features ticket 10): a benchmark and a practice
-    take are both dated records of the same practice, so `voice` finishes
-    them together the way hair progress finishes its stagings and its
-    photographs. A voice memo belongs to an entry and travels inside
-    `entries` (CONTEXT: "Area"), so the memos screen is not finishable and
-    has no group here.
+    Most of them front exactly one area. Voice fronts two: a benchmark and a practice take
+    are both dated records of the same practice, so `voice` finishes them together. A voice
+    memo belongs to an entry and travels inside `entries`, so the memos screen is not
+    finishable and has no group here.
 
-    `measurements` is the third, from phase 10 redesign ticket 61: a number
-    off a tape and a size off a label are two halves of one question about
-    the same body, and they were two rows with the half that had a reading
-    not knowing about the half that had none. One row, one screen, one
-    group - so the row reads finished only when a person has stopped with
-    both, which is the rule hair progress has always followed. The old
-    `sizes` group is gone rather than renamed: `areaState.ts` keys what is
-    finished by `sizeRecords`, the archive section, so nothing a person has
-    already finished is disturbed by the navigation above it changing
-    (ADR-0052).
-
-    `effects` is the fourth, from phase 11 all-four-doors ticket 13: a side
-    effect and a change you were hoping for both landed on one screen and one
-    axis, and the group followed the screen the same way `measurements` did -
-    `personalEffects` and `sideEffects` finish together now, and the old
-    `side-effects` group is gone rather than renamed, for the reason `sizes`
-    was: `areaState.ts` keys what is finished by `sideEffects`, the archive
-    section, so nothing already finished is disturbed by the screen above it
-    merging. */
+    `effects` is the fourth, from a side effect and a change you were hoping for both landed
+    on one screen and one axis, and the group followed the screen - `personalEffects` and
+    `sideEffects` finish together now, and the old `side-effects` group is gone rather than
+    renamed, for the reason `sizes` was: `areaState.ts` keys what is finished by
+    `sideEffects`, the archive section, so nothing already finished is disturbed by the
+    screen above it merging. */
 export const AREA_GROUPS = {
-  measurements: ['measurements', 'sizeRecords'],
   wear: ['wearSessions'],
-  'hair-progress': ['hairStages', 'hairPhotos'],
   'hair-removal': ['hairRemovalSessions'],
   effects: ['personalEffects', 'sideEffects'],
   voice: ['voiceBenchmarks', 'voicePracticeTakes'],
@@ -88,7 +52,7 @@ type EveryFinishableAreaGrouped = AssertNoneUngrouped<Ungrouped>;
 /** `AreaGroupKey` as a value, read off `AREA_GROUPS` rather than typed out a
     second time. */
 /* AREA_GROUP_KEYS stays exported for its own test, and cross-checked in
-   AreaFinish.mounted.test.ts, hubRows.test.ts (AU-09 test-only review). */
+   AreaFinish.mounted.test.ts, hubRows.test.ts. */
 export const AREA_GROUP_KEYS = Object.keys(AREA_GROUPS) as readonly AreaGroupKey[];
 
 /** The day a group finished, or null while it has not.
@@ -120,12 +84,11 @@ export function finishedGroups(states: AreaStates): { key: AreaGroupKey; epochDa
   return found.sort((a, b) => a.epochDay - b.epochDay);
 }
 
-/** The groups whose areas are all suspendable (phase 8 features ticket 51).
+/** The groups whose areas are all suspendable.
     Derived from `SUSPENDABLE_AREAS` rather than typed out a second time - the
     same reason this file's own header exists: one list, checked, instead of
     a screen and a rule quietly disagreeing about which groups these are. */
-/* SUSPENDABLE_GROUPS stays exported only for its own test (AU-09 test-only
-   review). */
+/* SUSPENDABLE_GROUPS stays exported only for its own test. */
 export const SUSPENDABLE_GROUPS = AREA_GROUP_KEYS.filter((key) =>
   AREA_GROUPS[key].every((area): area is SuspendableArea => (SUSPENDABLE_AREAS as readonly string[]).includes(area))
 );
@@ -204,22 +167,10 @@ export function groupLastWrite(
   return latestWrite(AREA_GROUPS[key], lastWrites);
 }
 
-/** How long an area has to go unwritten before the app asks about it once.
-
-    Half a year. The number itself is a judgement rather than a measurement:
-    the one cadence the tree actually pins is the measurements nudge's, which
-    speaks up after 30 days (`liveTiles.ts`), and 180 is six times that. The
-    rest is plausibility - electrolysis runs on a four-to-six-week course, a
-    wear session is a most-weeks thing, a benchmark happens when somebody
-    remembers - so what the window buys is that no ordinary gap and no hard
-    season comes near it.
-
-    What actually keeps this from being a nag is structural, and it is not
-    the number. The offer is made on the area's own screen, which somebody
-    reached on purpose, never on Home and never as a notification; and a no
-    is kept forever, so the question is asked at most once per area for the
-    life of the journal. If the number turns out to be wrong, it is wrong by
-    asking a little early or a little late, once. */
+/** Offer to finish an area after 180 days without a write, six times
+    the Voice benchmark nudge interval. This is a conservative threshold
+    for normal gaps. Offer only on the area's screen, never on Home or
+    by notification. A decline lasts for the life of the journal. */
 export const FINISH_SUGGESTION_QUIET_DAYS = 180;
 
 interface FinishOfferInput {
@@ -243,7 +194,7 @@ interface FinishOfferInput {
     that an area somebody said no about stays said-no-about. Re-asking is the
     failure this whole preference exists to prevent, and a group reading as
     un-declined because it grew a new section would be exactly that. */
-/* groupDeclined stays exported only for its own test (AU-09 test-only review). */
+/* groupDeclined stays exported only for its own test. */
 export function groupDeclined(key: AreaGroupKey, declined: readonly string[]): boolean {
   return AREA_GROUPS[key].some((area) => declined.includes(area));
 }

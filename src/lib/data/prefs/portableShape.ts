@@ -1,13 +1,14 @@
-/* The shape check applyPortablePreferences (store.svelte.ts) runs on a
-   restored archive's values before they replace this device's (ADR-0003).
+/* The shape check Archive Replace runs on its portable preferences before
+   committing them with the restored rows (ADR-0003).
    Pure and rune-free on purpose: store.svelte.ts is a `.svelte.ts` file,
    which cannot be node-tested directly (its `$state` is a compiler macro
    with no runtime outside Svelte), so the logic that decides what a value
-   from a .ttbackup is allowed to be lives here, tested against fake input
+   from a backup file is allowed to be lives here, tested against fake input
    rather than through the reactive store. */
 
 import type { PortablePreferences } from '../archive/payload';
 import { sanitizePreferredLabUnits, type PreferredLabUnits } from '../labs/units';
+import { sanitizeAcknowledgements } from '../acknowledgements';
 import { PORTABLE_KEYS } from './catalogue';
 
 export type PortableKey = (typeof PORTABLE_KEYS)[number];
@@ -15,7 +16,7 @@ export type PortableKey = (typeof PORTABLE_KEYS)[number];
 const TIME_SHAPE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 /* Free-form identifiers with no list to check membership against -
-   palettes.css is the one place the 8 flags are written down
+   palettes.css is the one place the flags are written down
    (theme/roles.ts argues against a second copy), and moodPreset's four
    presets are the same kind of thing. A slug shape is enough to keep a
    script tag or a path out of a value that ends up in a favicon href
@@ -41,42 +42,47 @@ const PORTABLE_SHAPE: Record<PortableKey, (value: unknown) => boolean> = {
   language: (v) => v === 'system' || v === 'en' || v === 'pl',
   checkInEnabled: (v) => typeof v === 'boolean',
   checkInTime: (v) => typeof v === 'string' && TIME_SHAPE.test(v),
-  checkInAffirmationsEnabled: (v) => typeof v === 'boolean',
+  checkInPausedThrough: (v) => v === null || Number.isInteger(v),
   preferredLabUnits: (v) => typeof v === 'object' && v !== null && !Array.isArray(v),
-  measurementUnit: (v) => v === 'cm' || v === 'in',
   journeyAnchorMilestoneId: (v) => v === null || typeof v === 'string',
-  hairAnchorEpochDay: (v) => v === null || Number.isFinite(v),
-  cycleTrackingEnabled: (v) => typeof v === 'boolean',
+  hrtStartEpochDay: (v) => v === null || Number.isFinite(v),
   cycleTrackingChoice: (v) => v === null || typeof v === 'boolean',
   voiceComfortLowHz: (v) => v === null || Number.isFinite(v),
   voiceComfortHighHz: (v) => v === null || Number.isFinite(v),
+  surfaceOverrides: (v) =>
+    typeof v === 'object' && v !== null && !Array.isArray(v) && Object.values(v).every((on) => typeof on === 'boolean'),
   areaFinishOfferDeclined: isStringArray,
+  roadmapPolishStepsChoice: (v) => v === null || typeof v === 'boolean',
+  roadmapSocialStepsShown: (v) => typeof v === 'boolean',
   pinnedRows: (v) => v === null || isStringArray(v),
-  agendaKinds: (v) => v === null || isStringArray(v),
-  onboardingAreas: (v) => v === null || isStringArray(v)
+  onboardingAreas: (v) => v === null || isStringArray(v),
+  acknowledgements: (v) => typeof v === 'object' && v !== null && !Array.isArray(v)
 };
 
 /** The value to write for a portable key, or undefined when the archive's
     value is outside what the key can hold - the same reasoning boot-cache.ts
-    gives for a damaged mirror: a .ttbackup is a file on disk, editable by
+    gives for a damaged mirror: a backup is a file on disk, editable by
     hand or corrupted in transit, and undefined here is the caller's signal
     to keep this device's own value rather than adopting a string that was
     never a valid theme, palette or check-in time.
 
     preferredLabUnits additionally runs its own allowlist (ADR-0026):
     PORTABLE_SHAPE only confirms it is an object, so a valid shape still goes
-    through sanitizePreferredLabUnits to drop a unit this app doesn't know. */
+    through sanitizePreferredLabUnits to drop a unit this app doesn't know.
+    acknowledgements is the same: an object is only the outer shape, and its
+    ids and deadlines are sanitised field by field. */
 export function portableValueForKey<K extends PortableKey>(
   key: K,
   value: unknown
 ): PortablePreferences[K] | undefined {
   if (!PORTABLE_SHAPE[key](value)) return undefined;
   if (key === 'preferredLabUnits') return sanitizePreferredLabUnits(value as PreferredLabUnits) as never;
+  if (key === 'acknowledgements') return sanitizeAcknowledgements(value) as never;
   return value as PortablePreferences[K];
 }
 
-/** What applyPortablePreferences (store.svelte.ts) writes for a restored
-    archive: every valid portable key, plus a null cycle choice for older
+/** What Archive Replace writes for a restored
+    archive: every valid portable key, plus a cycle choice for older
     archives. Other missing or invalid keys leave this device's value alone.
 
     Pulled out as its own function so the "importing an archive keeps the
@@ -90,8 +96,13 @@ export function portablePreferencePatch(portable: Partial<PortablePreferences> |
     const value = portableValueForKey(key, portable?.[key]);
     if (value !== undefined) patch[key] = value as never;
   }
-  // Archives written before cycle choices keep the automatic rule even
-  // when replacing a journal whose choice was explicit.
-  if (!Object.prototype.hasOwnProperty.call(portable, 'cycleTrackingChoice')) patch.cycleTrackingChoice = null;
+  /* Archives written before cycle choices keep the automatic rule even when
+     replacing a journal whose choice was explicit, except that the legacy
+     opt-in they may carry (`cycleTrackingEnabled`, no longer a preference)
+     read as a yes in that rule, so it is kept as one. */
+  if (!Object.prototype.hasOwnProperty.call(portable, 'cycleTrackingChoice')) {
+    const legacyOptIn = (portable as { cycleTrackingEnabled?: unknown }).cycleTrackingEnabled;
+    patch.cycleTrackingChoice = legacyOptIn === true ? true : null;
+  }
   return patch;
 }

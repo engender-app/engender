@@ -1,14 +1,12 @@
 <script lang="ts">
-  /* What entry lists, stats, search and recap show while the worker answers
-     (ADR-0004). Deliberately not a spinner: the mockup's language is soft
-     surfaces that stagger in (DESIGN.md item 10), and a placeholder shaped
-     like the thing it is waiting for keeps the page from jumping when the
-     real content lands.
+  /* What entry lists, stats, search and recap show while the worker answers (ADR-0004).
+     Deliberately not a spinner: the mockup's language is soft surfaces that stagger in, and
+     a placeholder shaped like the thing it is waiting for keeps the page from jumping when
+     the real content lands.
 
-     `variant` picks a shape, not a screen, so the same three cover every
-     waiting surface in the app. Anything longer than one round trip on OPFS
-     is unusual, so these are rarely on screen for long - which is also why
-     they carry no text of their own to translate. */
+     `variant` picks a shape, not a screen, so the same three cover every waiting surface in
+     the app. Anything longer than one round trip on OPFS is unusual, so these are rarely on
+     screen for long - which is also why they carry no text of their own to translate. */
   let {
     variant = 'card',
     count = 3
@@ -39,3 +37,7 @@
     </div>
   {/each}
 </div>
+
+<style>
+  .skeleton-dot { width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0; }
+</style>

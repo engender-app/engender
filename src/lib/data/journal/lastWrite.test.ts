@@ -1,4 +1,4 @@
-/* The last-write registry (phase 8 features ticket 03): that every area
+/* The last-write registry: that every area
    either has an entry or is written down as deliberately having none, that
    each entry's read is a bounded MAX rather than a fetched list, that a row
    dated after today never counts, and that one call answers for every area
@@ -91,13 +91,10 @@ test('a journal with no writes at all answers null for every area', async () => 
 
 test('writing in one area only answers that area and leaves every other one null', async () => {
   const { journal } = await journalWithBuiltIns();
-  await journal.sizeRecords.upsertRecord({ epochDay: TODAY - 3, category: 'bras', size: '70B' });
 
   const lastWrites = await journal.lastWrite.getLastWrites(TODAY);
 
-  assert.equal(lastWrites.sizeRecords, TODAY - 3);
   for (const key of Object.keys(lastWrites)) {
-    if (key === 'sizeRecords') continue;
     assert.equal(lastWrites[key as keyof typeof lastWrites], null, `${key} answered something nobody wrote to`);
   }
 });
@@ -133,7 +130,7 @@ test('an area whose newest row is in the future, with nothing before it, answers
 
 test('an area whose rows were all deleted answers null again', async () => {
   const { journal } = await journalWithBuiltIns();
-  const id = await journal.sideEffects.upsertSideEffect({ name: 'headache', severity: 2, epochDay: TODAY });
+  const id = await journal.sideEffects.upsertSideEffect({ name: 'headache', severity: 2, epochDay: TODAY, resolvedEpochDay: null });
 
   assert.equal((await journal.lastWrite.getLastWrites(TODAY)).sideEffects, TODAY);
 
@@ -169,17 +166,6 @@ test('a timestamp-stored area is bounded by the start of the day after today', a
     TODAY,
     "tomorrow's dose counted as today's last write"
   );
-});
-
-test("hair progress' two entries read their own table and never the other's", async () => {
-  const { journal } = await journalWithBuiltIns();
-  await journal.hairProgress.upsertStage({ epochDay: TODAY - 1, scale: 'other', stage: '', description: 'softer' });
-  await journal.hairProgress.addPhoto(TODAY - 9, photo());
-
-  const lastWrites = await journal.lastWrite.getLastWrites(TODAY);
-
-  assert.equal(lastWrites.hairStages, TODAY - 1);
-  assert.equal(lastWrites.hairPhotos, TODAY - 9);
 });
 
 test("procedures' last write is the later of a consult and a recovery photo, never the surgery date", async () => {
@@ -232,9 +218,7 @@ test('the assembled read costs one query per registered area', async () => {
   resetRoundTrips();
   await journal.lastWrite.getLastWrites(TODAY);
 
-  /* One per registered entry - even hairProgress, which registers two
-     entries against the same underlying area, runs two queries because each
-     asks its own table. */
+  /* One per registered entry. */
   assert.equal(roundTrips().query, LAST_WRITE_ENTRIES.length);
 });
 
@@ -253,17 +237,14 @@ test('a test may register an entry of its own and read it back through the same 
       doses: journal.doses,
       labs: journal.labs,
       voiceBenchmarks: journal.voiceBenchmarks,
-      measurements: journal.measurements,
-      sizeRecords: journal.sizeRecords,
       taper: journal.taper,
       sideEffects: journal.sideEffects,
       personalEffects: journal.personalEffects,
       cycleEvents: journal.cycleEvents,
-      tally: journal.tally,
       wearSessions: journal.wearSessions,
       feltSense: journal.feltSense,
-      hairProgress: journal.hairProgress,
       hairRemoval: journal.hairRemoval,
+      progressPhotos: journal.progressPhotos,
       appointments: journal.appointments,
       procedures: journal.procedures,
       tryouts: journal.tryouts,
@@ -282,17 +263,17 @@ test('selected last-write areas omit unrelated reads and retain their own answer
   const { journal, db: driver } = await journalWithBuiltIns();
   const calls: string[] = [];
   const area = makeLastWriteArea(journal, driver, [
-    { key: 'measurements', tables: [], read: async () => { calls.push('measurements'); return TODAY - 2; } },
-    { key: 'sizeRecords', tables: [], read: async () => { calls.push('sizeRecords'); return null; } },
+    { key: 'wearSessions', tables: [], read: async () => { calls.push('wearSessions'); return TODAY - 2; } },
+    { key: 'personalEffects', tables: [], read: async () => { calls.push('personalEffects'); return null; } },
     { key: 'cycleEvents', tables: [], read: async () => { calls.push('cycleEvents'); return TODAY; } }
   ]);
-  assert.deepEqual(await area.getLastWrites(TODAY, ['measurements', 'sizeRecords']), { measurements: TODAY - 2, sizeRecords: null });
-  assert.deepEqual(calls, ['measurements', 'sizeRecords']);
+  assert.deepEqual(await area.getLastWrites(TODAY, ['wearSessions', 'personalEffects']), { wearSessions: TODAY - 2, personalEffects: null });
+  assert.deepEqual(calls, ['wearSessions', 'personalEffects']);
   calls.length = 0;
   assert.deepEqual(await area.getLastWrites(TODAY, []), {});
   assert.deepEqual(calls, []);
-  assert.deepEqual(await area.getLastWrites(TODAY), { measurements: TODAY - 2, sizeRecords: null, cycleEvents: TODAY });
-  assert.deepEqual(calls, ['measurements', 'sizeRecords', 'cycleEvents']);
+  assert.deepEqual(await area.getLastWrites(TODAY), { wearSessions: TODAY - 2, personalEffects: null, cycleEvents: TODAY });
+  assert.deepEqual(calls, ['wearSessions', 'personalEffects', 'cycleEvents']);
 });
 
 test('writing days are distinct entry and local dose days, bounded to one year in one query', async () => {

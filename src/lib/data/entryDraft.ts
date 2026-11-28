@@ -1,19 +1,18 @@
-/* The Entry editor's draft (ticket 29, ADR-0017): one rune-free module for
+/* The Entry editor's draft (ADR-0017): one rune-free module for
    the transition rules EntryEditor.svelte used to spread across five
    separate `$state` fields - draft content, the photo list, pending
    removed photo ids, isEmpty and the upsertEntry payload. The component
    keeps only a thin `$state` binding around what this returns; the save
    and delete-sheet guards stay in the component because they are UI-local,
-   not draft content (CONTEXT: "Entry").
+   not draft content.
 
    Nothing here is a Svelte rune, so it runs and is tested under the Node
    tier the same way entryContent.ts and entries.ts already are. */
 
 import { BODY_REGION_MIDPOINT, copyBodyRegions } from './bodyMap';
 import { entryIsEmpty } from './entryContent';
-import { applyEntryTemplateToDraft } from './vocabulary/entryTemplates';
 import type { EntrySection } from './entrySections';
-import type { Entry, EntryTemplate } from './types';
+import type { Entry } from './types';
 import type {
   EntriesArea,
   EntryCycleEventInput,
@@ -59,11 +58,11 @@ export interface EntryDraft {
   procedureRecovery: EntryProcedureRecoveryInput | null;
   effectMarkers: EntryEffectMarkerInput[];
   cycleEvent: EntryCycleEventInput | null;
-  /** The fluidity engine's chip (phase 5 deepening ticket 17, ADR-0048): a
+  /** The fluidity engine's chip (ADR-0048): a
       domain id or null, never pre-filled for a new entry - only an existing
       entry's own value seeds it, the same way `mood` does. */
   presentationId: string | null;
-  /** The chip whose section is open under the note (phase 11 ticket 19),
+  /** The chip whose section is open under the note,
       or null with every section folded. Editor state rather than entry
       content - `toUpsert()` never reads it - but it lives on the draft so
       the process-death mirror carries it: a return to a half-written entry
@@ -74,23 +73,12 @@ export interface EntryDraft {
   setMood(mood: number | null): void;
   setNote(note: string): void;
   setDim(key: string, value: number): void;
-  toggleTag(id: string): void;
-  /** Merges a template's pre-fill into the draft (ticket 17, extended by
-      ticket 07 for the note scaffold and presentation): tags join the
-      selection already there rather than toggling it, so applying the same
-      template twice cannot flip a tag back off, dims overwrite by key the
-      way `setDim` does, a note scaffold only ever fills an empty note, and
-      a template's own presentation replaces the draft's when it has one.
-      Every value it sets is a plain field afterwards - `toggleTag`/`setDim`
-      edit it same as anything the person picked themselves. It also closes
-      whichever chip was open (ticket 19), so what it set reads off the
-      chips' states rather than off one section. The merge math
-      itself is `applyEntryTemplateToDraft` (vocabulary/entryTemplates.ts),
-      the same pure seam ticket 08's debrief offer reads. */
-  applyTemplate(template: EntryTemplate): void;
+  /** The picked tags as the picker hands them over, whole: one tap can
+      change several (an emotion family with its finer words). */
+  setTags(ids: string[]): void;
   /** Puts a region's slider on screen, or takes it off. Nothing is seeded:
       a region picked and left at the midpoint carries nothing and is
-      dropped on save (ticket 31), so picking one is not itself content. */
+      dropped on save, so picking one is not itself content. */
   toggleBodyRegion(key: string): void;
   /** Writes one region's position on the shared 0-100 scale, the way the
       picker's slider produces it. */
@@ -188,22 +176,8 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
       this.dims[key] = value;
     },
 
-    toggleTag(id) {
-      this.tags = this.tags.includes(id) ? this.tags.filter((x: string) => x !== id) : [...this.tags, id];
-    },
-
-    applyTemplate(template) {
-      const merged = applyEntryTemplateToDraft(
-        { tags: this.tags, dims: this.dims, note: this.note, presentationId: this.presentationId },
-        template
-      );
-      this.tags = merged.tags;
-      this.dims = merged.dims;
-      this.note = merged.note;
-      this.presentationId = merged.presentationId;
-      /* A template fills its chips and opens none (ticket 19): what it set
-         is read off the chips' states, not off a section it chose to open. */
-      this.openSection = null;
+    setTags(ids) {
+      this.tags = [...ids];
     },
 
     toggleBodyRegion(key) {
@@ -316,9 +290,16 @@ export function createEntryDraft(epochDay: number, existing?: Entry, seedMood?: 
         removeVideoIds: this.removedVideoIds,
         presentationId: this.presentationId
       };
-      if (this.tryoutFeltSense) payload.tryoutFeltSense = this.tryoutFeltSense;
+      if (this.tryoutFeltSense) {
+        payload.tryoutFeltSense = { ...this.tryoutFeltSense, note: this.tryoutFeltSense.note?.trim() || null };
+      }
       if (this.doseLog) payload.doseLog = this.doseLog;
-      if (this.procedureRecovery) payload.procedureRecovery = this.procedureRecovery;
+      if (this.procedureRecovery) {
+        const notes = this.procedureRecovery.notes?.trim() || undefined;
+        if (notes || this.procedureRecovery.photo) {
+          payload.procedureRecovery = { ...this.procedureRecovery, notes };
+        }
+      }
       if (this.effectMarkers.length > 0) payload.effectMarkers = this.effectMarkers;
       if (this.cycleEvent) payload.cycleEvent = this.cycleEvent;
       return payload;

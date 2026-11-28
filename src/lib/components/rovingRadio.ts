@@ -5,8 +5,7 @@ import { nextRadioIndex } from './rovingRadioIndex';
 
     `selectOnArrow: false` is for a group whose pick goes somewhere: Today's
     mood faces open the editor, so selecting on arrow threw a keyboard user
-    into the editor on the first face they passed (WCAG 3.2.2, audit
-    A11Y-02). There an arrow moves focus and the group's one Tab stop with
+    into the editor on the first face they passed (WCAG 3.2.2). There an arrow moves focus and the group's one Tab stop with
     it, and Space or Enter commits. */
 export function rovingRadio(group: HTMLElement, config: { selectOnArrow?: boolean } = {}) {
   const selectOnArrow = config.selectOnArrow ?? true;

@@ -1,30 +1,10 @@
-/* What someone typed, turned into the two things a search needs (ADR-0005).
+/* Fold both the indexed text and the query with foldText (ADR-0005), so Polish letterforms
+   match. Notes use FTS5 whole-token prefixes: "ther" finds "therapy" while "erapy" does
+   not.
 
-   Both halves fold through foldText(), which is the guarantee the ADR is
-   built on: the index is written folded, the query is folded the same way,
-   so ł and every other Polish letterform meet on the same letters without
-   FTS5 or its tokenizer being involved.
-
-   The two halves match differently, on purpose:
-
-   Notes go to FTS5, which matches whole tokens. Each token is prefix-
-   matched, so typing half a word finds it, but mid-word does not match -
-   "erapy" will not find "therapy". The demo store's `includes()` did match
-   mid-word. That narrowing is inherent to using an index instead of
-   scanning every note, which is the point of the port.
-
-   Tag labels are matched here in memory, above the journal seam, because a
-   built-in tag stores a key rather than a word and resolving keys to labels
-   needs paraglide, which the Node tier cannot import (ADR-0016). They stay
-   on substring matching, exactly as the demo store had them: there are tens
-   of labels, they are short, and it keeps the one search case the
-   walkthrough pins behaving as it does today.
-
-   Phase 5 deepening ticket 24 added two more things a search needs, and both
-   are here rather than beside their caller so that everything shaping a query
-   stays in one module: `likePattern`, for the areas matched by scanning
-   instead of through the index, and `matchWindow` at the bottom of the file,
-   for what to show of a hit once one comes back. */
+   Match tag labels in memory by substring. Built-ins store keys, so localized labels come
+   from above the journal seam. likePattern shapes queries for scanned areas; matchWindow
+   gives the display snippet after a hit. */
 
 import type { Tag } from './types';
 import { foldText } from './fold';

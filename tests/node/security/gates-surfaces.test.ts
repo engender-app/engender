@@ -1,0 +1,356 @@
+/* The rules the chromeless screens keep after the rebuild, at the level their source can be
+   held to.
+
+   What makes them right is mostly proportion and copy, which an eye and the walkthrough
+   settle between them. What is left is mechanical, and every one of these is something a
+   later ticket could quietly put back: a sixth copy of the gate frame, a shadow on a screen
+   the redesign gave no shadows, a journal read on a screen that renders before the journal
+   is open, or the flag showing on a screen someone reached while disguised.
+
+   All of those are greps because all of them are negatives: a screen may not draw this, may
+   not import that. There is nothing to call. The one rule these screens do state - which
+   steps onboarding offers - is asserted by calling onboardingSteps, which is the shape asks
+   every rule to take. */
+
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { describe, expect, it } from 'vitest';
+
+import { onboardingSteps } from '../../../src/lib/onboarding/steps';
+
+const root = fileURLToPath(new URL('../../..', import.meta.url));
+const read = (path: string) => readFileSync(root + path, 'utf8');
+const stripScript = (source: string) => source.replace(/<script[\s\S]*?<\/script>/g, '');
+/** The step-count checks below are about script logic - a `--space-7` in
+    the first run's own <style> block is a
+    spacing token, not a hardcoded step count, and \b7\b cannot tell the
+    difference from the name alone. */
+const stripStyle = (source: string) => source.replace(/<style[\s\S]*?<\/style>/g, '');
+/** Block comments out, so a rule against a shape can be written down in a
+    comment next to the code that replaced it without failing itself. */
+const stripComments = (source: string) =>
+  source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/<!--[\s\S]*?-->/g, '');
+/** One rule's declarations, by exact selector. Enough for a sheet written
+    one selector per rule, which these are; direction-contracts.ts has
+    the general parser for the checks that need one. */
+function ruleBody(css: string, prelude: string): string {
+  const at = css.indexOf(`\n${prelude} {`);
+  if (at === -1) return '';
+  return css.slice(at, css.indexOf('\n}', at));
+}
+
+/* Split LockScreen and PassphraseGate into three: the boot gate, the mid-session one, and
+   the setup module the first of them renders. The module is not in this list because it is
+   not a gate - it draws inside one, and its frame is whichever gate or settings card
+   mounted it. */
+const GATES = [
+  'src/lib/components/SessionUnlock.svelte',
+  'src/lib/components/JournalGate.svelte',
+  'src/lib/components/AndroidKeyGate.svelte',
+  'src/lib/components/DeviceBoundRecovery.svelte',
+  'src/lib/components/SchemaTooNew.svelte'
+];
+
+/** Held to the gates' content rules but not to their frame rule, for the
+    reason above. */
+const GATE_CONTENT = [...GATES, 'src/lib/components/AccessModeSetup.svelte', 'src/lib/components/PinPad.svelte'];
+
+const onboarding = read('src/routes/onboarding/+page.svelte');
+const onboardingMarkup = stripScript(onboarding);
+
+describe('the gates are one object, not six copies of one', () => {
+  it('builds every gate from the shared shell', () => {
+    for (const path of GATES) {
+      expect(read(path), path).toMatch(/import GateScreen(?:, \{[^}]*\})? from '\.\/GateScreen\.svelte'/);
+      expect(stripScript(read(path)), path).toContain('<GateScreen');
+    }
+  });
+
+  it('leaves no gate writing the old frame by hand', () => {
+    /* .applock and .ob-title were the frame before the shell existed, and
+       the six copies had already drifted - two badge sizes, three separate
+       inline text-align rules. Both classes are gone from the stylesheet, so
+       a gate reaching for either is a gate that has quietly stopped being
+       centred. */
+    for (const path of [...GATES, 'src/lib/components/GateScreen.svelte']) {
+      const markup = stripScript(read(path));
+      expect(markup, path).not.toContain('applock-badge');
+      expect(markup, path).not.toContain('class="applock"');
+      expect(markup, path).not.toContain('ob-title');
+    }
+    const screens = stripComments(read('src/lib/styles/screens.css'));
+    expect(screens).not.toContain('.applock');
+    expect(screens).not.toContain('.ob-title');
+  });
+
+  it('keeps the classes the screens outside this ticket still use', () => {
+    /* Ob-text,.ob-dot and .ob-actions belong to recap and two settings screens, which owns.
+       Deleting them with the rest of the onboarding vocabulary is the tempting mistake
+       here. */
+    const screens = read('src/lib/styles/screens.css');
+    for (const kept of ['.ob-text', '.ob-dot', '.ob-actions', '.recap-progress']) {
+      expect(screens, kept).toContain(kept);
+    }
+  });
+});
+
+describe('what a gate may show', () => {
+  it('reads no journal, on any of them', () => {
+    /* These render before the database can be opened, or instead of the app
+       while it is locked. A query here is not slow, it is impossible. */
+    for (const path of GATES) {
+      expect(read(path), path).not.toContain('$lib/data/live/journal');
+    }
+  });
+
+  it('draws the sun only through the shell, and never names the app except through the wordmark', () => {
+    /* Moved the line. A gate used to draw no flag at all: the field was the flag's second
+       colour and nothing more. An unlock now carries Today's sun on its field, so the rule
+       is where the sun may come from - GateScreen alone, behind $lib/theme/gateFlag's
+       decision, which answers no under disguise or on a gate that is not an unlock. No gate
+       reaches for the sun, the stripes or the mark itself.
+
+       The app's name is the other half. Rule 15 makes the wordmark the title of every
+       unlock, painted or not, so "names the app nowhere" is not the rule; the rule is that
+       it may only be named through `appWordmark`, which is what turns it into the decoy's
+       name under disguise. A raw `m.app_name()` on a lock screen shows the real name to
+       exactly the person the disguise exists for. */
+    for (const path of GATES) {
+      /* Comments out first, so this rule can be argued for in prose beside
+         the code that keeps it without failing itself. */
+      const source = stripComments(read(path));
+      expect(source, path).not.toContain('FlagSun');
+      expect(source, path).not.toContain('activeFlag');
+      expect(source, path).not.toContain('gateFlag');
+      expect(source, path).not.toContain('Mark.svelte');
+      for (const at of [...source.matchAll(/m\.app_name\(\)/g)]) {
+        const call = source.slice(Math.max(0, at.index - 60), at.index);
+        expect(call, `${path}: m.app_name() outside appWordmark()`).toMatch(
+          /appWordmark\([^()]*$/
+        );
+      }
+    }
+  });
+
+  it('draws the sun on an unlock only, and nothing of it under disguise', () => {
+    const shell = stripComments(read('src/lib/components/GateScreen.svelte'));
+    /* The one decision, made by the one function the unit tests hold. */
+    expect(shell).toMatch(/let sun = \$derived\(gateDrawsFlag\(\{\s*unlock,\s*disguised:\s*prefs\.disguise\s*\}\)\)/);
+    /* The sun mounts only behind it, still; the field's height is the
+       stylesheet's, behind the same attribute, and no query switch is left. */
+    expect(shell).toMatch(/\{#if sun\}<FlagSun still \/>\{\/if\}/);
+    expect(shell).toMatch(/data-gate-sun=\{sun \? '' : undefined\}/);
+    expect(shell).not.toMatch(/gateRoom|gate-room|location\.search/);
+    expect(shell.match(/<FlagSun/g)).toHaveLength(1);
+    /* The three unlocks say they are unlocks; the gates that are not keep
+       their own titles and pass nothing. */
+    expect(read('src/lib/components/SessionUnlock.svelte')).toMatch(/<GateScreen \{title\} unlock\b/);
+    expect(read('src/lib/components/JournalGate.svelte')).toMatch(/<GateScreen title=\{gateTitle\} unlock=\{!choosingMode\}>/);
+    expect(read('src/lib/components/AndroidKeyGate.svelte')).toMatch(
+      /<GateScreen title=\{appWordmark\(prefs\.disguise, m\.app_name\(\), m\.disguise_name\(\)\)\} unlock>/
+    );
+    for (const path of [
+      'src/lib/components/DeviceBoundRecovery.svelte',
+      'src/lib/components/SchemaTooNew.svelte',
+      'src/lib/components/RecoveryKeyEntry.svelte',
+      'src/lib/components/PostRecoveryAccessMode.svelte'
+    ]) {
+      expect(read(path), path).not.toMatch(/<GateScreen[^>]*\bunlock\b/);
+    }
+    expect(read('src/lib/components/JournalGate.svelte')).toMatch(/<GateScreen title=\{m\.pp_legacy_refused_title\(\)\}>/);
+  });
+
+  it('draws one pad, in setup and at every gate', () => {
+    /* Own acceptance: "the pad is one component and one drawing across setup and the
+       gates". It was already one component - extracted it when the PIN got three jobs - and
+       the thing that could quietly stop being true is the drawing: a second `.pin-key` or
+       `.pin-dot` rule in a screen's own block, or a mount that reaches for something other
+       than PinPad. Both are greps because both are negatives. */
+    const mounts = ['src/lib/components/PinEntry.svelte', 'src/lib/components/AccessModeSetup.svelte'];
+    for (const path of mounts) {
+      expect(read(path), path).toContain("import PinPad from './PinPad.svelte'");
+      expect(stripScript(read(path)), path).toContain('<PinPad');
+    }
+    /* Nowhere else may draw one. The keypad markup lives in PinPad and the
+       two screens above mount it; a third copy is what this catches. */
+    const drawn = [...GATE_CONTENT, 'src/routes/onboarding/+page.svelte'].filter((path) =>
+      stripComments(stripScript(read(path))).includes('class="pin-key"')
+    );
+    expect(drawn).toEqual(['src/lib/components/PinPad.svelte']);
+    /* And one set of rules for it. `components.css` is the always-loaded
+       sheet both surfaces read; a `.pin-key` or `.pin-dot` selector in a
+       route's own scoped block would be a second drawing that only one of
+       them wears. */
+    for (const [where, css] of [
+      ['screens', read('src/lib/styles/screens.css')],
+      ['onboarding', read('src/routes/onboarding/+page.svelte').slice(read('src/routes/onboarding/+page.svelte').indexOf('<style>'))]
+    ] as const) {
+      expect(stripComments(css), where).not.toMatch(/\.pin-(key|dot|pad)\s*[,{]/);
+    }
+  });
+
+
+  it('animates no gate onto the screen, and says why where the shell is', () => {
+    /* Cold start and mid-session lock must show the gate immediately. The
+       frame, field and mount have no entrance motion. Title transitions
+       still apply within a settled gate. appOpening runs on unlock. */
+    const shellMarkup = stripComments(stripScript(read('src/lib/components/GateScreen.svelte')));
+    for (const frame of ['screen screen-gate', 'gate step-field-host', 'gate-field step-field']) {
+      const at = shellMarkup.indexOf(`class="${frame}"`);
+      expect(at, `${frame} is not the shell's own element any more`).toBeGreaterThan(-1);
+      const tag = shellMarkup.slice(at, shellMarkup.indexOf('>', at));
+      expect(tag, `${frame} animates its own arrival`).not.toMatch(/\b(in|transition):[a-zA-Z]/);
+    }
+    for (const path of GATES) {
+      const mount = stripComments(stripScript(read(path)));
+      for (const at of [...mount.matchAll(/<GateScreen[^>]*>/g)]) {
+        expect(at[0], `${path}: a gate animating its own arrival`).not.toMatch(
+          /\b(in|transition):[a-zA-Z]/
+        );
+      }
+    }
+    const shell = read('src/lib/components/GateScreen.svelte');
+    expect(shell).toMatch(/arrival is a cut on every gate/i);
+    /* The one direction that does move, named in the shell so the two halves
+       of the decision are read together. */
+    expect(shell).toContain('appOpening');
+  });
+
+  it('carries no shadow, which the redesign gives only to the floating bar', () => {
+    /* PIN keys use a 1px outline. The only shadow belongs to the floating
+       nav and its add button. */
+    const components = read('src/lib/styles/components.css');
+    const pinBlock = components.slice(components.indexOf('.pin-pad {'), components.indexOf('.pin-status'));
+    expect(pinBlock).not.toContain('box-shadow');
+    expect(pinBlock).toContain('border: 1px solid var(--outline)');
+  });
+});
+
+describe('the first run', () => {
+  it('asks about genital and sexual changes as two rows and writes each category from its own answer', () => {
+    // One 'genital_sexual' switch became two.
+    expect(onboarding).not.toContain('genital_sexual');
+    expect(onboardingMarkup).toContain('key="feature-genital-effects"');
+    expect(onboardingMarkup).toContain('key="feature-sexual-effects"');
+    expect(onboarding).toContain("setCategoryEnabled('genital', genitalEffectsChoice ?? false)");
+    expect(onboarding).toContain("setCategoryEnabled('sexual', sexualEffectsChoice ?? false)");
+  });
+
+  it('takes its sequence from the step model rather than from numbers here', () => {
+    expect(onboarding).toContain("from '$lib/onboarding/steps'");
+    /* `step === 3` is the shape this replaced: the order, the count, the
+       progress label and the back arrow each knew the sequence separately. */
+    expect(stripStyle(stripComments(onboarding))).not.toMatch(/step === \d/);
+  });
+
+  it('offers a way straight into the app on every step but the finish', () => {
+    /* The finish's own button is that way out, so a second one beside it
+       would be two controls doing one thing. */
+    expect(onboardingMarkup).toContain("{#if step !== 'done'}");
+    expect(onboardingMarkup).toContain('data-leave-setup');
+  });
+
+  it('offers a skip on exactly the steps the model says are skippable', () => {
+    expect(onboardingMarkup).toContain('{#if isSkippable(step)}');
+    expect(onboardingMarkup).toContain('data-skip-step');
+  });
+
+  it('leaves and finishes through one function, so the two cannot drift', () => {
+    /* "Straight to the app" and "Start writing" are the same act: keep what
+       was chosen, mark the first run done, go. Leaving early routes through
+       one more function first: before an access mode is chosen
+       there is no keystore for complete()'s writes to land in, so leave()
+       detours through the lock step instead of writing straight to prefs -
+       but it is still the one place either control's write can come from. */
+    expect(onboardingMarkup.match(/onclick=\{complete\}/g) ?? []).toHaveLength(1);
+    expect(onboardingMarkup).toContain('onclick={leave}');
+    expect(onboarding).toMatch(/function leave\(\)[\s\S]*?complete\(\);/);
+    expect(onboarding).toContain('prefs.onboarded = true;');
+    expect(onboarding).toContain('replaceRoute(onboardingDestination())');
+    expect(onboarding).toContain('await finishHistory?.()');
+  });
+
+  it('applies the disguise through the module that orders it, never inline', () => {
+    /* The route may hold the answer and may supply the four steps, but the sequence -
+       write, flush, disguise, leave - is onboarding/complete.ts's, where the Node tier can
+       hold it to the order. An assignment to prefs.disguise anywhere in this file that is
+       not the durable one handed to completeSetup is the defect this catches: on Android it
+       flips the launcher alias and kills the process, so writing it early ends the first
+       run rather than the step. */
+    expect(onboarding).toContain('completeSetup({');
+    expect(onboarding).toContain("setPreferenceDurably('disguise', true)");
+    expect(onboarding.match(/prefs\.disguise\s*=/g) ?? []).toHaveLength(0);
+  });
+
+  it('never turns app lock on by itself', () => {
+    /* The toggle is a choice to set a PIN, not a PIN. `appLock` becomes true
+       on the lock screen, once four digits have been typed twice. */
+    expect(onboarding).not.toContain('prefs.appLock = true');
+  });
+
+  it('draws no sun at all under disguise', () => {
+    /* Disguise suppresses the flag on the gate before unlock (ADR-0101). */
+    expect(onboardingMarkup).toContain('{#if !prefs.disguise}');
+    expect(onboardingMarkup.indexOf('{#if !prefs.disguise}')).toBeLessThan(
+      onboardingMarkup.indexOf('<FlagSun />')
+    );
+  });
+
+  it('offers one flow whatever disguise says, and reads it off the model', () => {
+    /* The flag step used to leave the flow under disguise, which guarded a state no real
+       install can reach. One list now, and the route still asks steps.ts for it rather than
+       counting for itself, which is what keeps a change to the list correct everywhere at
+       once. */
+    expect(onboardingSteps.length).toBe(0);
+    expect(onboardingSteps()).toContain('flag');
+    expect(onboarding).toContain('onboardingSteps()');
+    expect(onboarding).not.toContain('onboardingSteps(prefs.disguise)');
+    expect(stripStyle(stripComments(onboarding))).not.toMatch(/ONBOARDING_STEPS|\b7\b/);
+  });
+
+  it('counts its steps for a screen reader on the sun, not on a rail', () => {
+    /* The sun is the only progress meter. The step count is its accessible name rather than
+       visible text. The field clips the sun as its edge moves. */
+    expect(onboardingMarkup).not.toContain('role="progressbar"');
+    expect(onboardingMarkup).toMatch(
+      /class="setup-sun"[\s\S]*?role="img"[\s\S]*?aria-label=\{m\.ob_step_of/
+    );
+  });
+
+  it('moves a step change on the field\'s own edge, not on a shared axis', () => {
+    /* Pull the field's bottom edge to the next step's measured height.
+       The answers follow it. Use navigation.ts and stepBlind for the
+       geometry shared with screen transitions. */
+    expect(onboarding).toContain("from '$lib/motion/navigation'");
+    expect(onboarding).toContain("from '$lib/motion/stepBlind'");
+    expect(onboardingMarkup).toContain('use:blindEdge');
+    expect(onboardingMarkup).toMatch(/in:fieldPart=\{\{ printed: true \}\}/);
+    expect(onboardingMarkup).toMatch(/out:fieldPart=\{\{ printed: true \}\}/);
+    expect(onboarding).not.toContain('sharedAxisX');
+    /* The edge, and everything riding it, is one clock: --dur-slow on the
+       settle sampled per move. A second duration written here is how the
+       question and the page it sits on would come apart.
+
+       The clock moved out of this screen's own block and into the shared
+       sheet when the gates took the same field, so
+       what is asserted here is that the screen wears the shared drawing and
+       writes no second clock of its own. Two surfaces reading one set of
+       numbers is the whole point of rules 12 and 15 sharing a field. */
+    expect(onboardingMarkup).toMatch(/class="setup step-field-host"/);
+    expect(onboardingMarkup).toMatch(/class="setup-field step-field"/);
+    expect(onboardingMarkup).toContain('class="step-field-ask"');
+    expect(onboardingMarkup).toContain('class="step-field-below"');
+    const styles = onboarding.slice(onboarding.indexOf('<style>'));
+    expect(styles).not.toMatch(/transition-property:\s*--blind-edge/);
+    expect(styles).not.toMatch(/cubic-bezier/);
+    const components = read('src/lib/styles/components.css');
+    expect(ruleBody(components, '.step-field-host')).toMatch(/transition-property:\s*--blind-edge/);
+    expect(ruleBody(components, '.step-field-host')).toMatch(/var\(--dur-slow\)/);
+  });
+
+  it('takes its surfaces from the kit and draws no card of its own', () => {
+    /* The gate uses kit surfaces instead of .card and .list-group. */
+    expect(onboardingMarkup).not.toMatch(/class="[^"]*\bcard\b/);
+    expect(onboardingMarkup).not.toMatch(/class="[^"]*\blist-group\b/);
+  });
+});

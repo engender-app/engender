@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { pinWaitSpeech } from './pin-wait-speech';
 
-/* The PIN wait is a countdown redrawn four times a second. A screen reader
-   hears it begin and hears it end, and nothing in between (after-release
-   21, audit L05-07). */
+/* The PIN wait is a countdown redrawn four times a second. A screen reader hears it begin
+   and hears it end, and nothing in between. */
 describe('what the PIN wait says out loud', () => {
   it('speaks when a wait begins', () => {
     expect(pinWaitSpeech(0, 30_000)).toBe('start');

@@ -1,5 +1,5 @@
 /* The shape of the first run, as data rather than as a number compared
-   against in seven places (phase 5 ticket 26).
+   against in seven places.
 
    The flow used to be `let step = $state(0)` and `{#if step === 2}`, which
    meant the order, the count, the progress label and the back button each
@@ -17,7 +17,7 @@ import { PORTABLE_KEYS, type PreferenceKey } from '../data/prefs/catalogue';
 
     `restore` is not in the ordinary flow and never appears in it: it is the
     one step a person reaches by saying on the welcome that they already have
-    a journal (ticket 36), and the flow it belongs to is `restoreSteps()`. */
+    a journal, and the flow it belongs to is `restoreSteps()`. */
 export type OnboardingStep =
   | 'welcome'
   | 'restore'
@@ -25,115 +25,45 @@ export type OnboardingStep =
   | 'flag'
   | 'scales'
   | 'features'
-  | 'areas'
   | 'lock'
   | 'permissions'
   | 'disguise'
   | 'done';
 
-/* What a first run settles, and why each one is here rather than left to
-   Settings:
+/* Setup picks the greeting, flag, scales, optional screens and lock. Permissions show what
+   the OS lets the app access. The daily reminder stays on the reminders screen.
 
-     name     the greeting on every Home visit after this one
-     flag     the app's whole visual identity, and the one choice that
-              shows its own result while it is being made
-     scales   which sliders appear when logging, i.e. what the journal is
-     features which optional parts of the app show at all - measurements,
-              genital effects, cycle tracking (after-release 17, UX-09).
-              They shared the pins step until then, which asked two
-              questions in one paragraph and offered Measurements as both
-              a pin and a feature. Asked first, so the pins that follow
-              only offer what is switched on
-     areas    which of the hub's areas the front page starts pinned with
-              (phase 10 redesign ticket 22) - the one central guess left in
-              `pinnedRows.ts`, and the cheapest moment to settle it: the
-              person has just ticked their scales, which is the same
-              question about the journal one step earlier
-     lock     whether leaving the app locks it
-     permissions
-              everything the app can ask this device for, with a reason
-              each and a button each (phase 10 redesign ticket 31). Not a
-              preference: the answers live in the OS, so this is the one
-              step that settles nothing of the app's own. It is here
-              because for an app whose claim is that nothing leaves the
-              device, the list of what it can reach is the claim made
-              concrete, and because saying it once beats four inline
-              explanations nobody sees together.
-     disguise whether the app wears a different name and icon outside
-              itself (phase 10 redesign ticket 32, ADR-0079) - the one
-              privacy control nobody can discover before they need it,
-              because everything it changes is in the launcher, the tab
-              strip and the home screen rather than on any screen the app
-              draws
-
-   Five settings, one list and one last question, plus a welcome and a
-   finish. Everything else the app has a preference for is either already
-   right by default or is something a person goes looking for once they
-   know the app.
-
-   The settled shape (phase 10 redesign ticket 29, DIRECTION.md rule 12) is
-   ten steps, and this list becomes it as the tickets that build each step
-   land:
-
-     welcome, name, flag, scales, areas, access mode, PIN pad,
-     permissions, disguise, done
-
-   `lock` is the one step left to split, into the mode list and the pad
-   (ticket 30). What ticket 31 landed: `checkin` left the flow and
-   `permissions` took its place. The daily nudge is not asked for in setup
-   any more - the notification row's reason line is what names it, and the
-   switch itself stays on the reminders screen, where skipping the step
-   leaves it exactly as it was.
-
-   What ticket 32 landed: `disguise`, after the permissions and before the
-   finish. It sits there for a mechanical reason rather than a rhetorical
-   one - turning it on swaps the Android launcher alias, which closes the
-   app, and the flow holds every answer in memory until `complete()` writes
-   them. A disguise switch anywhere earlier would take the rest of setup
-   down with it. Last question, applied last. */
+   Disguise changes what appears outside the app. Keep it last because enabling it on
+   Android swaps the launcher alias and closes the app. complete() must persist the setup
+   answers before the flip. */
 const ALL_STEPS: readonly OnboardingStep[] = [
   'welcome',
   'name',
   'flag',
   'scales',
   'features',
-  'areas',
   'lock',
   'permissions',
   'disguise',
   'done'
 ];
 
-/** The flow. One list for everybody: setup does not vary by disguise
-    (ADR-0079). This used to take a `disguised` flag and drop the flag step
-    under it, guarding a state no person can be in - `prefs.disguise` lives
-    inside the encrypted journal and is only settable from Settings, which
-    sits behind `prefs.onboarded`, so the only way to reach setup disguised
-    is the demo's own first-run control. Disguise is now the last question
-    setup asks (ticket 32) rather than a state it has to survive, and
-    ADR-0035 is untouched: nothing identifying draws while disguise is on,
-    and by the time it can be on, setup is over. */
+/** The flow. One list for everybody: setup does not vary by disguise. This used to take a
+    `disguised` flag and drop the flag step under it, guarding a state no person can be in -
+    `prefs.disguise` lives inside the encrypted journal and is only settable from Settings,
+    which sits behind `prefs.onboarded`, so the only way to reach setup disguised is the
+    demo's own first-run control. Disguise is now the last question setup asks rather than a
+    state it has to survive. The disguise choice affects outside identity after setup, not
+    the unlocked app. */
 export function onboardingSteps(): readonly OnboardingStep[] {
   return ALL_STEPS;
 }
 
-/** What each step settles, named as the preferences it writes.
-
-    Written down because ticket 36 needs to answer "does the archive already
-    know this?" per step, and the honest way to answer it is to say what the
-    step stores and ask the portable set (ADR-0003). The alternative was a
-    second list of steps to skip after a restore, which would be a copy of
-    this one kept by hand and wrong the first time a preference moved between
-    PORTABLE_KEYS and DEVICE_LOCAL_KEYS.
-
-    The welcome, the restore step and the finish store nothing, so they are
-    empty rather than absent: `stepAnswers` has to be total, or a step added
-    later is unclassified rather than a compile error.
-
-    `lock` is listed by the one preference it stores. The access mode itself
-    is not a preference at all - it is a keystore made on this device - which
-    is the deeper reason that step survives a restore, and `lockAfter`
-    being device-local says the same thing in the shape this map can check. */
+/** Map every setup step to its stored preferences. Restore checks
+    those keys against the portable set (ADR-0003), and complete
+    coverage makes new steps a compile-time decision. Welcome, restore
+    and finish store nothing. Lock stores device-local lockAfter and
+    still runs after restore because its keystore is device-bound. */
 const STEP_ANSWERS: Record<OnboardingStep, readonly PreferenceKey[]> = {
   welcome: [],
   restore: [],
@@ -141,23 +71,21 @@ const STEP_ANSWERS: Record<OnboardingStep, readonly PreferenceKey[]> = {
   flag: ['palette'],
   scales: ['activeScales'],
   /* The one preference it writes. Its other two answers are journal rows
-     (the measurements area's state and the genital-effects category), and
+     (the genital-effects category), and
      those travel in an archive with the rest of the journal, so a restore
      already answers this step whole. */
   features: ['cycleTrackingChoice'],
-  areas: ['onboardingAreas'],
   lock: ['lockAfter'],
   /* Nothing, and not because it was forgotten: the permissions step's
-     answers live in the OS rather than in a preference (ticket 31), so
+     answers live in the OS rather than in a preference, so
      there is nothing here for an archive to have carried. That is the same
      reason it survives a restore - device state is not journal state. */
   permissions: [],
-  /* `disguise` is a preference, and a device-local one (ticket 32,
-     ADR-0079): what a person is hiding on this phone is not a fact about
-     their journal, so it does not travel and this step runs after a restore
-     like any other. Listed rather than left empty, because the honest entry
-     is the key it writes - if `disguise` ever became portable this map is
-     where that would show up, and the step would stop being asked. */
+  /* `disguise` is a preference, and a device-local one: what a person is hiding on this
+     phone is not a fact about their journal, so it does not travel and this step runs after
+     a restore like any other. Listed rather than left empty, because the honest entry is
+     the key it writes - if `disguise` ever became portable this map is where that would
+     show up, and the step would stop being asked. */
   disguise: ['disguise'],
   done: []
 };
@@ -180,18 +108,16 @@ export function archiveAnswers(step: OnboardingStep): boolean {
   );
 }
 
-/** The flow for somebody who said on the welcome that they already have a
-    journal (ticket 36).
+/** The flow for somebody who said on the welcome that they already have a journal.
 
-    Everything the archive answers is dropped, because asking and then
-    overwriting the answer a moment later is the behaviour this ticket exists
-    to remove. What is left is the welcome, the restore itself, and the steps
-    that are about this device rather than about the journal: the access mode
-    above all, since an archive password is not an access mode (ADR-0041) and
-    the key has to be made here. The permissions step joined it when ticket
-    31 landed, on this same test and with no edit needed: it stores no
-    preference, so it can never qualify as carried. Disguise joined it the
-    same way when ticket 32 landed - device state is not journal state. */
+    Everything the archive answers is dropped, because asking and then overwriting the
+    answer a moment later is the behaviour exists to remove. What is left is the welcome,
+    the restore itself, and the steps that are about this device rather than about the
+    journal: the access mode above all, since an archive password is not an access mode
+    (ADR-0041) and the key has to be made here. The permissions step joined it when landed,
+    on this same test and with no edit needed: it stores no preference, so it can never
+    qualify as carried. Disguise joined it the same way when landed - device state is not
+    journal state. */
 export function restoreSteps(): readonly OnboardingStep[] {
   const rest = ALL_STEPS.filter((step) => step !== 'welcome' && !archiveAnswers(step));
   return ['welcome', 'restore', ...rest];
@@ -238,28 +164,16 @@ export function isSkippable(step: OnboardingStep): boolean {
 
 /** Where the flow hands over.
 
-    Home, not Settings: a new person has just been told what the app is for
-    and the next thing they should see is the thing itself (F16).
+    Home, not Settings: a new person has just been told what the app is for and the next
+    thing they should see is the thing itself (F16).
 
-    It used to have an exception. App lock was a choice made here and a pair
-    of four-digit entries made on a separate screen, so a toggle left on sent
-    the new user there instead of Home. Ticket 53 retired that gate - a PIN is
-    an access mode now, chosen in the security module - so there is nothing
-    left for this to route around, and ticket 54 puts the module itself into
-    the flow rather than after it. */
+    It used to have an exception. App lock was a choice made here and a pair of four-digit
+    entries made on a separate screen, so a toggle left on sent the new user there instead
+    of Home. retired that gate - a PIN is an access mode now, chosen in the security module
+    - so there is nothing left for this to route around, and puts the module itself into the
+    flow rather than after it. */
 export function onboardingDestination(): string {
   return '/';
-}
-
-/** A new journal starts without measurements. An untouched setup step must
-    leave an older journal or restored archive's visibility alone. */
-export function measurementsHiddenOnSetup(
-  chosenVisibility: boolean | null,
-  wasOnboarded: boolean,
-  restored: boolean
-): boolean | null {
-  if (chosenVisibility !== null) return !chosenVisibility;
-  return !wasOnboarded && !restored ? true : null;
 }
 
 /** How small the sun starts. Large enough to be plainly the flag from the
@@ -270,18 +184,24 @@ export function measurementsHiddenOnSetup(
     as something that is about to grow. */
 const SUN_START = 0.42;
 
-/** The sun's scale at a given step: the app's identity being assembled as
-    the setup is (DIRECTION.md, tier 0's third authored moment).
-
-    It grows by one step's worth per step and arrives at exactly 1 on the
-    finish, which is the resting size Home draws a moment later - so the
-    handover between the two screens is the same object at the same size,
-    not two different suns. Scale rather than ring count, because ring count
-    is the flag's own and runs from three stripes to seven: growing "a ring
-    per step" would mean a different flow length per palette, and a flag
-    drawn with some of its bands missing is not the flag. */
+/** Grow the sun each step, reaching scale 1 at the handover to Home.
+    Scale keeps the flag's full stripe count visible on every palette. */
 export function sunGrowth(index: number, total: number): number {
   if (total <= 1) return 1;
   const progress = Math.min(Math.max(index, 0), total - 1) / (total - 1);
   return SUN_START + (1 - SUN_START) * progress;
+}
+
+/** The welcome's sun, as a multiple of Home's resting one. The welcome is
+    the first screen anyone sees, so the mark is drawn there as the hero of
+    a field most of a phone tall, and "Set up the app" collapses that field
+    into the first question with the sun shrinking to the first step's size.
+    Large enough that the quarter fills the
+    corner of a 412px phone (175px x 1.6 = 280px of reach) and leaves the
+    wordmark the bottom of the field. */
+export const WELCOME_SUN = 1.6;
+
+/** The sun's scale on `step`: the welcome's hero, then the growth above. */
+export function stepSun(step: OnboardingStep, steps: readonly OnboardingStep[]): number {
+  return step === 'welcome' ? WELCOME_SUN : sunGrowth(stepIndex(steps, step), steps.length);
 }

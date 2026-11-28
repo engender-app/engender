@@ -1,17 +1,16 @@
-import type { JournalSecretSource } from '../crypto/keystore.ts';
+import type { KeystoreBootSource } from './keystore-file';
 
-/* How this journal opens (ADR-0041, tickets 53 and 55).
+/* How this journal opens (ADR-0041).
 
-   All four of ADR-0041's modes are here. The three secret-derived ones are
-   one wrap system with three secret sources (crypto/keystore.ts): a
-   keystore's own `secretSource` says which, so the mode is read off the
-   keystore rather than tracked beside it. Android's device-bound mode is the
-   one that is biometric-gated already - Keystore will not release the key
-   until the platform confirms who is present - so the module names it as
-   such rather than offering a second mechanism, and `'biometric'` here means
-   the web's WebAuthn PRF mode only (ticket 55, data/journal-biometric.ts).
-   It is offered on a device that turns out to have it and nowhere else, so
-   nothing may assume a build that compiles this arm can reach it. */
+   All four of ADR-0041's modes are here. The three secret-derived ones are one wrap system
+   with three secret sources (crypto/keystore.ts): a keystore's own `secretSource` says
+   which, so the mode is read off the keystore rather than tracked beside it. Android's
+   device-bound mode is the one that is biometric-gated already - Keystore will not release
+   the key until the platform confirms who is present - so the module names it as such
+   rather than offering a second mechanism, and `'biometric'` here means the web's WebAuthn
+   PRF mode only (data/journal-biometric.ts). It is offered on a device that turns out to
+   have it and nowhere else, so nothing may assume a build that compiles this arm can reach
+   it. */
 export type JournalAccessMode = 'passphrase' | 'pin' | 'biometric' | 'device-bound' | 'unlocked' | null;
 
 /** Whether this mode has a secret to ask for again mid-session. Device-bound
@@ -32,7 +31,7 @@ export function chooseJournalAccessMode({
   deviceBoundKeystoreExists,
   nativeDeviceKeyAuthRequired = true
 }: {
-  keystoreSecretSource: JournalSecretSource | null;
+  keystoreSecretSource: KeystoreBootSource;
   deviceBoundKeystoreExists: boolean;
   nativeDeviceKeyAuthRequired?: boolean;
 }): JournalAccessMode {
@@ -40,6 +39,7 @@ export function chooseJournalAccessMode({
      passphrase mode has always had: changing mode writes the new keystore
      before clearing the old key, so a crash in between must not downgrade
      the journal to the weaker of the two. */
+  if (keystoreSecretSource === 'unreadable') return null;
   if (keystoreSecretSource !== null) return keystoreSecretSource;
   if (deviceBoundKeystoreExists) {
     return nativeDeviceKeyAuthRequired ? 'device-bound' : 'unlocked';
@@ -47,19 +47,22 @@ export function chooseJournalAccessMode({
   return null;
 }
 
-type WebBootPlan = 'needs-setup' | 'needs-unlock' | 'auto-unlock' | 'legacy-refused';
+type WebBootPlan = 'needs-setup' | 'needs-unlock' | 'auto-unlock' | 'legacy-refused' | 'needs-recovery';
 
 export function describeWebBootPlan({
   keystoreSecretSource,
   deviceBoundKeystoreExists,
-  legacyStoragePresent
+  legacyStoragePresent,
+  journalPresent
 }: {
-  keystoreSecretSource: JournalSecretSource | null;
+  keystoreSecretSource: KeystoreBootSource;
   deviceBoundKeystoreExists: boolean;
   legacyStoragePresent: boolean;
+  journalPresent: boolean;
 }): WebBootPlan {
   if (legacyStoragePresent) return 'legacy-refused';
-  if (keystoreSecretSource === null && !deviceBoundKeystoreExists) return 'needs-setup';
+  if (keystoreSecretSource === 'unreadable') return 'needs-recovery';
+  if (keystoreSecretSource === null && !deviceBoundKeystoreExists) return journalPresent ? 'needs-recovery' : 'needs-setup';
   return keystoreSecretSource === null ? 'auto-unlock' : 'needs-unlock';
 }
 
@@ -68,23 +71,27 @@ type AndroidBootPlan =
   | 'needs-unlock'
   | 'needs-authentication'
   | 'auto-unlock'
-  | 'plaintext-error';
+  | 'plaintext-error'
+  | 'needs-recovery';
 
 export function describeAndroidBootPlan({
   keystoreSecretSource,
   nativeDeviceKeyExists,
   nativeDeviceKeyAuthRequired = true,
-  plaintextJournalPresent
+  plaintextJournalPresent,
+  journalPresent
 }: {
-  keystoreSecretSource: JournalSecretSource | null;
+  keystoreSecretSource: KeystoreBootSource;
   nativeDeviceKeyExists: boolean;
   nativeDeviceKeyAuthRequired?: boolean;
   plaintextJournalPresent: boolean;
+  journalPresent: boolean;
 }): AndroidBootPlan {
+  if (keystoreSecretSource === 'unreadable') return 'needs-recovery';
   if (keystoreSecretSource !== null) return 'needs-unlock';
   if (nativeDeviceKeyExists) {
     return nativeDeviceKeyAuthRequired ? 'needs-authentication' : 'auto-unlock';
   }
   if (plaintextJournalPresent) return 'plaintext-error';
-  return 'needs-setup';
+  return journalPresent ? 'needs-recovery' : 'needs-setup';
 }

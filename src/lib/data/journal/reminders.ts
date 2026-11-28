@@ -4,7 +4,7 @@
    vocabulary ('EVERY_3_DAYS') was a hard failure there, not a mapping
    detail. */
 
-import { assertValidRule, ruleFromChoice } from '../reminderRule';
+import { assertValidRule } from '../reminderRule';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Reminder } from '../types';
 import { assertChanged, bool, mintUuid, now } from './support';
@@ -13,7 +13,13 @@ import { assertChanged, bool, mintUuid, now } from './support';
     editor never sets it - clears whichever feature's marker a reminder
     carried, which is the handoff stock.ts's auto-managed run-out prompt
     relies on (stockReminder.ts). Only stock.ts's own writes pass one. */
-export type ReminderInput = Omit<Reminder, 'id' | 'autoSource'> & { id?: string; autoSource?: string | null };
+export type ReminderInput = Omit<Reminder, 'id' | 'autoSource' | 'drug'> & {
+  id?: string;
+  autoSource?: string | null;
+  /** Null when omitted, like `autoSource`: only the reminders editor names a
+      drug, so a stock or wear write never makes a medication reminder. */
+  drug?: string | null;
+};
 
 export interface RemindersArea {
   getReminders(): Promise<Reminder[]>;
@@ -31,7 +37,6 @@ export function makeRemindersArea(driver: SqliteDriver): RemindersArea {
       const rows = await driver.query<{
         uuid: string;
         title: string;
-        type: Reminder['type'];
         time: string;
         recurrence: Reminder['recurrence'];
         interval: number | null;
@@ -39,37 +44,34 @@ export function makeRemindersArea(driver: SqliteDriver): RemindersArea {
         epoch_day: number | null;
         enabled: number;
         auto_source: string | null;
+        drug: string | null;
       }>(
-        'SELECT uuid, title, type, time, recurrence, interval, anchor_epoch_day, epoch_day, enabled, auto_source FROM reminder ORDER BY id'
+        'SELECT uuid, title, time, recurrence, interval, anchor_epoch_day, epoch_day, enabled, auto_source, drug FROM reminder ORDER BY id'
       );
       return rows.map((r) => ({
         id: r.uuid,
         title: r.title,
-        type: r.type,
         time: r.time,
         recurrence: r.recurrence,
         interval: r.interval,
         anchorEpochDay: r.anchor_epoch_day,
         epochDay: r.epoch_day,
         enabled: bool(r.enabled),
-        autoSource: r.auto_source
+        autoSource: r.auto_source,
+        drug: r.drug
       }));
     },
 
     async upsertReminder(input) {
-      if (input.recurrence === 'WEEKLY') {
-        const existing = input.id ? (await this.getReminders()).find((r) => r.id === input.id) ?? null : null;
-        input = { ...input, ...ruleFromChoice('WEEKLY', input.time, existing, new Date()) };
-      }
       assertValidRule(input);
       const autoSource = input.autoSource ?? null;
+      const drug = input.drug?.trim() || null;
       if (input.id) {
         const result = await driver.run(
-          `UPDATE reminder SET title = ?, type = ?, time = ?, recurrence = ?, interval = ?, anchor_epoch_day = ?,
-             epoch_day = ?, enabled = ?, auto_source = ?, updated_at = ? WHERE uuid = ?`,
+          `UPDATE reminder SET title = ?, time = ?, recurrence = ?, interval = ?, anchor_epoch_day = ?,
+             epoch_day = ?, enabled = ?, auto_source = ?, drug = ?, updated_at = ? WHERE uuid = ?`,
           [
             input.title,
-            input.type,
             input.time,
             input.recurrence,
             input.interval,
@@ -77,6 +79,7 @@ export function makeRemindersArea(driver: SqliteDriver): RemindersArea {
             input.epochDay,
             input.enabled ? 1 : 0,
             autoSource,
+            drug,
             now(),
             input.id
           ]
@@ -86,12 +89,11 @@ export function makeRemindersArea(driver: SqliteDriver): RemindersArea {
       }
       const uuid = mintUuid();
       await driver.run(
-        `INSERT INTO reminder (uuid, title, type, time, recurrence, interval, anchor_epoch_day, epoch_day, enabled, auto_source, updated_at)
+        `INSERT INTO reminder (uuid, title, time, recurrence, interval, anchor_epoch_day, epoch_day, enabled, auto_source, drug, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           uuid,
           input.title,
-          input.type,
           input.time,
           input.recurrence,
           input.interval,
@@ -99,6 +101,7 @@ export function makeRemindersArea(driver: SqliteDriver): RemindersArea {
           input.epochDay,
           input.enabled ? 1 : 0,
           autoSource,
+          drug,
           now()
         ]
       );

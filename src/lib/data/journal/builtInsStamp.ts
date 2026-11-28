@@ -1,32 +1,17 @@
-/* Which built-in catalogue a journal was last reconciled against (ux-carpet
-   ticket 208).
+/* Skip built-in reconciliation when the SQLite header's application_id
+   matches this catalogue (ADR-0002). Reconciling unchanged rows previously
+   added 64 ms on a Pixel cold launch. Hiding rows and replacing an Archive
+   preserve built-ins.
 
-   Reconciling the built-ins by key (ADR-0002, reconcile.ts) is idempotent and
-   used to run as a transaction on every boot, behind a module fetch: on the
-   Pixel that was 64 ms between the database opening and the first read, every
-   cold launch, to insert nothing. Built-in rows are never deleted - a person
-   hides one, every discard in archiveSections.ts spares them - so once a
-   journal holds the whole catalogue, it keeps holding it until the catalogue
-   itself changes or a migration touches those tables. Boot therefore asks the
-   journal which catalogue it was reconciled against and skips the work when
-   the answer is this build's.
+   Stamp application_id inside the reconciliation transaction. The value
+   travels with the database file, including a restored migration copy.
+   Archives exclude it, and demo setup can still detect empty preferences.
 
-   The answer lives in the database header, `PRAGMA application_id`, written
-   inside the reconcile's own transaction. Not in `pref`: an empty preferences
-   table is how the demo knows to seed its persona. Not in a table of its own:
-   a header field travels with the file (a restored pre-migration copy brings
-   its own), never with an archive, and needs no migration.
-
-   BUILT_INS_FINGERPRINT is written by hand rather than computed at runtime,
-   because computing it means loading the whole catalogue on every boot, which
-   is the cost this exists to remove. builtInsStamp.test.ts recomputes it from
-   the catalogue and from reconcile.ts's own source and fails on any
-   difference, printing the value to put here - so a new tag, a changed
-   default or a change to what reconcile seeds cannot ship without every
-   journal reconciling once on its next boot. */
+   builtInsStamp.test.ts hashes catalogue data and comment-free reconcile.ts.
+   Update the stamp when either changes to reconcile once on the next boot. */
 import { LATEST_SCHEMA_VERSION } from '../sqlite/schema-version';
 
-export const BUILT_INS_FINGERPRINT = 'd87325350c7f50b2';
+export const BUILT_INS_FINGERPRINT = '41e805df947e9ec3';
 
 /** The value a journal reconciled by this build carries in its header: the
     catalogue's fingerprint and the schema version, since a migration may

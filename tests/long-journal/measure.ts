@@ -1,20 +1,7 @@
-/* The measurement harness (phase 2 ticket 20).
-
-   Five places decide whether a decade of Journal works: the calendar, the
-   stats screen, search, Archive export and the photo grid. Search is two
-   questions since phase 5 deepening ticket 24: the entry index, and one
-   scan across every other area that holds text. Each one below
-   asks the journal exactly what its screen asks it, over the same
-   `openJournal(driver, files)` handle (ADR-0017) - so what runs against
-   SQLocal over OPFS today runs against ticket 11's native SQLite driver
-   with nothing here reshaped.
-
-  `today` arrives as an epoch day rather than from a clock, because the
-  journal never reads it for a domain answer and a benchmark whose numbers
-  move with the date is not a baseline.
-
-   Nothing here optimizes anything, and nothing here decides whether a
-   number is acceptable. It reports; budgets.json judges. */
+/* Measure calendar, stats, entry and cross-area search, Archive export and
+   photo reads through openJournal(driver, files) (ADR-0017). The same calls
+   run against web and Android drivers. Pass a fixed epoch day for repeatable
+   results. budgets.json sets the acceptance limits. */
 
 import type { Journal, PhotoFileStore } from '../../src/lib/data/journal/journal.ts';
 import { mostRecentPastAppointment } from '../../src/lib/data/journal/appointments.ts';
@@ -29,12 +16,9 @@ import { tagIdsMatching } from '../../src/lib/data/searchQuery.ts';
 import { SEARCH_AREA_KEYS } from '../../src/lib/data/journal/textSearch.ts';
 import { onThisDayCandidates } from '../../src/lib/data/on-this-day.ts';
 import { EUPHORIA_TAG_KEYS } from '../../src/lib/data/vocabulary/builtins.ts';
-import { hairAnchorEpochDay } from '../../src/lib/data/hairAnchor.ts';
 import { readReturnGap, readWhatIsWaiting } from '../../src/lib/data/comingBackReads.ts';
 import { offeredWrappedPeriod } from '../../src/lib/data/wrapped.ts';
 import { touchesMutedEra } from '../../src/lib/data/resurfacingConsent.ts';
-import { spanCoversDay } from '../../src/lib/data/span.ts';
-import { analyseNotes, countWords } from '../../src/lib/data/wordFrequency.ts';
 import { readCare } from '../../src/lib/data/careReads.ts';
 import type { RecordingDriver } from '../../src/lib/data/sqlite/test-support/recording-driver.ts';
 import type { LongJournalSummary } from './generate.ts';
@@ -50,7 +34,7 @@ export interface Measurement {
   detail: string;
   /** How many statements crossed the driver seam, and how many bytes came
       back across it. Carried only by the screen-mount measurements, which
-      are budgeted on these rather than on time (phase 8 audit ticket 01):
+      are budgeted on these rather than on time:
       the crossing is what this architecture pays for, and on desktop it is
       the half a millisecond figure cannot see. */
   statements?: number;
@@ -58,7 +42,7 @@ export interface Measurement {
 }
 
 /** The cold-start measurements the probe takes around boot() itself, before
-    it hands the journal to the harness below (phase 5 audit ticket 02). They
+    it hands the journal to the harness below. They
     live in the probe rather than here because they need a real driver over
     real storage - what boot costs is the driver opening, not a fake one being
     constructed - and they are named here so budgets.json can be checked
@@ -74,6 +58,7 @@ export interface MeasureOptions {
       optional: a run that quietly produced no mount measurements would
       leave budgets.json describing measurements nobody takes. */
   recorder: RecordingDriver;
+  prepareLookBack?: (journal: Journal, today: number) => Promise<() => Promise<{ result: unknown; detail: string; crossings?: { statements: number; bytes: number } }>>;
   mountHome?: (journal: Journal) => Promise<{ result: unknown; detail: string; crossings?: { statements: number; bytes: number } }>;
 }
 
@@ -113,11 +98,6 @@ const BENCHMARK_REGION = 'chest';
     getSeries both do real work. */
 const LABS_ANALYTE = 'Estradiol';
 
-/** The measurement type the measurements-screen measurement reads: the one
-    generate.ts also forces two 'in' readings onto, so getSeries splits into
-    two unit series rather than one. */
-const MEASUREMENT_TYPE = 'waist';
-
 /** What Home's letter tile pages and its recent-days strip takes - the
     literals `+page.svelte` and `liveTiles.svelte.ts` pass today. */
 const HOME_LETTER_PAGE = 100;
@@ -133,19 +113,6 @@ const STATS_METRIC = 'mood';
     starts on. Both are what the screen mounts with rather than what a
     person can drag it to. */
 const STATS_DEFAULT_RANGE = 30;
-const CUSTOM_INTERVAL_DAYS = 28;
-
-/** The two interval cards' "the whole journal", which is the convention
-    `stats.ts` already uses for it. */
-const WHOLE_JOURNAL_FROM = Number.MIN_SAFE_INTEGER;
-
-/** What the word list renders: `settings/words/+page.svelte`'s own
-    `WORD_LIMIT`, restated here the way every screen literal in this file is
-    (see the mount block's note on why, and what it costs). The fold counts
-    every word regardless, so this is a render limit rather than a narrower
-    fold - it is here because the screen pays for the slice on every filter
-    tap too. */
-const WORD_LIST_LIMIT = 40;
 
 /** The gap the return surface is measured over. A season, which is the
     length of absence the screen exists for - long enough that letters have
@@ -312,19 +279,17 @@ export async function measureLongJournal(
 
   /* --- search -------------------------------------------------------------
 
-     Three questions, because they take different plans. A term in a third
-     of the notes pages 30 hits out of thousands; a term in a handful reads
-     the index and finds almost nothing; and a term that is also a tag's
-     label unions a second query over `entry_tag` onto the FTS clause
-     (entries.ts), which is the one a note-only word never reaches.
+     Three questions, because they take different plans. A term in a third of the notes
+     pages 30 hits out of thousands; a term in a handful reads the index and finds almost
+     nothing; and a term that is also a tag's label unions a second query over `entry_tag`
+     onto the FTS clause (entries.ts), which is the one a note-only word never reaches.
 
-     Every one of them goes through `tagIdsMatching` rather than being
-     handed an empty list, because that is what the screen does - it never
-     passes `[]`, it passes whatever the typed text matched. The labels
-     reachable here are the custom ones: a built-in tag stores a key and its
-     wording comes from the message catalogue above this seam (ADR-0016), so
-     a fixture below the seam sees an empty label. The count is its own
-     query beside the page, as the screen runs it. */
+     Every one of them goes through `tagIdsMatching` rather than being handed an empty list,
+     because that is what the screen does - it never passes `[]`, it passes whatever the
+     typed text matched. The labels reachable here are the custom ones: a built-in tag
+     stores a key and its wording comes from the message catalogue above this seam, so a
+     fixture below the seam sees an empty label. The count is its own query beside the page,
+     as the screen runs it. */
   const knownTags = (await journal.tags.getTagGroups()).flatMap((group) => group.tags);
 
   for (const [name, word, expected] of [
@@ -345,25 +310,10 @@ export async function measureLongJournal(
     });
   }
 
-  /* Everything outside the entry note (phase 5 deepening ticket 24). One
-     statement across the whole registry - eighteen areas as branches of
-     one UNION ALL - plus its count, which is what the screen runs per search
-     beside the two entry queries above (textSearch.ts).
-
-     None of these areas has an index, so most of what this watches is what a
-     folded LIKE over every text column in the journal costs at decade scale.
-     But it is measured with a word the fixture's non-entry text actually
-     holds - the letters are addressed to a future self - rather than with the
-     Polish note word the three measurements above use, so the CASE that picks
-     the matched column, the ORDER BY over the union and the LIMIT are all on
-     the measured path instead of only the scan. That the word still matches
-     is asserted rather than assumed: a fixture that stops writing it would
-     otherwise quietly turn this into a scan with nothing to return.
-
-     If this ever grows out of budget, the strategy to reach for is the one
-     deliberately not taken here: search on submit rather than per keystroke.
-     Debouncing was not needed at these numbers and would have cost the live
-     feel the entry side has.
+  /* Measure non-entry search at decade scale, including its count and
+     the registry's UNION ALL, folded LIKE, matched-column CASE,
+     ordering and limit. Use a term in fixture letters and assert that
+     it still matches so the benchmark covers returning results.
   */
   await measure('search-everywhere', 'search, every area outside entries in one statement', async () => {
     const results = await journal.textSearch.search({
@@ -445,7 +395,7 @@ export async function measureLongJournal(
     return { result: bytes, detail: `${mb(bytes)} archive` };
   });
 
-  // --- phase 5 features (ticket 01) ---------------------------------------
+
   // Five features landed without a line here: this section checks the four
   // that turned out to be genuinely new reads. The fifth, regimen templates
   // (care/regimen/+page.svelte's vocabulary.regimenTemplates), is a
@@ -453,42 +403,33 @@ export async function measureLongJournal(
   // measurement - one for form's sake would report nothing a budget could
   // ever fail.
 
-  // On-this-day (OnThisDayHomeCard.svelte) asks isGoodDay for a fixed three
-  // candidates - a month, six months and a year back - never more of them
-  // as the journal grows. What's new here is isGoodDay's body-region EXISTS
-  // clause (phase 5 ticket 44); this measurement is what tells us whether
-  // that clause stays as cheap as the rest of the check at decade scale.
+  // On-this-day checks month, six months, and each annual anniversary through
+  // the journal's first entry. The decade fixture must pay for those extra
+  // candidates, including isGoodDay's body-region EXISTS clause.
+  const lookbackStart = (await journal.eras.getJournalBounds())?.firstEpochDay ?? today;
+  const lookbackDays = onThisDayCandidates(today, lookbackStart);
   await measure('on-this-day-good-day', 'on-this-day, whether each lookback day clears the bar', async () => {
-    const candidates = onThisDayCandidates(today);
-    const results = await Promise.all(candidates.map((c) => journal.stats.isGoodDay(c.epochDay)));
+    const results = await Promise.all(lookbackDays.map((c) => journal.stats.isGoodDay(c.epochDay)));
     return {
       result: results,
       detail: `${results.filter(Boolean).length} of ${results.length} lookback days clear the bar`
     };
   });
 
-  /* On-this-day's own screen (phase 5 UX ticket 23, spec 05) reads
-     `entriesForDay` only for a lookback that already cleared the bar above
-     - but this measures all three unconditionally, the same way
-     `on-this-day-good-day` does, because the screen fires from a
-     notification (phase 4 features ticket 04): whichever day resurfaces is
-     not chosen by this run, so the worst case is that a decade-scale
-     journal makes every one of the three cost something. `entriesForDay`
-     replaced two one-day aggregates (`recap`, `dayAverages`) per candidate;
-     nothing here measures those, because they no longer run. */
+  /* The screen reads entriesForDay only for qualifying days. This measures
+     every candidate to retain a worst-case cost as the journal grows. */
   await measure('on-this-day-entries', 'on-this-day, entries and attachments for each lookback day', async () => {
-    const candidates = onThisDayCandidates(today);
-    const entries = await Promise.all(candidates.map((c) => journal.entries.entriesForDay(c.epochDay)));
+    const entries = await Promise.all(lookbackDays.map((c) => journal.entries.entriesForDay(c.epochDay)));
     const photos = entries.reduce((total, day) => total + day.reduce((n, e) => n + e.photos.length, 0), 0);
     return {
       result: entries,
-      detail: `${entries.map((day) => day.length).join('+')} entries across the three lookback days, ${photos} photos`
+      detail: `${entries.map((day) => day.length).join('+')} entries across ${lookbackDays.length} lookback days, ${photos} photos`
     };
   });
 
   // The doubt journal (doubt/+page.svelte) always runs this pool, not from
   // a sheet someone opens: the same EUPHORIA_TAG_KEYS and limit (20) the
-  // screen itself uses. Widened by the same ticket 44 to include a
+  // screen itself uses. The pool includes a
   // body-region euphoria clause alongside starred entries and euphoria
   // tags.
   await measure('doubt-counterevidence', 'doubt journal, the counterevidence pool', async () => {
@@ -497,7 +438,7 @@ export async function measureLongJournal(
     return { result: pool, detail: `${pool.length} counterevidence entries` };
   });
 
-  // Body-region tracking (afdae70, phase 5 ticket 31): the body-map and
+  // Body-region tracking: the body-map and
   // wear screens each query one region's two axes over a range someone
   // picked, never every region at once - unlike stats-year-series, which
   // charts every gender dimension in one call but has never read a body
@@ -514,45 +455,11 @@ export async function measureLongJournal(
     };
   });
 
-  // Hair tracking (phase 5 ticket 33): the settings screen's own anchor
-  // read is `doses.getDoses(0, today)` - unbounded from epoch day zero,
-  // not a windowed range like every stats query above - because the
-  // fallback anchor is the earliest dose of anything ever logged. Passed
-  // no user-set anchor here, which is the fallback's own worst case: the
-  // early-return branch (a preference is set) never touches the dose log
-  // at all. getStages/getPhotos read every row, unfiltered, the same shape
-  // milestones and lab results already read at decade scale.
-  await measure('hair-progress-anchor', 'hair progress, every dose since day zero plus every staging and photo', async () => {
-    const [doses, stages, photos] = await Promise.all([
-      journal.doses.getDoses(0, today),
-      journal.hairProgress.getStages(),
-      journal.hairProgress.getPhotos()
-    ]);
-    const anchor = hairAnchorEpochDay(null, doses);
-    return {
-      result: [doses, stages, photos, anchor],
-      detail: `${doses.length} doses read for the anchor, ${stages.length} stagings, ${photos.length} photos`
-    };
-  });
-
-  // Dose schedules (schema v38, ADR-0027, phase 5 ticket 40): the one call
-  // the dose log screen's schedule view makes, getComparison - four reads,
-  // the episode in effect, its schedule and pauses, the doses attributed to
-  // it, then expectedSlots and adherence over those, which is where the
-  // weekday recurrence and the doseAmounts cycle actually run. The same
-  // function the screen calls rather than a second copy of its steps: this
-  // block used to assemble them itself off episodes[0] with unattributed
-  // doses, so the figure below was not the screen's figure (phase 5
-  // deepening ticket 17).
-  //
-  // Its window ends on the fixture's last single-episode day rather than on
-  // `today`, and that is the fixture's own shape: its final stretch runs two
-  // concurrent episodes for different drugs, where the screen has nothing to
-  // compare and says so. Behind that day sit the fixture's richest
-  // schedule - three cycling dose amounts on a Monday/Wednesday/Friday
-  // recurrence. The reason is asserted rather than reported, so a fixture
-  // that stops meeting that precondition fails here instead of quietly
-  // measuring four reads and an early return.
+  // Measure the dose log's real getComparison (ADR-0027). It reads the
+  // active episode, schedule and pauses, and attributed doses, then runs
+  // expectedSlots and adherence. End on the last single-episode day.
+  // Assert the fixture has three cycling Monday/Wednesday/Friday
+  // amounts so the benchmark exercises recurrence beyond an early return.
   await measure('dose-schedule-adherence', 'dose log, 90 days against its schedule, single-episode window', async () => {
     const ADHERENCE_WINDOW_DAYS = 90;
     const toEpochDay = summary.lastSingleEpisodeEpochDay;
@@ -569,33 +476,11 @@ export async function measureLongJournal(
     };
   });
 
-  // --- phase 5 ticket 36 features (ticket 05) ------------------------------
-  // Nine more More-hub areas ticket 36 seeded real content for, surveyed
+
+  // Nine more More-hub areas seeded real content for, surveyed
   // against their actual data-layer calls and found genuinely uncovered.
   // sizes, wear and the overlapping-episode fan-out were surveyed too and
-  // found not to need a line here - see ticket 05's Comments for why.
-
-  // Hormone curve (care/curve/+page.svelte): the one call the
-  // screen makes, at its widest window (180 days) - the injectable band model
-  // plus one qualitative model per hormone this app curves (estradiol,
-  // testosterone), over one read of the dose log and one read per analyte any
-  // of them can be drawn against. It used to be the screen's three concurrent
-  // queries, which read the dose log three times between them and asked for
-  // the used analytes three times (phase 5 deepening ticket 17).
-  const curveFrom = today - 179;
-  await measure('hormone-curve', 'hormone curve, injectable plus qualitative models, 180 days', async () => {
-    const view = await journal.hormoneCurve.getCurves({
-      fromEpochDay: curveFrom,
-      toEpochDay: today,
-      fitToOwnLabs: true
-    });
-    const qualCurves = view.qualitative.sections.reduce((n, section) => n + section.charts.length, 0);
-    const qualPoints = view.qualitative.sections.reduce((n, section) => n + section.labPoints.length, 0);
-    return {
-      result: view,
-      detail: `${view.injectable.charts.length} injectable curves + ${qualCurves} qualitative curves, ${view.injectable.labPoints.length + qualPoints} lab points`
-    };
-  });
+  // found not to need a line here - see Comments for why.
 
   // Labs (care/labs/+page.svelte): the screen's own five concurrent
   // queries for whichever analyte is selected, none date-bounded or LIMITed
@@ -614,20 +499,6 @@ export async function measureLongJournal(
     };
   });
 
-  // Measurements (settings/measurements/+page.svelte): getMeasurements and
-  // getSeries for one type, both filtered only on type, no date bound
-  // (measurements.ts:98-110).
-  await measure('measurements-series', 'measurements screen, one type across both queries the screen runs', async () => {
-    const [measurements, series] = await Promise.all([
-      journal.measurements.getMeasurements(MEASUREMENT_TYPE),
-      journal.measurements.getSeries(MEASUREMENT_TYPE)
-    ]);
-    return {
-      result: [measurements, series],
-      detail: `${measurements.length} measurements for ${MEASUREMENT_TYPE} across ${series.length} unit series`
-    };
-  });
-
   // Hair removal (settings/hair-removal/+page.svelte): getSessions() is a
   // whole-table read with no LIMIT (hairRemoval.ts:109). generate.ts seeds
   // this area at a realistic cadence (its own "a year, irregular cadence"
@@ -641,7 +512,7 @@ export async function measureLongJournal(
   // Cycle events (settings/cycle-events/+page.svelte): getCycleEvents()
   // reads the whole table (cycleEvents.ts:37) even though a ranged variant
   // already exists (cycleEvents.ts:44) - the screen just doesn't call it,
-  // named rather than fixed (ticket 05's scope).
+  // named rather than fixed.
   await measure('cycle-events-log', 'cycle events, every event', async () => {
     const events = await journal.cycleEvents.getCycleEvents();
     return { result: events, detail: `${events.length} events` };
@@ -665,7 +536,7 @@ export async function measureLongJournal(
   // Stock (care/+page.svelte's stock sheet): getProjections(today) used to read
   // every dose from the oldest stock entry forward and reduce three numbers
   // per entry out of them - O(entries x doses) at decade scale, and 538KB of
-  // Home's mount on this fixture. Phase 8 audit ticket 26 replaced that with
+  // Home's mount on this fixture. The projection now uses
   // one grouped count per date window (stockProjection.ts's projectEveryStock),
   // so what this now measures is a handful of counts whatever the log's
   // length, and mount-home's byte figure below is the ratchet that keeps it
@@ -685,16 +556,16 @@ export async function measureLongJournal(
     };
   });
 
-  // Tryout detail (settings/tryouts/[id]/+page.svelte): performance ticket 07
+  // Tryout detail (settings/tryouts/[id]/+page.svelte): performance
   // found searchEntries('', [], {startEpochDay, endEpochDay}) ran with no
   // word and no page limit over a tryout's whole date span - 3634ms/3518ms
   // on Android for the fixture's open-ended tryout, too slow to ship
-  // (Alicja, 2026-08-27). Ticket 08 bounded the real screen's call with
+  // Bounded the real screen's call with
   // `PAGE * pages` and a "load more" control, the same shape the three
   // search-* measurements above already use; this measurement now mirrors
   // that bounded call rather than the unbounded one it used to guard, since
   // the unbounded shape is exactly what's gone from the app. The page is
-  // five since phase 12 ticket 23, not search's thirty.
+  // five, not search's thirty.
   await measure('tryout-detail-entries', 'tryout detail, one page and the total across its open-ended span', async () => {
     const range = { startEpochDay: summary.tryoutWideOpenStartEpochDay, endEpochDay: null };
     const [entries, total] = await Promise.all([
@@ -707,25 +578,9 @@ export async function measureLongJournal(
     };
   });
 
-  /* --- phase 8 UX ticket 02 -----------------------------------------------
-
-     The More hub, which is the screen this measurement was taken for rather
-     than against: the ticket's own instruction is that eighteen live lines on
-     one navigation surface has to fit what this benchmark measures, and that
-     the number is recorded before the screen is written.
-
-     Two reads, concurrently, which is what the hub issues on mount: every
-     registered area's last write in one assembled call (lastWrite.ts - one
-     bounded MAX per area, nineteen of them), and the area record that decides
-     which rows are hidden and which have been finished. The third read the
-     hub makes is the regimen episode list ADR-0043's cycle gate gets its
-     answer from, which is not new to this ticket and is measured nowhere
-     because it is one small unindexed table read.
-
-     Deliberately not eighteen `liveQuery` calls, and this is where that shows:
-     what a row's line costs is a share of one number here, so a row added to
-     the hub costs another MAX inside this measurement rather than another
-     round trip through the worker queue. */
+  /* Read registered areas' last writes and the area record concurrently. One bounded MAX
+     per area fits in the assembled last-write call. The area record supplies hidden and
+     finished state. The cycle gate's small regimen lookup is outside this budget. */
   await measure('hub-last-writes', 'More hub, the last write in every area plus the area record', async () => {
     const [lastWrites, states] = await Promise.all([
       journal.lastWrite.getLastWrites(today),
@@ -738,94 +593,30 @@ export async function measureLongJournal(
     };
   });
 
-  /* --- phase 8 audit ticket 17 --------------------------------------------
+  /* Measure calls, payload bytes and elapsed time for the four screen
+     mounts. Payload matters across Android's JSON bridge even when SQL is
+     fast. Mirror default route, tile and child reads with their real
+     overlap and serial loops.
 
-     One tap of the word list's presentation or era filter. The notes are
-     read above the timer on purpose: this is the only measurement here that
-     is not a read at all. `noteEntries()` puts the whole journal's note text
-     into JS once, and what a filter tap then re-runs is the fold over it -
-     which is the cost the screen pays again on every tap, and the one this
-     ticket is about. The read stays where it is (bounding it is a product
-     decision the ticket declines to take), so it is not what is measured.
-
-     Timed over the unfiltered "All" list, which is the widest a tap can land
-     on and the one the screen returns to when a picked presentation or era
-     is cleared. Picking a value in the picker is this same work over a
-     subset; switching the Segmented from presentation to era additionally
-     re-runs `groupByEra`, which ticket 17 did not touch and this does not
-     time.
-
-     `analyseNotes` is outside the timer for the same reason the read is: it
-     is the screen's own `$derived` on the query, which a filter tap does not
-     invalidate. What it cost is carried in the detail line rather than
-     dropped, since it is the once-per-read half of the same work. */
-  const notes = await journal.entries.noteEntries();
-  const noteCharacters = notes.reduce((total, entry) => total + entry.note.length, 0);
-  const analysedAt = performance.now();
-  const analysed = analyseNotes(notes);
-  const analyseMs = Math.round(performance.now() - analysedAt);
-  await measure('words-filter-change', 'word list, one filter tap over every note in the journal', async () => {
-    const counts = countWords(analysed).slice(0, WORD_LIST_LIMIT);
-    const polish = analysed.some((entry) => entry.language === 'pl');
-    return {
-      result: [counts, polish],
-      detail: `${notes.length} notes, ${noteCharacters} characters, ${counts.length} words shown, analysed once in ${analyseMs}ms`
-    };
-  });
-
-  /* --- screen mounts, in statements and bytes (phase 8 audit ticket 01) ---
-
-     What the four screens the data audit measured cost in the metric this
-     architecture is actually priced in. Milliseconds are here too and are
-     the least of it: native SQLite answers almost all of this in single
-     figures, while one Home mount moves most of a megabyte across a
-     boundary that serialises everything. On desktop that is a same-process
-     `postMessage`; on the Capacitor bridge it is that payload as JSON. So
-     the budget these carry is a statement count and a byte count, and the
-     milliseconds are a footnote on the platform where they are cheap.
-
-     Each mount fires the reads its screen fires on arrival - the route's
-     own, its tile grid's, and those of every child component that mounts
-     unconditionally or behind a preference that ships on. Concurrently
-     where the screen's live queries overlap, serially where one of its
-     queries loops.
-
-     The read lists are restated here rather than imported, for the reason
-     `hub-last-writes` and every stats measurement above restate theirs: a
-     screen's reads live in `.svelte` and `.svelte.ts` files, and a
-     `liveQuery` is an effect that cannot be created outside a component.
-     What that costs is drift. A read added to a screen and not here shows
-     up as a gap between this budget and the device benchmark rather than as
-     a failure, and a read taken away leaves this measuring something nobody
-     asks for - which is the thing to check when one of the tickets below
-     lands.
-
-     Seeded at today's numbers on purpose. Tickets 13, 14, 16 and 19 each
-     state their acceptance as a reduction in one of these figures, so the
-     budget's job here is to be the ratchet they tighten, not a target
-     anybody has agreed to yet. */
+     liveQuery depends on a component effect, so this benchmark restates
+     its read lists. Update those lists when the screens' queries change.
+     The counts act as regression budgets. */
   const dimensionKeys = (await journal.dimensions.getDimensions()).map((dimension) => dimension.key);
 
   await mount('mount-home', 'Home, every read its tiles, panels and cards fire on arrival', async () => {
     if (options.mountHome) return options.mountHome(journal);
-    /* Seventeen live queries from `homeTiles()`, five the route holds
+    /* Twelve live queries from `homeTiles()`, five the route holds
        itself, and the three look-back surfaces under it: the wrapped card,
        the on-this-day card and the week strip. The two cards are gated on
-       `wrappedEnabled` and `onThisDayEnabled`, which both ship on, so a
+       the `wrapped` and `on-this-day` surface switches, which both ship on, so a
        default install pays for them.
 
        One of these still grows by a loop rather than by a table: the
        on-this-day card asks whether each lookback day clears the good-day
-       bar, one statement per candidate. The felt-sense read used to be the
-       other, and is one statement for every active tryout since phase 8
-       audit ticket 13. */
+       bar, one statement per candidate. */
     const wrappedPeriod = offeredWrappedPeriod(today);
     const lookbackDays = onThisDayCandidates(today);
-    const activeTryoutIds = journal.tryouts
-      .getTryouts()
-      .then((rows) => rows.filter((tryout) => spanCoversDay(tryout, today)).map((tryout) => tryout.id));
-    /* The debrief offer's own most-recent-past-appointment lookup (ticket
-       58) is a second, dependent read - Home's own liveQuery cannot ask
+    /* The debrief offer's own most-recent-past-appointment lookup is a second, dependent read - Home's own liveQuery cannot ask
        getDebriefState until this one has answered, the same reason it is
        not folded into `together` below. */
     const appointments = await journal.appointments.getAppointments();
@@ -836,24 +627,11 @@ export async function measureLongJournal(
       episodes: journal.regimen.getEpisodes(),
       procedures: journal.procedures.getProcedures(),
       letters: journal.letters.getLetterSeals(HOME_LETTER_PAGE),
-      dueRevisits: journal.revisits.getDueRevisits(today),
       latestBadEntryId: journal.entries.latestBadMomentEntryId(),
-      tryouts: activeTryoutIds,
-      /* Fed the ids the tryout list already answered with, which is what the
-         screen does: `tryouts.rows` is read synchronously before the call
-         (liveTiles.svelte.ts). One statement whatever the number. */
-      latestFeltSenseByTryout: activeTryoutIds.then((ids) =>
-        journal.feltSense.latestDaysForTryouts(ids)
-      ),
       schedules: journal.doses.getSchedules(),
       dosePauses: journal.doses.getPauses(),
       todayDoses: journal.doses.getDoses(today, today),
-      latestBenchmarkDay: journal.voiceBenchmarks.lastWriteEpochDay(today),
-      journalingPauses: journal.journalingPauses.getPauses(),
       areaStates: journal.areaStates.getAreaStates(),
-      latestHairRemovalSession: journal.hairRemoval.latestSession(today),
-      measurementCount: journal.measurements.countAll(),
-      latestMeasurementDay: journal.measurements.lastWriteEpochDay(today),
       entryCount: journal.entries.countAll(),
       journalBounds: journal.eras.getJournalBounds(),
       debriefState: journal.checklists.getDebriefState(mostRecentPastAppointmentId),
@@ -876,15 +654,17 @@ export async function measureLongJournal(
     return {
       result: [reads, wrappedRecap, goodDays],
       detail:
-        `newest benchmark ${reads.latestBenchmarkDay ?? 'none'}, ${reads.measurementCount} measurements counted, ` +
-        `${reads.letters.length} letter seals, ${reads.tryouts.length} active tryouts asked at once, ` +
+        `${reads.letters.length} letter seals, `  +
         `${reads.projections.length} stock projections, ${lookbackDays.length} lookback days asked one at a time, ` +
         `${reads.entryCount} entries counted, wrapped recap ${wrappedRecap ? 'read' : 'skipped as muted'}`
     };
   });
 
-  await mount('mount-stats', 'the stats tab at its default range, every card on it', async () => {
-    /* The default range, which is what arriving costs: 30 days for every
+  const mountedLookBack = await options.prepareLookBack?.(journal, today);
+  await mount('mount-stats', 'Look back mounted at its default range', async () => {
+    if (mountedLookBack) return mountedLookBack();
+    /* Node-only harness fallback. Browser and Android probes mount /stats.
+       The default range, which is what arriving costs: 30 days for every
        card that takes the picker. The two interval cards do not take it -
        they read the whole journal deliberately, since an injection interval
        rarely recurs three times inside even the 90-day preset - and that is
@@ -898,8 +678,6 @@ export async function measureLongJournal(
       insights: journal.stats.tagInsights(STATS_METRIC, from, today),
       spreads: journal.stats.daySpread(STATS_METRIC, from, today),
       correlationCards: journal.correlationCards.getCards(from, today),
-      intervalMood: journal.intervalMoodPattern.dayOfInterval(WHOLE_JOURNAL_FROM, today),
-      customInterval: journal.intervalMoodPattern.byCustomInterval(WHOLE_JOURNAL_FROM, today, CUSTOM_INTERVAL_DAYS),
       recap: journal.stats.recap(from, today),
       tagShare: journal.stats.tagShare(from, today),
       lastWrites: journal.lastWrite.getLastWrites(today),
@@ -909,7 +687,7 @@ export async function measureLongJournal(
          rather than the first two the vocabulary store calls active - which
          are the same two on a fixture that hides none. A budget for a
          screen is worth having at its widest mount, and this card's reveal
-         is the one animation the screen exists for (ticket 19). */
+         is the one animation the screen exists for. */
       constellation: journal.stats.constellationReadings(xKey, yKey, from, today)
     });
 
@@ -917,17 +695,15 @@ export async function measureLongJournal(
       result: reads,
       detail:
         `${STATS_DEFAULT_RANGE} days for ${CHARTED_METRICS.length} metrics, ${reads.insights.length} tag insights, ` +
-        `${reads.intervalMood.length + reads.customInterval.length} interval buckets over the whole journal, ` +
         `${reads.constellation.length} constellation readings, ${reads.recap.entryCount} entries in range`
     };
   });
 
   await mount('mount-more-hub', 'the More hub, every row it draws a live line for', async () => {
-    /* `hub-last-writes` above times the two reads that answer the rows;
-       this counts what the whole screen crosses for, which is those two
-       plus the regimen episode list ADR-0043's cycle gate reads. Both are
-       worth having: one says which read is slow, this says what the screen
-       costs. */
+    /* `hub-last-writes` above times the two reads that answer the rows; this counts what
+       the whole screen crosses for, which is those two plus the regimen episode list cycle
+       gate reads. Both are worth having: one says which read is slow, this says what the
+       screen costs. */
     const reads = await together({
       episodes: journal.regimen.getEpisodes(),
       lastWrites: journal.lastWrite.getLastWrites(today),
@@ -943,27 +719,12 @@ export async function measureLongJournal(
   });
 
   await mount('mount-coming-back', 'the return surface, the gap and everything waiting in it', async () => {
-    /* Two calls, and the screen makes them in this order for a reason of
-       its own: the gap is decided once and held, because backfilling a dose
-       writes a row inside the gap and a screen that re-derived it would
-       decide mid-visit that this was not a return after all.
-
-       The fixture journals nearly every day, so it has no real gap and
-       `readReturnGap` answers null - which is the cheap path almost every
-       boot takes and is worth counting on its own. What is waiting is then
-       asked about a gap chosen here rather than found, so this one figure
-       is a screen's cost on a fixture that cannot produce the screen: a
-       season away, which is the absence it was built for.
-
-       This budget cannot see phase 8 audit ticket 14's fix (a wasted
-       second run of `readWhatIsWaiting` when the live query watching it
-       discovered its tables late): calling these functions directly, as
-       this harness does everywhere, never goes through `liveQuery` at all,
-       so the doubled round trip that bug cost in the browser was never
-       reflected in this number to begin with, and there is nothing here
-       for that ticket to halve. Its fix is proved instead in
-       tests/browser-tier/live-reads-probe.svelte.ts, the layer that
-       actually runs the reactive `query()` machinery. */
+    /* Measure the two direct reads. The screen captures its return gap
+       once because backfilling a dose could close it mid-visit.
+       readReturnGap returns null on the dense fixture, and
+       readWhatIsWaiting uses a synthetic gap one season long.
+       Browser-tier live-reads-probe.svelte.ts covers reactive query
+       round trips that this budget bypasses. */
     const gap = await readReturnGap(journal, today);
     const since = today - RETURN_GAP_DAYS;
     const waiting = await readWhatIsWaiting(journal, today, since);
@@ -1062,39 +823,17 @@ export async function measureLongJournal(
     };
   });
 
-  /* --- archive-restore, and where its time goes (ticket 17) ---------------
+  /* Attribute archive restore time without adding timing hooks to restore.ts.
+     replace drains and writes the photo stream, then installs all rows in one
+     transaction. first-paint measures the app's separate re-read.
 
-     `replace` does two things in sequence and nothing else (restore.ts): it
-     drains the photo stream, writing every file, and then it installs every
-     row in one transaction. Nothing runs after the commit, so those two
-     account for the whole number. There is no post-restore settle inside
-     `replace` to attribute; what the app does after a restore is a re-read,
-     which `first-paint` already measures.
+     -read accumulates time spent fetching photo bytes. -files measures the
+     streaming window, including overlapping writes with concurrency eight.
+     -db is the remaining time, mostly the transaction.
 
-     The stream is instrumented from here rather than from restore.ts, because
-     this side owns the async iterable it hands over and production code
-     should not grow a timing hook to be benchmarked. Three numbers come out,
-     and the first is nested inside the second rather than beside it:
-
-       -read   time inside the snapshot's `readFiles`, accumulated: the photo
-               bytes coming back out of the store.
-       -files  the whole streaming window - those reads and the writes they
-               feed, interleaved eight at a time (restore.ts's
-               FILE_WRITE_CONCURRENCY), so read and write overlap and only
-               the window itself is a wall-clock figure.
-       -db     what is left, which is the transaction.
-
-     Two things neither number can see, both of which err the same safe way.
-     `-db` carries whatever writes were still in flight when the stream ended,
-     because restore.ts awaits them before opening the transaction and this
-     side cannot see that await. And `-read` is wall clock around the read
-     while up to eight writes contend with it, on the same event loop and, on
-     Android, the same bridge - so it is the cost of reading under load rather
-     than the cost of reading. Both inflate the cheap half at the expensive
-     half's expense: `-db` looks worse than it is, `-read` looks worse than it
-     is, and the write cost the whole floor argument rests on is therefore
-     understated rather than flattered. At eight of several hundred files each
-     is around a percent. */
+     -db includes writes still in flight after the stream ends. -read includes
+     contention from concurrent writes on the event loop or Android bridge.
+     Both effects understate the cost attributed to writes. */
   let restoreStartedAt = 0;
   let streamEndedAt = 0;
   let fileReadMs = 0;

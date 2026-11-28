@@ -1,22 +1,9 @@
-/* One restore, wherever it is offered (ticket 36).
+/* Share the restore sequence between Settings and onboarding: pick, guard, open and apply.
+   Screens own the rendering. Error kinds map to labels in
+   `vocabulary/archiveErrorLabels.ts`.
 
-   There are two doors onto it now - Settings' import section, and the
-   welcome step for somebody on a new phone who already has an archive - and
-   before this file there was one implementation with a second one about to
-   be written beside it. What was going to be copied is not the interesting
-   part of the screen: it is the order the picking, the guarding, the opening
-   and the applying happen in, and which of them is the one that writes. So
-   that order lives here and the two screens keep only their own drawing.
-
-   What does *not* live here is the wording. Nothing the Node tier touches
-   may import paraglide (ADR-0016), and the guard below is worth a Node test;
-   the sentence for every outcome stays in vocabulary/archiveErrorLabels.ts
-   with the archive's own five, keyed by the same kind this returns.
-
-   The journal and the preference store arrive by dynamic import rather than
-   at the top, for the same reason: both are rune modules, and a Node test of
-   the guard must not drag them in. journal.ts already reaches for restore.ts
-   this way, so the shape is the repo's own. */
+   Load the journal and preference store dynamically. The Node tests can exercise the guard
+   without loading Svelte rune modules. */
 
 import { openArchive } from '../archive/pack';
 import { archiveFailureKind, type ArchiveFailureKind } from '../archive/failure';
@@ -58,15 +45,23 @@ export async function pickForRestore(): Promise<
   }
 }
 
-/** The form's own refusals, before anything is opened. Pure, and the one
-    part of this file a Node test can reach. */
+/** The form's own refusals, before anything is opened. Pure, and the one part of this file
+    a Node test can reach. An empty password is not one of them: an export may be made
+    without a password, so the empty field is tried, and restoreFailureKind says what it
+    means when it does not open the file. */
 export function restoreGuard(
   picked: PickedArchive | null,
   password: string
 ): RestoreGuardKind | null {
   if (!picked) return 'pick-first';
-  if (!password) return 'password-needed';
   return null;
+}
+
+/** An empty field that does not open the file was a password left out, not
+    a wrong one. */
+export function restoreFailureKind(error: unknown, password: string): RestoreFailureKind {
+  const kind = archiveFailureKind(error);
+  return kind === 'wrong-password' && !password ? 'password-needed' : kind;
 }
 
 /**
@@ -74,7 +69,7 @@ export function restoreGuard(
  *
  * `verifyArchive` never takes a driver or a file store, so there is nothing
  * here for it to write to - which is what makes this the step a first run can
- * take before it has a journal to write into at all (ticket 36). A refused
+ * take before it has a journal to write into at all. A refused
  * archive is refused with the device untouched.
  */
 export async function runVerify(
@@ -89,7 +84,7 @@ export async function runVerify(
     return { ok: true };
   } catch (error) {
     console.error('the verify drill failed', error);
-    return { ok: false, kind: archiveFailureKind(error) };
+    return { ok: false, kind: restoreFailureKind(error, password) };
   }
 }
 
@@ -120,18 +115,19 @@ export async function runRestore(
     const { payload, files } = await openArchive(picked!.bytes(), password);
     // The manifest is what the stream is about to deliver, so the bar has a
     // denominator for its first half (restore.ts).
-    const contents = { journal: payload.journal, files, fileCount: payload.files.length };
+    const contents = { journal: payload.journal, preferences: payload.preferences, files, fileCount: payload.files.length };
 
     if (mode === 'replace') {
-      await journal.archive.replace(contents, onProgress);
-      const { applyPortablePreferences } = await import('../prefs/store.svelte');
-      applyPortablePreferences(payload.preferences);
+      const { preparePreferencePublication, activateLanguagePreference } = await import('../prefs/store.svelte');
+      const preferences = preparePreferencePublication();
+      await journal.archive.replace({ ...contents, onPreferencesPrepared: preferences.capture }, onProgress);
+      if (await preferences.publish()) activateLanguagePreference();
     } else {
       await journal.archive.merge(contents, onProgress);
     }
     return { ok: true };
   } catch (error) {
     console.error('the restore failed', error);
-    return { ok: false, kind: archiveFailureKind(error) };
+    return { ok: false, kind: restoreFailureKind(error, password) };
   }
 }

@@ -9,7 +9,7 @@
 export const frame = $state({
   mode: 'responsive' as 'responsive' | 'phone',
 
-  /* Simulated window insets (phase 5 ticket 18). A desktop browser reports
+  /* Simulated window insets. A desktop browser reports
      every safe-area inset as 0, which makes the whole cutout question
      invisible in exactly the place a review happens - so the shell reads
      its insets from --inset-* tokens rather than from env() at each use

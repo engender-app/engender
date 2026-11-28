@@ -1,5 +1,4 @@
-/* HTML note bodies, as an imported journal actually holds them (phase 7
-   ticket 09). The dangerous case is the ordinary one: most notes carry no
+/* HTML note bodies, as an imported journal actually holds them. The dangerous case is the ordinary one: most notes carry no
    markup at all, so a reader that mishandles the few that do looks
    correct on almost the whole journal. */
 
@@ -54,4 +53,41 @@ test('runs of blank lines and surrounding whitespace are trimmed', () => {
 test('a script or style body is dropped rather than read as text', () => {
   assert.equal(htmlToText('before<script>alert(1)</script>after'), 'beforeafter');
   assert.equal(htmlToText('before<style>p{color:red}</style>after'), 'beforeafter');
+});
+
+/* ---- time budget ---- */
+
+/** Best of three: one slow run on a busy machine must not read as growth. */
+function bestMs(input: string): number {
+  let best = Infinity;
+  for (let run = 0; run < 3; run++) {
+    const start = performance.now();
+    htmlToText(input);
+    best = Math.min(best, performance.now() - start);
+  }
+  return best;
+}
+
+/** Linear work is 4x from 20 KB to 80 KB, quadratic is 16x. */
+function growthOverQuadrupling(make: (n: number) => string): number {
+  return bestMs(make(80_000)) / Math.max(bestMs(make(20_000)), 0.05);
+}
+
+for (const [name, make] of [
+  ['unmatched <script> openers', (n: number) => '<script>'.repeat(n / 8)],
+  ['unmatched <style> openers', (n: number) => '<style >'.repeat(n / 8)],
+  ['openers with no closing >', (n: number) => '<script '.repeat(n / 8)],
+  ['bare <', (n: number) => '<'.repeat(n)],
+  ['<li with no >', (n: number) => '<li'.repeat(n / 3)],
+  ['blanks with no line break', (n: number) => ' '.repeat(n) + 'x']
+] as const) {
+  test(`${name} convert in near-linear time`, () => {
+    assert.ok(growthOverQuadrupling(make) < 9, `${name} grew by more than 9x over a 4x larger note`);
+  });
+}
+
+test('matched code bodies are still dropped, in any case, and unmatched openers keep their words', () => {
+  assert.equal(htmlToText('a<script>x()</script>b<STYLE type="x">p{}</style >c'), 'abc');
+  assert.equal(htmlToText('keep <script>this words'), 'keep this words');
+  assert.equal(htmlToText('<script>one<script>two</script>three'), 'three');
 });

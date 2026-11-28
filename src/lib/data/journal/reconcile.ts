@@ -1,27 +1,25 @@
 /* Reconciling the built-in vocabulary into the journal, by key (ADR-0002).
 
-   One idempotent operation, not a seed-if-empty branch: it adds what is
-   missing and touches nothing else, so it is safe on every boot and runs
-   again before an import applies - a Replace import must not be able to
-   leave the journal short of a built-in it needs (ticket 14 reuses this).
+   One idempotent operation, not a seed-if-empty branch: it adds what is missing and touches
+   nothing else, so it is safe on every boot and runs again before an import applies - a
+   Replace import must not be able to leave the journal short of a built-in it needs.
 
-   Keys only, no display text: a built-in's wording lives in the message
-   catalogue and is resolved at display time (F25), so name/label columns
-   are stored as '' for built-ins and never read for them. */
+   Keys only, no display text: a built-in's wording lives in the message catalogue and is
+   resolved at display time (F25), so name/label columns are stored as '' for built-ins and
+   never read for them. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { TableName } from '../live/writes';
 import {
-  BUILT_IN_AFFIRMATION_KEYS,
   BUILT_IN_BODY_REGIONS,
   BUILT_IN_DIMENSIONS,
   BUILT_IN_EFFECT_CATEGORIES,
-  BUILT_IN_MEASUREMENT_TYPES,
   BUILT_IN_PERSONAL_EFFECT_TYPES,
+  BUILT_IN_PROGRESS_POSES,
   BUILT_IN_TAG_GROUPS,
-  ENTRY_TEMPLATES
+  SEEDED_HIDDEN_BODY_REGIONS,
+  SEEDED_HIDDEN_TAGS
 } from '../vocabulary/builtins';
-import { builtInTemplateHidden } from '../vocabulary/entryTemplates';
 import { RECONCILE_TABLES } from '../live/writes';
 export { RECONCILE_TABLES };
 
@@ -32,10 +30,9 @@ async function presentKeys(driver: SqliteDriver, table: string): Promise<Set<str
   return new Set(rows.map((r) => r.key));
 }
 
-/** With a `stamp`, also records in the journal header which catalogue it
-    now holds (builtInsStamp.ts, ticket 208), in the same transaction, so a
-    reconcile that fails part-way leaves the old stamp and the next boot
-    tries again. */
+/** With a `stamp`, also records in the journal header which catalogue it now holds
+    (builtInsStamp.ts), in the same transaction, so a reconcile that fails part-way leaves
+    the old stamp and the next boot tries again. */
 export async function reconcileBuiltIns(driver: SqliteDriver, stamp?: number): Promise<void> {
   await driver.transaction(async (driver) => {
     await reconcileBuiltInsWithin(driver);
@@ -50,10 +47,16 @@ export async function reconcileBuiltIns(driver: SqliteDriver, stamp?: number): P
 /** The same work without a transaction of its own, for the one caller that
     is already inside one: an import seeds and then swaps the journal as a
     single transaction, so that a failure leaves the database exactly as it
-    was rather than as the next boot would have made it (ticket 14). SQLite
+    was rather than as the next boot would have made it. SQLite
     has no nested transactions, which is why this is a second entry point and
     not a second implementation. */
 export async function reconcileBuiltInsWithin(driver: SqliteDriver): Promise<void> {
+  /* A built-in row nobody has edited is stamped 0 rather than with the time
+     it was seeded: an archive Merge reads
+     `updated_at` as the time of the person's last edit, and a device
+     installed later must not undo a built-in another device hid. Retiring
+     a built-in below is an edit, and carries the clock. */
+  const seeded = 0;
   const ts = now();
 
   const dimensionKeys = await presentKeys(driver, 'gender_dimension');
@@ -62,7 +65,7 @@ export async function reconcileBuiltInsWithin(driver: SqliteDriver): Promise<voi
     await driver.run(
       `INSERT INTO gender_dimension (key, name, low_label, high_label, min_value, max_value, is_built_in, updated_at)
        VALUES (?, '', '', '', ?, ?, 1, ?)`,
-      [d.key, d.min, d.max, ts]
+      [d.key, d.min, d.max, seeded]
     );
   }
 
@@ -74,23 +77,10 @@ export async function reconcileBuiltInsWithin(driver: SqliteDriver): Promise<voi
     [ts]
   );
 
-  /* No preset is seeded. The eight stopped being a picker in ticket 35 and
-     the app has read none since; BUILT_IN_PRESETS survives only to say what
-     a preset key meant when an older archive was written, which
-     archive/payload.ts and schema v42 read from the constant rather than
-     from these rows. Writing eight presets and twenty five link rows into a
-     journal created today put a table in it that nothing would ever read and
-     that every one of its exports would then carry.
-
-     Rows already seeded stay. This stops adding them and deletes nothing, so
-     a journal that has them keeps exporting them and a restore still applies
-     whatever an archive carries (archiveApply.ts).
-
-     What went with it, named because it was deliberate once: an archive that
-     omitted a built-in preset used to come back with that preset's scales
-     intact, because reconcile had already seeded them underneath. Restoring
-     such an archive now leaves the preset absent, which no surface in the
-     app can tell apart from present. */
+  /* Seed no retired presets. `BUILT_IN_PRESETS` still interprets older
+     Archive keys and supports schema 42. Leave existing rows in place
+     for export and apply whatever rows the Archive carries. Restoring
+     an Archive without these presets leaves them absent. */
 
   const groupKeys = await presentKeys(driver, 'tag_group');
   const tagKeys = await presentKeys(driver, 'tag');
@@ -99,38 +89,33 @@ export async function reconcileBuiltInsWithin(driver: SqliteDriver): Promise<voi
       await driver.run(`INSERT INTO tag_group (key, name, order_index, updated_at) VALUES (?, '', ?, ?)`, [
         g.key,
         orderIndex,
-        ts
+        seeded
       ]);
     }
     for (const [tagIndex, tagKey] of g.tags.entries()) {
       if (tagKeys.has(tagKey)) continue;
       await driver.run(
-        `INSERT INTO tag (key, group_id, label, order_index, updated_at)
-         SELECT ?, id, '', ?, ? FROM tag_group WHERE key = ?`,
-        [tagKey, tagIndex, ts, g.key]
+        `INSERT INTO tag (key, group_id, label, hidden, order_index, updated_at)
+         SELECT ?, id, '', ?, ?, ? FROM tag_group WHERE key = ?`,
+        [tagKey, SEEDED_HIDDEN_TAGS.has(tagKey) ? 1 : 0, tagIndex, seeded, g.key]
       );
     }
-  }
-
-  const affirmationKeys = await presentKeys(driver, 'affirmation');
-  for (const key of BUILT_IN_AFFIRMATION_KEYS) {
-    if (affirmationKeys.has(key)) continue;
-    await driver.run(`INSERT INTO affirmation (key, text, updated_at) VALUES (?, '', ?)`, [key, ts]);
   }
 
   const bodyRegionKeys = await presentKeys(driver, 'body_region');
   for (const key of BUILT_IN_BODY_REGIONS) {
     if (bodyRegionKeys.has(key)) continue;
-    await driver.run(`INSERT INTO body_region (key, name, updated_at) VALUES (?, '', ?)`, [key, ts]);
+    await driver.run(`INSERT INTO body_region (key, name, hidden, updated_at) VALUES (?, '', ?, ?)`, [
+      key,
+      SEEDED_HIDDEN_BODY_REGIONS.has(key) ? 1 : 0,
+      seeded
+    ]);
   }
 
-  const measurementTypeKeys = await presentKeys(driver, 'measurement_type');
-  for (const t of BUILT_IN_MEASUREMENT_TYPES) {
-    if (measurementTypeKeys.has(t.key)) continue;
-    await driver.run(`INSERT INTO measurement_type (key, name, is_built_in, updated_at) VALUES (?, '', 1, ?)`, [
-      t.key,
-      ts
-    ]);
+  const progressPoseKeys = await presentKeys(driver, 'progress_pose');
+  for (const key of BUILT_IN_PROGRESS_POSES) {
+    if (progressPoseKeys.has(key)) continue;
+    await driver.run(`INSERT INTO progress_pose (key, name, hidden, updated_at) VALUES (?, '', 0, ?)`, [key, seeded]);
   }
 
   const effectCategoryKeys = await presentKeys(driver, 'effect_category');
@@ -139,7 +124,7 @@ export async function reconcileBuiltInsWithin(driver: SqliteDriver): Promise<voi
     await driver.run(`INSERT INTO effect_category (key, name, enabled, updated_at) VALUES (?, '', ?, ?)`, [
       c.key,
       c.defaultEnabled ? 1 : 0,
-      ts
+      seeded
     ]);
   }
 
@@ -148,33 +133,7 @@ export async function reconcileBuiltInsWithin(driver: SqliteDriver): Promise<voi
     if (personalEffectTypeKeys.has(e.key)) continue;
     await driver.run(
       `INSERT INTO personal_effect_type (key, name, is_built_in, category_key, direction, updated_at) VALUES (?, '', 1, ?, ?, ?)`,
-      [e.key, e.category, e.direction, ts]
+      [e.key, e.category, e.direction, seeded]
     );
-  }
-
-  /* Entry templates (phase 6 ticket 07): run after dimensions and tags
-     above, whose ids a template's own tag and dimension links resolve
-     against. A template's tags and dims are seeded rather than looked up
-     per row: `ENTRY_TEMPLATES` is small and this runs on every boot, so a
-     lookup-once-per-key pass would cost more round trips than it saves. */
-  const templateKeys = await presentKeys(driver, 'entry_template');
-  for (const t of ENTRY_TEMPLATES) {
-    if (templateKeys.has(t.key)) continue;
-    const result = await driver.run(
-      `INSERT INTO entry_template (key, name, note_scaffold, presentation_id, hidden, updated_at) VALUES (?, '', '', NULL, ?, ?)`,
-      [t.key, builtInTemplateHidden(t) ? 1 : 0, ts]
-    );
-    for (const tagKey of t.tags) {
-      await driver.run(
-        `INSERT INTO entry_template_tag (template_id, tag_id) SELECT ?, id FROM tag WHERE key = ?`,
-        [result.lastInsertRowid, tagKey]
-      );
-    }
-    for (const [dimKey, value] of Object.entries(t.dims)) {
-      await driver.run(
-        `INSERT INTO entry_template_dimension_value (template_id, dimension_id, value) SELECT ?, id, ? FROM gender_dimension WHERE key = ?`,
-        [result.lastInsertRowid, value, dimKey]
-      );
-    }
   }
 }

@@ -1,41 +1,40 @@
-/* The built-in catalogue's fingerprint (ux-carpet ticket 208) and the boot
+/* The built-in catalogue's fingerprint and the boot
    path that trusts it. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import ts from 'typescript';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import {
-  BUILT_IN_AFFIRMATION_KEYS,
   BUILT_IN_BODY_REGIONS,
   BUILT_IN_DIMENSIONS,
   BUILT_IN_EFFECT_CATEGORIES,
-  BUILT_IN_MEASUREMENT_TYPES,
   BUILT_IN_PERSONAL_EFFECT_TYPES,
   BUILT_IN_TAG_GROUPS,
-  ENTRY_TEMPLATES
+  SEEDED_HIDDEN_BODY_REGIONS,
+  SEEDED_HIDDEN_TAGS
 } from '../vocabulary/builtins.ts';
-import { builtInTemplateHidden } from '../vocabulary/entryTemplates.ts';
 import { BUILT_INS_FINGERPRINT, builtInsStamp } from './builtInsStamp.ts';
 import { openJournal } from './journal.ts';
 import { countingDriver } from './test-support.ts';
 
-/** Everything reconcile.ts reads from the catalogue, and its own source. */
+/** Hash catalogue data and reconciliation code without comments. */
 function catalogueFingerprint(): string {
   const catalogue = {
     dimensions: BUILT_IN_DIMENSIONS.map((d) => [d.key, d.min, d.max]),
     tagGroups: BUILT_IN_TAG_GROUPS.map((g) => [g.key, [...g.tags]]),
-    affirmations: [...BUILT_IN_AFFIRMATION_KEYS],
     bodyRegions: [...BUILT_IN_BODY_REGIONS],
-    measurementTypes: BUILT_IN_MEASUREMENT_TYPES.map((t) => t.key),
     effectCategories: BUILT_IN_EFFECT_CATEGORIES.map((c) => [c.key, c.defaultEnabled]),
     personalEffectTypes: BUILT_IN_PERSONAL_EFFECT_TYPES.map((e) => [e.key, e.category, e.direction]),
-    templates: ENTRY_TEMPLATES.map((t) => [t.key, [...t.tags], Object.entries(t.dims), builtInTemplateHidden(t)])
+    seededHidden: [[...SEEDED_HIDDEN_TAGS], [...SEEDED_HIDDEN_BODY_REGIONS]]
   };
   const source = readFileSync(new URL('./reconcile.ts', import.meta.url), 'utf8');
-  return createHash('sha256').update(JSON.stringify(catalogue)).update(source).digest('hex').slice(0, 16);
+  const parsed = ts.createSourceFile('reconcile.ts', source, ts.ScriptTarget.Latest);
+  const code = ts.createPrinter({ removeComments: true }).printFile(parsed);
+  return createHash('sha256').update(JSON.stringify(catalogue)).update(code).digest('hex').slice(0, 16);
 }
 
 const applicationId = (db: Awaited<ReturnType<typeof migratedDb>>): number =>

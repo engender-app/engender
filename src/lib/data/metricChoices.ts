@@ -1,6 +1,6 @@
 /* The scales a picker offers, in the order every chart offers them: mood
    first, then the person's active dimensions, each with the range its
-   values are read on (phase 11 ticket 07).
+   values are read on.
 
    One place rather than three. The Look back door derived this list once
    for every card it drew; splitting the cards into readings of their own
@@ -41,4 +41,15 @@ export function nameInSentence(name: string): string {
   const [first, second] = Array.from(name);
   if (!first || (second && second !== second.toLocaleLowerCase() && second === second.toLocaleUpperCase())) return name;
   return first.toLocaleLowerCase() + name.slice(first.length);
+}
+
+/** The label for a scale's average over the period. Mood gets a phrase of
+    its own, "Średni nastrój", because Polish agrees the adjective with the
+    noun and a user's own scale has no known gender; every other scale keeps
+    the name-first pattern. `locale` is for tests. */
+export function averageLabel(metric: MetricChoice, locale?: 'en' | 'pl'): string {
+  const options = locale ? { locale } : undefined;
+  return metric.key === 'mood'
+    ? m.lookback_facts_average_mood({}, options)
+    : m.lookback_facts_average({ name: metric.name, nameInSentence: nameInSentence(metric.name) }, options);
 }

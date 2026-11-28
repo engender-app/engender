@@ -16,7 +16,6 @@ kit-annotation-hit
 kit-annotation-mark
 kit-area
 kit-area-annotation-label
-kit-area-annotations
 kit-area-dot
 kit-area-fill
 kit-area-legend

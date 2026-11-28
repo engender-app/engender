@@ -9,44 +9,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * What a pick hands the WebView instead of bytes (phase 9 audit ticket 06):
- * a token per file, released when its bytes have been received.
+/** Holds one pick as file tokens. Each token supplies a fresh stream on demand.
  *
- * <p>The point of the indirection is that the redeeming can then happen over
- * whichever transport the WebView can carry - {@link PhotoPickChannel} as a
- * structured clone, or {@code PhotosPlugin.readPickedChunk} where it cannot -
- * without the pick itself having to know which, and without the bytes being
- * read at all until something asks for them. Both of those matter for a
- * document: the ceiling is 25 MB and a scan reaches it.
+ * <p>{@link PhotoPickChannel} buffers a file when asked and releases the token
+ * on acknowledgement. A timeout leaves the source available for the chunked
+ * base64 fallback. Chunked reads keep one stream and buffer across calls to
+ * keep allocation bounded for documents up to 25 MB. EOF, read failure, a
+ * different token or a new pick closes that reader.
  *
- * <p>A source is a supplier of a fresh stream rather than the bytes
- * themselves. Two things follow. Nothing sits in the Java heap for the
- * interval between the pick and the read - the read itself buffers the whole
- * file for {@link PhotoPickChannel} and a chunk of it for the base64
- * fallback, which is those transports' price and not this store's. And
- * the channel keeps its source until JavaScript acknowledges the bytes,
- * while {@link #readChunk} consumes it a buffer at a time. A timed-out
- * channel closes its reader and lets the chunked transport reopen the source.
- *
- * <p><b>The chunked read is the one entry that outlives a single call</b>
- * (phase 9 audit ticket 14). A Capacitor plugin response is one JSON string
- * by construction, so the only way for the base64 fallback to stay under a
- * bounded allocation is to answer a piece per call, which means the open
- * stream has to be here between them. One read is in flight at a time -
- * picker.ts reads a multi-pick's files one after another - so this is a
- * single slot rather than a map, and anything that says the previous read is
- * over closes it: reaching the end of the file, a failure, a chunk asked for
- * a different token, or a new pick.
- *
- * <p><b>Only the most recent pick is held.</b> A pick is one user gesture
- * at a time - Capacitor delivers one activity result at a time, and
- * picker.ts reads every token of a multi-pick before its {@code pick()}
- * resolves - so nothing older can still be wanted. Keeping only the last
- * batch is what makes this bounded without a cap or an eviction policy: an
- * abandoned pick leaves nothing behind, and a token from one fails loudly
- * rather than answering with bytes from a file the person has since
- * replaced.
+ * <p>A new pick replaces the batch and expires old tokens. If the app locks
+ * during a read, it can reopen a retained token once while its batch is current.
  */
 public final class PickedFiles {
 
@@ -58,6 +30,13 @@ public final class PickedFiles {
     /** Insertion-ordered only so a multi-pick's tokens read in the order the
         person picked them; the map is small and always one pick's worth. */
     private static final Map<String, Source> HELD = new LinkedHashMap<>();
+
+    /** What was handed over for reading, kept until the next pick or a reset
+        so a read that lost a race with a lock can be taken back (reopen). It
+        is one pick's worth, like HELD, and a file here is only a way to open
+        it again, not a copy: camera bytes are the one exception, held in
+        memory until the next pick. */
+    private static final Map<String, Source> RETAINED = new LinkedHashMap<>();
 
     /** The one channel or chunked read in flight, and its token. Both
         null between reads. */
@@ -72,6 +51,7 @@ public final class PickedFiles {
     public static synchronized List<String> hold(List<Source> sources) {
         endRead();
         HELD.clear();
+        RETAINED.clear();
         List<String> tokens = new ArrayList<>(sources.size());
         for (Source source : sources) {
             String token = UUID.randomUUID().toString();
@@ -89,12 +69,28 @@ public final class PickedFiles {
 
         Removed before the read rather than after it, so a read that fails
         (an unmounted card, a file deleted from under the picker) leaves no
-        token to try again with. That is deliberate: the recovery is to pick
+        token to try again with (only reopen, for a lock that landed
+        mid-read, can bring one back, and only until the next pick). That is deliberate: the recovery is to pick
         again, which is also what the web half does when a File's
         arrayBuffer() rejects, and holding a token open for a retry nobody
         makes is the leak this store exists to avoid. */
     public static synchronized Source take(String token) {
-        return token == null ? null : HELD.remove(token);
+        return token == null ? null : retain(token, HELD.remove(token));
+    }
+
+    private static Source retain(String token, Source source) {
+        if (source != null) RETAINED.put(token, source);
+        return source;
+    }
+
+    /** Makes a token that was read redeemable again, once: the page read a
+        pick while the app was locking and keeps only the token instead of the
+        bytes (stores/pendingPick.ts). False for a token no longer retained. */
+    public static synchronized boolean reopen(String token) {
+        Source source = token == null ? null : RETAINED.remove(token);
+        if (source == null) return false;
+        HELD.put(token, source);
+        return true;
     }
 
     /** Keeps the source redeemable until JavaScript acknowledges the bytes.
@@ -128,38 +124,31 @@ public final class PickedFiles {
         if (channelReading && token.equals(readingToken)) endRead();
     }
 
+    /** Drops every held pick: the device reset, so a file kept through a lock
+        (pendingPick.ts) cannot outlive the journal it was picked for. */
+    public static synchronized void clear() {
+        endRead();
+        HELD.clear();
+        RETAINED.clear();
+    }
+
     static synchronized void release(String token) {
-        HELD.remove(token);
+        retain(token, HELD.remove(token));
         cancelChannelRead(token);
     }
 
-    /** The next {@code buffer.length} bytes of the file {@code token} names,
-        filling {@code buffer} from the start and answering how many bytes
-        went into it. The file is opened on the first call for a token and
-        the same stream continues on every call after it.
-
-        <p>Fewer bytes than the buffer holds means the file is finished, and
-        by then this has already closed it and dropped the token - so a file
-        whose length divides evenly by the buffer ends on a 0, one extra
-        call, rather than the caller having to guess. The fill loop is what
-        makes that reliable: a stream may hand back less than it was asked
-        for without being at its end, and reading that as the end of the file
-        would truncate a picked scan with nothing reporting it.
-
-        <p>-1 for a token that was never held, was taken whole by the other
-        transport, or whose read has already finished - the same "pick again"
-        recovery {@link #take} documents, including after a failure, which
-        propagates with the read already ended.
-
-        <p>A chunk's read from the content provider happens under this
-        class's lock, where before only the map access did. That is a buffer
-        at a time rather than a whole file, and it is what stops a pick
-        arriving mid-read from racing the stream it is about to close. */
+    /** Fill {@code buffer} from the token's stream and return bytes read.
+        Open on the first call and reuse the stream until EOF. Fill
+        across short reads so only EOF returns less than buffer length.
+        An exact multiple ends with an extra call returning 0.
+        Close and drop the token on EOF or failure. Return -1 for absent
+        tokens, including those taken by {@link #take}, and pick again.
+        Hold the lock for each chunk so a new pick cannot close it mid-read. */
     public static synchronized int readChunk(String token, byte[] buffer) throws Exception {
         if (token == null) return -1;
         if (!token.equals(readingToken) || channelReading) {
             endRead();
-            Source source = HELD.remove(token);
+            Source source = retain(token, HELD.remove(token));
             if (source == null) return -1;
             InputStream opened = source.open();
             if (opened == null) throw new IllegalStateException("could not read selected file");

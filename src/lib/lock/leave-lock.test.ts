@@ -1,6 +1,5 @@
-/* Lock timing at the seam watchLock() hands its leave events to
-   (lock-timing ticket 01), with a fake clock and a fake document, since the
-   node tier has neither a page to hide nor a minute to wait. */
+/* Lock timing at the seam watchLock() hands its leave events to, with a fake clock and a
+   fake document, since the node tier has neither a page to hide nor a minute to wait. */
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -8,7 +7,7 @@ import { test, expect } from 'vitest';
 import type { LockAfter } from '../data/prefs/catalogue.ts';
 import { watchLeave } from './leave-lock.ts';
 
-function harness(lockAfter: LockAfter, { android = false } = {}) {
+function harness(lockAfter: LockAfter, { android = false, withLifecycle = true } = {}) {
   let clock = 1_000_000;
   let locks = 0;
   const page = Object.assign(new EventTarget(), { visibilityState: 'visible' as DocumentVisibilityState });
@@ -17,7 +16,7 @@ function harness(lockAfter: LockAfter, { android = false } = {}) {
   const native: { __lockOnLeaveFromNative?: (ownScreen?: boolean) => void; __lockOnReturnFromNative?: () => void } = {};
   const stop = watchLeave({
     page,
-    lifecycle,
+    lifecycle: withLifecycle ? lifecycle : undefined,
     native: android ? native : undefined,
     lockAfter: () => timing.value,
     lock: () => void locks++,
@@ -255,4 +254,95 @@ test('persisted history follows immediate and restart policies without changing 
   expect(native.locks()).toBe(0);
   immediate.stop(); immediate.history('pagehide');
   expect(immediate.locks()).toBe(1);
+});
+
+
+test('ordinary history events do not create or consume an absence', () => {
+  const immediate = harness('immediately');
+  immediate.history('pagehide', false);
+  expect(immediate.locks()).toBe(0);
+  const app = harness('one-minute');
+  app.hide();
+  app.wait(61_000);
+  app.history('pageshow', false);
+  expect(app.locks()).toBe(0);
+  app.history('pageshow');
+  expect(app.locks()).toBe(1);
+});
+
+test('a disposed history watcher cannot lock on a later return', () => {
+  const app = harness('one-minute');
+  app.hide();
+  app.stop();
+  app.wait(61_000);
+  app.history('pageshow');
+  expect(app.locks()).toBe(0);
+});
+
+test('restart remains unlocked when the clock moves backwards during an absence', () => {
+  const app = harness('restart');
+  app.hide();
+  app.setClock(0);
+  app.reveal();
+  expect(app.locks()).toBe(0);
+});
+
+test('visibility watching and disposal need no history target', () => {
+  const app = harness('one-minute', { withLifecycle: false });
+  app.hide();
+  app.wait(60_000);
+  app.reveal();
+  expect(app.locks()).toBe(1);
+  app.hide();
+  app.stop();
+  app.wait(60_000);
+  app.reveal();
+  expect(app.locks()).toBe(1);
+});
+
+test.each(['own-first', 'real-first'] as const)('mixed native leaves lose own-screen grace: %s', (order) => {
+  const app = harness('five-minutes', { android: true });
+  if (order === 'own-first') { app.ownScreenLeave(); app.nativeLeave(); }
+  else { app.nativeLeave(); app.ownScreenLeave(); }
+  app.timing.value = 'immediately';
+  app.wait(10_000);
+  app.nativeReturn();
+  expect(app.locks()).toBe(1);
+});
+
+test('successive own-screen leaves keep grace and preserve the first leave time', () => {
+  const app = harness('immediately', { android: true });
+  app.ownScreenLeave();
+  app.wait(30_000);
+  app.ownScreenLeave();
+  app.nativeReturn();
+  expect(app.locks()).toBe(0);
+  app.ownScreenLeave();
+  app.wait(59_000);
+  app.ownScreenLeave();
+  app.wait(1000);
+  app.nativeReturn();
+  expect(app.locks()).toBe(1);
+});
+
+/* Android covers its window on the way out when a leave locks at once, and the page takes
+   the cover off after every return the activity reports, once the lock for that return has
+   been decided. */
+test('tells the page about every native return, after the lock has been decided', () => {
+  let clock = 1_000_000;
+  const events: string[] = [];
+  const native: { __lockOnLeaveFromNative?: (ownScreen?: boolean) => void; __lockOnReturnFromNative?: () => void } = {};
+  watchLeave({
+    page: Object.assign(new EventTarget(), { visibilityState: 'visible' as DocumentVisibilityState }),
+    native,
+    lockAfter: () => 'one-minute',
+    lock: () => void events.push('lock'),
+    returned: () => void events.push('returned'),
+    now: () => clock
+  });
+  native.__lockOnLeaveFromNative?.();
+  clock += 61_000;
+  native.__lockOnReturnFromNative?.();
+  native.__lockOnReturnFromNative?.();
+  expect(events).toEqual(['lock', 'returned', 'returned']);
 });

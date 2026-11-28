@@ -1,0 +1,73 @@
+/* Track when reference content needs review (ADR-0102). Helpline and
+   legal content come due in six months. Literature figures come due
+   in 24 months. The release check warns when a date is stale and lets
+   the release proceed.
+
+   To register content, export its review date alongside it and add
+   one row per date here, including per-item dates when needed. */
+
+import { literatureReviews } from './data/personalEffectWindow';
+import { INSTITUTIONS_REVIEWED_ON, ROADMAP_PACKS } from './data/roadmap';
+import { VOICE_METRICS_REVIEWED_ON } from './data/voice/metrics';
+import { WEAR_KINDS, WEAR_SAFETY_REVIEWED_ON } from './data/journal/wearSessions';
+import { wearSafetyFacts } from './data/vocabulary/wearLabels';
+import { RESOURCES_REVIEWED_ON } from './resources/directory';
+
+export type ReviewedKind = 'helpline' | 'legal' | 'literature';
+
+export const REVIEW_LIMIT_MONTHS: Record<ReviewedKind, number> = { helpline: 6, legal: 6, literature: 24 };
+
+export interface ReviewedContent {
+  /** Where it ships, named the way a person finds it in the app. */
+  area: string;
+  /** What inside the area this date covers. */
+  item: string;
+  kind: ReviewedKind;
+  /** The ISO day a person last read it against its source. */
+  reviewedOn: string;
+}
+
+export const REVIEWED_CONTENT: readonly ReviewedContent[] = [
+  { area: 'Resources', item: 'every number, address and opening time', kind: 'helpline', reviewedOn: RESOURCES_REVIEWED_ON },
+  /* The court steps per pack, and the institutions to update after the
+     ruling on a day of their own: they were
+     checked on a different day, so each falls due by its own age. */
+  ...ROADMAP_PACKS.map((pack) => ({ area: 'Roadmap', item: `${pack.key} pack`, kind: 'legal' as const, reviewedOn: pack.reviewedOn })),
+  { area: 'Roadmap', item: 'institutions to update after the ruling', kind: 'legal', reviewedOn: INSTITUTIONS_REVIEWED_ON },
+  { area: 'Voice', item: 'figures on the metric reference screen', kind: 'literature', reviewedOn: VOICE_METRICS_REVIEWED_ON },
+  { area: 'Wear', item: 'binder cue hours', kind: 'literature', reviewedOn: WEAR_SAFETY_REVIEWED_ON },
+  ...WEAR_KINDS.flatMap((kind) => wearSafetyFacts(kind).facts.map((fact, index) => ({
+    area: 'Wear', item: `${kind} safety fact ${index + 1}`, kind: 'literature' as const, reviewedOn: fact.reviewedOn
+  }))),
+  ...literatureReviews().map((band) => ({ area: 'Onset bands', item: band.effect, kind: 'literature' as const, reviewedOn: band.reviewedOn }))
+];
+
+const ISO_DAY = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/** The last day `entry` is within its limit, as an ISO day, or null when
+    its reviewed-on value is not a real ISO day. A review on the 31st falls
+    due on the last day of a shorter month rather than spilling into the
+    next one. */
+export function reviewDueOn(entry: ReviewedContent): string | null {
+  const match = ISO_DAY.exec(entry.reviewedOn);
+  if (!match) return null;
+  const [year, month, day] = match.slice(1).map(Number);
+  const reviewed = new Date(Date.UTC(year, month - 1, day));
+  if (reviewed.getUTCMonth() !== month - 1 || reviewed.getUTCDate() !== day) return null;
+  const monthIndex = month - 1 + REVIEW_LIMIT_MONTHS[entry.kind];
+  const lastDay = new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
+  return new Date(Date.UTC(year, monthIndex, Math.min(day, lastDay))).toISOString().slice(0, 10);
+}
+
+/** Every entry past its limit on `today` (an ISO day), with the day it fell
+    due. An entry whose date cannot be read is always included, with a null
+    due day, since nobody can say when it was checked. */
+export function staleContent(
+  entries: readonly ReviewedContent[],
+  today: string
+): (ReviewedContent & { dueOn: string | null })[] {
+  return entries.flatMap((entry) => {
+    const dueOn = reviewDueOn(entry);
+    return dueOn === null || today > dueOn ? [{ ...entry, dueOn }] : [];
+  });
+}

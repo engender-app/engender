@@ -1,59 +1,16 @@
-/* Five checks over the app's copy, run on every pull request (phase 2 ticket
-   06, which wires up what ticket 19 then relies on; the third check added by
-   phase 5 ticket 05; the fourth by phase 8 deepening ticket 05; the fifth by
-   phase 12 copy-tooling ticket 01):
+/* Check catalogue order, translated keys, unlocalized copy, Polish reader forms and caller
+   coverage. Paraglide falls back to the base language for a missing Polish translation. A
+   missing generated accessor is already a type error.
 
-   1. The two catalogues hold the same keys. A key present in English and
-      missing in Polish is not an error anywhere else - paraglide falls back to
-      the base locale - so it ships as English text shown to a Polish reader.
-      A key the source actually calls and no catalogue has is already a type
-      error, since paraglide generates one function per key; `npm run check`
-      catches that one and this does not repeat it.
+   Message calls use named accessors in shipped source, including vocabulary labels.
+   DEAD_ALLOW lists callers the source scan cannot see. The Polish check catches
+   second-person gendered verb endings and a short list of known predicate adjectives.
 
-   2. No screen grows new user-facing text that never reaches the catalogues.
-      There are hundreds of such literals today, from the phase 0 and phase 1
-      screens, so the check is a ratchet against a recorded count per file
-      rather than a rule that could pass now: nothing may go up, and anything
-      that goes down is recorded. messages/untranslated-literals.txt is that
-      record, and it is the number tickets 19 and 23 work down.
-
-   3. No Polish string genders the reader (docs/ui-copy.md, "The reader has no
-      gender here"). Polish inflects second-person past tense for gender, so a
-      word ending in "-łaś" always addresses the reader as a woman - that
-      ending is specific enough to flag anywhere it appears. A predicate
-      adjective aimed at the reader genders just as surely ("jesteś dumna"),
-      but a general pattern for that catches adjectives that agree with an
-      ordinary feminine noun instead ("niepewna ... krzywa", "wersja ...
-      gotowa"), so this check only flags a short, named list of forms already
-      found addressing the reader rather than every feminine adjective ending.
-
-   4. No catalogue key sits with no shipped caller. The other direction - a key the
-      source calls and no catalogue has - is already a type error, since
-      paraglide generates one function per key; `npm run check` catches that
-      one. A key the catalogue has and nothing calls is invisible to every
-      other check here and to the typechecker both, and it happens in
-      clusters: ticket 16's kit contract orphaned twelve `*_row_aria` keys at
-      once when `ListRow`/`RecordSheet` started deriving a row's accessible
-      name from `title` instead. There is no dynamic `m[...]` or
-      `messages[...]` access in `src/`, so reading `m.<key>`/`messages.<key>`
-      as plain text out of shipped `.svelte`/`.ts`/`.js` files is a sound
-      scan - not an approximation of one - and needs no new parser: a
-      built-in's wording can be reached only through
-      `src/lib/data/vocabulary/vocabulary.ts` (ADR-0024) and still read as
-      `m.<key>` by name one layer down, in `labels.ts`, where the text scan
-      finds it same as anywhere else. DEAD_ALLOW exists for the rarer case a
-      plain-text scan genuinely cannot see - each entry carries its reason.
-
-   5. Both catalogues are in the order scripts/catalogue.mjs writes: `$schema`
-      first, keys sorted. Branches that each append a key at the end of an
-      unsorted file collide on merge; sorted keys scatter the insertions.
-
-   Run `node scripts/check-copy.mjs` to see where it stands, and
-   `node scripts/check-copy.mjs --update` after moving copy into the
-   catalogues, which rewrites the record. `--fix` rewrites a catalogue that
-   is out of serializer order (scripts/catalogue.mjs) in place. */
+   The literal count is kept per file in messages/untranslated-literals.txt. Run npm run
+   check:copy -- --update after localizing a literal, and npm run check:copy -- --fix to
+   restore catalogue order. */
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'svelte/compiler';
@@ -104,12 +61,12 @@ const DEAD_ALLOW = new Map();
  * The ratchet is a rule about screens, and a screen's literal is text a
  * reader can end up looking at. DemoBar is not one: it is the review-only
  * control strip, `__DEMO__` compiles it out of a production build, and
- * verify-build.mjs greps the emitted JavaScript and CSS to prove its copy
- * is not in there. Recorded rather than exempt until phase 9 audit ticket
- * 12, which is when the cost showed: the count had climbed 15 -> 16 on a
- * demo control added by another ticket, and a ratchet that turns "add a
- * jump button" into "re-record a copy baseline" is asking sessions to
- * update a number nobody reads instead of catching copy a reader could see.
+ * verify-build.mjs greps the emitted JavaScript and CSS to prove its copy is
+ * not in there. Recorded rather than exempt, which is when the cost showed:
+ * the count had climbed 15 -> 16 on a demo control added by another ticket,
+ * and a ratchet that turns "add a jump button" into "re-record a copy
+ * baseline" is asking sessions to update a number nobody reads instead of
+ * catching copy a reader could see.
  */
 const UNSCANNED = new Map([
   [
@@ -229,7 +186,7 @@ export function collectReferenceSites(files) {
  * @param {string} root @returns {string[]} */
 export function copySourceFiles(root = process.cwd()) {
   return execFileSync('git', ['ls-files', '-z', 'src'], { cwd: root, encoding: 'utf8' })
-    .split('\0').filter((file) => /\.(svelte|ts|js)$/.test(file)).map((file) => resolve(root, file));
+    .split('\0').filter((file) => /\.(svelte|ts|js)$/.test(file)).map((file) => resolve(root, file)).filter(existsSync);
 }
 
 /**
@@ -261,6 +218,34 @@ export function catalogueFindings(en, pl, referenced) {
     ...genderedReaderFindings(pl),
     ...deadKeyFindings({ ...en, ...pl }, referenced, DEAD_ALLOW)
   ];
+}
+
+/**
+ * Entries of messages/copy-coverage-50.json that point at nothing: a key the
+ * catalogue no longer has, or a source file that is gone or no longer names
+ * the key. The file only feeds the strings page, so a stale entry misleads
+ * a reader and nothing else, which is why it is easy to leave behind.
+ *
+ * @param {Record<string, { sources?: string[] }>} coverage
+ * @param {Record<string, unknown>} catalogue
+ * @param {(file: string) => string | null} readSource null when the file does not exist
+ * @returns {string[]}
+ */
+export function coverageProblems(coverage, catalogue, readSource) {
+  /** @type {string[]} */
+  const problems = [];
+  for (const [key, entry] of Object.entries(coverage)) {
+    if (!(key in catalogue)) {
+      problems.push(`copy-coverage-50.json lists ${key}, which messages/en.json no longer has`);
+      continue;
+    }
+    for (const file of entry.sources ?? []) {
+      const text = readSource(file);
+      if (text === null) problems.push(`copy-coverage-50.json: ${key} names ${file}, which does not exist`);
+      else if (!new RegExp(`\\b${key}\\b`).test(text)) problems.push(`copy-coverage-50.json: ${key} names ${file}, which does not use it`);
+    }
+  }
+  return problems;
 }
 
 /**
@@ -397,7 +382,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const problems = [
     ...catalogueOrderProblems(Object.fromEntries(CATALOGUES.map((file) => [file, readFileSync(file, 'utf8')]))),
     ...ratchetProblems(counts, readBaseline()),
-    ...catalogueFindings(enCatalogue, plCatalogue, referenced).map(({ message }) => message)
+    ...catalogueFindings(enCatalogue, plCatalogue, referenced).map(({ message }) => message),
+    ...coverageProblems(JSON.parse(readFileSync('messages/copy-coverage-50.json', 'utf8')), enCatalogue,
+      (file) => existsSync(file) ? readFileSync(file, 'utf8') : null)
   ];
 
   for (const problem of problems) console.log('FAIL', problem);
@@ -413,5 +400,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       `${UNSCANNED.size} file(s) not scanned)`
   );
   console.log('PASS no Polish string genders the reader');
+  console.log('PASS copy-coverage-50.json names only live keys and sources');
   console.log(`PASS no catalogue key sits with no caller (${referenced.size} referenced, ${DEAD_ALLOW.size} allow-listed)`);
 }

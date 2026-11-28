@@ -15,7 +15,6 @@ const facts = (over: Partial<Facts> = {}): Facts => ({
   procedures: [],
   nextDoseEpochDay: null,
   runOutEpochDay: null,
-  latestMeasurement: null,
   ...over
 });
 
@@ -40,26 +39,6 @@ const tryout = (
   endEpochDay: number | null = null
 ): Facts['tryouts'][number] => ({ label, startEpochDay, endEpochDay });
 
-const measurement = (): NonNullable<Facts['latestMeasurement']> => ({
-  type: 'waist',
-  epochDay: TODAY - 8,
-  value: 77,
-  unit: 'cm'
-});
-
-// --- nothing to say ------------------------------------------------------
-
-test('an empty journal puts no row forward', () => {
-  assert.deepEqual(rowForward(facts()), {});
-});
-
-/* The map is sparse on purpose: `rowLine` falls through to the reading a row
-   always had, so a key present with a null fact would be a row that reports
-   neither. */
-test('a row with nothing ahead is absent rather than null', () => {
-  const map = rowForward(facts({ milestones: [milestone('Started HRT', TODAY - 400)] }));
-  assert.equal('milestones' in map, false);
-});
 
 // --- milestones ----------------------------------------------------------
 
@@ -267,15 +246,9 @@ test('a run-out with no schedule to expect a dose stands on its own', () => {
   assert.deepEqual(map.care, { kind: 'next', epochDay: TODAY + 19, what: { area: 'runOut' } });
 });
 
-// --- measurements --------------------------------------------------------
 
 /* The one row with neither a span nor a date. It states the value rather
    than the age of it, since a value is more of a reading than a gap. */
-test('the measurements row states its last value and the day it was taken', () => {
-  const map = rowForward(facts({ latestMeasurement: measurement() }));
-  assert.deepEqual(map.measurements, { kind: 'value', epochDay: TODAY - 8, type: 'waist', value: 77, unit: 'cm' });
-});
-
 // --- the registry is the only enumeration --------------------------------
 
 test('every declared key has a rule, and no rule invents a key', () => {
@@ -289,7 +262,6 @@ test('every declared key has a rule, and no rule invents a key', () => {
       procedures: [procedure({ surgeryEpochDay: TODAY - 400 })],
       nextDoseEpochDay: TODAY + 2,
       runOutEpochDay: TODAY + 19,
-      latestMeasurement: measurement()
     })
   );
   assert.deepEqual(Object.keys(map).sort(), [...ROW_FORWARD_KEYS].sort());

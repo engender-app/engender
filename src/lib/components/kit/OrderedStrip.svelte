@@ -1,52 +1,16 @@
 <script lang="ts">
-  /* Parts of a whole where the order is the information (phase 8 UX ticket
-     04, ADR-0058). Mood's five steps are the case it was written for, and
-     anything on a scale takes this form rather than the ring.
+  /* This strip keeps a scale's steps in order. Segment widths
+     show shares and use mood's fixed colours. Zero-share steps
+     stay in the sequence. A single left-to-right wipe reveals the whole
+     bar without gaps.
 
-     One bar, the scale's own steps left to right, each as wide as its
-     share. What that buys over five separate columns is the comparison
-     the columns could not make: mostly-the-middle-two is a shape here,
-     one block of colour across the centre of the bar, where in a
-     distribution it is two tall bars that have to be measured against the
-     three short ones beside them. And what it buys over a ring is the
-     order itself - a donut of mood puts step 1 next to step 5 and there
-     is no arrangement of it that does not.
+     Percentages sit below the fills, on the card's own ink. Narrow shares
+     below MIN_LABEL_SHARE omit the printed percentage. The accessible
+     label always gives the name, share and count.
 
-     Mood's own ramp (ADR-0025), same as the vertical distribution and for
-     the same reason: the segment for a step is that step's colour, so the
-     strip is read against the scale the moods were chosen on. The ramp is
-     the one ordered scale in this app that owns colours; a future caller
-     whose scale does not is the moment to widen this, not before.
-
-     Every step is present even at zero, the way the distribution's
-     columns are: the sequence is what is being read, and a step dropping
-     out would slide the rest along under the wrong part of the scale.
-
-     The percentages sit under the bar rather than inside it. Inside, they
-     would be text on a mood fill, and the ramp's steps are literal hexes
-     chosen to be sat on rather than written on - ADR-0025 had to hand-pick
-     an ink for one heat step across two themes, and there are five steps
-     here across four presets. Under the bar they are on the card, in the
-     card's own text colour, and they still line up with what they label.
-     A segment too narrow to hold its own number gets none: the reading is
-     in its accessible label either way.
-
-     One wipe left to right rather than five segments arriving. The
-     direction is the scale's direction, so the entrance says the same
-     thing the drawing does - and five segments growing in place would
-     open gaps in a bar whose whole point is that it is continuous.
-
-     Hover/tap reveals the count a segment's share is computed from
-     (ticket 09), beside the percentage this already prints under narrow
-     shares too where MIN_LABEL_SHARE would print nothing. Mouse-only for
-     the enter/leave pair, the same gate Segmented.svelte's drag uses,
-     because a touch has no hover to leave - its own pointerup is what
-     toggles the tooltip instead, which is the "touch equivalent" ticket 09
-     asks to have decided. Kept a decorative `role="img"` rather than a
-     real button, same reasoning ChartAnnotations.svelte gives for its own
-     hover: the full reading (name, share, count) already sits in the one
-     aria-label whether or not anyone is pointing at it, so there is
-     nothing behind the tooltip a keyboard-only reader is missing. */
+     A mouse enters and leaves the tooltip. Touch toggles it on
+     pointerup, since a finger has no hover to leave. The strip stays
+     role=img because the label already exposes the full reading. */
   import { fly } from 'svelte/transition';
   import { EASE_OUT, motionDuration } from '$lib/motion/tokens';
   import { share } from '$lib/charts/share';
@@ -58,7 +22,14 @@
     count: number;
   }
 
-  let { steps }: { steps: StripStep[] } = $props();
+  /* `countShort` is the count under its percentage (a second line, so a
+     narrow card needs no more width), `countFull` the same count in words
+     for the accessible label. Props, since kit components take no copy. */
+  let {
+    steps,
+    countShort = String,
+    countFull = String
+  }: { steps: StripStep[]; countShort?: (count: number) => string; countFull?: (count: number) => string } = $props();
 
   /* Under this, a percentage does not fit in its own segment. Ten percent
      of a card-width track is around 30px, which is what "34%" needs at
@@ -71,7 +42,7 @@
      times with four chances to disagree.
 
      The denominator here is the sum of every step, not the tallest one:
-     this is a part-to-whole strip (ADR-0058), the same rule Donut's own
+     this is a part-to-whole strip, the same rule Donut's own
      whole is (charts/parts.ts's `slices`), and a different question from
      what BarRows and Distribution ask, where a row's length only means
      something next to the tallest row in the set. Left inline rather than
@@ -129,7 +100,7 @@
         class:is-hovered={hovered === step.step}
         data-strip-step={step.step}
         role="img"
-        aria-label={`${step.name} ${step.label} · ${step.count}`}
+        aria-label={`${step.name} ${step.label} · ${countFull(step.count)}`}
         style={`--bar-share: ${step.percent}; --dist-fill: var(--mood-${step.step})`}
         onpointerenter={(e) => enter(e, step.step)}
         onpointerleave={(e) => leave(e, step.step)}
@@ -161,7 +132,9 @@
   <p class="kit-ordered-shares" aria-hidden="true">
     {#each drawn as step (step.step)}
       <span class="kit-ordered-share" style={`--bar-share: ${step.percent}`}>
-        {step.percent >= MIN_LABEL_SHARE ? step.label : ''}
+        {#if step.percent >= MIN_LABEL_SHARE}
+          {step.label}<span class="kit-ordered-count" data-strip-days>{countShort(step.count)}</span>
+        {/if}
       </span>
     {/each}
   </p>
@@ -177,7 +150,7 @@
 <style>
   /* Its own block rather than kit.css, for the reason Donut.svelte's says:
      one consumer per class. The single-hue law still reaches it -
-     tests/kit-surfaces.test.ts reads the kit components' style blocks
+     tests/node/ui/kit-surfaces.test.ts reads the kit components' style blocks
      alongside the shared sheet. */
   .kit-ordered {
     /* The tooltip's own positioning context: it has to sit above the
@@ -185,17 +158,14 @@
        wrapper's own top edge is the track's, since the track is its
        first child with nothing above it. */
     position: relative;
-    /* ChartCard's own head-to-body gap (--space-3, 12px) collapses with
-       this margin rather than adding to it (both are top margins with
-       nothing - no border, no padding - between them), so this has to be
-       the tooltip's whole clearance on its own, not a top-up: without it
-       the tooltip overlapped the card's heading text (ticket 09 gallery
-       screenshots). 32px covers the tooltip's own height (26px) plus its
-       --space-1 gap above the track, with a couple of pixels left over. A
-       literal rather than a spacing step, because this is clearance for a
-       thing drawn over the track, not rhythm between two blocks - which is
-       what the spacing scale's steps above 20 are reserved for (phase 10,
-       DIRECTION.md rule 1). */
+    /* ChartCard's own head-to-body gap (--space-3, 12px) collapses with this margin rather
+       than adding to it (both are top margins with nothing - no border, no padding -
+       between them), so this has to be the tooltip's whole clearance on its own, not a
+       top-up: without it the tooltip overlapped the card's heading text. 32px covers the
+       tooltip's own height (26px) plus its --space-1 gap above the track, with a couple of
+       pixels left over. A literal rather than a spacing step, because this is clearance for
+       a thing drawn over the track, not rhythm between two blocks - which is what the
+       spacing scale's steps above 20 are reserved for. */
     margin-top: 32px;
     animation: kit-ordered-in var(--dur-slow) var(--ease-out) both;
   }
@@ -241,7 +211,7 @@
 
   /* The hovered segment, blended toward the app's own ink rather than
      brightened: mood's ramp is picked to be sat on across four presets
-     and two themes (ADR-0025), and a flat brightness multiplier reads
+     and two themes, and a flat brightness multiplier reads
      right on some of those and washes out on others. Blending in --text
      instead darkens it on a light theme and lightens it on a dark one,
      which is a highlight either way - the same idiom
@@ -290,6 +260,12 @@
     transition-property: width;
     transition-duration: var(--dur-slow);
     transition-timing-function: var(--ease-out);
+  }
+
+  /* The day count under its percentage: the same narrow cell, a second
+     line, so a 360px card needs no more width than the percentage did. */
+  .kit-ordered-count {
+    display: block;
   }
 
   /* Which way the scale runs. Further off the bar than the percentages

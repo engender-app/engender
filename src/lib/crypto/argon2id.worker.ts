@@ -1,4 +1,4 @@
-/* Argon2id off the main thread (ux-carpet ticket 209).
+/* Argon2id off the main thread.
 
    One derivation per worker: the caller posts the secret, the salt and the
    parameter set, gets the key back, and terminates the worker. hash-wasm's

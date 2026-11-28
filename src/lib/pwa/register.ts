@@ -1,53 +1,35 @@
-import { dev } from '$app/environment';
+import { dev, version } from '$app/environment';
 import { base } from '$app/paths';
 import { whenIdle } from '$lib/idle';
 import { isAndroid } from '$lib/platform';
 import { SHELL_CACHE_PREFIX } from './shell-assets';
+import { CLIENT_RELEASE } from './sw-messages';
 import { checkForNewerRelease as checkWatchedRelease, watchForUpdates } from './update';
 
 let scheduled = false;
 let registrationRequest: Promise<void> | null = null;
 
-/** Registers the worker once boot has reached `ready` or `needs-setup`, and
-    then only when the browser is idle (phase 14 pre-release ticket 13).
-
-    Registered from the layout's first effect, the worker began precaching
-    about 680 files at the moment of first paint, in the same seconds the
-    journal worker was downloading its own SQLite WASM and the first screen
-    was being built, and the two competed for one connection.
-
-    `ready` is a journal open and unlocked, `needs-setup` a first run with a
-    journal to create (boot-state.ts). The others do not count: `booting` has
-    not answered, `needs-unlock`, `needs-authentication` and
-    `needs-device-recovery` are gates a returning person is still standing at
-    (they register after unlocking, when the status becomes `ready`), and
-    `legacy-refused`, `schema-too-new` and `error` are
-    states where the offline shell is not what anyone is waiting for.
-
-    Once: the status changes again at every unlock, and each registration
-    would add another update watcher. */
+/** Register the service worker once, when boot is ready or needs-setup and the
+    browser is idle. Early precaching competes with SQLite WASM and first paint.
+    An unlock registers after it reaches ready. One registration keeps one watcher. */
 export function registerServiceWorkerAfterBoot(status: string): void {
   if (scheduled || (status !== 'ready' && status !== 'needs-setup')) return;
   scheduled = true;
   whenIdle(registerServiceWorker);
 }
 
-/** Installs the offline shell (phase 2 ticket 03), which is also what makes
-    the app installable: without a worker Chromium offers no install prompt.
-    Then watches for the next release (ticket 04).
+/** Installs the offline shell, which is also what makes the app installable: without a
+    worker Chromium offers no install prompt. Then watches for the next release.
 
-    Not in development, where the precached shell would be served ahead of
-    every edit and no change would reach the browser until the worker was
-    unregistered by hand.
+    Not in development, where the precached shell would be served ahead of every edit and no
+    change would reach the browser until the worker was unregistered by hand.
 
-    Not on Android either (phase 5 performance ticket 01). Neither half of what
-    this does has a job there: every asset the WebView loads is already a local
-    file inside the APK, so there is no offline shell to build, and a new
-    release arrives as an APK rather than as a worker script, so there is no
-    update to watch for. Registering anyway copied about 50 MB of the app's own
-    assets into WebView cache storage - a second copy of what was already on
-    the device. */
-export function registerServiceWorker(): void {
+    Not on Android either. Neither half of what this does has a job there: every asset the
+    WebView loads is already a local file inside the APK, so there is no offline shell to
+    build, and a new release arrives as an APK rather than as a worker script, so there is
+    no update to watch for. Registering anyway copied about 50 MB of the app's own assets
+    into WebView cache storage - a second copy of what was already on the device. */
+function registerServiceWorker(): void {
   void ensureServiceWorkerRegistration().catch(() => {
     /* Background registration failure leaves the journal usable online. */
   });
@@ -73,6 +55,12 @@ async function ensureServiceWorkerRegistration(): Promise<boolean> {
   registrationRequest ??= navigator.serviceWorker
     .register(`${base}/service-worker.js`, { updateViaCache: 'none' })
     .then((registration) => {
+      // Controller takeover does not change the document's compiled release.
+      const reportRelease = () => {
+        (navigator.serviceWorker.controller ?? registration.active)?.postMessage({ type: CLIENT_RELEASE, version });
+      };
+      reportRelease();
+      navigator.serviceWorker.addEventListener('controllerchange', reportRelease);
       watchForUpdates(registration, {
         onControllerChange: (listener) => {
           navigator.serviceWorker.addEventListener('controllerchange', listener);
@@ -90,7 +78,10 @@ async function ensureServiceWorkerRegistration(): Promise<boolean> {
          updateViaCache: 'none' makes it a conditional request for one small
          file, and finding nothing new costs a 304. */
       document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') void registration.update().catch(() => {});
+        if (document.visibilityState === 'visible') {
+          reportRelease();
+          void registration.update().catch(() => {});
+        }
       });
     })
     .catch((error) => {

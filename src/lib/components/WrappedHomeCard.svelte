@@ -1,32 +1,9 @@
 <script lang="ts">
-  /* Home's link into a wrapped (phase 4 features ticket 01).
-
-     One card, for the longest cadence still inside its freshness window -
-     the ranking lives in wrapped.ts, where it can be checked against a
-     calendar without a browser. Home shows the year through January, last
-     month for the first fortnight of a month, and last week the rest of the
-     time.
-
-     Rendered only when wrapped is on: Home gates on the preference before
-     mounting this, so the query below does not exist while the feature is
-     off. That is the difference the ticket asks for between turning a
-     feature off and hiding its card.
-
-     The entry floor is applied here rather than in the wrapped screen's
-     favour, because "there is not enough in last week to be worth reading"
-     is a reason to say nothing on Home, not a reason to offer a card that
-     apologises when you open it.
-
-     One of Home's two look-back tiles since phase 5 ticket 21, where it was
-     a full-width card with a gradient wash. The gradient is gone with every
-     other one, and the tile is what DIRECTION.md's slop audit left standing:
-     an offer that carries its own data and no icon disc - the count is the
-     reading, drawn at display size with the flag as a bar under it, and
-     `wrapped_stat_entries` is the label the wrapped screen already puts on
-     that same number. Its sibling is
-     OnThisDayHomeCard, and the two share nothing but the grid they sit in -
-     each keeps its own preference gate, its own query and its own floor,
-     which is what lets one be silenced without touching the other. */
+  /* Use wrapped.ts to select the longest cadence still fresh. Year runs
+     through January, last month through the first fortnight, then last week.
+     Apply the entry floor before rendering. Home checks the preference
+     before mounting so a disabled Wrapped issues no query. OnThisDayHomeCard
+     has its own gate, query and floor. */
   import { m } from '$lib/paraglide/messages';
   import { fmtMonthName } from '$lib/data/dates';
   import { currentDay } from '$lib/stores/today.svelte';

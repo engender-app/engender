@@ -1,23 +1,10 @@
-/* What the photo library is made of, and how it narrows (phase 11 ticket
-   14). Pure, so the node tier tests the rules and the screens draw them:
-   the read itself is journal/photoLibrary.ts.
-
-   The library is one list over six photo-carrying tables, and a person
-   looking at it wants two questions answered that a single grid cannot
-   answer on its own - where did this photograph come from, and show me
-   only those. A source answers the first and a chip the second, and they
-   are not the same vocabulary: "Body" is entry and milestone photographs
-   together, because the person who took them was photographing themselves
-   either way and which record it hangs off is the app's bookkeeping rather
-   than theirs. "Hair" is the same trade over hair progress and hair
-   removal.
-
-   Colour says none of this. ADR-0012's rule for a wipe holds for a grid
-   too: the tile carries its source as words, in the accessible name and in
-   a label, never as a stripe that would rank one kind of photograph over
-   another. */
+/* Group photos from six tables and filter by chips. Body includes
+   entry and milestone photos. Hair means removal, and hair-pose photos
+   belong to Progress. Show the source in the visible label and
+   accessible name (ADR-0012). journal/photoLibrary.ts does the reads. */
 
 import { localDateFromEpochDay } from '../epochDay';
+import type { Journal } from '../journal/journal';
 
 /** Which table a photograph came from. `entry` and `milestone` are the two
     owners of the `photo` table; the rest each have one of their own
@@ -25,11 +12,11 @@ import { localDateFromEpochDay } from '../epochDay';
 const PHOTO_SOURCES = [
   'entry',
   'milestone',
-  'hair',
   'hairRemoval',
   'tryout',
   'procedure',
-  'video'
+  'video',
+  'progress'
 ] as const;
 
 export type PhotoSource = (typeof PHOTO_SOURCES)[number];
@@ -44,47 +31,54 @@ export interface LibraryPhoto {
   source: PhotoSource;
   /** The owning record's own name, where it has one: a milestone's name, a
       tryout's label, a procedure's name. Null where the row hangs off
-      nothing that is named - a hair photograph, a hair-removal session, an
-      entry, a video note. */
+      nothing that is named - a progress photograph, a hair-removal session,
+      an entry, a video note. */
   ownerName: string | null;
-  /** The ID accepted by the owner's existing route. Hair photos own themselves. */
+  /** The ID accepted by the owner's existing route. Progress photos own themselves. */
   ownerId: string;
   starred: boolean;
 }
 
 /** The chips over the grid, in the order they are drawn. `everything` is
-    first because it is where the library opens. */
-const PHOTO_CHIPS = ['everything', 'body', 'hair', 'tryouts', 'surgery', 'video'] as const;
+    first because it is where the library opens; `starred` narrows by flag
+    across source chips. */
+/* `progress` sits next to `body`: both are the person photographing
+   themselves, and a progress shot is the one taken on purpose for it.
+   Its own chip rather than folded into
+   Body, because finding the posed shots among every other photograph is
+   what the chip is for. */
+const PHOTO_CHIPS = ['everything', 'body', 'progress', 'hair', 'tryouts', 'surgery', 'video', 'starred'] as const;
 
 export type PhotoChip = (typeof PHOTO_CHIPS)[number];
 
 /** Which chip a source answers to. Exhaustive by construction: a new source
     added to PHOTO_SOURCES without a line here fails to compile. */
-const CHIP_OF: Record<PhotoSource, Exclude<PhotoChip, 'everything'>> = {
+const CHIP_OF: Record<PhotoSource, Exclude<PhotoChip, 'everything' | 'starred'>> = {
   entry: 'body',
   milestone: 'body',
-  hair: 'hair',
   hairRemoval: 'hair',
   tryout: 'tryouts',
   procedure: 'surgery',
-  video: 'video'
+  video: 'video',
+  progress: 'progress'
 };
 
 export function chipOf(source: PhotoSource): PhotoChip {
   return CHIP_OF[source];
 }
 
-/** The chip row for a library, or none at all.
-
-    None when the whole library answers to one chip: "Everything" beside
-    "Hair" over a grid of nothing but hair photographs is a control with
-    one outcome, and a person tapping either gets the same grid. Two source
-    chips is where narrowing starts to mean something, and that is where
-    the row appears. */
+/** The chip row for a library, or none at all. A single source without
+    starred photos has nothing to narrow. Starred is available whenever
+    a photo carries the flag, including a library with one source. */
 export function chipsFor(photos: LibraryPhoto[]): PhotoChip[] {
   const present = new Set(photos.map((photo) => CHIP_OF[photo.source]));
-  if (present.size < 2) return [];
-  return PHOTO_CHIPS.filter((chip) => chip === 'everything' || present.has(chip));
+  const hasStarred = photos.some((photo) => photo.starred);
+  if (present.size < 2 && !hasStarred) return [];
+  return PHOTO_CHIPS.filter((chip) => {
+    if (chip === 'everything') return true;
+    if (chip === 'starred') return hasStarred;
+    return present.has(chip);
+  });
 }
 
 /** The photographs one chip shows, in the order they came in. Literal: a
@@ -94,6 +88,7 @@ export function chipsFor(photos: LibraryPhoto[]): PhotoChip[] {
     still be answered with the whole library. */
 export function narrowTo(photos: LibraryPhoto[], chip: PhotoChip): LibraryPhoto[] {
   if (chip === 'everything') return photos;
+  if (chip === 'starred') return photos.filter((photo) => photo.starred);
   return photos.filter((photo) => CHIP_OF[photo.source] === chip);
 }
 
@@ -134,9 +129,38 @@ export function photoOwnerHref(photo: LibraryPhoto): string {
     case 'entry':
     case 'video': return `/entry/${id}`;
     case 'milestone': return `/transition/milestones?edit=${id}`;
-    case 'hair': return `/body/hair-progress?photo=${id}`;
     case 'hairRemoval': return `/body/hair-removal?session=${id}`;
     case 'tryout': return `/transition/tryouts/${id}`;
-    case 'procedure': return `/health/surgery?procedure=${id}`;
+    case 'procedure': return `/health/surgery/${id}`;
+    case 'progress': return `/transition/progress-photos?photo=${id}`;
+  }
+}
+
+/** Whether the library can delete this photograph itself, with a hold.
+    A video note cannot: no area deletes one on its
+    own, only the entry editor does, as part of saving its entry. */
+export function libraryDeletable(photo: LibraryPhoto): boolean {
+  return photo.source !== 'video';
+}
+
+/** Deletes one photograph through the area that owns it - the same call
+    that area's own screen makes - and nothing else: the entry, milestone,
+    session, tryout or procedure it hung off stays, without it. Run inside
+    `undoable`, so a batch is one deletion with one undo. */
+export function deleteFromOwner(journal: Journal, photo: LibraryPhoto): Promise<void> {
+  switch (photo.source) {
+    case 'entry':
+    case 'milestone':
+      return journal.photos.remove(photo.id);
+    case 'hairRemoval':
+      return journal.hairRemoval.deletePhoto(photo.id);
+    case 'tryout':
+      return journal.tryouts.deletePhoto(photo.id);
+    case 'procedure':
+      return journal.procedures.deletePhoto(photo.id);
+    case 'progress':
+      return journal.progressPhotos.deletePhoto(photo.id);
+    case 'video':
+      return Promise.reject(new Error('a video note is deleted in its entry, not from the library'));
   }
 }

@@ -1,24 +1,8 @@
-/* A microphone that is not a microphone (phase 5 deepening ticket 15).
-
-   The browser-tier probe and the screenshot gallery both need a take whose
-   answer is known: Chromium's own fake audio device plays a beep whose
-   frequency is not part of anybody's contract, and a real microphone in a
-   headless browser is silence. So both hand the app a stream built from an
-   oscillator instead - synthesized input, the same choice the node tier's
-   tests make, arriving through the same getUserMedia the app calls.
-
-   Plain JS and dependency-free, for the reason tests/palettes.mjs gives:
-   the probe is bundled by Vite and can import it, and the gallery has no
-   bundler at all and reads it as text to inject into the page. One
-   definition of what a "steady take" is, rather than one per tier.
-
-   The kinds:
-     steady  in range, steady, below the rails - clears the gate
-     loud    the same note at full scale - fails on clipping
-     wobble  sliding by three semitones - fails on steadiness
-     read    a passage-shaped read: the same note wandering the way speech
-             does, which is the only kind with a distribution to draw
-             (redesign ticket 42) */
+/* Supply a known oscillator stream through getUserMedia. Keep this
+   dependency-free so Vite probes can import it and galleries can
+   inject it as text. steady passes below clipping, loud clips, wobble
+   spans three semitones and fails steadiness, and read mimics speech
+   for a pitch distribution. */
 
 /** @typedef {'steady' | 'loud' | 'wobble' | 'read'} FakeTake */
 

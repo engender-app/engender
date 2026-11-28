@@ -1,42 +1,15 @@
 <script lang="ts">
-  /* A group of independently-read components drawn together (ux-carpet
-     ticket 190; readGroup.ts says why). The placeholder holds the group's
-     space while its members answer; the members themselves are already
-     mounted underneath, out of flow and unseen, so every read is running
-     and every tile has decided whether it exists before anything is shown.
-     Then the whole group fades in at once and the placeholder fades out
-     under it (`crossfade`, out only - see its own note in reveal.ts).
+  /* Mount members beneath the placeholder so every read can run.
+     Members register while mounting, so place them before the
+     markup that checks readiness. The caller wraps ReadGroup in
+     use:resize to animate from its estimated height to the real one.
 
-     The placeholder is a guess at the group's height, not a measure of it.
-     A caller wraps this in `use:resize` (the screen-part it already sits
-     in), so the difference between the guess and the group's real height
-     travels instead of landing in one frame - ticket 183's "any height
-     error resizes smoothly".
-
-     Shown once the members have answered and the held layer has come to
-     rest, not the moment they answer. The last answer can start an exit
-     inside the layer - a reading whose own read landed before the
-     screen's recap drew "not enough data" and takes it off with a slide
-     when the recap says otherwise - and a fade-in over that exit shows it
-     as a ghost at a third of its opacity (ticket 167, measured on the
-     phone). So the group waits a frame for those exits to begin, then
-     finishes every running finite animation in the layer on the spot and
-     shows once they have settled. Waiting them out instead held the
-     phone's skeleton up for another 240ms of layout nobody could see.
-
-     A member's own CSS entrance is a different thing: it is the arrival,
-     not a leftover, and playing it where nobody can see it would spend it.
-     A tile clips open from its left edge on its grid's stagger (kit.css,
-     kit-block-in). So CSS animations are paused while the group holds -
-     a paused entrance sits on its first frame, fully clipped, and is left
-     alone - and play from there once it shows. A group whose members
-     all arrive that way passes `fade={false}`: the entrance is the
-     arrival, and a fade on top of it would be two. The skeleton's shimmer
-     is paused along with everything else, which nobody can see either.
-
-     The members are rendered first in the markup on purpose: they join the
-     group while their own script runs, so they have to exist before
-     anything below reads whether the group has answered. */
+     After the final answer, wait a frame for pending exits and finish
+     running finite animations in the held layer before revealing it.
+     Those exits could otherwise show through the fade. CSS entrances
+     stay paused on their first frame while held and play once shown.
+     Pass fade=false when the members' own entrances provide the reveal.
+     The outgoing placeholder crossfades over the group. */
   import type { Snippet } from 'svelte';
   import Skeleton from '../Skeleton.svelte';
   import { crossfade } from '$lib/motion/reveal';
@@ -66,14 +39,13 @@
   const group = provideReadGroup(() => answered);
   let members: HTMLDivElement;
 
-  /* A group whose members have all answered before it has painted once is
-     a warm revisit painting from the reads' last answers (ux-carpet 201):
-     the tab is coming back to what it showed a minute ago, not arriving. So
-     it shows in its first frame: the placeholder goes without its crossfade,
-     the members without their fade, and their own entrances are finished
-     rather than played. "Before it has painted" rather than "when it first
-     renders", because a member can answer a microtask after the group's
-     first render and still well before the browser draws anything. */
+  /* A group whose members have all answered before it has painted once is a warm revisit
+     painting from the reads' last answers: the tab is coming back to what it showed a
+     minute ago, not arriving. So it shows in its first frame: the placeholder goes without
+     its crossfade, the members without their fade, and their own entrances are finished
+     rather than played. "Before it has painted" rather than "when it first renders",
+     because a member can answer a microtask after the group's first render and still well
+     before the browser draws anything. */
   let painted = false;
   $effect(() => {
     requestAnimationFrame(() => setTimeout(() => (painted = true)));

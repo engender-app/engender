@@ -1,11 +1,9 @@
 <script lang="ts">
-  /* The way out of a journal the key cannot read (ux-carpet 210). "Try
-     opening again" was the only button on that error, and retrying never
-     opens a file under a key that does not match it, so a phone left like
-     that had nothing to press short of uninstalling. The two doors here are
-     the ones DeviceBoundRecovery already offers for its own dead end, with
-     its copy and its confirmation, so the loss is stated before it happens
-     in the same words. */
+  /* The way out of a journal the key cannot read. "Try opening again" was the only button
+     on that error, and retrying never opens a file under a key that does not match it, so a
+     phone left like that had nothing to press short of uninstalling. The two doors here are
+     the ones DeviceBoundRecovery already offers for its own dead end, with its copy and its
+     confirmation, so the loss is stated before it happens in the same words. */
   import { m } from '$lib/paraglide/messages';
   import { resetApp } from '$lib/stores/boot.svelte';
   import Icon from './Icon.svelte';
@@ -67,7 +65,7 @@
   {#if resetError}
     <!-- In the sheet, which stays open: the sheet is where the button was
          pressed, and closing it on a failure left the gate looking as if
-         nothing had happened (after-release ticket 09). -->
+         nothing had happened. -->
     <p class="reset-failed small" role="alert" data-reset-failed transition:disclose>{resetError}</p>
   {/if}
   <div class="stack-3" style="margin-top:var(--space-4)">

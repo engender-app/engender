@@ -2,7 +2,7 @@
   "id": "/",
   "name": "engender",
   "short_name": "engender",
-  "description": "Your journal is stored on this device. No account or server.",
+  "description": "Your journal stays on this device. No account.",
   "lang": "en",
   "dir": "ltr",
   "start_url": "/",

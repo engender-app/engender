@@ -1,15 +1,6 @@
-/* Ranking suggestion pickers by the lean of the scales somebody has ticked
-   (phase 5 ticket 43, ADR-0030, CONTEXT: "Lean"). The lean is never stored -
-   it follows purely from whether the ticked scales include `femininity` or
-   `masculinity` and not the other. Both, neither, or any other combination
-   gives no lean, meaning `rankByLean` leaves a list exactly as it was
-   handed. Node-tier safe: no paraglide, so the pickers' data layer can call
-   this without pulling wording in with it (ADR-0016).
-
-   Named for presets until phase 5 ticket 35, which replaced the eight
-   presets with a list of ticked scales. The derivation did not change - the
-   same two keys answer it - so the rename is the whole of that ticket's
-   business here. */
+/* Rank suggestions by the ticked scales. Exactly one of femininity or masculinity supplies
+   a lean. With both or neither, keep the given order. The data-layer helper works in the
+   Node tier. */
 
 import type { Lean } from './types';
 
@@ -24,10 +15,8 @@ export function scaleLean(scales: readonly string[]): 'femme' | 'masc' | null {
   return null;
 }
 
-/** Matching-lean items first, everything else after, each group keeping its
-    own existing order (ADR-0030 - a strict two-bucket sort, not a graded
-    score). A `null` lean means the ticked scales carry none, so the list
-    comes back unranked rather than grouped around `'neutral'`. */
+/** Put matching items first and preserve order within each group.
+    A null lean keeps the original order. */
 export function rankByLean<T extends { lean: Lean }>(items: readonly T[], lean: 'femme' | 'masc' | null): T[] {
   if (lean === null) return [...items];
   const matching = items.filter((item) => item.lean === lean);

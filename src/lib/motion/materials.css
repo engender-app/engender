@@ -1,23 +1,7 @@
-/* The motion materials that reach past transform and opacity (phase 5
-   ticket 28), at the level a stylesheet can carry them.
-
-   DIRECTION.md's performance contract, which lives on ticket 15's branch,
-   said only transform and opacity animate, because the target is a Capacitor
-   WebView on a mid-range Android phone rather than a desktop browser. This
-   ticket amends that: the palette gains bounded blur, a clip-path reveal
-   (tier 3, in reveal.ts) and an animated shadow (tier 1, in press.css). The
-   limit that replaces the prohibition is a number rather than a taste, and
-   the number comes from ticket 27's benchmarking pass over real screens - so
-   what is written down here is each material's cap, and every cap is drawn
-   so that measurement can only tighten it.
-
-   Tier 2's material lives here: the withdrawal.
-
-   Applying it was deliberately not ticket 28's job: it added the material
-   and the screen tickets spent it. Sheet and QuickAdd carry .scrim-withdraw
-   now. It is a complete primitive rather than a fragment: the class alone is
-   the whole material, and putting it on a scrim is the only thing left to
-   do. */
+/* The motion system bounds effects beyond transform and opacity
+   for a mid-range Android WebView. Use .scrim-withdraw on the
+   Sheet and QuickAdd scrims. reveal.ts and press.css own the
+   separate clip and shadow effects. */
 
 /* Tier 2, the withdrawal: the screen behind a sheet stops being readable
    without stopping being there.
@@ -41,19 +25,8 @@
   }
 }
 
-/* The reduced-motion substitute is that same state, and on purpose: a blur
-   arriving over the screen is movement-adjacent even though nothing travels,
-   so it does not survive either reduced-motion path. What replaces it is the
-   full-strength tint, which still says "not this" without the withdrawal.
-   Substitute, never delete - the scrim itself stays, and so does everything
-   the sheet above it does. */
-html[data-a11y-motion='reduce'] .scrim-withdraw {
-  background: var(--scrim);
-  backdrop-filter: none;
-}
-@media (prefers-reduced-motion: reduce) {
-  .scrim-withdraw {
-    background: var(--scrim);
-    backdrop-filter: none;
-  }
-}
+/* No reduced-motion substitute, on purpose. The radius never animates and the scrim's
+   arrival is an opacity fade its Svelte transition already shortens to --dur-crossfade, so
+   nothing here moves. The flat --scrim the reduced paths used to swap in was a different
+   colour behind the sheet (0.45 or 0.6 against 0.31 over the blur), and the Settings switch
+   that lives in a sheet repainted its own background. */

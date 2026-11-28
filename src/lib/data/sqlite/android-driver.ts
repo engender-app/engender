@@ -1,33 +1,11 @@
-/* The Android driver (ticket 11): the same SqliteDriver the web tier
-   satisfies, over the local Capacitor plugin in
-   android/app/src/main/java/dev/engender/app/sqlite/.
+/* Implement SqliteDriver over the local Android SQLCipher plugin
+   (ADR-0018, ADR-0020). Pass the Keystore data key without deriving a new
+   key on the bridge.
 
-   Why a local plugin rather than @capacitor-community/sqlite is ADR-0020's
-   ticket 11 amendment, and it comes down to the key: that plugin takes a
-   passphrase and derives the database key itself, where ADR-0018 wants a
-   random data key held by the Keystore and handed to SQLCipher raw. So
-   `dataKey` here leaves as hex and nothing on either side of the bridge
-   stretches it.
-
-   The key is optional and unset for now. Ticket 11 lands the shell, the
-   bridge and the driver; ticket 13 lands the Android Keystore that produces
-   the key, and the only change it needs here is a caller that passes one.
-
-   Calls are pipelined: each one crosses the bridge the moment it is made,
-   without waiting for the one before it to come back (ux-carpet 200,
-   ADR-0089). Waiting was a full round trip per statement, 9-11 ms on the
-   Pixel against about 1 ms sent together, and a warm screen makes 85-130 of
-   them. Order still matters as much as it did - post-order is what the
-   migration runner's callback composition assumes, and what makes a BEGIN
-   arrive before the statements written after it - so every call carries
-   this driver's session and a sequence number counted from the open, and
-   the plugin runs them strictly in that order on its own single thread,
-   holding back any that arrive early (CallSequencer.java). Capacitor 8.5
-   happens to deliver plugin calls in order, but that is a framework
-   internal, and the order here is ours to own.
-
-   withReadSnapshots() reserves the connection for the supplied transaction
-   scope. Unrelated calls wait through COMMIT or ROLLBACK. */
+   Pipeline calls (ADR-0089). Session and sequence numbers let
+   CallSequencer.java execute them in order even when bridge delivery
+   varies. File operations after close use a second session.
+   withReadSnapshots() reserves the connection until commit or rollback. */
 
 import { registerPlugin } from '@capacitor/core';
 import type { SqliteDriver } from './driver.ts';
@@ -55,36 +33,33 @@ interface SqliteBridge {
   restorePreMigrationCopy(options: Stamp): Promise<void>;
   cleanupPreMigrationCopy(options: Stamp): Promise<void>;
   deleteDatabase(options: { name: string }): Promise<void>;
-  isPlaintextDatabase(options: { name: string }): Promise<{ plaintext: boolean }>;
+  isPlaintextDatabase(options: { name: string }): Promise<{ exists: boolean; plaintext: boolean }>;
   close(options: Stamp): Promise<void>;
 }
 
 const Sqlite = registerPlugin<SqliteBridge>('Sqlite');
 
-/** The reset path's wipe on Android (ticket 13, ADR-0014). The journal's
-    files live in app-private storage, so emptying the OPFS root - which is
-    all the web's reset has to do - does not touch them.
+/** The reset path's wipe on Android. The journal's files live in app-private storage, so
+    emptying the OPFS root - which is all the web's reset has to do - does not touch them.
 
-    Unnumbered, and safely so: the plugin holds one connection for the
-    whole app, and the caller has already awaited the close that let go of
-    it (data/reset.ts closes before it wipes). It still runs on the
-    plugin's one worker thread, behind anything already there.
+    Unnumbered, and safely so: the plugin holds one connection for the whole app, and the
+    caller has already awaited the close that let go of it (data/reset.ts closes before it
+    wipes). It still runs on the plugin's one worker thread, behind anything already there.
 
-    Named, because a reset from a locked gate runs in a process where no
-    open has happened to tell the plugin which file is the journal. Without
-    the name it deleted nothing there and the key went anyway, so the next
-    setup met the old ciphertext under a new key (ux-carpet 210). */
+    Named, because a reset from a locked gate runs in a process where no open has happened
+    to tell the plugin which file is the journal. Without the name it deleted nothing there
+    and the key went anyway, so the next setup met the old ciphertext under a new key. */
 export async function deleteAndroidDatabase(databaseName: string): Promise<void> {
   await Sqlite.deleteDatabase({ name: databaseName });
 }
 
-/** Whether app storage holds a journal from the pre-encryption Android build
-    (ticket 13). Asked before the driver opens anything: a raw-key open of a
-    plaintext file fails as SQLITE_NOTADB, which is the same error a corrupt
-    journal gives, and the two deserve different sentences. */
-export async function androidJournalIsPlaintext(databaseName: string): Promise<boolean> {
-  const { plaintext } = await Sqlite.isPlaintextDatabase({ name: databaseName });
-  return plaintext;
+/** Read-only file facts for boot and the setup key-creation boundary. */
+export async function inspectAndroidJournal(databaseName: string): Promise<{ exists: boolean; plaintext: boolean }> {
+  const result = await Sqlite.isPlaintextDatabase({ name: databaseName });
+  if (typeof result.exists !== 'boolean' || typeof result.plaintext !== 'boolean') {
+    throw new Error('the native journal survey did not report file presence');
+  }
+  return result;
 }
 
 const toHex = (bytes: Uint8Array): string =>
@@ -132,6 +107,19 @@ export function createAndroidSqlite(databaseName: string, dataKey?: Uint8Array):
       throw (await opened) ?? error;
     });
 
+  /* Failed migration closes the driver before recovery file operations.
+     Use one new session for those calls and wait for the close first
+     because sessions have independent ordering. The plugin retains the
+     journal path and key. Leave the recovery session open because
+     closing could close the next driver's connection. This leaves one
+     empty session entry per failed boot. */
+  let closing: Promise<unknown> | null = null;
+  let afterClose: (() => Stamp) | null = null;
+  const fileCall = <T>(send: (stamp: Stamp) => Promise<T>): Promise<T> =>
+    closing
+      ? closing.catch(() => {}).then(() => send((afterClose ??= sequencer())()))
+      : afterOpen(send);
+
   const driver: SqliteDriver = withReadSnapshots({
     async exec(statements: string) {
       await afterOpen((s) => Sqlite.exec({ sql: statements, ...s }));
@@ -167,27 +155,29 @@ export function createAndroidSqlite(databaseName: string, dataKey?: Uint8Array):
     }),
 
     async close() {
-      await afterOpen((s) => Sqlite.close(s));
+      const sent = afterOpen((s) => Sqlite.close(s));
+      closing ??= sent;
+      await sent;
     }
   });
 
   const fileOps: MigrationFileOps = {
     async preMigrationCopyIsUsable() {
-      const { usable } = await afterOpen((s) => Sqlite.preMigrationCopyIsUsable(s));
+      const { usable } = await fileCall((s) => Sqlite.preMigrationCopyIsUsable(s));
       return usable;
     },
     async copyDatabaseFile() {
-      await afterOpen((s) => Sqlite.copyDatabaseFile(s));
+      await fileCall((s) => Sqlite.copyDatabaseFile(s));
     },
     /* Closes the connection on the way, like the web tier's does and for the
        same reason: it is holding the file being replaced. The caller reloads
        afterwards rather than carrying on over a driver whose database is
-       gone (ticket 04). */
+       gone. */
     async restorePreMigrationCopy() {
-      await afterOpen((s) => Sqlite.restorePreMigrationCopy(s));
+      await fileCall((s) => Sqlite.restorePreMigrationCopy(s));
     },
     async cleanupPreMigrationCopy() {
-      await afterOpen((s) => Sqlite.cleanupPreMigrationCopy(s));
+      await fileCall((s) => Sqlite.cleanupPreMigrationCopy(s));
     }
   };
 

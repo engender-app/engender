@@ -21,10 +21,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 /** Checks that Home/Recents reaches the real timing hooks, and that leaving
- * never changes what the capture choice decided: allowed leaves FLAG_SECURE
- * off with or without a lock, not allowed keeps it on. Android 13+ keeps the
+ * never changes what the capture choice decided when no lock cover is set
+ * (the test starts from a cleared mirror): allowed leaves FLAG_SECURE off,
+ * not allowed keeps it on. With a lock set, API 26-32 turns it on for the leave. Android 13+ keeps the
  * Recents half on the system's activity record, which has no getter;
- * tests/android-manifest-recents.test.ts holds that line instead.
+ * tests/node/android/android-manifest-recents.test.ts holds that line instead.
  * The preference is mirrored through the same public bridge as Settings.
  */
 @RunWith(AndroidJUnit4.class)
@@ -48,10 +49,20 @@ public class LockTimingLeaveHintTest {
             setTiming(scenario, "immediately");
             installCounter(scenario);
 
+            AtomicReference<String> calls = new AtomicReference<>();
+            CountDownLatch observed = new CountDownLatch(1);
             long startedAt = System.nanoTime();
-            scenario.onActivity(MainActivity::onUserLeaveHint);
-            assertEquals("1", awaitJs(scenario, "String(window.__leaveLockCalls || 0)", "1"));
+            // Keep dispatch and observation together, without waiting for global UI idleness.
+            InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> scenario.onActivity(activity -> {
+                activity.onUserLeaveHint();
+                activity.getBridge().getWebView().evaluateJavascript("String(window.__leaveLockCalls || 0)", value -> {
+                    calls.set(value);
+                    observed.countDown();
+                });
+            }));
+            assertTrue("leave lock did not answer within 1500ms", observed.await(1500, TimeUnit.MILLISECONDS));
             long elapsedMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt);
+            assertEquals("1", unquote(calls.get()));
             assertTrue("leave lock took too long: " + elapsedMs + "ms", elapsedMs < 1500);
         }
     }

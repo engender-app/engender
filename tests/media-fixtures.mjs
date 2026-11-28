@@ -1,21 +1,7 @@
-/* Real media for the scripts that drive playback (ticket 46).
-
-   The demo journal's recordings are four thousand random bytes
-   (data/demoAudioBytes.ts): enough to prove a recording is attached to an
-   entry, and not audio any browser will decode. That was fine while
-   playback was a native `<audio controls>` nobody screenshotted. It is not
-   fine for a transport whose whole subject is a waveform and a playhead,
-   which draw nothing without a file that actually plays.
-
-   So the scripts import real files through the app's own file picker,
-   generated here rather than committed: espeak-ng for a voice (the stand-in
-   this repo already uses for a recorded read) and ffmpeg for the containers
-   the app stores. Both are on the machine this runs on; neither is a
-   dependency of the app.
-
-   The files are cached under .claude/media-fixtures/ and regenerated only
-   when missing, since a run of the gallery needs them twice - once for the
-   current tree and once for the tree it is being compared against. */
+/* Generate playable voice and video with espeak-ng and ffmpeg for
+   transport scripts. Import them through the real picker so playback,
+   waveform and playhead have valid input. Cache under
+   .claude/media-fixtures/ and regenerate only missing files. */
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';

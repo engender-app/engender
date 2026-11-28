@@ -20,7 +20,7 @@ describe('Tile component contract', () => {
   });
 
   it('stamps its weight on every branch, which is what the row rules select on', () => {
-    // Phase 8 UX ticket 01: a card or a row, decided by the caller and drawn
+    // A card or a row, decided by the caller and drawn
     // by kit.css. Three branches, so three places it could be forgotten.
     expect((tileFile.match(/data-weight=\{weight\}/g) ?? []).length).toBe(3);
     expect(tileFile).toContain("weight = 'card'");
@@ -30,10 +30,9 @@ describe('Tile component contract', () => {
     expect(tileFile).toContain('<a class="kit-tile press" data-tile={key} data-weight={weight} {href}');
   });
 
-  /* Phase 9 carpet ticket 04: a tile joins and leaves its grid through the
-     one panel primitive, on every branch - a tile that forgot it would be
-     the one that snapped, and the branch a tile takes is decided by which
-     controls its caller passed rather than by anything about the motion. */
+  /* A tile joins and leaves its grid through the one panel primitive, on every branch - a
+     tile that forgot it would be the one that snapped, and the branch a tile takes is
+     decided by which controls its caller passed rather than by anything about the motion. */
   it('collapses through the panel primitive on all three branches', () => {
     expect((tileFile.match(/transition:collapse\|global=\{panel\(\)\}/g) ?? []).length).toBe(3);
     expect(tileFile).toContain("from '$lib/motion/reveal'");
@@ -41,13 +40,11 @@ describe('Tile component contract', () => {
     expect(tileFile).toContain('navigating.to !== null');
   });
 
-  /* Phase 10 rule 3, redesign ticket 24: the note sits in a foot of page
-     colour along the bottom edge of the block, and a foot reaches the
-     block's edges. Inside .kit-tile-main it cannot: the link is one cell of
-     the tile's grid and a foot drawn in it leaves a sliver of stripe down
-     both sides. The action shape already had the note outside (ticket 99
-     item 9, for a different reason - centring); the dismiss-only shape is
-     the one this moves. */
+  /* The note sits in a foot of page colour along the bottom edge of the block, and a foot
+     reaches the block's edges. Inside .kit-tile-main it cannot: the link is one cell of the
+     tile's grid and a foot drawn in it leaves a sliver of stripe down both sides. The
+     action shape already had the note outside; the dismiss-only shape is the one this
+     moves. */
   it('keeps the note out of the main link on every split shape', () => {
     const mains = [...tileFile.matchAll(/<a class="kit-tile-main press" \{href\}>([\s\S]*?)<\/a>/g)];
     expect(mains).toHaveLength(2);
@@ -64,9 +61,8 @@ describe('Tile component contract', () => {
     expect(tileFile).not.toMatch(/transition:collapse=\{/);
   });
 
-  /* Phase 10 rule 10, redesign ticket 25: a value that is a count counts up
-     on arrival and on change; every other value cuts. The number drawn is
-     the runner's, on every branch that draws one - a branch still writing
+  /* A value that is a count counts up on arrival and on change; every other value cuts. The
+     number drawn is the runner's, on every branch that draws one - a branch still writing
      the prop straight would be the one tile whose number snapped. */
   it('draws the value through the count-up on every branch', () => {
     expect(tileFile).toContain("from '$lib/motion/countUp'");

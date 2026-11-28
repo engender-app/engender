@@ -6,9 +6,7 @@ export type ResurfacingSurface =
   | 'on-this-day-home-card'
   | 'wrapped'
   | 'wrapped-home-card'
-  | 'on-this-day-notification'
-  | 'wrapped-notification'
-  | 'wrapped-share';
+  | 'milestone-anniversary';
 
 interface ResurfacingSurfaceRow {
   key: ResurfacingSurface;
@@ -33,9 +31,9 @@ const ROWS = [
   { key: 'on-this-day-home-card', honoursMutes: true },
   { key: 'wrapped', honoursMutes: true, photos: true },
   { key: 'wrapped-home-card', honoursMutes: true },
-  { key: 'on-this-day-notification', honoursMutes: true },
-  { key: 'wrapped-notification', honoursMutes: true },
-  { key: 'wrapped-share', honoursMutes: true }
+  /* Home's celebration on a milestone's anniversary: it brings back a day from the past, so a muted era keeps
+     it quiet. */
+  { key: 'milestone-anniversary', honoursMutes: true }
 ] as const;
 
 /* A kind in `ResurfacingSurface` with no entry above is a compile error
@@ -53,8 +51,7 @@ export const RESURFACING_SURFACES: readonly ResurfacingSurface[] = ROWS.map((row
     registry.ts's `unregisteredKinds` gives its own list - so
     resurfacing.test.ts can show the completeness rule actually failing on a
     named, shortened registry. */
-/* unregisteredSurfaces stays exported only for its own test (AU-09 test-only
-   review). */
+/* unregisteredSurfaces stays exported only for its own test. */
 export function unregisteredSurfaces(rows: readonly Pick<ResurfacingSurfaceRow, 'key'>[]): ResurfacingSurface[] {
   const present = new Set(rows.map((row) => row.key));
   return RESURFACING_SURFACES.filter((key) => !present.has(key));

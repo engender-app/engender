@@ -4,10 +4,12 @@ import { fakeFileStore } from '../photos/test-support/fake-file-store';
 import { observeWrites, type TableName } from '../live/writes';
 import { openJournal, type Journal } from './journal';
 import { sweepOrphanPhotos } from './photos';
+import { markOrphanSweepComplete, shouldSweepOrphans } from '../sqlite/orphan-sweep-schedule';
 
 const openDatabases: Awaited<ReturnType<typeof migratedDb>>[] = [];
 afterEach(async () => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   for (const db of openDatabases.splice(0)) await db.close();
 });
 
@@ -48,6 +50,12 @@ for (const kind of ['document', 'photo'] as const) {
     const path = scoped ? 'outer transaction' : 'root';
     test(`${kind} ${path} delete resolves and invalidates after cleanup fails, then sweep retries`, async () => {
       const fixture = await setup(kind, scoped);
+      const values = new Map<string, string>();
+      vi.stubGlobal('localStorage', {
+        getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => { values.set(key, value); }
+      });
+      markOrphanSweepComplete();
       const warned = vi.spyOn(console, 'warn').mockImplementation(() => {});
       fixture.files.failNthRemove(1);
       await expect(fixture.remove()).resolves.toBeUndefined();
@@ -55,8 +63,10 @@ for (const kind of ['document', 'photo'] as const) {
       expect(fixture.notifications).toEqual([kind === 'document' ? ['document'] : ['photo', 'entry', 'milestone']]);
       expect(warned).toHaveBeenCalledWith('Could not finish post-commit cleanup', expect.any(Error));
       expect(fixture.files.names()).toHaveLength(2);
+      expect(shouldSweepOrphans()).toBe(true);
       await sweepOrphanPhotos(fixture.db, fixture.files);
       expect(fixture.files.names()).toEqual([]);
+      expect(shouldSweepOrphans()).toBe(false);
     });
 
     test(`${kind} ${path} delete rejects database failure without invalidation or file removal`, async () => {

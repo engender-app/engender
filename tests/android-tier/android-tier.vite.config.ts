@@ -1,23 +1,8 @@
-/* Builds an android-tier probe into a static bundle the instrumentation
-   tests serve to the app's WebView (ticket 11, ticket 13).
-
-   Separate from the app's vite.config.ts and named so svelte-check's project
-   auto-discovery does not pick it up, for the same reason the browser tier's
-   config is - run.mjs loads it explicitly.
-
-   A build rather than a dev server: a probe runs inside an emulator's
-   WebView from the app's own file system, where there is no host to reach.
-   Relative asset paths for the same reason, since Bridge.setServerBasePath
-   serves a bundle from a directory rather than from a document root - which
-   is also why each probe is its own self-contained bundle in its own
-   directory rather than two pages sharing one.
-
-   They build straight into the test APK's assets rather than into a dist/
-   beside this file. Partly to save a copy step, but mostly because
-   SvelteKit's generated tsconfig includes every .js file under tests/, so a
-   bundle left there becomes 400 svelte-check errors in generated code.
-
-   ANDROID_TIER_PROBE picks which one; run.mjs builds both. */
+/* Build each Android probe as a self-contained static bundle with
+   relative paths for Bridge.setServerBasePath. Output directly to test
+   APK assets so SvelteKit does not type-check generated JS under tests/.
+   run.mjs loads this config explicitly and selects via ANDROID_TIER_PROBE.
+   kdf-budget requires an explicit physical-device run. */
 import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { join } from 'node:path';
@@ -25,15 +10,21 @@ import { join } from 'node:path';
 const ASSETS = 'android/app/src/androidTest/assets';
 
 const PROBES = {
-  /** Ticket 11: the shared journal contract suite over the native driver. */
+  'locked-journal': { root: 'locked-journal', outDir: `${ASSETS}/locked-journal-probe` },
+  'key-gate': { root: 'key-gate', outDir: `${ASSETS}/key-gate-probe` },
+  'kdf-budget': { root: 'kdf-budget', outDir: `${ASSETS}/kdf-budget-probe` },
+  ocr: { root: 'ocr', outDir: `${ASSETS}/ocr-probe` },
+  'credential-power-cut': { root: 'credential-power-cut', outDir: `${ASSETS}/credential-power-cut-probe` },
+  'pin-count': { root: 'pin-count', outDir: `${ASSETS}/pin-count-probe` },
+  /** The shared journal contract suite over the native driver. */
   'auto-export': { root: 'auto-export', outDir: `${ASSETS}/auto-export-probe` },
   contract: { root: '.', outDir: `${ASSETS}/probe` },
-  /** Ticket 13: seeds a journal so the claim gate can read its bytes. */
+  /** Seeds a journal so the claim gate can read its bytes. */
   encryption: { root: 'encryption', outDir: `${ASSETS}/encryption-probe` },
-  /** Ticket 17: archive import/export between web and Android implementations. */
+  /** Archive import/export between web and Android implementations. */
   'archive-recovery': { root: 'archive/recovery', outDir: `${ASSETS}/archive-recovery-probe` },
   archive: { root: 'archive', outDir: `${ASSETS}/archive-cross-probe` },
-  /** Ticket 20: ten-year Journal benchmark over the native driver. */
+  /** Ten-year Journal benchmark over the native driver. */
   'long-journal': { root: 'long-journal', outDir: `${ASSETS}/long-journal-probe` }
 };
 
@@ -48,12 +39,16 @@ export default defineConfig({
   base: './',
   resolve: {
     alias: {
+      ...(name === 'long-journal' ? {
+        '$lib/stores/today.svelte': join(repo, 'tests/long-journal/today-stub.ts'),
+        '$lib/stores/boot.svelte': join(repo, 'tests/browser-tier/entry-editor-boot-stub.ts')
+      } : {}),
       $lib: join(repo, 'src/lib'),
       '$app/state': join(repo, 'tests/browser-tier/screen-router.svelte.ts'),
       '$app/navigation': join(repo, 'tests/browser-tier/app-navigation-stub.ts')
     }
   },
-  plugins: (name === 'auto-export' || name === 'archive-recovery') ? [svelte({ configFile: false })] : [],
+  plugins: ['auto-export', 'archive-recovery', 'pin-count', 'key-gate', 'long-journal'].includes(name) ? [svelte({ configFile: false })] : [],
   define: {
     __DEMO__: JSON.stringify(false),
     __APP_VERSION__: JSON.stringify('0.0.0-archive-recovery')

@@ -1,17 +1,14 @@
-/* The medication stock area (phase 4 ticket 04, CONTEXT: "Medication stock",
-   "Run-out projection"). One row per drug (schema.ts,
-   stockProjection.ts): remaining stock and its run-out projection are both
-   derived on read, never stored (ADR-0046, generalizing ADR-0010's rule).
+/* The medication stock area. One row per drug (schema.ts, stockProjection.ts): remaining
+   stock and its run-out projection are both derived on read, never stored (ADR-0046,
+   generalizing ADR-0010's rule).
 
-   Reads doses through DosesArea and episodes through RegimenArea, and
-   writes the run-out reminder through RemindersArea, rather than
-   querying those tables itself the way archive.ts does: this area is a
-   view stitched together from rows two other areas own, not a second
-   owner for either one. Routing every reminder write through
-   RemindersArea.upsertReminder keeps assertValidRule and the schema's own
-   CHECK the one place a reminder rule is validated, the same guarantee
-   ticket 02's dose log gets from attributeDose rather than re-deriving
-   attribution itself. */
+   Reads doses through DosesArea and episodes through RegimenArea, and writes the run-out
+   reminder through RemindersArea, rather than querying those tables itself the way
+   archive.ts does: this area is a view stitched together from rows two other areas own, not
+   a second owner for either one. Routing every reminder write through
+   RemindersArea.upsertReminder keeps assertValidRule and the schema's own CHECK the one
+   place a reminder rule is validated, the same guarantee dose log gets from attributeDose
+   rather than re-deriving attribution itself. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { MedicationStock, Reminder } from '../types';
@@ -23,32 +20,40 @@ import { projectEveryStock, reorderByEpochDay, type StockProjection } from '../s
 import { reconcileStockReminder } from '../stockReminder';
 import { stockAutoSource } from '../autoSource';
 import { NOTHING_WRITTEN, type NothingWritten } from './nothingWritten';
+import { drugNameKey } from '../regimenEpisode';
+import { assertValidCost, costColumns, costFromRow, normalizeCost, type CostInput, type CostRow } from '../cost';
 
 interface StockEntryInput {
   /** The entry being edited. With it the row is matched by id, so a new
       drug name renames that row rather than starting a second one beside
-      it (after-release ticket 01). Without it the row is matched by drug,
+      it. Without it the row is matched by drug,
       as before. */
   id?: string;
   drug: string;
   quantity: number;
   unit: string;
   recordedEpochDay: number;
-  /** Ticket 13's "what is open, and until when" - all optional and
-      defaulted to null, so every caller before this ticket keeps working
-      unchanged. `inUseWindowDays` and `inUseEndEpochDay` are stored exactly
-      as passed, never cross-derived (inUseWindow.ts combines them for
+  /** "what is open, and until when" - all optional and defaulted to null, so every caller
+      in older versions keeps working unchanged. `inUseWindowDays` and `inUseEndEpochDay`
+      are stored exactly as passed, never cross-derived (inUseWindow.ts combines them for
       display only). */
   openedEpochDay?: number | null;
   inUseWindowDays?: number | null;
   inUseEndEpochDay?: number | null;
-  /** How many days a restock takes for this drug (redesign phase 10 ticket
-      01). Optional and defaulted to null, so every caller before this ticket
-      keeps working unchanged. */
+  /** How many days a restock takes for this drug. Optional and defaulted to null, so every
+      caller before this ticket keeps working unchanged. */
   leadTimeDays?: number | null;
-  /** Doses one unit holds (after-release ticket 01). Optional and defaulted
+  /** Doses one unit holds. Optional and defaulted
       to null, one dose per unit. */
   dosesPerUnit?: number | null;
+  /** The supply held now: when it expires and where it came from. Optional and defaulted to null; like the opened date
+      they are what the editor resubmits, so a count that leaves them out
+      clears them. Blank text is stored as null. */
+  expiryEpochDay?: number | null;
+  pharmacyNote?: string | null;
+  /** What the supply held now cost. Optional and defaulted to none; like the expiry, a
+      count that leaves it out clears it. Throws if invalid. */
+  cost?: CostInput;
 }
 
 export interface StockProjectionRow {
@@ -65,8 +70,8 @@ export interface StockProjectionRow {
 export interface StockArea {
   /** By drug. */
   getEntries(): Promise<MedicationStock[]>;
-  /** One entry per drug (matched exactly, trimmed - the drug's own
-      uniqueness, schema.ts): saving a second for the same drug
+  /** One entry per trimmed, case-insensitive drug key (the drug's own
+      uniqueness, migrations.ts): saving a second for the same drug
       replaces the first, the way DoseSchedule replaces per episode
       (doses.ts). Also clears box 4's reminder hand-off state - a fresh
       count is the deliberate act that re-arms a dismissed prompt. Returns
@@ -83,15 +88,14 @@ export interface StockArea {
   /** Every drug's projection as of `asOfEpochDay` - a read-only aggregate
       over the dose log (ADR-0046): nothing here is stored. */
   getProjections(asOfEpochDay: number): Promise<StockProjectionRow[]>;
-  /** Recomputes every drug's projection and reconciles its auto-managed
-      run-out Reminder against it (box 4, stockReminder.ts) - created,
-      moved, cleared, or left alone for a drug whose reminder a person has
-      already taken over. In effect Android-only, since Reminder never
-      fires on web, but that gate belongs to the caller: this module has
-      no reason to know what platform it is running on.
+  /** Recomputes every drug's projection and reconciles its auto-managed run-out Reminder
+      against it (box 4, stockReminder.ts) - created, moved, cleared, or left alone for a
+      drug whose reminder a person has already taken over. In effect Android-only, since
+      Reminder never fires on web, but that gate belongs to the caller: this module has no
+      reason to know what platform it is running on.
 
-      Returns NOTHING_WRITTEN when every drug came out 'none', so a pass
-      with nothing to do announces nothing (ux-carpet 199). */
+      Returns NOTHING_WRITTEN when every drug came out 'none', so a pass with nothing to do
+      announces nothing. */
   reconcileRunOutReminders(asOfEpochDay: number): Promise<void | NothingWritten>;
 }
 
@@ -108,7 +112,9 @@ type StockRow = {
   in_use_end_epoch_day: number | null;
   lead_time_days: number | null;
   doses_per_unit: number | null;
-};
+  expiry_epoch_day: number | null;
+  pharmacy_note: string | null;
+} & CostRow;
 
 const toStock = (row: StockRow): MedicationStock => ({
   id: row.uuid,
@@ -122,12 +128,16 @@ const toStock = (row: StockRow): MedicationStock => ({
   inUseWindowDays: row.in_use_window_days,
   inUseEndEpochDay: row.in_use_end_epoch_day,
   leadTimeDays: row.lead_time_days,
-  dosesPerUnit: row.doses_per_unit
+  dosesPerUnit: row.doses_per_unit,
+  expiryEpochDay: row.expiry_epoch_day,
+  pharmacyNote: row.pharmacy_note,
+  cost: costFromRow(row)
 });
 
 const STOCK_COLUMNS =
   'uuid, drug, quantity, unit, recorded_epoch_day, reminder_ever_created, reminder_dismissed, ' +
-  'opened_epoch_day, in_use_window_days, in_use_end_epoch_day, lead_time_days, doses_per_unit';
+  'opened_epoch_day, in_use_window_days, in_use_end_epoch_day, lead_time_days, doses_per_unit, ' +
+  'expiry_epoch_day, pharmacy_note, cost_amount, cost_currency, cost_refunded';
 
 /** Where box 4's reminder marks which drug it belongs to
     (stockReminder.ts). The marker itself lives in autoSource.ts, which is
@@ -145,7 +155,7 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
     all.find((reminder) => reminder.autoSource === autoSourceFor(drug)) ?? null;
 
   /* Every drug's projection as of `asOfEpochDay`, from counts rather than
-     from the doses counted (phase 8 audit ticket 26). Someone whose oldest
+     from the doses counted. Someone whose oldest
      count was taken years ago used to have their whole dose log crossed the
      seam here so that three numbers per drug could be reduced out of it -
      the single largest thing Home read on arrival.
@@ -177,27 +187,30 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
     getProjections: projections,
 
     async upsertEntry(input) {
+      const cost = normalizeCost(input.cost);
+      assertValidCost(cost);
       return driver.transaction(async (scope) => {
         const scopedReminders = makeRemindersArea(scope);
         const drug = input.drug.trim();
+        const drugKey = drugNameKey(drug);
         const allReminders = await scopedReminders.getReminders();
         let existing: { uuid: string }[];
         if (input.id === undefined) {
-          existing = await scope.query<{ uuid: string }>('SELECT uuid FROM medication_stock WHERE drug = ?', [drug]);
+          existing = await scope.query<{ uuid: string }>('SELECT uuid FROM medication_stock WHERE drug_key = ?', [drugKey]);
         } else {
           const edited = await scope.query<{ uuid: string; drug: string }>(
             'SELECT uuid, drug FROM medication_stock WHERE uuid = ?',
             [input.id]
           );
           if (edited.length === 0) throw new Error(`unknown stock entry ${input.id}`);
-          if (edited[0].drug !== drug) {
+          if (drugNameKey(edited[0].drug) !== drugKey) {
             /* A rename. The old name's reminder goes first and any row that
                already counts the new name second, in the order deleteEntry
                uses and for its reason: a reminder left behind for a name no
                row carries any more is one nothing can ever clear. */
             const oldAuto = findAutoReminder(allReminders, edited[0].drug);
             if (oldAuto) await scopedReminders.deleteReminder(oldAuto.id);
-            await scope.run('DELETE FROM medication_stock WHERE drug = ? AND uuid <> ?', [drug, input.id]);
+            await scope.run('DELETE FROM medication_stock WHERE drug_key = ? AND uuid <> ?', [drugKey, input.id]);
           }
           existing = edited;
         }
@@ -221,6 +234,9 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
           input.inUseEndEpochDay ?? null,
           input.leadTimeDays ?? null,
           input.dosesPerUnit ?? null,
+          input.expiryEpochDay ?? null,
+          input.pharmacyNote?.trim() || null,
+          ...costColumns(cost),
           now()
         ];
 
@@ -228,10 +244,11 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
           await scope.run(
             `UPDATE medication_stock
                 SET quantity = ?, unit = ?, recorded_epoch_day = ?, reminder_ever_created = ?, reminder_dismissed = 0,
-                    opened_epoch_day = ?, in_use_window_days = ?, in_use_end_epoch_day = ?, lead_time_days = ?, doses_per_unit = ?, updated_at = ?,
-                    drug = ?
+                    opened_epoch_day = ?, in_use_window_days = ?, in_use_end_epoch_day = ?, lead_time_days = ?, doses_per_unit = ?,
+                    expiry_epoch_day = ?, pharmacy_note = ?, cost_amount = ?, cost_currency = ?, cost_refunded = ?, updated_at = ?,
+                    drug = ?, drug_key = ?
               WHERE uuid = ?`,
-            [...values, drug, existing[0].uuid]
+            [...values, drug, drugKey, existing[0].uuid]
           );
           return existing[0].uuid;
         }
@@ -239,10 +256,11 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
         const uuid = mintUuid();
         await scope.run(
           `INSERT INTO medication_stock
-             (uuid, drug, quantity, unit, recorded_epoch_day, reminder_ever_created,
-              opened_epoch_day, in_use_window_days, in_use_end_epoch_day, lead_time_days, doses_per_unit, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [uuid, drug, ...values]
+             (uuid, drug, drug_key, quantity, unit, recorded_epoch_day, reminder_ever_created,
+              opened_epoch_day, in_use_window_days, in_use_end_epoch_day, lead_time_days, doses_per_unit,
+              expiry_epoch_day, pharmacy_note, cost_amount, cost_currency, cost_refunded, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [uuid, drug, drugKey, ...values]
         );
         return uuid;
       });
@@ -300,10 +318,8 @@ export function makeStockArea(driver: SqliteDriver, doses: DosesArea, regimen: R
               await scopedReminders.upsertReminder({
                 // Just the drug's own name: a Reminder's title is ordinarily
                 // whatever a person types, and echoing the drug name back
-                // needs no copy of its own to translate (ADR-0016 keeps
-                // paraglide out of this tier anyway).
+                // needs no translation. Node tests import this module without Paraglide.
                 title: entry.drug,
-                type: 'med',
                 time: '09:00',
                 recurrence: null,
                 interval: null,

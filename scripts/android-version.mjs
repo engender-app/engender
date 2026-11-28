@@ -1,8 +1,8 @@
-/* Android version mapping for ticket 18.
+/* Android version mapping.
 
-   The public version name must match the same value the web bundle and release
-   notes carry (scripts/app-version.mjs), while versionCode must be an integer
-   Play can compare monotonically across uploads. */
+   The public version name must match the same value the web bundle and release notes carry
+   (scripts/app-version.mjs), while versionCode must be an integer Play can compare
+   monotonically across uploads. */
 import { fileURLToPath } from 'node:url';
 
 const VERSION = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$/;

@@ -1,76 +1,14 @@
-/* The surface kit and the chart kit (phase 5 ticket 20).
+/* Surface and chart kit. Choose a surface that suits the content.
+   A 1px outline separates surfaces. Only the floating nav and its add
+   button use a shadow. Colour comes from flat fills and coloured text.
 
-   These are the surfaces every redesigned screen is assembled from, and
-   they exist as several kinds on purpose: DIRECTION.md's decision 2b says
-   one rounded card repeated down a screen is what made the app read as
-   generic, so a screen picks the surfaces its content needs rather than
-   pouring everything into the same box.
+   The kit- prefix lets these classes coexist with components.css's
+   .card and .list-row. */
 
-   Everything here follows the two-surface rule. Separation is a 1px
-   outline, never a shadow - the app's one shadow belongs to the floating
-   nav bar and its add button - and colour arrives as flat fill and as
-   coloured text, never as a gradient, a glow or a veil.
-
-   The classes are prefixed `kit-` while the old world is still standing.
-   `.card` and `.list-row` in components.css are the
-   screens' current vocabulary and the screen tickets replace them one
-   screen at a time; the prefix is what lets both exist in the same
-   stylesheet until the last of them goes. */
-
-/* ---------- section colour ----------
-
-   A screen's areas each take one stripe of the active flag (DIRECTION.md).
-   The stripe arrives as --role on the surface, from $lib/theme/roles.ts,
-   and everything a surface needs is derived from it here rather than at
-   each call site.
-
-   A role arrives as three values, all from $lib/theme/roles.ts: --role, the
-   flag's own stripe; --role-ink-in, the version of it that carries small
-   text at 4.5:1; and --role-mark-in, the version that draws a chart line, a
-   bar, an icon or a display number at 3:1. A fourth, --role-edge-in,
-   arrives only where the stripe itself is under 3:1 against what a chart
-   draws a line over: the edge a line in the raw stripe is cased in
-   (phase 15 ticket 20, --role-edge below).
-
-   Two of them because the floors are different and the difference is
-   visible. Holding a mark to the text floor darkens every bright stripe on
-   the light theme and lightens every dark one on the dark theme, and the
-   app stops looking like the flag it came from and starts looking like a
-   muted copy of it. A label is small and answers to 4.5:1; a 26px bar and a
-   32px number do not.
-
-   And a fill answers to nothing, so it is --role itself. A disc, a tinted
-   date bar and a week cell are colour rather than information: there is
-   nothing on them to read and their edge is a 1px outline. Running them
-   through a floor is what made nonbinary's week green - #FCF434 darkened to
-   #887c00 to clear 3:1, which is olive, and no amount of it is yellow.
-
-   The mix below is the floor under that, for a surface handed a bare
-   --role with no ink: the stripe at 30% into --text, which is the tightest
-   fixed mix that clears 4.5:1 everywhere a role lands across all 8
-   palettes and both themes. It is deliberately the fallback rather than the
-   path - a fixed mix toward --text desaturates as it goes, so on the dark
-   theme every stripe comes out a pastel of itself. tests/kit-roles.test.ts
-   holds both to 4.5:1. Where no role is given at all the accent stands in,
-   which is what an uncoloured screen area already looks like.
-
-   Everything a surface paints is derived from one of the two rather than
-   from the raw stripe, for the reason they exist at all: a flag has a white
-   band, and a white line on a white card is not a chart. The raw stripe
-   survives as --role-c, which nothing but the fallback ink reads.
-
-   Selected by [data-kit-role] rather than by a hand-maintained list of
-   surface classes (phase 5 ticket 32.8): the list was exactly the kind of
-   thing that goes stale silently - a surface handed --role and never added
-   to the list gets the raw inputs and none of the values it needs to paint
-   with, which looks like a colour bug and is a custom property nobody
-   defined. `role.ts`'s roleAttrs() sets `data-kit-role` on the same
-   element it sets the inputs on, every time, so opting a surface in is the
-   one call rather than that call plus a second edit here. A surface that
-   only inherits the inputs - ListRow inside ListCard, Tile inside TileGrid -
-   never carries the attribute itself and does not need to: the values
-   this rule computes are custom properties too, so they inherit down to
-   it the same way the raw inputs did. */
+/* Set roleAttrs() on the surface so rows and tiles inherit its stripe and
+   inks. Accent is the fallback stripe. Small text requires 4.5:1 and icons
+   require 3:1. Keep raw stripe fills and add a casing when a chart line's
+   boundary needs more contrast. */
 [data-kit-role] {
   --role-c: var(--role, var(--accent));
   --role-ink: var(--role-ink-in, color-mix(in oklab, var(--role-c) 30%, var(--text)));
@@ -81,25 +19,11 @@
      own here - a ratio against the undiluted stripe is not something CSS
      can work out, which is why it is computed in roles.ts and handed in. */
   --role-fill-ink: var(--role-fill-ink-in, var(--on-accent));
-  /* Fills are the flag's own stripe, undiluted by any contrast floor: a
-     tinted disc and a shaded week cell carry no information and sit under
-     nothing that has to be read, so nothing about them owes a ratio. This
-     is where the palette was going wrong - nonbinary's yellow darkened to
-     olive to clear a floor it never owed, and a 15% tint of olive is mud.
-
-     A chart mark is one of those. --role-draw is the stripe as it is, and it
-     is what every drawn shape in a chart uses - the line, its fill, a bar, a
-     column, a dot, the timeline's rail. Alicja, 2026-08-25, twice and in
-     capitals: "THE COLORS OF THE FLAG MUST BE UNCHANGED! WE DONT WANT
-     OLIVE". Ticket 20's handoff had put a bar in the marks column, held to
-     3:1, and on nonbinary's light theme that is olive - the exact colour the
-     round which produced that rule was reacting to.
-
-     --role-mark survives for what actually needs a floor: a glyph inside a
-     tinted disc, where the stripe is drawn on 15% of itself and a white band
-     on a white tint would be nothing at all. That is a small shape on a
-     ground derived from the same colour, which is a different problem from a
-     26px bar on a card. */
+  /* Use the unchanged flag stripe for fills and chart geometry
+     (--role-draw). Applying a glyph contrast floor can turn the
+     nonbinary flag's yellow olive. Use --role-mark for small glyphs
+     against tinted discs, where a light stripe could disappear on
+     its own tint. */
   --role-draw: var(--role-c);
   --role-tint: color-mix(in oklab, var(--role-c) 15%, var(--surface));
   --role-wash: color-mix(in oklab, var(--role-c) 12%, var(--bg));
@@ -110,37 +34,21 @@
      Drawn from --role-mark, the corrected version, so it is there whatever
      band the area got. */
   --role-hairline: 1px solid color-mix(in oklab, var(--role-mark) 35%, transparent);
-  /* The edge a chart line in --role-draw is cased in, so the line can be
-     found against the ground (WCAG 1.4.11, phase 15 ticket 20). The line
-     stays the stripe; the casing is drawn under it, a pixel wider on each
-     side, in the same hue moved to the lightness that clears 3:1
-     (roles.ts, Role.edge). Transparent where the stripe already reads,
-     which is every role with no edge handed in, the accent fallback
-     included: the accent clears 4.1:1 on every surface. */
+  /* The edge a chart line in --role-draw is cased in, so the line can be found against the
+     ground. The line stays the stripe; the casing is drawn under it, a pixel wider on each
+     side, in the same hue moved to the lightness that clears 3:1 (roles.ts, Role.edge).
+     Transparent where the stripe already reads, which is every role with no edge handed in,
+     the accent fallback included: the accent clears 4.1:1 on every surface. */
   --role-edge: var(--role-edge-in, transparent);
 }
 
-/* A route's own `<style>` block is free to read --role-mark, --role-ink,
-   --role-tint, --role-wash or --role-hairline directly (six files do,
-   phase 5 audit ticket 16 - counting /timeline's own .tl-count, moved
-   into its <style> block by this same ticket) rather than going through
-   a kit surface, since they are ordinary custom properties and inherit
-   to any descendant of a [data-kit-role] element the way the raw inputs
-   do. The one thing to get right is that the rule's own selector has to
-   actually match something under one: there is no fallback value on any
-   of the five tokens above, so a selector one level too high, or on a
-   sibling of the stamped surface rather than a descendant, computes
-   nothing rather than the accent - silent, and only a render shows it
-   (ADR-0038's /timeline hit the same failure shape at the kit's own
-   surface list, before ticket 32.8 replaced it with this attribute).
-   Nothing checks a route's own usage of these five tokens the way
-   tests/kit-roles.test.ts checks this rule; a caller gets it right by
-   nesting under a surface that took a role, the same as any other
-   descendant does. */
+/* Route styles can read the five --role tokens from descendants of
+   [data-kit-role]. Match inside that subtree. These properties
+   inherit and have no unstamped fallback. */
 
 /* ---------- section header ----------
 
-   Display face at the screen-title size with no icon (DIRECTION.md 3c).
+   Display face at the screen-title size with no icon.
    The 12.5px letterspaced grey label it replaces was the flattest possible
    way to divide a screen: a screen should read as a few named areas, not
    as an undifferentiated column of cards. The rows below carry the icons;
@@ -150,18 +58,15 @@
   align-items: center;
   gap: var(--space-3);
   flex-wrap: wrap;
-  /* The action goes to the far end of the line rather than sitting against
-     the words. SectionHeading has described it as "right-aligned on the
-     heading's own line" since ticket 20 and this is the rule that makes that
-     true - the metric picker on Home read as part of the heading text
-     (Alicja, 2026-08-25). */
+  /* The action goes to the far end of the line rather than sitting against the words.
+     SectionHeading has described it as "right-aligned on the heading's own line" and this
+     is the rule that makes that true - the metric picker on Home read as part of the
+     heading text. */
   justify-content: space-between;
-  /* No horizontal inset. A heading, the card under it and the fields under
-     that all start at the screen's own edge (Alicja, 2026-08-25: "'gender',
-     'however it feels...' and 'gender feeling' are all starting at different
-     points in x axis"). The 4px this used to carry put every section heading
-     in the app 4px right of the surface it heads. */
-  /* The rhythm (phase 10, DIRECTION.md rule 1): 40 above the heading's 3px
+  /* No horizontal inset. A heading, the card under it and the fields under that all start
+     at the screen's own edge. The 4px this used to carry put every section heading in the
+     app 4px right of the surface it heads. */
+  /* The rhythm: 40 above the heading's 3px
      rule, of which the block before it already owns 20 (`.screen > *`) and
      the two margins collapse; 12 between the rule and the words; 12 under
      them. The rule in --text is what makes a screen read as named areas
@@ -171,19 +76,8 @@
   padding: var(--space-3) 0 0;
   margin: var(--space-8) 0 var(--space-3);
   border-top: 3px solid var(--text);
-  /* The rule draws in, left to right, ahead of its heading (phase 10 rule
-     10, redesign ticket 25): the heading's box clips open from its left
-     edge over --dur-slow, which uncovers the rule and everything under it,
-     and the words below wait a beat (the child rule under this one) so
-     the rule is always ahead of them - a heading never appears over a rule
-     that is already there. clip-path rather than a scale on the border,
-     because a border cannot be transformed on its own and a scaleX of the
-     whole heading would stretch the words on the way.
-
-     Filled both ways, so under the 1ms clamp the heading ends where it
-     rests. The end state is the box outset by 6px rather than the box
-     itself: a clip that stayed at the border edge would cut the 2px focus
-     ring, drawn 2px outside, off the heading's action for good. */
+  /* Clip the heading from the left and delay its words so the rule leads.
+     Keep a 6px outset for focus rings and fill both ways for reduced motion. */
   animation: kit-rule-in var(--dur-slow) var(--ease-out) both;
 }
 
@@ -200,22 +94,27 @@
   to { clip-path: inset(-6px); }
 }
 
-/* The first heading on a screen sits under the header rather than under a
-   block, so the 40 it would otherwise ask for collapses to a breath. A node
-   on its way out (`crossfade` marks it) is out of flow and does not count:
-   a ReadGate's skeleton stays a sibling for its fade, and the heading
-   dropping 24px when it finally left was ticket 191's first step. */
+/* The first heading on a screen sits under the header rather than under a block, so the 40
+   it would otherwise ask for collapses to a breath. A node on its way out (`crossfade`
+   marks it) is out of flow and does not count: a ReadGate's skeleton stays a sibling for
+   its fade, and the heading dropping 24px when it finally left was first step. */
 .kit-heading:first-child,
 [data-leaving]:first-child + .kit-heading,
 .screen-header + .kit-heading {
   margin-top: var(--space-4);
 }
 
-/* A reserve's body is not a screen of its own: a heading first in it is
-   first on the screen only when the reserve is (ux-carpet ticket 211: the
-   appointments' later visits lost their 40 under the blocks above). */
+/* A reserve's body is not a screen of its own: a heading first in it is first on the screen
+   only when the reserve is. */
 .read-reserve:not(:first-child) > .read-reserve-body > .kit-heading:first-child {
   margin-top: var(--space-8);
+}
+
+/* And straight under the field it has no rule: the field's own edge already says where the
+   header ends, and a 3px line a breath under it was a second edge. */
+.screen-header + .kit-heading {
+  border-top: 0;
+  padding-top: 0;
 }
 
 .kit-heading h2,
@@ -238,7 +137,7 @@
   min-height: var(--touch-target);
   min-width: var(--touch-target);
   padding-inline: var(--space-3);
-  /* Underlined ink rather than the accent (phase 10): on a page whose colour
+  /* Underlined ink rather than the accent: on a page whose colour
      is spent as blocks, an accent-coloured word is a fourth voice. */
   color: var(--text);
   font-size: var(--text-sm);
@@ -246,10 +145,9 @@
   text-decoration: underline;
   text-underline-offset: 3px;
   text-decoration-thickness: 2px;
-  /* A `<button>` carries this class too now (audit item 6's "manage"
-     links, which raise a sheet in place rather than navigating): harmless
-     resets for the `<a>` uses above, which already had none of these from
-     the user-agent sheet worth cancelling. */
+  /* A `<button>` carries this class too now ("manage" links, which raise a sheet in place
+     rather than navigating): harmless resets for the `<a>` uses above, which already had
+     none of these from the user-agent sheet worth cancelling. */
   background: none;
   border: none;
   font-family: inherit;
@@ -257,42 +155,18 @@
 }
 
 /* ---------- list card ----------
-
-   Rows with a hairline separator, an icon disc, a title, an optional
-   subtitle and a chevron. The separator runs the full width of the card:
-   an earlier pass removed separators entirely and a long list stopped
-   reading as a list.
-
-   Subtitles are earned rather than standard (DIRECTION.md 3b) - the More
-   hub's 22 rows carry titles alone - so the row draws whatever it is
-   given and nothing reserves space for a subtitle that is not there. */
-/* Flush (phase 10, rule 4): a list is its rows between two full-width
-   hairlines, on the page. The card around it is gone. */
+   Full-width hairlines separate the rows. Each row has an icon disc,
+   title and chevron. A subtitle takes space only when supplied. */
+/* Flush: a list is its rows between two full-width hairlines, on the page. The card around
+   it is gone. */
 .kit-list {
   border-top: 1px solid var(--hairline);
   border-bottom: 1px solid var(--hairline);
 }
 
-/* ---------- the plain panel ----------
-
-   The second of DIRECTION.md decision 2's two surfaces with nothing else
-   on it: page and card, and this is a card that is not a list, a day, a
-   tile grid, a chart or a notice.
-
-   Deliberately last, and deliberately dull. Decision 2b exists because one
-   rounded card repeated down a screen is what made the app read as
-   generic, so the answer to "which surface does this content want" is
-   almost always one of the six that carry a shape of their own. What is
-   left over is a run of form fields that has to be told apart from the run
-   under it - one review row of an import against the next, a saved
-   result's frozen context against the fields that are still editable - and
-   there is nothing list-shaped, day-shaped or chart-shaped about that.
-
-   It is the kit's version of the old world's `.card`, which is what those
-   places were using: same job, and this one carries the outline instead of
-   a shadow and the kit's tighter padding instead of the old 20px
-   (DIRECTION.md decisions 2 and 3). A screen reaching for it where one of
-   the six would do is the failure mode; the six come first. */
+/* Use the plain panel to group fields or frozen context when none of
+   the kit's content-specific surfaces fit. It uses the standard
+   outline and kit padding. */
 .kit-panel {
   border-top: 1px solid var(--hairline);
   border-bottom: 1px solid var(--hairline);
@@ -306,8 +180,8 @@
   width: 100%;
   min-height: var(--touch-target);
   position: relative;
-  /* No horizontal inset (phase 10, rule 6): the screen's own 20px is the
-     row's edge now that the row has no card. */
+  /* No horizontal inset: the screen's own 20px is the row's edge now that the row has no
+     card. */
   padding: var(--space-2) 0;
   border: 0;
   background: none;
@@ -320,27 +194,9 @@
   transition-duration: var(--dur-fast);
 }
 
-/* One hairline between adjacent rows of a repeated list. .kit-row gets it
-   for being a kit row; anything else opts in with .rows-divide (ticket 42).
-
-   The idea had been invented three separate times - this rule, a plain `+`
-   border-top, and a border-bottom with a :last-child override to take it
-   back off the final row - so a new list screen had three precedents to
-   choose between and no reason to prefer one. Both selectors share one
-   declaration block here rather than the utility restating this one four
-   lines down, which would have made it a fourth copy of the thing it exists
-   to consolidate.
-
-   The overlay kind, because a border sits inside the row's own box: it adds
-   a pixel to the row's height, and it draws under the last row unless a
-   second rule removes it. An inset ::before does neither.
-
-   --hairline rather than the old --border, which is what the three
-   border-based rows were still using: a separator inside a surface is
-   exactly what --hairline is for (palettes.css). --border was --text at
-   24% where --hairline is 14%, so those rows had been drawing a visibly
-   heavier line than the same separator one card over; phase 10 retired
-   --border altogether. */
+/* Use one inset --hairline between adjacent .kit-row or
+   .rows-divide items. The pseudo-element leaves row height intact
+   and draws no line below the last row. */
 .kit-row + .kit-row::before,
 .kit-row + .rows-divide::before,
 .rows-divide + .kit-row::before,
@@ -374,18 +230,16 @@
   background: none;
 }
 
-/* Found on Home (phase 5 ticket 21): ticket 20's gallery only ever handed
-   its list card a coloured role, so the disc that vanishes on the white band
-   waited for a screen to draw it. */
+/* Found on Home: gallery only ever handed its list card a coloured role, so the disc that
+   vanishes on the white band waited for a screen to draw it. */
 .kit-row-ico {
   flex: 0 0 auto;
   width: 36px;
   height: 36px;
-  /* A block of the area's stripe, the exact hex, with the glyph in the ink
-     proven on that fill (phase 10, rules 3 and 6). The tinted disc it
-     replaces was the 15% wash that made Home five pink smudges. The 1px
-     edge is drawn so a white band on the light page and a black one on the
-     dark page still have an edge. */
+  /* A block of the area's stripe, the exact hex, with the glyph in the ink proven on that
+     fill. The tinted disc it replaces was the 15% wash that made Home five pink smudges.
+     The 1px edge is drawn so a white band on the light page and a black one on the dark
+     page still have an edge. */
   border-radius: var(--r-block);
   display: grid;
   place-items: center;
@@ -401,17 +255,15 @@
 
 .kit-row-title {
   display: block;
-  /* A title breaks inside a word rather than running out of its own box.
-     `min-width: 0` above lets the text column shrink, but a single word
-     longer than what is left of the row - "measurements" at 200% zoom -
-     has nowhere to wrap and overflows across whatever the row carries at
-     its trailing edge (found on the edit mode's handle, redesign ticket
-     14, where a row has two controls there rather than a chevron). */
+  /* A title breaks inside a word rather than running out of its own box. `min-width: 0`
+     above lets the text column shrink, but a single word longer than what is left of the
+     row at 200% zoom has nowhere to wrap and overflows across whatever the row carries at
+     its trailing edge. */
   overflow-wrap: break-word;
   font-size: var(--text-lg);
   font-weight: var(--weight-bold);
   line-height: 1.25;
-  /* On the base rule rather than on a state class alone (ticket 150):
+  /* On the base rule rather than on a state class alone:
      the roadmap title's done/skip colouring toggles by adding or removing
      a class (`.roadmap-done`, `.roadmap-skip-text`), and a transition
      declared only inside that class does not run for the direction that
@@ -420,9 +272,13 @@
   transition: color var(--dur-fast) var(--ease-out);
 }
 
-/* 15 at weight 600, not 14 at 450 (phase 10, rule 2). */
+/* 15 at weight 600, not 14 at 450. */
 .kit-row-sub {
   display: block;
+  /* Breaks inside a word like the title above: an unbroken 56-character
+     note ran out of the row and under the trailing delete icon in Trash
+     at 390 px. */
+  overflow-wrap: break-word;
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
   color: var(--text-2);
@@ -438,21 +294,10 @@
   font-size: var(--text-sm);
 }
 
-/* A row that opens something and also carries one control of its own - a
-   letter that can be read or thrown away, a tryout that can be opened or
-   dropped (phase 5 UX ticket 25).
-
-   Eight of the feature screens had written this by hand as a `.list-row`
-   div holding a bare `<a>` for the text and an icon button beside it, and
-   the hand-written ones had drifted: some gave the link the row's padding
-   and some did not, so the tappable area stopped at the words on half of
-   them. It is one shape, so it belongs here.
-
-   The split is what makes it legal as well as legible: a button inside a
-   link is not markup a browser or a screen reader can resolve, so the row
-   itself is an unstyled container and the two real controls sit inside it
-   side by side. The main half takes the row's own press wash; the trailing
-   half is a control in its own right at the full touch target. */
+/* Give the main link and trailing action separate sibling
+   controls. The main link includes row padding and press wash.
+   The trailing action keeps a full touch target. Nesting it
+   inside the link would create invalid interactive markup. */
 .kit-row.is-split {
   padding: 0;
   cursor: default;
@@ -498,23 +343,8 @@
   cursor: pointer;
 }
 
-/* ---------- the filter line ----------
-
-   A label and one control, sitting on the page rather than in a card:
-   which garment category the size log is showing, which measurement type
-   the chart plots, which area the hair-removal sessions came from.
-
-   The feature screens had this as a `.field` with a full-width `<select>`
-   in it, which is the shape a form uses for something being *entered*.
-   Nothing here is being entered - the control changes what the screen is
-   showing - and a form field the width of the screen sitting above a list
-   reads as the first row of that list.
-
-   Up against its own label rather than at the end of the line, which is
-   where the calendar's own metric picker ended up after a thumb kept
-   catching the chevron above it (ticket 22). Same reasoning, same shape;
-   `.cal-metric` is the instance that came first and this is the one every
-   screen after it uses. */
+/* Put a filter beside its label on the page. The compact control changes the
+   visible list and stays clear of the rows below. */
 .kit-filter {
   display: flex;
   align-items: center;
@@ -523,92 +353,25 @@
   padding: var(--space-2) 0 var(--space-4);
 }
 
-.kit-filter-label {
-  font-size: var(--text-sm);
-  color: var(--text-2);
-}
+/* The gender-scales row names every scale that is ticked, so it is the one subtitle in the
+   app whose length is set by how much the person has chosen. Past three it wrapped to a
+   second line, the row grew by 17px, and the whole Settings screen reflowed underneath the
+   open sheet - which reads as the blurred panel behind the sheet jumping up and down while
+   you tick. The scroll position moved with it.
 
-/* The axis picker and the range control are one decision, so they are one
-   block.
-
-   `.screen > *` gives 20px between blocks, deliberately, for blocks that
-   are meant to read as separate (app.css, register finding 32.14). These
-   two are not separate: picking an axis is what decides whether there is a
-   range left to pick. Stacked as two screen blocks they sat 40px apart
-   - each `.kit-filter`'s own bottom padding plus that margin - and the
-   three control rows on a body map read as three unrelated things floating
-   above the charts. Tight inside the group, the block spacing outside it. */
-.kit-reading-controls {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-/* The label row's bottom padding is the group's gap now, so it does not pay
-   twice. */
-.kit-reading-controls > .kit-filter {
-  padding-bottom: 0;
-}
-
-/* The slot a chart screen's range control and its whole-journal note share
-   (phase 8 features ticket 16).
-
-   A re-keyed axis reads all history, so the range picker has nothing left
-   to answer and is swapped out rather than left inert. The two are
-   different heights - a pill row against one line of text - so the slot
-   carries `use:resize` and travels between them instead of snapping, and
-   the control on its way out fades off its own footprint with
-   `out:crossfade`.
-
-   Positioned, and that is the whole reason this is a class rather than a
-   bare div: crossfade takes the leaving node out of flow at its static
-   position, which resolves against the nearest positioned ancestor. Left
-   to find one on its own it reaches `.screen` and the fading pills land at
-   the top of the page. */
-.kit-reading-slot {
-  position: relative;
-}
-
-/* Standing in for the pill row, so it takes the same vertical rhythm the
-   3px-padded pills do rather than collapsing the space above the chart the
-   moment somebody switches axis. */
-.kit-reading-note {
-  margin: 0;
-  padding: var(--space-2) 0;
-}
-
-/* The gender-scales row names every scale that is ticked, so it is the one
-   subtitle in the app whose length is set by how much the person has chosen.
-   Past three it wrapped to a second line, the row grew by 17px, and the whole
-   Settings screen reflowed underneath the open sheet - which reads as the
-   blurred panel behind the sheet jumping up and down while you tick (Alicja,
-   2026-08-26). The scroll position moved with it.
-
-   One line, and the names that fit are the ones shown; the sheet above is
-   where the full list lives. Scoped to this row rather than to `.kit-row-sub`
-   because every other subtitle in the app is copy of a fixed length, and
-   several of them are written to wrap. */
+   One line, and the names that fit are the ones shown; the sheet above is where the full
+   list lives. Scoped to this row rather than to `.kit-row-sub` because every other subtitle
+   in the app is copy of a fixed length, and several of them are written to wrap. */
 [data-list-row='scales'] .kit-row-sub {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* The look-back letter card (phase 5 deepening ticket 13) carries a letter's
-   opening, and the letter's full text is what the card opens onto - so the
-   row shows a preview of it, not the prose itself, the same rule the scales
-   row follows: the row is the summary, the screen behind it is the whole.
-   Two lines, clamped here rather than cut here, so the visible cut lands
-   wherever the text wraps at the row's real width. The code-side cut
-   underneath it is letterOpening's, and it is set far enough past two lines
-   that the two never disagree about what is visible.
-
-   Which line the prose is on used to depend on the surface (phase 8
-   features ticket 21): Safe Space's own list led with the words where a
-   retrospective leads with the date. Phase 11 ticket 15 folded that surface
-   into the letters screen and its own card, so there is one arrangement
-   left - the date leads, the words sit under it, and it is the words that
-   are clamped. */
+/* The retrospective row leads with the date. Clamp
+   letterOpening's preview at two rendered lines. The excerpt is
+   long enough for the visible clamp and keeps the full letter
+   out of the link's accessible name. */
 [data-list-row='letter-preview'] .kit-row-sub {
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -617,15 +380,13 @@
 }
 
 /* A search hit's title is a run out of the middle of whatever it matched
-   (phase 5 deepening ticket 24, searchHitRows.ts), so it can be a sentence
-   or two where every other row's title is a few words. Two lines, the same
-   allowance the letter preview above takes, and at the body weight rather
-   than the row title's medium: the whole row is the quotation, and a
+   (searchHitRows.ts), so it can be a sentence or two where every other row's title is a few
+   words. Two lines, the same allowance the letter preview above takes, and at the body
+   weight rather than the row title's medium: the whole row is the quotation, and a
    paragraph set in medium reads as a heading.
 
-   Keyed on the hit's own attribute rather than on `[data-list-row]`, because
-   a hit's row key is its area and its id and there is no fixed value to
-   match. */
+   Keyed on the hit's own attribute rather than on `[data-list-row]`, because a hit's row
+   key is its area and its id and there is no fixed value to match. */
 [data-search-hit] .kit-row-title {
   font-weight: var(--weight-regular);
   display: -webkit-box;
@@ -634,22 +395,8 @@
   overflow: hidden;
 }
 
-/* ---------- the box on a tickable row ----------
-
-   Phase 5 ticket 35. The box carries the row's state; the row does not
-   change under it, for the reason Check.svelte gives.
-
-   The size is the icon size the rest of a row is drawn at, so the box lines
-   up with the chevrons and discs on the rows around it rather than being a
-   third measurement.
-
-   Ticked is `.tag-chip.is-selected`'s treatment, written out rather than
-   shared through a class: a chip is a pill and this is a square, and the two
-   agreeing on colour is not a reason to make one of them the other.
-
-   Named for the mark it draws rather than for the gesture, because
-   `.kit-*tick` is the chart kit's word for the axis furniture these charts
-   refuse to draw, and kit-surfaces.test.ts fails on sight of it. */
+/* The tick box carries the selection state and aligns with the row icons.
+   Share the selected chip's colours. The square keeps its own shape. */
 .kit-check {
   flex: 0 0 auto;
   width: 24px;
@@ -670,19 +417,8 @@
   border-color: var(--accent);
 }
 
-/* Tier 3, a change within the screen: the mark moves and its container does
-   not. The row's own press is tier 1 and is the wash it fills with; this is
-   the answer to the tap having landed.
-
-   The tick draws itself in over its own length rather than fading or
-   popping, which is the one gesture a check mark has: 22 units of path,
-   hidden by an offset of 22 and uncovered to 0. Unticking plays the same
-   transition backwards for nothing, which is the whole reason it is a
-   transition and not an animation.
-
-   --dur-slow, deliberately slower than the box's fill under it, so the
-   colour arrives and the mark is drawn onto it rather than the two landing
-   as one event. */
+/* Draw the tick by transitioning its dash offset from 22 to 0. Reverse it
+   on deselect. The box fill finishes before the tick. */
 .kit-check-mark {
   stroke-dasharray: 22;
   stroke-dashoffset: 22;
@@ -706,37 +442,18 @@ html[data-a11y-motion='reduce'] .kit-check-mark {
 }
 
 /* ---------- day card ----------
-
-   Entries grouped under a date bar of ink, which is what makes a run of
-   days read as one list of days rather than as one unbroken column.
-
-   Inside, the day is a timeline: a hairline runs down the entries and each
-   mood sits on it, with the time beside the mark. The shape of a day -
-   three entries close together in the evening, one in the morning - is
-   then visible before a word of it is read. It also does the job the
-   separator lines were doing between entries, so those are gone and the
-   rows close up; DIRECTION.md's decision 3 asks for tighter rather than
-   airier, and two entries a whole card-padding apart was the opposite. */
-/* Flush (phase 10, rule 4): a day is its date bar plus its entries on the
-   page, with no outline around the group. */
+   Group entries under a date bar. A timeline places each mood beside its
+   time, so readers can see the day's gaps and clusters. The line separates
+   entries without the extra space of a card around each one. */
+/* Flush: a day is its date bar plus its entries on the page, with no outline around the
+   group. */
 .kit-day {
   position: relative;
 }
 
-/* The date bar is a block of ink (rule 4's third treatment): --text as the
-   ground, --bg as the type, no edge (ux-carpet ticket 282). It was a block
-   of the stripe, and a run of days is the longest column of blocks the app
-   draws: under the Journal's month that was a stack of light-blue bars on
-   the trans page, and it read like a different app. A surface bar with the
-   stripe as a 4px leading edge came next and read as a generated-UI
-   default (Alicja, 2026-09-29: "the left accent is a typical AI tell"),
-   and the plain surface with its outline did not stand out from the page.
-   Ink stands out in every palette and both themes, and it carries no
-   role: the area's colour stays on the tags and the mood marks under the
-   bar. The border the other blocks draw inside themselves is left off,
-   since ink on the page already has the page's full contrast as its edge.
-   tests/palette-contrast.test.ts holds --bg on --text to 4.5:1 at this
-   13px on every palette in both themes. */
+/* The date bar uses --bg ink on --text with no edge (rule 4).
+   Keep area colour on tags and mood marks. palette-contrast.test.ts
+   checks 4.5:1 at 13px in all palettes and themes. */
 .kit-day-bar {
   display: flex;
   align-items: center;
@@ -757,7 +474,7 @@ html[data-a11y-motion='reduce'] .kit-check-mark {
 .kit-day-body {
   padding: var(--space-2) 0 var(--space-3);
 }
-/* DayCard's `tight`: half the room under the bar (search ticket 16). */
+/* DayCard's `tight`: half the room under the bar. */
 .kit-day.is-tight .kit-day-body {
   padding-top: var(--space-1);
 }
@@ -792,14 +509,13 @@ a.kit-entry:active {
   background: var(--role-wash);
 }
 
-/* The hour sits on the same 26px line the face does, so the two read as one
-   mark on the rail rather than as a label that slipped.
+/* The hour sits on the same 26px line the face does, so the two read as one mark on the
+   rail rather than as a label that slipped.
 
-   One width for every hour, right-aligned against the face (release audit
-   U8): the column was `auto` per row, so "9:24" sat 7px narrower than
-   "13:49" and its face, and the rail through it, moved left with it. Five
-   tabular digits' worth in the time's own type holds "23:59", the widest
-   time either locale writes (fmtTime is 24-hour in en-GB and pl-PL). */
+   One width for every hour, right-aligned against the face (release): the column was `auto`
+   per row, so "9:24" sat 7px narrower than "13:49" and its face, and the rail through it,
+   moved left with it. Five tabular digits' worth in the time's own type holds "23:59", the
+   widest time either locale writes (fmtTime is 24-hour in en-GB and pl-PL). */
 .kit-entry-time {
   display: flex;
   align-items: center;
@@ -837,25 +553,22 @@ a.kit-entry:active {
 
 /* 13px is the middle of the 26px face at the top of the cell.
 
-   `:first-of-type`/`:last-of-type` rather than `:first-child`/`:last-child`
-   since phase 8 features ticket 07: a margin note's block
-   (DayEntry.svelte's own `marginNotes` snippet) is a sibling of `.kit-entry`
-   rather than nested inside it - an entry's row stays a plain link and
-   never grows interactive controls inside an `<a>` - so an entry followed
-   by one is no longer its card's literal last child. Every `.kit-entry` in
-   one card shares one tag (`a` where the card is interactive, `article`
-   where it is not, DayEntry's own `{#if href}`), so matching by type still
-   picks out exactly the entries and nothing a margin note's own `div`
+   `:first-of-type`/`:last-of-type` rather than `:first-child`/`:last-child` since a margin
+   note's block (DayEntry.svelte's own `marginNotes` snippet) is a sibling of `.kit-entry`
+   rather than nested inside it - an entry's row stays a plain link and never grows
+   interactive controls inside an `<a>` - so an entry followed by one is no longer its
+   card's literal last child. Every `.kit-entry` in one card shares one tag (`a` where the
+   card is interactive, `article` where it is not, DayEntry's own `{#if href}`), so matching
+   by type still picks out exactly the entries and nothing a margin note's own `div`
    contributes. */
 .kit-entry:first-of-type .kit-entry-mark::before { top: 13px; }
 .kit-entry:last-of-type .kit-entry-mark::before { bottom: calc(100% - 13px); }
 /* The variant for a card whose entries each sit in a wrapper of their own,
-   `.kit-entry-row`, so that each can open and close its own height
-   (EntryDays.svelte, search ticket 16). Inside a wrapper every entry is the
-   first and the last of its type, and the rule above would end the line at
-   each one; the run of wrappers says where the card's first and last entry
-   are instead. After the two rules above, which tie with the first of these
-   on specificity. */
+   `.kit-entry-row`, so that each can open and close its own height (EntryDays.svelte).
+   Inside a wrapper every entry is the first and the last of its type, and the rule above
+   would end the line at each one; the run of wrappers says where the card's first and last
+   entry are instead. After the two rules above, which tie with the first of these on
+   specificity. */
 .kit-entry-row > .kit-entry .kit-entry-mark::before { top: 0; bottom: 0; }
 .kit-entry-row:first-child > .kit-entry .kit-entry-mark::before { top: 13px; }
 .kit-entry-row:last-child > .kit-entry .kit-entry-mark::before { bottom: calc(100% - 13px); }
@@ -904,19 +617,7 @@ a.kit-entry:active {
   line-height: 1.3;
 }
 
-.kit-entry-note {
-  margin: 0;
-  font-size: var(--text-sm);
-  color: var(--text-2);
-  line-height: 1.35;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-/* The fluidity engine's presentation, in its own colour (phase 5 deepening
-   ticket 17, ADR-0048) - set inline per entry by the caller, since it names
+/* The fluidity engine's presentation, in its own colour (ADR-0048) - set inline per entry by the caller, since it names
    a specific presentation rather than this row's own section role. */
 .kit-entry-presentation {
   display: block;
@@ -943,9 +644,8 @@ a.kit-entry:active {
    which is the same object doing the same job in the same colour. */
 .kit-pill {
   padding: 1px var(--space-2);
-  /* The one capsule left in the kit (phase 10, rule 5): a tag is a pill
-     because it is one word. A block of the stripe like the date bar above
-     it, in the same proven ink. */
+  /* The one capsule left in the kit: a tag is a pill because it is one word. A block of the
+     stripe like the date bar above it, in the same proven ink. */
   border-radius: var(--radius-pill);
   background: var(--role-draw);
   border: 1px solid var(--outline);
@@ -962,33 +662,13 @@ a.kit-entry:active {
    the lazy page scaffold, and the first prototype round shipped it before
    the slop audit caught it. A tile shows a title and the number or line
    that is the reason to go there. */
-/* Flex rather than a two-column grid, and the reason is motion (phase 9
-   carpet ticket 04). A grid column holds its width whatever the child inside
-   it is doing, so a tile leaving could shrink all it liked and the tile
-   beside it stayed at half width until the frame the node was finally
-   removed - then jumped to full. The yank landed *after* the animation
-   looked finished, which is the worst place for one. A flex line has no
-   columns to hold: the survivor's own `flex-grow` absorbs whatever the
-   leaving tile gives up, on every frame, and lands on full width with
-   nothing left to snap. $lib/motion/reveal.ts's `collapse` is the other
-   half.
+/* Flex growth lets survivors reclaim their neighbour's width on each
+   collapse frame. A grid holds the column until removal, causing a snap.
 
-   The basis is half the line less a whole gap rather than half a gap, so a
-   pair starts a gap short of the line and `flex-grow: 1` hands each of them
-   half of what is left. That lands on the same two columns the grid drew,
-   and it is the growing rather than the basis that does it - which is the
-   point, because growing is what a survivor can do on every frame of a
-   neighbour leaving and a grid column cannot. `flex-grow: 1` is also what
-   makes a lone tile take the whole width
-   instead, which is the `:only-child` rule this replaces: where a grid's two
-   destinations are each gated on their own - Home's look back, where wrapped
-   and on-this-day qualify independently - the lone survivor sat in the left
-   column with a hole beside it, and read as a tile that failed to load
-   rather than as the only offer there is. A third tile wraps to its own line
-   and takes all of it for the same reason.
-
-   `min-width: 0`, because a flex item's automatic minimum is its content and
-   a tile whose title will not wrap would otherwise refuse to shrink. */
+   Each tile's basis is half the line minus one gap. Two tiles split the
+   remaining space through flex-grow to fill the row evenly. A lone tile or
+   a third tile on a new row gets the full width. Set min-width: 0 so a
+   long unbroken title can shrink with the row. */
 .kit-tiles {
   display: flex;
   flex-wrap: wrap;
@@ -1004,7 +684,7 @@ a.kit-entry:active {
 
 /* `data-rows`: one tile per line, for a grid whose tiles are rows rather
    than a pair. Home's bound-to-today tiles take the whole width because that
-   is their weight (phase 8 UX ticket 01); the two-up default above is what a
+   is their weight; the two-up default above is what a
    pair of destinations gets. */
 .kit-tiles[data-rows] > * {
   flex-basis: 100%;
@@ -1016,17 +696,14 @@ a.kit-entry:active {
    truncated. Below that the pair stacks and each tile gets the whole width.
    The threshold is where the note stops fitting rather than a device size. */
 
-/* `data-tight`: opt-in for a pair the 390px floor's protection is
-   overcautious for. Two of them so far. Safe Space's stats, whose notes are
-   one or two words each (ticket 14, Alicja's review). And Home's look back,
-   where the reason is the pair rather than the notes: wrapped and on this
-   day are the same offer over two spans, so side by side they read as one
-   thing to glance at and stacked they were two cards each stating a number
-   (phase 8 UX ticket 01, Alicja's review). The 200% zoom danger above is still honoured: it stacks
-   at 300px rather than never, which still covers the ~195px effective
-   viewport that zoom produces on a 390px-floor phone. Opt in per instance;
-   the default above stays the floor for any pair that has not confirmed its
-   notes are this short. */
+/* `data-tight`: opt-in for a pair the 390px floor's protection is overcautious for. Two of
+   them so far. Safe Space's stats, whose notes are one or two words each. And Home's look
+   back, where the reason is the pair rather than the notes: wrapped and on this day are the
+   same offer over two spans, so side by side they read as one thing to glance at and
+   stacked they were two cards each stating a number. The 200% zoom danger above is still
+   honoured: it stacks at 300px rather than never, which still covers the ~195px effective
+   viewport that zoom produces on a 390px-floor phone. Opt in per instance; the default
+   above stays the floor for any pair that has not confirmed its notes are this short. */
 @media (max-width: 300px) {
   .kit-tiles[data-tight] > * {
     flex-basis: 100%;
@@ -1039,26 +716,10 @@ a.kit-entry:active {
   }
 }
 
-/* The block (phase 10 rule 3, redesign ticket 24). A tile was a 15% tint of
-   its stripe with the number in the stripe's mark; it is the stripe itself
-   now, at full strength, with the title and the number written on it in the
-   ink roles.ts proved against that exact hex. The tint is what made Home
-   five pink washes on trans: the same colour at 100% over a tenth of the
-   area reads as the flag, and the same colour at 15% over half the screen
-   reads as a theme.
-
-   Flex rather than the grid it was, so the foot can be pushed to the bottom
-   edge with `margin-top: auto` on a tile of any height, and so the value can
-   be pushed down under a title that wrapped - two tiles side by side then
-   line their numbers up whatever their titles did (Mobbin: Brick's block
-   sets its value at the bottom left under a small label, TIDE's sets it in
-   the block's bottom corner; both were read for where the number sits on a
-   block, not for their rounded corners or their icons).
-
-   The edge is the app's own outline rather than a mix of the stripe: a block
-   of the stripe needs separating from the page, not restating - and it is
-   the one line that is there whatever band the area got, which is what
-   agender's near-black and every flag's white band need. */
+/* Use the full area stripe with the ink roles.ts picked for it.
+   The standard outline separates light and dark
+   stripes from the page. Flex lets margin-top: auto pin the foot and
+   align paired values under titles that wrap. */
 .kit-tile {
   display: flex;
   flex-direction: column;
@@ -1072,22 +733,13 @@ a.kit-entry:active {
   overflow: hidden;
   color: var(--role-fill-ink);
   text-decoration: none;
-  /* A block arrives by clipping open from its own left edge (phase 10 rule
-     10, redesign ticket 25): the kit's inline bar already arrives this way
-     (kit-bar-reveal, below) and a tile is the same object at a larger size -
-     a solid thing that slides into view rather than fading up from nothing.
-     The value inside counts up on the same clock where it is a count
-     (Tile.svelte, $lib/motion/countUp), so the number lands as the block
-     does. Each tile of a grid waits its turn by --stagger-step, which the
-     grid hands it as --tile-index; a grid arriving as one slab is a screen
-     assembling, and one arriving block by block is blocks. A tile arriving
-     alone on a settled screen - out of Home's fold - comes down from above
-     instead (reveal.ts, `arrivesFromAbove`), whose clip is a script
-     animation and so outranks this one for the length of its travel.
+  /* Grid tiles clip open from the left and stagger with --tile-index
+     and --stagger-step. Counts share the clock. A lone tile entering
+     a settled screen uses arrivesFromAbove, whose script animation
+     overrides this clip.
 
-     Filled both ways so the 1ms clamp ends it where it rests, and outset by
-     6px at the end for the focus ring's sake, as the heading's is. `round`
-     on the inset, or the moving edge is square until the last frame. */
+     Fill both ways so the 1ms clamp reaches rest. Round the moving
+     edge and extend the final clip 6px for focus outlines. */
   animation: kit-block-in var(--dur-slow) var(--ease-out) both;
   animation-delay: calc(var(--tile-index, 0) * var(--stagger-step));
 }
@@ -1145,19 +797,17 @@ a.kit-entry:active {
   background: color-mix(in oklab, var(--role-fill-ink) 18%, transparent);
 }
 
-/* Named areas rather than relying on source order (ticket 99 item 9): the
-   note is a DOM sibling of .kit-tile-main so it can be its own row instead
-   of stretching that row's height, but auto-placement would otherwise slot
-   the action button wherever the flow cursor lands after a full-width note,
-   not necessarily beside main. Areas pin all three regardless of order.
+/* Named areas rather than relying on source order: the note is a DOM sibling
+   of .kit-tile-main so it can be its own row instead of stretching that row's height, but
+   auto-placement would otherwise slot the action button wherever the flow cursor lands
+   after a full-width note, not necessarily beside main. Areas pin all three regardless of
+   order.
 
-   No `height: 100%` on either tile rule, and that is not an omission (phase
-   9 carpet ticket 04). It made a tile fill the grid cell it used to sit in,
-   which was one job `align-items: stretch` on the row above already does -
-   in flex as it did in grid. Left in place it resolved against the flex
-   container's own content-derived height instead of the line's, which made
-   every stacked tile as tall as the whole grid and let the section below it
-   overlap. */
+   No `height: 100%` on either tile rule, and that is not an omission. It made a tile fill
+   the grid cell it used to sit in, which was one job `align-items: stretch` on the row
+   above already does - in flex as it did in grid. Left in place it resolved against the
+   flex container's own content-derived height instead of the line's, which made every
+   stacked tile as tall as the whole grid and let the section below it overlap. */
 .kit-tile.is-split {
   display: grid;
   /* The action keeps its own width; the main column may shrink below its
@@ -1225,22 +875,11 @@ a.kit-entry:active {
 .kit-tile.is-split > .kit-tile-main { grid-area: main; }
 .kit-tile.is-split > .kit-tile-act { grid-area: act; }
 
-/* A card's floor is the tallest a card ever needs to be, which makes its
-   height the same at every width - "when a text is broken, for example
-   'estradiol valerate' and it gets more horizontal space, it gets smaller and
-   it happens without any animation" (Alicja, phase 9 carpet ticket 04). A
-   card that widens unwraps its title, so its height fell as it grew, and
-   whatever sat under the grid was pulled up by the difference partway through
-   the animation. Measured across the widths the two-up grid actually resolves
-   to: 176px at 177px wide, where the dose panel's title takes three lines and
-   which is what a 412px phone gives it; 159px at 321px, two lines; 124px at
-   421px, one. So the floor is the first of those, and a widening card now
-   holds still.
-
-   A floor rather than a fixed height, because a tile that genuinely needs
-   more - a long note at 200% zoom - still has to be able to take it. The rows
-   weight is not in this: a row states its title and value on one line and has
-   nothing to unwrap. */
+/* Use a 176px minimum height for tiles in the two-up grid. The
+   dose title needed that height at 177px wide, then 159px at
+   321px and 124px at 421px. The floor prevents widening from
+   pulling content upward as the title unwraps. Allow taller
+   content at 200% zoom. Single-line rows need no floor. */
 .kit-tile[data-weight='card'] {
   min-height: 176px;
 }
@@ -1283,18 +922,16 @@ a.kit-entry:active {
   border-radius: var(--r-block);
 }
 
-/* The row weight. A card stacks title, value and note down a tall tile; a
-   row takes the grid's whole width and is short, so its title and value
-   stack tight and the pair sits beside whatever control the row carries.
-   Shorter, because a row that keeps a card's 108px is a card that has been
-   stretched.
+/* The row weight. A card stacks title, value and note down a tall tile; a row takes the
+   grid's whole width and is short, so its title and value stack tight and the pair sits
+   beside whatever control the row carries. Shorter, because a row that keeps a card's 108px
+   is a card that has been stretched.
 
-   Title over value rather than the two on one line (rule 3, redesign ticket
-   24): at 320px "9h 0m 15s" beside "Time since your last dose" beside a Stop
-   button is three things competing for one line, and the number - the
-   reading the row exists for - is the one that wrapped. Stacked, the number
-   is one line whatever the title did. It steps down from 40 to 28, still
-   large text, because a row is half a card's height. */
+   Title over value rather than the two on one line: at 320px "9h 0m 15s" beside "Time since
+   your last dose" beside a Stop button is three things competing for one line, and the
+   number - the reading the row exists for - is the one that wrapped. Stacked, the number is
+   one line whatever the title did. It steps down from 40 to 28, still large text, because a
+   row is half a card's height. */
 .kit-tile[data-weight='row'] {
   min-height: 0;
   padding: var(--space-3) var(--space-4);
@@ -1310,11 +947,10 @@ a.kit-entry:active {
   font-size: var(--text-2xl);
 }
 
-/* The note runs under both of them rather than under the title alone - a
-   direct child of the split tile now (ticket 99 item 9), not nested in
-   .kit-tile-main, so it is its own grid row (card weight and row weight
-   alike) and never part of what .kit-tile.is-split centres against the
-   action button. */
+/* The note runs under both of them rather than under the title alone - a direct child of
+   the split tile now, not nested in .kit-tile-main, so it is its own grid row (card weight
+   and row weight alike) and never part of what .kit-tile.is-split centres against the action
+   button. */
 .kit-tile.is-split > .kit-tile-note {
   grid-area: note;
 }
@@ -1329,14 +965,12 @@ a.kit-entry:active {
   color: var(--role-fill-ink);
 }
 
-/* A tile with nothing to report is a title and a note (Safe space is the
-   standing one), and the title takes the value's place entirely: its
-   position, down on the block's bottom edge above the foot, and its size.
-   Left at the top at 19px it sat over 100px of empty stripe while the tile
-   beside it carried a 40px number there, and a grid of blocks read as one
-   tile that had failed to load (Alicja, 2026-09-07: "the safe space nudge
-   only has small text rn - looks bad"). Every block carries exactly one
-   line at display size, whatever the tile has to report. */
+/* A tile with nothing to report is a title and a note (Safe space is the standing one), and
+   the title takes the value's place entirely: its position, down on the block's bottom edge
+   above the foot, and its size. Left at the top at 19px it sat over 100px of empty stripe
+   while the tile beside it carried a 40px number there, and a grid of blocks read as one
+   tile that had failed to load. Every block carries exactly one line at display size,
+   whatever the tile has to report. */
 .kit-tile:not(:has(.kit-tile-value)) > .kit-tile-title {
   margin-top: auto;
 }
@@ -1361,10 +995,8 @@ a.kit-entry:active {
 
 .kit-tile-value {
   font-family: var(--font-display);
-  /* No viewport clamp: at phone width 5vw pulled the value down to --text-xl
-     and a "23 days" that had been display-size since the tiles landed read
-     as shrunken (Alicja, ticket 99 round 4: "the text got smaller - don't
-     change the font size"). */
+  /* No viewport clamp: at phone width 5vw pulled the value down to --text-xl and a "23
+     days" that had been display-size since the tiles landed read as shrunken. */
   font-size: var(--text-3xl);
   font-weight: var(--weight-display);
   letter-spacing: var(--display-track);
@@ -1402,12 +1034,11 @@ a.kit-entry:active {
   align-self: stretch;
 }
 
-/* One band of the flag rather than all of them: the grid hands in
-   `--flag-bar` from roles.ts's flagBarRole, which is another colour of the
-   same flag chosen for contrast against the block. The whole-flag gradient
-   this replaces put the block's own colour back into the bar, so on trans a
-   pink block carried a pink-and-white mark and rainbow's orange band was
-   not there at all (Alicja, 2026-09-07). */
+/* One band of the flag rather than all of them: the grid hands in `--flag-bar` from
+   roles.ts's flagBarRole, which is another colour of the same flag chosen for contrast
+   against the block. The whole-flag gradient this replaces put the block's own colour back
+   into the bar, so on trans a pink block carried a pink-and-white mark and rainbow's orange
+   band was not there at all. */
 .kit-tiles[data-tight][style*='--flag-bar'] .kit-tile-value::after,
 .kit-tiles[data-tight][style*='--flag-bar'] .kit-tile-main:not(:has(.kit-tile-value)) .kit-tile-title::after {
   content: '';
@@ -1475,42 +1106,22 @@ a.kit-entry:active {
   color: var(--role-fill-ink);
 }
 
-/* ---------- mood row ----------
-
-   Five moods, flush to the page with no container at all: a circle in the
-   step's own colour with its face in it, and the label under it.
-
-   It was a filled tile with the label inside and the face drawn without its
-   disc, and the tile was there for a reason worth recording. ADR-0025's five
-   steps are literal hexes chosen so --text clears 4.5:1 on top of them - the
-   ramp is built to be sat on - and on the dark theme all five are dark, so
-   five small flat dots on a dark panel barely separate from each other or
-   from the panel. The tile gave each step the area to read as a colour.
-
-   What carries that now is the drawing rather than the area: ticket 31 put
-   2.2 units of mouth or a change of curve direction between neighbouring
-   steps and gave the ramp's two ends lids instead of dots, so a step is
-   legible from its face alone at 22px - smaller than these are. Colour is no
-   longer the only thing telling the five apart, which is the job the tile was
-   doing.
-
-   Selection is a ring outside the circle rather than a border on a tile,
-   which is the answer the editor's picker already gives (DIRECTION.md, tier
-   3: a picked mood lifts and takes its ring). An outline rather than a
-   border, so nothing reflows when it appears and the five stay on their
-   grid. */
+/* Each mood has its own disc, face and label. Keep the face shapes
+   distinguishable without colour at 22px. Neighbours differ by 2.2
+   units of mouth or by curve direction, with lids at the endpoints.
+   Selection uses an outline matching the editor and adds no layout size.
+   */
 .kit-moods {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: var(--space-2);
   --mood-lift: 34px;
-  /* An outline and nothing else. Flush to the page was the original decision
-     and it read as five circles loose on it rather than as one control, but
-     the fill that came with the border made it a card - and this row is a
-     control on the page, not another surface stacked on it (Alicja,
-     2026-08-25: "the border is good, but it shouldnt have bg color"). */
-  /* Flush (phase 10, rule 4): five discs between two hairlines. In a world
-     with no cards the outline was the only box on the screen. */
+  /* An outline and nothing else. Flush to the page was the original decision and it read as
+     five circles loose on it rather than as one control, but the fill that came with the
+     border made it a card - and this row is a control on the page, not another surface
+     stacked on it. */
+  /* Flush: five discs between two hairlines. In a world with no cards the outline was the
+     only box on the screen. */
   padding: var(--space-3) 0;
   border-top: 1px solid var(--hairline);
   border-bottom: 1px solid var(--hairline);
@@ -1566,38 +1177,15 @@ a.kit-entry:active {
   white-space: nowrap;
 }
 
-/* ---------- bare strip ----------
-
-   The week, uncontained: it sits directly on the page with no card around
-   it.
-
-   Its intensity ramp is built from the section's own stripe rather than
-   from --heat-*, which the rest of the app derives from --accent. Both are
-   single-hue and neither judges (ADR-0012), but the accent is one colour
-   the palette picked and the stripe is the flag's - and a week strip on the
-   trans palette shading in the accent's rose while the icon discs beside it
-   are the flag's blue is what "the colours do not relate to the flag" looks
-   like. The steps are the heat ramp's own (22, 45, 70, 100), so a cell here
-   and a calendar cell still read as the same scale. */
+/* The week strip sits flush on the page. Shade its cells using the section's
+   flag stripe and the 22, 45, 70 and 100 intensity steps (ADR-0012). */
 .kit-strip {
   display: grid;
   grid-template-columns: repeat(var(--strip-count, 7), minmax(0, 1fr));
   gap: var(--space-2);
   padding: 0 var(--space-1);
-  /* Caps the row at its own cells' natural width (ticket 99 item 5):
-     without this, a wide web viewport gives each column far more than a
-     cell wants, and .kit-strip-day's justify-items: center floats every
-     cell away from its column's true edge - worst at the two ends, which
-     is what read as "too far from the content edge". On mobile the strip
-     is already narrower than this cap, so nothing changes there.
-
-     Counted from --strip-count rather than from a literal seven, and from
-     --strip-cell-max rather than a literal 44px, because neither is fixed
-     any more: CARPET-02 draws fourteen cells at 38px on a desktop-width
-     container, and a cap written for seven 44px cells would have squeezed
-     that strip into half the room it was designed for (the ticket's own
-     code review caught the collision before CARPET-02 and this met). The
-     two rules state the same numbers now, so they cannot drift apart. */
+  /* Cap the strip at --strip-count times the cell width plus gaps. This keeps
+     wide columns from pulling the end cells in from the content edges. */
   --strip-cell-max: 44px;
   max-width: calc(
     var(--strip-count, 7) * var(--strip-cell-max) + (var(--strip-count, 7) - 1) * var(--space-2) + 2 *
@@ -1611,7 +1199,7 @@ a.kit-entry:active {
   gap: var(--space-2);
   justify-items: center;
   min-width: 0;
-  /* The column is a <button> where the caller passed onPick (ticket 44)
+  /* The column is a <button> where the caller passed onPick
      and a <div> where it did not, so the four declarations a button brings
      of its own are unset here rather than in a second rule: same box
      either way, and the only difference a reader has to hold is that one
@@ -1667,18 +1255,14 @@ button.kit-strip-day .kit-strip-cell {
   initial-value: 0;
 }
 
-/* A day the strip's schedule said nothing about (ticket 44, marked on
-   review 2026-09-15: bare emptiness read as a hole in the row rather than
-   a day with nothing to say). It keeps its column so the week holds its
-   shape, and it differs from an expected-but-empty day by the hairline
-   alone - same ground, no colour between them, because a run of days with
-   nothing logged is not a thing this app shades (ADR-0012). The mark is a
-   small dot in the same neutral ink the hairline itself is drawn in
-   (`--outline`), never the flag's colour, so a blank day is still legible
-   as a day without becoming a third thing the strip scores. Written as a
-   `radial-gradient` on `background` rather than a border or an extra
-   element, so the cell's box stays the same size as every other one and
-   the row cannot shift by a pixel as days change state. */
+/* A day the strip's schedule said nothing about. It keeps its column so the week holds its
+   shape, and it differs from an expected-but-empty day by the hairline alone - same ground,
+   no colour between them, because a run of days with nothing logged is not a thing this app
+   shades (ADR-0012). The mark is a small dot in the same neutral ink the hairline itself is
+   drawn in (`--outline`), never the flag's colour, so a blank day is still legible as a day
+   without becoming a third thing the strip scores. Written as a `radial-gradient` on
+   `background` rather than a border or an extra element, so the cell's box stays the same
+   size as every other one and the row cannot shift by a pixel as days change state. */
 .kit-strip-cell[data-blank] {
   border-color: transparent;
   background: radial-gradient(circle at center, var(--outline) 1.5px, transparent 1.6px);
@@ -1689,17 +1273,15 @@ button.kit-strip-day .kit-strip-cell {
   outline-offset: 2px;
 }
 
-/* CARPET-02: the desktop breakpoint app.css already switches the whole
-   shell on - the column the strip counts 1024px by is the same
-   640px `--content-max` this shrinks into. 14 cells at 44px plus their gaps
-   would overrun it (14 * 44 + 13 * 8 = 720px); 38px is the largest cap
-   that still fits (14 * 38 + 13 * 8 = 636px), and it only applies once
-   --strip-count says there is more than a week to draw. */
+/* the desktop breakpoint app.css already switches the whole shell on - the column the strip
+   counts 1024px by is the same 640px `--content-max` this shrinks into. 14 cells at 44px
+   plus their gaps would overrun it (14 * 44 + 13 * 8 = 720px); 38px is the largest cap that
+   still fits (14 * 38 + 13 * 8 = 636px), and it only applies once --strip-count says there
+   is more than a week to draw. */
 @container app (min-width: 1024px) {
   .kit-strip[data-strip-count='14'] {
-    /* The row's own cap reads this, so the two agree by construction
-       rather than by both being edited at the same time (ticket 99 item
-       5). */
+    /* The row's own cap reads this, so the two agree by construction rather than by both
+       being edited at the same time. */
     --strip-cell-max: 38px;
   }
   .kit-strip[data-strip-count='14'] .kit-strip-cell {
@@ -1715,12 +1297,11 @@ button.kit-strip-day .kit-strip-cell {
 
 /* ---------- notice ----------
 
-   Flush on the page between two hairlines, with a 40px square of ink as
-   its mark (phase 10, rule 4). No coloured bar down its side: a 4px accent
-   border-left is named in the craft floor as the single most recognisable
-   AI-UI tell, and the slop audit took it off the backup notice this
-   replaces. It had an outline one step darker than a card's until the
-   cards went; the app talking about itself borrows no stripe and no box. */
+   Flush on the page between two hairlines, with a 40px square of ink as its mark. No
+   coloured bar down its side: a 4px accent border-left is named in the craft floor as the
+   single most recognisable AI-UI tell, and the slop audit took it off the backup notice
+   this replaces. It had an outline one step darker than a card's until the cards went; the
+   app talking about itself borrows no stripe and no box. */
 .kit-notice {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -1731,10 +1312,9 @@ button.kit-strip-day .kit-strip-cell {
   grid-template-rows: auto auto;
   align-items: center;
   gap: 0 var(--space-3);
-  /* Flush (phase 10, rule 4): the app talking about itself borrows no
-     stripe and no box. Text on the page between two hairlines, like a list,
-     with the ink square below as its mark. The first render set the whole
-     notice in ink and Alicja read it as too loud. */
+  /* Flush: the app talking about itself borrows no stripe and no box. Text on the page
+     between two hairlines, like a list, with the ink square below as its mark. The first
+     render set the whole notice in ink and read it as too loud. */
   /* 14px has no spacing token (it falls between --space-3 and --space-4),
      so it stays as drawn. */
   padding: 14px 0;
@@ -1743,34 +1323,17 @@ button.kit-strip-day .kit-strip-cell {
   font-size: var(--text-sm);
 }
 
-/* The icon takes the disc a list row's does, one size up, and it sits
-   beside what it marks rather than centred on the whole notice (phase 5
-   ticket 32.13). It used to span both rows and centre on the box - which
-   read right on a short notice, where row 1 is barely taller than the
-   disc itself and the two land beside each other either way - and wrong on
-   a tall one, where a heading, a paragraph and a call to action pushed the
-   box's own middle well past the heading and into the paragraph: measured
-   on /settings/hormone-curve, 123px below the words it marks. Row 1 only,
-   top-aligned, needs no threshold between the two: on a short notice row 1
-   is the whole notice in every way that matters, so aligning to its top
-   still reads as centred on the box; on a tall one it is only the heading
-   and its explanation, so the same rule lands the disc beside the heading
-   without row 2's action pulling it down. A pixel height that switched
-   between two rules would have to be re-picked every time a font size or
-   a translation changed the text's own height; this doesn't, because it
-   never measures one.
-
-   44px rather than a row's 36. A row's disc is one of five down a card and
-   answers to the column they make; a notice has exactly one, on a wider
-   surface, and at 36 it read as a bullet rather than as the notice's mark. */
+/* Top-align the 44px icon in row 1. It stays next to the heading when a
+   long body or row 2 action makes the notice taller. Alignment needs no
+   height threshold that would break when text size or translation varies. */
 .kit-notice-ico {
   grid-column: 1;
   grid-row: 1;
   align-self: start;
   width: 40px;
   height: 40px;
-  /* Ink (phase 10, rule 4): --text as a ground with --bg as the glyph, the
-     inverse of the page, kept for the smallest things. */
+  /* Ink: --text as a ground with --bg as the glyph, the inverse of the page, kept for the
+     smallest things. */
   border-radius: var(--r-block);
   display: grid;
   place-items: center;
@@ -1829,31 +1392,12 @@ button.kit-strip-day .kit-strip-cell {
   text-decoration-thickness: 2px;
 }
 
-/* Drawn as the app's primary button instead (Notice.svelte), which means it
-   does not wear .kit-notice-act at all. The two are alternatives rather than
-   a base and a modifier, and the cascade settles it either way: kit.css
-   loads after components.css, so at equal specificity the text action's
-   `background: none` and its own colour would take the button's gradient
-   straight back off. Everything the control is comes from .btn and
-   .btn-primary - the pill, the gradient, the press depth and its
-   reduced-motion substitute - and all this rule does is place it on the
-   notice's grid. Nothing about the control is retyped here; a second copy of
-   a press depth is what tests/motion-system.test.ts exists to fail on.
-
-   Full width and a block's own gap, not a line's (phase 5 ticket 32.10):
-   `justify-self: start` left the 48px button hugging the text's own width,
-   48px inside a 153px surface with 8px under the sentence it belongs to -
-   the gap `.kit-notice-act`'s text action gets, not what a control gets, so
-   it read as dropped on the card rather than as the one thing the card is
-   asking for. The doc comment above already draws that distinction:
-   `primary` is for an empty state, where the action "is the whole of what
-   a first-run Home has to say" - the screen's only call to action, not an
-   aside on a remark. Stretching it to the text's own width and giving it
-   `--space-5`, the same gap `.screen > *` gives two blocks that do not
-   touch (32.14 moved it from --space-4), is that distinction drawn in the
-   surface instead of only in the comment. */
+/* Use .btn and .btn-primary for a primary Notice action. Adding
+   .kit-notice-act would let its background override the button because
+   kit.css loads later. Place the button across the entire notice grid
+   with --space-5 above it. */
 .kit-notice-cta {
-  grid-column: 2;
+  grid-column: 1 / -1;
   grid-row: 2;
   justify-self: stretch;
   margin-top: var(--space-5);
@@ -1880,10 +1424,9 @@ button.kit-strip-day .kit-strip-cell {
   cursor: pointer;
 }
 
-/* At 200% zoom a 390px phone leaves about 195px of CSS viewport, and the
-   notice's three-column grid left its text one word per line there (the
-   redesign's 200% render, ticket 07). The icon square drops - the title
-   says what the notice is - and the text takes the column. */
+/* At 200% zoom a 390px phone leaves about 195px of CSS viewport, and the notice's
+   three-column grid left its text one word per line there. The icon square drops - the
+   title says what the notice is - and the text takes the column. */
 @media (max-width: 240px) {
   .kit-notice {
     grid-template-columns: minmax(0, 1fr) auto;
@@ -1901,26 +1444,14 @@ button.kit-strip-day .kit-strip-cell {
   }
 }
 
-/* ============================================================
-   The chart kit.
+/* The chart kit. Marks carry their own values without gridlines. A
+   single-hue ramp leads at full strength, then steps down (ADR-0012).
+   Headings name the reading, such as 'Day by day'. The chart leaves the
+   interpretation to the reader. */
 
-   Flat marks carrying their own values: no gridlines, no legend, no axis
-   furniture, and single-hue intensity with the leader at full strength and
-   the rest a diluted step of the same hue - which is the style read off
-   zabka-dashboard and also what ADR-0012 requires.
-
-   What is deliberately not taken from that reference is its editorial
-   habit. There every chart is headed by a sentence stating the finding and
-   a paragraph explaining it. Here a heading names what the chart shows and
-   never what it means: "Day by day", not "Gender feeling moved from 50 to
-   80". PRODUCT.md says the app never interprets a value, and a headline is
-   an interpretation. There is nowhere in these rules for that paragraph to
-   go, which is the point.
-   ============================================================ */
-
-/* Unboxed (phase 10, rule 4): heading, plot, range, on the page. The chart
-   card is gone; consecutive charts are separated by a hairline, which sits
-   in the middle of the 40px the two rules below add up to. */
+/* Unboxed: heading, plot, range, on the page. The chart card is gone; consecutive charts
+   are separated by a hairline, which sits in the middle of the 40px the two rules below add
+   up to. */
 .kit-chart {
   padding: 0;
 }
@@ -1941,8 +1472,8 @@ button.kit-strip-day .kit-strip-cell {
   flex: 1;
   min-width: 0;
   margin: 0;
-  /* A content title (phase 10, rule 2): 17px in the body face. The display
-     face is for the screen's structure; what a chart shows is content. */
+  /* A content title: 17px in the body face. The display face is for the screen's structure;
+     what a chart shows is content. */
   font-family: var(--font-body);
   font-weight: var(--weight-bold);
   font-size: var(--text-lg);
@@ -1984,15 +1515,13 @@ button.kit-strip-day .kit-strip-cell {
   cursor: pointer;
 }
 
-/* components.css styles the picker every select in the app opens, but the
-   rule above loads after it and turns appearance off at the same
-   specificity, so the chart picker was the one control that never got it -
-   it kept opening the platform's own list, which is the list Alicja asked
-   to be rid of. Opted in here, beside the declaration it has to beat.
+/* Components.css styles the picker every select in the app opens, but the rule above loads
+   after it and turns appearance off at the same specificity, so the chart picker was the
+   one control that never got it - it kept opening the platform's own list, which is the
+   list asked to be rid of. Opted in here, beside the declaration it has to beat.
 
-   The select being invisible is not in the way: the picker renders in the
-   top layer, anchored to the pill, so opacity 0 hides the control and not
-   the list it opens. */
+   The select being invisible is not in the way: the picker renders in the top layer,
+   anchored to the pill, so opacity 0 hides the control and not the list it opens. */
 @supports (appearance: base-select) {
   .kit-chart-pick select {
     appearance: base-select;
@@ -2035,34 +1564,19 @@ button.kit-strip-day .kit-strip-cell {
   margin-top: var(--space-3);
 }
 
-/* Anything that is not a surface, sitting above one: a control, a caption, a
-   note, a chip row. They all used to meet the surface below them at a
-   hairline, because the adjacency rule under this one only knows about two
-   surfaces, and every screen in the look-back group has one of them
-   somewhere (Alicja, 2026-08-25, three separate notes about gaps).
+/* Anything that is not a surface, sitting above one: a control, a caption, a note, a chip
+   row. They all used to meet the surface below them at a hairline, because the adjacency
+   rule under this one only knows about two surfaces, and every screen in the look-back
+   group has one of them somewhere.
 
-   --space-7 rather than --space-5, which is what two surfaces get (32.14): a
-   control and the thing it controls are further apart than two cards, or the
-   control reads as part of the card. Two surfaces get --space-5 (20px), this
-   gets --space-7 (32px). */
-/* The right-hand side is [data-kit-surface] rather than a list of surface
-   classes, for the reason [data-kit-role] above is (ticket 41, ADR-0038):
-   the list went stale silently. .kit-strip was in the two-surface rule below
-   but had never been added here, so a week strip under a segmented control
-   got no gap at all - the same shape of bug as a surface handed --role and
-   left off the colour list, and just as invisible until someone looked.
-
-   The left-hand side stays a list on purpose. Those are screen-level
-   presentational names with no owning component root (.tag-row alone is 14
-   ad-hoc call sites across 7 files), and a class opts every instance in for
-   free - an attribute there would be one more thing to remember per call
-   site rather than one less.
-
-   .skeleton-stack is named on both sides because it is a lead but not a
-   surface: it stands where a surface will be and takes a surface's gap under
-   a control, but a surface *followed* by a skeleton keeps skeleton's own
-   --space-5 rule above. Stamping it [data-kit-surface] would hand that pair
-   to the two-surface rule instead, which is a different number. */
+   --space-7 rather than --space-5, which is what two surfaces get (32.14): a control and
+   the thing it controls are further apart than two cards, or the control reads as part of
+   the card. Two surfaces get --space-5 (20px), this gets --space-7 (32px). */
+/* Use [data-kit-surface] on the following surface so new kit
+   components inherit spacing. Keep the leading class selectors
+   for screen-level names with no owning component. skeleton-stack
+   needs both selector positions for spacing but stays unmarked
+   so a preceding surface keeps the skeleton's own --space-5 gap. */
 :is(.segmented, .tag-row, .wrapped-photos, .otd-photos, .skeleton-stack)
   + :is([data-kit-surface], .skeleton-stack) {
   margin-top: var(--space-5);
@@ -2090,9 +1604,8 @@ button.kit-strip-day .kit-strip-cell {
   margin-top: var(--space-4);
 }
 
-/* A loading placeholder stands where a surface will be, so it takes the same
-   space a surface would - it had none, and sat against the switcher above it
-   (Alicja, 2026-08-25). */
+/* A loading placeholder stands where a surface will be, so it takes the same space a
+   surface would - it had none, and sat against the switcher above it. */
 .skeleton-stack + *,
 * + .skeleton-stack {
   margin-top: var(--space-5);
@@ -2117,14 +1630,11 @@ button.kit-strip-day .kit-strip-cell {
   margin-top: var(--space-5);
 }
 
-/* Day cards are the exception: adjacent ones are items of a day list -
-   Home's recent entries, search's hit list - and those lists separate
-   their rows with a 12px grid gap by design (DIRECTION.md decision 3).
-   The floor stacking on top of the gap read as 36px between entries,
-   which is the "space between entries is too big" of ticket 99 item 9:
-   the fix there belonged to the end of the screen, and the rhythm between
-   entries was never meant to move. A day card is only ever a next sibling
-   of another day card inside such a list - everywhere else a heading or a
+/* Day cards are the exception: adjacent ones are items of a day list - Home's recent
+   entries, search's hit list - and those lists separate their rows with a 12px grid gap by
+   design. Adding the screen floor to the gap made adjacent entries 36px apart. The floor belongs
+   at the end of the screen. A day card is only ever a
+   next sibling of another day card inside such a list - everywhere else a heading or a
    different surface sits between them. */
 .kit-day + .kit-day {
   margin-top: 0;
@@ -2159,13 +1669,11 @@ button.kit-strip-day .kit-strip-cell {
 }
 
 /* The one-column state - a plot with no value gutter beside it - lives in
-   AreaChart.svelte's own style block: the gutter's own state class has
-   exactly one consumer by construction and check-screens-classes.mjs fails
-   a new single-consumer class in a shared sheet. It was `.has-overlay`
-   here first, keyed to the second line rather than to the gutter, which put
-   a shared-scale pair's numbers in a row of their own above the plot
-   (ticket 29); then `.no-gutter`, which dropped the column outright until
-   ticket 99 item 25 found that the drop was what made the switch jump. */
+   AreaChart.svelte's own style block: the gutter's own state class has exactly one consumer
+   by construction and check-screens-classes.mjs fails a new single-consumer class in a
+   shared sheet. It was `.has-overlay` here first, keyed to the second line rather than to
+   the gutter, which put a shared-scale pair's numbers in a row of their own above the plot;
+   Removing the gutter shifted the plot during a switch. */
 
 .kit-area-scale {
   display: flex;
@@ -2202,8 +1710,7 @@ button.kit-strip-day .kit-strip-cell {
   fill: color-mix(in oklab, var(--role-draw) 16%, transparent);
 }
 
-/* 2px, square caps, mitred joins (phase 10, rule 9): one weight for a
-   series, one for a guide. */
+/* 2px, square caps, mitred joins: one weight for a series, one for a guide. */
 .kit-area-line {
   fill: none;
   stroke: var(--role-draw);
@@ -2212,7 +1719,7 @@ button.kit-strip-day .kit-strip-cell {
   stroke-linecap: square;
 }
 
-/* The second metric (phase 6 ticket 12). A second stripe and a dash, at the
+/* The second metric. A second stripe and a dash, at the
    same weight as the first: colour is never the only thing separating them,
    because two roles can land close together on a palette and because some
    readers cannot separate any two. The dash is long enough to read as a
@@ -2272,35 +1779,19 @@ button.kit-strip-day .kit-strip-cell {
   stroke-width: 2;
 }
 
-/* The reading under the finger, in a corner rather than beside the line:
-   a label that follows the touch is a label under the thumb holding it.
+/* The reading under the finger, in a corner rather than beside the line: a label that
+   follows the touch is a label under the thumb holding it.
 
-   Fixed in the top-right corner used to be the whole rule, and a reading
-   near the top of its own range sat right under a plate answering for it
-   (carpet ticket 08, Alicja: the label sits on top of the data). So the
-   corner is now whichever of the four is furthest from the mark - AreaChart
-   works out which in its own script (readoutCorner, charts/geometry.ts) and
-   hands this two classes below. Still never the exact touch point: that
-   is the thumb problem above, restated for a corner that would otherwise
-   chase a fingertip around the plot. */
-/* A plate laid over the plot, not a tag.
-
-   It was a pill, which is right for the one-line case it was drawn for and
-   wrong for every other. A 999px radius on a block three or four rows tall
-   is a stadium: the corner arc runs the full height of the box, so the first
-   and last rows lose their horizontal padding to the curve and sit against
-   the edge, however much padding is declared (Alicja, 2026-09-01: "the text
-   almost overlaps with the edges"). --r-block is the one corner the app
-   has (phase 10, rule 5); it holds its padding at any height, and on a
-   single-line readout 6px still reads as a chip.
-
-   What it does not get is a shadow. It can still land close to a mark even
-   once picking its own corner (two series' marks pulling the choice two
-   ways), and lifting it off with one is the obvious move and the wrong
-   one: DIRECTION.md's decision 2 gives this app two surfaces rather than a
-   stack of planes, and the single shadow in it belongs to the shell's
-   floating nav. The plate is an opaque --surface-2 inside a line, which is
-   how everything else here separates from what is behind it. */
+   Fixed in the top-right corner used to be the whole rule, and a reading near the top of
+   its own range sat right under a plate answering for it. So the corner is now whichever of
+   the four is furthest from the mark - AreaChart works out which in its own script
+   (readoutCorner, charts/geometry.ts) and hands this two classes below. Still never the
+   exact touch point: that is the thumb problem above, restated for a corner that would
+   otherwise chase a fingertip around the plot. */
+/* Use --r-block so multiline readouts retain padding at the
+   corners. A pill radius crowds the first and last lines as
+   height grows. The opaque --surface-2 and outline separate the
+   readout from plot marks without a shadow. */
 .kit-area-readout {
   position: absolute;
   top: 0;
@@ -2388,12 +1879,8 @@ button.kit-strip-day .kit-strip-cell {
 }
 
 
-/* Which line is which (phase 6 ticket 12). The app's second legend, and the
-   second named departure from DIRECTION.md's chart rules - the first is the
-   wear trend's, for the same reason: two unnamed lines are not a chart.
-
-   Under the plot and quiet: it says what the marks are and never what they
-   mean. */
+/* Put the key below the plot to identify the overlaid lines. The wear
+   trend also uses a key because it shares an axis between two metrics. */
 .kit-area-legend {
   /* Declared here too, not only on the plot: the legend is the plot's
      sibling, so the stripe the component sets on one does not reach the
@@ -2428,21 +1915,8 @@ button.kit-strip-day .kit-strip-cell {
   border-top-color: var(--role-2-draw);
 }
 
-/* Under the reading and quieter than it: what was going on is context for a
-   number, never a second number.
-
-   Blocks, not spans, and capped: a name is the person's own text and can be
-   any length, and inline elements ignore both `max-width` and the ellipsis
-   that goes with it - which is how a two-word readout grew into a pill lying
-   across most of the plot it was annotating.
-
-   Relative rather than a fixed `ch` count (carpet ticket 08): the plate
-   around this now caps itself to half the plot so its corner-picking always
-   clears the mark it names, and a name still allowed to reach a fixed 20ch
-   of its own could grow past that half again - this ties the two caps
-   together instead of guessing a `ch` count small enough for every plot
-   width the kit is asked to draw at. Shared with .kit-area-readout-text
-   above, which caps for the same reason. */
+/* The context label sits below the reading. Use a block so ellipsis works
+   and cap it with the plate at half the plot width. */
 .kit-area-readout-annotation {
   display: block;
   max-width: 100%;
@@ -2455,7 +1929,7 @@ button.kit-strip-day .kit-strip-cell {
   white-space: nowrap;
 }
 
-/* --- annotations (phase 5 deepening ticket 23) ---
+/* --- annotations ---
 
    What was happening around the readings. Neutral ink at every weight here,
    never a role colour: the fill under an annotation is one of eight flag
@@ -2539,19 +2013,6 @@ button.kit-strip-day .kit-strip-cell {
   white-space: nowrap;
 }
 
-/* Names for the marks, once, under the plot. Wraps to two lines and stops:
-   the caption is a footnote to a chart and never a paragraph beside one. */
-.kit-area-annotations {
-  margin: var(--space-1) 0 0;
-  font-size: var(--text-xs);
-  line-height: 1.35;
-  color: var(--text-2);
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-}
-
 /* The range beneath, under the plot rather than under the gutter. */
 .kit-area-range {
   display: flex;
@@ -2562,29 +2023,17 @@ button.kit-strip-day .kit-strip-cell {
   font-variant-numeric: tabular-nums;
 }
 
-/* --- horizontal bars ---
-
-   The bar runs the full width of the card with its label and its value on
-   a line above it, rather than sitting in a right-hand column behind a
-   label gutter. Single-hue: the leader is the stripe at full strength and
-   every other bar is one diluted step of that same colour, which is the
-   whole of the ramp.
-
-   Row gap tightened from --space-3 to --space-2 (Alicja's review, ticket
-   14): a set of bars with no note line was reading as more air than
-   reading, five thin tracks adrift in their card rather than one dense
-   list - "3. Tighter, not airier" (DIRECTION.md), applied here the same
-   way it already was to card padding. */
+/* Use a full-width single-hue bar with its name and value above it.
+   The largest value gets the undiluted stripe. */
 .kit-bars {
   display: grid;
   gap: var(--space-2);
-  /* The entrance, held here because two rules draw it now: the mark paints
-     itself in the stacked form and a fill inside the mark paints it in the
-     inline one, where the mark has to stay unscaled to hold a label. The
-     numbers themselves are Alicja's, 2026-08-28: "longer fade in animation,
-     more ease-out" - longer than --dur-slow and a harder decelerate than
-     --ease-out, on purpose rather than borrowed, and kept off those two so
-     every press in the app does not inherit a bar's settling time. */
+  /* The entrance, held here because two rules draw it now: the mark paints itself in the
+     stacked form and a fill inside the mark paints it in the inline one, where the mark has
+     to stay unscaled to hold a label. The numbers themselves are, 2026-08-28: "longer fade
+     in animation, more ease-out" - longer than --dur-slow and a harder decelerate than
+     --ease-out, on purpose rather than borrowed, and kept off those two so every press in
+     the app does not inherit a bar's settling time. */
   --dur-bar-in: 600ms;
   --ease-bar-in: cubic-bezier(0.16, 1, 0.3, 1);
   /* Capped, because the index is a row's place in the set and a set can be
@@ -2595,13 +2044,8 @@ button.kit-strip-day .kit-strip-cell {
   --bar-delay: calc(min(var(--bar-index, 0), 12) * var(--stagger-step));
 }
 
-/* A bar row that opens what is behind it (the Stats hub's tag insights).
-
-   Tier 1 answers with the fill and not with a scale, which is the rule
-   DIRECTION.md already writes for a row the width of the screen: this one
-   is the width of a card, and scaling it would move the card around it. The
-   wash is the same one a list row takes, so a pressable bar and a pressable
-   row feel like one control drawn two ways. */
+/* A bar row opens its details. It uses the list row's press wash because
+   scaling a full-width row also moves the card around it. */
 .kit-bar.is-open {
   display: block;
   width: 100%;
@@ -2621,21 +2065,8 @@ button.kit-strip-day .kit-strip-cell {
   transition-duration: var(--dur-fast);
 }
 
-/* The fill lands on the frame the finger does, and fades out behind it.
-
-   It used to ramp in over --dur-fast as well, which was survivable while the
-   row also scaled - a scale arrives on the same frame as the touch, so
-   something answered immediately and the wash was the slow half of a pair.
-   With the scale gone (`data-no-press` in BarRows.svelte) the wash is the
-   whole answer, and a tap is 80 to 120ms against a 150ms ramp: a real press
-   never reached more than about two thirds of it before releasing. A quiet
-   colour that also arrives late is indistinguishable from nothing happening,
-   which is the one thing tier 1 exists to prevent.
-
-   Response immediate, recovery eased - the asymmetry is the point, and it is
-   the same shape the app's own screen transitions take in the other
-   direction (an exit faster than an entrance, app.css). Reduced motion clamps
-   both ends to 1ms and the state still changes, which is the substitute. */
+/* Show the press wash immediately because it is the row's only press cue.
+   Ease out on release. Reduced motion clamps both transitions. */
 .kit-bar.is-open:active {
   background: var(--role-wash);
   transition-duration: 0s;
@@ -2689,13 +2120,12 @@ button.kit-strip-day .kit-strip-cell {
   margin-top: 4px;
 }
 
-/* A 14px flat block with 2px ends (phase 10, rule 9), down from a 26px
-   pill. Two floors stack here, on two different things: `min-width: 2px`
-   below is about there being a bar here at all, for a `--bar-share` of
-   zero. `--bar-share` itself never reads below 8 under the `leader`
-   measure (barRow.ts, `LEADER_FLOOR_SHARE`) for any row that isn't zero -
-   that one is about legibility, so a real reading still draws as a
-   length rather than as this rule's 2px nothing. */
+/* A 14px flat block with 2px ends, down from a 26px pill. Two floors stack here, on two
+   different things: `min-width: 2px` below is about there being a bar here at all, for a
+   `--bar-share` of zero. `--bar-share` itself never reads below 8 under the `leader`
+   measure (barRow.ts, `LEADER_FLOOR_SHARE`) for any row that isn't zero - that one is about
+   legibility, so a real reading still draws as a length rather than as this rule's 2px
+   nothing. */
 .kit-bar-mark {
   display: block;
   height: 14px;
@@ -2729,108 +2159,43 @@ button.kit-strip-day .kit-strip-cell {
   background: var(--role-draw);
 }
 
-/* The inline row: the bar is the row, and the day is written on it (phase
-   9 UX carpet ticket 11).
-
-   The highest days card is what this exists for. Ten days ranked on one
-   0-to-100 scale come out within a few points of each other, so ten
-   full-width tracks under ten lines of text were ten near-identical lengths
-   costing 870px at 390px wide, which is more than a viewport for a list of
-   ten numbers. Here the bar carries the day instead of standing under it,
-   and the set reads as one stack rather than as ten drawings.
-
-   36px of bar and nothing else in the row. The set's own gap goes to zero,
-   and it was never what took the room: it was --space-2, against a row of
-   48px whose bar was ten of them. What took the room is the label needing a
-   line of its own.
-
-   The row still owes the 48dp touch floor, so what is left over is the only
-   space between one bar and the next: 12px. That is the one direction this
-   form cannot be pushed further - a shorter bar is a wider gap, because the
-   row underneath it cannot shrink (Alicja, 2026-09-07: "the bar just a
-   little smaller in terms of height please. a little tighter" - 40px was
-   the first answer and read heavy).
-
-   The bar keeps its honest `track` measure: its length is the reading's
-   place on the whole scale, not its share of the day at the top. The value
-   column beside it is fixed, so every bar starts and ends on the same two x
-   positions and two days on the same reading draw the same length. Each row
-   is its own grid - a pressable row is a button, and a button cannot be
-   `display: contents` without losing its box and its press wash - and
-   subgrid is out at the WebView 87 floor, so a shared geometry has to be a
-   fixed width rather than a shared track. 3.5em holds four tabular figures,
-   and the column gap absorbs a fifth before anything touches the bar. */
-.kit-bars.is-inline {
-  gap: 0;
-}
-
-.kit-bars.is-inline .kit-bar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 3.5em;
-  align-items: center;
-  column-gap: var(--space-3);
-  padding-block: 0;
-  min-height: var(--touch-target);
-  font-size: var(--text-sm);
-}
-
-.kit-bars.is-inline .kit-bar-track {
-  position: relative;
-  display: block;
-  grid-column: 1;
-  height: 36px;
-  margin-top: 0;
-}
-
-/* The mark stops being the painted thing and becomes the window: it holds
-   the width, the width transition and the entrance, and clips everything
-   drawn inside it, and it paints itself. An inner element held the paint
-   while the entrance was a scale, because a label inside something being
-   scaled is a label being stretched; a clip needs no such thing.
-
-   So the entrance is a clip and not a scale, which is the other thing this
-   form needs of it. Growing the fill inside a mark already at its full
-   width leaves the clipped label sitting over bare card for the length of
-   the animation, in an ink chosen for the stripe - on trans's dark theme,
-   near-black words on a near-black card, doubled over the card's own copy
-   of them underneath. Clipping the mark moves the paint and the words
-   together, so at every frame the label is only ever on the ground it was
-   proven against. What that looks like is the point rather than the price:
-   the words are on the card until the bar reaches them and switch ink where
-   it passes under them, left to right, once. `round` on the inset, or the
-   growing bar's leading edge is square until the last frame. */
-.kit-bars.is-inline .kit-bar-mark {
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: calc(var(--bar-share) * 1%);
-  height: 100%;
-  /* 4px ends: the inline bar keeps its 36px because the day is written on
-     it, and a 2px end on a bar that tall reads as a cut. */
-  border-radius: 4px;
-  overflow: hidden;
-  background: var(--role-draw);
-  animation: kit-bar-reveal var(--dur-bar-in) var(--ease-bar-in) both;
-  animation-delay: var(--bar-delay);
-}
-
-@keyframes kit-bar-reveal {
-  from { clip-path: inset(0 100% 0 0 round 4px); }
-  to { clip-path: inset(0 round 4px); }
-}
-
-
-
 /* --- the year, a day at a time ---
 
-   Twelve month columns, names at the top and days below. February simply
-   stops short - a true thing about February and not a gap to fill. */
+   Month columns, names at the top and days below. February simply stops
+   short - a true thing about February and not a gap to fill.
+
+   Twelve abreast only where twelve names fit. A short month name is up to
+   27px of 12px bold ("Sept", "maj"), and a twelfth of the chart on a
+   390px phone is 25.6px, so Sept and Oct ran together into one word there
+   and at the 200% zoom floor every name ran over the next. The months wrap into bands that divide the year instead:
+   four abreast where the chart is narrow (the zoom floor), six on a phone,
+   twelve where each column has 2.25rem for its name. The steps are in rem so a larger text
+   size moves them with the names. The narrow layout is the default, so a
+   WebView without container queries falls back to labels that fit. */
 .kit-year {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 3px;
+  container-type: inline-size;
 }
 
-.kit-year > [data-year-month] {
+.kit-year > [data-year-months] {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4) 3px;
+}
+
+/* 6 x 2.25rem + 5 x 3px, and 12 x 2.25rem + 11 x 3px. */
+@container (min-width: 14.5rem) {
+  .kit-year > [data-year-months] {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+@container (min-width: 29.25rem) {
+  .kit-year > [data-year-months] {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+}
+
+.kit-year [data-year-month] {
   min-width: 0;
 }
 
@@ -2902,6 +2267,9 @@ button.kit-strip-day .kit-strip-cell {
   position: relative;
   height: 18px;
   margin-top: 6px;
+  /* The dots travel in units of the track's own width (cqw), so a position
+     is a transform rather than an inset. */
+  container-type: inline-size;
 }
 
 /* The scale itself, as the faintest line the theme has. Not a gridline and
@@ -2919,27 +2287,42 @@ button.kit-strip-day .kit-strip-cell {
   background: var(--hairline);
 }
 
-/* The distance between the two readings, which is the reading. */
+/* The distance between the two readings, which is the reading. The whole
+   track's width, clipped to the stretch between the two dots, so a change
+   of values eases the clip instead of resizing a box. */
 .kit-paired-span {
   position: absolute;
   top: 50%;
-  left: var(--from);
-  width: max(calc(var(--to) - var(--from)), 2px);
+  left: 0;
+  width: 100%;
   height: 4px;
   transform: translateY(-50%);
   border-radius: 2px;
   background: var(--role-draw);
+  clip-path: inset(0 calc((1 - var(--to)) * 100%) 0 calc(var(--from) * 100%) round 2px);
+  transition:
+    clip-path var(--dur-slow) var(--ease-out),
+    opacity var(--dur-slow) var(--ease-out);
 }
 
 .kit-paired-dot {
   position: absolute;
-  top: 50%;
-  left: var(--at);
+  top: 3px;
+  left: -6px;
   width: 12px;
   height: 12px;
-  margin-left: -6px;
-  transform: translateY(-50%);
+  transform: translateX(calc(var(--at) * 100cqw));
   border-radius: 50%;
+  transition:
+    transform var(--dur-slow) var(--ease-out),
+    opacity var(--dur-slow) var(--ease-out);
+}
+
+/* A side with no reading: the dot and the segment fade where they stand
+   rather than leaving in one frame. */
+.kit-paired-dot.is-none,
+.kit-paired-span.is-none {
+  opacity: 0;
 }
 
 /* Filled is the days it happened, hollow is the rest - on every row,
@@ -2963,9 +2346,56 @@ button.kit-strip-day .kit-strip-cell {
   font-variant-numeric: tabular-nums;
 }
 
+/* --- a bar out of a line ---
+
+   The look shared by the two bar figures that grow out of a line: the tag card's diverging
+   bars and /compare's paired tag bars. Thickness, track, end radius, colour and the line
+   over the bar are written once here; where the line sits, how long a bar may run and how
+   it moves stay with each figure, because a diverging row and a paired row are different
+   geometry. */
+.kit-run-track {
+  position: relative;
+  display: block;
+  height: 18px;
+}
+
+/* The scale as the faintest line the theme has, drawn as a child for the
+   reason PairedDots gives: the kit paints flat colour. */
+.kit-run-track::before {
+  content: '';
+  position: absolute;
+  inset: 50% 0 auto 0;
+  height: 2px;
+  transform: translateY(-50%);
+  border-radius: 1px;
+  background: var(--hairline);
+}
+
+/* The line a bar starts from, over the bar rather than under it: a bar
+   starts at this line and would otherwise cover it. */
+.kit-run-zero {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--text-2);
+  z-index: 1;
+}
+
+.kit-run-bar {
+  position: absolute;
+  top: 50%;
+  height: 12px;
+  margin-top: -6px;
+  border-radius: 2px;
+  background: var(--role-draw);
+}
+
 /* --- vertical distribution ---
 
-   Mood's own ramp (ADR-0025), which is independent of the flag palette:
+   Mood's own ramp, which is independent of the flag palette:
    the bar for each step is that step's colour, so the distribution is read
    against the same scale the picker uses. */
 .kit-dist {
@@ -3059,22 +2489,6 @@ button.kit-strip-day .kit-strip-cell {
   margin: 0;
   font-size: var(--text-sm);
   color: var(--text-2);
-}
-
-.reading-bars {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  gap: 4px;
-  width: 100%;
-  height: 100%;
-}
-
-.reading-bar {
-  display: block;
-  flex: 0 0 8px;
-  border-radius: 2px;
-  background: var(--ink);
 }
 
 .reading-axis .kit-chart-pick {

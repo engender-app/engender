@@ -1,37 +1,14 @@
 <script lang="ts">
-  /* Naming the person's own eras (phase 6 ticket 01, ADR-0049, CONTEXT:
-     "Era"): list, add, rename, move either bound, delete.
+  import { collapse } from '$lib/motion/reveal';
+  import { undoable } from '$lib/stores/deleteUndo';
+  import { journalTextAutocomplete } from '$lib/platform';
+  /* Manage eras here as reference data shared by other screens
+     (ADR-0049, ADR-0084). Each bound offers an explicit open choice or
+     a date. eraRange shows the resolved open bound using the first
+     or last entry. The clamp is derived when read (ADR-0010).
 
-     Moved here from a hub row under /more by redesign ticket 16 (ADR-0084):
-     an era is spent on seven other screens - the calendar, Wrapped,
-     compare, on this day, stats, Today, the words reading - and created on
-     exactly one, which is ADR-0084's own test for a reference area. It is
-     managed in Settings now, the way modes and entry templates are, and the
-     milestone rail is the one place under Transition an era is still drawn
-     (as a band behind the marks, MilestoneRail.svelte). `/transition/eras`
-     stays a redirect stub for anyone who bookmarked it.
-
-     The design problem this screen has and its neighbours do not: an era's
-     bounds are optional, and the era people most want to name first is the
-     one before everything, which has no day that begins it. An empty date
-     field says "you have not filled this in yet", so leaving one empty
-     would read as a form half-finished rather than as the thing the person
-     meant. Each bound is therefore a two-way choice - a date, or open -
-     with the picker appearing only under the first. "No start" is
-     something to pick, not a field to fail to fill.
-
-     What the open choice actually resolves to is shown where the choice is
-     being made, computed through `eraRange` against the journal's own first
-     and last entry (ADR-0010: the clamp is read, never stored). It is one
-     line in the sheet rather than a second line on every row: a person
-     wonders what "no start" covers while they are deciding it, and not
-     again every time they scroll past the era afterwards.
-
-     The two invariants are `eras.ts`'s, read here as `eraConflict` while
-     someone is still typing so a collision is a sentence under the fields
-     and a disabled save rather than an error thrown after a tap. The area
-     asserts the same rule on the way to the table (journal/eras.ts), which
-     is the backstop and not this screen's error path. */
+     Run eraConflict while editing so a collision is visible before
+     Save. journal/eras.ts checks the same invariant before writing. */
   import { replaceRoute } from '$lib/navigation/smart-back';
   import { page, navigating } from '$app/state';
   import { m } from '$lib/paraglide/messages';
@@ -76,7 +53,7 @@
   let boundsQuery = liveQuery((j) => j.eras.getJournalBounds());
   let bounds = $derived(boundsQuery.value ?? null);
 
-  // Phase 6 ticket 05: which eras are muted, so the sheet's switch reads
+  // Which eras are muted, so the sheet's switch reads
   // and writes the same layer on-this-day and Wrapped honour.
   let mutedQuery = liveQuery((j) => j.eraMutes.getMutedEraUuids());
   let mutedEraUuids = $derived(mutedQuery.value ?? new Set<string>());
@@ -84,7 +61,7 @@
   /** The bounds an arrival brought with it, read by `blank` on the one
       openEditor call below. Plain lets and not `$state`: each is an argument
       in flight for one call, and nothing renders them. `arrivingEnd` is set
-      only by the span offer (redesign ticket 48) - "start an era here"
+      only by the span offer - "start an era here"
       hands over a day with no end in mind. */
   let arrivingStart = '';
   let arrivingEnd = '';
@@ -102,7 +79,7 @@
       if (candidate === null || eraConflict(eras, candidate)) return false;
       await journal.eras.upsertEra(candidate);
     },
-    remove: (id) => journal.eras.deleteEra(id),
+    remove: (id) => undoable((j) => j.eras.deleteEra(id)),
     findById: (id) => eras.find((era) => era.id === id)
   });
 
@@ -162,7 +139,7 @@
   }
 
   /* "Start an era here" hands one day over as a query parameter and this
-     opens the editor on it. The span offer (redesign ticket 48) hands over
+     opens the editor on it. The span offer hands over
      two - the span's own start and end - so `end` is read the same way and
      left absent when there is no second day, which is `start` alone's
      existing case. Both parameters are dropped again on the way in, so the
@@ -182,7 +159,7 @@
     void replaceRoute('/settings/eras', { noScroll: true, keepFocus: true });
   });
 
-  /* Tapping an era's band on the milestone rail (redesign ticket 16) hands
+  /* Tapping an era's band on the milestone rail hands
      its id over the same way a milestone's own `?edit=` deep link does
      (transition/milestones/+page.svelte): the id is read once the list has
      arrived, which is what subscribes this effect to it, and dropped again
@@ -212,21 +189,23 @@
     {#snippet rows(list)}
       <ListCard role={roleAt(activeFlag.roles, 0)}>
         {#each list as era (era.id)}
-          <ListRow
-            key={era.id}
-            data-era={era.id}
-            icon="columns"
-            title={era.name}
-            subtitle={spanText(era)}
-            chevron={false}
-            onclick={() => record.openEditor(era)}
-          />
+          <div class="rows-divide" transition:collapse>
+            <ListRow
+              key={era.id}
+              data-era={era.id}
+              icon="era"
+              title={era.name}
+              subtitle={spanText(era)}
+              chevron={false}
+              onclick={() => record.openEditor(era)}
+            />
+          </div>
         {/each}
       </ListCard>
     {/snippet}
     {#snippet empty()}
       <Notice
-        icon="columns"
+        icon="era"
         key="eras-empty"
         role={roleAt(activeFlag.roles, 0)}
         title={m.eras_empty_title()}
@@ -252,9 +231,9 @@
     }}
   >
     {#snippet fields(editor)}
-      <Field label={m.era_name_label()} id="era-name">
+      <Field label={m.name_label()} id="era-name">
         {#snippet children(id)}
-          <input
+          <input autocomplete={journalTextAutocomplete()}
             class="input"
             {id}
             name="era-name"
@@ -308,7 +287,7 @@
 
       {#if editor.id}
         <!-- Muting is its own write, applied the moment the switch moves
-             rather than waiting for Save (phase 6 ticket 05, ADR-0049) - the
+             rather than waiting for Save (ADR-0049) - the
              era already exists, so there is nothing here for a save to
              commit. Not offered while creating: an era with no id yet has
              nothing for a mute to key by. -->

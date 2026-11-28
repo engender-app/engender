@@ -1,16 +1,14 @@
-/* Ticket 17 (phase 2): one archive format, both directions.
+/* One archive format, both directions.
 
-   This probe runs inside the Android app's WebView and boots both storage
-   implementations there: the web stack (OPFS + SQLocal/sqlite3mc) and the
-   Android stack (the Capacitor SQLCipher bridge + app-private files). It
-   then proves archive round-trips both ways, under both encryption layouts:
+   This probe runs inside the Android app's WebView and boots both storage implementations
+   there: the web stack (OPFS + SQLocal/sqlite3mc) and the Android stack (the Capacitor
+   SQLCipher bridge + app-private files). It then proves archive round-trips both ways,
+   under both encryption layouts:
 
-     1) both journals encrypted
-     2) only one encrypted (web encrypted, Android plaintext)
+   1) both journals encrypted 2) only one encrypted (web encrypted, Android plaintext)
 
-   The checks mirror ticket 17's acceptance lines directly: rows and photos,
-   merge/replace behaviour, portable preferences, device-local preferences,
-   and wrong-password wording parity. */
+   The checks mirror acceptance lines directly: rows and photos, merge/replace behaviour,
+   portable preferences, device-local preferences, and wrong-password wording parity. */
 
 import { boot } from '../../../src/lib/data/sqlite/boot.ts';
 import { createAndroidSqlite } from '../../../src/lib/data/sqlite/android-driver.ts';
@@ -121,7 +119,6 @@ async function seedSource(journal: Journal, files: PhotoFileStore, marker: strin
   await journal.labs.upsertResult({ epochDay: 20000, analyte: `estradiol-${marker}`, value: 412.5, unit: 'pmol/L' });
   await journal.reminders.upsertReminder({
     title: `reminder-${marker}`,
-    type: 'med',
     time: '09:30',
     recurrence: 'DAILY',
     interval: null,
@@ -148,7 +145,7 @@ async function seedTargetLocalState(driver: SqliteDriver, journal: Journal, mark
   await journal.entries.upsertEntry({ epochDay: 20999, mood: 2, note: `target-only-${marker}` });
   const prefs = await openPreferences(driver);
   await prefs.set('onboarded', true);
-  await prefs.set('lastWrappedNotifiedPeriodKey', `wrapped-${marker}`);
+  await prefs.set('lastExportFailureNotifiedAt', 1706000000000);
   await prefs.set('lockAfter', 'immediately');
   await prefs.set('disguise', true);
   await prefs.set('hideNotificationTitles', true);
@@ -162,7 +159,7 @@ async function readLocalPrefs(driver: SqliteDriver) {
   const prefs = await openPreferences(driver);
   return {
     onboarded: prefs.get('onboarded'),
-    lastWrappedNotifiedPeriodKey: prefs.get('lastWrappedNotifiedPeriodKey'),
+    lastExportFailureNotifiedAt: prefs.get('lastExportFailureNotifiedAt'),
     lockAfter: prefs.get('lockAfter'),
     disguise: prefs.get('disguise'),
     hideNotificationTitles: prefs.get('hideNotificationTitles'),
@@ -184,7 +181,7 @@ function portableWith(marker: string) {
     metricDimension: 'femininity',
     checkInEnabled: true,
     checkInTime: '07:45',
-    lastWrappedNotifiedPeriodKey: `device-local-${marker}`
+    lastExportFailureNotifiedAt: 1706000000000
   };
 
   return {
@@ -199,19 +196,20 @@ function portableWith(marker: string) {
     language: values.language,
     checkInEnabled: values.checkInEnabled,
     checkInTime: values.checkInTime,
-    checkInAffirmationsEnabled: values.checkInAffirmationsEnabled,
+    checkInPausedThrough: values.checkInPausedThrough,
     preferredLabUnits: {},
-    measurementUnit: values.measurementUnit,
     journeyAnchorMilestoneId: values.journeyAnchorMilestoneId,
-    hairAnchorEpochDay: values.hairAnchorEpochDay,
-    cycleTrackingEnabled: values.cycleTrackingEnabled,
+    hrtStartEpochDay: values.hrtStartEpochDay,
     cycleTrackingChoice: values.cycleTrackingChoice,
     voiceComfortLowHz: values.voiceComfortLowHz,
     voiceComfortHighHz: values.voiceComfortHighHz,
+    surfaceOverrides: values.surfaceOverrides,
     areaFinishOfferDeclined: values.areaFinishOfferDeclined,
+    roadmapPolishStepsChoice: values.roadmapPolishStepsChoice,
+    roadmapSocialStepsShown: values.roadmapSocialStepsShown,
     pinnedRows: values.pinnedRows,
-    agendaKinds: values.agendaKinds,
-    onboardingAreas: values.onboardingAreas
+    onboardingAreas: values.onboardingAreas,
+    acknowledgements: values.acknowledgements
   };
 }
 

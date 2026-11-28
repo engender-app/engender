@@ -1,71 +1,13 @@
-/* What the More hub is, and what each of its rows says (phase 8 UX ticket 02,
-   ADR-0036, ADR-0052, ADR-0043, ADR-0027).
+/* Declare which rows the More hub shows and what each row reports (ADR-0052, ADR-0027). A
+   read row uses the latest write for its areas and falls back to the same description as a
+   written row. vocabulary/hubLabels.ts supplies the descriptions.
 
-   The hub was twenty-six rows of a title and an icon, in four groups, written
-   inline in `more/+page.svelte`. One row was different: `/care` earned its tap
-   by opening on the regimen, the last dose, the next expected slot, the last
-   lab draw and the run-out day, each a live read of the module that owns it.
-   The other twenty-five said nothing about what was behind them.
+   Each row maps to the Archive sections behind it. A row counts as finished only when all
+   its contributing areas are finished. It disappears only when all its sections can be
+   hidden and are hidden. The cycle row is additionally gated by HubReading.cycleVisible.
 
-   So every row now says something, and what it can say is declared here
-   rather than decided at the call site. `line` is whether the row reports a
-   reading at all:
-
-     read      the row reports its own areas' last write, out of the one
-               assembled read `journal/lastWrite.ts` answers with. Fourteen
-               rows, not the eighteen the ticket counted: a row can only
-               report a last write where the registry has one, and seven of
-               the rows it counted front an area that opted out of that
-               registry on purpose - a sealed letter, a span, a schedule,
-               reference data.
-     written   the row never reports a reading, so what it says is a line
-               about what is behind it.
-
-   A reading row with nothing written yet says the same line a `written` row
-   does. The spec's own user story 13 is what settles that - "I want **each**
-   row to tell me what is behind it, so that navigating is also reading" - and
-   it is the DIRECTION.md 3b tension the ticket asked to have settled: a live
-   read is not a subtitle, but a row with no reading to give still owes the
-   person a sentence. Every row's line is in `vocabulary/hubLabels.ts`, total
-   over the row keys, and a reading replaces it once there is one.
-
-   Three other things live here because the hub is where they are presentation
-   rather than record:
-
-     - the one-to-many mapping from a row to the archive sections behind it,
-       which is what `areaGroups.ts` and ADR-0052 deliberately left to the
-       hub. A row fronting two sections reads as finished only when both are.
-     - a hidden area's absence, which falls out of the same mapping: a row
-       goes only when every hideable section behind it is hidden, and
-       `cycleEvents` is not hideable at all (ADR-0043), so the row fronting
-       only it can never disappear this way. That much is structural rather
-       than a special case. ADR-0043's *positive* gate used to be written out
-       here as a named special case beside it; ticket 16 hosted the cycle row
-       on /health/side-effects, which was already asking that question for
-       the cycle block it draws, so the gate is that screen's alone and this
-       file has no special case left. Ticket 13 moved the cycle block again,
-       onto /care/changes with the rest of what side effects
-       screen drew - the gate travelled with it rather than being restated.
-     - the finished group, and the day it shows.
-
-   Phase 9 carpet ticket 16 added a fourth: where a row is drawn. A row's
-   `home` is one of the hub's groups or one of the screens in `HUB_ROW_HOSTS`,
-   and four of the twenty now name a screen - five until ticket 13 folded
-   `side-effects` into `effects` rather than moving it to a new home. This
-   file stays the registry for all of them either way, which is the point of
-   holding the field here rather than deleting the rows that left: `finishes`
-   still has to be claimed by exactly one row and the last-write registry
-   still has to be fronted or opted out of. A row that moved screens moved
-   one field.
-
-   `statsAreas.ts` used to read a card's icon and route off a row the same
-   way, as a second enumeration of areas beside this one. Phase 10 redesign
-   ticket 12 deleted it - nothing had rendered it since ticket 99 item 36 took
-   the area index off the stats tab - so this file is now the only one.
-
-   Node-tier safe: no clock, no driver, no paraglide, no runes. Every function
-   takes today as an argument. The words are `vocabulary/hubLabels.ts`'s, the
-   same split `areaGroups.ts` keeps from `vocabulary/areaLabels.ts`. */
+   The registry chooses the home group and finished date. Its functions take today as input
+   and run without the clock, journal driver, runes or localized copy. */
 
 import {
   FINISH_SUGGESTION_QUIET_DAYS,
@@ -74,135 +16,44 @@ import {
   latestWrite,
   type AreaGroupKey
 } from './areaGroups';
-import { areasHidden, type AreaStates } from './areaState';
+import { areaHidden, areasHidden, type AreaStates, type HideableArea } from './areaState';
 import { foldText } from './fold';
 import type { ArchiveSectionName } from './journal/archiveSections';
 import { LAST_WRITE_ENTRIES, type LastWriteKey } from './journal/lastWrite';
 import { ROW_FORWARD_KEYS, type RowForward, type RowForwardKey, type RowForwardMap } from './rowForward';
 
-/** The hub's groups, in the order they are drawn.
-
-    `media` came in with phase 8 UX ticket 02: photos and voice memos are both
-    things attached to an entry rather than series of their own, and they used
-    to sit one in Body and one in Practice with nothing saying they were the
-    same kind of thing.
-
-    A video note is found in the photo library rather than on a browse screen
-    of its own (phase 11 ticket 14, ADR-0085), so this group stays at two
-    rows. Ticket 02 recorded the gap instead of filling it and the audit of
-    15 September 2026 named it again; what closed it was a sixth source in a
-    list that already existed, not a third row here.
-
-    `practice` is gone and `support` is new, both from phase 9 carpet ticket
-    16. Practice had become the group for whatever was not body, health,
-    transition or media: a voice benchmark, a wear log, an entry template, a
-    resource list and Safe Space, which is five answers to five different
-    questions. Its rows went to the groups they were always about, and the two
-    that are about somebody needing help rather than tracking anything got a
-    group that says so.
-
-    `body` is gone (audit item 10). It had been one row - measurements and
-    sizes - under a heading, so the door paid a heading's height and a
-    group's gap to say "Body" once and then say "Measurements and sizes",
-    which is the same fact at two sizes. The row is in `health` now, beside
-    the other readings somebody takes of themselves, and the door shows two
-    more rows on arrival for it. Four groups is the floor here rather than a
-    target: the audit's own warning is that the answer is not fewer, deeper
-    rows - /care earned its depth by opening on five live reads and no other
-    group has the equivalent. */
-/* hub_screen_title (messages/*.json) names these four by hand for the
+/**
+ * Draw hub groups in this order. Media holds photos and voice
+ * memos, with video notes included in the photo library (ADR-0085).
+ * Support groups resources and Safe Space. Body holds physical
+ * changes and practice. Steps holds plans and milestones. Care
+ * owns the medication lanes and hosted rows.
+ */
+/* hub_screen_title (messages/*.json) names these five by hand for the
    hub's own hidden screen title - add, rename or reorder a group here and
-   that string goes stale until it's edited too (ticket 08). */
-export const HUB_GROUP_KEYS = ['health', 'transition', 'support', 'media'] as const;
+   that string goes stale until it's edited too. */
+export const HUB_GROUP_KEYS = ['health', 'body', 'transition', 'support', 'media'] as const;
 
 export type HubGroupKey = (typeof HUB_GROUP_KEYS)[number];
 
-/** The screens that draw a row of their own, and where each one lives.
-
-    Phase 9 carpet ticket 16's other half. Seven rows left the hub without
-    their screens going anywhere: dilation belongs to a surgery journey rather
-    than beside it, side effects and hair progress are both changes somebody
-    noticed, cycle events are read next to the side effects they sit among,
-    templates are how you write an entry and words are a reading of what you
-    wrote. A hub that lists all of them at the top level is a hub that has
-    stopped ranking anything.
-
-    Two of those seven have since stopped being rows at all, and by two
-    different routes. Redesign ticket 51 took entry templates to Settings: a
-    reference area (ADR-0084) is managed there rather than hosted, so its row
-    left this map the way modes left the Transition group outright, onto a
-    plain row Settings writes out itself. Redesign ticket 62 took the words
-    row off outright - the reading draws on the Look back door itself now
-    (`WordsReading.svelte`), so there is no second screen for a row to open,
-    and `stats` stopped being a host with it.
-
-    A third route took a fourth off, and it is the one that shrank the host
-    map itself rather than just a row in it. Phase 11 all-four-doors ticket
-    13 put side effects on the same axis and the same screen as the changes
-    somebody was hoping for (rule 16's new strip-versus-axis paragraph): the
-    `side-effects` row is not hosted anywhere any more because it is not a
-    screen of its own to link to, and `/health/side-effects` is a redirect
-    stub. Three hosts for four rows now, keyed by the row key of the screen
-    that hosts them where there is one and by the tab otherwise. What this
-    map is for is naming the one screen that owes each row its link, which is
-    what `more-surfaces.test.ts` holds them to - a hosted row whose host
-    forgot it is a screen nothing reaches.
-
-    Three of the four are drawn by `HostedRows.svelte`, which reads
-    `rowsHostedBy` below. `cycle-events` is the exception and stays written by
-    hand, now on /care/changes (it moved there with the rest of
-    what /health/side-effects drew): it sits inside a block that screen
-    already gates on `cycleTrackingVisible`, its way-in row carries copy
-    about the chart behind it rather than the standing line, and
-    `cycleEvents` is the one area no `hidden` flag can reach (ADR-0043), so
-    the rule the component exists to apply has nothing to do there -
-    `HostedRows.svelte` excludes it by key for the same reason, now that it
-    shares a host with a row the component does draw.
-
-    Eras never was one of the seven - it kept a plain row in the Transition
-    group until redesign ticket 16 (ADR-0084) found it a reference area too,
-    spent on seven other screens and created on exactly one. It left `ROWS`
-    entirely, the way words did: the milestone rail is the one place under
-    Transition an era is still drawn, as a band rather than a row. */
-export const HUB_ROW_HOSTS = {
-  care: '/care',
-  effects: '/care/changes',
-  surgery: '/health/surgery'
-} as const;
-
-export type HubRowHostKey = keyof typeof HUB_ROW_HOSTS;
-
-/* A host may not be named the same as a group, or `hubSections` would bucket
-   a hosted row into a group whose heading it has never had. Demonstrated by
-   renaming `care` above to `health` and watching `Ambiguous` stop being
-   `never`. */
-type Ambiguous = Extract<HubRowHostKey, HubGroupKey>;
-type AssertNoneAmbiguous<Both extends never> = Both;
-type NoHostSharesAGroupName = AssertNoneAmbiguous<Ambiguous>;
-
-/** Where a row is drawn: one of the hub's own groups, or the screen that
-    draws it instead of the hub. */
-export type HubRowHome = HubGroupKey | HubRowHostKey;
-
-/** Whether a row is drawn on the hub at all. */
-export function isHubGroup(home: HubRowHome): home is HubGroupKey {
-  return (HUB_GROUP_KEYS as readonly string[]).includes(home);
-}
+/* Cycle events and dilation are on the hub and also linked from Meds and
+   the surgery list, drawn through `HostedRows.svelte` with the keys those
+   screens ask for: a link, not a home. `more-surfaces.test.ts` allows
+   exactly those two. */
 
 /** One row, as declared. */
-/* HubRowSpec stays exported only for its own test (AU-09 test-only review). */
+/* HubRowSpec stays exported only for its own test. */
 export interface HubRowSpec {
-  /** The row's own identity: the walkthrough's handle and the key
-      `areaGroups.ts` named its groups after (ADR-0029). */
+  /** The row's own identity: the walkthrough's handle and the key `areaGroups.ts` named its
+      groups after. */
   key: string;
   /** A name from `$lib/components/icons.ts`. No two rows share one - see
       `hubRows.test.ts`, which refuses a duplicate anywhere on the hub rather
       than only on adjacent rows. */
   icon: string;
   href: string;
-  /** Which of the hub's groups draws the row, or which screen draws it
-      instead of the hub. */
-  home: HubRowHome;
+  /** Which of the hub's groups draws the row. */
+  home: HubGroupKey;
   /** Which archive sections sit behind the row. Empty for a row that is a
       screen rather than an area: `/care` groups four medication surfaces,
       the clinician summary is a page built out of everywhere else.
@@ -211,6 +62,9 @@ export interface HubRowSpec {
       whether the row has gone with a hidden area, and which of its sections'
       last writes its line reports. */
   areas: readonly ArchiveSectionName[];
+  /** Areas controlling visibility when a row is a gateway rather than a
+      dated stream. Care owns these records but reports no single last write. */
+  visibilityAreas?: readonly HideableArea[];
   /** The group whose finish this row fronts, where there is one. Every key
       in `AREA_GROUPS` is claimed by exactly one row - a compile error
       otherwise, below. */
@@ -222,69 +76,66 @@ export interface HubRowSpec {
   line: 'read' | 'written';
 }
 
-/** Every row, in the order each group draws them, and then the rows that no
-    group draws.
-
-    Icons: three pairs were duplicated - the two voice-ish rows both `mic`,
-    roadmap and resources both `globe`, milestones and surgery both `flag` -
-    and the repo's own rule is that two identical icons read as one row drawn
-    twice. All three are resolved, and the test refuses a duplicate anywhere
-    rather than only where two happen to be adjacent.
-
-    The order within each group is phase 9 carpet ticket 16's, which is where
-    the group lists themselves come from. Two of its orderings are worth
-    knowing about because the ticket did not settle them:
-
-      - hair removal is not on the ticket's Transition list at all. Alicja
-        put it in Transition, and it sits after the wear log because those
-        two are the group's dated practice logs and everything after them is
-        a plan or a letter.
-      - the hosted rows are declared last, in the order their hosts appear
-        above, so reading this list top to bottom is reading the hub and then
-        reading what came off it. */
+/**
+ * List rows in hub group order, then list hosted rows in host order. Hair removal follows the wear log in Transition. Letters sit in Support. The icon test enforces unique icons across all rows so distinct destinations do not look duplicated.
+ */
 const ROWS = [
   // --- Health --------------------------------------------------------------
   {
-    /* Two areas behind one row since phase 10 redesign ticket 61, the
-       shape `hair-progress` has always had. Sizes were a row of their own
-       pointing at a purchase log with no reading on it, next door to the
-       one screen in Body that had a chart, a scrub and a protocol card -
-       two halves of one question about the same body, split. The row
-       reports whichever half was written last, and reads finished only
-       when both are.
+    /* Deepening put labs, the regimen and the dose log behind this one row. /care opens on
+       their live reads. It fronts no area of its own, so there is nothing here for a
+       hidden-area rule to act on and nothing whose last write would not already be on the
+       screen behind it.
 
-       In Health since audit item 10, and first in it: it was the whole of
-       the Body group, which cost a heading to say "Body" over a row that
-       says "Measurements and sizes". A reading somebody takes of their own
-       body sits among the other readings rather than in a group of one. */
-    key: 'measurements',
-    icon: 'ruler',
-    href: '/body/measurements',
-    home: 'health',
-    areas: ['measurements', 'sizeRecords'],
-    finishes: 'measurements',
-    line: 'read'
-  },
-  {
-    /* Deepening ticket 07 put labs, the regimen, the hormone curve and the
-       dose log behind this one row, and what earned that tap is that /care
-       opens on a live read of each. It fronts no area of its own, so there is
-       nothing here for a hidden-area rule to act on and nothing whose last
-       write would not already be on the screen behind it.
-
-       Ticket 16 gave it a fifth thing: the changes somebody has noticed,
-       hosted below. */
+       Gave it a fifth thing: the changes somebody has noticed, hosted below. */
     key: 'care',
-    icon: 'timeline',
+    /* `pill`, the medication mark the screen behind
+       it already draws; it drew `timeline`, two dots on a rail. */
+    icon: 'pill',
     href: '/care',
     home: 'health',
     areas: [],
+    visibilityAreas: ['regimenEpisodes', 'doseEvents', 'doseSchedules', 'dosePauses', 'medicationStock', 'labResults'],
     finishes: null,
     line: 'written'
   },
   {
+    /* The one row that has to be able to not exist, and the one area no `hidden` flag may
+       reach. Its absence is `cycleTrackingVisible`'s to decide - an active testosterone
+       regimen or the explicit opt-in - which is a positive gate rather than a hide, and
+       `cycleEvents` being outside `HideableArea` is what stops this file reversing it.
+
+       It has been on the hub, off it, hosted by two screens and, on the hub again ("cycle
+       and dilation should be appearing in care"), in Health beside Meds. What makes that
+       safe is that the gate travels with it: `HubReading.cycleVisible` is false until a
+       screen answers it, and `hubSections` and `hubRowsMatching` leave the row out until it
+       is true, so neither the list nor the search can ask about cycles of somebody the app
+       decided not to ask. */
+    key: 'cycle-events',
+    icon: 'calendar',
+    href: '/health/cycle-events',
+    home: 'health',
+    areas: ['cycleEvents'],
+    finishes: null,
+    line: 'read'
+  },
+  {
+    /* Renamed from `appointment-prep` rather than joined by a second row: prep, the record
+       and the debrief were three descriptions of one thing, and the one that names it is
+       the one that stays (ADR-0066). `appointment`, a page with a clock; it drew `check`,
+       which said "done" rather than "a visit". */
+    key: 'appointments',
+    icon: 'appointment',
+    href: '/health/appointments',
+    home: 'health',
+    areas: ['appointments'],
+    finishes: null,
+    line: 'read'
+  },
+  {
+    /* `clipboard`; it drew `flag`. */
     key: 'surgery',
-    icon: 'flag',
+    icon: 'clipboard',
     href: '/health/surgery',
     home: 'health',
     areas: ['procedures'],
@@ -292,25 +143,109 @@ const ROWS = [
     line: 'read'
   },
   {
-    /* Renamed from `appointment-prep` by ticket 57 rather than joined by a
-       second row: prep, the record and the debrief were three descriptions
-       of one thing, and the one that names it is the one that stays
-       (ADR-0066). Keeps `check` - no new icon. */
-    key: 'appointments',
-    icon: 'check',
-    href: '/health/appointments',
+    /* On the hub in Health only once a procedure can carry a dilation
+       journey: `dilationGated` (taperSchedule.ts)
+       hides its area until then, and the hub's reading is built over it.
+       The surgery list keeps its own link, drawn through HostedRows. */
+    key: 'dilation',
+    icon: 'repeat',
+    href: '/health/dilation',
     home: 'health',
-    areas: ['appointments'],
+    /* The sessions, not the schedule. `taper` is what was meant to happen
+       and opts out of the last-write registry for the reason a dose schedule
+       does; `taperSessions` is the practice, and the practice is what ends. */
+    areas: ['taperSessions'],
+    visibilityAreas: ['procedures'],
+    finishes: 'dilation',
+    line: 'read'
+  },
+  // --- Body --------------------------------------------------------------
+  {
+    /* shots taken on purpose, pose by pose, split off the photo library, which keeps every
+       photograph in the journal. `progressShot`, a portrait with the earlier shot's head
+       behind it; it drew `camera` as a placeholder. Not finishable (areaState.ts's
+       NOT_FINISHABLE says why). */
+    key: 'progress-photos',
+    icon: 'progressShot',
+    href: '/transition/progress-photos',
+    home: 'body',
+    areas: ['progressPhotos'],
     finishes: null,
     line: 'read'
   },
-  // --- Transition ----------------------------------------------------------
   {
-    /* `sparkle` rather than the `flag` it shared with the surgery journey. A
-       flag is planted on a map, which is what a surgery journey has: one
-       dated event and a recovery window either side of it. */
+    /* The Care row links to noticed changes and side effects together. Use
+       an eye icon and report the most recent write across both sections. */
+    /* `sprout`, a change that grew; it drew `eye`. */
+    key: 'effects',
+    icon: 'sprout',
+    href: '/care/changes',
+    home: 'body',
+    areas: ['personalEffects', 'sideEffects'],
+    finishes: 'effects',
+    line: 'read'
+  },
+  {
+    /* `razor`; it drew `shuffle`, which said
+       nothing about hair. */
+    key: 'hair-removal',
+    icon: 'razor',
+    href: '/body/hair-removal',
+    home: 'body',
+    areas: ['hairRemovalSessions'],
+    finishes: 'hair-removal',
+    line: 'read'
+  },
+  {
+    /* `watch`, something worn for a length of time; it drew `clock`. */
+    key: 'wear',
+    icon: 'watch',
+    href: '/body/wear',
+    home: 'body',
+    areas: ['wearSessions'],
+    finishes: 'wear',
+    line: 'read'
+  },
+  {
+    /* `waveform`. It drew `curve`, a line over takes, which at row size read as a hill
+       rather than a voice. The recordings folded in here keep `mic` on the screen's own
+       Recordings tab rather than taking the row's icon with them. */
+    key: 'voice-benchmark',
+    icon: 'waveform',
+    /* No `?tab=record`: the flow's own tab is already the screen's default,
+       so the two addresses opened on the same tab. */
+    href: '/voice',
+    home: 'body',
+    /* Both halves of the practice, the way `AREA_GROUPS.voice` finishes them together - but
+       only the benchmarks have a last write here, since a practice take is sealed until the
+       day after it was taken. The recordings the Media group's own `voice` row used to
+       front have no archive section of their own to register either (a memo is entry
+       content) - `voiceMemoLastWriteEpochDay` on `HubReading` is the second, non-registry
+       read this row alone asks, and `rowLine` folds it in below. */
+    areas: ['voiceBenchmarks', 'voicePracticeTakes'],
+    finishes: 'voice',
+    line: 'read'
+  },
+  // --- Transition --------------------------------------------------------
+  {
+    /* `route`, a way from one point to another. It
+       drew `globe`, which said "the world" rather than "a plan". */
+    key: 'roadmap',
+    icon: 'route',
+    href: '/transition/roadmap',
+    home: 'transition',
+    /* A goal and a tick against one both opt out of the last-write registry
+       for the same reason: neither carries a date of its own. */
+    areas: ['roadmapGoals', 'roadmapCategories', 'roadmapChecks'],
+    finishes: null,
+    line: 'written'
+  },
+  {
+    /* `summit`, a flag on a mountain: a day reached.
+       It drew `sparkle` before that, and `flag` before that, which it shared
+       with the surgery journey. */
     key: 'milestones',
-    icon: 'sparkle',
+    icon: 'summit',
     href: '/transition/milestones',
     home: 'transition',
     areas: ['milestones'],
@@ -318,79 +253,27 @@ const ROWS = [
     line: 'read'
   },
   {
+    /* `hanger`, for trying something on; it drew
+       `tag`. */
     key: 'tryouts',
-    icon: 'tag',
+    icon: 'hanger',
     href: '/transition/tryouts',
     home: 'transition',
     /* The tryout photos only, which is the registry's own bound: a tryout's
        start and end are a span, and its felt-sense history is
-       `feltSenseEntries`, which belongs to a milestone just as much and is
-       fronted by no row (see `LAST_WRITE_WITHOUT_A_ROW`). */
+       `feltSenseEntries`, which is fronted by no row (see
+       `LAST_WRITE_WITHOUT_A_ROW`). */
     areas: ['tryouts'],
     finishes: null,
     line: 'read'
   },
+  // --- Support -----------------------------------------------------------
   {
-    /* `curve` still, from when this fronted the benchmark alone: a line over
-       takes is still most of what is behind the row, and the recordings
-       ticket 17 folded in here keep `mic` on the screen's own Recordings
-       tab rather than taking the row's icon with them. */
-    key: 'voice-benchmark',
-    icon: 'curve',
-    /* No `?tab=record`: the flow's own tab is already the screen's default,
-       so the two addresses opened on the same tab (ticket 17). */
-    href: '/voice',
-    home: 'transition',
-    /* Both halves of the practice, the way `AREA_GROUPS.voice` finishes them
-       together - but only the benchmarks have a last write here, since a
-       practice take is sealed until the day after it was taken. The
-       recordings the Media group's own `voice` row used to front (ticket 17
-       folded that row's screen into this one, as the Recordings tab) have no
-       archive section of their own to register either (ADR-0036: a memo is
-       entry content) - `voiceMemoLastWriteEpochDay` on `HubReading` is the
-       second, non-registry read this row alone asks, and `rowLine` folds it
-       in below. */
-    areas: ['voiceBenchmarks', 'voicePracticeTakes'],
-    finishes: 'voice',
-    line: 'read'
-  },
-  {
-    key: 'wear',
-    icon: 'clock',
-    href: '/body/wear',
-    home: 'transition',
-    areas: ['wearSessions'],
-    finishes: 'wear',
-    line: 'read'
-  },
-  {
-    key: 'hair-removal',
-    icon: 'shuffle',
-    href: '/body/hair-removal',
-    home: 'transition',
-    areas: ['hairRemovalSessions'],
-    finishes: 'hair-removal',
-    line: 'read'
-  },
-  {
-    /* Keeps `globe`, which resources gave up: a roadmap is the closest thing
-       in the icon set to a map, and support and resources is a list of places
-       outside the app rather than a route through it. */
-    key: 'roadmap',
-    icon: 'globe',
-    href: '/transition/roadmap',
-    home: 'transition',
-    /* A goal and a tick against one both opt out of the last-write registry
-       for the same reason: neither carries a date of its own. */
-    areas: ['roadmapGoals', 'roadmapChecks'],
-    finishes: null,
-    line: 'written'
-  },
-  {
+    /* `envelope`, sealed; it drew `book`. */
     key: 'letters',
-    icon: 'book',
+    icon: 'envelope',
     href: '/transition/letters',
-    home: 'transition',
+    home: 'support',
     /* Sealed until its unlock day, which is why the registry has no last
        write for it - asking when one was last written is a second way to
        meet it before the seal does. So this row states what it is. */
@@ -398,40 +281,40 @@ const ROWS = [
     finishes: null,
     line: 'written'
   },
-  // --- Support -------------------------------------------------------------
   {
+    /* `shelter`, a heart under a roof; it drew a
+       bare `heart`, which is also the comfort list's and the body map's. */
     key: 'doubt',
-    icon: 'heart',
+    icon: 'shelter',
     href: '/doubt',
     home: 'support',
     /* ADR-0037/0040: a Safe Space artefact is not a diary record with a day
        to report a gap about, which is the registry's own wording for why
-       neither of these has a last write. */
-    areas: ['counterevidenceSnapshots', 'comfortItems'],
+       the comfort list has no last write. */
+    areas: ['comfortItems'],
     finishes: null,
     line: 'written'
   },
   {
-    /* `info` rather than the `globe` it shared with the roadmap. */
+    /* `lifebuoy`. It drew `info`, which every
+       notice in the app draws, and before that the roadmap's `globe`. */
     key: 'resources',
-    icon: 'info',
+    icon: 'lifebuoy',
     href: '/support/resources',
     home: 'support',
     areas: [],
     finishes: null,
     line: 'written'
   },
-
-  // --- Media ---------------------------------------------------------------
+  // --- Media -------------------------------------------------------------
   {
-    /* Fronts content that travels inside an entry rather than a stream of
-       its own, so it has no section in the archive to ask about and cannot
-       carry a reading. What it gets instead is a line saying what is in it.
+    /* Fronts content that travels inside an entry rather than a stream of its own, so it
+       has no section in the archive to ask about and cannot carry a reading. What it gets
+       instead is a line saying what is in it.
 
-       Voice memos shared this shape and this group until ticket 17 folded
-       their browse screen into the voice screen's own Recordings tab -
-       `/media/voice/memos` redirects there now, and what fronts a
-       recording on the hub is `voice-benchmark`'s row on Transition. */
+       Voice memos shared this shape and this group folded their browse screen into the
+       voice screen's own Recordings tab - `/media/voice/memos` has been removed, and what
+       fronts a recording on the hub is `voice-benchmark`'s row on Transition. */
     key: 'photos',
     icon: 'image',
     href: '/media/photos',
@@ -441,22 +324,21 @@ const ROWS = [
     line: 'written'
   },
   {
-    /* Paper the person keeps (phase 8 features ticket 52, ADR-0065). The
-       media group's third row, and the first one in it that fronts an area
-       of its own - a document belongs to no entry and no milestone.
-
-       `line: 'read'`, against ticket 52's own line, which asked for
-       `written`. Two things in the file decided it. The row has to name its
-       area or `rowHidden` cannot see it, and a row that names an area the
-       last-write registry answers for is a reading row - the invariant
-       right below this list, total in both directions, with no exception
-       mechanism and no reason to grow one for this. And the registry entry
-       is what the ticket asks for in the same breath, because the return
-       surface has to count filing a diagnosis as having been here.
-
-       What the reading actually says is a date, and ADR-0065 puts a date
-       on every row of the list behind this one. What it keeps off both is
-       the page image. */
+    /* Voice memos, back on the hub beside photos had folded them into the voice screen as
+       its fourth tab. The same shape as photos: audio an entry owns, no section of its own,
+       a written line. */
+    key: 'recordings',
+    icon: 'mic',
+    href: '/media/recordings',
+    home: 'media',
+    areas: [],
+    finishes: null,
+    line: 'written'
+  },
+  {
+    /* A document is its own media area (ADR-0065). The row reads its last-write
+       date from the registry so hiding and the return surface can use the area.
+       Leave page images out of the row. */
     key: 'documents',
     icon: 'documents',
     href: '/media/documents',
@@ -468,77 +350,7 @@ const ROWS = [
     line: 'read'
   },
 
-  // --- Drawn on another screen rather than on the hub (ticket 16) ----------
-  {
-    /* `eye` rather than `sparkle`, which milestones took: what this screen
-       asks is when you first *noticed* each change, and the route and the
-       title both say so now (see `personal-effects`).
-
-       Under /care because a change you noticed is what a regimen is for.
-       The hormones list above it says what is going in; this says what
-       came of it.
-
-       Two sections, one row, since ticket 13: a side effect and a change you
-       were hoping for are both something you noticed after starting a
-       regimen, and having them as sibling top-level rows made the reader
-       classify their own symptom before they could write it down. The row
-       reports whichever half was written last (`groupLastWrite`'s own
-       reasoning), the way `hair-progress` already does for its own two. */
-    key: 'effects',
-    icon: 'eye',
-    href: '/care/changes',
-    home: 'care',
-    areas: ['personalEffects', 'sideEffects'],
-    finishes: 'effects',
-    line: 'read'
-  },
-  {
-    key: 'hair-progress',
-    icon: 'comb',
-    href: '/body/hair-progress',
-    home: 'effects',
-    /* Two sections, one row: the stagings and the photographs finish
-       together and the row reports whichever of them was written last
-       (`groupLastWrite`'s own reasoning - somebody can log stages for two
-       years and never photograph one). */
-    areas: ['hairStages', 'hairPhotos'],
-    finishes: 'hair-progress',
-    line: 'read'
-  },
-  {
-    /* ADR-0043: the one row that has to be able to not exist, and the one
-       area no `hidden` flag may reach. Its absence is `cycleTrackingVisible`'s
-       to decide - an active testosterone regimen or the explicit opt-in -
-       which is a positive gate rather than a hide, and `cycleEvents` being
-       outside `HideableArea` is what stops this file reversing it.
-
-       Ticket 16 took the row off the hub, and the gate went with it rather
-       than being weakened: /health/side-effects drew a cycle block behind
-       `cycleTrackingVisible`, and that block's own way in was the only one.
-       Ticket 13 moved the block again, onto /care/changes with
-       the rest of what that screen drew, so this row's home moved with it -
-       the gate itself is untouched, and the hub still cannot show a cycle
-       prompt at all. */
-    key: 'cycle-events',
-    icon: 'calendar',
-    href: '/health/cycle-events',
-    home: 'effects',
-    areas: ['cycleEvents'],
-    finishes: null,
-    line: 'read'
-  },
-  {
-    key: 'dilation',
-    icon: 'repeat',
-    href: '/health/dilation',
-    home: 'surgery',
-    /* The sessions, not the schedule. `taper` is what was meant to happen
-       and opts out of the last-write registry for the reason a dose schedule
-       does; `taperSessions` is the practice, and the practice is what ends. */
-    areas: ['taperSessions'],
-    finishes: 'dilation',
-    line: 'read'
-  }
+  // --- Drawn on another screen rather than on the hub ----------
 ] as const satisfies readonly HubRowSpec[];
 
 /** Every row key, narrow. */
@@ -547,14 +359,20 @@ export type HubRowKey = (typeof ROWS)[number]['key'];
 /** One row as the list holds it: `HubRowSpec` with its key still narrow, so a
     consumer reaching for a row's title cannot be handed a `string` the label
     record has never heard of. */
-/* HubRow stays exported only for feature-screens.test.ts, which cross-checks
-   against it (AU-09 test-only review). */
+/* HubRow stays exported only for feature-screens.test.ts, which cross-checks against it. */
 export type HubRow = Omit<HubRowSpec, 'key'> & { key: HubRowKey };
 
-/* HUB_ROWS stays exported for its own test, and cross-checked in
-   feature-screens.test.ts, home-surfaces.test.ts, more-surfaces.test.ts,
-   safe-space-surfaces.test.ts (AU-09 test-only review). */
+/* HUB_ROWS stays exported for its own test, and cross-checked in feature-screens.test.ts,
+   home-contracts.ts, more-surfaces.test.ts, safe-space-contracts.ts. */
 export const HUB_ROWS: readonly HubRow[] = ROWS;
+
+/** The same rows people can hide later. Dilation is configured by an eligible
+    procedure inside Surgery journey, not chosen as a separate module. */
+export const FEATURE_MODULE_ROWS: readonly HubRow[] = HUB_ROWS.filter((row) => row.key !== 'dilation' && featureAreas(row).length > 0);
+
+export function featureAreas(row: HubRowSpec): readonly HideableArea[] {
+  return row.visibilityAreas ?? row.areas.filter((area): area is HideableArea => area !== 'cycleEvents');
+}
 
 const ROWS_BY_KEY = new Map<HubRowKey, HubRow>(ROWS.map((row) => [row.key, row]));
 
@@ -568,11 +386,10 @@ export function hubRow(key: HubRowKey): HubRow {
 
 /** The screen behind a row, without any query string it carries.
 
-    No row carries one today (`voice-benchmark` did until ticket 17), but
-    anything asking which screen is behind the row - the stats card that
-    fronts the same area, the test that holds every feature screen to the
-    kit - means the screen, and a row given a query later still answers with
-    it. Here rather than as a `split` at each of those call sites. */
+    No row carries one today, but anything asking which screen is behind the row - the stats
+    card that fronts the same area, the test that holds every feature screen to the kit -
+    means the screen, and a row given a query later still answers with it. Here rather than
+    as a `split` at each of those call sites. */
 export function rowScreen(row: HubRowSpec): string {
   return row.href.split('?')[0];
 }
@@ -598,14 +415,12 @@ type EveryAreaGroupFrontedByARow = AssertNoneUnfronted<Unfronted>;
     Five of them, and none is a hub row's business: three are their own tab or
     screen, one sits behind `/care`, and one is content belonging to two other
     rows at once. */
-/* LAST_WRITE_WITHOUT_A_ROW stays exported only for its own test (AU-09
-   test-only review). */
+/* LAST_WRITE_WITHOUT_A_ROW stays exported only for its own test. */
 export const LAST_WRITE_WITHOUT_A_ROW: Record<Exclude<LastWriteKey, RowArea>, string> = {
   entries: 'the journal itself, which Home and the calendar are already about',
   doseEvents: 'behind the care row, whose own screen opens on the last dose',
   labResults: 'behind the care row, whose own screen opens on the last lab draw',
-  tallyEvents: 'its own tab, not a row here',
-  feltSenseEntries: 'written on a tryout or a milestone, so it belongs to two rows and is fronted by neither'
+  feltSenseEntries: 'written on a tryout, whose row is fronted by the tryout itself rather than its readings'
 };
 
 type RowArea = (typeof ROWS)[number]['areas'][number];
@@ -630,7 +445,12 @@ export function rowReads(spec: HubRowSpec): LastWriteKey[] {
     it fronts, which is where the rule lives now that the stats tab's cards
     ask it too (`areaState.ts`). */
 export function rowHidden(spec: HubRowSpec, states: AreaStates): boolean {
-  return areasHidden(spec.areas, states);
+  /* Dilation also goes when its own area is hidden, which nothing but
+     `dilationGated` (taperSchedule.ts) does: no procedure that can carry a
+     dilation journey is logged. Its visibility area stays `procedures`, so
+     hiding Surgery still takes it too. */
+  if (spec.key === 'dilation' && areaHidden('taperSessions', states)) return true;
+  return areasHidden(spec.visibilityAreas ?? spec.areas, states);
 }
 
 /** What a row's second line says.
@@ -653,30 +473,22 @@ export type HubLine =
   | { kind: 'quiet'; epochDay: number; daysAgo: number }
   /** The person has said this one ended, and when. */
   | { kind: 'finished'; epochDay: number }
-  /** The person has paused this one, and when (phase 8 features ticket 51).
+  /** The person has paused this one, and when.
       Unlike a finished row, a suspended one stays under its own group's
       heading rather than moving to the finished set - it is not done, and
       grouping it with what is would say so. */
   | { kind: 'suspended'; epochDay: number }
-  /** What is running, what is next, or a last value - `rowForward.ts`'s
-      three kinds, taken whole rather than restated (phase 11 all-four-doors
-      ticket 02, DIRECTION.md rule 16). Six shapes became nine, and the four
-      past-tense ones above now speak only where a row has nothing forward to
-      say. */
+  /** rowForward.ts supplies the running, next or last value. Use one of the
+      past-tense shapes only when no forward fact is available. */
   | RowForward;
 
 /** Everything the hub reads, so nothing below asks for itself.
 
-    Two reads, not three. ADR-0043's positive gate used to be here as a
-    `cycleShown` the screen fetched an episode list to answer, because the
-    cycle row was a row on the hub that had to be able to not exist. Ticket 16
-    moved that row onto /health/side-effects, which was already asking
-    `cycleTrackingVisible` for the cycle block it draws, so the gate is that
-    screen's alone now and the hub reads nothing to support it.
+    The gate is `cycleVisible`: the cycle row is a row on the hub that has to be able to not
+    exist, so the screen that draws the hub answers `cycleTrackingVisible` and hands it in.
 
-    Read by the front page too since phase 10 redesign ticket 05: a pinned
-    row asks the same three questions a hub row does, off the same one
-    assembled read (`pinnedRows.ts`). */
+    Read by the front page too since a pinned row asks the same three questions a hub row
+    does, off the same one assembled read (`pinnedRows.ts`). */
 export interface HubReading {
   todayEpochDay: number;
   /** One assembled call, `journal/lastWrite.ts` - not a query per row.
@@ -690,19 +502,22 @@ export interface HubReading {
       question is a compile error rather than a door that quietly goes back
       to reporting gaps. */
   forward: RowForwardMap;
-  /** The most recent voice memo, at or before today, or null where there is
-      none - `voice-benchmark`'s own second read (ticket 17).
+  /** The most recent voice memo, at or before today, or null where there is none -
+      `voice-benchmark`'s own second read.
 
-      Not in `lastWrites`: a memo is entry content with no archive section
-      of its own (ADR-0036), so it has no `LastWriteKey` to be registered
-      under, the same reason `voicePracticeTakes` opts out of the registry
-      rather than joining it with a made-up one. This is the one row that
-      also asks a fact the registry cannot answer, so it is its own field
-      rather than a `LastWriteKey` that would misrepresent what memos are.
-      Optional, and read with `?? null`, so a caller that has not asked this
-      question yet (every existing `HubReading` literal, every test) keeps
-      compiling rather than being forced to state "nothing landed" by hand. */
+      Not in `lastWrites`: a memo is entry content with no archive section of its own, so it
+      has no `LastWriteKey` to be registered under, the same reason `voicePracticeTakes`
+      opts out of the registry rather than joining it with a made-up one. This is the one
+      row that also asks a fact the registry cannot answer, so it is its own field rather
+      than a `LastWriteKey` that would misrepresent what memos are. Optional, and read with
+      `?? null`, so a caller that has not asked this question yet (every existing
+      `HubReading` literal, every test) keeps compiling rather than being forced to state
+      "nothing landed" by hand. */
   voiceMemoLastWriteEpochDay?: number | null;
+  /** The gate, answered by the screen: whether `cycleTrackingVisible` says the cycle row
+      may exist. Absent means no, so a caller that never asked cannot draw or search up a
+      cycle row. */
+  cycleVisible?: boolean;
 }
 
 /** The day a row's group ended, or null while it has not. A row fronting two
@@ -720,8 +535,7 @@ function rowFinishedOn(spec: HubRowSpec, states: AreaStates, todayEpochDay: numb
 }
 
 /** The day a row's group was paused, or null while it has not been -
-    `rowFinishedOn`'s own rule, read off `groupSuspendedOn` instead (phase 8
-    features ticket 51). */
+    `rowFinishedOn`'s own rule, read off `groupSuspendedOn` instead. */
 function rowSuspendedOn(spec: HubRowSpec, states: AreaStates, todayEpochDay: number): number | null {
   if (spec.finishes === null) return null;
   const day = groupSuspendedOn(spec.finishes, states);
@@ -753,32 +567,16 @@ function laterEpochDay(a: number | null, b: number | null): number | null {
   return Math.max(a, b);
 }
 
-/** What one row says under its title.
-
-    Four questions in order, and the order is the whole of the rule (phase
-    11 all-four-doors ticket 02, DIRECTION.md rule 16).
-
-    **Finished and suspended come first**, unchanged. A row the person has
-    said is over does not announce what is next in it: the statement they
-    made about the practice outranks anything still dated inside it, and a
-    finished area with a stale appointment in it would otherwise read as
-    though it were still running.
-
-    **Then a forward fact beats a last write.** This is the ticket's own
-    choice rule, and it is what the rows on the Transition door were getting
-    wrong: "Nothing logged for 1 year 4 months" printed over a name-change
-    hearing sixteen days out. Which of a running span and a dated future
-    wins is settled one layer down, per row, by `rowForward.ts` - it hands
-    back one fact, so nothing here has to rank two.
-
-    The forward fact also beats `no-stream`, which is why this sits above
-    the `written` check rather than below it. Two of the eight rows that
-    face forwards report no reading at all - Care fronts no archive section,
-    and a letter is sealed until its day - and a standing sentence about
-    what is behind the row is exactly what a dated future should replace.
-
-    **Then the reading it always had**, unchanged: what was last written,
-    worded as an observation once a whole quiet window has passed. */
+/**
+ * Choose the row's second line in this order. Finished or suspended
+ * state comes first. Then use the one forward fact supplied by
+ * rowForward.ts, even for a row with a standing description.
+ * Finally use the last-write reading or the row's fallback copy.
+ *
+ * The person's decision to finish wins over any appointment still
+ * dated in that area. A standing description gives way to a concrete
+ * next event when there is one.
+ */
 export function rowLine(spec: HubRowSpec, reading: HubReading): HubLine {
   const finishedOn = rowFinishedOn(spec, reading.states, reading.todayEpochDay);
   if (finishedOn !== null) return { kind: 'finished', epochDay: finishedOn };
@@ -791,10 +589,9 @@ export function rowLine(spec: HubRowSpec, reading: HubReading): HubLine {
   if (spec.line === 'written') return { kind: 'no-stream' };
 
   const registryEpochDay = latestWrite(rowReads(spec), reading.lastWrites);
-  /* `voice-benchmark` alone also asks its second, non-registry read (the
-     field's own doc on `HubReading`) and reports whichever of the two is
-     later - a recording since the row's own last write is exactly the
-     "later of a benchmark and a recording" ticket 17 asks for. */
+  /* `voice-benchmark` alone also asks its second, non-registry read (the field's own doc on
+     `HubReading`) and reports whichever of the two is later - a recording since the row's
+     own last write is exactly the "later of a benchmark and a recording" asks for. */
   const epochDay =
     spec.key === 'voice-benchmark'
       ? laterEpochDay(registryEpochDay, reading.voiceMemoLastWriteEpochDay ?? null)
@@ -802,9 +599,8 @@ export function rowLine(spec: HubRowSpec, reading: HubReading): HubLine {
   if (epochDay === null) return { kind: 'not-yet' };
 
   const daysAgo = reading.todayEpochDay - epochDay;
-  /* Quiet is the observation the finish offer is made from, so a row with
-     nothing to finish never turns quiet (after-release 17, UX-18): on
-     Documents it read as a nag about a paperwork vault. */
+  /* Quiet is the observation the finish offer is made from, so a row with nothing to finish
+     never turns quiet: on Documents it read as a nag about a paperwork vault. */
   const quiet = spec.finishes !== null && daysAgo >= FINISH_SUGGESTION_QUIET_DAYS;
   return { kind: quiet ? 'quiet' : 'last', epochDay, daysAgo };
 }
@@ -834,28 +630,16 @@ export interface HubSection {
   rows: DrawnRow[];
 }
 
-/** The hub, assembled: every group in order with its rows, then the finished
-    set, with empty sections left out.
-
-    A finished row leaves its own group rather than appearing twice - it is
-    still one tap away and its screen still works, which is the whole point of
-    an area ending rather than being deleted.
-
-    A hosted row is not here at all, finished or not (ticket 16). It stays on
-    the screen named by its `home`, and states its ending there: the
-    alternative is the hub adding it to the finished set while its host still
-    draws it, which is the appearing-twice the paragraph above is about. Four
-    of the nine finishable groups are hosted, so the finished set is a smaller
-    place than it was - and `HostedRows.svelte` draws those four through
-    `rowLine`, the same function this one calls, so a hosted row says what
-    ended and when in the same words the hub would have used. */
+/** Group active rows, then list finished rows once. Omit empty groups.
+    HostedRows.svelte keeps hosted rows on their own screen even after finish
+    and uses the same rowLine wording as the hub. */
 export function hubSections(reading: HubReading): HubSection[] {
   const byKey = new Map<HubGroupKey | 'finished', HubSection['rows']>();
   for (const key of [...HUB_GROUP_KEYS, 'finished'] as const) byKey.set(key, []);
 
   for (const spec of HUB_ROWS) {
-    if (!isHubGroup(spec.home)) continue;
     if (rowHidden(spec, reading.states)) continue;
+    if (spec.key === 'cycle-events' && !reading.cycleVisible) continue;
     const line = rowLine(spec, reading);
     byKey.get(line.kind === 'finished' ? 'finished' : spec.home)!.push({ spec, line });
   }
@@ -863,67 +647,16 @@ export function hubSections(reading: HubReading): HubSection[] {
   return [...byKey].filter(([, rows]) => rows.length > 0).map(([key, rows]) => ({ key, rows }));
 }
 
-/** The one row a search by name may not reach, and why.
-
-    ADR-0043: whether the cycle row exists at all is not this file's to say.
-    `cycleEvents` is outside `HideableArea` precisely so that nothing here
-    can reverse the decision, and the row's *positive* gate - an active
-    testosterone regimen or an explicit opt-in - belongs to
-    /care/changes, which is the only screen that asks. A search
-    that answered "Cycle events" to somebody the app has decided not to ask
-    about cycles would put that prompt back on the hub through the box, which
-    is exactly what ticket 16 took off it.
-
-    Named here rather than left to fall out of a rule, because every rule
-    that would exclude it also excludes something that should be found: the
-    row fronts one area, and that area is not hideable. */
-const NOT_SEARCHABLE: readonly HubRowKey[] = ['cycle-events'];
-
-/** The rows whose name contains what somebody typed, flat: the hub's own in
-    the order its groups draw them, then the rows drawn on a screen of their
-    own (phase 10 redesign ticket 15).
-
-    All twenty of them - twenty-five until redesign ticket 51 moved
-    modes and entry templates off the registry entirely and into Settings
-    (ADR-0084), twenty-four until ticket 59 deleted the clinician-summary
-    row outright rather than hosting it, since it fronts no area,
-    twenty-three until ticket 62 took the words row off with the screen it
-    opened, twenty-one until ticket 13 folded `side-effects` into `effects`
-    rather than giving it a row of its own, and twenty until ticket 16
-    took eras off the same way ticket 62 did. The four hosted rows still
-    here are not on this screen and are still areas of this app: somebody
-    looking for dilation or hair progress looks for them here, and leaving
-    them out would make the one index with a search box the one place they
-    cannot be found. A match draws the row the registry declares -
-    the same row its host screen draws - and following it lands on the
-    area's own screen rather than on the host.
-
-    Assembled here rather than filtered out of `hubSections`' output, so the
-    three rules about a row's existence hold for both halves in one place: a
-    hidden area cannot be searched up, a finished one can and states the day
-    it ended, and every match carries the second line its section would have
-    given it.
-
-    The hidden half of that is navigation, not search, and ADR-0052 draws the
-    line where this does: "hiding takes an area out of the navigation" and
-    "a hidden or finished area stays searchable, because a search that stops
-    finding things a person wrote" is the risk the whole idea carries. What
-    this function answers is which of the door's *rows* a word reaches, and a
-    hidden area has no row anywhere; the records inside it are the other half
-    of the door's search and are not filtered by any of this
-    (`textSearch.ts`), so nothing somebody wrote goes missing.
-
-    The titles are handed in, not resolved: they are paraglide's and nothing
-    the Node tier touches may import that (ADR-0016). `tagIdsMatching` takes
-    the labels a screen showed for exactly the same reason, and this matches
-    the way that one does - a folded substring, over twenty-odd short strings
-    already in memory. Not the entry index's whole-token prefix rule: an area
-    is found by any part of its name, so "log" reaches the size log and the
-    wear log both.
-
-    An empty query matches nothing rather than everything, because the screen
-    shows the grouped list for an empty box; a flat copy of every row would
-    be the same list twice. */
+/**
+ * Find matching hub rows in group order using folded substrings.
+ * The caller supplies translated titles and an empty query returns
+ * no flat results. Use the grouped view for that state.
+ *
+ * Apply the hub's visibility and second-line rules to each result.
+ * Finished rows remain navigable with their end date. Hidden areas
+ * lose their navigation rows, while textSearch.ts still searches
+ * the records they hold (ADR-0052).
+ */
 export function hubRowsMatching(
   reading: HubReading,
   query: string,
@@ -937,55 +670,32 @@ export function hubRowsMatching(
   for (const section of hubSections(reading)) {
     for (const row of section.rows) if (named(row.spec)) matches.push({ ...row, where: section.key });
   }
-  for (const spec of HUB_ROWS) {
-    if (isHubGroup(spec.home)) continue;
-    if (NOT_SEARCHABLE.includes(spec.key)) continue;
-    if (rowHidden(spec, reading.states)) continue;
-    if (!named(spec)) continue;
-    matches.push({ spec, line: rowLine(spec, reading), where: spec.home });
-  }
   return matches;
 }
 
-/** A row a search found: the row as it is drawn, and where it is drawn -
-    one of the hub's sections, or the screen that hosts it.
+/** A row a search found: the row as it is drawn, and the hub section it is
+    drawn in.
 
     A flat list has no heading over a row to say which it was, so the row
     says it: a finished row found by name carries `finished`, which is what
     the heading it lost was saying, rather than the screen deciding that
     again from the line. */
 export interface MatchedRow extends DrawnRow {
-  where: HubSection['key'] | HubRowHostKey;
+  where: HubSection['key'];
 }
 
-/** A section's own place in the flag's stripes, for whichever screen is
-    colouring `hubSections`' output by role (`roleAt(activeFlag.roles, ...)`) -
-    the More hub and, since phase 10 redesign ticket 22, onboarding's areas
-    step, which draws the same sections while the person is still choosing
-    what to pin.
+/** A section's own place in the flag's stripes, for whichever screen is colouring
+    `hubSections`' output by role (`roleAt(activeFlag.roles,...)`) - the More hub and,
+    onboarding's areas step, which draws the same sections while the person is still
+    choosing what to pin.
 
-    A section's place in the list rather than its place among whatever
-    rendered, so Health keeps one stripe whether or not a finished group sits
-    below it and whether or not hiding an area emptied a group above it. The
-    finished set takes the index after the last group: it is set apart by its
-    heading and by every row in it stating the day it ended, not by losing
-    its colour. */
+    A section's place in the list rather than its place among whatever rendered, so Health
+    keeps one stripe whether or not a finished group sits below it and whether or not hiding
+    an area emptied a group above it. The finished set takes the index after the last group:
+    it is set apart by its heading and by every row in it stating the day it ended, not by
+    losing its colour. */
 export function hubSectionRoleIndex(key: HubSection['key']): number {
   return key === 'finished' ? HUB_GROUP_KEYS.length : HUB_GROUP_KEYS.indexOf(key);
-}
-
-/** The rows one screen hosts, in declaration order.
-
-    `hubSections`' counterpart for the other side of `home`, and the reason
-    the two are worth one function each rather than one filter at five call
-    sites: what a host owes its rows is the same thing the hub owes them -
-    a row goes when every area behind it is hidden, and states the day the
-    person said it ended. `HostedRows.svelte` reads this and applies
-    `rowHidden` and `rowLine` over the area record, so the rule lives once -
-    except for `cycle-events`, which that component excludes by key and
-    /care/changes draws by hand instead (ADR-0043). */
-export function rowsHostedBy(host: HubRowHostKey): HubRow[] {
-  return HUB_ROWS.filter((row) => row.home === host);
 }
 
 /** Which row fronts each finishable group's finish.
@@ -998,7 +708,7 @@ export function rowsHostedBy(host: HubRowHostKey): HubRow[] {
     a coding error to fail a test on and not something to refuse to boot
     over. */
 /* AREA_GROUP_ROW_KEYS stays exported for its own test, and cross-checked in
-   AreaFinish.mounted.test.ts (AU-09 test-only review). */
+   AreaFinish.mounted.test.ts. */
 export const AREA_GROUP_ROW_KEYS: Record<AreaGroupKey, HubRowKey> = Object.fromEntries(
   ROWS.filter((spec) => spec.finishes !== null).map((spec) => [spec.finishes, spec.key])
 ) as Record<AreaGroupKey, HubRowKey>;

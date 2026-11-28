@@ -25,7 +25,15 @@ export function oneTransactionAtATime(
         await steps.commit();
         return value;
       } catch (error) {
-        await steps.rollback();
+        try {
+          await steps.rollback();
+        } catch (rollbackError) {
+          // Preserve the original message and cause for classification while
+          // keeping rollback refusal available as secondary diagnostics.
+          throw new AggregateError([error, rollbackError], error instanceof Error ? error.message : String(error), {
+            cause: error
+          });
+        }
         throw error;
       }
     });
@@ -235,7 +243,13 @@ async function finishCleanup(cleanup: () => Promise<void>): Promise<void> {
 }
 
 /** A scoped caller must keep bytes until its outer transaction commits. */
-export async function afterCommit(driver: SqliteDriver, cleanup: () => Promise<void>): Promise<void> {
-  if (driver.deferUntilCommit) driver.deferUntilCommit(cleanup);
-  else await finishCleanup(cleanup);
+export async function afterCommit(
+  driver: SqliteDriver, cleanup: () => Promise<void>, onFailure?: () => void
+): Promise<void> {
+  const guarded = async () => {
+    try { await cleanup(); }
+    catch (error) { onFailure?.(); throw error; }
+  };
+  if (driver.deferUntilCommit) driver.deferUntilCommit(guarded);
+  else await finishCleanup(guarded);
 }

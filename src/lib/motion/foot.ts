@@ -1,56 +1,14 @@
-/* Tier 3, change within a screen: the foot arriving and leaving (carpet 26).
+/* Move the frame's save bar without clipping the scroll area in the open.
+   The opaque foot covers the room it takes. During the rise, a negative
+   bottom margin keeps its layout contribution at zero. Translate from 0
+   to minus its height, then clear the styles at the same visible position.
+   On exit, restore the scroll room under the cover before translating
+   down to zero behind the floating bar.
 
-   The foot is a frame object now (`$lib/stores/saveBar.svelte`), so a screen
-   that grows or drops one changes the height of the scroll region beside it.
-   Rule 10 says a solid thing arrives from its own edge and never fades from
-   nothing, and the foot's own edge is the window's bottom: it rises from
-   behind the floating bar, which paints over it on the way past.
-
-   **Why the room is a discrete swap and the travel a transform.** The
-   column's room has to change at one of the two ends of the movement, and
-   which end decides whether anything is ever missing. Take it at the start
-   and the region is a foot shorter before the foot is there, so the last
-   rows of a scrolled column are clipped away with nothing in their place -
-   a yank, by the only definition that matters here (Alicja: "things
-   teleporting/disappearing in 1 frame"). Take it at the end and the strip
-   is clipped underneath a foot that is already over it, which is invisible,
-   and is why the foot is opaque. So the foot hangs its own height below the
-   frame for the whole travel - `margin-bottom` negative, so the region
-   keeps its full height - and rides up on a transform. The leave runs the
-   same way round: the room comes back first, under a foot that is still
-   covering the strip, and the foot then travels down behind the bar.
-
-   The arithmetic is the one thing here that is easy to get backwards, and
-   getting it backwards is visible: the negative margin *is* the hidden
-   state. With it, the foot contributes nothing to the column, so its own
-   top edge sits on the window's bottom edge and the whole box is off the
-   frame with no transform at all. Resting - margin 0 - its top is one
-   foot-height higher. So the rise runs `translate` from 0 to minus its
-   height and the fall from minus its height back to 0, and the frame where
-   the inline styles are dropped lands on the same pixel as the animation's
-   last. Written with the signs the other way round, the foot rose from
-   below the window to the window's edge and then snapped 141px up when the
-   styles were cleared (measured: 282px of travel where the foot is 141px
-   tall).
-
-   **Why these are animations the host plays and not Svelte transitions.**
-   Written as `in:`/`out:` first, and the out half was a defect Alicja
-   caught on the first flipbooks: Svelte keeps a whole `{#if}` branch's DOM
-   alive until every outro inside it has finished, so a foot leaving on
-   380ms held the tab it belonged to on screen for that long and then cut
-   the whole screen in one frame ("foot leaves - yank between 24 and 25",
-   2026-09-09). The foot is not the screen's to hold. The rise had the
-   mirror-image defect at the other end: the node is appended by the action
-   and a transition's first frame lands after it, so the region was a foot
-   shorter for one frame before the foot was hanging ("something weird at
-   'foot arrives' - at frames 1 to 3 the content seems to be travelling up,
-   and then starting from frame 4 it goes down").
-
-   So the host owns both, on the same node whose presence it owns:
-   `riseFoot` hangs the foot and plays it up in the same synchronous step
-   that appends it, and `fallFoot` resolves when the foot is off the frame
-   and the caller may remove it. Nothing about a screen's teardown waits on
-   either. */
+   The host sets the initial styles in the same step that appends the
+   foot. A Svelte transition would apply its first frame too late and an
+   outro inside the screen would delay route teardown. The host plays
+   both animations and removes the foot once fallFoot resolves. */
 import { EASE_OUT_CSS, isReducedMotion, motionDuration } from './tokens';
 
 /** The mark a leaving foot carries, so the shell can tell a foot that is
@@ -72,17 +30,9 @@ function cut(node: HTMLElement, cuts: boolean): boolean {
 }
 
 /**
- * Hang the foot below the frame and play it up. Called in the same step
- * that puts the node in the column, so the first painted frame already has
- * the region at full height.
- *
- * `cuts` is for a navigation: Svelte tears the screen down there too, and a
- * foot sliding up the window while the blind pulls the next screen over it
- * is two motions explaining one thing, so the foot arrives with the screen
- * instead. Reduced motion cuts for the reason `wipe` gives in reveal.ts -
- * "a change inside a screen has no journey to explain, so there is nothing
- * a fade would be standing in for". The crossfade DIRECTION.md rule 10
- * names is tier 2's substitute, for a navigation.
+ * Start the foot below the frame with the region already at full height.
+ * On navigation the foot comes in with the screen. Under reduced motion
+ * a within-screen reveal cuts, while navigation uses its own crossfade.
  */
 export function riseFoot(node: HTMLElement, cuts = false): void {
   if (cut(node, cuts)) return;

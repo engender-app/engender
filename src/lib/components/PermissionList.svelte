@@ -1,26 +1,8 @@
 <script lang="ts">
-  /* Everything the app can ask this device for, in one list (phase 10
-     redesign ticket 31).
-
-     One component, two hosts: the setup step and `/settings/permissions`.
-     That is the whole reason it exists as a component - the ticket's promise
-     is that "you can do this later" is true, and it is only true if the
-     screen somebody comes back to is the same list they skipped.
-
-     Neither host's title or intro line is here. A step's question is 48px on
-     the field and a screen's is a ScreenHeader, and DIRECTION.md rule 12 is
-     explicit that a step carries one heading; so the hosts own their heading
-     and this owns the list under it.
-
-     What a grantable row looks like is PermissionRow's; what this device
-     currently allows is this file's. The two are separated so every row
-     state can be rendered against the real tokens rather than only the two a
-     desktop browser is ever in.
-
-     Shape, from the fourth Mobbin sweep and rule 13: rows between hairlines,
-     a title at 17, one reason line under it, one control trailing. Not
-     taken: the card around each group, the per-permission paragraph, and the
-     pre-prompt screens that draw the OS dialog as an illustration. */
+  /* Setup and Settings share the same permission list. Each host
+     supplies its own heading. This component
+     reads device permission state. PermissionRow renders it with
+     the token-based layout, a reason line and trailing control. */
   import { m } from '$lib/paraglide/messages';
   import { attempt } from '$lib/stores/attempt.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
@@ -39,13 +21,13 @@
     type GrantStates
   } from '$lib/permissions/catalogue';
   import { openSystemSettings, readGrantStates, requestGrant } from '$lib/permissions/grant';
+  import { watchStatus } from '$lib/permissions/watchStatus';
 
-  /* Setup draws the asks and nothing else (after-release 17, UX-10): the
-     rows explaining the print dialog, the file picker and the clipboard are
-     about how the app works, which a person setting it up has not asked,
-     and they stay on /settings/permissions. Android keeps its closer there
-     too, because "no internet permission" is the claim this step makes; the
-     web's closer is an explanation, and goes. */
+  /* Setup draws the asks and nothing else: the rows explaining the print dialog, the file
+     picker and the clipboard are about how the app works, which a person setting it up has
+     not asked, and they stay on /settings/permissions. Android keeps its closer there too,
+     because "no internet permission" is the claim this step makes; the web's closer is an
+     explanation, and goes. */
   let { asksOnly = false }: { asksOnly?: boolean } = $props();
 
   let platform = $derived(isAndroid() ? ('android' as const) : ('web' as const));
@@ -68,10 +50,6 @@
   let grants = $derived(grantRows(platform, states, asked));
   let ambient = $derived(ambientRows(platform));
 
-  async function refresh() {
-    states = await readGrantStates();
-  }
-
   async function press(key: GrantKey) {
     const row = grants.find((r) => r.key === key);
     if (!row || busy) return;
@@ -90,7 +68,7 @@
       states = { ...states, [key]: answer };
       if (answer === 'granted') justChanged = key;
     } catch (error) {
-      // A plugin that throws instead of answering (after-release 06, L05-06).
+      // A plugin that throws instead of answering.
       console.error('a permission request failed', error);
       toast(m.permission_request_failed(), { kind: 'failed' });
     } finally {
@@ -98,20 +76,19 @@
     }
   }
 
-  $effect(() => {
-    void refresh();
-  });
-
   /* The way out of a refusal is a system screen, so the answer can change
      while the app is not looking. Re-read on the way back rather than
-     leaving a row claiming a permission that was granted a swipe ago. */
+     leaving a row claiming a permission that was granted a swipe ago; the
+     watcher is the one Reminders and Notifications use too. readGrantStates already settles a failed read as denied. */
   $effect(() => {
-    if (typeof document === 'undefined') return;
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') void refresh();
-    };
-    document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
+    const watch = watchStatus<GrantStates>({
+      read: readGrantStates,
+      unreadable: { ...NOTHING_GRANTED },
+      apply: (next) => {
+        states = next;
+      }
+    });
+    return () => watch.stop();
   });
 
   /* Written out rather than reached through `m[key]`: check-copy.mjs reads
@@ -137,12 +114,15 @@
       why: () => (isAndroid() ? m.perm_clipboard_why() : m.perm_clipboard_why_web())
     },
     batteryOptimisation: { title: m.perm_battery, why: m.perm_battery_why },
-    biometric: { title: m.perm_biometric, why: m.perm_biometric_why }
+    biometric: {
+      title: m.perm_biometric,
+      why: () => m.perm_biometric_why({ appName: m.app_name() })
+    }
   };
 </script>
 
 <div class="perms" data-permission-list>
-  {#if !asksOnly}<p class="perm-caption">{m.perms_group_ask()}</p>{/if}
+  {#if !asksOnly}<p class="perm-caption">{m.perms_screen_title()}</p>{/if}
   <ListCard role={roleAt(activeFlag.roles, 0)}>
     {#each grants as row (row.key)}
       <PermissionRow
@@ -173,11 +153,10 @@
   </ListCard>
   {/if}
 
-  <!-- The closer is the claim the whole list exists to make concrete, and the
-       claim is not the same on both platforms: Android holds no internet
-       permission at all, while the web app is itself something the browser
-       downloads. One key per platform, like the clipboard row above, because
-       the protection differs (UI/UX ticket 09). -->
+  <!-- The closer is the claim the whole list exists to make concrete, and the claim is not
+       the same on both platforms: Android holds no internet permission at all, while the
+       web app is itself something the browser downloads. One key per platform, like the
+       clipboard row above, because the protection differs. -->
   {#if isAndroid()}
     <p class="perm-closer" data-no-internet>{m.perms_no_internet()}</p>
   {:else if !asksOnly}

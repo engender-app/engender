@@ -1,19 +1,7 @@
-/* The dimensions area (PRD F3). Dimensions hide, never delete: the
-   ON DELETE CASCADE on entry_dimension_value would take every value ever
-   logged on it, so no delete operation exists here at all. A true
-   delete, if ever offered, is a separate explicitly-worded action that
-   states how many values it destroys.
-
-   Presets and dimensions are addressed by key (dimensions carry a NOT
-   NULL key even when custom - the minted uuid doubles as one); preset ids
-   are the seeded key or the minted uuid (ADR-0002).
-
-   No screen picks or builds a preset any more. Phase 5 ticket 35 replaced
-   presets with ticked scales held in preferences. The preset methods remain
-   as archive test seams: golden fixtures create legacy custom presets and
-   restore tests read their ordered dimension links. Production export and
-   restore use archiveSections.ts and archiveApply.ts directly. Reconcile
-   seeds no preset. Legacy preset rows still travel in archives. */
+/* Hide dimensions to retain their readings. Deleting a dimension would
+   cascade to entry_dimension_value. Custom UUIDs double as keys (ADR-0002).
+   Presets remain as legacy archive fixtures. Export and restore handle their
+   ordered links through archiveSections.ts and archiveApply.ts. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { GenderDimension, GenderPreset } from '../types';
@@ -25,6 +13,9 @@ export interface DimensionsArea {
   addCustomDimension(dim: Omit<GenderDimension, 'key' | 'builtIn' | 'hidden'>): Promise<GenderDimension>;
   addPreset(preset: { name: string; dims: string[] }): Promise<GenderPreset>;
   setDimensionHidden(key: string, hidden: boolean): Promise<void>;
+  /** Custom scales only: a built-in's wording is the catalogue's. A built-in
+      or unknown key throws. The range stays, since values were logged on it. */
+  renameCustomDimension(key: string, words: Pick<GenderDimension, 'name' | 'low' | 'high'>): Promise<void>;
 }
 
 export function makeDimensionsArea(driver: SqliteDriver): DimensionsArea {
@@ -108,6 +99,14 @@ export function makeDimensionsArea(driver: SqliteDriver): DimensionsArea {
         key
       ]);
       assertChanged(result, `dimension: ${key}`);
+    },
+
+    async renameCustomDimension(key, { name, low, high }) {
+      const result = await driver.run(
+        'UPDATE gender_dimension SET name = ?, low_label = ?, high_label = ?, updated_at = ? WHERE key = ? AND is_built_in = 0',
+        [name, low, high, now(), key]
+      );
+      assertChanged(result, `custom dimension: ${key}`);
     }
   };
 }

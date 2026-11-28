@@ -8,7 +8,7 @@
    constructs the real thing and the UI reads it.
 
    Not reactive: the store is set before the first screen renders, and
-   replaced only around a lock on the web (after-release ticket 10), which
+   replaced only around a lock on the web, which
    sets it to null and back while every screen that reads it is unmounted
    behind the lock - so nothing needs to re-run when it changes. Null reads
    as "no store yet", the answer a read during boot already got. */
@@ -22,16 +22,14 @@ export function setPhotoFiles(files: PhotoFileStore | null): void {
   store = files;
 }
 
-/* Thumbnail reads asked for in the same turn of the event loop leave as
-   one `readMany` (phase 5 audit ticket 03, finding 04).
+/* Thumbnail reads asked for in the same turn of the event loop leave as one `readMany`.
 
-   A grid mounts one PhotoThumb per photo and every one of them starts its
-   own read, so before this the screen issued as many round trips as there
-   were tiles - each of them a decrypt of its own under the encrypting
-   store. The queue is here rather than in the component because the
-   timeline, the milestone list and the editors all read through
-   readThumbnail too, and a batch that only the photo grid could reach
-   would be a batch three screens still went without. */
+   A grid mounts one PhotoThumb per photo and every one of them starts its own read, so
+   before this the screen issued as many round trips as there were tiles - each of them a
+   decrypt of its own under the encrypting store. The queue is here rather than in the
+   component because the timeline, the milestone list and the editors all read through
+   readThumbnail too, and a batch that only the photo grid could reach would be a batch
+   three screens still went without. */
 type Waiter = {
   resolve(bytes: Uint8Array | null): void;
   reject(error: unknown): void;

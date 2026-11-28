@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
+import { ANALYZER_VERSION } from '../../audio/analyzerVersion.ts';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { openJournal } from './journal.ts';
@@ -13,9 +14,8 @@ async function journalWithFiles() {
   return { journal, files, db };
 }
 
-/* The benchmark area (phase 5 deepening ticket 15, CONTEXT: "Voice
-   benchmark"). A benchmark is a day's standardized take, not an entry's
-   memo, so nothing here goes through entries.ts. */
+/* The benchmark area. A benchmark is a day's standardized take, not an entry's memo, so
+   nothing here goes through entries.ts. */
 
 const metrics = {
   f0MedianHz: 180.4,
@@ -62,6 +62,24 @@ test('a benchmark saves its metrics and both audio files', async () => {
   assert.deepEqual(await files.read(saved.vowelFileName), vowelAudio());
   // Two files, not one file under two names.
   assert.notEqual(saved.passageFileName, saved.vowelFileName);
+});
+
+test('a new benchmark records the analyzer version it was measured under', async () => {
+  const { journal, db } = await journalWithFiles();
+  await journal.voiceBenchmarks.saveBenchmark({
+    epochDay: 20300,
+    passageKey: 'builtin',
+    passageAudio: passage(),
+    vowelAudio: null,
+    ...metrics,
+    f1Hz: null,
+    f2Hz: null,
+    snrDb: null
+  });
+
+  assert.deepEqual(await db.query('SELECT analyzer_version FROM voice_benchmark'), [
+    { analyzer_version: ANALYZER_VERSION }
+  ]);
 });
 
 test('a session with a skipped vowel saves with nulls rather than failing', async () => {
@@ -231,7 +249,7 @@ test('the boot sweep leaves a benchmark its audio', async () => {
   assert.deepEqual((await files.list()).sort(), before);
 });
 
-/* The stored pitch track (phase 8 features ticket 09). Two cases, and the
+/* The stored pitch track. Two cases, and the
    second is the one the screen has to survive: every benchmark taken before
    schema v58 has no track at all, because the frames it would have come
    from were never kept. */
@@ -273,8 +291,8 @@ test('a benchmark saved without a track reads back with none', async () => {
   assert.equal(saved.pitchTrack, null);
 });
 
-/* Ticket 28: the row says what recorded it, so nothing downstream has to
-   guess whether two takes share a microphone. */
+/* The row says what recorded it, so nothing downstream has to guess whether two takes share
+   a microphone. */
 test('a benchmark stores the chain it was recorded through, and null when there was none to read', async () => {
   const { journal } = await journalWithFiles();
   const chain = 'Pixel 10a | Bottom microphone | ec=off ns=off agc=off';
@@ -306,8 +324,8 @@ test('a benchmark stores the chain it was recorded through, and null when there 
   assert.equal(without.captureChain, null);
 });
 
-/* Ticket 30: the row keeps the corner-vowel factor where it was fitted, and
-   null where fewer than two vowels cleared the gate. */
+/* The row keeps the corner-vowel factor where it was fitted, and null where fewer than two
+   vowels cleared the gate. */
 test('a benchmark stores its corner-vowel scale, and null when there was none to fit', async () => {
   const { journal } = await journalWithFiles();
 

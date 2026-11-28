@@ -1,17 +1,15 @@
-/* How a milestone reads against a given day: counting down to it, landing
-   on it, or looking back at it (PRD F6/F26).
+/* How a milestone reads against a given day: counting down to it, landing on it, or looking
+   back at it (PRD F6/F26).
 
-   Nothing here is stored (ADR-0010) - the schema has no `kind` column, and
-   whether a day is a countdown or an anniversary is a question about today,
-   which changes overnight. It also sits above the journal rather than in it,
-   for the reason ticket 10 gives about every dated read: "today" is a local
-   calendar day (ADR-0001) and the data layer has no business deciding which
-   one it is. So today arrives as an argument, and every case here is a plain
-   fixture.
+   Nothing here is stored (ADR-0010) - the schema has no `kind` column, and whether a day is
+   a countdown or an anniversary is a question about today, which changes overnight. It also
+   sits above the journal rather than in it, for the reas gives about every dated read:
+   "today" is a local calendar day (ADR-0001) and the data layer has no business deciding
+   which one it is. So today arrives as an argument, and every case here is a plain fixture.
 
-   Four screens asked this question before and one of them answered it
-   differently (transition/milestones grew its own copy of the wording); the
-   wording still belongs to the screens, but the arithmetic is here. */
+   Four screens asked this question before and one of them answered it differently
+   (transition/milestones grew its own copy of the wording); the wording still belongs to
+   the screens, but the arithmetic is here. */
 
 import { anniversaryYears, nextAnniversaryEpochDay } from './epochDay';
 import type { Milestone } from './types';
@@ -29,7 +27,7 @@ export function milestoneStatus(milestone: Pick<Milestone, 'epochDay'>, todayEpo
   if (milestone.epochDay === todayEpochDay) return { type: 'today', days: 0 };
   // Years counted from the anniversary rather than measured off the gap, so a
   // 29 February milestone does not read "0 years" on the day it flags as its
-  // first (ticket 10).
+  // first.
   const years = anniversaryYears(milestone.epochDay, todayEpochDay);
   const nextAnniversary = nextAnniversaryEpochDay(milestone.epochDay, todayEpochDay);
   return {
@@ -52,4 +50,24 @@ export function upcomingMilestones(
   return milestones
     .map((m) => ({ m, s: milestoneStatus(m, todayEpochDay) }))
     .sort((a, b) => daysAway(a.s) - daysAway(b.s));
+}
+
+/** The milestone Home marks today: the first one landing on today, either
+    on its own day or on an anniversary of it, in `upcomingMilestones`'
+    order. A milestone the person set not to be
+    celebrated is passed over, and so is an anniversary whose day
+    `mayResurface` refuses, because an anniversary brings back a day from
+    the past and a muted era asked for that not to happen (ADR-0049). A
+    milestone landing on its own day resurfaces nothing, so a mute does not
+    hold it back. */
+export function landingMilestone(
+  milestones: Milestone[],
+  todayEpochDay: number,
+  mayResurface: (epochDay: number) => boolean
+): { m: Milestone; s: MilestoneStatus } | undefined {
+  return upcomingMilestones(milestones, todayEpochDay).find(
+    (x) =>
+      x.m.celebrate !== false &&
+      (x.s.type === 'today' || (x.s.isAnnivToday === true && mayResurface(x.m.epochDay)))
+  );
 }

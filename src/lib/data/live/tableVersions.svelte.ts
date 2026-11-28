@@ -1,5 +1,5 @@
 /* The version-state half of the reactive layer, split out of
-   journal.svelte.ts (ticket 27, ADR-0004).
+   journal.svelte.ts (ADR-0004).
 
    Every write announces its tables (writes.ts). This module turns that into
    two things: a version per table that a `liveQuery` re-runs on, and the
@@ -23,9 +23,9 @@ const versions = $state<Record<TableName, number>>(
   Object.fromEntries(TABLE_NAMES.map((table) => [table, 0])) as Record<TableName, number>
 );
 
-/* The same numbers outside `$state`, for a reader that must not subscribe:
-   the last-answer store stamps an answer with the versions its run started
-   at, and checks them again on a revisit (lastResults.ts, ux-carpet 201). */
+/* The same numbers outside `$state`, for a reader that must not subscribe: the last-answer
+   store stamps an answer with the versions its run started at, and checks them again on a
+   revisit (lastResults.ts). */
 const settled = Object.fromEntries(TABLE_NAMES.map((table) => [table, 0])) as Record<TableName, number>;
 
 /** A table's current version, read without subscribing to it. */
@@ -33,12 +33,9 @@ export function settledVersionOf(table: TableName): number {
   return settled[table];
 }
 
-/** Set while `batchWrites` is running: `bump` collects tables here instead of
-    touching `versions`, so a run of writes costs one re-run of whatever reads
-    them rather than one per write (ticket 141 - a seed of a few thousand
-    statements was re-querying Home's own liveQueries after every single one,
-    and the query cost grows with the journal, which is what made the seed
-    quadratic-ish on device). `null` when no batch is open. */
+/** Set while `batchWrites` is running: `bump` collects tables here instead of touching
+    `versions`, so a run of writes costs one re-run of whatever reads them rather than one
+    per write. `null` when no batch is open. */
 let batched: Set<TableName> | null = null;
 
 /** Called after every announced write, with the tables it wrote: bumps each
@@ -61,24 +58,10 @@ export function bump(tables: TableName[]): void {
   announceTablesWritten(tables);
 }
 
-/** Runs `writes`, deferring every table version bump and mirror announcement
-    it makes until it settles, then fires them once for the union of tables
-    touched - so a screen reading any of them re-runs once instead of once per
-    write inside.
-
-    Does not nest: `reseed()` is the one caller, and it wraps a whole
-    clear-then-seed jump in a single call rather than one per operation
-    inside it, which is all this needs today. A `batchWrites` call started
-    while another is already open would either flush early and leave the
-    outer batch announcing nothing, or extend the wrong batch - both wrong
-    silently - so this throws instead, the same reason `transactor.ts`'s
-    queue asks its own callers not to nest a transaction rather than trying
-    to make nesting work.
-
-    The writes themselves still land one at a time and in order - this defers
-    only the reactive announcement, never the data - so a read made through
-    the raw (non-live) driver during the batch still sees each row as it is
-    written. */
+/** Defer table versions and mirror announcements until writes settles,
+    then notify once for the union of touched tables. Writes still land
+    in order and raw reads can see them throughout. Throw on nested
+    batches to avoid an early flush. reseed() wraps one clear and seed. */
 export async function batchWrites<T>(writes: () => Promise<T>): Promise<T> {
   if (batched) throw new Error('batchWrites does not nest - a batch is already open');
   batched = new Set();

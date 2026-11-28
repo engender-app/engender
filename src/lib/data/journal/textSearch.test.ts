@@ -1,4 +1,4 @@
-/* The search registry (phase 5 deepening ticket 24): which areas hold text,
+/* The search registry: which areas hold text,
    that each area's declaration matches the table it names, that a folded
    query reaches all of them, and that searching writes nothing.
 
@@ -176,12 +176,11 @@ test('one word reaches every registered area, folded on both sides', async () =>
   }
 });
 
-/* Phase 8 features ticket 52, ADR-0065: "Search finds a document by the
-   title the person wrote and by nothing else." The registry's own
-   `one word reaches every registered area` test covers the positive half;
-   this is the negative one, and it is the half the ADR is actually about -
-   the app never reads a document, so neither its stored file nor its
-   travelling id may be a way to find it. */
+/* ADR-0065: "Search finds a document by the title the person wrote and by nothing else."
+   The registry's own `one word reaches every registered area` test covers the positive
+   half; this is the negative one, and it is the half the ADR is actually about - the app
+   never reads a document, so neither its stored file nor its travelling id may be a way to
+   find it. */
 test('a document is found by its title and by neither its file nor its id', async () => {
   const { journal } = await journalWithBuiltIns();
   const id = await journal.documents.addDocument(
@@ -221,7 +220,7 @@ test('hits come back newest first, with the undated ones last', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.milestones.upsertMilestone({ name: 'older żółć', epochDay: DAY - 5 });
   await journal.milestones.upsertMilestone({ name: 'newer żółć', epochDay: DAY });
-  await journal.roadmap.addCustomGoal('legal', 'undated żółć');
+  await journal.roadmap.addCustomGoal('undated żółć');
 
   assert.deepEqual(await found(journal, 'zolc'), ['newer żółć', 'older żółć', 'undated żółć']);
 });
@@ -230,7 +229,7 @@ test('the date range narrows dated areas and leaves undated ones alone', async (
   const { journal } = await journalWithBuiltIns();
   await journal.milestones.upsertMilestone({ name: 'inside żółć', epochDay: DAY });
   await journal.milestones.upsertMilestone({ name: 'before żółć', epochDay: DAY - 30 });
-  await journal.roadmap.addCustomGoal('legal', 'undated żółć');
+  await journal.roadmap.addCustomGoal('undated żółć');
 
   const results = await journal.textSearch.search({
     query: 'zolc',
@@ -278,14 +277,12 @@ test('a row that matched on two of its columns shows the one its area prefers', 
 });
 
 test('a Cyrillic word in a scanned area is found however either side was capitalised', async () => {
-  /* Phase 8 features ticket 49 item 4, the non-entry half - and the half
-     that was genuinely broken. An entry note goes through `foldText` in JS
-     on both sides, where `toLowerCase()` handles Cyrillic; a milestone name
-     is matched by `foldedSql` inside SQL, and SQLite's `lower()` maps A-Z
-     and nothing else. So `Настя` stayed capitalised in the column while
-     `настя` was folded on the query side, and the two never met. Anyone
-     keeping this journal in Russian or Ukrainian could not find a name they
-     had written down. */
+  /* Check the non-entry search branches. An entry note goes
+     through `foldText` in JS on both sides, where `toLowerCase` handles Cyrillic; a
+     milestone name is matched by `foldedSql` inside SQL, and SQLite's `lower` maps A-Z and
+     nothing else. So `Настя` stayed capitalised in the column while `настя` was folded on
+     the query side, and the two never met. Anyone keeping this journal in Russian or
+     Ukrainian could not find a name they had written down. */
   const { journal } = await journalWithBuiltIns();
   await journal.milestones.upsertMilestone({ name: 'Настя', epochDay: DAY });
   await journal.milestones.upsertMilestone({ name: 'Ґалаґан', epochDay: DAY });
@@ -317,17 +314,26 @@ test('a milestone that matches on both name and description shows its name', asy
   assert.deepEqual(await found(journal, 'zolc'), ['żółć day']);
 });
 
-test('a felt sense carries the tryout it belongs to, and a milestone one carries nothing', async () => {
+test('a felt sense carries the tryout it belongs to', async () => {
   const { journal } = await journalWithBuiltIns();
   const tryoutId = await journal.tryouts.upsertTryout({ kind: 'name', label: 'Marta', startEpochDay: DAY, endEpochDay: null });
   await journal.feltSense.add({ tryoutId }, { epochDay: DAY, mood: 4, note: 'żółć one' });
-  const milestoneId = await journal.milestones.upsertMilestone({ name: 'first day', epochDay: DAY });
-  await journal.feltSense.add({ milestoneId }, { epochDay: DAY, mood: 4, note: 'żółć two' });
 
   const results = await journal.textSearch.search({ query: 'zolc', today: TODAY, limit: 30 });
   const contexts = new Map(results.hits.map((hit) => [hit.value, hit.context]));
   assert.equal(contexts.get('żółć one'), tryoutId);
-  assert.equal(contexts.get('żółć two'), null);
+});
+
+test('a procedure checklist line carries its procedure, a prep question carries nothing', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const procedureId = await journal.procedures.upsertProcedure({ name: 'plain journey' });
+  await journal.procedures.addChecklistItem(procedureId, 'żółć line');
+  await journal.checklists.addToStandaloneChecklist('żółć question');
+
+  const results = await journal.textSearch.search({ query: 'zolc', today: TODAY, limit: 30 });
+  const contexts = new Map(results.hits.map((hit) => [hit.value, hit.context]));
+  assert.equal(contexts.get('żółć line'), procedureId);
+  assert.equal(contexts.get('żółć question'), null);
 });
 
 test('the limit bounds the page, and the count is of every match', async () => {
@@ -353,7 +359,7 @@ test('a search is one round trip, whatever the registry grows to', async () => {
 
   resetRoundTrips();
   await journal.textSearch.search({ query: 'zolc', today: TODAY, limit: 30 });
-  // The page and its count in one statement, and nothing per area (ticket 220).
+  // The page and its count in one statement, and nothing per area.
   assert.deepEqual(roundTrips(), { query: 1, run: 0 });
 });
 
@@ -394,7 +400,7 @@ async function fillEveryTextArea(journal: Journal): Promise<void> {
     note: 'plain note'
   });
   await journal.checklists.addToStandaloneChecklist(`question ${word}`);
-  await journal.sideEffects.upsertSideEffect({ name: `effect ${word}`, severity: 2, epochDay: DAY });
+  await journal.sideEffects.upsertSideEffect({ name: `effect ${word}`, severity: 2, epochDay: DAY, resolvedEpochDay: null });
   const tryoutId = await journal.tryouts.upsertTryout({
     kind: 'name',
     label: `tryout ${word}`,
@@ -403,8 +409,7 @@ async function fillEveryTextArea(journal: Journal): Promise<void> {
     endEpochDay: null
   });
   await journal.feltSense.add({ tryoutId }, { epochDay: DAY, mood: 4, note: `felt ${word}` });
-  await journal.roadmap.addCustomGoal('legal', `goal ${word}`);
-  await journal.affirmations.addLine('en', `affirmation ${word}`);
+  await journal.roadmap.addCustomGoal(`goal ${word}`);
   await journal.labs.upsertResult({
     epochDay: DAY,
     analyte: 'Estradiol',
@@ -412,7 +417,6 @@ async function fillEveryTextArea(journal: Journal): Promise<void> {
     unit: 'pmol/L',
     note: `lab ${word}`
   });
-  await journal.sizeRecords.upsertRecord({ epochDay: DAY, category: 'shirts', size: 'M', fitNote: `fit ${word}` });
   await journal.taper.upsertSession({ epochDay: DAY, note: `taper ${word}` });
   await journal.wearSessions.upsertSession({
     kind: 'binder',
@@ -435,7 +439,6 @@ async function fillEveryTextArea(journal: Journal): Promise<void> {
     snrDb: null,
     note: `benchmark ${word}`
   });
-  await journal.hairProgress.upsertStage({ epochDay: DAY, scale: 'other', stage: '', description: `hair ${word}` });
   await journal.hairRemoval.upsertSession({
     epochDay: DAY,
     area: 'chin',
@@ -457,7 +460,6 @@ async function fillEveryTextArea(journal: Journal): Promise<void> {
   await journal.stock.upsertEntry({ drug: `stock ${word}`, quantity: 30, unit: 'tablets', recordedEpochDay: DAY });
   await journal.reminders.upsertReminder({
     title: `reminder ${word}`,
-    type: 'other',
     time: '09:00',
     recurrence: null,
     interval: null,

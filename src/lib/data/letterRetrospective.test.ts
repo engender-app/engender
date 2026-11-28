@@ -1,4 +1,4 @@
-/* Letters in the retrospective surfaces (phase 5 deepening ticket 13).
+/* Letters in the retrospective surfaces.
 
    One rule carries the whole file: a sealed letter is not a retrospective
    fact. Every function here answers for the seal exclusion itself rather

@@ -1,4 +1,4 @@
-/* Shared by the two Node-tier test files here (phase 2 ticket 20). */
+/* Shared by the two Node-tier test files here. */
 
 import type { NormalizedPhoto } from '../../src/lib/data/journal/photos.ts';
 

@@ -104,11 +104,10 @@ describe('several in the same month', () => {
     expect(far.marks[1].lane).toBe(0);
   });
 
-  /* Phase 14 ticket 29 (accessibility audit A04): two marks sharing a lane
-     are two 24px targets side by side, so the gap has to be 24px of line on
-     the narrowest screen. At 320px the plot is 280px wide and the marks are
-     inset 12px from each end, which leaves a 256px line - measured in the
-     built app by tests/chart-a11y-check.mjs. */
+  /* Two marks sharing a lane are two 24px targets side by side, so the gap has to be 24px
+     of line on the narrowest screen. At 320px the plot is 280px wide and the marks are
+     inset 12px from each end, which leaves a 256px line - measured in the built app by
+     tests/guards/chart-a11y-check.mjs. */
   test('two marks in one lane stand 24px apart on a 320px screen', () => {
     const line = 256;
     const step = Math.ceil(730 * MARK_MIN_GAP);
@@ -160,7 +159,7 @@ describe('the ticks the axis is read against', () => {
   });
 });
 
-describe('the two kinds of mark (ticket 13)', () => {
+describe('the two kinds of mark', () => {
   test('a side effect carries its own kind and severity onto its mark', () => {
     const axis = noticedAxis(
       [change('a', 100, { kind: 'side-effect', severity: 'moderate' })],
@@ -179,4 +178,20 @@ describe('the two kinds of mark (ticket 13)', () => {
     );
     expect(axis.marks.map((mark) => mark.lane)).toEqual([0, 1]);
   });
+});
+
+describe('noticedAxis: extreme days stay bounded', () => {
+  for (const [name, anchor] of [['calendar', null], ['onset', 0]] as const) {
+    test(`${name} axis over a day near the minimum JS date keeps a bounded tick list`, () => {
+      const started = Date.now();
+      const axis = noticedAxis([change('a', -99_000_000)], anchor, 20500);
+      expect(Date.now() - started).toBeLessThan(500);
+      expect(axis.ticks.length).toBeLessThanOrEqual(100);
+      expect(axis.ticks.length).toBeGreaterThan(0);
+      for (const tick of axis.ticks) {
+        expect(tick.epochDay).toBeGreaterThanOrEqual(axis.fromEpochDay);
+        expect(tick.epochDay).toBeLessThanOrEqual(axis.toEpochDay);
+      }
+    });
+  }
 });

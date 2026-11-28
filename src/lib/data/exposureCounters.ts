@@ -1,36 +1,10 @@
-/* Cumulative exposure counters (phase 4 ticket 05, CONTEXT: "Regimen
-   episode", "Dose event"). Pure, kept above the journal seam beside
-   regimenEpisode.ts and stockProjection.ts: nothing here reads a clock or
-   a database, and no counter is stored - every one is recomputed from the
-   dose log and the regimen episode history for whatever range is asked
-   for (ADR-0010), the same way stockProjection.ts's own figures are.
+/* Derive exposure counts from the dose log and regimen history (ADR-0010).
+   Attribute doses with regimenEpisode.ts. Omit dates with no attributable
+   drug, and track ambiguous doses in excludedDoses.
 
-   Every counter is a plain count. No target range, no threshold, no
-   comparison to a "typical" value - the caller decides how to show a
-   number, this module only ever produces one.
-
-   A dose usually names no drug of its own (CONTEXT: "Dose event"); its
-   drug is resolved against the episode history the same way
-   stockProjection.ts's consumesStock does (regimenEpisode.ts's
-   attributeDrug). A dose with no episode to resolve against - logged
-   before any episode existed - has no drug to report a total against, so
-   it is left out rather than guessed at, silently as it always was. A
-   dose left ambiguous by two concurrent episodes for different drugs
-   (phase 5 ticket 38) is also left out, but counted (DoseTotals'
-   excludedDoses), so a total is never silently short.
-
-   Grouped by drug and route together, never combined across a route
-   boundary: a route-conversion table to compare across routes was cut at
-   the phase 4 grilling session (candidate item 24) and this module does
-   not re-derive one, so a switch from oral to injectable estradiol reports
-   as two totals, not one converted total.
-
-   Days-on-route and time-on-regimen read only the episode history, not
-   the dose log: a regimen episode is "in effect" for every calendar day
-   of its dated range (CONTEXT: "Regimen episode"), whether or not a dose
-   happened to be logged - or paused (CONTEXT: "Dose pause") - on a given
-   day within it, the same way stockProjection.ts treats a pause as still
-   running rather than as having ended the regimen. */
+   Group by drug and route. Each dated episode counts toward days on route
+   and time on regimen even when doses were paused or skipped. The caller
+   owns presentation and any comparison. */
 
 import { epochDayFromTimestamp } from './epochDay';
 import { attributeDrug, drugNameKey } from './regimenEpisode';
@@ -48,8 +22,7 @@ export interface DoseTotal {
 interface DoseTotals {
   totals: DoseTotal[];
   /** Doses left out because more than one concurrent regimen episode was
-      active and the dose named no drug of its own to break the tie (phase
-      5 ticket 38), or named one matching no active episode - counted so a
+      active and the dose named no drug of its own to break the tie, or named one matching no active episode - counted so a
       total is never silently short. A dose with nothing to resolve against
       at all (no episode ever covers it) is not counted here: that is the
       pre-existing, unambiguous "nothing to attribute" case. */
@@ -123,10 +96,9 @@ function overlapDays(episode: RegimenEpisode, fromEpochDay: number, toEpochDay: 
 }
 
 /** Every episode's own time on it within `[fromEpochDay, toEpochDay]` -
-    "regimen" always means one specific dated episode (CONTEXT: "Regimen
-    episode"), never a recurring plan, so this is per episode and not
+    "regimen" always means one specific dated episode, never a recurring plan, so this is per episode and not
     grouped by drug or dose. Hidden episodes still count: hiding takes an
-    episode out of a picker, not out of history (CONTEXT: "Hidden"). */
+    episode out of a picker, not out of history. */
 export function timeOnEachRegimen(
   episodes: readonly RegimenEpisode[],
   fromEpochDay: number,

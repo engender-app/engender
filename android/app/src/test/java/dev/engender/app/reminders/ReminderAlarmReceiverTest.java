@@ -3,7 +3,6 @@ package dev.engender.app.reminders;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.Test;
 
@@ -13,11 +12,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The title a Reminder notification actually shows (ticket 15's acceptance:
- * "Reminder notifications can hide sensitive titles on a locked device").
- * The app cannot learn whether the screen is locked at the moment an alarm
- * fires, so the preference is not a lock-time check - when it is on, the
- * reminder's own title never reaches the notification, locked or not.
+ * The title a Reminder notification actually shows. The app cannot learn
+ * whether the screen is locked at the moment an alarm fires, so the
+ * preference is not a lock-time check - when it is on, the reminder's own
+ * title never reaches the notification, locked or not.
  */
 public class ReminderAlarmReceiverTest {
 
@@ -28,8 +26,7 @@ public class ReminderAlarmReceiverTest {
         ZonedDateTime now = ZonedDateTime.of(2026, 8, 14, 9, 0, 0, 0, ZONE);
         int today = (int) now.toLocalDate().toEpochDay();
         JSONObject payload = new JSONObject().put("checkInEnabled", true).put("checkInTime", "08:00")
-            .put("journalingPauses", new JSONArray().put(new JSONObject()
-                .put("startEpochDay", today).put("endEpochDay", today)));
+            .put("checkInPausedThrough", today);
         List<Integer> posts = new ArrayList<>();
         List<ZonedDateTime> alarms = new ArrayList<>();
 
@@ -44,8 +41,7 @@ public class ReminderAlarmReceiverTest {
         ZonedDateTime now = ZonedDateTime.of(2026, 8, 15, 9, 0, 0, 0, ZONE);
         int today = (int) now.toLocalDate().toEpochDay();
         JSONObject payload = new JSONObject().put("checkInEnabled", true).put("checkInTime", "08:00")
-            .put("journalingPauses", new JSONArray().put(new JSONObject()
-                .put("startEpochDay", today - 1).put("endEpochDay", today - 1)));
+            .put("checkInPausedThrough", today - 1);
         List<Integer> posts = new ArrayList<>();
         List<ZonedDateTime> alarms = new ArrayList<>();
 
@@ -99,5 +95,31 @@ public class ReminderAlarmReceiverTest {
         JSONObject reminder = new JSONObject();
 
         assertEquals("Reminders", ReminderAlarmReceiver.resolveNotificationTitle(payload, reminder));
+    }
+
+    /* A medication reminder says what it reminds about. The app words the line
+       (doseReminderLabel.ts) and the time is part of it; hiding sensitive titles keeps only
+       the time, the one detail that setting promises to leave visible. */
+    @Test
+    public void theTextIsTheLineTheAppWroteForTheReminder() throws Exception {
+        JSONObject payload = new JSONObject();
+        JSONObject reminder = new JSONObject().put("time", "20:00").put("text", "Dose 2 of 2 a day · 20:00");
+
+        assertEquals("Dose 2 of 2 a day · 20:00", ReminderAlarmReceiver.resolveNotificationText(payload, reminder));
+    }
+
+    @Test
+    public void hidingTitlesLeavesOnlyTheTimeInTheText() throws Exception {
+        JSONObject payload = new JSONObject().put("hideNotificationTitles", true);
+        JSONObject reminder = new JSONObject().put("time", "20:00").put("text", "Sertraline 50 mg, oral · 20:00");
+
+        assertEquals("20:00", ReminderAlarmReceiver.resolveNotificationText(payload, reminder));
+    }
+
+    @Test
+    public void aPayloadWrittenBeforeTheTextExistedShowsTheTime() throws Exception {
+        JSONObject reminder = new JSONObject().put("time", "08:30");
+
+        assertEquals("08:30", ReminderAlarmReceiver.resolveNotificationText(new JSONObject(), reminder));
     }
 }

@@ -1,17 +1,17 @@
-/* The voice compare picker's state (ticket 25), mirroring
+/* The voice compare picker's state, mirroring
    photos/compare-state.ts's rules exactly - "no change to the underlying
    photo compare mode" (the ticket's own out-of-scope line) is what rules
    out reusing that module directly rather than a parallel one shaped the
    same way over DatedRecording instead of DatedPhoto.
 
-   Generic over the anchor shape (ticket 16): a benchmark is a second kind of
+   Generic over the anchor shape: a benchmark is a second kind of
    anchor the same surface compares, and all this module needs of either
    kind is an id and a day - it never reads a recording's file name or a
    benchmark's acoustic figures. */
 
 type CompareSide = 'left' | 'right';
 
-/* DatedAnchor stays exported only for its own test (AU-09 test-only review). */
+/* DatedAnchor stays exported only for its own test. */
 export interface DatedAnchor {
   id: string;
   epochDay: number;

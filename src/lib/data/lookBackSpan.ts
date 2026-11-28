@@ -1,30 +1,9 @@
-/* The span the Look back door's timeline selects (phase 10 redesign ticket
-   11), and the rail it is selected on.
-
-   The door opens on the person's own history: a rail from the earliest day
-   they authored anything dated to today, with their eras as bands and their
-   milestones as marks, and two handles that bound the stretch the
-   retrospectives read. Everything about that rail that is arithmetic lives
-   here, where it can be checked without a browser - where the rail starts,
-   how far a handle moves per step, what a pointed-at day snaps to, and the
-   URL a span is read at. The component draws; it decides nothing.
-
-   Nothing here reads the clock or the journal, the same rule wrappedRange.ts
-   and epochDay.ts follow: today and the journal's own facts arrive as
-   arguments and the answers are epoch days.
-
-   The span is handed to /wrapped/range through `wrappedRangeQuery`, the
-   same function the range picker's own form writes its URL with. That is
-   what makes "pointing at a span" and "typing the two dates into the
-   picker" one read rather than two: the picker and the timeline produce
-   the same query string for the same two days, and the test beside this
-   file parses it back through `parseWrappedRangeParams` to prove it. */
+/* Look back span arithmetic and shared reading query. */
 
 import type { ChartAnnotation } from '../charts/annotations';
 import { dateInputValueFromEpochDay, localDateFromEpochDay, epochDayFromLocalDate } from './epochDay';
 import type { EraSpan, JournalBounds } from './eras';
 import { spanOverlapsRange } from './span';
-import { wrappedRangeQuery } from './wrappedRange';
 
 /** Both ends inclusive, the way `recap(from, to)` takes a range. */
 export interface Span {
@@ -42,7 +21,7 @@ export const DEFAULT_SPAN_DAYS = 30;
 /** Where the rail begins: the earliest day the person authored anything
     dated, rather than the earliest day they logged. An entry's own day (the
     journal's bounds already skip the trash), a milestone's day, an era's
-    start, a tally tap's day. A milestone still ahead is not history, and an
+    start. A milestone still ahead is not history, and an
     era with no start reaches back before the journal rather than to a day,
     so neither moves the edge. Null where nothing dated exists yet: the door has an empty
     state for that, and a rail from today to today is not it. */
@@ -51,13 +30,11 @@ export function historyStart(
     bounds: JournalBounds | null;
     milestones: readonly { epochDay: number }[];
     eras: readonly EraSpan[];
-    firstTallyDay?: number | null;
   },
   todayEpochDay: number
 ): number | null {
   const days: number[] = [];
   if (input.bounds) days.push(input.bounds.firstEpochDay);
-  if (input.firstTallyDay != null) days.push(input.firstTallyDay);
   for (const milestone of input.milestones) if (milestone.epochDay <= todayEpochDay) days.push(milestone.epochDay);
   for (const era of input.eras) if (era.startEpochDay !== null) days.push(era.startEpochDay);
   if (!days.length) return null;
@@ -68,7 +45,7 @@ export function historyStart(
     rail is shorter than that.
 
     The day is today when the door opens, which is what this was written
-    for, and the day of a mark when somebody taps one (ticket 06): a mark is
+    for, and the day of a mark when somebody taps one: a mark is
     one day and one day is not a reading, so pointing at one asks for the
     same window the door itself opens on, ending there. */
 export function defaultSpan(railStart: number, endEpochDay: number): Span {
@@ -191,34 +168,13 @@ export function eraBands(
   return out;
 }
 
-/* ## The rest of the history (phase 11 ticket 06)
+/* Select RegimenEpisode and Tryout spans and Procedure days from
+   journal/chartAnnotations.ts, the shared dated-history query. The rail
+   draws eras and milestones separately, so omit duplicate annotations.
 
-   The rail drew two of the five dated histories the journal holds - the
-   eras as bands, the milestones as marks - and the reading people most want
-   from this door, "my moods over the HRT episode", was a stretch it could
-   not select. Three more record types carry a stretch (RegimenEpisode,
-   Tryout, JournalingPause) and one carries a day (Procedure).
-
-   None of them is read here. `journal/chartAnnotations.ts` is already the
-   one query that asks every area what it has dated, and every one of these
-   is already in its answer - so the rail asks it over its own two days and
-   the functions below select. A fifth gatherer of dated history would have
-   been a second place for "what happened between these days" to drift.
-
-   What is deliberately dropped from that answer, and why: `milestone` and
-   `era`, which the rail already draws its own way and would otherwise draw
-   twice; `dosePause`, `appointment`, `finishedArea` and `suspendedArea`,
-   which are things inside an episode or a day in a stream rather than
-   stretches of the person's own history; `recovery`, which is a reading of
-   a procedure (Home's own cutoff) rather than a stretch anybody lived
-   through as its own thing - the surgery day is the fact, and it is drawn;
-   and `journalingPause`, which this ticket drew as a third lane until the
-   sign-off renders (Alicja, 2026-09-16: "lets remove pauses from the
-   strip"). A break is the absence of a journal rather than a stretch of a
-   life, three lanes plus the marks did not fit 52px legibly, and the two
-   that stayed are the two somebody would actually want to read a span over.
-   The chart's own annotation band still draws pauses where they explain a
-   flat stretch, which is the reading they were always for. */
+   Omit dose pauses, appointments and area completion or suspension:
+   they belong inside episodes or streams. Draw procedure days without
+   Home's derived recovery cutoff. The journaling pause was retired. */
 
 /** The two kinds of stretch the history layer draws under the eras. Not
     merged into one record type: `span.ts`'s header refuses that, and this
@@ -239,9 +195,9 @@ export interface RailBand {
   id: string;
   kind: RailHistoryKind;
   /** An episode's drug, a tryout's label. The query types it nullable
-      because a journaling pause has no name of its own; neither kind drawn
-      here is that one, so the rail falls back to the kind's own word rather
-      than drawing an unnamed band. */
+      because some kinds have no name of their own; neither kind drawn here
+      is one, so the rail falls back to the kind's own word rather than
+      drawing an unnamed band. */
   name: string | null;
   start: number;
   end: number;
@@ -263,7 +219,7 @@ export interface RailMark {
     it. A milestone and a surgery day are the same mark on the rail, so they
     share one key, named for whichever of the two the rail holds. */
 export type RailLegendKind = 'era' | RailHistoryKind | RailMarkKey;
-export type RailMarkKey = 'milestone' | 'surgery' | 'milestone-and-surgery';
+type RailMarkKey = 'milestone' | 'surgery' | 'milestone-and-surgery';
 
 const HISTORY_OF_ANNOTATION: Partial<Record<ChartAnnotation['kind'], RailHistoryKind>> = {
   regimen: 'regimen',
@@ -316,11 +272,10 @@ export function historyKindsPresent(bands: readonly RailBand[]): RailHistoryKind
   return HISTORY_ORDER.filter((kind) => present.has(kind));
 }
 
-/** What the legend names, in the rail's own order: the eras first, since
-    they are the layer that stands up, then the lanes bottom-up, then the
-    marks. Absent kinds are absent - a journal with no tryouts does not read
-    "Tryouts". The marks take one key whatever they are, since they look the
-    same, and the key says what it covers (after-release 27, audit L05-12). */
+/** What the legend names, in the rail's own order: the eras first, since they are the layer
+    that stands up, then the lanes bottom-up, then the marks. Absent kinds are absent - a
+    journal with no tryouts does not read "Tryouts". The marks take one key whatever they
+    are, since they look the same, and the key says what it covers. */
 export function railLegendKinds(
   bands: readonly RailBand[],
   milestones: readonly unknown[],
@@ -338,16 +293,12 @@ export function railLegendKinds(
   return [...(hasEras ? (['era'] as const) : []), ...historyKindsPresent(bands), ...(markKey ? [markKey] : [])];
 }
 
-/** The query string a span is read at on /wrapped/range: the same one the
-    range picker's own two date fields write, so the two are one read. */
+/** Query shared by span readings. */
 export function spanRangeQuery(span: Span): string {
-  return wrappedRangeQuery('custom', {
-    start: dateInputValueFromEpochDay(span.start),
-    end: dateInputValueFromEpochDay(span.end)
-  });
+  return `?from=${dateInputValueFromEpochDay(span.start)}&to=${dateInputValueFromEpochDay(span.end)}`;
 }
 
-/** Whether a settled span (redesign ticket 48) is due the "name this
+/** Whether a settled span is due the "name this
     stretch" offer, given the spans already handled - named or dismissed -
     this session. Never for a span overlapping one already handled, which is
     what keeps a handle nudged by a day, or a span narrowed inside the one
@@ -357,19 +308,17 @@ export function eraOfferDue(span: Span, handled: readonly Span[]): boolean {
   return !handled.some((h) => spanOverlapsRange({ startEpochDay: h.start, endEpochDay: h.end }, span.start, span.end));
 }
 
-/* ## The same facts as a list (phase 11 UI/UX ticket 25)
+/* ## The same facts as a list
 
-   The rail's own bands are 8px and 6px high and its marks are 12px blocks,
-   which is a picture of a history rather than a set of targets: the first
-   audit's U4 measured them and asked for an accessible way to the same
-   facts that does not depend on aim. The list the door draws under the rail
-   reads from here, so the two never disagree about what the rail holds -
-   the same clamped days, the same identities, and the same span each fact
-   selects.
+   The rail's own bands are 8px and 6px high and its marks are 12px blocks, which is a
+   picture of a history rather than a set of targets: the first audit's U4 measured them and
+   asked for an accessible way to the same facts that does not depend on aim. The list the
+   door draws under the rail reads from here, so the two never disagree about what the rail
+   holds - the same clamped days, the same identities, and the same span each fact selects.
 
-   Nothing new is read for it. The eras arrive as `eraBands` already
-   clamped them, the stretches as `historyBands` did, and the marks as the
-   rail draws them; this orders them and says what each one selects. */
+   Nothing new is read for it. The eras arrive as `eraBands` already clamped them, the
+   stretches as `historyBands` did, and the marks as the rail draws them; this orders them
+   and says what each one selects. */
 
 /** What the rail draws that somebody can point at. `era` and `surgery` are
     not history kinds - an era is the rail's own top layer and a surgery day
@@ -439,13 +388,19 @@ export function factSpan(fact: RailFact, railStart: number): Span {
   return fact.isDay ? defaultSpan(railStart, fact.end) : { start: fact.start, end: fact.end };
 }
 
+/** The most year marks one rail draws. A journal spans decades; a rail that
+    reaches back further (a day stored near the minimum JS date) keeps every
+    Nth year instead of building a mark per year. */
+const MAX_YEAR_TICKS = 200;
+
 /** Each 1 January strictly after the rail's start and no later than today:
-    the marks a rail of years is read by. */
+    the marks a rail of years is read by, thinned to MAX_YEAR_TICKS. */
 export function yearTicks(railStart: number, todayEpochDay: number): { epochDay: number; year: number }[] {
   const out: { epochDay: number; year: number }[] = [];
   const first = localDateFromEpochDay(railStart).getFullYear() + 1;
   const last = localDateFromEpochDay(todayEpochDay).getFullYear();
-  for (let year = first; year <= last; year++) {
+  const step = Math.max(1, Math.ceil((last - first + 1) / MAX_YEAR_TICKS));
+  for (let year = first; year <= last; year += step) {
     const epochDay = epochDayFromLocalDate(new Date(year, 0, 1));
     if (epochDay > railStart && epochDay <= todayEpochDay) out.push({ epochDay, year });
   }
@@ -453,7 +408,7 @@ export function yearTicks(railStart: number, todayEpochDay: number): { epochDay:
 }
 
 /** The Look back door's active span across in-session visits and Back
-    restoration (phase 11 ticket 32). Plain module memory, cleared on reload. */
+    restoration. Plain module memory, cleared on reload. */
 let lastLookBackSpan: Span | null = null;
 
 export function getLastLookBackSpan(): Span | null {

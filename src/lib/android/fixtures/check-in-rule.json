@@ -1,0 +1,61 @@
+{
+  "next": [
+    {
+      "name": "with no pause the check-in fires later today while its time is ahead",
+      "zone": "Europe/Warsaw",
+      "nowIso": "2026-10-22T10:00:00+02:00",
+      "checkIn": { "enabled": true, "time": "21:00", "pausedThroughEpochDay": null, "latestEntryEpochDay": null },
+      "expectedIso": "2026-10-22T21:00:00+02:00"
+    },
+    {
+      "name": "paused through Saturday 24 October, nothing fires through the 24th and the next one is the 25th",
+      "why": "The pause's day is the last silent one. Sunday the 25th is also the day Warsaw leaves summer time, so 21:00 is +01:00 there.",
+      "zone": "Europe/Warsaw",
+      "nowIso": "2026-10-22T10:00:00+02:00",
+      "checkIn": { "enabled": true, "time": "21:00", "pausedThroughEpochDay": 20750, "latestEntryEpochDay": null },
+      "expectedIso": "2026-10-25T21:00:00+01:00"
+    },
+    {
+      "name": "paused through today, the next check-in is tomorrow",
+      "zone": "Europe/Warsaw",
+      "nowIso": "2026-10-22T10:00:00+02:00",
+      "checkIn": { "enabled": true, "time": "21:00", "pausedThroughEpochDay": 20748, "latestEntryEpochDay": null },
+      "expectedIso": "2026-10-23T21:00:00+02:00"
+    },
+    {
+      "name": "a pause that ended yesterday no longer silences today",
+      "zone": "Europe/Warsaw",
+      "nowIso": "2026-10-22T10:00:00+02:00",
+      "checkIn": { "enabled": true, "time": "21:00", "pausedThroughEpochDay": 20747, "latestEntryEpochDay": null },
+      "expectedIso": "2026-10-22T21:00:00+02:00"
+    },
+    {
+      "name": "on the last paused day after its time has passed, the next check-in is the day after",
+      "zone": "Europe/Warsaw",
+      "nowIso": "2026-10-24T22:00:00+02:00",
+      "checkIn": { "enabled": true, "time": "21:00", "pausedThroughEpochDay": 20750, "latestEntryEpochDay": null },
+      "expectedIso": "2026-10-25T21:00:00+01:00"
+    },
+    {
+      "name": "an entry already written today skips today's check-in",
+      "zone": "Europe/Warsaw",
+      "nowIso": "2026-10-22T10:00:00+02:00",
+      "checkIn": { "enabled": true, "time": "21:00", "pausedThroughEpochDay": null, "latestEntryEpochDay": 20748 },
+      "expectedIso": "2026-10-23T21:00:00+02:00"
+    },
+    {
+      "name": "a check-in that is switched off never fires, paused or not",
+      "zone": "Europe/Warsaw",
+      "nowIso": "2026-10-22T10:00:00+02:00",
+      "checkIn": { "enabled": false, "time": "21:00", "pausedThroughEpochDay": 20750, "latestEntryEpochDay": null },
+      "expectedIso": null
+    }
+  ],
+  "allowedOn": [
+    { "name": "no pause, any day may fire", "checkIn": { "enabled": true, "pausedThroughEpochDay": null }, "day": 20748, "allowed": true },
+    { "name": "a day before the pause's end is silent", "checkIn": { "enabled": true, "pausedThroughEpochDay": 20750 }, "day": 20748, "allowed": false },
+    { "name": "the pause's own last day is silent", "checkIn": { "enabled": true, "pausedThroughEpochDay": 20750 }, "day": 20750, "allowed": false },
+    { "name": "the day after the pause may fire", "checkIn": { "enabled": true, "pausedThroughEpochDay": 20750 }, "day": 20751, "allowed": true },
+    { "name": "switched off is silent on every day", "checkIn": { "enabled": false, "pausedThroughEpochDay": null }, "day": 20751, "allowed": false }
+  ]
+}

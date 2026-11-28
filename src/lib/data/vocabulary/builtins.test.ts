@@ -1,7 +1,7 @@
 /* The built-in vocabulary is keyed rather than named, and reconciling it
    into a store is idempotent - which is what lets seeding run on every
    boot and before every import instead of behind a "seed only if empty"
-   branch (ticket 05). */
+   branch. */
 
 import { test, expect } from 'vitest';
 import {
@@ -9,9 +9,8 @@ import {
   BUILT_IN_DIMENSIONS,
   BUILT_IN_PRESETS,
   BUILT_IN_TAG_GROUPS,
-  ENTRY_TEMPLATES,
+  GUIDED_PROMPT_KEYS,
   MILESTONE_TEMPLATE_KEYS,
-  MILESTONE_TEMPLATE_LEAN,
   REGIMEN_TEMPLATE_KEYS,
   REGIMEN_TEMPLATE_LEAN,
   milestoneTemplateRows,
@@ -28,7 +27,7 @@ const allKeys = [
   ...BUILT_IN_TAG_GROUPS.flatMap((g) => g.tags),
   ...MILESTONE_TEMPLATE_KEYS,
   ...REGIMEN_TEMPLATE_KEYS,
-  ...ENTRY_TEMPLATES.map((t) => t.key),
+  ...GUIDED_PROMPT_KEYS,
   ...BUILT_IN_BODY_REGIONS
 ];
 
@@ -53,7 +52,7 @@ test('every preset names dimensions that exist', () => {
   expect(dangling).toEqual([]);
 });
 
-test('built-in presets map to the exact dimension sets ticket 09 specifies, multi-axis presets leading (ticket 28)', () => {
+test('built-in presets map to their dimension sets, multi-axis presets first', () => {
   expect(BUILT_IN_PRESETS).toEqual([
     { key: 'p-fem-masc', dims: ['euphoria_dysphoria', 'femininity', 'masculinity'] },
     { key: 'p-fluid', dims: ['euphoria_dysphoria', 'femininity', 'masculinity', 'binary_nonbinary'] },
@@ -173,15 +172,10 @@ test('regimen templates seed with no display text, because wording is resolved b
   expect(rows.every((t) => t.name === '' && t.drug === '' && t.ester === null && t.route === '')).toBe(true);
 });
 
-/* Acceptance box 2 (phase 5 ticket 43): every milestone and regimen
-   template carries a hand-authored lean, and it survives into the row a
-   picker actually renders. */
-test('every milestone template carries a lean of femme, masc, or neutral', () => {
-  const rows = milestoneTemplateRows();
-  MILESTONE_TEMPLATE_KEYS.forEach((key, i) => {
-    expect(['femme', 'masc', 'neutral']).toContain(MILESTONE_TEMPLATE_LEAN[key]);
-    expect(rows[i].lean).toBe(MILESTONE_TEMPLATE_LEAN[key]);
-  });
+/* Acceptance box 2: every regimen template carries a hand-authored lean. Milestone
+   templates carry none all eight were neutral, so the lean ordered nothing. */
+test('milestone templates are a key and a name, in the order the picker lists them', () => {
+  expect(milestoneTemplateRows()).toEqual(MILESTONE_TEMPLATE_KEYS.map((key) => ({ key, name: '' })));
 });
 
 test('every regimen template carries a lean matching the hormone it starts', () => {
@@ -190,7 +184,12 @@ test('every regimen template carries a lean matching the hormone it starts', () 
     estradiol_oral: 'femme',
     estradiol_gel: 'femme',
     testosterone_cypionate_im: 'masc',
-    testosterone_gel: 'masc'
+    testosterone_gel: 'masc',
+    spironolactone_oral: 'femme',
+    cyproterone_oral: 'femme',
+    bicalutamide_oral: 'femme',
+    progesterone_oral: 'femme',
+    gnrh_agonist_im: 'neutral'
   });
 
   const rows = regimenTemplateRows();
@@ -199,21 +198,8 @@ test('every regimen template carries a lean matching the hormone it starts', () 
   });
 });
 
-test('entry template keys are unique', () => {
-  const keys = ENTRY_TEMPLATES.map((t) => t.key);
-
-  expect(new Set(keys).size).toBe(keys.length);
-});
-
-test('every entry template names tags and dimensions that exist', () => {
-  const tagKeys = new Set<string>(BUILT_IN_TAG_GROUPS.flatMap((g) => g.tags));
-  const dimensionKeys = new Set<string>(BUILT_IN_DIMENSIONS.map((d) => d.key));
-
-  const danglingTags = ENTRY_TEMPLATES.flatMap((t) => t.tags).filter((id) => !tagKeys.has(id));
-  const danglingDims = ENTRY_TEMPLATES.flatMap((t) => Object.keys(t.dims)).filter((key) => !dimensionKeys.has(key));
-
-  expect(danglingTags).toEqual([]);
-  expect(danglingDims).toEqual([]);
+test('guided prompt keys are unique', () => {
+  expect(new Set(GUIDED_PROMPT_KEYS).size).toBe(GUIDED_PROMPT_KEYS.length);
 });
 
 test('a custom group survives seeding', () => {

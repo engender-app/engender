@@ -14,11 +14,12 @@
 
 import type { PreferenceValues } from '../prefs/catalogue';
 import type { LabResultInput } from '../journal/labs';
-import type { TallyEventInput } from '../journal/tally';
 import type { EntryInput } from '../journal/entries';
 import type { MilestoneInput } from '../journal/milestones';
 import type { ReminderInput } from '../journal/reminders';
 import type { AppointmentInput } from '../journal/appointments';
+import type { FlatInput } from '../journal/flatArea';
+import type { Provider } from '../types';
 import type { DocumentInput } from '../journal/documents';
 import { demoNow } from './demoClock';
 import {
@@ -32,7 +33,13 @@ import {
    that behaves like a user's own. It used to sit inside the built-in gender
    group carrying `builtIn: false`, which made the shipping vocabulary
    depend on a demo detail. */
-const VOICE_PRACTICE = { groupKey: 'gender', label: 'voice practice' };
+const VOICE_PRACTICE = { groupKey: 'gender', label: 'voice practice', icon: 'mic' };
+
+/** The language the persona writes in: the pl-PL store screenshots and the Polish landing
+    guide are taken from this journal, and a Polish app full of English diary entries reads
+    as an untranslated one. Only the free text a person would type changes; every day, mood,
+    tag and draw stays where it is. */
+export type PersonaLocale = 'en' | 'pl';
 
 /** An entry plus how many photos hang off it. The journal mints photo
     identity and stores files, so the persona says how many rather than
@@ -42,7 +49,7 @@ interface PersonaEntry extends EntryInput {
   photoCount: number;
   /** Which persona presentation this entry carries, by the name in
       `Persona.presentations` rather than a uuid the persona has no way to
-      mint itself (phase 5 deepening ticket 17, ADR-0048) - journal-seed.ts
+      mint itself (ADR-0048) - journal-seed.ts
       resolves it to the real id once the presentation rows exist. Absent on
       most entries: an entry with none is the resting state this feature
       leaves most of the journal in. */
@@ -58,7 +65,7 @@ interface PersonaMilestone extends MilestoneInput {
   hasPhoto: boolean;
 }
 
-/** One named stretch of the persona's own timeline (redesign ticket 48).
+/** One named stretch of the persona's own timeline.
     Eras are read by seven screens and made on only one, so a fixture with
     none left every one of those readings silently blank - including in the
     audit that found it. Both bounds are dated rather than one left open:
@@ -72,27 +79,34 @@ interface PersonaEra {
   endEpochDay: number;
 }
 
-/** An appointment plus the entry that debriefs it, for the one appointment
-    that carries one (phase 8 features ticket 64). Linked by the
-    appointment's own id since ticket 58 (checklists.ts's
-    `recordDebriefEntry`), which is also what retired the date-keyed
-    mechanism this was first written against. */
+/** An appointment plus the entry that debriefs it, for the one appointment that carries
+    one. Linked by the appointment's own id (checklists.ts's `recordDebriefEntry`), which is
+    also what retired the date-keyed mechanism this was first written against. */
 interface PersonaAppointment extends AppointmentInput {
+  epochDay: number;
   procedureId: null;
+  /** Who it is with, by the name in `Persona.providers`:
+      journal-seed.ts resolves it to the id once the provider exists. */
+  providerName?: string;
   debrief?: { timestamp: number; mood: number; note: string; tags?: string[] };
 }
 
 interface Persona {
-  customTag: { groupKey: string; label: string };
+  customTag: { groupKey: string; label: string; icon: string };
   presentations: PersonaPresentation[];
   entries: PersonaEntry[];
   milestones: PersonaMilestone[];
   eras: PersonaEra[];
   reminders: ReminderInput[];
+  /** The people the persona sees, with her own notes on them.
+*/
+  providers: FlatInput<Provider>[];
   appointments: PersonaAppointment[];
+  /** Waiting lists: appointments with no day
+      yet, each with the dated updates the wait collected. */
+  waiting: { appointment: AppointmentInput & { epochDay: null }; updates: { epochDay: number; status: string }[] }[];
   documents: DocumentInput[];
   labResults: LabResultInput[];
-  tallyEvents: TallyEventInput[];
 }
 
 function rng(seed: number) {
@@ -128,27 +142,40 @@ const NOTES = [
   '',
 ];
 
-function buildEntries(today: number): PersonaEntry[] {
+/* NOTES in Polish, line for line, so the same draw picks the same day's
+   note in either language. Written without gendered first-person verbs,
+   which is why so many of them sit in the present. */
+const NOTES_PL = [
+  'Kawa z Martą. Cały czas mówiła do mnie moim imieniem, ani razu się nie zawahała. Ciągle o tym myślę.',
+  'Ciężki poranek przed lustrem. Po spacerze i długiej playliście jest lepiej.',
+  'Dziś terapia. Rozmowa o tacie. Ciężko, ale wieczorem jakoś lżej.',
+  'Nowa bluzka z lumpeksu. Krój naprawdę pasuje. Mała wygrana.',
+  'W tramwaju ktoś rzucił „przepraszam panią” i uśmiech nie schodził mi z twarzy do samego domu.',
+  'Zmęczenie. Praca się przeciągnęła i znowu nie było ćwiczeń głosu.',
+  'Laser, sesja nr 6. Szczypie, ale cienia na policzkach prawie już nie ma.',
+  'Telefon do przychodni w sprawie badań krwi. Wyniki w przyszłym tygodniu.',
+  'Zły dzień z dysforią. Cały dzień w domu, pierogi z dostawy, seriale na pocieszenie. Tak też wolno.',
+  'Piknik z dziewczynami. Zdjęcia! Ani jednego nie chcę skasować. Coś się zmienia.',
+  'Głos wytrzymał całą rozmowę przez telefon z kimś obcym.',
+  'Mama zapytała, jak idą hormony. Pierwszy raz o cokolwiek zapytała. Postęp?',
+  'Siłownia w porządku. Szatnia dalej straszna, ale w porządku.',
+  'Stare zdjęcia. Dwa lata, a jakby inne życie.',
+  'Spokojny dzień. Nic się nie działo i było cudownie.',
+  'Misgendering w piekarni. Spłynęło szybciej niż kiedyś.',
+  'Paznokcie w absurdalnym różu. Uwielbiam.',
+  'Długa rozmowa z Olą o rozprawie o ustalenie płci. Robi się na serio.',
+  '',
+  '',
+];
+
+function buildEntries(today: number, locale: PersonaLocale, presentationNames: [string, string]): PersonaEntry[] {
   const r = rng(20240331);
+  const notes = locale === 'pl' ? NOTES_PL : NOTES;
   const entries: PersonaEntry[] = [];
-  /* Body-region intensities on most entries (phase 8 features ticket 16).
-
-     /body-map's two charts and the wear trend's second line all read these
-     and all drew an empty plot on the demo, so neither screen could be
-     reviewed at all - PRODUCT.md's own line is that demo data renders every
-     screen. Four regions: the two /body-map opens on and the two the wear
-     trend offers.
-
-     Derived from the day rather than from a further draw on `r()`, the same
-     rule the presentation below follows: a new call into the generator
-     would shift every entry after it, so not one existing mood, note or tag
-     moves.
-
-     One arc across the whole journal, dysphoria easing as euphoria rises,
-     with a deterministic wobble so a line has texture and a gap every third
-     day so it has holes - a region logged on every single entry is not what
-     anybody's journal looks like. Nothing here is a claim about how a
-     transition goes; it is texture for a screenshot. */
+  /* Seed four regions for the body map and wear trend. Derive values from
+     the day so existing moods, notes and tags keep their random sequence.
+     Use a gradual curve with deterministic variation and leave every third
+     day empty so the charts show gaps. These are sample readings. */
   const REGION_ARC_DAYS = 700;
   const REGION_OFFSETS: Record<string, number> = {
     face_jaw: 0,
@@ -167,7 +194,7 @@ function buildEntries(today: number): PersonaEntry[] {
       if ((day + offset) % 3 === 0) continue;
       const dysphoria = clampIntensity(86 - progress * 50 + wobble(day + offset, 9));
       const euphoria = clampIntensity(16 + progress * 54 + wobble(day + offset * 3, 9));
-      // One slider position per region now (ticket 39, ADR-0081): whichever
+      // One slider position per region now: whichever
       // intensity is larger sets the side, and the stored value reads back the
       // way the reads do: below 50 is dysphoria, above it euphoria.
       logged[region] = Math.round(dysphoria >= euphoria ? 50 - dysphoria / 2 : 50 + euphoria / 2);
@@ -188,7 +215,7 @@ function buildEntries(today: number): PersonaEntry[] {
       const tags: string[] = [];
       if (eu > 66) tags.push(r() < 0.5 ? 'g-soc-eu' : 'g-body-eu');
       if (eu > 74 && r() < 0.6) tags.push('g-gendered-ok');
-      if (eu < 34) tags.push(r() < 0.5 ? 'g-soc-dys' : 'g-body-dys');
+      if (eu < 34) tags.push(r() < 0.5 ? 'dt-social' : 'dt-physical');
       if (eu < 25 && r() < 0.3) tags.push('g-misgendered');
       if (mood >= 4) tags.push(r() < 0.5 ? 'e-happy' : 'e-calm');
       if (mood <= 2) tags.push(r() < 0.5 ? 'e-sad' : 'e-anxious');
@@ -197,18 +224,18 @@ function buildEntries(today: number): PersonaEntry[] {
       if (r() < 0.7) tags.push(act[Math.floor(r() * act.length)]);
       const hour = k === 0 ? 8 + Math.floor(r() * 5) : 17 + Math.floor(r() * 4);
       const minute = Math.floor(r() * 60);
-      const note = NOTES[Math.floor(r() * NOTES.length)];
+      const note = notes[Math.floor(r() * notes.length)];
       // The anchor day's sample entry sits a few hours back so anything
       // logged "now" sorts above it. `demoNow` rather than Date.now() so a
       // seed anchored on an earlier day stays inside that day (demoClock.ts).
       const ts = back === 0 ? demoNow(today) - 3 * 3600000 : startOfDayTimestamp(day) + hour * 3600000 + minute * 60000;
       /* The last three weeks alternate between the persona's two
-         presentations (phase 5 deepening ticket 17) - deterministic on
+         presentations - deterministic on
          `back` rather than a further draw from `r()`, so adding this does
          not shift a single existing entry's mood, note or tags. Everything
          before that stays presentationless, which is most of the journal
          and is the resting state this feature leaves untouched entries in. */
-      const presentationName = back <= 20 ? (back % 4 < 2 ? 'femme' : 'androgynous') : undefined;
+      const presentationName = back <= 20 ? (back % 4 < 2 ? presentationNames[0] : presentationNames[1]) : undefined;
       entries.push({
         epochDay: day,
         timestamp: ts,
@@ -223,22 +250,9 @@ function buildEntries(today: number): PersonaEntry[] {
     }
   }
 
-  /* And the calendar year before last, sparsely.
-
-     The persona seeded 151 days, which is the right density for Home, the
-     calendar and the stats ranges - and it meant the one period
-     /wrapped/year ever covers, the *previous* calendar year, was empty by
-     construction. So the yearly wrapped could not be reviewed at all: it
-     drew its entry-floor notice on every build, and the year grid it exists
-     to show had nothing to draw (Alicja, 2026-08-25: "how am i supposed to
-     see how the yearly wrapped looks like?"). PRODUCT.md's own line is that
-     demo data renders every screen.
-
-     Kept separate from the loop above, and deliberately sparser - about two
-     days in five, one entry each, no photos. The recent history is what most
-     screens are reviewed against and none of its numbers move; this is a
-     year with texture in it, which is what a year grid and a year's figures
-     need. It stops before the 151-day window so the two never overlap. */
+  /* Seed about two days in five in the previous calendar year so yearly
+     Wrapped clears its entry floor. Use one entry per day and skip photos.
+     Stop before the recent 151-day fixture to keep both ranges separate. */
   const lastYear = localDateFromEpochDay(today).getFullYear() - 1;
   const yearStart = epochDayFromLocalDate(new Date(lastYear, 0, 1));
   const yearEnd = Math.min(epochDayFromLocalDate(new Date(lastYear, 11, 31)), today - 151);
@@ -249,14 +263,14 @@ function buildEntries(today: number): PersonaEntry[] {
     const mood = Math.max(1, Math.min(5, Math.round(eu / 24 + r() * 1.4)));
     const tags: string[] = [];
     if (eu > 66) tags.push(r() < 0.5 ? 'g-soc-eu' : 'g-body-eu');
-    if (eu < 34) tags.push(r() < 0.5 ? 'g-soc-dys' : 'g-body-dys');
+    if (eu < 34) tags.push(r() < 0.5 ? 'dt-social' : 'dt-physical');
     if (mood >= 4) tags.push(r() < 0.5 ? 'e-happy' : 'e-calm');
     if (mood <= 2) tags.push('e-anxious');
     entries.push({
       epochDay: day,
       timestamp: startOfDayTimestamp(day) + (9 + Math.floor(r() * 9)) * 3600000,
       mood,
-      note: NOTES[Math.floor(r() * NOTES.length)],
+      note: notes[Math.floor(r() * notes.length)],
       dims: { euphoria_dysphoria: eu, femininity: Math.max(10, Math.min(98, Math.round(34 + (r() - 0.5) * 30))) },
       tags: [...new Set(tags)],
       bodyRegions: bodyRegionsOn(day),
@@ -267,7 +281,7 @@ function buildEntries(today: number): PersonaEntry[] {
   return entries;
 }
 
-/* The persona's preferences. They live in SQLite now (ticket 06), not in
+/* The persona's preferences. They live in SQLite now, not in
    the demo store, so they are seeded separately from the rest of the
    persona - only where the table is empty, and only in a demo build.
    Anything left out here stays at the catalogue's default, which is what a
@@ -288,8 +302,11 @@ export function demoPreferences(today: number = todayEpochDay()): Partial<Prefer
 
 /** The persona as journal input: no ids anywhere, because the journal mints
     every one of them (ADR-0002). Writing it is journal-seed.ts's job. */
-export function persona(today: number = todayEpochDay()): Persona {
-  // The one past-with-debrief and one future appointment ticket 64 asks
+export function persona(today: number = todayEpochDay(), locale: PersonaLocale = 'en'): Persona {
+  const say = (en: string, pl: string) => (locale === 'pl' ? pl : en);
+  const presentationNames: [string, string] = [say('femme', 'kobieco'), say('androgynous', 'androgynicznie')];
+  const endocrinologist = say('Dr Kowalska', 'dr Kowalska');
+  // The one past-with-debrief and one future appointment asks
   // for. The future one shares a day with the existing "Endocrinologist"
   // reminder below rather than drifting to its own date: a reminder to
   // attend a visit and the booked visit itself are the same appointment,
@@ -298,24 +315,24 @@ export function persona(today: number = todayEpochDay()): Persona {
   const pastAppointmentDay = today - 24;
   const futureAppointmentDay = today + 12;
   return {
-    customTag: VOICE_PRACTICE,
+    customTag: { ...VOICE_PRACTICE, label: say(VOICE_PRACTICE.label, 'ćwiczenia głosu') },
     presentations: [
-      { name: 'femme', roleIndex: 0 },
-      { name: 'androgynous', roleIndex: 1 }
+      { name: presentationNames[0], roleIndex: 0 },
+      { name: presentationNames[1], roleIndex: 1 }
     ],
-    entries: buildEntries(today),
+    entries: buildEntries(today, locale, presentationNames),
     milestones: [
       {
-        name: 'HRT start',
+        name: say('HRT start', 'Początek HRT'),
         epochDay: today - 745,
-        description: 'The pharmacist barely looked up. I cried in the car after.',
+        description: say('The pharmacist barely looked up. I cried in the car after.', 'Farmaceutka ledwo podniosła wzrok. Potem płacz w samochodzie.'),
         templateKey: 'hrt_start',
         hasPhoto: true
       },
-      { name: 'Coming out to my parents', epochDay: today - 940, templateKey: 'coming_out', hasPhoto: false },
-      { name: 'First time presenting publicly', epochDay: today - 512, templateKey: 'first_public', hasPhoto: true },
-      { name: 'Name-change hearing', epochDay: today + 16, templateKey: 'name_change', hasPhoto: false },
-      { name: 'Voice workshop weekend', epochDay: today + 42, templateKey: null, hasPhoto: false },
+      { name: say('Coming out to my parents', 'Coming out przed rodzicami'), epochDay: today - 940, templateKey: 'coming_out', hasPhoto: false },
+      { name: say('First time presenting publicly', 'Pierwszy raz publicznie jako ja'), epochDay: today - 512, templateKey: 'first_public', hasPhoto: true },
+      { name: say('Name-change hearing', 'Rozprawa o ustalenie płci'), epochDay: today + 16, templateKey: 'name_change', hasPhoto: false },
+      { name: say('Voice workshop weekend', 'Weekend warsztatów głosowych'), epochDay: today + 42, templateKey: null, hasPhoto: false },
     ],
     /* Derived from `today` alone, the same rule the milestones above and
        the presentation and body-region draws earlier in this file follow:
@@ -323,51 +340,92 @@ export function persona(today: number = todayEpochDay()): Persona {
        note or tag. The bounds are the same two days two of the milestones
        above already mark - coming out, then HRT - so the band on the rail
        and the marks on it agree about where one chapter ended. */
-    /* Three eras, and two of them cover entries on purpose (redesign
-       ticket 62). "Before HRT" alone was the fixture ticket 48 added, and
-       it sits where the persona's own arc says it belongs - before the
-       first lab draw at today-700 - which is also before the first entry,
-       so every reading that partitions the journal by era drew nothing on
-       it. That was invisible while the era screens only listed eras; the
-       words reading weighs one era's words against the journal's, so an
-       era with no notes in it is the whole of what it can show. The other
-       two are dated over the two stretches the generator actually writes:
-       the previous calendar year's sparse days, and the recent run. Both
-       bounds dated on all three, for the reason `PersonaEra` gives. */
+    /* Three eras, and two of them cover entries on purpose. "Before HRT" alone was the
+       fixture added, and it sits where the persona's own arc says it belongs - before the
+       first lab draw at today-700 - which is also before the first entry, so every reading
+       that partitions the journal by era drew nothing on it. That was invisible while the
+       era screens only listed eras; the words reading weighed one era's words against the
+       journal's, so an era with no notes in it was the whole of what it could show. The
+       other two are dated over the two stretches the generator actually writes: the
+       previous calendar year's sparse days, and the recent run. Both bounds dated on all
+       three, for the reason `PersonaEra` gives. */
     eras: [
-      { name: 'Before HRT', startEpochDay: today - 940, endEpochDay: today - 745 },
-      { name: 'First year on HRT', startEpochDay: today - 622, endEpochDay: today - 259 },
-      { name: 'Full time', startEpochDay: today - 150, endEpochDay: today }
+      { name: say('Before HRT', 'Przed HRT'), startEpochDay: today - 940, endEpochDay: today - 745 },
+      { name: say('First year on HRT', 'Pierwszy rok na HRT'), startEpochDay: today - 622, endEpochDay: today - 259 },
+      { name: say('Full time', 'Na co dzień'), startEpochDay: today - 150, endEpochDay: today }
     ],
     reminders: [
-      { title: 'Estradiol patch', type: 'med', time: '20:00', recurrence: 'EVERY_N_DAYS', interval: 3, anchorEpochDay: today, epochDay: null, enabled: true },
-      { title: 'Progesterone', type: 'med', time: '22:00', recurrence: 'DAILY', interval: null, anchorEpochDay: null, epochDay: null, enabled: true },
-      { title: 'Endocrinologist', type: 'appointment', time: '09:30', recurrence: null, interval: null, anchorEpochDay: null, epochDay: futureAppointmentDay, enabled: true },
+      { title: say('Estradiol patch', 'Plaster z estradiolem'), time: '20:00', recurrence: 'EVERY_N_DAYS', interval: 3, anchorEpochDay: today, epochDay: null, enabled: true },
+      { title: say('Progesterone', 'Progesteron'), time: '22:00', recurrence: 'DAILY', interval: null, anchorEpochDay: null, epochDay: null, enabled: true },
+      { title: say('Endocrinologist', 'Endokrynolożka'), time: '09:30', recurrence: null, interval: null, anchorEpochDay: null, epochDay: futureAppointmentDay, enabled: true },
+    ],
+    /* Two providers: the endocrinologist both appointments are with, and a
+       psychologist nothing is booked with, so the list holds somebody the
+       screen's appointments do not already name. */
+    providers: [
+      {
+        name: endocrinologist,
+        contact: 'Przychodnia na Kopernika, 22 555 01 23',
+        competence: 'good',
+        impressions: say('Uses my name without being told. Explains every change to the dose.', 'Mówi do mnie moim imieniem bez przypominania. Tłumaczy każdą zmianę dawki.')
+      },
+      {
+        name: say('Psychologist, Centrum Zdrowia', 'Psycholożka, Centrum Zdrowia'),
+        contact: null,
+        competence: 'mixed',
+        impressions: say('Kind, but spent the opinion visit on my childhood.', 'Miła, ale całą wizytę w sprawie opinii przegadała o moim dzieciństwie.')
+      }
     ],
     appointments: [
       {
         epochDay: pastAppointmentDay,
+        time: '10:00',
+        providerName: endocrinologist,
         procedureId: null,
-        kind: 'Endocrinologist',
+        kind: say('Endocrinologist', 'Endokrynolożka'),
         place: 'Przychodnia na Kopernika',
-        note: 'levels holding steady, no changes',
+        note: say('levels holding steady, no changes', 'poziomy stabilne, bez zmian'),
+        // A private visit, so it has a cost.
+        cost: { amount: 250, currency: 'PLN', refunded: false },
         debrief: {
           timestamp: startOfDayTimestamp(pastAppointmentDay) + 15 * 3600000,
           mood: 4,
-          note: 'Endo appointment today. Levels look fine, staying the course for now. She used my name without me correcting her first. Still gets me a little, every time.',
+          note: say('Endo appointment today. Levels look fine, staying the course for now. She used my name without me correcting her first. Still gets me a little, every time.', 'Dziś endo. Wyniki w porządku, na razie zostaje tak, jak jest. Mówiła do mnie moim imieniem i nie trzeba było jej poprawiać. Za każdym razem trochę mnie to rusza.'),
           tags: ['g-soc-eu', 'e-happy']
         }
       },
       {
         epochDay: futureAppointmentDay,
+        time: '09:30',
+        providerName: endocrinologist,
         procedureId: null,
-        kind: 'Endocrinologist',
+        kind: say('Endocrinologist', 'Endokrynolożka'),
         place: 'Przychodnia na Kopernika',
-        note: 'ask about raising the dose'
+        note: say('ask about raising the dose', 'zapytać o zwiększenie dawki')
+      }
+    ],
+    /* One wait: the surgery consultation list, a year and a bit in, with
+       the two updates such a wait usually collects. Long enough that the
+       elapsed time reads in years and months, which is the reading the
+       appointments screen states. */
+    waiting: [
+      {
+        appointment: {
+          epochDay: null,
+          referredEpochDay: today - 430,
+          procedureId: null,
+          kind: say('Surgery consultation', 'Konsultacja chirurgiczna'),
+          place: 'Klinika, Warszawa',
+          note: say('NFZ list, referral from the endocrinologist', 'kolejka NFZ, skierowanie od endokrynolożki')
+        },
+        updates: [
+          { epochDay: today - 400, status: say('Letter came: on the list', 'Przyszło pismo: jestem na liście') },
+          { epochDay: today - 60, status: say('Phoned, still waiting', 'Telefon: dalej czekam') }
+        ]
       }
     ],
     // One document, dated well before HRT start: the referral that started
-    // it (ticket 52, ADR-0065). No link - ticket 56, the one that gives a
+    // it (ADR-0065). No link -, the one that gives a
     // document a link, has not landed.
     documents: [{ epochDay: today - 760, title: 'Skierowanie do endokrynologa' }],
     /* Two labs across the estradiol series, which is what raises the
@@ -377,28 +435,19 @@ export function persona(today: number = todayEpochDay()): Persona {
        derive one from - the demo seeds tags, entries, milestones, reminders
        and labs, and nothing else. */
     labResults: [
-      { epochDay: today - 700, analyte: 'estradiol', value: 41, unit: 'pg/mL', note: 'baseline', provider: 'Diagnostyka' },
+      { epochDay: today - 700, analyte: 'estradiol', value: 41, unit: 'pg/mL', note: say('baseline', 'na start'), provider: 'Diagnostyka' },
       { epochDay: today - 610, analyte: 'estradiol', value: 96, unit: 'pg/mL', note: '', provider: 'Diagnostyka' },
-      { epochDay: today - 430, analyte: 'estradiol', value: 148, unit: 'pg/mL', note: 'dose up', provider: 'ALAB', drawTime: '07:50' },
-      { epochDay: today - 250, analyte: 'estradiol', value: 173, unit: 'pg/mL', note: '', provider: 'ALAB', drawTime: '08:10' },
-      { epochDay: today - 70, analyte: 'estradiol', value: 165, unit: 'pg/mL', note: 'patches', provider: 'ALAB', drawTime: '07:35' },
-      { epochDay: today - 700, analyte: 'testosterone', value: 480, unit: 'ng/dL', note: 'baseline' },
+      // Paid at ALAB, the last one refunded.
+      { epochDay: today - 430, analyte: 'estradiol', value: 148, unit: 'pg/mL', note: say('dose up', 'dawka w górę'), provider: 'ALAB', drawTime: '07:50', cost: { amount: 45, currency: 'PLN', refunded: false } },
+      { epochDay: today - 250, analyte: 'estradiol', value: 173, unit: 'pg/mL', note: '', provider: 'ALAB', drawTime: '08:10', cost: { amount: 45, currency: 'PLN', refunded: false } },
+      { epochDay: today - 70, analyte: 'estradiol', value: 165, unit: 'pg/mL', note: say('patches', 'plastry'), provider: 'ALAB', drawTime: '07:35', cost: { amount: 49.5, currency: 'PLN', refunded: true } },
+      { epochDay: today - 700, analyte: 'testosterone', value: 480, unit: 'ng/dL', note: say('baseline', 'na start') },
       { epochDay: today - 610, analyte: 'testosterone', value: 120, unit: 'ng/dL', note: '' },
       { epochDay: today - 430, analyte: 'testosterone', value: 38, unit: 'ng/dL', note: '' },
       { epochDay: today - 250, analyte: 'testosterone', value: 24, unit: 'ng/dL', note: '' },
       { epochDay: today - 70, analyte: 'testosterone', value: 27, unit: 'ng/dL', note: '' },
       { epochDay: today - 430, analyte: 'prolactin', value: 14, unit: 'ng/mL', note: '' },
       { epochDay: today - 70, analyte: 'prolactin', value: 17, unit: 'ng/mL', note: '' },
-    ],
-    tallyEvents: [
-      { epochDay: today - 60, kind: 'misgendered' },
-      { epochDay: today - 60, kind: 'misgendered' },
-      { epochDay: today - 45, kind: 'misgendered' },
-      { epochDay: today - 20, kind: 'misgendered' },
-      { epochDay: today - 55, kind: 'correctly_gendered' },
-      { epochDay: today - 30, kind: 'correctly_gendered' },
-      { epochDay: today - 30, kind: 'correctly_gendered' },
-      { epochDay: today - 10, kind: 'correctly_gendered' },
     ],
   };
 }

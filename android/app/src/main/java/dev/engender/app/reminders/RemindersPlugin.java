@@ -23,6 +23,7 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
 import com.getcapacitor.annotation.PermissionCallback;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 @CapacitorPlugin(
@@ -41,10 +42,8 @@ public class RemindersPlugin extends Plugin {
             payload.put("reminders", reminders == null ? new JSArray() : reminders);
             payload.put("checkInEnabled", Boolean.TRUE.equals(call.getBoolean("checkInEnabled", false)));
             payload.put("checkInTime", text(call, "checkInTime", "21:00"));
-            JSArray pauses = call.getArray("journalingPauses");
-            payload.put("journalingPauses", pauses == null ? new JSArray() : pauses);
-            JSArray affirmations = call.getArray("checkInAffirmations");
-            payload.put("checkInAffirmations", affirmations == null ? new JSArray() : affirmations);
+            Integer pausedThrough = call.getInt("checkInPausedThrough");
+            payload.put("checkInPausedThrough", pausedThrough == null ? JSONObject.NULL : pausedThrough);
             payload.put("quietHours", call.getObject("quietHours"));
             payload.put("hideNotificationTitles", Boolean.TRUE.equals(call.getBoolean("hideNotificationTitles", false)));
 
@@ -57,10 +56,38 @@ public class RemindersPlugin extends Plugin {
             textObject.put("channelCheckIn", text(texts, "channelCheckIn", "Check-in"));
             textObject.put("checkInTitle", text(texts, "checkInTitle", "Daily check-in"));
             textObject.put("checkInBody", text(texts, "checkInBody", "How are you today?"));
+            textObject.put("doseTaken", text(texts, "doseTaken", "Taken"));
+            textObject.put("doseDone", text(texts, "doseDone", "Done"));
+            textObject.put("doseSkip", text(texts, "doseSkip", "Skip"));
+            textObject.put("doseNoted", text(texts, "doseNoted", "Noted"));
+            // The check-in faces' names;
+            // CheckInFaces.names falls back to the phone's own when absent.
+            JSONArray moods = texts == null ? null : texts.optJSONArray("checkInMoods");
+            if (moods != null) textObject.put("checkInMoods", moods);
             payload.put("texts", textObject);
 
             ensureChannels(textObject);
-            ReminderScheduler.saveAndSchedule(getContext(), payload);
+            ReminderScheduler.applySync(getContext(), payload);
+            call.resolve();
+        } catch (Exception e) {
+            call.reject(message(e), e);
+        }
+    }
+
+    @PluginMethod
+    public void retryStoredCopy(PluginCall call) {
+        try {
+            ReminderScheduler.retryStoredCopy(getContext());
+            call.resolve();
+        } catch (Exception e) {
+            call.reject(message(e), e);
+        }
+    }
+
+    @PluginMethod
+    public void eraseStoredCopy(PluginCall call) {
+        try {
+            ReminderScheduler.eraseStoredCopy(getContext());
             call.resolve();
         } catch (Exception e) {
             call.reject(message(e), e);
@@ -101,7 +128,7 @@ public class RemindersPlugin extends Plugin {
         call.resolve(status());
     }
 
-    /* The way back from a refusal (phase 10 redesign ticket 31). Distinct
+    /* The way back from a refusal. Distinct
        from requestNotificationPermission above, which only reaches the
        settings screen when notifications are off app-wide: once
        POST_NOTIFICATIONS has been refused twice Android stops showing the
@@ -152,6 +179,29 @@ public class RemindersPlugin extends Plugin {
         call.resolve(result);
     }
 
+    /** Taken and Skip taps the journal has not taken in yet. Read, not consumed: the app clears each one only
+        after its dose is written, so a crash in between replays it, and
+        replaying is harmless (doseActions.ts). */
+    @PluginMethod
+    public void pendingDoseActions(PluginCall call) {
+        JSObject result = new JSObject();
+        result.put("actions", ReminderScheduler.pendingDoseActions(getContext()));
+        call.resolve(result);
+    }
+
+    @PluginMethod
+    public void clearDoseActions(PluginCall call) {
+        try {
+            JSArray ids = call.getArray("ids");
+            java.util.Set<String> remove = new java.util.HashSet<>();
+            if (ids != null) for (int i = 0; i < ids.length(); i++) remove.add(ids.getString(i));
+            ReminderScheduler.clearDoseActions(getContext(), remove);
+            call.resolve();
+        } catch (Exception e) {
+            call.reject(message(e), e);
+        }
+    }
+
     private JSObject status() {
         JSObject status = new JSObject();
 
@@ -174,6 +224,8 @@ public class RemindersPlugin extends Plugin {
             AlarmManager alarmManager = (AlarmManager) getContext().getSystemService(Context.ALARM_SERVICE);
             status.put("exactAlarms", alarmManager != null && alarmManager.canScheduleExactAlarms() ? "granted" : "denied");
         }
+
+        status.put("storedCopy", ReminderPayloadStore.legacyCopyPending(getContext()) ? "unprotected" : "ok");
 
         return status;
     }

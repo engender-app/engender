@@ -1,6 +1,6 @@
 /* The demo bar's three state jumps. Here rather than beside the journal
    because both exist only to drive a review build, and the whole demo module
-   has to be droppable from a production bundle (ticket 05) - which it can
+   has to be droppable from a production bundle - which it can
    only be if nothing outside `__DEMO__` imports it. DemoBar.svelte is the
    only caller, and it is itself behind the same flag.
 
@@ -13,8 +13,10 @@
 import { batchWrites, journal, onTablesWritten } from '../live/journal.svelte';
 import { prefs } from '../prefs/store.svelte';
 import { PREFERENCE_DEFAULTS } from '../prefs/catalogue';
+import { withHasEntries } from '../acknowledgements';
 import { clearJournal, seedPersonaJournal } from './journal-seed';
 import { demoPreferences } from './persona';
+import { getLocale } from '$lib/paraglide/runtime';
 
 /* The device sweep records which demo profile it prepared. Any journal
    write outside that preparation makes the record stale. The sweep stamps
@@ -27,29 +29,16 @@ onTablesWritten((tables) => {
   try { localStorage.removeItem('yank-sweep-profile'); } catch {}
 });
 
-/* The shape all three jumps share. Defaults first, then the seed: without
-   the defaults a palette or a disguise toggle a reviewer flipped would
-   survive "Reset demo state", which is not what reset means.
+/* Restore defaults before seeding so reviewer overrides clear on reset.
+   Clear any partial seed and propagate the error. An incomplete persona
+   can look valid in a sweep, while an empty journal signals failure.
 
-   The catch is ticket 135's answer to a seed that stops half way through -
-   which is what a second jump starting inside this one causes, and what the
-   journal's own invariants cause when it does. A journal left holding the
-   days the seed got through looks exactly like a journal with the persona
-   in it, so a sweep photographs it and says nothing; an empty one is
-   visibly wrong on the first screen. Clearing is the honest half-state,
-   and the error still reaches the page so nobody has to infer it.
-
-   Wrapped in `batchWrites` (ticket 141): the seed is a few thousand awaited
-   journal calls, and each one used to bump table versions and re-run every
-   open liveQuery immediately - Home's own reads among them, sitting behind
-   the demo bar the whole time. That re-run cost grows with the journal, so
-   the seed got slower call by call instead of taking a fixed time. Batching
-   defers every version bump to one flush after the whole jump lands, so
-   Home and everything else re-reads once, with the finished journal,
-   rather than once per write against a growing one. */
+   `batchWrites` defers table-version bumps until the seed completes.
+   Thousands of writes then trigger one round of live queries, avoiding
+   repeated reads against a growing journal. */
 async function reseed(seed: () => Promise<void>): Promise<void> {
   Object.assign(prefs, PREFERENCE_DEFAULTS, demoPreferences());
-  try { localStorage.setItem('engender-has-entries', '1'); } catch {}
+  prefs.acknowledgements = withHasEntries(prefs.acknowledgements, true);
   await batchWrites(async () => {
     await clearJournal(journal);
     try {
@@ -62,29 +51,29 @@ async function reseed(seed: () => Promise<void>): Promise<void> {
 }
 
 export async function resetDemo(): Promise<void> {
-  await reseed(() => seedPersonaJournal(journal));
+  await reseed(() => seedPersonaJournal(journal, undefined, getLocale()));
 }
 
-/** The persona plus every other More-hub area (phase 5 ticket 36) - a
+/** The persona plus every other More-hub area - a
     second jump rather than a change to `resetDemo` above, so "Reset demo
     state" still leaves every one of those areas in its designed empty
     state for a reviewer who wants to see that instead. */
 export async function resetDemoFull(): Promise<void> {
   const { seedFullFixture } = await import('./fullFixture');
   await reseed(async () => {
-    await seedPersonaJournal(journal);
-    await seedFullFixture(journal);
+    await seedPersonaJournal(journal, undefined, getLocale());
+    await seedFullFixture(journal, undefined, getLocale());
   });
 }
 
 /** The persona and every area, five weeks stale - the state the return
-    surface exists for (phase 8 features ticket 05). A third jump rather than
+    surface exists for. A third jump rather than
     a variant of the two above, because a journal that stops five weeks ago
     is the wrong state for reviewing anything else: every screen's "recent"
     is empty in it. returnGap.ts says what it adds and why. */
 export async function resetDemoComingBack(): Promise<void> {
   const { seedReturnGap } = await import('./returnGap');
-  await reseed(() => seedReturnGap(journal));
+  await reseed(() => seedReturnGap(journal, undefined, getLocale()));
 }
 
 /** True first-run state, for the demo bar's "Onboarding (first run)". Only
@@ -95,6 +84,6 @@ export async function markFirstRun(): Promise<void> {
   prefs.name = PREFERENCE_DEFAULTS.name;
   prefs.lastBackupAt = PREFERENCE_DEFAULTS.lastBackupAt;
   prefs.activeScales = [...PREFERENCE_DEFAULTS.activeScales];
-  try { localStorage.setItem('engender-has-entries', '0'); } catch {}
+  prefs.acknowledgements = withHasEntries(prefs.acknowledgements, false);
   await clearJournal(journal);
 }

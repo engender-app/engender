@@ -73,7 +73,7 @@ describe('appPrivatePhotoFiles', () => {
     expect(await files.size('missing.jpg')).toBeNull();
   });
 
-  /* Why reads left the bridge (ticket 07). A plugin response crosses into the
+  /* Why reads left the bridge. A plugin response crosses into the
      WebView as a JSON string, which moved photo bytes at 0.8MB/s on a Pixel
      10a - seven minutes to read a decade of photos for an Archive export. If a
      read ever goes back through the bridge this fails here, rather than a
@@ -90,9 +90,9 @@ describe('appPrivatePhotoFiles', () => {
     ]);
   });
 
-  /* Ticket 19: when the fast channel exists, a write must use it instead of
-     the base64 bridge call - otherwise every device that can carry the
-     channel still pays the cost the channel exists to avoid. */
+  /* When the fast channel exists, a write must use it instead of the base64 bridge call -
+     otherwise every device that can carry the channel still pays the cost the channel
+     exists to avoid. */
   test('writes over the channel instead of the bridge when the channel exists', async () => {
     servedFiles({});
     vi.stubGlobal('androidPhotoWriteChannel', {

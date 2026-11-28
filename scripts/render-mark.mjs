@@ -1,27 +1,11 @@
-/* Renders every engender mark as a file: the full review set into
-   brand/mark/, and the subset the app actually serves into static/ and the
-   Android resources.
+/* Render the review set to `brand/mark/` and deployed assets to
+   `static/` and Android resources. `mark.ts` supplies the same geometry
+   as Mark.svelte. Read stripes from `palettes.css` to include new palettes.
 
-   The drawing is not here. src/lib/components/mark.ts owns it and
-   Mark.svelte renders the same strings, so an icon file and the mark on a
-   screen cannot disagree - which is the whole reason this is a generator
-   and not a folder of hand-drawn SVGs. What is here is which files exist
-   and where they go.
-
-   brand/mark/ stays the full review set and stays out of static/, because
-   everything under static/ ships in the web build and in the APK's assets:
-   the app serves a handful of these, not two megabytes of them.
-
-   Run from anywhere: npm run render:mark
-   By hand rather than in CI: it needs a Chromium to rasterise through, its
-   output is tracked, and the only two things that change it are a palette
-   being added and the geometry being edited on purpose - both moments
-   somebody is already at a keyboard. tests/mark-assets.test.ts is what
-   fails if the run was forgotten, so a new palette cannot ship
-   half-iconned.
-
-   Stripes are read out of src/lib/theme/palettes.css rather than copied, so
-   a new palette needs nothing taught here. */
+   Run `npm run render:mark` to regenerate tracked output with Chromium
+   after a palette or geometry change. `tests/node/ui/mark-assets.test.ts` checks
+   that the assets are current. Keep the full review set out of web and
+   APK bundles. */
 import { chromium } from 'playwright-core';
 import { copyFileSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -49,6 +33,10 @@ function palettes() {
   for (const m of css.matchAll(/\[data-palette="([a-z]+)"\]\s*\{\s*--motif-stripes:\s*([^;]+);/g)) {
     out[m[1]] = m[2].split(',').map((s) => s.trim());
   }
+  /* `notes` is the disguised gate's neutral palette, not a flag: it has no mark and no
+     launcher alias, and favicon-notes.svg is the hand-drawn decoy icon, which a mark
+     rendered here would overwrite. */
+  delete out.notes;
   return out;
 }
 
@@ -56,21 +44,18 @@ const write = (path, text) => writeFileSync(path, text.endsWith('\n') ? text : t
 
 /* ---- Android ----
 
-   An adaptive icon is a background and a foreground, and the launcher picks
-   its own mask. The background is @color/ic_launcher_background, which is
-   the white the tile is; the foreground is the whole stroked tile, laid in
-   the middle of the 108dp canvas at MARK_SAFE_TILE.
+   An adaptive icon is a background and a foreground, and the launcher picks its own mask.
+   The background is @color/ic_launcher_background, which is the white the tile is; the
+   foreground is the whole stroked tile, laid in the middle of the 108dp canvas at
+   MARK_SAFE_TILE.
 
-   Drawn small rather than full bleed because the black edge is not optional
-   (Alicja, 2026-09-21: "no stroke around the square, or its white - its
-   supposed to be black always") and a file cannot know which mask will cut
-   it. Inside the guaranteed circle the whole outline survives every mask,
-   which is the only arrangement where "always black" is true. mark.ts's
-   MARK_SAFE_TILE carries the arithmetic.
+   Drawn small rather than full bleed because the black edge is not optional and a file
+   cannot know which mask will cut it. Inside the guaranteed circle the whole outline
+   survives every mask, which is the only arrangement where "always black" is true.
+   mark.ts's MARK_SAFE_TILE carries the arithmetic.
 
-   A vector drawable rather than a PNG per density: the drawing is two to
-   seven circles, and sixteen palettes times five densities is eighty files to
-   keep in step for nothing. */
+   A vector drawable rather than a PNG per density: the drawing is two to seven circles, and
+   sixteen palettes times five densities is eighty files to keep in step for nothing. */
 const CANVAS = 108;
 const n2 = (value) => value.toFixed(2);
 
@@ -192,7 +177,7 @@ const MONO_INKS = [
 /** The review set's shapes, and what markSvg calls each of them. */
 const SHAPES = { tile: 'tile', round: 'round', maskable: 'bleed' };
 
-/** The logotype as a picture, for the README (ticket 37): the trans mark
+/** The logotype as a picture, for the README: the trans mark
     beside the word, in the proportions app.css's .lockup sets - mark 1.23em,
     gap 0.5em, track -0.03em, word lifted 0.115em - at four times the rail's
     26px. A PNG rather than an SVG because the word is Outfit and GitHub
@@ -257,7 +242,7 @@ async function main() {
 
   write(join(RES, 'drawable', 'ic_stat_mark.xml'), notificationMark());
 
-  /* LauncherDefault keeps the existing icon and roundIcon resource names.
+  /* The default alias (Launch01) keeps the existing icon and roundIcon resource names.
      Its round-artwork sibling takes ic_launcher_trans_round. */
   write(join(RES, 'mipmap-anydpi-v26', 'ic_launcher.xml'), adaptiveIcon(DEFAULT_FLAG));
   write(join(RES, 'mipmap-anydpi-v26', 'ic_launcher_round.xml'), adaptiveIcon(DEFAULT_FLAG));

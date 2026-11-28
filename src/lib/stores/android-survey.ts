@@ -1,43 +1,31 @@
-/* What an Android cold boot asks before it knows how to open the journal
-   (ticket 11's survey; ux-carpet 207 made it concurrent).
+/* Ask for the secret keystore file, Android key status and
+   plaintext journal status concurrently. Native reads take
+   single-digit milliseconds, but the first WebView frame can hold
+   the UI thread for about 300ms and strand sequential bridge
+   answers. Measured serial survey time was 386–462ms. Inject the
+   three rune-free reads for android-survey.test.ts. */
 
-   Three questions: whether a passphrase or PIN keystore file exists, whether
-   the Android Keystore holds a device key (and whether it wants the user
-   present), and whether the journal on disk is a plaintext one from before
-   encryption. None depends on another, and all three are asked at once.
-
-   They used to be asked one after another. Each native answer takes a few
-   milliseconds, but a bridge result reaches JS through the Android UI
-   thread, and on a cold launch that thread spends ~300ms drawing the
-   WebView's first frame just as the survey runs. Measured on the Pixel
-   (2026-09-24, native Log timings and a main-looper trace): Keystore.status
-   finished in 3-8ms and isPlaintextDatabase in 3-4ms, yet the survey took
-   386-462ms, because whichever answer was still to come waited behind that
-   one frame. Asked together, all three are in flight before it.
-
-   Rune-free and handed its three questions, so the Node tier can test the
-   concurrency itself (android-survey.test.ts). */
-
-import type { JournalSecretSource } from '../crypto/keystore';
+import type { KeystoreBootSource } from '../data/keystore-file';
 
 export interface AndroidSurveyPorts {
-  readKeystoreSource(): Promise<JournalSecretSource | null>;
+  readKeystoreSource(): Promise<KeystoreBootSource>;
   keystoreStatus(): Promise<{ hasKey: boolean; authRequired?: boolean }>;
-  journalIsPlaintext(): Promise<boolean>;
+  inspectJournal(): Promise<{ exists: boolean; plaintext: boolean }>;
 }
 
 export interface AndroidSurvey {
-  keystoreSecretSource: JournalSecretSource | null;
+  keystoreSecretSource: KeystoreBootSource;
   nativeDeviceKeyExists: boolean;
   nativeDeviceKeyAuthRequired: boolean;
   plaintextJournalPresent: boolean;
+  journalPresent: boolean;
 }
 
 export async function surveyAndroid(ports: AndroidSurveyPorts): Promise<AndroidSurvey> {
-  const [keystoreSecretSource, status, plaintextJournalPresent] = await Promise.all([
+  const [keystoreSecretSource, status, journal] = await Promise.all([
     ports.readKeystoreSource(),
     ports.keystoreStatus(),
-    ports.journalIsPlaintext()
+    ports.inspectJournal()
   ]);
   return {
     keystoreSecretSource,
@@ -45,6 +33,7 @@ export async function surveyAndroid(ports: AndroidSurveyPorts): Promise<AndroidS
     /* Unknown reads as required: a key that might want the user present is
        never opened without asking. */
     nativeDeviceKeyAuthRequired: status.authRequired ?? true,
-    plaintextJournalPresent
+    plaintextJournalPresent: journal.plaintext,
+    journalPresent: journal.exists
   };
 }

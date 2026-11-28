@@ -1,28 +1,12 @@
-/* Where the care readings fall against each other in time (phase 5
-   deepening ticket 07, CONTEXT: "Dose event", "Lab draw context",
-   "Run-out projection"). Pure, and kept above the journal seam beside
-   stockProjection.ts and labTiming.ts for the same reason: this is a
-   question about days, not a row anyone stores. Nothing here reads a clock
-   or a database.
-
-   This module lays readings out; it computes none of them. The last dose
-   comes from the dose log, the next one from expectedSlots and adherence
-   (doseSchedule.ts), the draw day from a LabResult, the run-out day from
-   stockProjection.ts. Ticket 07 is explicit that the care screen may not
-   hold a second implementation of any of those, so the only arithmetic in
-   here is the arithmetic of putting five days on one line: which day sits
-   where along the rail, which days had to be pulled in to the rail's reach,
-   and which labels would have printed on top of each other.
-
-   Nothing here judges. A mark is a day and a kind; no mark is late, none is
-   due, and the rail names no interval as the right one. The wording lives
-   in the screen's own catalogue strings, which say when a thing happened
-   and stop (PRODUCT.md:109, and labTiming.ts's own header for the
-   precedent). */
+/* Place care dates on one rail without reading the clock or journal.
+   Dose log, schedule, lab results and stock projection provide the
+   dates. This module positions them, clamps them and spaces captions.
+   Marks carry a day and a kind. Copy describes timing without grading
+   it or prescribing an interval. */
 
 import { adherence, expectedSlots, slotToleranceDays, type DoseSlot } from './doseSchedule';
+import { pairDoseSchedule } from './journal/doses';
 import { epochDayFromTimestamp } from './epochDay';
-import { resolveCurveDrug } from './hormoneDrug';
 import { attributeDose, attributeDrug, sameDrug } from './regimenEpisode';
 import type { DoseEvent, DosePause, DoseSchedule, RegimenEpisode } from './types';
 
@@ -42,8 +26,7 @@ import type { DoseEvent, DosePause, DoseSchedule, RegimenEpisode } from './types
     Forwards there are two, and a run-out projection on a full box
     routinely lands months out; a hundred and twenty days is a whole
     quarter of runway, past which "a long way off" is the honest reading. */
-/* SPINE_BACK_DAYS stays exported only for its own test (AU-09 test-only
-   review). */
+/* SPINE_BACK_DAYS stays exported only for its own test. */
 export const SPINE_BACK_DAYS = 60;
 export const SPINE_FORWARD_DAYS = 120;
 
@@ -54,64 +37,24 @@ export const SPINE_FORWARD_DAYS = 120;
     next dose against the right - two marks at the ends of a line, which
     says nothing about the gap between them. A fortnight each way gives
     every arrangement a middle to be near. */
-/* SPINE_MIN_BACK_DAYS, SPINE_MIN_FORWARD_DAYS stay exported only for their own
-   test (AU-09 test-only review). */
+/* SPINE_MIN_BACK_DAYS, SPINE_MIN_FORWARD_DAYS stay exported only for their own test. */
 export const SPINE_MIN_BACK_DAYS = 14;
 export const SPINE_MIN_FORWARD_DAYS = 14;
 
-/** How close two labels may sit in the same label row, as a fraction of the
-    rail.
-
-    Sized against Polish rather than English, because Polish is what sets
-    it: "Następna dawka" is the widest caption either catalogue holds. The
-    number has been measured twice.
-
-    0.30 was the one-lane rail's, sized against a 330px rail and a 91.2px
-    label. Phase 11 ticket 10 measured the drawing again, on three lanes at
-    390px with the full fixture (tests/care-lane-labels.mjs): the rail is
-    292px, not 330 - the card's own padding and the track's margin take the
-    rest - and at 292px the widest Polish captions are "Następna dawka"
-    90.8px, "Ostatnia dawka" 84.8px and "Koniec zapasu" 76.7px, against
-    "Next dose" 54.8px, "Last dose" 51.9px and "Runs out" 48.3px in English.
-    Two of the widest in one row need 90.8px between their centres before
-    they touch at all, which is 0.311 of 292 - so the old 0.30 was already
-    3.2px short of its own rule, and only the days the demo journal happened
-    to hold kept it from showing.
-
-    0.34 is 90.8px plus 8px of air over 292px. The labels are
-    `white-space: nowrap` on a row of fixed height, so a wide one cannot
-    wrap its way out of a collision; the only other answer is a row.
-
-    The cost is paid by the narrow labels: "Today" is 32.6px and now claims
-    room it does not need, so a crowded lane opens a second label row sooner
-    than it strictly must. A label row is what this algorithm has for
-    crowding - it hangs the caption one row further from the line and keeps a
-    stem back to it - so the trade is a taller lane against two captions
-    printed on top of each other. */
-/* MIN_LABEL_GAP stays exported only for its own test (AU-09 test-only review). */
+/** Minimum gap between label centers as a fraction of rail width. At
+    390px, care-lane-labels.mjs measured a 292px rail and a 90.8px Polish
+    Next dose label. A 0.34 gap leaves about 8px of air. The labels cannot
+    wrap, so crowding moves a label to a higher row. Shorter labels use
+    the same gap. */
+/* MIN_LABEL_GAP stays exported only for its own test. */
 export const MIN_LABEL_GAP = 0.34;
 
-/** The same rule in the unit it was measured in.
-
-    A fraction of the rail is the right rule only at the width it was
-    measured at. At 200% zoom a 390px phone leaves 195 CSS px, the rail is
-    about 97 of them, and 0.34 of 97 is 33px - a third of what the widest
-    Polish caption needs and less than the 48px target the caption carries
-    at any width, so every caption printed over its neighbour and the taps
-    landed on whichever was drawn last (phase 11 UI/UX ticket 25, checked
-    at both widths in tests/timeline-fact-selection.mjs).
-
-    So the screen measures its own rail and hands the width in, and this
-    is what the fraction is computed from: 90.8px for "Następna dawka"
-    plus 8px of air, the same arithmetic the number above came from. Where
-    nothing has measured yet - the first frame, before the observer has
-    answered - the fraction above stands in, which is this number over the
-    292px rail a 390px phone gives.
-
-    A rail too narrow for two captions makes the fraction larger than the
-    rail, and then every caption takes its own row. That is the honest
-    answer at 200% zoom rather than a failure: the lane grows taller, which
-    is what a magnified screen is for. */
+/** Compute caption spacing from measured rail width. The widest
+    label needs 90.8px plus 8px of space and must still take a 48px
+    target. Before measurement use the fraction for a 292px rail.
+    At 200% zoom a 390px phone can leave only 97px of rail, so use
+    separate rows when captions cannot share one.
+    tests/timeline-fact-selection.mjs checks both widths. */
 export const MIN_LABEL_PX = 99;
 
 /** The collision rule for a rail of a known width. */
@@ -151,7 +94,7 @@ export interface SpineMark {
 
 /** One running drug's own line: its name, and its own three readings placed
     on the shared day axis. */
-export interface SpineLane {
+interface SpineLane {
   episodeId: string;
   drug: string;
   /** Left to right. Last dose, next dose and run-out, whichever of them
@@ -169,26 +112,11 @@ export interface CareSpine {
   lanes: SpineLane[];
 }
 
-/** Where a day sits along the rail, 0 at its left end and 1 at its right,
-    with today always at 0.5.
-
-    The scale is the square root of the distance from today rather than the
-    distance itself, and that is a design decision rather than a convenience.
-    A rail linear in days is unreadable for the arrangement almost everyone
-    actually has: a dose today, the next one tomorrow and a run-out three
-    weeks out puts three marks inside the last few percent of the line with
-    their captions over each other, while nineteen twentieths of the rail
-    carries nothing. Under a root scale the near days get the room they need
-    and the far ones compress toward the ends, which is the shape of the
-    question - what is happening around now, and roughly how far off is the
-    rest.
-
-    What it costs is that a length along the rail is not a number of days, so
-    nothing here may be read off as a measurement. That is why every caption
-    prints its own date and the rail carries no axis, no ticks between the
-    marks and no scale: it says order and rough nearness, and the days are
-    written down beside it. The transform is monotonic, so two marks are
-    never drawn out of sequence. */
+/** Map signed distance from today through a square root, with today
+    at 0.5 and the ends at 0 and 1. Near dates gain room for labels and
+    far dates compress without changing order. Captions carry actual
+    dates. Distances on the rail show rough nearness, so omit an axis
+    and intermediate ticks. */
 function positionOf(epochDay: number, todayEpochDay: number, fromEpochDay: number, toEpochDay: number): number {
   const day = Math.min(Math.max(epochDay, fromEpochDay), toEpochDay);
   if (day === todayEpochDay) return 0.5;
@@ -234,8 +162,7 @@ function lastLoggedDose(doses: readonly DoseEvent[]): DoseEvent | null {
 /** The day of the most recent dose that actually happened, or null when
     none did. A skipped dose is a gap someone recorded rather than a dose,
     the same reading labTiming.ts takes of one. */
-/* lastLoggedDoseDay stays exported only for its own test (AU-09 test-only
-   review). */
+/* lastLoggedDoseDay stays exported only for its own test. */
 export function lastLoggedDoseDay(doses: readonly DoseEvent[]): number | null {
   const latest = lastLoggedDose(doses);
   return latest ? epochDayFromTimestamp(latest.timestamp) : null;
@@ -253,8 +180,7 @@ export function lastLoggedDoseDay(doses: readonly DoseEvent[]): number | null {
     Not a judgement about a dose being due. A slot with nothing in it is a
     slot with nothing in it; expectedAmountOn (doseSchedule.ts) reads the
     same rows the same way for the same reason. */
-/* nextExpectedSlot stays exported only for its own test (AU-09 test-only
-   review). */
+/* nextExpectedSlot stays exported only for its own test. */
 export function nextExpectedSlot(
   schedule: DoseSchedule,
   anchorEpochDay: number,
@@ -263,7 +189,7 @@ export function nextExpectedSlot(
   todayEpochDay: number
 ): DoseSlot | null {
   const slots = expectedSlots(schedule, anchorEpochDay, todayEpochDay, todayEpochDay + SPINE_FORWARD_DAYS);
-  return adherence(slots, doses, pauses, slotToleranceDays(schedule)).rows.find((row) => row.dose === null)?.slot ?? null;
+  return adherence(slots, doses, pauses, slotToleranceDays(schedule), schedule.episodeId).rows.find((row) => row.dose === null)?.slot ?? null;
 }
 
 type MarkEntry = { kind: SpineMarkKind; epochDay: number; recordId?: string | null };
@@ -277,22 +203,10 @@ function orderedDays(days: readonly MarkEntry[]): MarkEntry[] {
   );
 }
 
-/** One set of captions placed along the rail, left to right.
-
-    Rows fill from 0 up: a caption goes in the lowest row whose last caption
-    is at least a label's width behind it, and opens a new row when none is.
-    A fixed pair of rows was the first attempt and it was wrong - three marks
-    at one point, dosed and drawn on the same day, has no two-row
-    arrangement, and what it produced was two captions printed exactly over
-    each other rather than a lane one row taller. So the count follows the
-    arrangement, up to one row per mark, and the screen grows the lane to
-    fit.
-
-    Called once per lane and once for the shared marks, never across the two:
-    a lane's captions hang under its own line and the shared ones head the
-    rail, so a lane's "Next dose" cannot print over "Today" however close the
-    two days are. That is what buys back the room the one-lane spine used to
-    spend pushing today and next dose onto opposite sides of the line. */
+/** Place captions left to right in the lowest row with enough room.
+    Add rows as needed, up to one per mark at a shared position.
+    Call separately for each lane and for shared marks, so the
+    screen can grow each caption group without crowding another. */
 function placeMarks(
   days: readonly MarkEntry[],
   todayEpochDay: number,
@@ -375,48 +289,26 @@ export function careSpine(
 
 /** Every running episode, in the order their lanes are drawn.
 
-    One lane per running drug (phase 11 ticket 10), which is what replaced
+    One lane per running drug, which is what replaced
     `chooseRailEpisode`. That function picked one episode for the rail and
     handed the rest back as `others`, because a single-lane rail's captions
     carried no episode: two marks of the same kind would have been two
-    unlabelled dates with no way to tell them apart, so with two curve
-    episodes running it drew neither. A lane per drug, each labelled with its
+    unlabelled dates with no way to tell them apart. A lane per drug, each labelled with its
     drug's name, answers that ambiguity in the drawing instead of by dropping
     regimens out of it. One stripe per drug and no drug primary: colour here
     is categorical the way it is everywhere else in this app, which is
     ADR-0012's line - a scale with a better end is the judgement it forbids,
     and three drugs somebody takes have no better end.
 
-    Curve drugs first, so the lane the hormone curve reads sits nearest the
-    labs row under the rail, then by start day, oldest first - the order the
-    regimen list already reads in. Neither is a ranking: the order exists so
-    the lanes do not reshuffle under somebody between two visits. */
+    Start day, oldest first, matches the regimen list. The order exists so
+    lanes do not reshuffle under somebody between two visits. */
 export function railEpisodes(activeEpisodes: readonly RegimenEpisode[]): RegimenEpisode[] {
-  return [...activeEpisodes].sort((a, b) => {
-    const curveA = resolveCurveDrug(a.drug) === null ? 1 : 0;
-    const curveB = resolveCurveDrug(b.drug) === null ? 1 : 0;
-    return curveA === curveB ? a.startEpochDay - b.startEpochDay : curveA - curveB;
-  });
+  return [...activeEpisodes].sort((a, b) => a.startEpochDay - b.startEpochDay);
 }
 
-/** One episode's own last and next dose, scoped so a second, unrelated
-    concurrent schedule cannot bleed into either reading - the bug ticket
-    38 is named for.
-
-    Last reads by drug name (attributeDrug) rather than by this exact
-    episode row: a dose logged under an earlier episode of the same drug,
-    before a dose change split it into a new row, still counts, the same
-    continuity nextExpectedSlot already gets from anchoring on the
-    episode's own startEpochDay rather than the schedule's edit day. A
-    concurrent episode for a different drug resolves to its own name
-    instead (attributeDose/attributeDrug, regimenEpisode.ts) and so never
-    counts here, which is the fix itself - the whole-log scan this
-    replaced could not tell the two apart.
-
-    Next reads by this exact episode's own id (attributeDose), unchanged
-    from before this ticket: only a slot this episode's own rhythm expects,
-    from today, is its "next" one. `doses` is the whole log, unbounded by
-    date - both halves do their own scoping over it. */
+/** Read the last dose through today by drug so an earlier episode of that drug
+    still counts. Read the next slot by episode ID. The dose range includes
+    forward reach and tolerance on either side for pairing. */
 export function scheduleDoseFacts(
   episode: RegimenEpisode,
   episodes: readonly RegimenEpisode[],
@@ -429,17 +321,13 @@ export function scheduleDoseFacts(
     const { drug } = attributeDrug(episodes, dose);
     return drug !== null && sameDrug(drug, episode.drug);
   });
-  const lastDose = lastLoggedDose(ownDoses);
+  const lastDose = lastLoggedDose(ownDoses.filter((dose) => epochDayFromTimestamp(dose.timestamp) <= todayEpochDay));
   const lastDoseEpochDay = lastDose ? epochDayFromTimestamp(lastDose.timestamp) : null;
   const lastDoseId = lastDose?.id ?? null;
 
   if (!schedule) return { lastDoseEpochDay, lastDoseId, nextDoseEpochDay: null };
 
-  const dosesFromToday = doses.filter(
-    (dose) =>
-      epochDayFromTimestamp(dose.timestamp) >= todayEpochDay &&
-      attributeDose(episodes, dose).episode?.id === episode.id
-  );
-  const nextSlot = nextExpectedSlot(schedule, episode.startEpochDay, dosesFromToday, pauses, todayEpochDay);
+  const nextSlot = pairDoseSchedule(episodes, doses, schedule, pauses, todayEpochDay,
+    todayEpochDay + SPINE_FORWARD_DAYS).rows.find((row) => row.dose === null)?.slot ?? null;
   return { lastDoseEpochDay, lastDoseId, nextDoseEpochDay: nextSlot?.epochDay ?? null };
 }

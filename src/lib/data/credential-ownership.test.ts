@@ -1,13 +1,22 @@
 import { afterEach, expect, test, vi } from 'vitest';
-import { changeCredentials, initializeCredentials, CredentialsBusyError } from './credential-ownership';
+import { authenticateCredentials, changeCredentials, initializeCredentials, CredentialsBusyError } from './credential-ownership';
 import { changeJournalPin } from './journal-pin';
 import { changeJournalPassphrase } from './journal-passphrase';
-import { mintRecoveryKey, revokeRecoveryKey } from './recovery-key';
+import {
+  discardPendingRecoveryKey,
+  finishRecoveryKey,
+  inMemoryRecoveryKeyPorts,
+  mintRecoveryKey,
+  recoveryKeyState,
+  revokeRecoveryKey
+} from './recovery-key';
 
 afterEach(() => vi.unstubAllGlobals());
 
 test.each([false, true])('credential mutation excludes other operations across page lifetimes (native: %s)', async (native) => {
   if (native) vi.stubGlobal('window', { Capacitor: { getPlatform: () => 'android' } });
+  const recovery = inMemoryRecoveryKeyPorts();
+  const waiting = await mintRecoveryKey(new Uint8Array(32), recovery);
   let release!: () => void;
   let entered!: () => void;
   const started = new Promise<void>(resolve => { entered = resolve; });
@@ -23,6 +32,10 @@ test.each([false, true])('credential mutation excludes other operations across p
     await expect(changeJournalPassphrase('old password', 'new password')).rejects.toThrow(CredentialsBusyError);
     await expect(mintRecoveryKey(new Uint8Array(32))).rejects.toThrow(CredentialsBusyError);
     await expect(revokeRecoveryKey()).rejects.toThrow(CredentialsBusyError);
+    // Confirming or discarding a waiting recovery key is a credential change too.
+    await expect(finishRecoveryKey(waiting, recovery)).rejects.toThrow(CredentialsBusyError);
+    await expect(discardPendingRecoveryKey(recovery)).rejects.toThrow(CredentialsBusyError);
+    expect(await recoveryKeyState(recovery)).toEqual({ active: false, pending: true });
     expect(competing).not.toHaveBeenCalled();
   } finally { release(); await first; }
   await changeCredentials(competing);
@@ -33,6 +46,45 @@ test.each([false, true])('failed mutation releases ownership for retry (native: 
   if (native) vi.stubGlobal('window', { Capacitor: { getPlatform: () => 'android' } });
   await expect(changeCredentials(async () => { throw new Error('write refused'); })).rejects.toThrow('write refused');
   await expect(changeCredentials(async () => 'retry')).resolves.toBe('retry');
+});
+
+test.each([false, true])('queued authentication owns its complete operation after mutation (native: %s)', async (native) => {
+  if (native) vi.stubGlobal('window', { Capacitor: { getPlatform: () => 'android' } });
+  let releaseMutation = () => {};
+  let releaseAuthentication = () => {};
+  let mutationStarted!: () => void;
+  let authenticationStarted!: () => void;
+  const mutationEntered = new Promise<void>((resolve) => { mutationStarted = resolve; });
+  const authenticationEntered = new Promise<void>((resolve) => { authenticationStarted = resolve; });
+  const mutation = changeCredentials(async () => {
+    mutationStarted();
+    await new Promise<void>((resolve) => { releaseMutation = resolve; });
+  });
+  await mutationEntered;
+  let authenticated = false;
+  const authentication = authenticateCredentials(async () => {
+    authenticated = true;
+    authenticationStarted();
+    await new Promise<void>((resolve) => { releaseAuthentication = resolve; });
+    return 'authenticated';
+  });
+  try {
+    await Promise.resolve();
+    expect(authenticated).toBe(false);
+    await expect(changeCredentials(async () => 'overlap')).rejects.toThrow(CredentialsBusyError);
+    releaseMutation();
+    await mutation;
+    await authenticationEntered;
+    await expect(changeCredentials(async () => 'overlap')).rejects.toThrow(CredentialsBusyError);
+    releaseAuthentication();
+    await expect(authentication).resolves.toBe('authenticated');
+  } finally {
+    releaseMutation();
+    await mutation;
+    await authenticationEntered;
+    releaseAuthentication();
+    await authentication;
+  }
 });
 
 test('native setup reserves ownership before its first microtask', async () => {

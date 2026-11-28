@@ -1,9 +1,7 @@
-/* The fluidity engine's presentation area (phase 5 deepening ticket 17,
-   ADR-0048, CONTEXT: "Presentation"). No `key` column and no built-ins - a
-   presentation ships nothing seeded (ADR-0048), so a minted uuid is its
-   only travelling identity and there is no id-or-key addressing the way
-   tags.ts needs. Hides rather than deletes (CONTEXT: "Hidden"); there is no
-   deletePresentation. */
+/* The fluidity engine's presentation area (ADR-0048). No `key` column and no built-ins - a
+   presentation ships nothing seeded (ADR-0048), so a minted uuid is its only travelling
+   identity and there is no id-or-key addressing the way tags.ts needs. Hides rather than
+   deletes; there is no deletePresentation. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Presentation } from '../types';
@@ -45,7 +43,7 @@ export function makePresentationsArea(driver: SqliteDriver): PresentationsArea {
       const rows = await driver.query<PresentationRow & { last_used: number | null }>(
         `SELECT p.uuid, p.name, p.role_index, p.hidden,
                 (SELECT MAX(e.timestamp) FROM entry e
-                 WHERE e.presentation_id = p.uuid AND e.trashed_at IS NULL) AS last_used
+                 WHERE e.presentation_uuid = p.uuid AND e.trashed_at IS NULL) AS last_used
          FROM presentation p
          ORDER BY last_used IS NULL, last_used DESC, p.id`
       );

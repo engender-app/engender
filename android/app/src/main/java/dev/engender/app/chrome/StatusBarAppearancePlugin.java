@@ -12,24 +12,10 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 /**
- * Which tint Android draws the status bar's own icons in (carpet ticket
- * 154).
- *
- * The app is edge-to-edge - targetSdk 36 enforces it, and the window
- * carries EDGE_TO_EDGE_ENFORCED - so the bar has no background of its own
- * and the system draws the clock, the signal bars and the battery straight
- * over whatever the app painted. Which tint it uses is the app's to say,
- * and until this plugin the app never said: read off a Pixel 10a on
- * 2026-09-21, with the phone in day mode, `dumpsys window` reported
- * `AppearanceRegion{ bounds=...}` for this app against
- * `AppearanceRegion{LIGHT_STATUS_BARS bounds=...}` for Settings on the same
- * display. Empty means white icons, which the ticket's renders measured at
- * 1.07:1 over the light theme's own #F4F8FB.
- *
- * The theme the app resolves is not the theme AppCompat's DayNight parent
- * would pick either: `prefs.theme` is 'system' | 'light' | 'dark', so
- * someone can run the app dark on a light phone. The web side owns that
- * resolution and hands the answer down; nothing here reads the system.
+ * Set icon tint over the app's edge-to-edge status bar. The web side
+ * resolves system, light or dark from prefs.theme and supplies the
+ * result, which can differ from AppCompat's theme. White icons over
+ * the light field measured 1.07:1 without this setting.
  */
 @CapacitorPlugin(name = "StatusBarAppearance")
 public class StatusBarAppearancePlugin extends Plugin {

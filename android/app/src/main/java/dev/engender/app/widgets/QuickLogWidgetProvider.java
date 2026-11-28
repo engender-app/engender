@@ -8,7 +8,7 @@ import java.util.List;
 import dev.engender.app.R;
 
 /**
- * A home-screen widget offering one-tap mood logging (ticket 26). Each of
+ * A home-screen widget offering one-tap mood logging. Each of
  * the five buttons deep-links (AppLaunch.openAppIntent) into the same
  * mood-seeded entry composer the in-app quick log on Home already uses -
  * app lock's own gate (+layout.svelte's {#if locked}) is what stands
@@ -48,13 +48,12 @@ public class QuickLogWidgetProvider extends DisguisableWidgetProvider {
         return specs;
     }
 
-    /** The route a mood button's PendingIntent deep-links to - "today"
-        rather than a computed epoch day, so a PendingIntent built now still
-        lands on the right day no matter how long it sits on the home
-        screen before being tapped; the [day] route resolves "today" live,
-        at navigation time. Pinned against src/lib/android/launch-routes.ts
-        by the shared fixture at src/lib/android/fixtures/launch-routes.json
-        (ADR-0028). */
+    /** The route a mood button's PendingIntent deep-links to - "today" rather than a
+        computed epoch day, so a PendingIntent built now still lands on the right day no
+        matter how long it sits on the home screen before being tapped; the [day] route
+        resolves "today" live, at navigation time. Pinned against
+        src/lib/android/launch-routes.ts by the shared fixture at
+        src/lib/android/fixtures/launch-routes.json. */
     static String moodRoute(int mood) {
         return "/entry/new/today?seedMood=" + mood;
     }

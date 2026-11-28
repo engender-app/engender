@@ -1,9 +1,11 @@
 /* One safe path to a GitHub release tag.
 
-   The release workflow publishes signed Android artifacts only when a signed
-   `v<semver>` tag is pushed. Manual GitHub releases can bypass that and leave
-   Obtainium with no suitable APK, so this script cuts and pushes only tags
-   that trigger the workflow contract.
+   The release workflow publishes signed Android artifacts only when it is
+   dispatched from main with a signed `v<semver>` tag whose key is listed in
+   .github/release-signers; pushing the tag starts nothing. Manual GitHub
+   releases can bypass that and leave Obtainium with no suitable APK, so this
+   script cuts and pushes only tags the workflow will accept, and prints the
+   dispatch command.
 
    Usage:
      node scripts/cut-release-tag.mjs <version>
@@ -13,8 +15,11 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { extractReleaseNotes } from './release-notes.mjs';
+import { publicationReleaseProblems } from './check-progressive-release.mjs';
 
-export const RELEASE_VERSION_RE = /^v?(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$/;
+import { RELEASE_VERSION_RE } from './progressive-release-gate-contract.mjs';
+
+export { RELEASE_VERSION_RE };
 
 /** @param {string} message */
 function die(message) {
@@ -202,11 +207,14 @@ function run(argv = process.argv.slice(2)) {
   assertMainTip();
   assertChangelogSection(version);
   assertTagMissing(tag);
+  const record = JSON.parse(readFileSync('scripts/progressive-release-record.json', 'utf8'));
+  const problems = publicationReleaseProblems(record, version.includes('-') ? 'stage2' : 'stable', version);
+  if (problems.length) throw new Error(`Candidate is not ready for publication:\n${problems.join('\n')}`);
 
   if (parsed.dryRun) {
     console.log(`PASS checks for ${tag}`);
     console.log(`Would create signed tag ${tag}`);
-    if (parsed.push) console.log(`Would push ${tag} to origin (triggers release workflow)`);
+    if (parsed.push) console.log(`Would push ${tag} to origin (it does not start a release)`);
     return;
   }
 
@@ -216,7 +224,7 @@ function run(argv = process.argv.slice(2)) {
   if (parsed.push) {
     pushTag(tag);
     console.log(`Pushed ${tag} to origin`);
-    console.log('Release workflow should start from this tag push.');
+    console.log(`Start the release from main: gh workflow run release.yml --ref main -f tag=${tag}`);
   } else {
     console.log(`Tag ${tag} is local only (--no-push).`);
   }

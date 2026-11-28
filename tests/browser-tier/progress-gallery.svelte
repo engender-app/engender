@@ -1,6 +1,6 @@
 <script lang="ts">
   /* Every state the progress bar has, on one page, at phone width, against
-     the real tokens (phase 9 audit ticket 11).
+     the real tokens.
 
      It sits beside the control gallery rather than inside it because what
      has to be looked at here is motion rather than a resting shape: the

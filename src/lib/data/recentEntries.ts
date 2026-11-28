@@ -1,4 +1,4 @@
-/* Home's recent entries, grouped into days (ux-carpet ticket 13).
+/* Home's recent entries, grouped into days.
 
    This used to cap what Home drew to five entries total and head a
    truncated day with how many it actually held ("3 that day" over one
@@ -24,7 +24,7 @@ export interface EntryDayGroup {
 
 /** The entries grouped by day, in the order the read handed them over.
 
-    Not Home's alone (phase 5 ticket 22): a day, a search result set and the
+    Not Home's alone: a day, a search result set and the
     starred shelf all group the same way. */
 export function entryDayGroups(entries: Entry[]): EntryDayGroup[] {
   const groups: EntryDayGroup[] = [];
@@ -41,25 +41,22 @@ export function entryDayGroups(entries: Entry[]): EntryDayGroup[] {
   return groups;
 }
 
-export interface YearMonth {
+interface YearMonth {
   year: number;
   month: number;
 }
 
-export interface EntryDayGroupWithDivider extends EntryDayGroup {
-  /** Set when this day falls in a different month than the day before it in
-      the list, so a divider falls out of the dates themselves rather than
-      being inserted by a caller who already knows which month it is (ticket
-      18: the Journal door's "Earlier entries" run). Never set on the first
-      day: that month is the list's own, `RecentDayMonths.month`. */
+interface EntryDayGroupWithDivider extends EntryDayGroup {
+  /** Set when this day falls in a different month than the day before it in the list, so a
+      divider falls out of the dates themselves rather than being inserted by a caller who
+      already knows which month it is. Never set on the first day: that month is the list's
+      own, `RecentDayMonths.month`. */
   monthDivider?: YearMonth;
 }
 
 export interface RecentDayMonths {
-  /** The first day's month, which the list's heading carries as its
-      sub-line (ux-carpet ticket 282: one heading above the first day, not a
-      month heading directly under the section heading). `undefined` for an
-      empty list. */
+  /** The first day's month, which the list's heading carries as its sub-line. `undefined`
+      for an empty list. */
   month?: YearMonth;
   groups: EntryDayGroupWithDivider[];
 }

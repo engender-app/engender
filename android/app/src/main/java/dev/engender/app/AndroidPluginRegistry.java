@@ -13,6 +13,7 @@ import java.util.Set;
 import dev.engender.app.backup.AutoExportPlugin;
 import dev.engender.app.files.FileDeliveryPlugin;
 import dev.engender.app.chrome.StatusBarAppearancePlugin;
+import dev.engender.app.navigation.StepBackPlugin;
 import dev.engender.app.clipboard.SensitiveClipboardPlugin;
 import dev.engender.app.disguise.DisguisePlugin;
 import dev.engender.app.keystore.KeystorePlugin;
@@ -23,7 +24,6 @@ import dev.engender.app.print.PrintPlugin;
 import dev.engender.app.lock.LockTimingPlugin;
 import dev.engender.app.reminders.RemindersPlugin;
 import dev.engender.app.reset.DeviceResetPlugin;
-import dev.engender.app.retrospective.RetrospectiveNotificationsPlugin;
 import dev.engender.app.screencapture.ScreenCapturePlugin;
 import dev.engender.app.sqlite.SqlitePlugin;
 
@@ -42,7 +42,6 @@ public final class AndroidPluginRegistry {
         new PluginEntry("Reminders", RemindersPlugin.class),
         new PluginEntry("AutoExport", AutoExportPlugin.class),
         new PluginEntry("FileDelivery", FileDeliveryPlugin.class),
-        new PluginEntry("RetrospectiveNotifications", RetrospectiveNotificationsPlugin.class),
         new PluginEntry("Disguise", DisguisePlugin.class),
         new PluginEntry("LockTiming", LockTimingPlugin.class),
         new PluginEntry("ScreenCapture", ScreenCapturePlugin.class),
@@ -51,6 +50,7 @@ public final class AndroidPluginRegistry {
         new PluginEntry("Permissions", PermissionsPlugin.class),
         new PluginEntry("SensitiveClipboard", SensitiveClipboardPlugin.class),
         new PluginEntry("StatusBarAppearance", StatusBarAppearancePlugin.class),
+        new PluginEntry("StepBack", StepBackPlugin.class),
         // NAV-001/NAV-002: the official @capacitor/app plugin, registered
         // the same way as our own plugins so the Android back gesture
         // (src/lib/android/back-navigation.ts) has something real to call.

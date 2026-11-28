@@ -20,49 +20,21 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-/**
- * The pick half of the photo bridge (phase 9 audit ticket 06), the same
- * {@link PhotoWriteChannel} mechanism run in the other direction.
+/** Sends picked file bytes from a worker to the WebView as an ArrayBuffer.
  *
- * <p>Writes escaped the Capacitor plugin-call queue because bytes crossing it
- * become a JSON string; picks pay the same crossing plus a decode the write
- * path never had, because a base64 string has to be turned back into a
- * {@code Uint8Array} on the WebView's main thread. Over a 25 MB scan - the
- * size a document really reaches, since a PDF is stored exactly as it
- * arrived and there is no normalisation path for one - that measured 1054ms
- * of blocked main thread against 4ms for a typed decode, with the base64
- * string, {@code atob}'s intermediate binary string and the final array all
- * live at once.
+ * <p>A 25 MB document blocked the WebView main thread for 1054ms when
+ * decoded through base64, compared with 4ms using the typed buffer.
+ * The message port returns bytes on success and a JSON error string on
+ * failure. {@link WebMessageReplies} defines the error format.
  *
- * <p>The protocol is a half of the write channel's, because only one message
- * carries bytes:
+ * <p>JavaScript transfers a port with the pick token. The worker redeems
+ * it through {@link PickedFiles}. A {@code received} acknowledgement
+ * consumes the token. {@code cancel} closes the reader and leaves the
+ * source available for the chunked fallback.
  *
- * <ol>
- *   <li>JS opens a {@code MessageChannel} and posts the token a pick handed
- *       it, as JSON, to {@code window.androidPhotoPickChannel}, transferring
- *       one port along with it.</li>
- *   <li>This class redeems that token with {@link PickedFiles}, reads the
- *       file on a worker thread, and posts the bytes back on the transferred
- *       port as an {@code ArrayBuffer}. JavaScript sends {@code received}
- *       before closing its port; only that acknowledgement consumes the
- *       token. A {@code cancel} closes the reader while keeping the source
- *       available for the chunked fallback.</li>
- *   <li>A failure comes back on the same port as a JSON string,
- *       {@code {"ok":false,"error":...}} ({@link WebMessageReplies}, shared
- *       with the write channel). A WebMessage carries either bytes or a
- *       string and never both, so the reply's own type is what tells success
- *       from failure - which means the bytes need no envelope, and no copy
- *       into one.</li>
- * </ol>
- *
- * <p>{@link #registerIfSupported} is a no-op below the WebView versions that
- * carry {@code WEB_MESSAGE_LISTENER} and {@code WEB_MESSAGE_ARRAY_BUFFER},
- * the same two the write channel needs. The app's floor is WebView 87, below
- * both (ADR-0023), so {@code window.androidPhotoPickChannel} is not always
- * there and {@code picker.ts} falls back to the plugin's own
- * {@code readPickedChunk} exactly where it does not exist - a piece of the
- * file per bridge call, which is how that path reaches the 25 MB ceiling
- * without an allocation the heap can refuse (phase 9 audit ticket 14).
+ * <p>Registration requires WEB_MESSAGE_LISTENER and WEB_MESSAGE_ARRAY_BUFFER.
+ * When unavailable, picker.ts uses {@code readPickedChunk} to limit the
+ * size of each bridge call.
  */
 public final class PhotoPickChannel {
     private static final String TAG = "PhotoPickChannel";
@@ -189,7 +161,7 @@ public final class PhotoPickChannel {
         byte[] buffer = new byte[8192];
         int read;
         while ((read = input.read(buffer)) != -1) {
-            if (read > 32 * 1024 * 1024 - collected.size()) {
+            if (read > 50 * 1024 * 1024 - collected.size()) {
                 throw new java.io.IOException("too-large");
             }
             collected.write(buffer, 0, read);

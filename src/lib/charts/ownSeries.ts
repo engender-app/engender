@@ -1,33 +1,12 @@
-/* One Own-series figure across the benchmarks that can be read together.
+/* Plot a person's comparable benchmarks in their original units.
+   comparabilityBreak and acousticDelta share the same gate: two takes match
+   only when their passage and capture chain agree. Return contiguous runs
+   and a reason for each gap, so a handset change cannot look like a voice
+   change.
 
-   Six of the seven figures a benchmark reports carry no published range and
-   nothing to compare against except the person's own earlier takes
-   (CONTEXT: "Own-series figure"). The reference screen says that in words.
-   This is the half that makes the honest answer useful: the figure over
-   time, in its own units.
-
-   **The series breaks rather than joining.** Two takes are readable
-   together only if they were read from the same passage and recorded
-   through the same capture chain, which is `comparabilityBreak`'s question
-   asked along a whole history instead of about one pair - the same gate
-   `acousticDelta` computes behind, so the trend and the pair delta cannot
-   disagree about which takes go together. What comes out is not one line
-   with holes in it but a list of runs, each a stretch the app is willing
-   to join, and a reason per gap for the screen to say out loud. A person
-   who changes phone loses the comparison, which is a real cost and the
-   honest one: the alternative is a line that reads as their voice changing
-   on the day they bought a handset.
-
-   No band, no target region and no normalising: what a figure means here
-   is a number in the unit it was measured in, and these five have no
-   dependable typical range to draw. This module
-   produces readings and scales only, and every scale is padded off the
-   readings themselves (charts/geometry.ts's own rule for a measurement
-   that moves within a few percent of itself).
-
-   Pure, and node-tested. The figure table is keyed by the registry's own
-   Own-series keys, so a seventh figure that carries no band is a typecheck
-   failure here rather than a figure with no trend. */
+   There is no reference band, target or normalization. charts/geometry.ts
+   pads scales from the observed values. The registry's Own-series keys
+   enforce coverage at typecheck; the calculations run in Node tests. */
 
 import { paddedRange, type PaddedRange, type Sample, type SeriesPoint } from './geometry';
 import { comparabilityBreak, type ComparableTake, type SeriesBreak } from '../audio/benchmarkDelta';
@@ -112,7 +91,7 @@ interface FigureShape {
 
    `span`'s high end leads and its low end follows, so the solid line is
    the top of the range and the dashed one the bottom, in the order a take
-   writes them (`vb_hz_range`). */
+   writes them (`hz_range`). */
 const FIGURES: Record<OwnSeriesMetricKey, FigureShape> = {
   span: {
     read: (b) => b.f0P90Hz,
@@ -120,8 +99,8 @@ const FIGURES: Record<OwnSeriesMetricKey, FigureShape> = {
     minPad: 5
   },
   spread: { read: (b) => b.semitoneSd, minPad: 0.2 },
-  /* A rate nobody could have read at is a gap rather than a reading
-     (redesign ticket 41). Benchmarks recorded before the passage had a
+  /* A rate nobody could have read at is a gap rather than a reading.
+     Benchmarks recorded before the passage had a
      working length gate could be a few words of an abandoned take divided
      into the whole passage's word count, which reports roughly twice the
      true speaking rate, and there is no stored field that proves it either
@@ -179,12 +158,10 @@ export function ownSeries(benchmarks: readonly BenchmarkForSeries[], key: OwnSer
 const numbers = (samples: readonly Sample[]): number[] =>
   samples.filter((sample): sample is number => sample !== null);
 
-/** The most recent benchmark that measured this figure at all, in its own
-    unit - null where none has (the metric reference sheet's own mini
-    figure, phase 11 ticket 17). Newest first over the same benchmarks and
-    the same per-figure read `ownSeries` uses, so a benchmark this figure's
-    trend already treats as unmeasured (a skipped vowel, an implausible
-    rate) is skipped here too rather than read a second, looser way. */
+/** The most recent benchmark that measured this figure at all, in its own unit - null where
+    none has. Newest first over the same benchmarks and the same per-figure read `ownSeries`
+    uses, so a benchmark this figure's trend already treats as unmeasured (a skipped vowel,
+    an implausible rate) is skipped here too rather than read a second, looser way. */
 export function latestReading(benchmarks: readonly BenchmarkForSeries[], key: OwnSeriesMetricKey): number | null {
   const read = FIGURES[key].read;
   for (let i = benchmarks.length - 1; i >= 0; i--) {

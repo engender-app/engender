@@ -1,33 +1,12 @@
-/* Pauses a face's glance and blink while they hold still, and lets them run
-   across the stretches where they move (ux-carpet 228; stillHolds.ts has why
-   and the arithmetic).
+/* Pause CSS glance and blink animations inside identical-keyframe holds.
+   Save the start time and restore it to resume in phase. stillHolds.ts
+   supplies hold timing. Once Web Animations controls playback, Chromium
+   stops applying CSS animation-play-state, so this module handles gaze too.
 
-   The animations stay the stylesheet's own CSS animations - face-glance and
-   face-blink, on their own periods and delays from moodGlance.ts - so what
-   they show is decided in one place, exactly as before. This only switches
-   each one between paused and running through its Web Animations handle:
-
-   - Paused anywhere inside a hold, an animation shows the value the running
-     one would, because a hold is a stretch of identical keyframes.
-   - Resumed by putting its start time back, it carries on in phase, as if it
-     had never stopped. A running CSS animation's start time never moves, so
-     that is the clock the face always keeps.
-   - The row's gaze (`is-held` on the face) used to pause the glance through
-     `animation-play-state`. Once a script has paused or played an animation,
-     Chromium stops reading that property for it, so the pause is done here,
-     with the same meaning: the glance stops where it is and resumes from
-     there when the row lets go, which moves its phase on by the held time.
-     The blink was never paused by the gaze and still is not.
-   - Reduced motion removes the animations in the stylesheet, which cancels
-     them; a cancelled animation is never touched again, and new ones are
-     picked up when motion comes back.
-
-   Attached to the rows that draw alive faces (MoodChips, MoodPicker, QuickAdd)
-   rather than to MoodFace itself, because MoodFace.svelte is pinned byte for
-   byte to ticket 27's drawing (tests/mood-faces.test.ts): this is motion
-   built around the face, and redesign ticket 19 set the precedent that such
-   work leaves the drawing's file alone. The row finds its alive faces, and
-   any that appear later, and runs one of these per face. */
+   Gaze pauses only the glance. Home inactivity pauses both clocks. Resume
+   moves the clock origins by the held duration. Reduced motion cancels the
+   CSS animations, and new handles are picked up when motion returns.
+   Rows attach one controller per live face, including faces added later. */
 
 import type { Attachment } from 'svelte/attachments';
 import { isDoorActive } from '../navigation/doorActivity';
@@ -44,7 +23,7 @@ type Tracked = {
   windows: MovingWindow[];
   /** The timeline time the animation's iteration clock counts from. */
   origin: number;
-  /** Set while the row's gaze holds the glance: its current time then. */
+  /** The time frozen by the row's gaze or Home's idle policy. */
   heldAt: number | null;
   timer: ReturnType<typeof setTimeout> | null;
 };
@@ -69,7 +48,7 @@ const now = () => performance.now();
 
 /** Runs the pause-while-still controller for one alive face; returns its
     teardown. */
-function holdFaceWhileStill(face: SVGSVGElement): () => void {
+function holdFaceWhileStill(face: SVGSVGElement, home: HTMLElement | null): () => void {
   const tracked = new Map<CSSAnimation, Tracked>();
   let stopped = false;
   let frame: number | null = null;
@@ -82,7 +61,8 @@ function holdFaceWhileStill(face: SVGSVGElement): () => void {
     return { duration: Number(computed.duration), delay: Number(animation.effect!.getTiming().delay ?? 0) };
   };
 
-  const isGlanceHeld = (entry: Tracked) =>
+  const isHeld = (entry: Tracked) =>
+    home?.dataset.homeAmbient === 'paused' ||
     entry.animation.animationName === 'face-glance' && face.classList.contains('is-held');
 
   function step(entry: Tracked) {
@@ -93,17 +73,19 @@ function holdFaceWhileStill(face: SVGSVGElement): () => void {
       tracked.delete(animation);
       return;
     }
-    if (isGlanceHeld(entry)) {
+    if (isHeld(entry)) {
       if (entry.heldAt === null) {
         /* Where the running glance is now, not where this controller last
            paused it: a glance already paused inside a hold has a current time
            frozen at the start of that hold, and resuming from there would
            move its phase on by the whole hold as well as by the gaze. */
-        entry.heldAt = now() - entry.origin;
+        entry.heldAt = animation.playState === 'running' && typeof animation.currentTime === 'number'
+          ? animation.currentTime
+          : now() - entry.origin;
         animation.pause();
         animation.currentTime = entry.heldAt;
       }
-      return; // released by the class observer
+      return; // released by the gaze or Home observer
     }
     const { duration, delay } = timing(animation);
     if (!(duration > 0)) return;
@@ -150,25 +132,23 @@ function holdFaceWhileStill(face: SVGSVGElement): () => void {
     });
   };
 
-  /* The gaze: `is-held` comes and goes with the row. */
-  const onClass = () => {
+  /* Gaze holds only the glance. Home's idle policy holds both clocks. */
+  const onHold = () => {
     for (const entry of tracked.values()) {
-      if (entry.animation.animationName !== 'face-glance') continue;
-      if (face.classList.contains('is-held')) {
-        if (entry.timer) clearTimeout(entry.timer);
-        step(entry);
-      } else if (entry.heldAt !== null) {
+      if (entry.timer) clearTimeout(entry.timer);
+      if (!isHeld(entry) && entry.heldAt !== null) {
         entry.origin = now() - entry.heldAt;
         entry.heldAt = null;
         entry.animation.startTime = entry.origin;
-        if (entry.timer) clearTimeout(entry.timer);
-        step(entry);
       }
+      step(entry);
     }
     scan();
   };
-  const classes = new MutationObserver(onClass);
+  const classes = new MutationObserver(onHold);
   classes.observe(face, { attributes: true, attributeFilter: ['class'] });
+  const ambient = home ? new MutationObserver(onHold) : null;
+  if (home) ambient?.observe(home, { attributes: true, attributeFilter: ['data-home-ambient'] });
 
   /* Motion preference changes add or remove the animations themselves. */
   const motion = new MutationObserver(scheduleScan);
@@ -184,6 +164,7 @@ function holdFaceWhileStill(face: SVGSVGElement): () => void {
     stopped = true;
     if (frame !== null) cancelAnimationFrame(frame);
     classes.disconnect();
+    ambient?.disconnect();
     motion.disconnect();
     media.removeEventListener('change', onMedia);
     for (const entry of tracked.values()) {
@@ -199,9 +180,10 @@ const FACE = 'svg.mood-face.is-alive';
     appear in it later. */
 export const holdFacesWhileStill: Attachment<HTMLElement> = (row) => {
   const faces = new Map<SVGSVGElement, () => void>();
+  const home = row.closest<HTMLElement>('[data-home-ambient]');
   const sync = () => {
     const present = new Set(isDoorActive(row) ? row.querySelectorAll<SVGSVGElement>(FACE) : []);
-    for (const face of present) if (!faces.has(face)) faces.set(face, holdFaceWhileStill(face));
+    for (const face of present) if (!faces.has(face)) faces.set(face, holdFaceWhileStill(face, home));
     for (const [face, stop] of faces) {
       if (!present.has(face)) {
         stop();

@@ -1,27 +1,8 @@
-<!-- The injection rotation body map (phase 4 ticket 02): a tappable region
-     per site, over a schematic body. Deliberately not the same control as
-     the patch/gel application-site picker - a patch site is not rotated on
-     an injection site's schedule, so that one is a flat row of chips and
-     this one is a map you can see the last injection on.
-
-     Real buttons positioned over a decorative SVG rather than tappable SVG
-     shapes: a `<button>` gets the focus ring, the touch target and the
-     accessible name for free, and the silhouette is then just a picture.
-
-     Phase 6 ticket 13: each dot now shades by how long ago its site was
-     used, so the question "where should this one go" is answered off the
-     picture instead of by reading a twelve-row table against it. The dots
-     carry three things at once and each one has its own channel: the fill
-     is recency, a solid ring is the site tapped for this dose, and a
-     dashed ring is where the last injection went. Nothing here says a site
-     is due.
-
-     Phase 11 ticket 48: the figure is the one body the app draws
-     (bodySilhouette.ts, ADR-0087) rather than a circle and five rounded
-     rectangles of this component's own. The dots stay dots - a rotation
-     site is a point on a body, not a region of one - but all twelve were
-     re-placed against the new contour, which is a different shape at a
-     different scale. injectionSiteMap.ts keeps everything about them. -->
+<!-- Real buttons over the decorative silhouette get focus, targets and
+     accessible names. injectionSiteMap.ts positions twelve points on the
+     shared body. Fill shows recency, a solid ring marks this
+     dose's selection, and a dashed ring marks the last injection. The map
+     implies no due site. -->
 <script lang="ts">
   import { rovingRadio } from '$lib/components/rovingRadio';
   import { disclose } from '$lib/motion/reveal';
@@ -47,10 +28,9 @@
         can be rotated away from it. Null when there is no history yet, or
         when that injection was imported with a site this build cannot place. */
     lastUsed?: string | null;
-    /** Days since each site was last used, or null for a site never used
-        (ticket 10: doseSchedule.ts's siteRecency). Omitted where the caller
-        has no dose history at hand - the dots then carry no recency and the
-        list below is absent. */
+    /** Days since each site was last used, or null for a site never used. Omitted where the
+        caller has no dose history at hand - the dots then carry no recency and the list
+        below is absent. */
     recency?: Record<InjectionSiteKey, number | null>;
     onChange: (site: InjectionSiteKey) => void;
   } = $props();
@@ -67,11 +47,10 @@
   const levelOf = (key: InjectionSiteKey) =>
     recency && span ? recencyHeatLevel(recency[key], span) : null;
 
-  /** The dot's fill as a custom property, so the list's swatches can be
-      the same colour by the same route. Level 0 sets nothing: an empty dot
-      is drawn by the absence of a fill rather than by a colour that stands
-      for absence - which is `rampStyle`'s rule (mapChannels.ts), shared with
-      the body map since redesign ticket 40 gave that one a ramp too. */
+  /** The dot's fill as a custom property, so the list's swatches can be the same colour by
+      the same route. Level 0 sets nothing: an empty dot is drawn by the absence of a fill
+      rather than by a colour that stands for absence - which is `rampStyle`'s rule
+      (mapChannels.ts), shared with the body map gave that one a ramp too. */
   const swatchStyle = (level: number | null) =>
     rampStyle(level, (step) => ({ '--dot-fill': `var(--heat-${step})` }));
 
@@ -126,9 +105,8 @@
   {/each}
 </div>
 
-<!-- Opens its own height when the first site is picked, rather than
-     pushing the reason line and Save down 42px in one frame (after-release
-     26 measured it on the coming-back sheet). -->
+<!-- Opens its own height when the first site is picked, rather than pushing the reason line
+     and Save down 42px in one frame (measured it on the coming-back sheet). -->
 {#if value}
   <p class="muted small site-map-caption" transition:disclose|local>{injectionSiteLabel(value)}</p>
 {/if}
@@ -160,10 +138,9 @@
   </div>
 {/if}
 
-<!-- Ticket 10's list, kept: a colour ramp is not readable by a screen
-     reader, so this is the recency in words rather than a duplicate to be
-     tidied away now the map carries it. Each row shows its own dot's
-     swatch, which makes the list the map's key as well as its equivalent. -->
+<!-- A colour ramp is not readable by a screen reader, so this is the recency in words
+     rather than a duplicate to be tidied away now the map carries it. Each row shows its
+     own dot's swatch, which makes the list the map's key as well as its equivalent. -->
 {#if recency}
   <!-- The heading is what the list's accessible name has always said, now
        said on screen as well: the list is 500px below the figure on a phone,
@@ -181,7 +158,7 @@
         <span class="site-recency-swatch" aria-hidden="true"></span>
         <span>{injectionSiteLabel(site.key)}</span>
         <span class="muted">
-          {days === null ? m.dose_site_never_used() : m.dose_site_days_ago({ days: m.n_days({ n: days }) })}
+          {days === null ? m.dose_site_never_used() : m.days_ago({ days: m.n_days({ n: days }) })}
         </span>
       </li>
     {/each}
@@ -231,13 +208,11 @@
     cursor: pointer;
     border-radius: 50%;
   }
-  /* The swatch, in both places it appears: the visible dot on the figure
-     and the chip on its row in the list. Stated once so the map and its own
-     key cannot drift apart.
+  /* The swatch, in both places it appears: the visible dot on the figure and the chip on
+     its row in the list. Stated once so the map and its own key cannot drift apart.
 
-     --outline: palettes.css's line for the edge drawn inside a block
-     (phase 10 left the app two line strengths), and the dot has to hold
-     it against the silhouette's own surface as well as against a fill. */
+     --outline: palettes.css's line for the edge drawn inside a block, and the dot has to
+     hold it against the silhouette's own surface as well as against a fill. */
   .site-dot::after,
   .site-recency-swatch {
     border-radius: 50%;

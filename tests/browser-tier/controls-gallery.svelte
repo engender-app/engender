@@ -1,6 +1,6 @@
 <script lang="ts">
   /* Every control the app hands a finger, on one page, at phone width,
-     against the real tokens (phase 5 ticket 30).
+     against the real tokens.
 
      The kit gallery next door cannot host these: it deliberately leaves
      components.css out, because the surface kit's whole claim is that it
@@ -33,7 +33,7 @@
     html.dataset.theme = theme;
     if (motion === 'reduce') html.dataset.a11yMotion = 'reduce';
     else delete html.dataset.a11yMotion;
-    refreshActiveFlag(document, false);
+    refreshActiveFlag(document);
   });
 
   const TEN = { name: 'Femininity', low: 'Not at all', high: 'Completely', min: 0, max: 10 };
@@ -72,7 +72,7 @@
   </select>
 </div>
 
-<!-- data-app-root (ticket 15): press.css's default keys off this attribute,
+<!-- data-app-root: press.css's default keys off this attribute,
      the same as the app shell - without it every control below would go
      back to answering nothing, which is exactly the state this gallery
      exists to catch. -->

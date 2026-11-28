@@ -2,16 +2,31 @@ import { createHash, randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
+import { networkInterfaces } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import { serializeCatalogue } from './catalogue.mjs';
 import { catalogueFindings, collectReferenceSites, copySourceFiles } from './check-copy.mjs';
 import { isOutside, readOutside, replaceOutside } from './strings-outside.mjs';
+import { lexiconProblem } from './lexicon-core.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const PAGE = fileURLToPath(new URL('./strings.html', import.meta.url));
 const REVIEW_FILE = '.scratch/copy-review.json';
+/** Removals the page asked for while the code still used the key. Taking a
+ * key out of the source needs a person (or an agent) to rewrite the markup
+ * around it, so the request waits here with the places that use it. */
+const REMOVAL_FILE = '.scratch/strings-removals.json';
+
+/** @param {string} root @returns {Record<string, { en: unknown, pl: unknown, uses: string[], at: string }>} */
+export function readRemovals(root = ROOT) {
+  try { return JSON.parse(readFileSync(join(root, REMOVAL_FILE), 'utf8')); }
+  catch (error) { if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return {}; throw error; }
+}
+const LEXICON_PAGE = fileURLToPath(new URL('./lexicon.html', import.meta.url));
+const LEXICON_CORE = fileURLToPath(new URL('./lexicon-core.mjs', import.meta.url));
+const LEXICON_FILE = 'messages/lexicon.json';
 /** @type {Record<number, string>} */
 const THEMES = {
   38: 'Journal, day, search and readback',
@@ -82,6 +97,7 @@ export function readStrings(root = ROOT) {
   const en = JSON.parse(readFileSync(join(root, 'messages/en.json'), 'utf8'));
   const pl = JSON.parse(readFileSync(join(root, 'messages/pl.json'), 'utf8'));
   const approved = readReviews(root);
+  const removals = readRemovals(root);
   const coverage = JSON.parse(readFileSync(join(root, 'messages/copy-coverage-50.json'), 'utf8'));
   const base = execFileSync('git', ['merge-base', 'HEAD', 'main'], { cwd: root, encoding: 'utf8' }).trim();
   const previousEn = JSON.parse(execFileSync('git', ['show', `${base}:messages/en.json`], { cwd: root, encoding: 'utf8' }));
@@ -100,7 +116,7 @@ export function readStrings(root = ROOT) {
     const previous = { en: before?.en ?? null, pl: before?.pl ?? null };
     return {
       key, theme: (now ?? before)?.theme ?? 'Unassigned copy', ...values,
-      reviewed: approved[key] === revision(values.en, values.pl), previous,
+      reviewed: approved[key] === revision(values.en, values.pl), previous, queued: Object.hasOwn(removals, key),
       change: !before ? 'added' : !now ? 'removed' : isDeepStrictEqual(values, previous) ? null : 'changed',
       findings: now?.findings ?? [], sites: (now?.sites ?? []).map(site)
     };
@@ -111,6 +127,7 @@ export function readStrings(root = ROOT) {
     en: en[key] ?? null,
     pl: pl[key] ?? null,
     reviewed: approved[key] === revision(en[key] ?? null, pl[key] ?? null),
+    queued: Object.hasOwn(removals, key),
     previous: { en: previousEn[key] ?? null, pl: previousPl[key] ?? null },
     change: !Object.hasOwn(previousEn, key) && !Object.hasOwn(previousPl, key) ? 'added' :
       !Object.hasOwn(en, key) && !Object.hasOwn(pl, key) ? 'removed' :
@@ -161,42 +178,143 @@ export function writeString(root, edit) {
   writeAtomic(file, serializeCatalogue(catalogue));
 }
 
-/** @param {string} root */
-export function createStringsServer(root = ROOT) {
+/** The lexicon and the revision a save must name, so two tabs cannot
+ * overwrite each other.
+ * @param {string} root */
+export function readLexicon(root = ROOT) {
+  let text;
+  try { text = readFileSync(join(root, LEXICON_FILE), 'utf8'); }
+  catch (error) { if (error instanceof Error && 'code' in error && error.code === 'ENOENT') text = '{"terms":[]}'; else throw error; }
+  return { revision: createHash('sha256').update(text).digest('hex'), lexicon: JSON.parse(text) };
+}
+
+/** @param {string} root @param {unknown} save */
+export function writeLexicon(root, save) {
+  if (!save || typeof save !== 'object') throw new RequestError(400, 'Invalid lexicon.');
+  const { revision: expected, lexicon } = /** @type {{ revision?: unknown, lexicon?: unknown }} */ (save);
+  const problem = lexiconProblem(lexicon);
+  if (typeof expected !== 'string' || problem) throw new RequestError(400, problem ?? 'Invalid lexicon.');
+  if (readLexicon(root).revision !== expected) throw new RequestError(409, 'Lexicon changed on disk. Reload before saving.');
+  writeAtomic(join(root, LEXICON_FILE), JSON.stringify(lexicon, null, 2) + '\n');
+}
+
+/** Remove one catalogue key from both languages. Refuses a key the source
+ * still references, a key edited since the page loaded, and copy outside the
+ * catalogues. Runs synchronously, so a concurrent edit cannot interleave.
+ * @param {string} root @param {unknown} removal */
+export function removeString(root, removal) {
+  if (!removal || typeof removal !== 'object') throw new RequestError(400, 'Invalid removal.');
+  const { key, en: shownEn, pl: shownPl } = /** @type {Record<string, unknown>} */ (removal);
+  if (typeof key !== 'string' || key.startsWith('$') || isOutside(key)) {
+    throw new RequestError(400, 'Only message catalogue keys can be removed.');
+  }
+  const files = ['en', 'pl'].map((locale) => join(root, `messages/${locale}.json`));
+  const [en, pl] = files.map((file) => JSON.parse(readFileSync(file, 'utf8')));
+  if (!Object.hasOwn(en, key) && !Object.hasOwn(pl, key)) throw new RequestError(400, 'Key does not exist.');
+  if (!isDeepStrictEqual(shownEn, en[key] ?? null) || !isDeepStrictEqual(shownPl, pl[key] ?? null)) {
+    throw new RequestError(409, `Copy changed for ${key}. Reload before removing.`);
+  }
+  const used = collectReferenceSites(copySourceFiles(root)).get(key) ?? [];
+  if (used.length) {
+    const queue = readRemovals(root);
+    queue[key] = { en: en[key] ?? null, pl: pl[key] ?? null,
+      uses: used.map((site) => `${relative(root, site.file)}:${site.line}`), at: new Date().toISOString() };
+    const file = join(root, REMOVAL_FILE);
+    mkdirSync(dirname(file), { recursive: true });
+    writeAtomic(file, JSON.stringify(queue, null, 2) + '\n');
+    return { queued: true, uses: used.length };
+  }
+  delete en[key];
+  delete pl[key];
+  writeAtomic(files[0], serializeCatalogue(en));
+  writeAtomic(files[1], serializeCatalogue(pl));
+  const approved = readReviews(root);
+  if (Object.hasOwn(approved, key)) {
+    delete approved[key];
+    writeAtomic(join(root, REVIEW_FILE), JSON.stringify(approved, null, 2) + '\n');
+  }
+}
+
+/** @param {import('node:http').IncomingMessage} request */
+async function readJson(request) {
+  if (request.headers['content-type'] !== 'application/json') {
+    throw new RequestError(415, 'Send application/json.');
+  }
+  /** @type {Buffer[]} */
+  const chunks = [];
+  let bytes = 0;
+  for await (const chunk of request) {
+    bytes += chunk.length;
+    if (bytes > 1024 * 1024) throw new RequestError(413, 'Edit is too large.');
+    chunks.push(chunk);
+  }
+  try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw new RequestError(400, 'Invalid JSON.'); }
+}
+
+/** Without a key the server answers only 127.0.0.1. With one it answers any
+ * address, so a phone on the LAN can use it, but only a browser that opened a
+ * page with `?key=` once: that sets a SameSite cookie every later request must
+ * carry, and a write from another site's page is refused by its Origin.
+ * @param {string} root @param {{ key?: string | null }} [options] */
+export function createStringsServer(root = ROOT, { key = null } = {}) {
+  const session = key ? createHash('sha256').update(key).digest('hex') : null;
   const server = createServer(async (request, response) => {
     response.setHeader('Cache-Control', 'no-store');
     response.setHeader('X-Content-Type-Options', 'nosniff');
     try {
       const address = server.address();
-      const host = address && typeof address === 'object' ? `127.0.0.1:${address.port}` : '';
-      if (request.headers.host !== host ||
+      const port = address && typeof address === 'object' ? address.port : 0;
+      const host = session ? request.headers.host ?? '' : `127.0.0.1:${port}`;
+      if (request.headers.host !== host || !host.endsWith(`:${port}`) ||
           (request.headers.origin && request.headers.origin !== `http://${host}`)) {
         throw new RequestError(403, 'Use the local strings page.');
+      }
+      if (session) {
+        const url = new URL(request.url ?? '/', `http://${host}`);
+        if (request.method === 'GET' && url.searchParams.has('key')) {
+          if (url.searchParams.get('key') !== key) throw new RequestError(403, 'Wrong key.');
+          response.statusCode = 303;
+          response.setHeader('Set-Cookie', `strings-key=${session}; Path=/; HttpOnly; SameSite=Strict; Max-Age=2592000`);
+          response.setHeader('Location', url.pathname);
+          response.end();
+          return;
+        }
+        const cookies = (request.headers.cookie ?? '').split(';').map((part) => part.trim());
+        if (!cookies.includes(`strings-key=${session}`)) throw new RequestError(403, 'Open the address with its key first.');
       }
       if (request.method === 'GET' && request.url === '/') {
         response.setHeader('Content-Type', 'text/html; charset=utf-8');
         response.end(readFileSync(PAGE));
+      } else if (request.method === 'GET' && request.url === '/lexicon') {
+        response.setHeader('Content-Type', 'text/html; charset=utf-8');
+        response.end(readFileSync(LEXICON_PAGE));
+      } else if (request.method === 'GET' && request.url === '/lexicon-core.mjs') {
+        response.setHeader('Content-Type', 'text/javascript; charset=utf-8');
+        response.end(readFileSync(LEXICON_CORE));
+      } else if (request.method === 'GET' && request.url === '/api/lexicon') {
+        response.setHeader('Content-Type', 'application/json; charset=utf-8');
+        response.end(JSON.stringify(readLexicon(root)));
       } else if (request.method === 'GET' && request.url === '/api/strings') {
         response.setHeader('Content-Type', 'application/json; charset=utf-8');
         response.end(JSON.stringify(readStrings(root)));
-      } else if (request.method === 'PATCH' && ['/api/strings', '/api/reviews'].includes(request.url ?? '')) {
-        if (request.headers['content-type'] !== 'application/json') {
-          throw new RequestError(415, 'Send application/json.');
-        }
-        /** @type {Buffer[]} */
-        const chunks = [];
-        let bytes = 0;
-        for await (const chunk of request) {
-          bytes += chunk.length;
-          if (bytes > 1024 * 1024) throw new RequestError(413, 'Edit is too large.');
-          chunks.push(chunk);
-        }
-        let edit;
-        try { edit = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw new RequestError(400, 'Invalid JSON.'); }
+      } else if ((request.method === 'PATCH' && ['/api/strings', '/api/reviews'].includes(request.url ?? '')) ||
+          (request.method === 'PUT' && request.url === '/api/lexicon')) {
+        const edit = await readJson(request);
         if (request.url === '/api/reviews') writeReviews(root, edit);
+        else if (request.url === '/api/lexicon') writeLexicon(root, edit);
         else writeString(root, edit);
         response.statusCode = 204;
         response.end();
+      } else if (request.method === 'DELETE' && request.url === '/api/strings') {
+        const removal = removeString(root, await readJson(request));
+        if (removal) {
+          response.statusCode = 202;
+          response.setHeader('Content-Type', 'application/json; charset=utf-8');
+          response.end(JSON.stringify(removal));
+        } else {
+          response.statusCode = 204;
+          response.end();
+        }
       } else {
         throw new RequestError(404, 'Not found.');
       }
@@ -210,10 +328,31 @@ export function createStringsServer(root = ROOT) {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const server = createStringsServer();
-  server.listen(0, '127.0.0.1', () => {
+  // `--lan`: reachable from a phone at a fixed port, behind a key kept in
+  // .scratch so a restart does not log the phone out.
+  const lan = process.argv.includes('--lan');
+  let key = null;
+  if (lan) {
+    const file = join(ROOT, '.scratch/strings-lan-key');
+    try { key = readFileSync(file, 'utf8').trim(); } catch { /* first run */ }
+    if (!key) {
+      key = randomUUID();
+      mkdirSync(dirname(file), { recursive: true });
+      writeFileSync(file, key + '\n', { mode: 0o600 });
+    }
+  }
+  const server = createStringsServer(ROOT, { key });
+  server.listen(lan ? Number(process.env.STRINGS_PORT ?? 8737) : 0, lan ? '0.0.0.0' : '127.0.0.1', () => {
     const address = server.address();
-    if (address && typeof address === 'object') console.log(`Strings: http://127.0.0.1:${address.port}`);
+    if (address && typeof address === 'object') {
+      const hosts = lan ? Object.values(networkInterfaces()).flat()
+        .filter((entry) => entry && entry.family === 'IPv4' && !entry.internal).map((entry) => entry?.address) : ['127.0.0.1'];
+      for (const name of hosts) {
+        const base = `http://${name}:${address.port}`;
+        const suffix = key ? `?key=${key}` : '';
+        console.log(process.argv[2] === 'lexicon' ? `Lexicon: ${base}/lexicon${suffix}` : `Strings: ${base}/${suffix}\nLexicon: ${base}/lexicon${suffix}`);
+      }
+    }
   });
   server.on('error', (error) => { console.error(error.message); process.exitCode = 1; });
 }

@@ -1,9 +1,8 @@
-/* Ticket 04's F-08 compatibility proof: writes a database the way
-   mc-worker.ts did before the cipher was pinned (legacy-cipher-worker.ts,
-   PRAGMA hexkey with no PRAGMA cipher), then opens that same file through
-   the real, pinned `createEncryptedWebSqlite` and reads back what it wrote.
-   If the pin ever disagrees with sqlite3mc's compiled default, this is
-   where it turns into a refused open instead of an orphaned journal. */
+/* F-08 compatibility proof: writes a database the way mc-worker.ts did before the cipher
+   was pinned (legacy-cipher-worker.ts, PRAGMA hexkey with no PRAGMA cipher), then opens
+   that same file through the real, pinned `createEncryptedWebSqlite` and reads back what it
+   wrote. If the pin ever disagrees with sqlite3mc's compiled default, this is where it
+   turns into a refused open instead of an orphaned journal. */
 
 import { createEncryptedWebSqlite } from '../../src/lib/data/sqlite/mc-driver.ts';
 

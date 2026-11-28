@@ -1,4 +1,4 @@
-/* The rule the body map paints by (phase 10 redesign ticket 40): a region's
+/* The rule the body map paints by: a region's
    reading over a range is the side it mostly sits on, at the mean of that
    side alone. The other side is never subtracted, only not drawn. */
 
@@ -96,11 +96,10 @@ test('an exact tie on both count and intensity lands on dysphoria, deterministic
   assert.equal(reading.mixed, true);
 });
 
-/* What the words beside the figure say (phase 11 pre-production UI/UX
-   ticket 30). The figure paints a region's reading and the sentence under it
-   reads the same reading out, so both come off one answer rather than two
-   near-identical guards - and "nothing here" has to survive a region the
-   range never mentions, which is most of them on a quiet month. */
+/* What the words beside the figure say. The figure paints a region's reading and the
+   sentence under it reads the same reading out, so both come off one answer rather than two
+   near-identical guards - and "nothing here" has to survive a region the range never
+   mentions, which is most of them on a quiet month. */
 
 test('a region the range never mentions has nothing to say', () => {
   assert.deepEqual(regionSummary(undefined), { kind: 'none' });
@@ -130,7 +129,7 @@ test('a reading carries the side, the count behind its mean, and both ways', () 
   });
 });
 
-/* The scale is native and whole (ADR-0012, ADR-0081): a mean of four
+/* The scale is native and whole (ADR-0012): a mean of four
    readings is a fraction and nothing on this screen shows one. */
 test('the mean is rounded to the scale a person reads', () => {
   const summary = regionSummary(regionReading(sides({ euphoriaCount: 3, euphoriaMean: 61.666_67 })));

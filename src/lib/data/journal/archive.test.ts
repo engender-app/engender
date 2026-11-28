@@ -10,6 +10,20 @@ import { columnsOf } from './archiveTable.ts';
 
 const bytes = (text: string) => new Uint8Array([...text].map((c) => c.charCodeAt(0)));
 
+/** A snapshot without the edit stamps every row carries, and without an entry's empty Trash
+    time: the cases here are about what content travels, and archive-merge-edits.test.ts
+    about the stamps. */
+function unstamped<Snapshot extends { journal: unknown }>(snapshot: Snapshot): Snapshot {
+  const strip = (value: unknown): unknown => {
+    if (Array.isArray(value)) return value.map(strip);
+    if (value === null || typeof value !== 'object') return value;
+    return Object.fromEntries(Object.entries(value)
+      .filter(([key, field]) => key !== 'updatedAt' && !(key === 'trashedAt' && field === null))
+      .map(([key, field]) => [key, strip(field)]));
+  };
+  return { ...snapshot, journal: strip(snapshot.journal) };
+}
+
 async function populated() {
   const db = await migratedDb();
   const files = fakeFileStore();
@@ -22,8 +36,6 @@ async function populated() {
   const tag = await journal.tags.addTag(group.key, 'endo');
   await journal.tags.setTagHidden('a-work', true);
   await journal.tags.renameTag('a-therapy', 'therapy session');
-  const measurementType = await journal.measurements.addCustomMeasurementType('Shoulders');
-  await journal.measurements.setMeasurementTypeHidden('hips', true);
 
   const entry = await journal.entries.upsertEntry({
     epochDay: 20000,
@@ -50,24 +62,21 @@ async function populated() {
   const milestonePhoto = await journal.photos.attach({ milestoneId: milestone }, { full: bytes('m'), thumb: bytes('mt') });
 
   const lab = await journal.labs.upsertResult({ epochDay: 20000, analyte: 'estradiol', value: 412.5, unit: 'pmol/L', note: 'fasting' });
-  const measurement = await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 20000, value: 79, unit: 'cm' });
-  const tally = await journal.tally.log({ epochDay: 20000, kind: 'misgendered' });
-  const sideEffect = await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000 });
+  const sideEffect = await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000, resolvedEpochDay: null });
   const cycleEvent = await journal.cycleEvents.upsertCycleEvent({ kind: 'spotting', epochDay: 20000 });
-  const journalingPause = await journal.journalingPauses.upsertPause({ startEpochDay: 19500, endEpochDay: 19510 });
   const personalEffect = await journal.personalEffects.upsertMarker({
     effect: 'breast_development',
     firstNoticedEpochDay: 19180
   });
   const reminder = await journal.reminders.upsertReminder({
     title: 'injection',
-    type: 'injection',
     time: '08:00',
     recurrence: 'EVERY_N_DAYS',
     interval: 7,
     anchorEpochDay: 20000,
     epochDay: null,
-    enabled: true
+    enabled: true,
+    drug: 'estradiol valerate'
   });
   const episode = await journal.regimen.upsertEpisode({
     drug: 'estradiol valerate',
@@ -93,7 +102,7 @@ async function populated() {
   /* Saved while that injection is the only dose logged, so its frozen
      day-of-interval is a fixed 5 rather than something the sublingual dose
      below would move. That the dose logged afterwards does not change it is
-     the freeze this archive then has to carry across (ticket 03). */
+     the freeze this archive then has to carry across. */
   const contextLab = await journal.labs.upsertResult({
     epochDay: epochDayFromTimestamp(1_700_000_000_000) + 4,
     analyte: 'estradiol',
@@ -126,10 +135,6 @@ async function populated() {
     recordedEpochDay: 19000
   });
 
-  const counterevidenceSnapshot = await journal.doubtJournal.saveSnapshot(20000, [
-    { epochDay: 19500, mood: 5, note: 'euphoric at the appointment' }
-  ]);
-
   const tryout = await journal.tryouts.upsertTryout({
     kind: 'name',
     label: 'Alex',
@@ -139,10 +144,6 @@ async function populated() {
   const feltSense = await journal.feltSense.add(
     { tryoutId: tryout },
     { epochDay: 19910, mood: 4, note: 'felt right at the pharmacy' }
-  );
-  const milestoneFeltSense = await journal.feltSense.add(
-    { milestoneId: milestone },
-    { epochDay: 19365, mood: 5, note: 'a year on, still relieved' }
   );
   const tryoutPhoto = await journal.tryouts.addPhoto(tryout, 19905, { full: bytes('presenting'), thumb: bytes('pt') });
 
@@ -162,9 +163,6 @@ async function populated() {
     milestone,
     milestonePhoto,
     lab,
-    measurement,
-    measurementType,
-    tally,
     contextLab,
     reminder,
     episode,
@@ -175,12 +173,9 @@ async function populated() {
     stock,
     sideEffect,
     cycleEvent,
-    journalingPause,
     personalEffect,
-    counterevidenceSnapshot,
     tryout,
     feltSense,
-    milestoneFeltSense,
     tryoutPhoto
   };
 }
@@ -188,7 +183,7 @@ async function populated() {
 test('entries travel by uuid, with their dimension values, tags, photos, recordings and video notes', async () => {
   const { db, journal, voice, tag, entry, photo, recording, videoNote } = await populated();
 
-  const snapshot = await journal.archive.snapshot();
+  const snapshot = unstamped(await journal.archive.snapshot());
 
   const uuid = (await db.query<{ uuid: string }>('SELECT uuid FROM entry WHERE id = ?', [entry]))[0].uuid;
   const first = snapshot.journal.entries.find((e) => e.uuid === uuid)!;
@@ -216,7 +211,7 @@ test('entries travel by uuid, with their dimension values, tags, photos, recordi
 test('an entry with nothing but a mood carries empty collections, not missing ones', async () => {
   const { db, journal, second } = await populated();
 
-  const snapshot = await journal.archive.snapshot();
+  const snapshot = unstamped(await journal.archive.snapshot());
 
   const uuid = (await db.query<{ uuid: string }>('SELECT uuid FROM entry WHERE id = ?', [second]))[0].uuid;
   const entry = snapshot.journal.entries.find((e) => e.uuid === uuid)!;
@@ -231,7 +226,7 @@ test('an entry with nothing but a mood carries empty collections, not missing on
 test('built-in rows travel by key and custom rows by uuid (ADR-0002)', async () => {
   const { journal, voice, preset, group, tag } = await populated();
 
-  const snapshot = await journal.archive.snapshot();
+  const snapshot = unstamped(await journal.archive.snapshot());
 
   const femininity = snapshot.journal.dimensions.find((d) => d.key === 'femininity')!;
   assert.equal(femininity.builtIn, true);
@@ -248,24 +243,10 @@ test('built-in rows travel by key and custom rows by uuid (ADR-0002)', async () 
   assert.deepEqual(appointments.tags, [{ id: tag.id, label: 'endo', builtIn: false, hidden: false }]);
 });
 
-test('a custom measurement type travels by uuid and a hidden built-in travels hidden (phase 5 ticket 29)', async () => {
-  const { journal, measurementType } = await populated();
-
-  const snapshot = await journal.archive.snapshot();
-
-  const waist = snapshot.journal.measurementTypes.find((t) => t.key === 'waist')!;
-  assert.equal(waist.builtIn, true);
-  assert.equal(waist.hidden, false);
-  const hips = snapshot.journal.measurementTypes.find((t) => t.key === 'hips')!;
-  assert.equal(hips.hidden, true);
-  const custom = snapshot.journal.measurementTypes.find((t) => t.key === measurementType.key)!;
-  assert.deepEqual(custom, { key: measurementType.key, name: 'Shoulders', builtIn: false, hidden: false });
-});
-
 test('the state a user put on a built-in row travels with it', async () => {
   const { journal } = await populated();
 
-  const snapshot = await journal.archive.snapshot();
+  const snapshot = unstamped(await journal.archive.snapshot());
 
   const activities = snapshot.journal.tagGroups.find((g) => g.key === 'activities')!;
   assert.equal(activities.builtIn, true);
@@ -273,24 +254,21 @@ test('the state a user put on a built-in row travels with it', async () => {
   assert.equal(activities.tags.find((t) => t.id === 'a-therapy')!.label, 'therapy session');
 });
 
-test('milestones, lab results, measurements, tally events, side effects, cycle events, journaling pauses, reminders and regimen episodes travel whole', async () => {
+test('milestones, lab results, side effects, cycle events, reminders and regimen episodes travel whole', async () => {
   const {
     journal,
     milestone,
     milestonePhoto,
     lab,
     contextLab,
-    measurement,
-    tally,
     sideEffect,
     cycleEvent,
-    journalingPause,
     personalEffect,
     reminder,
     episode
   } = await populated();
 
-  const snapshot = await journal.archive.snapshot();
+  const snapshot = unstamped(await journal.archive.snapshot());
 
   assert.deepEqual(snapshot.journal.milestones, [
     {
@@ -320,7 +298,10 @@ test('milestones, lab results, measurements, tally events, side effects, cycle e
       provider: 'Diagnostyka',
       timingRoute: 'im',
       timingHours: null,
-      timingDayOfInterval: 5
+      timingDayOfInterval: 5,
+      costAmount: null,
+      costCurrency: null,
+      costRefunded: false
     },
     {
       id: lab,
@@ -333,20 +314,16 @@ test('milestones, lab results, measurements, tally events, side effects, cycle e
       provider: '',
       timingRoute: null,
       timingHours: null,
-      timingDayOfInterval: null
+      timingDayOfInterval: null,
+      costAmount: null,
+      costCurrency: null,
+      costRefunded: false
     }
   ]);
-  assert.deepEqual(snapshot.journal.measurements, [
-    { id: measurement, type: 'waist', epochDay: 20000, value: 79, unit: 'cm' }
-  ]);
-  assert.deepEqual(snapshot.journal.tallyEvents, [{ id: tally, epochDay: 20000, kind: 'misgendered' }]);
   assert.deepEqual(snapshot.journal.sideEffects, [
-    { id: sideEffect, name: 'hot flashes', severity: 3, epochDay: 20000 }
+    { id: sideEffect, name: 'hot flashes', severity: 3, epochDay: 20000, resolvedEpochDay: null }
   ]);
   assert.deepEqual(snapshot.journal.cycleEvents, [{ id: cycleEvent, kind: 'spotting', epochDay: 20000 }]);
-  assert.deepEqual(snapshot.journal.journalingPauses, [
-    { id: journalingPause, startEpochDay: 19500, endEpochDay: 19510 }
-  ]);
   assert.deepEqual(snapshot.journal.personalEffects, [
     { id: personalEffect, effect: 'breast_development', firstNoticedEpochDay: 19180 }
   ]);
@@ -354,20 +331,21 @@ test('milestones, lab results, measurements, tally events, side effects, cycle e
     {
       id: reminder,
       title: 'injection',
-      type: 'injection',
       time: '08:00',
       recurrence: 'EVERY_N_DAYS',
       interval: 7,
       anchorEpochDay: 20000,
       epochDay: null,
       enabled: true,
-      autoSource: null
+      autoSource: null,
+      drug: 'estradiol valerate'
     }
   ]);
   assert.deepEqual(snapshot.journal.regimenEpisodes, [
     {
       id: episode,
       drug: 'estradiol valerate',
+      drugClass: 'hrt',
       ester: 'valerate',
       dose: 4,
       doseUnit: 'mg',
@@ -381,25 +359,10 @@ test('milestones, lab results, measurements, tally events, side effects, cycle e
   ]);
 });
 
-test('a counterevidence snapshot travels with its items copied in rather than referenced', async () => {
-  const { journal, counterevidenceSnapshot } = await populated();
+test("a tryout travels whole with its photos, and a felt-sense entry travels by its tryout's own uuid", async () => {
+  const { journal, tryout, feltSense, tryoutPhoto } = await populated();
 
-  const snapshot = await journal.archive.snapshot();
-
-  assert.deepEqual(snapshot.journal.counterevidenceSnapshots, [
-    {
-      id: counterevidenceSnapshot,
-      epochDay: 20000,
-      timestamp: snapshot.journal.counterevidenceSnapshots[0].timestamp,
-      items: [{ epochDay: 19500, mood: 5, note: 'euphoric at the appointment' }]
-    }
-  ]);
-});
-
-test("a tryout travels whole with its photos, and a felt-sense entry travels by whichever owner's own uuid it has", async () => {
-  const { journal, tryout, milestone, feltSense, milestoneFeltSense, tryoutPhoto } = await populated();
-
-  const snapshot = await journal.archive.snapshot();
+  const snapshot = unstamped(await journal.archive.snapshot());
 
   assert.deepEqual(snapshot.journal.tryouts, [
     {
@@ -413,22 +376,36 @@ test("a tryout travels whole with its photos, and a felt-sense entry travels by 
     }
   ]);
   assert.deepEqual(snapshot.journal.feltSenseEntries, [
-    {
-      id: milestoneFeltSense,
-      tryoutId: null,
-      milestoneId: milestone,
-      epochDay: 19365,
-      mood: 5,
-      note: 'a year on, still relieved'
-    },
-    { id: feltSense, tryoutId: tryout, milestoneId: null, epochDay: 19910, mood: 4, note: 'felt right at the pharmacy' }
+    { id: feltSense, tryoutId: tryout, epochDay: 19910, mood: 4, note: 'felt right at the pharmacy' }
   ]);
+});
+
+/* A milestone no longer holds felt-sense readings. An archive written before that still
+   carries them, and it stays restorable: those rows are dropped, not converted, and a
+   tryout's readings come through as before. */
+test("an older archive's milestone felt-sense readings are dropped on restore; a tryout's are kept", async () => {
+  const { journal, tryout, milestone, feltSense } = await populated();
+  const snapshot = unstamped(await journal.archive.snapshot());
+  const older = {
+    ...snapshot.journal,
+    feltSenseEntries: [
+      { id: 'from-a-milestone', tryoutId: null, milestoneId: milestone, epochDay: 19365, mood: 5, note: 'a year on' },
+      ...snapshot.journal.feltSenseEntries.map((entry) => ({ ...entry, milestoneId: null }))
+    ]
+  } as typeof snapshot.journal;
+
+  const target = openJournal(await migratedDb(), fakeFileStore());
+  await target.reconcileBuiltIns();
+  await target.archive.replace({ journal: older, files: (async function* () {})() });
+
+  assert.deepEqual(unstamped(await target.archive.snapshot()).journal.feltSenseEntries.map((entry) => entry.id), [feltSense]);
+  assert.deepEqual((await target.feltSense.forTryout(tryout)).map((entry) => entry.id), [feltSense]);
 });
 
 test('dose events travel whole, including the route-conditional fields and a changed dose\'s scheduled value', async () => {
   const { journal, dose, changedDose } = await populated();
 
-  const snapshot = await journal.archive.snapshot();
+  const snapshot = unstamped(await journal.archive.snapshot());
 
   assert.deepEqual(snapshot.journal.doseEvents, [
     {
@@ -445,7 +422,8 @@ test('dose events travel whole, including the route-conditional fields and a cha
       scheduledRoute: null,
       scheduledTimestamp: null,
       drug: null,
-      source: 'person'
+      source: 'person',
+      autoLogEpisodeId: null, autoLogEpochDay: null, autoLogIndex: null
     },
     {
       id: changedDose,
@@ -461,28 +439,25 @@ test('dose events travel whole, including the route-conditional fields and a cha
       scheduledRoute: 'oral',
       scheduledTimestamp: 1_700_090_000_000,
       drug: null,
-      source: 'person'
+      source: 'person',
+      autoLogEpisodeId: null, autoLogEpochDay: null, autoLogIndex: null
     }
   ]);
 });
 
-test('a dose carries no episode link, so nothing about its attribution travels', async () => {
+test('person-logged doses carry no automatic-slot provenance', async () => {
   const { journal } = await populated();
-
-  const snapshot = await journal.archive.snapshot();
-
-  for (const dose of snapshot.journal.doseEvents) {
-    assert.deepEqual(
-      Object.keys(dose).filter((key) => key.toLowerCase().includes('episode')),
-      []
-    );
+  for (const dose of (unstamped(await journal.archive.snapshot())).journal.doseEvents) {
+    assert.equal(dose.autoLogEpisodeId, null);
+    assert.equal(dose.autoLogEpochDay, null);
+    assert.equal(dose.autoLogIndex, null);
   }
 });
 
 test('schedules and pauses name their episode by its travelling uuid, not this device\'s rowid', async () => {
   const { journal, episode, schedule, dosePause } = await populated();
 
-  const snapshot = await journal.archive.snapshot();
+  const snapshot = unstamped(await journal.archive.snapshot());
 
   assert.deepEqual(snapshot.journal.doseSchedules, [
     {
@@ -504,7 +479,7 @@ test('schedules and pauses name their episode by its travelling uuid, not this d
 test('medication stock travels whole, including its reminder hand-off bookkeeping', async () => {
   const { journal, stock } = await populated();
 
-  const snapshot = await journal.archive.snapshot();
+  const snapshot = unstamped(await journal.archive.snapshot());
 
   assert.deepEqual(snapshot.journal.medicationStock, [
     {
@@ -519,15 +494,61 @@ test('medication stock travels whole, including its reminder hand-off bookkeepin
       inUseWindowDays: null,
       inUseEndEpochDay: null,
       leadTimeDays: null,
-      dosesPerUnit: null
+      dosesPerUnit: null,
+      expiryEpochDay: null,
+      pharmacyNote: null,
+      costAmount: null,
+      costCurrency: null,
+      costRefunded: false
     }
   ]);
 });
 
-/* Redesign phase 10 ticket 01: a lead time is a person's own typed figure,
-   not derivable, so it has to travel rather than defaulting silently to
-   null on the other end - the same reasoning ticket 43's end reason test
-   above gives. */
+/* Typed by a person and not derivable, so they travel, and a restore keeps them. */
+test('a stock expiry day and pharmacy note travel, and a restore keeps them', async () => {
+  const { journal, stock } = await populated();
+  await journal.stock.upsertEntry({
+    drug: 'estradiol valerate',
+    quantity: 10,
+    unit: 'vials',
+    recordedEpochDay: 19000,
+    expiryEpochDay: 19400,
+    pharmacyNote: 'Batch 7, second pharmacy'
+  });
+
+  const snapshot = unstamped(await journal.archive.snapshot());
+  const row = snapshot.journal.medicationStock.find((s) => s.id === stock);
+  assert.equal(row?.expiryEpochDay, 19400);
+  assert.equal(row?.pharmacyNote, 'Batch 7, second pharmacy');
+
+  const target = openJournal(await migratedDb(), fakeFileStore());
+  await target.reconcileBuiltIns();
+  await target.archive.replace({ journal: snapshot.journal, files: (async function* () {})() });
+  const [restored] = await target.stock.getEntries();
+  assert.equal(restored.expiryEpochDay, 19400);
+  assert.equal(restored.pharmacyNote, 'Batch 7, second pharmacy');
+});
+
+test('an archive written before the stock expiry fields restores them as null', async () => {
+  const { journal } = await populated();
+  const snapshot = unstamped(await journal.archive.snapshot());
+  const older = structuredClone(snapshot.journal) as unknown as { medicationStock: Record<string, unknown>[] };
+  for (const row of older.medicationStock) {
+    delete row.expiryEpochDay;
+    delete row.pharmacyNote;
+  }
+
+  const target = openJournal(await migratedDb(), fakeFileStore());
+  await target.reconcileBuiltIns();
+  await target.archive.replace({ journal: older as unknown as typeof snapshot.journal, files: (async function* () {})() });
+  const [restored] = await target.stock.getEntries();
+  assert.equal(restored.expiryEpochDay, null);
+  assert.equal(restored.pharmacyNote, null);
+});
+
+/* Redesign a lead time is a person's own typed figure, not derivable, so it has to travel
+   rather than defaulting silently to null on the other end - the same reasoning end reason
+   test above gives. */
 test('a lead time and doses per unit travel, and a restore keeps them', async () => {
   const { journal, stock } = await populated();
   await journal.stock.upsertEntry({
@@ -539,7 +560,7 @@ test('a lead time and doses per unit travel, and a restore keeps them', async ()
     dosesPerUnit: 5
   });
 
-  const snapshot = await journal.archive.snapshot();
+  const snapshot = unstamped(await journal.archive.snapshot());
 
   assert.equal(snapshot.journal.medicationStock.find((s) => s.id === stock)?.leadTimeDays, 21);
   assert.equal(snapshot.journal.medicationStock.find((s) => s.id === stock)?.dosesPerUnit, 5);
@@ -553,46 +574,33 @@ test('a lead time and doses per unit travel, and a restore keeps them', async ()
   assert.equal(restored?.dosesPerUnit, 5);
 });
 
-/* After-release ticket 16: a saved question's Starred filter is part of
-   what the question asks, so it travels, and an archive written before the
-   field existed restores its questions as not starred - what they answered
-   with when that archive was made. */
-test("a saved question's Starred filter travels, and an older archive restores it off", async () => {
+test('a side effect travels ongoing or resolved, and an older archive reads as ongoing', async () => {
   const { journal } = await populated();
-  const starredId = await journal.savedQuestions.upsertSavedQuestion({
-    name: 'Starred days',
-    queryText: '',
-    tagIds: [],
-    moods: [],
-    startEpochDay: null,
-    endEpochDay: null,
-    hasNote: false,
-    hasPhoto: false,
-    starred: true
-  });
+  const resolved = await journal.sideEffects.upsertSideEffect({ name: 'acne', severity: 2, epochDay: 19000, resolvedEpochDay: 19090 });
 
-  const snapshot = await journal.archive.snapshot();
-  assert.equal(snapshot.journal.savedQuestions.find((q) => q.id === starredId)?.starred, true);
+  const snapshot = unstamped(await journal.archive.snapshot());
+  assert.equal(snapshot.journal.sideEffects.find((e) => e.id === resolved)?.resolvedEpochDay, 19090);
 
   const target = openJournal(await migratedDb(), fakeFileStore());
   await target.reconcileBuiltIns();
   await target.archive.replace({ journal: snapshot.journal, files: (async function* () {})() });
-  assert.equal((await target.savedQuestions.getSavedQuestions()).find((q) => q.id === starredId)?.starred, true);
+  const days = async (j: typeof target) => Object.fromEntries((await j.sideEffects.getSideEffects()).map((e) => [e.name, e.resolvedEpochDay]));
+  assert.deepEqual(await days(target), { 'hot flashes': null, acne: 19090 });
 
   const older = {
     ...snapshot.journal,
-    savedQuestions: snapshot.journal.savedQuestions.map(({ starred: _dropped, ...row }) => row)
+    sideEffects: snapshot.journal.sideEffects.map(({ resolvedEpochDay: _resolved, ...rest }) => rest)
   } as typeof snapshot.journal;
-  const olderTarget = openJournal(await migratedDb(), fakeFileStore());
-  await olderTarget.reconcileBuiltIns();
-  await olderTarget.archive.replace({ journal: older, files: (async function* () {})() });
-  assert.equal((await olderTarget.savedQuestions.getSavedQuestions()).find((q) => q.id === starredId)?.starred, false);
+  const fromOlder = openJournal(await migratedDb(), fakeFileStore());
+  await fromOlder.reconcileBuiltIns();
+  await fromOlder.archive.replace({ journal: older, files: (async function* () {})() });
+  assert.deepEqual(await days(fromOlder), { 'hot flashes': null, acne: null });
 });
 
 test('the manifest names every photo file and its thumbnail, plus every recording and video-note file, with their lengths', async () => {
   const { journal, photo, milestonePhoto, tryoutPhoto, recording, videoNote } = await populated();
 
-  const snapshot = await journal.archive.snapshot();
+  const snapshot = unstamped(await journal.archive.snapshot());
 
   assert.deepEqual(snapshot.files, [
     { name: `${photo}.jpg`, length: 10 },
@@ -609,12 +617,11 @@ test('the manifest names every photo file and its thumbnail, plus every recordin
   assert.deepEqual(await snapshot.readFile(`${videoNote}.webm`), bytes('a video note'));
 });
 
-/* Phase 8 features ticket 52. The manifest is hand-assembled rather than
-   read off the section registry (archive.ts), so a table missing from it
-   travels as rows naming bytes that are not in the archive - and restores
-   into an area full of broken references. Asserted directly rather than
-   left to the golden fixture, which compares committed bytes and so heals
-   itself the next time somebody regenerates it. */
+/* The manifest is hand-assembled rather than read off the section registry (archive.ts), so
+   a table missing from it travels as rows naming bytes that are not in the archive - and
+   restores into an area full of broken references. Asserted directly rather than left to
+   the golden fixture, which compares committed bytes and so heals itself the next time
+   somebody regenerates it. */
 test('the manifest carries a document’s page and its thumbnail, not just its row', async () => {
   const { journal, files } = await populated();
   const id = await journal.documents.addDocument(
@@ -623,7 +630,7 @@ test('the manifest carries a document’s page and its thumbnail, not just its r
   );
   const document = (await journal.documents.getDocument(id))!;
 
-  const snapshot = await journal.archive.snapshot();
+  const snapshot = unstamped(await journal.archive.snapshot());
 
   /* By the row's own file name, not by the document's id: a document's file
      is minted separately from the row that names it (documents.ts), unlike
@@ -641,9 +648,8 @@ test('the manifest carries a document’s page and its thumbnail, not just its r
   assert.ok(files.names().includes(document.fileName));
 });
 
-/* Phase 8 features tickets 53 and 55. A PDF document's two files are the
-   file itself and the first page drawn at import, whose name is spelled
-   off the `.pdf` - the same reasoning as above, over the kind `filesOf()`
+/* A PDF document's two files are the file itself and the first page drawn at import, whose
+   name is spelled off the `.pdf` - the same reasoning as above, over the kind `filesOf()`
    alone gets wrong. */
 test('the manifest carries a PDF document’s file and the page drawn at import', async () => {
   const { journal } = await populated();
@@ -654,7 +660,7 @@ test('the manifest carries a PDF document’s file and the page drawn at import'
   const document = (await journal.documents.getDocument(id))!;
   const thumbName = document.fileName.replace(/\.pdf$/, '-thumb.jpg');
 
-  const snapshot = await journal.archive.snapshot();
+  const snapshot = unstamped(await journal.archive.snapshot());
 
   assert.deepEqual(
     snapshot.files.filter((f) => f.name.startsWith(document.fileName.replace(/\.pdf$/, ''))),
@@ -678,7 +684,7 @@ test('the manifest leaves out a page a PDF never had', async () => {
   );
   const document = (await journal.documents.getDocument(id))!;
 
-  const snapshot = await journal.archive.snapshot();
+  const snapshot = unstamped(await journal.archive.snapshot());
 
   assert.deepEqual(
     snapshot.files.filter((f) => f.name.startsWith(document.fileName.replace(/\.pdf$/, ''))),
@@ -686,19 +692,21 @@ test('the manifest leaves out a page a PDF never had', async () => {
   );
 });
 
-test('a trashed entry, and its photo, recording and video-note files, are excluded from the snapshot entirely (phase 5 ticket 19)', async () => {
+/* Archives carry Trash state. Moving an entry to Trash on one device,
+   restoring it, or deleting it for good reaches the other through a Merge. */
+test('a trashed entry travels with its Trash time, and its photo, recording and video-note files with it', async () => {
   const { journal, db, entry, photo, recording, videoNote, milestonePhoto } = await populated();
   const uuid = (await db.query<{ uuid: string }>('SELECT uuid FROM entry WHERE id = ?', [entry]))[0].uuid;
 
   await journal.entries.deleteEntry(entry);
+  const [{ trashed_at }] = await db.query<{ trashed_at: number }>('SELECT trashed_at FROM entry WHERE id = ?', [entry]);
 
-  const snapshot = await journal.archive.snapshot();
+  const snapshot = unstamped(await journal.archive.snapshot());
 
-  assert.ok(!snapshot.journal.entries.some((e) => e.uuid === uuid));
-  assert.ok(!snapshot.files.some((f) => f.name === `${photo}.jpg`));
-  assert.ok(!snapshot.files.some((f) => f.name === `${recording}.webm`));
-  assert.ok(!snapshot.files.some((f) => f.name === `${videoNote}.webm`));
-  // Nothing else the entry did not own is affected.
+  assert.equal(snapshot.journal.entries.find((e) => e.uuid === uuid)?.trashedAt, trashed_at);
+  assert.ok(snapshot.files.some((f) => f.name === `${photo}.jpg`));
+  assert.ok(snapshot.files.some((f) => f.name === `${recording}.webm`));
+  assert.ok(snapshot.files.some((f) => f.name === `${videoNote}.webm`));
   assert.ok(snapshot.files.some((f) => f.name === `${milestonePhoto}.jpg`));
 });
 
@@ -706,31 +714,30 @@ test('a photo row whose file is gone keeps its row and leaves the manifest alone
   const { journal, files, photo } = await populated();
   await files.remove(`${photo}.jpg`);
 
-  const snapshot = await journal.archive.snapshot();
+  const snapshot = unstamped(await journal.archive.snapshot());
 
   assert.ok(!snapshot.files.some((f) => f.name === `${photo}.jpg`));
   assert.ok(snapshot.files.some((f) => f.name === thumbFileName(`${photo}.jpg`)));
   assert.equal(snapshot.journal.entries.flatMap((e) => e.photos).filter((p) => p.id === photo).length, 1);
 });
 
-/* ADR-0027 is what makes an area travel, and an area's finished state has to
-   travel for the same reason ADR-0043 made its own preference portable: a
-   stream that reads as unfinished again on the new phone makes having
-   finished it a lie. The date is the part worth pinning by hand - a flag
-   would survive a boolean round trip that silently dropped the day. */
+/* ADR-0027 is what makes an area travel, and an area's finished state has to travel like
+   the cycle preference: a stream that reads as unfinished again on the new phone makes
+   having finished it a lie. The date is the part worth pinning by hand - a flag would
+   survive a boolean round trip that silently dropped the day. */
 test('an area\'s hidden, finished and suspended state travels, and a restore keeps the days it names', async () => {
   const { journal } = await populated();
-  await journal.areaStates.setAreasHidden(['sizeRecords'], true);
-  await journal.areaStates.setAreasFinished(['hairStages', 'hairPhotos'], 19300);
+  await journal.areaStates.setAreasHidden(['wearSessions'], true);
+  await journal.areaStates.setAreasFinished(['personalEffects', 'sideEffects'], 19300);
   await journal.areaStates.setAreasSuspended(['voiceBenchmarks'], 19310);
 
-  const snapshot = await journal.archive.snapshot();
+  const snapshot = unstamped(await journal.archive.snapshot());
 
   assert.deepEqual(snapshot.journal.areaStates, [
-    { area: 'hairPhotos', hidden: false, finishedEpochDay: 19300, suspendedEpochDay: null },
-    { area: 'hairStages', hidden: false, finishedEpochDay: 19300, suspendedEpochDay: null },
-    { area: 'sizeRecords', hidden: true, finishedEpochDay: null, suspendedEpochDay: null },
-    { area: 'voiceBenchmarks', hidden: false, finishedEpochDay: null, suspendedEpochDay: 19310 }
+    { area: 'personalEffects', hidden: false, finishedEpochDay: 19300, suspendedEpochDay: null },
+    { area: 'sideEffects', hidden: false, finishedEpochDay: 19300, suspendedEpochDay: null },
+    { area: 'voiceBenchmarks', hidden: false, finishedEpochDay: null, suspendedEpochDay: 19310 },
+    { area: 'wearSessions', hidden: true, finishedEpochDay: null, suspendedEpochDay: null }
   ]);
 
   const target = openJournal(await migratedDb(), fakeFileStore());
@@ -740,21 +747,20 @@ test('an area\'s hidden, finished and suspended state travels, and a restore kee
   await target.archive.replace({ journal: snapshot.journal, files: (async function* () {})() });
 
   assert.deepEqual(await target.areaStates.getAreaStates(), {
-    hairPhotos: { hidden: false, finishedEpochDay: 19300, suspendedEpochDay: null },
-    hairStages: { hidden: false, finishedEpochDay: 19300, suspendedEpochDay: null },
-    sizeRecords: { hidden: true, finishedEpochDay: null, suspendedEpochDay: null },
+    personalEffects: { hidden: false, finishedEpochDay: 19300, suspendedEpochDay: null },
+    sideEffects: { hidden: false, finishedEpochDay: 19300, suspendedEpochDay: null },
+    wearSessions: { hidden: true, finishedEpochDay: null, suspendedEpochDay: null },
     voiceBenchmarks: { hidden: false, finishedEpochDay: null, suspendedEpochDay: 19310 }
   });
 });
 
-/* Ticket 43: a regimen episode's end reason is the same shape again - a
-   fact the person recorded, not derivable, so it travels rather than
-   defaulting silently to nothing on the other end. */
+/* A regimen episode's end reason is the same shape again - a fact the person recorded, not
+   derivable, so it travels rather than defaulting silently to nothing on the other end. */
 test('a regimen episode\'s end reason travels, and a restore keeps it', async () => {
   const { journal, episode } = await populated();
   await journal.regimen.endEpisode(episode, 19100, 'pausedForNow');
 
-  const snapshot = await journal.archive.snapshot();
+  const snapshot = unstamped(await journal.archive.snapshot());
 
   assert.equal(
     snapshot.journal.regimenEpisodes.find((e) => e.id === episode)?.endReason,
@@ -769,15 +775,14 @@ test('a regimen episode\'s end reason travels, and a restore keeps it', async ()
   assert.equal(restored?.endReason, 'pausedForNow');
 });
 
-/* After-release 07: an episode put away stays put away across a backup.
-   Hidden is the person's own statement that the row was a mistake, so a
-   restore that brought it back into Care and the curve would undo it. An
-   archive from before the field existed reads as shown. */
+/* an episode put away stays put away across a backup. Hidden is the person's own statement
+   that the row was a mistake, so a restore that brought it back into Care and the curve
+   would undo it. An archive from before the field existed reads as shown. */
 test('a hidden regimen episode travels hidden, and a restore keeps it hidden', async () => {
   const { journal, episode } = await populated();
   await journal.regimen.setEpisodeHidden(episode, true);
 
-  const snapshot = await journal.archive.snapshot();
+  const snapshot = unstamped(await journal.archive.snapshot());
   assert.equal(snapshot.journal.regimenEpisodes.find((e) => e.id === episode)?.hidden, true);
 
   const target = openJournal(await migratedDb(), fakeFileStore());
@@ -797,11 +802,71 @@ test('a hidden regimen episode travels hidden, and a restore keeps it hidden', a
   assert.equal((await fromOlder.regimen.getEpisodes()).some((e) => e.id === episode), true);
 });
 
-/* Ticket 56: a document's link travels as the pair it is stored as, and a
-   dangling one travels too. The link names a row in one of four tables
-   rather than pointing at a rowid this section could resolve, so a restore
-   writes back exactly what it was given - which is the requirement, not a
-   gap: a document outlives the thing it was filed under. */
+/* A milestone set not to be celebrated travels that way, and only that way - a celebrated
+   one carries no field, so an archive written before the field existed restores every
+   milestone celebrated, which is what it was. */
+test("a milestone's celebration choice travels, and an older archive restores it celebrated", async () => {
+  const { journal, milestone } = await populated();
+  const quiet = await journal.milestones.upsertMilestone({ name: 'The hard one', epochDay: 19100, celebrate: false });
+
+  const snapshot = unstamped(await journal.archive.snapshot());
+  assert.equal(snapshot.journal.milestones.find((mi) => mi.id === quiet)?.celebrate, false);
+  assert.equal('celebrate' in snapshot.journal.milestones.find((mi) => mi.id === milestone)!, false);
+
+  const target = openJournal(await migratedDb(), fakeFileStore());
+  await target.reconcileBuiltIns();
+  await target.archive.replace({ journal: snapshot.journal, files: (async function* () {})() });
+  const celebrated = async (j: typeof target) =>
+    Object.fromEntries((await j.milestones.getMilestones()).map((mi) => [mi.id, mi.celebrate]));
+  assert.deepEqual(await celebrated(target), { [milestone]: true, [quiet]: false });
+
+  const older = {
+    ...snapshot.journal,
+    milestones: snapshot.journal.milestones.map(({ celebrate: _celebrate, ...rest }) => rest)
+  } as typeof snapshot.journal;
+  const fromOlder = openJournal(await migratedDb(), fakeFileStore());
+  await fromOlder.reconcileBuiltIns();
+  await fromOlder.archive.replace({ journal: older, files: (async function* () {})() });
+  assert.deepEqual(await celebrated(fromOlder), { [milestone]: true, [quiet]: true });
+});
+
+/* The drug class is the person's to change, so it travels as stored. An archive from before
+   the field existed carries no class, and a restore infers it from the drug by the
+   migration's rule. */
+test('a drug class travels as chosen, and an older archive gets the inferred class', async () => {
+  const { journal, episode } = await populated();
+  await journal.regimen.upsertEpisode({
+    id: episode, drug: 'estradiol valerate', drugClass: 'other', ester: 'valerate', dose: 4, doseUnit: 'mg',
+    route: 'im', interval: 'every 2 weeks', startEpochDay: 19000, endEpochDay: null, endReason: null
+  });
+  const ssri = await journal.regimen.upsertEpisode({
+    drug: 'Sertraline', ester: null, dose: 50, doseUnit: 'mg', route: 'oral', interval: 'daily',
+    startEpochDay: 18000, endEpochDay: null, endReason: null
+  });
+
+  const snapshot = unstamped(await journal.archive.snapshot());
+  assert.equal(snapshot.journal.regimenEpisodes.find((e) => e.id === episode)?.drugClass, 'other');
+
+  const target = openJournal(await migratedDb(), fakeFileStore());
+  await target.reconcileBuiltIns();
+  await target.archive.replace({ journal: snapshot.journal, files: (async function* () {})() });
+  const classes = async (j: typeof target) => Object.fromEntries((await j.regimen.getEpisodes()).map((e) => [e.id, e.drugClass]));
+  assert.deepEqual(await classes(target), { [episode]: 'other', [ssri]: 'other' });
+
+  const older = {
+    ...snapshot.journal,
+    regimenEpisodes: snapshot.journal.regimenEpisodes.map(({ drugClass: _drugClass, ...rest }) => rest)
+  } as typeof snapshot.journal;
+  const fromOlder = openJournal(await migratedDb(), fakeFileStore());
+  await fromOlder.reconcileBuiltIns();
+  await fromOlder.archive.replace({ journal: older, files: (async function* () {})() });
+  assert.deepEqual(await classes(fromOlder), { [episode]: 'hrt', [ssri]: 'other' });
+});
+
+/* A document's link travels as the pair it is stored as, and a dangling one travels too.
+   The link names a row in one of four tables rather than pointing at a rowid this section
+   could resolve, so a restore writes back exactly what it was given - which is the
+   requirement, not a gap: a document outlives the thing it was filed under. */
 test("a document's link travels, dangling or not, and a restore keeps both", async () => {
   const { journal, milestone } = await populated();
   const filed = await journal.documents.addDocument(
@@ -815,7 +880,7 @@ test("a document's link travels, dangling or not, and a restore keeps both", asy
   await journal.documents.setDocumentTarget(filed, { kind: 'milestone', id: milestone });
   await journal.documents.setDocumentTarget(orphaned, { kind: 'episode', id: 'e-no-longer-here' });
 
-  const snapshot = await journal.archive.snapshot();
+  const snapshot = unstamped(await journal.archive.snapshot());
 
   const travelled = (id: string) => {
     const document = snapshot.journal.documents.find((d) => d.id === id)!;
@@ -837,26 +902,11 @@ test("a document's link travels, dangling or not, and a restore keeps both", asy
   assert.equal(restoredOrphan.targetId, 'e-no-longer-here', 'a link whose target is gone travels unresolved');
 });
 
-/* Every column of every table, checked against what the snapshot claims to
-   carry. The point is drift: an archive that quietly stops carrying a
-   column added later is a backup that silently loses data, and nothing
-   else in this suite would notice. A new column fails here until it is
-   either carried or listed as deliberately left behind.
-
-   The 27 flat sections' columns are not retyped here (phase 8 audit
-   finding 24): FLAT_CARRIED walks each one's own descriptor
-   (archiveSections.ts's `flatTable`) with the same columnsOf()
-   readFlatTable/applyFlatTable already use, so this oracle checks the
-   descriptor's agreement with the schema rather than a second map's habit
-   of agreeing with the first. Delete a column from a descriptor and this
-   table fails the same way an untracked schema column does - carried by
-   nothing, because FLAT_CARRIED no longer claims it.
-
-   What stays hand-typed in HAND_WRITTEN_CARRIED is every table a
-   descriptor cannot describe - the archive table module's own three
-   limits (a child table, a rowid resolved against another section, an
-   update branch for a built-in row a Replace overwrites in place) - with
-   each exception's reason given where it is declared below. */
+/* Match every schema column to archive coverage or an explicit
+   omission. FLAT_CARRIED uses columnsOf() on the same flatTable
+   descriptors as readers and writers. HAND_WRITTEN_CARRIED covers
+   child tables, cross-section rowids and built-in rows overwritten
+   in place by Replace. */
 const FLAT_CARRIED: Record<string, string[]> = Object.fromEntries(
   ARCHIVE_SECTIONS.flatMap((section) =>
     section.flatTable ? [[section.flatTable.table, columnsOf(section.flatTable).map((c) => c.column)]] : []
@@ -867,7 +917,8 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   // Owns five children below (applyEntries/readEntries) - a descriptor
   // speaks for one table, and a photo/recording/video/dimension-link/
   // tag-link/region-link is six more.
-  entry: ['uuid', 'epoch_day', 'timestamp', 'mood', 'note', 'starred', 'presentation_id'],
+  // Trash travels.
+  entry: ['uuid', 'epoch_day', 'timestamp', 'mood', 'note', 'starred', 'presentation_uuid', 'trashed_at'],
   // Child of entry, and its own rowid is resolved against dimensions.
   entry_dimension_value: ['entry_id', 'dimension_id', 'value'],
   // Child of entry, and its own rowid is resolved against tagGroups' tags.
@@ -875,16 +926,11 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   // Child of entry. `region` stores bodyRegions' own domain key directly,
   // not a rowid, so this needs no `after` even though it is a child.
   entry_body_region: ['entry_id', 'region', 'value'],
-  // Built-in rows are updated in place, not just inserted, and the two
-  // children below are its own (applyEntryTemplates).
-  entry_template: ['uuid', 'key', 'name', 'note_scaffold', 'presentation_id', 'hidden'],
-  entry_template_tag: ['template_id', 'tag_id'],
-  entry_template_dimension_value: ['template_id', 'dimension_id', 'value'],
   // Shared between two owners (entry, milestone) rather than one section's
   // own table - a descriptor names one table for one section.
   photo: ['uuid', 'entry_id', 'milestone_id', 'file_path', 'order_index', 'starred', 'epoch_day_override'],
   // Owns a child (photo), the same reason `entry` above is hand-written.
-  milestone: ['uuid', 'name', 'epoch_day', 'description', 'template_key', 'roadmap_goal_key', 'procedure_id', 'tryout_id'],
+  milestone: ['uuid', 'name', 'epoch_day', 'description', 'template_key', 'roadmap_goal_key', 'procedure_uuid', 'tryout_uuid', 'celebrate'],
   // A matched built-in row is UPDATEd in place (applyDimensions), which a
   // descriptor's insert-if-absent has no branch for.
   gender_dimension: ['uuid', 'key', 'name', 'low_label', 'high_label', 'min_value', 'max_value', 'is_built_in', 'hidden'],
@@ -895,13 +941,11 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   tag_group: ['uuid', 'key', 'name', 'enabled', 'order_index'],
   // Child of tag_group, and its own rows are updated in place too
   // (applyTagGroups) - a rename or a hide reaches an already-present tag.
-  tag: ['uuid', 'key', 'group_id', 'label', 'hidden', 'order_index'],
+  tag: ['uuid', 'key', 'group_id', 'label', 'hidden', 'icon', 'order_index'],
   // Same update branch as gender_dimension.
-  affirmation: ['uuid', 'key', 'language', 'text', 'hidden'],
   // Same update branch as gender_dimension.
   body_region: ['uuid', 'key', 'name', 'hidden'],
   // Same update branch as gender_dimension.
-  measurement_type: ['uuid', 'key', 'name', 'is_built_in', 'hidden'],
   // episode_id travels as the episode's uuid, the way preset_dimension's
   // rowids travel as keys (ADR-0002). Its own rowid is resolved against
   // regimenEpisodes, and dose_schedule_weekday/dose_schedule_dose_amount
@@ -926,28 +970,36 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   // procedure_photo/tryout_photo below (archive.ts's `manifest()`), so its
   // rows come from SectionRead rather than a second query the way a flat
   // section's own read would issue.
-  hair_photo: ['uuid', 'epoch_day', 'file_path'],
+  // Read once for the file manifest, the same reason hair_removal_photo is.
+  progress_photo: ['uuid', 'epoch_day', 'pose', 'file_path'],
+  progress_pose: ['uuid', 'key', 'name', 'hidden'],
   // Owns a child (hair_removal_photo) below.
-  hair_removal_session: ['uuid', 'epoch_day', 'area', 'method', 'pain_rating', 'cost', 'provider'],
+  // The old free-text `cost` is left behind: version 115 emptied it into the
+  // cost columns or the note, and drops it.
+  hair_removal_session: ['uuid', 'epoch_day', 'area', 'method', 'pain_rating', 'minutes', 'provider', 'note',
+    'cost_amount', 'cost_currency', 'cost_refunded'],
   // session_id travels as the session's own uuid, the way dose_pause's
   // episode_id does (ADR-0002). Read once for the file manifest, the same
-  // reason hair_photo above is hand-written.
+  // reason progress_photo above is hand-written.
   hair_removal_photo: ['uuid', 'session_id', 'file_path'],
   // Owns a child (procedure_photo) below. Its consults are appointments now
-  // and travel in their own section (ticket 57).
-  procedure: ['uuid', 'name', 'surgery_epoch_day', 'notes', 'kind', 'dilation_opt_in', 'archived'],
+  // and travel in their own section.
+  procedure: ['uuid', 'name', 'surgery_epoch_day', 'notes', 'kind', 'dilation_opt_in', 'archived',
+    'cost_amount', 'cost_currency', 'cost_refunded'],
   // procedure_id travels as the procedure's own uuid, the way dose_pause's
   // episode_id does (ADR-0002) - here and on the child below.
-  appointment: ['uuid', 'procedure_id', 'epoch_day', 'kind', 'place', 'note'],
+  appointment: ['uuid', 'procedure_id', 'epoch_day', 'kind', 'place', 'note', 'referred_epoch_day',
+    // provider_id travels as the provider's uuid, like procedure_id.
+    'time_of_day', 'provider_id', 'cost_amount', 'cost_currency', 'cost_refunded'],
+  // appointment_id travels as nesting under its appointment, the
+  // way procedure_photo travels under its procedure.
+  appointment_status: ['uuid', 'appointment_id', 'epoch_day', 'status'],
   // procedure_id for the same reason, since schema v83 gave the taper the
   // procedure it dilates for in place of a surgery day of its own.
   taper: ['uuid', 'procedure_id', 'start_epoch_day', 'stages'],
-  // Read once for the file manifest, the same reason hair_photo above is
+  // Read once for the file manifest, the same reason progress_photo above is
   // hand-written.
   procedure_photo: ['uuid', 'procedure_id', 'epoch_day', 'file_path'],
-  // Owns a child (doubt_snapshot_entry) below.
-  doubt_snapshot: ['uuid', 'epoch_day', 'timestamp'],
-  doubt_snapshot_entry: ['snapshot_id', 'order_index', 'epoch_day', 'mood', 'note'],
   // Identified by a pack/goal pair (applyRoadmapChecks), not by one column
   // - a compound identity a descriptor's single `identity` field cannot
   // name. No uuid: a tick is named by its pack and goal keys, which mean
@@ -959,34 +1011,37 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
   // Exactly one of tryout_id/milestone_id travels, each as that owner's own
   // uuid, the same shape `photo`'s entry_id/milestone_id pair carries - and
   // both are rowids resolved against the tryouts/milestones sections.
-  felt_sense: ['uuid', 'tryout_id', 'milestone_id', 'epoch_day', 'mood', 'note'],
+  felt_sense: ['uuid', 'tryout_id', 'epoch_day', 'mood', 'note'],
   // Exactly one owner, unlike felt_sense's two - a margin note always
-  // belongs to an entry (phase 8 features ticket 07), and entry_id is a
+  // belongs to an entry, and entry_id is a
   // rowid resolved against the entries section.
   margin_note: ['uuid', 'entry_id', 'epoch_day', 'text'],
-  revisit: ['uuid', 'entry_id', 'entry_epoch_day', 'created_epoch_day', 'target_epoch_day'],
-  // Read once for the file manifest, the same reason hair_photo above is
+  // Read once for the file manifest, the same reason progress_photo above is
   // hand-written.
   tryout_photo: ['uuid', 'tryout_id', 'epoch_day', 'file_path'],
   // Child of entry (applyEntries), read once for the file manifest the
-  // same reason hair_photo above is - `entry_id` travels as the entry's
+  // same reason progress_photo above is - `entry_id` travels as the entry's
   // own uuid (ADR-0002).
   voice_recording: ['uuid', 'entry_id', 'file_path', 'order_index'],
   // Same shape as voice_recording just above - child of entry, read once
-  // for the file manifest, the same reason hair_photo above is.
+  // for the file manifest, the same reason progress_photo above is.
   video_note: ['uuid', 'entry_id', 'file_path', 'order_index'],
   // Owns a child (checklist_item) below; unlike a vocabulary table its own
   // row has nothing to UPDATE once created (checklists.ts has no rename or
   // move setter), only the item below is walked in both modes.
-  checklist: ['uuid', 'owner_kind', 'owner_uuid', 'appointment_epoch_day'],
+  checklist: ['uuid', 'owner_kind', 'owner_uuid'],
   // checklist_id travels as the checklist's own uuid, the way dose_pause's
   // episode_id does (ADR-0002).
   checklist_item: ['uuid', 'checklist_id', 'content', 'checked', 'carried_forward', 'order_index'],
-  // Phase 7 ticket 03: `counts` is a JSON-encoded map, still one column -
+  // `counts` is a JSON-encoded map, still one column -
   // a shape a descriptor's own columns have no transform for. Never
   // `whole` (see archiveSections.ts's own note on why), but this table
   // still travels with a backup.
   import_log: ['uuid', 'source', 'counts', 'imported_at'],
+  // What this device deleted, carried whole for a Merge to apply.
+  deletion: ['tbl', 'row_key', 'deleted_at'],
+  // Device-local: every column of it is left behind (below).
+  appointment_debrief: [],
   // Filtered by the portable allowlist rather than carried whole
   // (ADR-0003), which is not a table shape a descriptor's plain column
   // list can express.
@@ -995,40 +1050,19 @@ const HAND_WRITTEN_CARRIED: Record<string, string[]> = {
 
 const CARRIED: Record<string, string[]> = { ...HAND_WRITTEN_CARRIED, ...FLAT_CARRIED };
 
-/* `id` is this device's rowid and means nothing anywhere else (ADR-0002);
-   `updated_at` is written by every area and read by nothing, and an
-   archive that carried it would be asserting a fact about another
-   device's clock. `entry.trashed_at` (phase 5 ticket 19) is column-specific:
-   trash is out of scope for archives entirely (readEntries filters it out
-   before this ever runs), so the column travelling with the row it never
-   carries would be a column with no purpose on the other end.
-   `tally_event.context` (register finding 32.4) is the same shape: nothing
-   in the app writes it any more, so it stays in the schema for rows that
-   already have it but never travels for a device that has stopped
-   producing it. `regimen_episode.hidden` is that same shape again: the
-   only control that ever set it is gone (Alicja, 2026-08-27, "get rid of
-   the show/hide progesterone button" - it never did more than add a badge
-   to the row), and every other table's own `hidden` column stays carried
-   as before - this is scoped to `regimen_episode` alone by the per-table
-   CARRIED lists above, not by this flat list. */
-// debrief_entry_id/debrief_dismissed_epoch_day (phase 6 ticket 08) and their
-// appointment-id-keyed successors (schema.ts, ticket 58): device-
-// local bookkeeping for the appointment debrief offer, scoped to `checklist`
-// alone - never part of what the checklist travels, the same reason `id`
-// and `updated_at` never are. debrief_dismissed_epoch_day itself is also
-// retained-but-unwritten now (ticket 58 rekeys dismissal to an appointment
-// id), which changes nothing about it belonging on this list.
-const LEFT_BEHIND = [
-  'id',
-  'updated_at',
-  'trashed_at',
-  'context',
-  'hidden',
-  'debrief_entry_id',
-  'debrief_entry_appointment_id',
-  'debrief_dismissed_epoch_day',
-  'debrief_dismissed_appointment_id'
-];
+/* `id` is this device's rowid and means nothing anywhere else (ADR-0002). `updated_at` is
+   carried on every row that has it (CARRIED_EVERYWHERE below): it is what a Merge compares.
+   `regimen_episode.hidden` stays in the schema and never travels: the only control that
+   ever set it is gone, and every other table's own `hidden` column stays carried as before
+   - this is scoped to `regimen_episode` alone by the per-table CARRIED lists above, not by
+   this flat list. */
+// The debrief offer's bookkeeping is
+// device-local: it names an entry row this device holds. It sat on `checklist`
+// until schema v119 moved it to `appointment_debrief`, whose columns are left
+// behind per table below, never part of what an archive carries.
+const CARRIED_EVERYWHERE = ['updated_at'];
+
+const LEFT_BEHIND = ['id', 'hidden'];
 
 test('every column in the schema is either carried or deliberately left behind', async () => {
   const { db } = await populated();
@@ -1046,7 +1080,13 @@ test('every column in the schema is either carried or deliberately left behind',
 
   for (const { name } of tables) {
     const columns = await db.query<{ name: string }>(`PRAGMA table_info(${name})`);
-    const known = [...CARRIED[name], ...LEFT_BEHIND];
+    // Stock identity is rebuilt from the drug's wire spelling on this device.
+    const known = [...CARRIED[name], ...CARRIED_EVERYWHERE, ...LEFT_BEHIND, ...(name === 'medication_stock' ? ['drug_key'] : []),
+      // Device-local debrief state (schema v119): nothing of it travels.
+      ...(name === 'appointment_debrief' ? ['appointment_uuid', 'entry_id', 'dismissed'] : []),
+      // Which analyzer measured a take (schema v119): stored, not yet on the
+      // wire, so the golden archive stays as it was.
+      ...(name === 'voice_benchmark' ? ['analyzer_version'] : [])];
     for (const column of columns) {
       assert.ok(known.includes(column.name), `${name}.${column.name} is neither carried nor left behind`);
     }

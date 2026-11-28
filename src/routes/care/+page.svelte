@@ -1,42 +1,26 @@
 <script lang="ts">
+  import { offerUndo, undoable } from '$lib/stores/deleteUndo';
+  import type { UndoableDelete } from '$lib/data/journal/undoableDelete';
+  import { journalTextAutocomplete } from '$lib/platform';
   import { rememberSourceLane, takeSourceLane } from '$lib/navigation/sourceLane';
+  import { careEpisodeId } from '$lib/navigation/sourceRecord';
+  import { takeLegacyCareDrug } from '$lib/navigation/journalTextParams';
+  import { replaceRoute } from '$lib/navigation/smart-back';
   import { navigating, page } from '$app/state';
-  /* The care overview (phase 5 deepening ticket 07, ADR-0036: a feature
-     surface, so it lives in the More hub rather than under /settings).
+  /* Care is a feature surface in the More hub. Read draw timing, exposure and stock from
+     their existing modules. careSpine.ts only positions dates on the shared axis.
 
-     What this screen does NOT do is the point of it. The ticket it comes
-     from used to ask for an interactive care canvas - a pharmacokinetic
-     curve, computed draw context, an exposure counter, a stock horizon -
-     and every one of those had already shipped: /care/curve, labTiming.ts,
-     journal/exposure.ts, stockProjection.ts. So there is no modelling here
-     and no second calculation of anything. Every figure on this screen is a
-     live read of a module that already owned it, and the only arithmetic in
-     the diff is careSpine.ts working out where a set of days sit on one
-     line.
-
-     One lane per running drug (phase 11 ticket 10). A stripe per drug and
-     no drug primary: colour is categorical here as everywhere, which is
-     ADR-0012's line rather than this ticket's. Before it
-     the rail drew one episode's days and every other running regimen fell
-     to a grey two-line row under an "Other regimens" heading - which for
-     the ordinary case of a hormone beside a daily pill meant two of three
-     drugs were running off the rail. Each lane now carries its own last
-     dose, next dose and run-out against the shared axis, and today and the
-     most recent draw are drawn once down the whole of it.
-
-     Nothing here judges. A lane says when things happened and when the
-     schedule expects the next one; no mark is late, no interval is the right
-     one, no lane is ranked against another, and no lab value is read as
-     anything (PRODUCT.md:109, and labTiming.ts and /care/curve as the worked
-     precedents). */
+     Each active drug gets a lane with last dose, next dose and run-out. Today and the
+     latest draw cross the shared axis. Stripes distinguish drugs without ranking them
+     (ADR-0012). Report dates and projections without judging schedules or interpreting lab
+     values. */
   import { m } from '$lib/paraglide/messages';
-  import { disclose, maskHeight } from '$lib/motion/reveal';
+  import { scrollToHash } from '$lib/navigation/scroll-region';
+  import { collapse, disclose, maskHeight } from '$lib/motion/reveal';
   import { crossfadeDuration, fadeOnly, isReducedMotion, motionDuration, EASE_OUT_SOFT_CSS } from '$lib/motion/tokens';
   import { flushSync, onDestroy } from 'svelte';
   import { deleter } from '$lib/stores/attempt.svelte';
-  import AreaChart from '$lib/components/kit/AreaChart.svelte';
   import ChartCard from '$lib/components/kit/ChartCard.svelte';
-  import ChartEmpty from '$lib/components/kit/ChartEmpty.svelte';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
@@ -48,6 +32,7 @@
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
+  import RegimenEditorSheet from '$lib/components/RegimenEditorSheet.svelte';
   import Field from '$lib/components/kit/Field.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { journal, liveList, liveListIn, liveQuery } from '$lib/data/live/journal.svelte';
@@ -64,24 +49,28 @@
   } from '$lib/data/epochDay';
   import { currentDay } from '$lib/stores/today.svelte';
   import { readCare, CARE_DOSE_TOTAL_WINDOW_DAYS } from '$lib/data/careReads';
-  import { fmtDay } from '$lib/data/dates';
-  import { resolveCurveDrug } from '$lib/data/hormoneDrug';
+  import { fmtDay, intlLocale } from '$lib/data/dates';
+  import { cycleTrackingVisible } from '$lib/data/cycleTracking';
+  import { prefs } from '$lib/data/prefs/store.svelte';
   import { matchDoseRoute } from '$lib/data/doseSchedule';
   import type { RegimenEpisode } from '$lib/data/types';
   import { sameDrug } from '$lib/data/regimenEpisode';
   import { ROUTE_OPTIONS, routeLabel } from '$lib/data/vocabulary/doseLabels';
-  import { stockRemainingLabel, stockRunOutLabel, stockOpenedWindowLine } from '$lib/data/vocabulary/stockLabel';
+  import { stockRemainingLabel, stockRunOutLabel, stockOpenedWindowLine, stockSupplyLine } from '$lib/data/vocabulary/stockLabel';
+  import { costLine } from '$lib/data/vocabulary/costLabel';
+  import { cycleEventKindName } from '$lib/data/vocabulary/labels';
+  import CostField from '$lib/components/CostField.svelte';
+  import { blankCostDraft, costDraftFrom, costDraftOk, costFromDraft, type CostDraft } from '$lib/components/costDraft';
+  import { deviceDefaultCurrency } from '$lib/data/cost';
   import type { StockProjectionRow } from '$lib/data/journal/stock';
-  import { CLINICIAN_DOSSIER_INCLUSION_KEYS } from '$lib/data/export/clinicianSummaryData';
-  import { WRAPPED_ENTRY_FLOOR } from '$lib/data/wrapped';
+  import { CLINICIAN_SUMMARY_SECTION_KEYS } from '$lib/data/journal/clinicianSummary';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { roleAttrs } from '$lib/components/kit/role';
-  import { toast } from '$lib/stores/toasts.svelte';
 
   /* Two areas outside the lanes: the rail's own card, and the readings that
      do not fit on one. The rail takes role 0, the only index that is a
-     colour on all eight palettes (roles.ts). Each lane inside it then takes
+     colour on every palette (roles.ts). Each lane inside it then takes
      its own stripe by index, which is where the stripe is carrying the most
      meaning on this screen - it is what says which line belongs to which
      drug. */
@@ -94,6 +83,18 @@
      as a day of their week, where the rail's captions state a date under a
      mark and have no room for more. */
   const dayWithWeekday = (epochDay: number) => fmtDay(epochDay, { weekday: 'long', day: 'numeric', month: 'long' });
+  /* When a course began, with its year: it can be years back, and a weekday
+     says nothing about a day that long ago. */
+  const longDay = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'long', year: 'numeric' });
+
+  /* The link to cycle events is gated here: an active testosterone regimen or the explicit
+     opt-in. The card waits for the episodes, so the row never arrives after the rows around
+     it. */
+  let episodesQuery = liveList((j) => j.regimen.getEpisodes());
+  let cycleShown = $derived(cycleTrackingVisible(episodesQuery.rows, Date.now(), prefs.cycleTrackingChoice));
+  /* The three most recent cycle events, drawn at the head of that link's card. */
+  let cycleEventsQuery = liveList((j) => j.cycleEvents.getCycleEvents());
+  let recentCycleEvents = $derived([...cycleEventsQuery.rows].sort((a, b) => b.epochDay - a.epochDay).slice(0, 3));
 
   let careQuery = liveQuery((j) => readCare(j, today));
   // A successful answer exists even when no medication has been recorded.
@@ -182,6 +183,9 @@
     windowMode: 'days' | 'end';
     windowDays: string;
     windowEndDate: string;
+    expiryDate: string;
+    pharmacyNote: string;
+    cost: CostDraft;
   } | null>(null);
 
   const STOCK_WINDOW_MODES = [
@@ -205,7 +209,10 @@
       openedDate: row.entry.openedEpochDay === null ? '' : dateInputValueFromEpochDay(row.entry.openedEpochDay),
       windowMode: row.entry.inUseEndEpochDay !== null ? 'end' : 'days',
       windowDays: row.entry.inUseWindowDays === null ? '' : String(row.entry.inUseWindowDays),
-      windowEndDate: row.entry.inUseEndEpochDay === null ? '' : dateInputValueFromEpochDay(row.entry.inUseEndEpochDay)
+      windowEndDate: row.entry.inUseEndEpochDay === null ? '' : dateInputValueFromEpochDay(row.entry.inUseEndEpochDay),
+      expiryDate: row.entry.expiryEpochDay === null ? '' : dateInputValueFromEpochDay(row.entry.expiryEpochDay),
+      pharmacyNote: row.entry.pharmacyNote ?? '',
+      cost: costDraftFrom(row.entry.cost, deviceDefaultCurrency(), intlLocale())
     };
   }
 
@@ -220,7 +227,10 @@
       openedDate: '',
       windowMode: 'days',
       windowDays: '',
-      windowEndDate: ''
+      windowEndDate: '',
+      expiryDate: '',
+      pharmacyNote: '',
+      cost: blankCostDraft(deviceDefaultCurrency())
     };
   }
 
@@ -252,7 +262,7 @@
     const quantity = parseFloat(stockEditor.quantity);
     const drug = stockEditor.drug.trim();
     const unit = stockEditor.unit.trim();
-    if (isNaN(quantity) || !drug || !unit) return;
+    if (isNaN(quantity) || !drug || !unit || !costDraftOk(stockEditor.cost)) return;
 
     /* A number field hands over null once emptied; anything not above zero
        is read as nothing typed, one dose per unit. A fraction is allowed:
@@ -279,15 +289,17 @@
       leadTimeDays,
       openedEpochDay,
       inUseWindowDays,
-      inUseEndEpochDay
+      inUseEndEpochDay,
+      expiryEpochDay: stockEditor.expiryDate ? epochDayFromDateInputValue(stockEditor.expiryDate) : null,
+      pharmacyNote: stockEditor.pharmacyNote,
+      cost: costFromDraft(stockEditor.cost)
     });
     if (stockEditor === editor) stockSavedId = id;
   }
 
-  /* Stopping tracking takes the automatic run-out reminder with it, so it
-     asks first, over the editor, and says it happened (after-release 07).
-     Named by the saved drug rather than the draft, which may already have
-     been retyped. */
+  /* Stopping tracking takes the automatic run-out reminder with it, so it asks first, over
+     the editor, and says it happened. Named by the saved drug rather than the draft, which
+     may already have been retyped. */
   let stockDeleteTarget = $state<{ id: string; drug: string } | null>(null);
 
   function askToDeleteStock() {
@@ -300,24 +312,40 @@
   async function deleteStockEntry() {
     const target = stockDeleteTarget;
     if (!target) return;
-    if (!(await stockRemoving.run(() => journal.stock.deleteEntry(target.id)))) return;
+    let deletion: UndoableDelete | undefined;
+    if (!(await stockRemoving.run(async () => { deletion = await undoable((j) => j.stock.deleteEntry(target.id)); }))) return;
     stockDeleteTarget = null;
     /* The whole sheet goes, rather than swapping the editor for the list
        inside it: that swap resized the open sheet in one frame. The editor
        stays as it was while the sheet slides away; the next opening sets
        its own. */
     stockSheetOpen = false;
-    toast(m.stock_deleted({ drug: target.drug }));
+    offerUndo(deletion!, m.stock_deleted({ drug: target.drug }));
   }
 
   /* The lane a spine mark was tapped from, for one return: written as a
        mark leaves, read once here - and, when the trip came in through a
-       link rather than history-back, from the `?lane=` the dose and lab
+       link rather than history-back, from the episode UUID the dose and lab
        screens' own back hrefs carry. The highlight answers "which lane did
        I come back to" and is gone the next time Care opens for another
        reason; the scroll position itself is scroll-region.ts's, which is
        what puts that lane in view. */
-  let sourceLane = $state(takeSourceLane() ?? page.url.searchParams.get('lane'));
+  let sourceLane = $state(takeSourceLane() ?? careEpisodeId(page.url));
+  /* An address from before Care carried episode ids named the lane by its
+     drug; it reached here in memory (journalTextParams.ts) and becomes the
+     episode it names, in the highlight and in the address. The address is
+     read first: an in-app arrival is cleaned after this screen has mounted,
+     and that replacement is what brings the name here. */
+  $effect(() => {
+    const url = new URL(page.url);
+    if (sourceLane !== null || careQuery.value === undefined) return;
+    const legacyDrug = takeLegacyCareDrug();
+    const lane = legacyDrug === null ? undefined : lanes.find((lane) => sameDrug(lane.episode.drug, legacyDrug));
+    if (!lane) return;
+    sourceLane = lane.episode.id;
+    url.searchParams.set('episode', lane.episode.id);
+    void replaceRoute(url, { noScroll: true, keepFocus: true });
+  });
 
   /* The rail's own drawn width, for the caption collision rule
      (careSpine.ts's `MIN_LABEL_PX`): the rule is a number of pixels and
@@ -346,11 +374,9 @@
     )
   );
 
-  /* A mark's label. The run-out one reads off that lane's own stock row,
-     because the mark's day is the reorder-by day once a lead time is set
-     and the label has to say which day it is naming rather than always
-     reading "Runs out" over an order deadline (redesign phase 10 ticket
-     16). */
+  /* A mark's label. The run-out one reads off that lane's own stock row, because the mark's
+     day is the reorder-by day once a lead time is set and the label has to say which day it
+     is naming rather than always reading "Runs out" over an order deadline. */
   const markLabel = (kind: SpineMarkKind, leadTimeDays: number | null = null): string => {
     switch (kind) {
       case 'labDraw':
@@ -367,7 +393,7 @@
   };
 
   /* Where a mark goes when it is tapped: the surface the reading came from,
-     with drug, date and record identity preserved. Today and runOut have no
+     with episode, date and record identity preserved. Today and runOut have no
      href: today is where the reader is, and runOut opens its lane's stock
      editor directly. lastDose opens the recorded dose event itself, nextDose
      the schedule view that expects it - the comparison is a past-facing
@@ -375,14 +401,14 @@
      (journal/doses.ts getComparison) - and labDraw the drawn result.
 
      A record id travels twice, as `?dose=`/`?lab=` and as the hash: the
-     hash is what scrollToHash consumes once it has scrolled (scroll-region
-     .ts), the param is what keeps the deep link - and its unavailable
-     state - alive after that. */
-  const markHref = (mark: SpineMark, drug: string | null): string | null => {
+     hash is what scrollToHash consumes once it has scrolled. Labs also
+     consumes its parameter after selecting the result's analyte; unresolved
+     links keep the parameter so their unavailable state remains visible. */
+  const markHref = (mark: SpineMark, episodeId: string | null): string | null => {
     if (mark.kind === 'today' || mark.kind === 'runOut') return null;
     const params = new URLSearchParams();
     params.set('date', String(mark.epochDay));
-    if (drug !== null) params.set('drug', drug);
+    if (episodeId !== null) params.set('episode', episodeId);
     if (mark.kind === 'nextDose') {
       params.set('view', 'schedule');
       return `/care/doses?${params.toString()}`;
@@ -432,11 +458,24 @@
       name is free text and a fragment is not. */
   const blockAnchor = (episodeId: string) => `care-med-${episodeId}`;
 
+  let regimenSheet: ReturnType<typeof RegimenEditorSheet>;
+
+  /** The lane's name travels down to its block rather than taking the fragment's own jump,
+      which landed the whole way in one frame ("should take you lower smoothly"). The eased
+      scroll is scroll-region.ts's, the same one a linked record lands with; the focus still
+      moves to the block, without a scroll of its own. */
+  function travelToBlock(event: MouseEvent, episodeId: string) {
+    if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    document.getElementById(blockAnchor(episodeId))?.focus({ preventScroll: true });
+    scrollToHash(`#${blockAnchor(episodeId)}`);
+  }
+
   /** Where to log this lane's next dose: the same sheet the dose panel on
       Today opens (`/care/doses?add=1`), seeded with the drug whose block the
       button sits in, so a person on three regimens does not land in a picker
       to say what the button already knew. */
-  const logHref = (drug: string) => `/care/doses?add=1&drug=${encodeURIComponent(drug)}`;
+  const logHref = (episodeId: string) => `/care/doses?add=1&episode=${encodeURIComponent(episodeId)}`;
 
   /** The drug and its ester, unless the drug's own name already carries it -
       "Estradiol valerate · valerate" is what naming both unconditionally
@@ -459,61 +498,17 @@
     return route === null ? null : routeLabel(route);
   };
 
-  /* Which lane the hormone curve is drawn for: the first, which is a curve
-     drug whenever one is running (railEpisodes puts them first). The row
-     below states that curve's own reading. */
-  let curveEpisode = $derived(lanes.find((lane) => resolveCurveDrug(lane.episode.drug) !== null) ?? null);
-  let curveDrug = $derived(curveEpisode ? resolveCurveDrug(curveEpisode.episode.drug) : null);
-  let curveDirectionQuery = liveQuery((j) =>
-    curveDrug ? j.hormoneCurve.getCurveDirection({ drug: curveDrug, epochDay: today }) : Promise.resolve(null)
-  );
-
-  /** Where today sits between that lane's own two doses - "day 6 of 7" -
-      or null where the pair is not both there to count between. A count of
-      days off two days this screen already states, not a reading of a
-      schedule: a rhythm that skipped a slot has a longer gap this way and
-      says so, rather than restating the interval the schedule was set to. */
-  let curveDay = $derived.by(() => {
-    const last = curveEpisode?.lastDoseEpochDay ?? null;
-    const next = curveEpisode?.nextDoseEpochDay ?? null;
-    if (last === null || next === null || next <= last) return null;
-    return { day: today - last + 1, span: next - last };
-  });
-
-  /* The curve's current reading in words: which way the curve this app
-     draws is going today (journal/hormoneCurve.ts owns that question), and
-     where today falls between the two doses either side of it. Never a
-     level and never a number the app has interpreted - the height of a
-     curve is on /care/curve, with everything that qualifies it. */
-  let curveReading = $derived.by(() => {
-    const direction = curveDirectionQuery.value ?? null;
-    /* The curve screen's own words for the same silence, rather than a
-       second sentence about it. Both silences read alike on purpose: no
-       curve drug running at all, and one running with nothing logged inside
-       the model's reach yet - a regimen started this week - are the same
-       sentence from this row's side, and the row may never fall back to a
-       title and a chevron, which is the defect this whole ticket is about
-       (code review, spec axis). */
-    if (!direction) return m.curve_empty_title();
-    const word = { rising: m.care_curve_rising(), level: m.care_curve_level(), falling: m.care_curve_falling() }[
-      direction
-    ];
-    return curveDay === null
-      ? word
-      : m.care_row_curve_reading({ direction: word, day: String(curveDay.day), span: String(curveDay.span) });
-  });
-
   /* What the clinician summary would print if it were opened now: its own
      default range and the sections it has (the screen's own
-     `ongoingWindowRange(today, 90)` and every inclusion key, which is what
-     `DEFAULT_CLINICIAN_DOSSIER_INCLUSION` turns them all on for). Read from
+     `ongoingWindowRange(today, 90)` and every registered section, which is
+     what `EVERY_CLINICIAN_SUMMARY_SECTION` turns them all on for). Read from
      the same two modules the summary screen reads, so the row cannot drift
      from what tapping it opens. */
   let summaryRange = $derived(ongoingWindowRange(today, 90));
   let summaryReading = $derived(
     m.care_row_summary({
       start: fmtDay(summaryRange.start, { day: 'numeric', month: 'long' }),
-      sections: m.clinician_summary_settings_sections({ n: CLINICIAN_DOSSIER_INCLUSION_KEYS.length })
+      sections: m.clinician_summary_settings_sections({ n: CLINICIAN_SUMMARY_SECTION_KEYS.length })
     })
   );
 
@@ -529,69 +524,6 @@
     stock.filter((row) => !lanes.some((lane) => sameDrug(lane.episode.drug, row.entry.drug)))
   );
 
-  /* Mood between injections (phase 5 ticket 09, moved here whole by
-     redesign ticket 05): two bucket-and-average shapes over a cyclical
-     position, kept apart from correlation cards on purpose
-     (../../lib/data/intervalMoodPattern.ts). Neither reading names a
-     target or a verdict: both say only where days fell.
-
-     Both ask across the journal's whole history rather than a range this
-     screen has no picker for (Number.MIN_SAFE_INTEGER as the lower bound,
-     which is what "ever" means on an epoch-day column): an injection
-     interval is commonly 14-28 days and rarely completes three times
-     inside even a 90-day window. "Ever" is capped to a lookback window at
-     the journal/intervalMoodPattern.ts seam instead of actually reaching a
-     decade back (phase 8 audit ticket 16). */
-  let intervalMoodQuery = liveList((j) =>
-    j.intervalMoodPattern.dayOfInterval(Number.MIN_SAFE_INTEGER, today)
-  );
-  let intervalMoodPattern = $derived(intervalMoodQuery.rows);
-
-  let customIntervalLength = $state(28);
-  // A boundary clamp, not a save-time validation: the field can sit blank or
-  // negative mid-edit, and the chart underneath has to show something for
-  // every keystroke rather than the query throwing on a bad value.
-  let safeCustomIntervalLength = $derived(
-    Number.isFinite(customIntervalLength) && customIntervalLength >= 2 ? Math.floor(customIntervalLength) : 28
-  );
-
-  /* Waited out the same way /search's query is (phase 8 audit ticket 15,
-     ticket 16 here): the liveList closure below reads a $state before its
-     first await, which by the reactivity contract (journal.svelte.ts) makes
-     that read a dependency - so reading safeCustomIntervalLength directly
-     would re-run byCustomInterval's whole-history fold on every keystroke,
-     a fresh 102KB read per digit typed. */
-  const CUSTOM_INTERVAL_DEBOUNCE_MS = 250;
-  let debouncedCustomIntervalLength = $state(28);
-  $effect(() => {
-    const length = safeCustomIntervalLength;
-    const timer = setTimeout(() => {
-      debouncedCustomIntervalLength = length;
-    }, CUSTOM_INTERVAL_DEBOUNCE_MS);
-    return () => clearTimeout(timer);
-  });
-
-  let customIntervalQuery = liveList((j) =>
-    j.intervalMoodPattern.byCustomInterval(Number.MIN_SAFE_INTEGER, today, debouncedCustomIntervalLength)
-  );
-  let customIntervalPattern = $derived(customIntervalQuery.rows);
-
-  /* A position on a cycle is not a day, so the two folds label their ends
-     with the position rather than with a date, and they are already one
-     point per position - there is nothing to bucket. */
-  const positionPoints = (pattern: { position: number; value: number }[]) =>
-    pattern.map((p) => ({ x: p.position, y: p.value }));
-  const positionLabel = (point: { x: number }) => m.interval_day_n({ n: String(point.x) });
-  const positionEnds = (pattern: { position: number }[]) => ({
-    from: m.interval_day_n({ n: String(pattern[0].position) }),
-    to: m.interval_day_n({ n: String(pattern[pattern.length - 1].position) })
-  });
-
-  /* What a fold has to hold before it is drawn: not a bare trend floor,
-     which is one straight segment for somebody with a couple of entries,
-     but `WRAPPED_ENTRY_FLOOR` positions of the fold's own all-history
-     output - five places inside the interval that carry a reading. */
-  const foldDrawable = (pattern: readonly unknown[]) => pattern.length >= WRAPPED_ENTRY_FLOOR;
 </script>
 
 <div class="screen">
@@ -667,21 +599,17 @@
           {/if}
           {#each spine.lanes as lane, index (lane.episodeId)}
             {@const leadTimeDays = lanes.find((l) => l.episode.id === lane.episodeId)?.runOut?.entry.leadTimeDays ?? null}
-            <div class="care-lane" data-care-lane={lane.drug} class:is-source-lane={sourceLane !== null && sameDrug(lane.drug, sourceLane)} {...laneAttrs(index, labelRows(lane.marks))}>
-              <!-- The name labels its own line from the left, above it
-                   rather than beside it: a name column would take around a
-                   hundred of the three hundred and thirty pixels a 390px
-                   screen leaves for the rail, and careSpine's collision rule
-                   is sized against the full width (careSpine.ts:62-86).
+            <div class="care-lane" data-care-lane={lane.drug} class:is-source-lane={sourceLane !== null && lane.episodeId === sourceLane} {...laneAttrs(index, labelRows(lane.marks))}>
+              <!-- The name labels its own line from the left, above it rather than beside
+                   it: a name column would take around a hundred of the three hundred and
+                   thirty pixels a 390px screen leaves for the rail, and careSpine's
+                   collision rule is sized against the full width (careSpine.ts:62-86).
 
-                   And it is the way down to that medication's own rows
-                   (phase 11 UI/UX ticket 25, screen 7's "link lane labels
-                   directly to their corresponding row"): a lane says which
-                   drug it draws and the block below says what that drug is
-                   and offers Log a dose, with the whole rail in between.
-                   Sized to the name rather than to the lane, so the press
-                   is a control's press and not a full-width row's. -->
-              <a class="care-lane-name" href={`#${blockAnchor(lane.episodeId)}`} data-care-lane-jump={lane.drug}>
+                   And it is the way down to that medication's own rows: a lane says which
+                   drug it draws and the block below says what that drug is and offers Log a
+                   dose, with the whole rail in between. Sized to the name rather than to
+                   the lane, so the press is a control's press and not a full-width row's. -->
+              <a class="care-lane-name" href={`#${blockAnchor(lane.episodeId)}`} data-care-lane-jump={lane.drug} onclick={(event) => travelToBlock(event, lane.episodeId)}>
                 <span class="care-lane-drug">{lane.drug}</span>
                 <Icon name="chevronDown" size={18} cls="care-lane-go" />
               </a>
@@ -691,14 +619,14 @@
                 <!-- Two elements per mark, and the split is load-bearing.
                      Placement along the rail is a transform on the outer
                      box, so a dose logged now moves its marks to their new
-                     days rather than repainting them there (ADR-0078); the
+                     days rather than repainting them there; the
                      inner box carries the settle and the press, and
                      press.css holds the app's press at zero specificity
                      through :where(), so a transform of its own on the link
                      would outrank :active and make every mark unpressable. -->
                 {#each lane.marks as mark (mark.kind)}
                   {@const what = markLabel(mark.kind, leadTimeDays)}
-                  {@const href = markHref(mark, lane.drug)}
+                  {@const href = markHref(mark, lane.episodeId)}
                   <div class="care-at" style={`--care-at: ${mark.position}; --care-row: ${mark.labelRow}`}>
                     <div
                       class="care-at-inner"
@@ -730,7 +658,7 @@
                           data-care-mark={mark.kind}
                           {href}
                           aria-label={markAria(mark, what, lane.drug)}
-                          onclick={() => rememberSourceLane(lane.drug)}
+                          onclick={() => rememberSourceLane(lane.episodeId)}
                         >
                           <span class="care-what">{what}</span>
                           <span class="care-when">{dayLabel(mark.epochDay)}</span>
@@ -748,20 +676,8 @@
     </div>
   {/if}
 
-  <!-- One block per running regimen, in the lanes' own order. Outside the
-       rail's branch on purpose: a regimen is a reading in its own right and
-       it is the one reading that is not a day, so careSpine has nothing to
-       draw for a journal with a regimen and no dose, draw or stock count
-       yet - and while this block sat inside that branch the screen answered
-       "nothing to put on the line" without ever naming the regimen that was
-       running.
-
-       Held until every read the rail waits on has answered, not just the
-       episode read this block itself needs (ticket 99 item 42, "the 'doses,
-       draws and stock' fades in a little too yankily"): gated on one read it
-       appeared a couple of hundred milliseconds early and pushed the
-       skeleton down the screen, which is what read as a yank rather than a
-       fade. -->
+  <!-- Show running regimens even when careSpine has no dated records. Wait for
+       all rail reads before drawing the blocks so they do not displace the skeleton. -->
     {#each lanes as lane (lane.episode.id)}
       {@const route = blockRoute(lane.episode)}
       <!-- `tabindex="-1"` so the jump from the lane's own name moves the
@@ -773,7 +689,9 @@
         tabindex="-1"
         data-care-regimen-block={lane.episode.drug}
       >
-        <a class="care-regimen" href="/care/regimen" data-care-regimen>
+        <!-- Opens this episode's own editor over Care: the same sheet the regimen screen
+             opens, without the trip to that screen to tap the episode a second time. -->
+        <button type="button" class="care-regimen" data-care-regimen={lane.episode.drug} onclick={() => regimenSheet.open(lane.episode)}>
           <span class="care-regimen-lines">
             <span class="care-regimen-drug">{blockName(lane.episode)}</span>
             <span class="care-regimen-detail"
@@ -785,9 +703,10 @@
                     route: route.charAt(0).toLowerCase() + route.slice(1)
                   })}</span
             >
+            <span class="care-regimen-detail" data-care-regimen-since>{m.care_regimen_since({ date: longDay(lane.takingSinceEpochDay) })}</span>
           </span>
           <Icon name="chevronRight" size={22} cls="care-regimen-go" />
-        </a>
+        </button>
         <!-- The two days the lane above draws, said in words with their
              weekday: the rail states where they fall against each other and
              this states which days they are. -->
@@ -801,19 +720,16 @@
             {/if}
           </p>
         {/if}
-        <!-- The whole of /settings/exposure's one useful row, ticket 09
-             (ADR-0084): a fact with its unit and window, no comparison,
-             no picker. -->
+        <!-- The whole of /settings/exposure's one useful row, (ADR-0084): a fact with its
+             unit and window, no comparison, no picker. -->
         {#each lane.doseTotals as total (`${total.drug}-${total.route}-${total.doseUnit}`)}
           {@const label = routeLabel(total.route)}
           <p class="care-regimen-total" data-care-regimen-total>
             {m.care_regimen_dose_total({
               total: String(total.total),
               unit: total.doseUnit,
-              /* routeLabel() is capitalised everywhere else it's used - a
-                 standalone label or table cell - but this is the one place
-                 it sits mid-sentence (ticket 09's own spec gives the line in
-                 lowercase: "48 mg intramuscular in the last 90 days"). */
+              /* RouteLabel() is capitalised everywhere else it's used - a standalone label
+                 or table cell - but this is the one place it sits mid-sentence. */
               route: label.charAt(0).toLowerCase() + label.slice(1),
               days: String(CARE_DOSE_TOTAL_WINDOW_DAYS)
             })}
@@ -840,19 +756,16 @@
              block's own drug: a person on three regimens has already said
              which one by pressing this button rather than the one two
              blocks down. -->
-        <a class="btn btn-soft btn-block press care-regimen-log" data-care-log={lane.episode.drug} href={logHref(lane.episode.drug)}>
-          <Icon name="plus" size={18} /> <span>{m.care_log_dose()}</span>
+        <a class="btn btn-soft btn-block press care-regimen-log" data-care-log={lane.episode.drug} href={logHref(lane.episode.id)} onclick={() => rememberSourceLane(lane.episode.id)}>
+          <Icon name="plus" size={18} /> <span>{m.log_a_dose()}</span>
         </a>
       </div>
     {/each}
 
-  <SectionHeading text={m.care_group_hormones()} />
+  <SectionHeading text={m.care_group_labs_stock()} />
   <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.readings)}>
-    <!-- Every row states its own current value (DIRECTION.md 3b, and phase
-         11 ticket 10: no row on this screen is a title and a chevron
-         alone). The analyte and the result in its own unit, never converted
-         (ADR-0026), with the day it was drawn - the rail carries that day as
-         a guide and the row says which day the guide is. -->
+    <!-- Each row gives the analyte, result in its recorded unit (ADR-0026)
+         and the day it was drawn. The rail marks that day with a guide. -->
     <ListRow
       key="labs"
       icon="flask"
@@ -866,9 +779,6 @@
         })}
       href="/care/labs"
     />
-    <!-- The reading lands once from curveDirectionQuery, replacing the row's
-         own silence with the curve's direction: faded, not cut. -->
-    <ListRow key="hormone-curve" icon="curve" title={m.curve_title()} subtitle={curveReading} href="/care/curve" fadeSwap />
     {#if unlanedStock.length > 0}
       <!-- Only what no lane above already states (ADR-0084 kept this row for
            the entry point that asks for no regimen to be running first: a
@@ -877,7 +787,7 @@
       <ListRow
         key="stock"
         icon="package"
-        title={m.regimen_stock_link()}
+        title={m.stock_title()}
         subtitle={m.care_row_stock({
           drug: unlanedStock[0].entry.drug,
           left: stockRemainingLabel(unlanedStock[0].projection.remaining, unlanedStock[0].entry.unit)
@@ -885,132 +795,47 @@
         onclick={openStockList}
       />
     {:else if stock.length === 0}
-      <ListRow key="stock" icon="package" title={m.regimen_stock_link()} subtitle={m.care_row_stock_none()} onclick={openStockList} />
+      <ListRow key="stock" icon="package" title={m.stock_title()} subtitle={m.care_row_stock_none()} onclick={openStockList} />
     {/if}
-    <!-- Ticket 59: the summary is an export over these readings, not one of
-         its own, so it joins the card that already reads them. Written by
-         hand rather than through HostedRows (ADR-0072) - that registry is
-         for an *area* moved off the hub, and the summary fronts no area
-         (`hubRows.ts` never gave it one). It states the range and the
-         section count it would print by default, read off the same two
-         modules its own screen reads them from. -->
+    <!-- The summary is an export over these readings, not one of its own, so it joins the
+         card that already reads them. Written by hand rather than through HostedRows - that
+         registry is for an *area* moved off the hub, and the summary fronts no area
+         (`hubRows.ts` never gave it one). It states the range and the section count it
+         would print by default, read off the same two modules its own screen reads them
+         from. -->
     <ListRow
       key="clinician-summary"
       icon="share"
-      title={m.clinician_summary_row()}
+      title={m.clinician_summary_title()}
       subtitle={summaryReading}
       href="/health/clinician-summary"
     />
   </ListCard>
 
-  <!-- Held behind the care read with everything above it (ux-carpet
-       ticket 184), for the reason the regimen blocks are (ticket 99 item
-       42): drawn outside the gate, this card and the hosted row painted
-       under the skeleton and were then pushed some 1500px down the screen
-       when the rail landed over them. Each still waits on its own reads
-       inside, and sits below every block that could move it. -->
-  <!-- Mood between injections (redesign ticket 05: moved off a general
-       stats door, since this is a regimen reading and Care is where the
-       regimen lives). Two readings under one heading rather than two
-       cards, which is what let the "reads your whole journal" line stop
-       repeating itself: it used to sit under each of them, once each,
-       saying the same thing twice on the one door that had a range picker
-       to be reading past. Care has no range control at all - only the
-       rail's own forward-looking window - so it says so once, in Care's
-       own words, and both readings still gate on their own output rather
-       than on a floor either could clear with nothing to show. -->
-  <ChartCard level={3} heading={m.interval_mood_title()} kind="interval-mood" role={roleAt(activeFlag.roles, AREA_ROLE.readings)}>
-    {#snippet control()}
-      <span class="stats-interval" data-interval-control>
-        <span class="stats-interval-affix">{m.care_interval_fold_prefix()}</span>
-        <label class="visually-hidden" for="custom-interval-length">{m.care_interval_fold_label()}</label>
-        <input
-          class="stats-interval-input"
-          type="number"
-          min="2"
-          id="custom-interval-length"
-          name="custom-interval-length"
-          inputmode="numeric"
-          data-interval-length
-          bind:value={customIntervalLength}
-        />
-        <span class="stats-interval-affix">{m.care_interval_fold_unit()}</span>
-      </span>
+  <!-- A link to the cycle log, only behind `cycleTrackingVisible`, with the last three
+       events under it. The module itself is on the More hub, in Health. The events are
+       static rows (the shape regimen's pause rows use): they name nothing to press, and the
+       link row heading them is the way in. No icon disc on them, since a disc is what marks
+       a row as one to press, and the cycle screen has no address for one event to link them
+       to. They sit in the link's own reserve, so the card waits for their read and arrives
+       whole. -->
+  <HostedRows
+    host="care"
+    keys={cycleShown ? ['cycle-events'] : []}
+    ready={!episodesQuery.loading && (!cycleShown || !cycleEventsQuery.loading)}
+    card
+  >
+    {#snippet after()}
+      {#each recentCycleEvents as event (event.id)}
+        <div class="kit-row is-static" data-cycle-event={event.id}>
+          <span class="kit-row-text">
+            <span class="kit-row-title">{cycleEventKindName(event.kind)}</span>
+            <span class="kit-row-sub">{longDay(event.epochDay)}</span>
+          </span>
+        </div>
+      {/each}
     {/snippet}
-    <p class="stats-inline-note">{m.interval_mood_explainer()}</p>
-    <p class="stats-inline-note">{m.care_interval_all_history()}</p>
-    <figure class="care-fold" data-care-fold="injections">
-      <figcaption>{m.care_injection_cycle_caption()}</figcaption>
-      <ReadGate read={intervalMoodQuery} variant="block" count={1}>
-        {#snippet rows()}
-          {#if foldDrawable(intervalMoodPattern)}
-            {@const ends = positionEnds(intervalMoodPattern)}
-            <AreaChart
-              points={positionPoints(intervalMoodPattern)}
-              min={1}
-              max={5}
-              from={ends.from}
-              to={ends.to}
-              formatValue={(v) => v.toFixed(1)}
-              scrubLabel={positionLabel}
-              ariaLabel={m.interval_mood_chart_aria({
-                count: String(intervalMoodPattern.length),
-                from: String(intervalMoodPattern[0].position),
-                to: String(intervalMoodPattern[intervalMoodPattern.length - 1].position)
-              })}
-            />
-          {:else}
-            <ChartEmpty>{m.interval_mood_empty()}</ChartEmpty>
-          {/if}
-        {/snippet}
-        {#snippet empty()}
-          <ChartEmpty>{m.interval_mood_empty()}</ChartEmpty>
-        {/snippet}
-      </ReadGate>
-    </figure>
-    <figure class="care-fold" data-care-fold="interval">
-      <figcaption>{m.care_custom_interval_caption({ days: debouncedCustomIntervalLength })}</figcaption>
-      <ReadGate read={customIntervalQuery} variant="block" count={1}>
-        {#snippet rows(customIntervalPattern)}
-          {#if foldDrawable(customIntervalPattern)}
-            {@const ends = positionEnds(customIntervalPattern)}
-            <AreaChart
-              points={positionPoints(customIntervalPattern)}
-              min={1}
-              max={5}
-              from={ends.from}
-              to={ends.to}
-              formatValue={(v) => v.toFixed(1)}
-              scrubLabel={positionLabel}
-              ariaLabel={m.custom_interval_chart_aria({
-                days: String(debouncedCustomIntervalLength),
-                count: String(customIntervalPattern.length),
-                from: String(customIntervalPattern[0].position),
-                to: String(customIntervalPattern[customIntervalPattern.length - 1].position)
-              })}
-            />
-          {:else}
-            <ChartEmpty>{m.interval_mood_empty()}</ChartEmpty>
-          {/if}
-        {/snippet}
-        {#snippet empty()}
-          <ChartEmpty>{m.interval_mood_empty()}</ChartEmpty>
-        {/snippet}
-      </ReadGate>
-    </figure>
-  </ChartCard>
-
-  <!-- What came of all of it (phase 9 carpet ticket 16). The card above is
-       what is going in, on what schedule and how much is left; this is the
-       one row about what the person has noticed since, and the two screens
-       under it - side effects, and hair - hang off that one rather than off
-       the hub.
-
-       No SectionHeading: it is one row, and a heading over "Changes you've
-       noticed" would be that title said twice. What separates it from the
-       hormones card is the --space-5 `.screen > .screen-part > *` gives
-       two unrelated blocks. -->
-  <HostedRows host="care" card />
+  </HostedRows>
     {/snippet}
   </ReadGate>
 
@@ -1030,9 +855,9 @@
     <div class="stock-body" bind:this={stockBody}>
     {#if stockEditor}
       <div class="stock-content" transition:stockSwap onoutrostart={(event) => retireStockContent(event.currentTarget)}>
-      <Field label={m.stock_drug_label()} id="care-stock-drug">
+      <Field label={m.drug_label()} id="care-stock-drug">
         {#snippet children(id)}
-          <input class="input" {id} name="stock-drug" placeholder={m.stock_drug_placeholder()} bind:value={stockEditor!.drug} />
+          <input autocomplete={journalTextAutocomplete()} class="input" {id} name="stock-drug" placeholder={m.stock_drug_placeholder()} bind:value={stockEditor!.drug} />
         {/snippet}
       </Field>
       <div class="cd-endpoints">
@@ -1049,9 +874,9 @@
             />
           {/snippet}
         </Field>
-        <Field label={m.stock_unit_label()} id="care-stock-unit">
+        <Field label={m.unit_label()} id="care-stock-unit">
           {#snippet children(id)}
-            <input class="input" {id} name="stock-unit" placeholder={m.stock_unit_placeholder()} bind:value={stockEditor!.unit} />
+            <input autocomplete={journalTextAutocomplete()} class="input" {id} name="stock-unit" placeholder={m.stock_unit_placeholder()} bind:value={stockEditor!.unit} />
           {/snippet}
         </Field>
       </div>
@@ -1121,13 +946,25 @@
             {/snippet}
           </Field>
         {:else}
-          <Field label={m.stock_window_end_label()} id="care-stock-window-end">
+          <Field label={m.end_date_label()} id="care-stock-window-end">
             {#snippet children(id)}
               <DatePicker name="stock-window-end" bind:value={stockEditor!.windowEndDate} {id} />
             {/snippet}
           </Field>
         {/if}
       {/if}
+
+      <Field label={m.stock_expiry_label()} id="care-stock-expiry">
+        {#snippet children(id)}
+          <DatePicker name="stock-expiry" bind:value={stockEditor!.expiryDate} {id} />
+        {/snippet}
+      </Field>
+      <Field label={m.stock_pharmacy_note_label()} id="care-stock-pharmacy-note">
+        {#snippet children(id)}
+          <input autocomplete={journalTextAutocomplete()} class="input" {id} name="stock-pharmacy-note" placeholder={m.stock_pharmacy_note_placeholder()} bind:value={stockEditor!.pharmacyNote} />
+        {/snippet}
+      </Field>
+      <CostField id="care-stock-cost" bind:draft={stockEditor!.cost} />
 
       <div class="stack-3">
         <button class="btn btn-primary" data-save-stock onclick={saveStockEntry}><span>{m.stock_save()}</span></button>
@@ -1144,26 +981,30 @@
         <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.readings)}>
           {#each stock as row (row.entry.id)}
             {@const rowRunOut = stockRunOutLabel(row.projection, today)}
-            <ListRow
-              key={row.entry.id}
-              data-stock={row.entry.id}
-              title={row.entry.drug}
-              subtitle={[
-                stockRemainingLabel(row.projection.remaining, row.entry.unit),
-                m.stock_recorded({
-                  date: fmtDay(row.entry.recordedEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })
-                }),
-                rowRunOut.text,
-                stockOpenedWindowLine(row.entry, today)
-              ]}
-              onclick={() => editStock(stockEditorFromRow(row))}
-            >
-              {#snippet leading()}
-                <span class="kit-row-ico" class:is-warn={rowRunOut.warn}>
-                  <Icon name="package" size={22} />
-                </span>
-              {/snippet}
-            </ListRow>
+            <div class="rows-divide" transition:collapse>
+              <ListRow
+                key={row.entry.id}
+                data-stock={row.entry.id}
+                title={row.entry.drug}
+                subtitle={[
+                  stockRemainingLabel(row.projection.remaining, row.entry.unit),
+                  m.stock_recorded({
+                    date: fmtDay(row.entry.recordedEpochDay, { day: 'numeric', month: 'short', year: 'numeric' })
+                  }),
+                  rowRunOut.text,
+                  stockOpenedWindowLine(row.entry, today),
+                  stockSupplyLine(row.entry, today),
+                  costLine(row.entry.cost)
+                ]}
+                onclick={() => editStock(stockEditorFromRow(row))}
+              >
+                {#snippet leading()}
+                  <span class="kit-row-ico" class:is-warn={rowRunOut.warn}>
+                    <Icon name="package" size={22} />
+                  </span>
+                {/snippet}
+              </ListRow>
+            </div>
           {/each}
         </ListCard>
         {#if stockExcludedDoses > 0}
@@ -1208,6 +1049,8 @@
     busy={stockRemoving.busy}
     failed={stockRemoving.failed}
   />
+
+  <RegimenEditorSheet bind:this={regimenSheet} allEpisodesLink />
 </div>
 
 <style>
@@ -1231,41 +1074,21 @@
     margin-top: var(--space-4);
   }
 
-  .care-fold {
-    margin: var(--space-4) 0 0;
-  }
-  .care-fold + .care-fold {
-    margin-top: var(--space-6);
-  }
-  .care-fold figcaption {
-    margin-bottom: var(--space-3);
-    color: var(--text-2);
-    font-size: var(--text-sm);
-    font-weight: var(--weight-medium);
-  }
-
-  .stats-inline-note {
-    margin: var(--space-2) 0 0;
-    font-size: var(--text-sm);
-    line-height: var(--leading-body);
-    color: var(--text-2);
-  }
-  .stats-inline-note:first-child {
-    margin: 0 0 var(--space-3);
-  }
-
-  /* One regimen, named under the rail: what one of its lines is a line
-     about. Not a ListRow in a card of its own - that is a third stacked
-     container on a 390px screen for one fact, and DIRECTION.md 2b is about
-     exactly that - but it keeps a row's touch target and a row's press. */
+  /* Name the regimen beneath the rail. Keep a row's touch target and
+     press feedback, with no extra card around it. */
   .care-regimen {
     display: flex;
     align-items: center;
     gap: var(--space-3);
+    width: 100%;
     min-height: var(--touch-target);
     padding: var(--space-2) 0;
-    text-decoration: none;
+    border: 0;
+    background: none;
     color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
   }
   /* Also the block a lane's name jumps to: enough room over it that the
      drug's name is not against the top of the scroll region, and no focus
@@ -1371,18 +1194,15 @@
   }
 
   .care-rail {
-    /* One caption is a label over a date; one lane is its name, its line and
-       however many caption rows its own marks need. --care-stem is how far
-       the first caption row hangs below its line, which is also how long the
-       stem from the line down to it is.
+    /* One caption is a label over a date; one lane is its name, its line and however many
+       caption rows its own marks need. --care-stem is how far the first caption row hangs
+       below its line, which is also how long the stem from the line down to it is.
 
-       A caption row is the product's touch target, not the height of the two
-       lines of type in it (phase 11 UI/UX ticket 25, first audit U4: the
-       captions measured 32px). The row's height and the caption's target are
-       one number on purpose - a taller target inside a shorter row is a
-       caption whose invisible half lies over the caption in the row below,
-       and captions land in two rows precisely when they are too close in x
-       to share one. */
+       A caption row is the product's touch target, not the height of the two lines of type
+       in it. The row's height and the caption's target are one number on purpose - a taller
+       target inside a shorter row is a caption whose invisible half lies over the caption
+       in the row below, and captions land in two rows precisely when they are too close in
+       x to share one. */
     --care-label-h: var(--touch-target);
     /* Half what it was, because the caption row above pays the other half:
        a caption is centred in its 48px row, so 8px of the row is air over
@@ -1419,7 +1239,7 @@
   }
 
   /* Today and the draw, down the whole rail: 1px in --text-2, which is what
-     a guide is (DIRECTION.md rule 9) - never a lane's own colour, since a
+     a guide is - never a lane's own colour, since a
      guide belongs to no drug. Today is solid and the draw is dashed: the two
      are told apart by their captions above, and the dash says the draw is a
      thing that happened where today is simply where the reader is. */
@@ -1446,12 +1266,8 @@
     flex-direction: column;
     gap: var(--space-1);
   }
-  /* The lane the reader came back to from a dose or lab record: the same
-     answer the log and labs screens give their linked row (surface-2,
-     rounded), so returning names the lane the same way every other screen
-     names its target. It appears with the screen's own arrival rather than
-     moving after settle - ADR-0078's concern is a settled view changing in
-     place, and this is part of the entrance. */
+  /* Highlight the linked dose or lab lane with rounded surface-2 at
+     arrival. It identifies the target as it comes into view. */
   .care-lane.is-source-lane {
     background: var(--surface-2);
     border-radius: var(--r-block);
@@ -1505,7 +1321,7 @@
     position: absolute;
     top: 0;
     height: 2px;
-    /* Square ends: a series is 2px with square caps (DIRECTION.md rule 9). */
+    /* Square ends: a series is 2px with square caps. */
     transform: translateY(0);
   }
   /* Two lines, not one: the rail is read out from today in both directions,
@@ -1541,7 +1357,7 @@
 
   /* The outer box is the whole track's width and is translated by a
      fraction of itself, which is a fraction of the track: placement is a
-     transform, so a mark whose day changes travels to it (ADR-0078) instead
+     transform, so a mark whose day changes travels to it instead
      of being repainted there. Percentages in translateX resolve against the
      element's own width, which is what makes that work without the track's
      width in pixels. */
@@ -1553,14 +1369,13 @@
     transform: translateX(calc(var(--care-at) * 100%));
     transition: transform var(--dur-med) var(--ease-out);
     pointer-events: none;
-    /* A deep row's stem reaches back past every row between it and the line,
-       so a shallow neighbour close in x - a day or two apart is well inside
-       a caption's width - sits behind that stem unless shallower always
-       wins. Here rather than on the caption inside, and that is the whole
-       point: the transform above makes each mark its own stacking context,
-       so a z-index within one never compares against another's and the
-       marks paint in document order instead - which put the next dose's
-       stem straight through the last dose's date (Alicja, on the render). */
+    /* A deep row's stem reaches back past every row between it and the line, so a shallow
+       neighbour close in x - a day or two apart is well inside a caption's width - sits
+       behind that stem unless shallower always wins. Here rather than on the caption
+       inside, and that is the whole point: the transform above makes each mark its own
+       stacking context, so a z-index within one never compares against another's and the
+       marks paint in document order instead - which put the next dose's stem straight
+       through the last dose's date. */
     z-index: calc(10 - var(--care-row));
   }
   /* The inner box is what is centred on the mark, and what presses. */
@@ -1588,7 +1403,7 @@
        keyframe and not on this rule. With `forwards` a waiting caption had
        no transform at all, so it sat uncentred until its delay ran out and
        then jumped half its own width (26-30px) on the frame it began to
-       fade in (ux-carpet ticket 184). */
+       fade in. */
     opacity: 0;
     animation: care-mark-settle var(--dur-med) var(--ease-out) both;
     animation-delay: calc(var(--care-settle) * var(--dur-authored));
@@ -1672,13 +1487,4 @@
     border-color: transparent;
   }
 
-  /* The words either side of the interval-length field ("fold by", "days" -
-     care_interval_fold_prefix/care_interval_fold_unit), at the weight a
-     chart card's other heading-line text takes. */
-  .stats-interval-affix {
-    font-size: var(--text-sm);
-    font-weight: var(--weight-medium);
-    color: var(--text-2);
-    white-space: nowrap;
-  }
 </style>

@@ -1,46 +1,41 @@
-/* The hair-removal session area (phase 5 ticket 08, CONTEXT: pending). A
-   session is not an Entry: no mood, dimension values, tags or note, and no
-   regimen-episode reference - the same reasoning SideEffect and CycleEvent
-   give for standing alone.
-
-   A session's photos are their own table (hair_removal_photo) rather than a
-   third owner arm on `photo` (schema.ts explains why for hair_photo:
-   SQLite cannot widen that table's exactly-one-owner CHECK without a full
-   rebuild). Unlike hair_photo, though, a session photo genuinely belongs to
-   one session - a before/after picture of that treatment, not an
-   independently dated series - so hair_removal_photo carries a session_id
-   foreign key and is read and applied as the session's own nested children
-   (archiveRead.ts/archiveApply.ts, modeled on checklist/checklist_item
-   rather than on hair_stage/hair_photo's disjoint pair). The shared pipeline
-   is still reused exactly as the ticket asks: stagePhoto (photos.ts) writes
-   the same normalized, metadata-stripped bytes through the same
-   file-before-row order, and removeFilesOf reclaims them the same way on
-   delete. */
+/* A hair-removal session owns its photos through hair_removal_photo.session_id.
+   This keeps photos nested in archives and avoids rebuilding photo's owner
+   constraint. Use stagePhoto for normalized, metadata-stripped files before
+   writing rows. Use removeFilesOf on delete. */
 
 import type { SqliteDriver } from '../sqlite/driver';
-import { HAIR_REMOVAL_AREAS, type HairRemovalAreaKey } from '../hairRemovalAreas';
+import { assertOneOf, HAIR_REMOVAL_AREAS, HAIR_REMOVAL_METHODS } from '../rowValues';
 import type { HairRemovalMethod, HairRemovalSession } from '../types';
 import { removeFilesOf, stagePhoto, type NormalizedPhoto } from './photos';
 import type { PhotoFileStore } from '../photos/photo-file-store';
 import { assertChanged, mintUuid, now } from './support';
+import { assertValidCost, costColumns, costFromRow, normalizeCost, type CostInput, type CostRow } from '../cost';
 
 const MIN_PAIN_RATING = 1;
 const MAX_PAIN_RATING = 5;
+const MIN_MINUTES = 1;
+const MAX_MINUTES = 1440;
 
 interface HairRemovalSessionInput {
   id?: string;
   epochDay: number;
   area: string;
   method: HairRemovalMethod;
-  painRating: number;
-  cost?: string;
+  /** Left out or null when the person did not rate it: nothing is stored in its place. */
+  painRating?: number | null;
+  /** Whole minutes the session ran; left out or null when not written down. */
+  minutes?: number | null;
+  /** Absent or null is no cost; the editor always resubmits it. */
+  cost?: CostInput;
   provider?: string;
+  /** Blank is stored as null. */
+  note?: string | null;
 }
 
 /** One photo attached to a hair-removal session. Its own shape rather than
-    photos.ts's DatedPhoto or hairProgress.ts's HairPhoto: it carries its
-    owning session's id rather than its own date, since (unlike a hair
-    photo) it has no date of its own to carry - a session's date is enough. */
+    photos.ts's DatedPhoto: it carries its owning session's id rather than
+    its own date, since it has no date of its own to carry - a session's
+    date is enough. */
 export interface HairRemovalPhoto {
   id: string;
   sessionId: string;
@@ -50,25 +45,17 @@ export interface HairRemovalPhoto {
 export interface HairRemovalArea {
   /** Every session, oldest first. */
   getSessions(): Promise<HairRemovalSession[]>;
-  /** The sessions on one day (phase 5 deepening ticket 21). */
+  /** The sessions on one day. */
   getSessionsOnDay(epochDay: number): Promise<HairRemovalSession[]>;
   /** Returns the session's id. Updating an unknown id throws; an
-      out-of-range pain rating or an area outside the closed vocabulary
+      out-of-range pain rating, an invalid cost or an area outside the closed vocabulary
       throws before anything is written. */
   upsertSession(input: HairRemovalSessionInput): Promise<string>;
   /** Idempotent. Its photos go with it (ON DELETE CASCADE). */
   deleteSession(id: string): Promise<void>;
-  /** The day of the most recent session at or before `todayEpochDay`, or
-      null if there is none (phase 8 features ticket 03, lastWrite.ts). */
+  /** The day of the most recent session at or before `todayEpochDay`, or null if there is
+      none (lastWrite.ts). */
   lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
-  /** The newest session at or before `todayEpochDay`, or null when there is
-      none - the whole row, since a surface saying a session just happened
-      names the area it was on. Bounded by today for the reason
-      `lastWriteEpochDay` is (lastWrite.ts): a row dated after today is a
-      clock-skewed import or a bad write, not the last thing that happened.
-      Ties on the newest day answer with the one written first, which is the
-      row `getSessions`' own ordering put first. */
-  latestSession(todayEpochDay: number): Promise<HairRemovalSession | null>;
   /** A session's photos, oldest first. */
   getPhotos(sessionId: string): Promise<HairRemovalPhoto[]>;
   /** Normalizes nothing itself - `photo` must already be through
@@ -79,34 +66,43 @@ export interface HairRemovalArea {
   deletePhoto(id: string): Promise<void>;
 }
 
-type HairRemovalSessionRow = {
+export type HairRemovalSessionRow = CostRow & {
   uuid: string;
   epoch_day: number;
   area: string;
   method: HairRemovalMethod;
-  pain_rating: number;
-  cost: string;
+  pain_rating: number | null;
+  minutes: number | null;
   provider: string;
+  note: string | null;
 };
+
+/* The old free-text `cost` column is neither read nor written: version 115 moved what it
+   held into the cost columns or the note, and drops it. */
+export const SESSION_COLUMNS =
+  'uuid, epoch_day, area, method, pain_rating, minutes, cost_amount, cost_currency, cost_refunded, provider, note';
 type HairRemovalPhotoRow = { uuid: string; session_id: number; file_path: string };
 
-const toHairRemovalSession = (row: HairRemovalSessionRow): HairRemovalSession => ({
+export const toHairRemovalSession = (row: HairRemovalSessionRow): HairRemovalSession => ({
   id: row.uuid,
   epochDay: row.epoch_day,
   area: row.area,
   method: row.method,
   painRating: row.pain_rating,
-  cost: row.cost,
-  provider: row.provider
+  minutes: row.minutes,
+  cost: costFromRow(row),
+  provider: row.provider,
+  note: row.note
 });
 
-/** The schema's CHECK is the backstop (like side_effect's severity); this is
-    what turns a bad value into a message naming the vocabulary it broke
-    instead of a raw SQLite constraint failure. */
+/** Area and method are vocabularies the code owns (rowValues.ts); SQL no longer checks
+    them, so this is what keeps an unknown word out. */
 function assertValidArea(area: string): void {
-  if (!HAIR_REMOVAL_AREAS.includes(area as HairRemovalAreaKey)) {
-    throw new Error(`invalid hair-removal area: ${area}`);
-  }
+  assertOneOf(HAIR_REMOVAL_AREAS, 'hair-removal area', area);
+}
+
+function assertValidMethod(method: string): void {
+  assertOneOf(HAIR_REMOVAL_METHODS, 'hair-removal method', method);
 }
 
 function assertValidPainRating(painRating: number): void {
@@ -115,18 +111,24 @@ function assertValidPainRating(painRating: number): void {
   }
 }
 
+function assertValidMinutes(minutes: number): void {
+  if (!Number.isInteger(minutes) || minutes < MIN_MINUTES || minutes > MAX_MINUTES) {
+    throw new Error(`invalid session minutes: ${minutes}`);
+  }
+}
+
 export function makeHairRemovalArea(driver: SqliteDriver, files: PhotoFileStore): HairRemovalArea {
   return {
     async getSessions() {
       const rows = await driver.query<HairRemovalSessionRow>(
-        'SELECT uuid, epoch_day, area, method, pain_rating, cost, provider FROM hair_removal_session ORDER BY epoch_day, id'
+        `SELECT ${SESSION_COLUMNS} FROM hair_removal_session ORDER BY epoch_day, id`
       );
       return rows.map(toHairRemovalSession);
     },
 
     async getSessionsOnDay(epochDay) {
       const rows = await driver.query<HairRemovalSessionRow>(
-        'SELECT uuid, epoch_day, area, method, pain_rating, cost, provider FROM hair_removal_session WHERE epoch_day = ? ORDER BY id',
+        `SELECT ${SESSION_COLUMNS} FROM hair_removal_session WHERE epoch_day = ? ORDER BY id`,
         [epochDay]
       );
       return rows.map(toHairRemovalSession);
@@ -134,16 +136,23 @@ export function makeHairRemovalArea(driver: SqliteDriver, files: PhotoFileStore)
 
     async upsertSession(input) {
       assertValidArea(input.area);
-      assertValidPainRating(input.painRating);
-      const cost = input.cost ?? '';
+      assertValidMethod(input.method);
+      const painRating = input.painRating ?? null;
+      const minutes = input.minutes ?? null;
+      if (painRating !== null) assertValidPainRating(painRating);
+      if (minutes !== null) assertValidMinutes(minutes);
+      const cost = normalizeCost(input.cost);
+      assertValidCost(cost);
       const provider = input.provider ?? '';
+      const note = input.note?.trim() || null;
 
       if (input.id) {
         const result = await driver.run(
           `UPDATE hair_removal_session
-           SET epoch_day = ?, area = ?, method = ?, pain_rating = ?, cost = ?, provider = ?, updated_at = ?
+           SET epoch_day = ?, area = ?, method = ?, pain_rating = ?, minutes = ?,
+               cost_amount = ?, cost_currency = ?, cost_refunded = ?, provider = ?, note = ?, updated_at = ?
            WHERE uuid = ?`,
-          [input.epochDay, input.area, input.method, input.painRating, cost, provider, now(), input.id]
+          [input.epochDay, input.area, input.method, painRating, minutes, ...costColumns(cost), provider, note, now(), input.id]
         );
         assertChanged(result, `hair removal session: ${input.id}`);
         return input.id;
@@ -151,9 +160,10 @@ export function makeHairRemovalArea(driver: SqliteDriver, files: PhotoFileStore)
 
       const uuid = mintUuid();
       await driver.run(
-        `INSERT INTO hair_removal_session (uuid, epoch_day, area, method, pain_rating, cost, provider, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [uuid, input.epochDay, input.area, input.method, input.painRating, cost, provider, now()]
+        `INSERT INTO hair_removal_session (uuid, epoch_day, area, method, pain_rating, minutes,
+                                           cost_amount, cost_currency, cost_refunded, provider, note, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [uuid, input.epochDay, input.area, input.method, painRating, minutes, ...costColumns(cost), provider, note, now()]
       );
       return uuid;
     },
@@ -173,15 +183,6 @@ export function makeHairRemovalArea(driver: SqliteDriver, files: PhotoFileStore)
         [todayEpochDay]
       );
       return rows[0]?.day ?? null;
-    },
-
-    async latestSession(todayEpochDay) {
-      const rows = await driver.query<HairRemovalSessionRow>(
-        `SELECT uuid, epoch_day, area, method, pain_rating, cost, provider FROM hair_removal_session
-          WHERE epoch_day <= ? ORDER BY epoch_day DESC, id LIMIT 1`,
-        [todayEpochDay]
-      );
-      return rows.length ? toHairRemovalSession(rows[0]) : null;
     },
 
     async getPhotos(sessionId) {

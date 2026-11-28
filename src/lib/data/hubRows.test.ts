@@ -10,24 +10,20 @@ import {
   AREA_GROUP_ROW_KEYS,
   HUB_GROUP_KEYS,
   HUB_ROWS,
-  HUB_ROW_HOSTS,
   LAST_WRITE_WITHOUT_A_ROW,
   hubRowsMatching,
   hubSections,
-  isHubGroup,
   rowHidden,
   rowLine,
   rowReads,
-  rowsHostedBy,
   type HubReading,
   type HubRowSpec
 } from './hubRows.ts';
 
 const TODAY = 20000;
 
-/** How many rows the hub itself draws, which is every row minus the seven
-    drawn on a screen of their own (ticket 16). */
-const drawnRowCount = HUB_ROWS.filter((row) => isHubGroup(row.home)).length;
+/** How many rows the hub itself draws: every row. */
+const drawnRowCount = HUB_ROWS.length;
 
 const spec = (key: string): HubRowSpec => {
   const found = HUB_ROWS.find((row) => row.key === key);
@@ -40,6 +36,9 @@ const reading = (over: Partial<HubReading> = {}): HubReading => ({
   lastWrites: {},
   states: {},
   forward: {},
+  /* On by default so the counts below are of every row; the gate's own
+     tests turn it off. */
+  cycleVisible: true,
   ...over
 });
 
@@ -49,34 +48,18 @@ const hidden = { hidden: true, finishedEpochDay: null, suspendedEpochDay: null }
 
 // --- the registry is the only enumeration --------------------------------
 
-/** Every production file that reads this module - phase 10 redesign ticket
-    12's own proof, after `statsAreas.ts` was deleted as a second enumeration
-    of areas kept alive by nothing since ticket 99 item 36. Named rather than
-    globbed, the choice `feature-screens.test.ts` already made and for the
-    same reason - a surface silently added to this list and a surface
-    silently dropped from it read identically to a glob.
-
-    What this proves and what it does not: every file that imports `hubRows`
-    is one of these nine, so a tenth reader appearing anywhere fails here
-    rather than passing silently. `TodayEditor.svelte` is the sixth, added
-    by ticket 14 - it reads `HubReading` and `HubRowKey` to arrange the
-    front page, and everything it draws about a row comes off the registry
-    the way `pinnedRows.ts` next door does. It cannot see a second registry built
-    without importing this module at all - no scan can - which is why the
-    stronger claim is the deletion itself: `statsAreas.ts` was the one file
-    doing that, confirmed by grep before it was removed, and nothing has
-    replaced it.
-
-    `dayRows.ts`, `searchHitRows.ts` and `rowIcon.ts` are the seventh,
-    eighth and ninth, added by ticket 30: a search hit and a day row used to
-    declare an icon and a route of their own for every screen the hub
-    already named, an agreement the two files stated only in a comment.
-    They now read a row's `icon` and `href` off `hubRow()` wherever a
-    screen has one - the same reasoning `TodayEditor.svelte` already stood
-    on - and keep their own words and local icons only where no hub row
-    owns the screen at all. `rowIcon.ts` is the one call both files share
-    for reading or declaring that icon, rather than each restating it. */
+/**
+ * List production readers explicitly so an added or removed hubRows import
+ * fails the test. TodayEditor and pinnedRows read what they display from the
+ * registry. dayRows and searchHitRows reuse the hub icon and route when a
+ * screen has a hub row, through rowIcon. Screens without a hub row supply
+ * their own labels and icons.
+ *
+ * This test covers imports. A separate registry could bypass it, so the
+ * retired statsAreas registry was removed.
+ */
 const REGISTRY_SURFACES = [
+  'src/lib/components/FeatureVisibilityList.svelte',
   'src/lib/components/HostedRows.svelte',
   'src/lib/components/TodayEditor.svelte',
   'src/lib/components/dayRows.ts',
@@ -84,8 +67,15 @@ const REGISTRY_SURFACES = [
   'src/lib/components/searchHitRows.ts',
   'src/lib/data/pinnedRows.ts',
   'src/lib/data/vocabulary/hubLabels.ts',
+  /* The feature manifest names each feature's
+     rows by `HubRowKey`, a type-only import, and claims every row once. It
+     draws nothing and a row it names that the registry lost stops the
+     typecheck, so it is a check on this module rather than a second list. */
+  'src/lib/features.ts',
+  'src/lib/onboarding/features.ts',
   'src/routes/more/+page.svelte',
-  'src/routes/onboarding/+page.svelte'
+  'src/routes/onboarding/+page.svelte',
+  'src/routes/settings/+page.svelte'
 ].sort();
 
 /** Every file under `src` whose source imports `hubRows`, minus this file's
@@ -117,27 +107,14 @@ test('one registration reaches exactly the surface a row names as its home, and 
      itself part of the proof: there is nowhere else to register one. So
      this proves the general claim over every real row instead, each
      standing for the hypothetical one its own shape would be: a row whose
-     `home` is a hub group is drawn there and nowhere else; a row whose
-     `home` names a host is drawn there and nowhere else; and either kind is
-     found by search. One declaration in `ROWS`, checked against all three
-     surfaces, with nothing else to edit for any of them. */
+     `home` is a hub group is drawn there and nowhere else, and is found by
+     search. One declaration in `ROWS`, checked against both surfaces, with
+     nothing else to edit for either. */
   const onHub = new Set(hubSections(reading()).flatMap((section) => section.rows.map((row) => row.spec.key)));
 
   for (const row of HUB_ROWS) {
-    if (isHubGroup(row.home)) {
-      assert.ok(onHub.has(row.key), `${row.key} names a hub group but the hub never draws it`);
-    } else {
-      assert.ok(!onHub.has(row.key), `${row.key} is hosted and still drawn by the hub`);
-      assert.ok(
-        rowsHostedBy(row.home).some((hosted) => hosted.key === row.key),
-        `${row.key} names ${row.home} as its home but that host never draws it`
-      );
-    }
+    assert.ok(onHub.has(row.key), `${row.key} names a hub group but the hub never draws it`);
 
-    /* The one row search may not reach, whatever it is called (ADR-0043) -
-       see the dedicated test below, which is where that exception is
-       argued rather than just applied. */
-    if (row.key === 'cycle-events') continue;
     const matches = hubRowsMatching(reading(), row.key, (key) => key);
     assert.ok(matches.some((match) => match.spec.key === row.key), `${row.key} is registered but search cannot find it`);
   }
@@ -147,7 +124,7 @@ test('one registration reaches exactly the surface a row names as its home, and 
 
 test('every row has its own key, and every home it names is drawn somewhere', () => {
   const keys = HUB_ROWS.map((row) => row.key);
-  const homes = [...HUB_GROUP_KEYS, ...Object.keys(HUB_ROW_HOSTS)] as readonly string[];
+  const homes = HUB_GROUP_KEYS as readonly string[];
 
   assert.equal(new Set(keys).size, keys.length);
   for (const row of HUB_ROWS) {
@@ -197,25 +174,13 @@ test('a row carries a reading exactly where its own areas have one', () => {
   }
 });
 
-test('thirteen rows can report a reading and seven never can', () => {
+test('twelve rows can report a reading and seven never can', () => {
   const reads = HUB_ROWS.filter((row) => row.line === 'read');
 
-  // The fifteenth is documents (phase 8 features ticket 52): the media
-  // group's first row that fronts an area of its own. Twelve until redesign
-  // ticket 51 took `presentations` and `entry-templates` - both 'written' -
-  // off the registry entirely. Ten until ticket 59 deleted the
-  // clinician-summary row outright rather than hosting it, and fourteen
-  // since redesign ticket 61 folded the size log into the measurements row.
-  // Thirteen since ticket 13 folded `side-effects` - a 'read' row - into
-  // `effects` rather than giving it a row of its own; the written eight
-  // are untouched by that one. The written eight are nine less `words`,
-  // which redesign ticket 62 took off with the screen it opened, and seven
-  // since redesign ticket 16 took `eras` - also 'written' - off the same
-  // way. Six since phase 11 ticket 17 folded `voice` - also 'written' -
-  // into `voice-benchmark`'s own Recordings tab rather than giving it a
-  // row of its own.
-  assert.equal(reads.length, 13);
-  assert.equal(HUB_ROWS.length - reads.length, 6);
+  // Version 124 folded hair progress into progress photos, leaving 12
+  // reading rows. The seven non-reading rows include voice memos.
+  assert.equal(reads.length, 12);
+  assert.equal(HUB_ROWS.length - reads.length, 7);
 });
 
 test('every area a row names is one the archive knows, and every registered read is claimed or excused', () => {
@@ -238,11 +203,11 @@ test('a row whose areas have never been written to says what is behind it', () =
   /* Not nothing, and not "nothing yet": the spec's user story 13 wants each
      row to tell the person what is behind it, so a reading row with an empty
      area falls back to the same line a row that never reads shows. */
-  assert.deepEqual(rowLine(spec('measurements'), reading()), { kind: 'not-yet' });
+  assert.deepEqual(rowLine(spec('effects'), reading()), { kind: 'not-yet' });
 });
 
 test('a row that was written to recently says when', () => {
-  assert.deepEqual(rowLine(spec('measurements'), reading({ lastWrites: { measurements: TODAY - 3 } })), {
+  assert.deepEqual(rowLine(spec('effects'), reading({ lastWrites: { personalEffects: TODAY - 3 } })), {
     kind: 'last',
     epochDay: TODAY - 3,
     daysAgo: 3
@@ -265,10 +230,9 @@ test('a whole quiet window with nothing written reads as quiet', () => {
   assert.equal(rowLine(spec('wear'), reading({ lastWrites: { wearSessions: quiet } })).kind, 'quiet');
 });
 
-/* After-release 17 (UX-18): "Nothing logged for 2 years 1 month" on the
-   Documents row read as a nag about a paperwork vault. Quiet is the
-   observation the finish offer is made from, so a row with nothing to
-   finish never turns quiet: it keeps saying when it was last written. */
+/* "Nothing logged for 2 years 1 month" on the Documents row read as a nag about a
+   paperwork vault. Quiet is the observation the finish offer is made from, so a row with
+   nothing to finish never turns quiet: it keeps saying when it was last written. */
 test('a row with nothing to finish never reads as quiet', () => {
   const long = TODAY - FINISH_SUGGESTION_QUIET_DAYS - 400;
   assert.equal(rowLine(spec('documents'), reading({ lastWrites: { documents: long } })).kind, 'last');
@@ -283,24 +247,7 @@ test('the quiet window is the one the finish offer already uses', () => {
   assert.equal(FINISH_SUGGESTION_QUIET_DAYS, 180);
 });
 
-test('a row fronting two sections reports whichever was written last', () => {
-  const line = rowLine(
-    spec('hair-progress'),
-    reading({ lastWrites: { hairStages: TODAY - 40, hairPhotos: TODAY - 4 } })
-  );
-
-  assert.deepEqual(line, { kind: 'last', epochDay: TODAY - 4, daysAgo: 4 });
-});
-
-test('an empty half does not drag a row backwards', () => {
-  /* Somebody can log hair stages for two years and never photograph one, and
-     an empty half is not a quiet half - `groupLastWrite`'s own reasoning. */
-  const line = rowLine(spec('hair-progress'), reading({ lastWrites: { hairStages: TODAY - 2, hairPhotos: null } }));
-
-  assert.deepEqual(line, { kind: 'last', epochDay: TODAY - 2, daysAgo: 2 });
-});
-
-test('the merged effects row reports whichever half was written last, as hair-progress does (ticket 13)', () => {
+test('the merged effects row reports whichever half was written last', () => {
   const line = rowLine(
     spec('effects'),
     reading({ lastWrites: { personalEffects: TODAY - 40, sideEffects: TODAY - 4 } })
@@ -318,7 +265,7 @@ test('a side effect logged alone does not drag the effects row backwards', () =>
   assert.deepEqual(line, { kind: 'last', epochDay: TODAY - 2, daysAgo: 2 });
 });
 
-test('voice-benchmark reports the later of a benchmark and a recording (ticket 17)', () => {
+test('voice-benchmark reports the later of a benchmark and a recording', () => {
   const line = rowLine(
     spec('voice-benchmark'),
     reading({ lastWrites: { voiceBenchmarks: TODAY - 40 }, voiceMemoLastWriteEpochDay: TODAY - 4 })
@@ -356,8 +303,8 @@ test('a row only reads the areas it fronts, and asks for nothing else', () => {
     has: () => true
   });
 
-  rowLine(spec('measurements'), reading({ lastWrites: watched }));
-  assert.deepEqual(asked, ['measurements', 'sizeRecords']);
+  rowLine(spec('effects'), reading({ lastWrites: watched }));
+  assert.deepEqual(asked, ['personalEffects', 'sideEffects']);
 
   asked.length = 0;
   rowLine(spec('care'), reading({ lastWrites: watched }));
@@ -369,7 +316,7 @@ test('a row that can never read states what is behind it whatever the journal ho
      still cannot report a recency: a letter is sealed until its unlock day, so
      the registry has no entry for it - which is also why `lastWrites` cannot
      be handed a `letters` key to try it with. A full read changes nothing. */
-  const everything = reading({ lastWrites: { measurements: TODAY - 1, sizeRecords: TODAY - 1 } });
+  const everything = reading({ lastWrites: { personalEffects: TODAY - 1, sideEffects: TODAY - 1 } });
 
   assert.deepEqual(rowReads(spec('letters')), []);
   assert.deepEqual(rowLine(spec('letters'), everything), { kind: 'no-stream' });
@@ -377,10 +324,8 @@ test('a row that can never read states what is behind it whatever the journal ho
 
 // --- what is next ----------------------------------------------------------
 
-/* The choice rule this ticket exists for (phase 11 all-four-doors ticket 02,
-   DIRECTION.md rule 16). What the fact itself is and where it is read from is
-   `rowForward.test.ts`'s question; these are about which of two facts a row
-   prints when it holds both. */
+/* Check which fact wins when a row has two. rowForward.test.ts checks
+   where the facts come from. */
 
 test('a forward fact beats a last write', () => {
   const line = rowLine(
@@ -430,18 +375,6 @@ test('a running span is drawn as it arrives, whatever was last written', () => {
   });
 });
 
-test('the measurements row states its last value rather than the age of it', () => {
-  const line = rowLine(
-    spec('measurements'),
-    reading({
-      lastWrites: { measurements: TODAY - 8 },
-      forward: { measurements: { kind: 'value', epochDay: TODAY - 8, type: 'waist', value: 77, unit: 'cm' } }
-    })
-  );
-
-  assert.deepEqual(line, { kind: 'value', epochDay: TODAY - 8, type: 'waist', value: 77, unit: 'cm' });
-});
-
 /* A row the person has said is over does not announce what is next in it:
    the statement they made about the practice outranks anything still dated
    inside it. */
@@ -464,9 +397,9 @@ test('finished and suspended still win over a forward fact', () => {
    carry a forward fact at all, and the other thirteen read exactly as they
    did before this ticket. */
 test('with nothing forward, every row falls through to the reading it had', () => {
-  const empty = reading({ lastWrites: { measurements: TODAY - 3 } });
+  const empty = reading({ lastWrites: { personalEffects: TODAY - 3 } });
 
-  assert.deepEqual(rowLine(spec('measurements'), empty), { kind: 'last', epochDay: TODAY - 3, daysAgo: 3 });
+  assert.deepEqual(rowLine(spec('effects'), empty), { kind: 'last', epochDay: TODAY - 3, daysAgo: 3 });
   assert.deepEqual(rowLine(spec('care'), empty), { kind: 'no-stream' });
   assert.deepEqual(rowLine(spec('milestones'), empty), { kind: 'not-yet' });
 });
@@ -477,7 +410,7 @@ test('with nothing forward, every row falls through to the reading it had', () =
    not silently empty, which a vacuous type assertion would also satisfy. */
 test('every row the forward registry answers for is a row on the hub', () => {
   const rows = new Set(HUB_ROWS.map((row) => row.key as string));
-  assert.equal(ROW_FORWARD_KEYS.length, 8);
+  assert.equal(ROW_FORWARD_KEYS.length, 7);
   for (const key of ROW_FORWARD_KEYS) assert.equal(rows.has(key), true, `${key} is not a hub row`);
 });
 
@@ -490,13 +423,13 @@ test('a finished row says the day it ended', () => {
 });
 
 test('a row fronting two sections reads as finished only when both are', () => {
-  const half: AreaStates = { hairStages: finished(TODAY - 90) };
-  const whole: AreaStates = { hairStages: finished(TODAY - 90), hairPhotos: finished(TODAY - 80) };
+  const half: AreaStates = { personalEffects: finished(TODAY - 90) };
+  const whole: AreaStates = { personalEffects: finished(TODAY - 90), sideEffects: finished(TODAY - 80) };
 
-  const written = { hairStages: TODAY - 5 };
+  const written = { personalEffects: TODAY - 5 };
 
-  assert.equal(rowLine(spec('hair-progress'), reading({ states: half, lastWrites: written })).kind, 'last');
-  assert.deepEqual(rowLine(spec('hair-progress'), reading({ states: whole, lastWrites: written })), {
+  assert.equal(rowLine(spec('effects'), reading({ states: half, lastWrites: written })).kind, 'last');
+  assert.deepEqual(rowLine(spec('effects'), reading({ states: whole, lastWrites: written })), {
     kind: 'finished',
     epochDay: TODAY - 80
   });
@@ -566,15 +499,15 @@ test('a hidden area takes its row off the hub', () => {
 });
 
 test('a row fronting two sections goes only when both are hidden', () => {
-  assert.equal(rowHidden(spec('hair-progress'), { hairStages: hidden }), false);
-  assert.equal(rowHidden(spec('hair-progress'), { hairStages: hidden, hairPhotos: hidden }), true);
+  assert.equal(rowHidden(spec('effects'), { personalEffects: hidden }), false);
+  assert.equal(rowHidden(spec('effects'), { personalEffects: hidden, sideEffects: hidden }), true);
 });
 
 test('a row that fronts no area is a screen, and nothing hides it', () => {
-  assert.equal(rowHidden(spec('care'), { measurements: hidden, sizeRecords: hidden }), false);
+  assert.equal(rowHidden(spec('care'), { personalEffects: hidden, sideEffects: hidden }), false);
 });
 
-test('nothing in the area record can hide the cycle row (ADR-0043)', () => {
+test('nothing in the area record can hide the cycle row', () => {
   /* One-directional by construction rather than by a special case: the row
      fronts `cycleEvents` alone, `cycleEvents` is outside `HideableArea`, so
      the every-section test cannot pass for it. A `hidden` row for it cannot
@@ -591,27 +524,8 @@ test('the hub draws its groups in order and leaves out the ones with nothing in 
 
   assert.deepEqual(
     sections.map((section) => section.key),
-    ['health', 'transition', 'support', 'media']
+    ['health', 'body', 'transition', 'support', 'media']
   );
-});
-
-test('a hidden area takes a hosted row out of its host, the way it took it off the hub', () => {
-  /* ADR-0052's own consequence - "hiding takes an area out of the
-     navigation" - and the case a hosted row could quietly lose: it is not in
-     `hubSections` any more, so nothing on the hub can answer for it.
-     `HostedRows.svelte` applies exactly this filter over the area record. */
-  const hosted = rowsHostedBy('effects').map((row) => row.key);
-  assert.deepEqual(hosted, ['hair-progress', 'cycle-events']);
-
-  const left = rowsHostedBy('effects')
-    .filter((row) => !rowHidden(row, { hairStages: hidden, hairPhotos: hidden }))
-    .map((row) => row.key);
-  assert.deepEqual(left, ['cycle-events']);
-
-  /* Both sections behind hair progress, or the row stays - the same
-     every-section rule the hub applies. */
-  assert.equal(rowHidden(spec('hair-progress'), { hairStages: hidden }), false);
-  assert.equal(rowHidden(spec('hair-progress'), { hairStages: hidden, hairPhotos: hidden }), true);
 });
 
 test('a hosted row states the day its area ended, since the hub no longer can', () => {
@@ -639,40 +553,6 @@ test('a hosted row states the day its area ended, since the hub no longer can', 
   assert.equal(rowLine(spec('dilation'), noReads).kind, 'not-yet');
 });
 
-test('every host draws something, or is the one that writes its row by hand', () => {
-  /* `rowsHostedBy` empty for a host means `HostedRows.svelte` renders
-     nothing there, which is right for exactly one of them and a dead host
-     for any other. */
-  const empty = Object.keys(HUB_ROW_HOSTS).filter(
-    (host) => rowsHostedBy(host as keyof typeof HUB_ROW_HOSTS).length === 0
-  );
-
-  assert.deepEqual(empty, []);
-});
-
-test('a hosted row is not on the hub at all, and its screen is named (ticket 16)', () => {
-  const drawn = hubSections(reading()).flatMap((section) => section.rows.map((row) => row.spec.key));
-
-  for (const row of HUB_ROWS) {
-    if (isHubGroup(row.home)) continue;
-    assert.ok(!drawn.includes(row.key), `${row.key} is hosted and still on the hub`);
-    assert.ok(HUB_ROW_HOSTS[row.home], `${row.key} names a host that draws nothing`);
-  }
-  assert.deepEqual(
-    HUB_ROWS.filter((row) => !isHubGroup(row.home)).map((row) => row.key),
-    ['effects', 'hair-progress', 'cycle-events', 'dilation']
-  );
-});
-
-test('a hosted row stays on its host once it is finished, rather than joining the finished set', () => {
-  /* The finished set is the hub's, and the hub does not draw this row. Its
-     host still does, and the day the person named is on the area's own
-     screen where they said it. */
-  const sections = hubSections(reading({ states: { personalEffects: finished(TODAY - 90) } }));
-
-  assert.ok(!sections.some((section) => section.key === 'finished'));
-});
-
 test('a finished row leaves its group for the finished set, and the set comes last', () => {
   const sections = hubSections(reading({ states: { wearSessions: finished(TODAY - 90) } }));
 
@@ -681,7 +561,7 @@ test('a finished row leaves its group for the finished set, and the set comes la
     sections.at(-1)?.rows.map((row) => row.spec.key),
     ['wear']
   );
-  const transition = sections.find((section) => section.key === 'transition');
+  const transition = sections.find((section) => section.key === 'body');
   assert.ok(!transition?.rows.some((row) => row.spec.key === 'wear'), 'the row is in two places at once');
 });
 
@@ -692,7 +572,7 @@ test('a suspended row stays under its own group, unlike a finished one - it is n
     !sections.some((section) => section.key === 'finished'),
     'nothing is finished, so there is no finished set at all'
   );
-  const transition = sections.find((section) => section.key === 'transition');
+  const transition = sections.find((section) => section.key === 'body');
   assert.ok(transition?.rows.some((row) => row.spec.key === 'hair-removal'), 'the suspended row left its own group');
 });
 
@@ -700,7 +580,7 @@ test('a finished row keeps its icon and its screen', () => {
   const sections = hubSections(reading({ states: { wearSessions: finished(TODAY - 90) } }));
   const row = sections.at(-1)?.rows[0];
 
-  assert.equal(row?.spec.icon, 'clock');
+  assert.equal(row?.spec.icon, 'watch');
   assert.equal(row?.spec.href, '/body/wear');
 });
 
@@ -722,34 +602,25 @@ test('a fresh journal draws every row the hub owns, each saying what is behind i
   }
 });
 
-test('every group is the list phase 9 carpet ticket 16 asked for', () => {
+test('orders rows within each group', () => {
   const sections = hubSections(reading());
   const group = (key: string) =>
     sections.find((section) => section.key === key)?.rows.map((row) => row.spec.key) ?? [];
 
-  // `body` is gone and its one row opens Health (audit item 10).
-  assert.deepEqual(group('body'), []);
-  assert.deepEqual(group('health'), ['measurements', 'care', 'surgery', 'appointments']);
-  assert.deepEqual(group('transition'), [
-    'milestones',
-    'tryouts',
-    'voice-benchmark',
-    'wear',
-    'hair-removal',
-    'roadmap',
-    'letters'
-  ]);
-  assert.deepEqual(group('support'), ['doubt', 'resources']);
-  assert.deepEqual(group('media'), ['photos', 'documents']);
+  // Body came back to even out a seven-row Steps.
+  assert.deepEqual(group('health'), ['care', 'cycle-events', 'appointments', 'surgery', 'dilation']);
+  assert.deepEqual(group('body'), ['progress-photos', 'effects', 'hair-removal', 'wear', 'voice-benchmark']);
+  assert.deepEqual(group('transition'), ['roadmap', 'milestones', 'tryouts']);
+  assert.deepEqual(group('support'), ['letters', 'doubt', 'resources']);
+  assert.deepEqual(group('media'), ['photos', 'recordings', 'documents']);
 });
 
-/* Ticket 15's search half. The words are paraglide's, so the matcher is
-   handed the titles to match against rather than resolving them - the shape
-   `tagIdsMatching` already uses for the same reason (searchQuery.ts). A
-   made-up title per key here, so these tests hold the matching rule and not
-   the catalogue. */
+/* Search half. The words are paraglide's, so the matcher is handed the titles to match
+   against rather than resolving them - the shape `tagIdsMatching` already uses for the same
+   reason (searchQuery.ts). A made-up title per key here, so these tests hold the matching
+   rule and not the catalogue. */
 const TITLES: Record<string, string> = {
-  measurements: 'Body measurements',
+  effects: 'Changes you noticed',
   'hair-removal': 'Usuwanie włosów',
   wear: 'Wear log',
   photos: 'Progress photos',
@@ -763,11 +634,11 @@ test('an empty query matches nothing, since the grouped list is what an empty bo
 });
 
 test('a query matches an area by part of its name, whatever the case', () => {
-  const rows = hubRowsMatching(reading(), 'MEASURE', titleOf);
+  const rows = hubRowsMatching(reading(), 'CHANGES YOU', titleOf);
 
   assert.deepEqual(
     rows.map((row) => row.spec.key),
-    ['measurements']
+    ['effects']
   );
 });
 
@@ -803,20 +674,20 @@ test('a match that has not ended names the group it belongs to', () => {
 
   assert.deepEqual(
     rows.map((row) => row.where),
-    ['transition']
+    ['body']
   );
 });
 
-test('a hidden area cannot be searched up, hub row or hosted', () => {
-  /* Measurements fronts two sections since redesign ticket 61, and a row
-     goes only when every one of them is hidden - so hiding one half leaves
-     the row searchable, which is the same rule `rowHidden` states above. */
-  assert.equal(hubRowsMatching(reading({ states: { measurements: hidden } }), 'measure', titleOf).length, 1);
+test('a hidden module cannot be searched up, while dilation follows surgery visibility', () => {
+  /* Effects fronts two sections. Hiding one keeps its row searchable. */
+  assert.equal(hubRowsMatching(reading({ states: { personalEffects: hidden } }), 'changes you', titleOf).length, 1);
   assert.deepEqual(
-    hubRowsMatching(reading({ states: { measurements: hidden, sizeRecords: hidden } }), 'measure', titleOf),
+    hubRowsMatching(reading({ states: { personalEffects: hidden, sideEffects: hidden } }), 'changes you', titleOf),
     []
   );
+  /* taperSessions hidden is `dilationGated`'s signal: no eligible procedure. */
   assert.deepEqual(hubRowsMatching(reading({ states: { taperSessions: hidden } }), 'dilation', titleOf), []);
+  assert.deepEqual(hubRowsMatching(reading({ states: { procedures: hidden } }), 'dilation', titleOf), []);
 });
 
 /* The six rows drawn on a screen of their own are still areas of the app,
@@ -828,7 +699,7 @@ test('a row drawn on another screen is searchable, and names its host', () => {
 
   assert.deepEqual(
     rows.map((row) => [row.spec.key, row.where, row.spec.href]),
-    [['dilation', 'surgery', '/health/dilation']]
+    [['dilation', 'health', '/health/dilation']]
   );
 });
 
@@ -837,29 +708,44 @@ test('a hosted row states the day its area ended, like any other match', () => {
 
   assert.deepEqual(
     rows.map((row) => [row.where, row.line.kind]),
-    [['surgery', 'finished']]
+    [['finished', 'finished']]
   );
 });
 
-test('the hub rows come first and the hosted ones after, so a match list reads as the hub then what came off it', () => {
-  const rows = hubRowsMatching(reading(), 'e', titleOf);
-  const keys = rows.map((row) => row.spec.key);
-
-  assert.ok(keys.includes('measurements'), 'a hub row is missing');
-  assert.ok(keys.includes('effects'), 'a hosted row is missing');
-  assert.ok(
-    keys.indexOf('measurements') < keys.indexOf('effects'),
-    'the hosted rows are not last'
-  );
-});
-
-/* ADR-0043 through the box: the one row whose existence is a screen's call
-   rather than the registry's cannot be typed into being. */
-test('the cycle row is not searchable, whatever it is called', () => {
+/* The cycle row exists only where a screen has said cycle tracking is visible, and a search
+   cannot type it into being either. */
+test('the cycle row is on the hub and in search only while cycle tracking is visible', () => {
   const titles = (key: string): string => (key === 'cycle-events' ? 'Cycle events' : titleOf(key));
+  const onHub = (over: Partial<HubReading>) =>
+    hubSections(reading(over)).flatMap((section) => section.rows.map((row) => row.spec.key));
 
-  assert.deepEqual(hubRowsMatching(reading(), 'cycle', titles), []);
-  assert.deepEqual(hubRowsMatching(reading(), 'Cycle events', titles), []);
+  for (const closed of [{ cycleVisible: false }, { cycleVisible: undefined }]) {
+    assert.ok(!onHub(closed).includes('cycle-events'));
+    assert.deepEqual(hubRowsMatching(reading(closed), 'cycle', titles), []);
+    assert.deepEqual(hubRowsMatching(reading(closed), 'Cycle events', titles), []);
+  }
+
+  assert.ok(onHub({ cycleVisible: true }).includes('cycle-events'));
+  assert.deepEqual(
+    hubRowsMatching(reading({ cycleVisible: true }), 'cycle', titles).map((row) => [row.spec.key, row.where]),
+    [['cycle-events', 'health']]
+  );
+});
+
+test('the dilation row is on the hub and in search only once a procedure can carry it', () => {
+  /* The screens build the area record through `dilationGated`, which hides
+     `taperSessions` until then; this holds what the hub does with that. */
+  const gated = { taperSessions: hidden };
+  const onHub = (over: Partial<HubReading>) =>
+    hubSections(reading(over)).flatMap((section) => section.rows.map((row) => row.spec.key));
+
+  assert.ok(!onHub({ states: gated }).includes('dilation'));
+  assert.deepEqual(hubRowsMatching(reading({ states: gated }), 'dilation', titleOf), []);
+  assert.ok(onHub({ states: {} }).includes('dilation'));
+  assert.deepEqual(
+    hubRowsMatching(reading({ states: {} }), 'dilation', titleOf).map((row) => row.spec.key),
+    ['dilation']
+  );
 });
 
 test('a query nothing is called matches nothing', () => {

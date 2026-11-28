@@ -1,31 +1,12 @@
-/* The whole schema in one statement, registered as version 88.
+/* Frozen schema 88 baseline (ADR-0006). Development journals below 88 are
+   refused by migrations.ts. Retired chains remain in Git at 4c38403a
+   (1 to 78) and c0656984 (78 to 88). schema.test.ts compares this SQL and
+   its rows to the frozen reference dumps in test-support/.
 
-   It has been squashed twice, both times before the 1.0.0 cutoff. Ticket 34
-   folded the first 78 forward-only migrations (ADR-0006) into a baseline
-   numbered 78. After-release ticket 42 folded that baseline and the ten steps
-   after it, 79 through 88, into this one, numbered 88. Each squash kept the
-   number the chain had reached, so a journal already on it opens with nothing
-   run against it. A development journal anywhere below 88 cannot be opened by
-   this build and is refused by name (migrations.ts says how).
-
-   Both retired chains are in git history: v1 to v78 at 4c38403a, and the v78
-   baseline with 79 to 88 at c0656984. That is where to look for how a column
-   came to be there. What each step still means is below, next to the column.
-   v85 and v86's UPDATE were repairs to rows that already existed, so nothing
-   of them is left here except the Weekly trigger on reminder. The dump the
-   second chain built is frozen in `test-support/schema-v88-reference.txt`
-   (with its rows in `schema-v88-reference-rows.txt`), and schema.test.ts
-   holds this file to it: the two must build the same tables, columns, types,
-   defaults, constraints, indexes, triggers and FTS objects, and nothing about
-   that is allowed to drift.
-
-   This is the last squash. From 1.0.0 on, every released migration stays in
-   the chain and cannot be edited or squashed, because a released journal can
-   sit at any version a release shipped. Adding a migration from here on is the
-   ordinary ADR-0006 thing: a new entry in migrations.ts numbered above 88,
-   never an edit to the SQL below. Editing this string changes what a fresh
-   install gets and not what an existing one already has, which are then two
-   different schemas wearing the same version number. */
+   Add schema changes as new entries in migrations.ts. Fresh and existing
+   installs must reach the same schema, so released migrations stay intact.
+   The stock definitions here describe 88. Migration 91 introduces the
+   trimmed, case-insensitive Unicode drug key used for dose attribution. */
 
 export const BASELINE_SCHEMA = `
 -- ENTRY AND ITS CONTENT ------------------------------------------------------
@@ -40,7 +21,7 @@ export const BASELINE_SCHEMA = `
 -- (entries.ts's purgeExpiredTrash).
 --
 -- \`starred\` is curation metadata, the same category the identity fields are -
--- not one of Entry's seven content fields (CONTEXT: "Entry"), so it never
+-- not one of Entry's seven content fields, so it never
 -- enters entryContent.ts's closure check and starring an entry can never be
 -- what keeps an otherwise-empty one from counting as deleted.
 --
@@ -118,7 +99,7 @@ CREATE INDEX idx_milestone_epoch_day ON milestone(epoch_day);
 -- already depends on.
 --
 -- \`epoch_day_override\` is the only day a photo can carry: normalization
--- strips EXIF/XMP/IPTC on import (ADR-0015), so a photo's day is read off its
+-- strips EXIF/XMP/IPTC on import, so a photo's day is read off its
 -- owner unless this says otherwise. photos.ts's reads put it first in their
 -- COALESCE; nothing derives from it and it derives from nothing.
 CREATE TABLE photo (
@@ -181,11 +162,11 @@ CREATE INDEX idx_margin_note_entry_id ON margin_note(entry_id);
 -- A region key is plain TEXT validated against \`body_region\` below, not a
 -- CHECK and not a rowid join.
 --
--- One value on the shared 0-100 scale (ticket 39, ADR-0081), the shape
+-- One value on the shared 0-100 scale, the same shape
 -- entry_dimension_value.value has: below 50 leans dysphoric, above it
 -- euphoric. It replaced two independent nullable intensities. The CHECK
 -- excludes 50, unlike entry_dimension_value's: for a region the midpoint means
--- "nothing said" (phase 5 ticket 31), so a row at 50 would be a picked but
+-- "nothing said", so a row at 50 would be a picked but
 -- unanswered region, and that case is an absent row rather than a stored one.
 --
 -- Whole-set replace on write, like entry_tag rather than
@@ -294,12 +275,9 @@ CREATE TABLE body_region (
 -- a uuid, authored ones the reverse, and neither column is ever NOT NULL
 -- because either can be the row's only identity.
 --
--- \`presentation_id\` is free text with no REFERENCES clause at all - not
--- because a presentation might be deleted (it hides, ADR-0057) but because the
--- two travel in separate archive sections (ADR-0027) and restore
--- independently, so an archive whose templates outlive its modes still has to
--- apply. Applying a template resolves the id against what this install
--- currently shows and drops it when it does not resolve.
+-- \`presentation_id\` has no REFERENCES clause. Templates and presentations
+-- travel in separate archive sections (ADR-0027), so restore can apply either
+-- independently. Applying a template ignores hidden or missing presentations.
 --
 -- Tags and dimension values are child tables mirroring entry_tag and
 -- entry_dimension_value down to the FK shape, because a template's tag list is
@@ -469,7 +447,7 @@ CREATE INDEX idx_side_effect_epoch_day ON side_effect(epoch_day);
 -- duration are both known at save time.
 --
 -- \`kind\` is NOT NULL because every user-facing string on that screen is
--- picked by it (ADR-0064), and the default is what rows written before the
+-- picked by it. The default is what rows written before the
 -- column existed became. No CHECK: wearSessions.ts is the one writer, and a
 -- CHECK would refuse to even read back a row arriving from an older archive.
 CREATE TABLE wear_session (
@@ -523,9 +501,7 @@ CREATE TABLE word_frequency_ignore (
   updated_at INTEGER NOT NULL
 );
 
--- \`starred\` keeps the Starred filter with the question (after-release ticket
--- 16, audit L08-01): without it a question saved with Starred on came back
--- answering with unstarred entries too. 0 is off.
+-- \`starred\` preserves the question’s Starred filter when reopened. 0 is off.
 CREATE TABLE saved_question (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,
   uuid            TEXT NOT NULL UNIQUE,
@@ -595,8 +571,7 @@ CREATE INDEX idx_regimen_episode_start ON regimen_episode(start_epoch_day);
 --
 -- \`source\` says who wrote the row - 'person' for a dose logged by hand,
 -- 'schedule' for one an auto-logging schedule wrote on the person's behalf
--- (phase 11 ticket 11, ADR-0086). It is a column of its own rather than a
--- fourth \`status\` because it answers a different question, and a
+-- with their consent. It is a separate column from \`status\` because it answers a different question, and a
 -- schedule-written dose the person then marks skipped has to say both things
 -- at once. Defaulted rather than nullable, so nothing reads a null source as
 -- a third state. No CHECK: doses.ts is the one writer, and a CHECK would
@@ -641,9 +616,8 @@ CREATE INDEX idx_dose_pause_episode ON dose_pause(episode_id);
 -- discriminated union DoseScheduleRecurrence gives in code, enforced again here
 -- so a row cannot claim one shape while carrying the other's data.
 --
--- \`auto_log_from_epoch_day\` is the standing instruction "assume I took it
--- unless I say otherwise" (phase 11 ticket 11, ADR-0086): the day the person
--- switched it on, or null for off. One column rather than a flag beside a
+-- \`auto_log_from_epoch_day\` is the day the person opted into auto-logging,
+-- or null for off. One column rather than a flag beside a
 -- day, because a flag set with no day has nothing to walk from, and the walk
 -- never writes before it, so a schedule switched on today reaches back over
 -- nothing.
@@ -701,14 +675,13 @@ CREATE TABLE dose_schedule_dose_amount (
 -- say.
 --
 -- \`lead_time_days\` is how many days ahead of running out a person wants to
--- reorder (redesign phase 10 ticket 01). Nullable, and null means none typed:
+-- reorder. Nullable, and null means none typed:
 -- the app assumes no figure rather than guessing one. It lives here because
 -- this is already one row per drug (ADR-0046), and it feeds
 -- reorderByEpochDay (stockProjection.ts) beside the run-out day the projection
 -- computes anyway.
 --
--- \`doses_per_unit\` is how many doses one unit of stock holds (after-release
--- ticket 01): two vials of injectable estradiol are not two doses. Null keeps
+-- \`doses_per_unit\` is how many doses one unit of stock holds. Two vials of injectable estradiol are not two doses. Null keeps
 -- the one-dose-per-unit reading, which is right for stock counted in pills or
 -- doses. REAL because a quantity is REAL already.
 CREATE TABLE medication_stock (
@@ -1047,7 +1020,7 @@ CREATE INDEX idx_voice_practice_take_epoch_day ON voice_practice_take(epoch_day)
 -- logged against it.
 --
 -- \`description\` is free text alongside \`label\`, nullable, because a style
--- or garment tryout needs more than the short field a name or pronoun set gets.
+-- tryout needs more than the short field a name or pronoun set gets.
 CREATE TABLE tryout (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,
   uuid            TEXT NOT NULL UNIQUE,
@@ -1101,7 +1074,7 @@ CREATE INDEX idx_felt_sense_epoch_day ON felt_sense(epoch_day);
 -- never stored (ADR-0010). Its recovery checklist is an ordinary \`checklist\`
 -- owned by the (kind, uuid) pair, which is why no checklist column is here.
 --
--- \`kind\` says what surgery it is (phase 9 carpet ticket 17), so Dilation's
+-- \`kind\` says what surgery it is, so Dilation's
 -- gate can read it. It defaults to 'custom', what the editor shows for an
 -- unset kind, so nothing reads a null kind as a fourth state. No CHECK, for
 -- the reason dose_event.source has none: procedures.ts is the one writer, and
@@ -1114,7 +1087,7 @@ CREATE INDEX idx_felt_sense_epoch_day ON felt_sense(epoch_day);
 -- nullable one scoped to 'custom', the "one flag, most rows leave it at the
 -- default" shape wear_session's booleans use.
 --
--- \`archived\` is the person's own organising choice (phase 11 ticket 37), not
+-- \`archived\` is the person's own organising choice, not
 -- a conclusion drawn from an old surgery date: a procedure stays ongoing until
 -- its owner moves it.
 CREATE TABLE procedure (
@@ -1177,7 +1150,7 @@ CREATE INDEX idx_appointment_epoch_day ON appointment(epoch_day);
 -- of its own because the standalone checklist already is the appointment prep
 -- list, so the date belongs to the record that is that list's home. Null on
 -- every owned checklist - a procedure's recovery list has no appointment of
--- its own - and read rather than written since ticket 58.
+-- its own. The checklist only reads this day.
 --
 -- The four debrief columns are device-local bookkeeping and deliberately not
 -- part of what a checklist travels in an archive: they name a row this device
@@ -1224,7 +1197,7 @@ CREATE INDEX idx_checklist_item_checklist ON checklist_item(checklist_id);
 -- one handle it has. \`epoch_day\` is the day the paper is from, which for a
 -- diagnosis from 1994 is nothing to do with when it was scanned in.
 -- \`file_path\` holds the same opaque name a photo row does, because an image
--- document goes through the same normalisation and metadata strip (ADR-0015).
+-- document goes through the same normalization and metadata removal.
 --
 -- \`target_kind\`/\`target_id\` are the optional link: at most one, to a
 -- roadmap goal, milestone, procedure or regimen episode, both set or both null.
@@ -1250,8 +1223,7 @@ CREATE INDEX idx_document_epoch_day ON document(epoch_day);
 
 -- The dilation schedule names the procedure it follows and reads that
 -- record's surgery day, rather than keeping a second copy of the date that
--- can drift (audit item 7: the taper said 27 February 2026 while the procedure
--- hosting it said 11 August 2025). At most one row (getTaper's own
+-- can drift. At most one row (getTaper's own
 -- "ORDER BY id LIMIT 1"). \`procedure_id\` is NOT NULL because a schedule is
 -- typed in against a procedure, and one whose surgery day belongs to nothing
 -- says nothing on its own.
@@ -1437,9 +1409,8 @@ CREATE INDEX idx_revisit_target_epoch_day ON revisit(target_epoch_day);
 -- \`ArchiveSectionName\`, so it is a wire key already - the natural-key
 -- identity personal_effect.effect travels by.
 --
--- \`hidden\` and not \`visible\`, because a positive flag defaulting to shown is
--- what would reverse ADR-0043, and because hidden is already the column name on
--- tag, gender_dimension and measurement_type.
+-- \`hidden\` matches tag, gender_dimension and measurement_type. This flag
+-- cannot override the cycle tracker's visibility gate.
 --
 -- The two day columns are nullable and dated rather than flags (ADR-0010: the
 -- day is the person's own assertion and is not derivable), and sparse - there

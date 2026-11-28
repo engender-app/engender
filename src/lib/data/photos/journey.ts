@@ -1,27 +1,22 @@
-/* What a photo journey export is made of, before any pixels exist (ticket
-   27).
+/* What a photo journey export is made of, before any pixels exist.
 
-   The whole export is two steps the user takes separately: generate, then
-   share. This module is everything the first step can decide without a
-   canvas - which photos are in, how big the collage has to be, how long
-   the timelapse will run, what the file ends up called - so the screen can
-   show a count and a duration before anything is encoded, and so the
-   geometry is under Node-tier tests rather than only visible in a picture
-   somebody has to look at. journey-render.ts is the half that needs a
-   browser.
+   The whole export is two steps the user takes separately: generate, then share. This
+   module is everything the first step can decide without a canvas - which photos are in,
+   how big the collage has to be, how long the timelapse will run, what the file ends up
+   called - so the screen can show a count and a duration before anything is encoded, and so
+   the geometry is under Node-tier tests rather than only visible in a picture somebody has
+   to look at. journey-render.ts is the half that needs a browser.
 
-   Nothing here reads or writes a photo file. The bytes it works out
-   dimensions for are the ones normalize() already produced on import
-   (ADR-0008: JPEG, 2048px on the long edge), which is all the export ever
-   consumes - there is no original left to go back to (ADR-0015). */
+   Nothing here reads or writes a photo file. The bytes it works out dimensions for are the
+   ones normalize() already produced on import (ADR-0008: JPEG, 2048px on the long edge),
+   which is all the export ever consumes - there is no original left to go back to. */
 
 import { dateInputValueFromEpochDay, todayEpochDay } from '../epochDay';
 import { nameSlug } from '../fold';
 
-/** A dated photograph, whichever table it came from. Structural rather than
-    `DatedPhoto` since phase 11 ticket 14 put the library's own shape behind
-    the export grid: everything below is about days and ids, the same
-    widening compare-state.ts already made for the wipe. */
+/** A dated photograph, whichever table it came from. Structural rather than `DatedPhoto`
+    put the library's own shape behind the export grid: everything below is about days and
+    ids, the same widening compare-state.ts already made for the wipe. */
 type Dated = { id: string; epochDay: number };
 
 /** The two things a journey can be exported as. A collage is one composed
@@ -80,8 +75,7 @@ export function journeyRangeBounds(photos: Dated[]): JourneyRange | null {
     was not - the grid is near square, so a 101-photo journey landed at
     4020x4087, which is 16.4M and inside the limit by two per cent. 12M keeps
     a real margin and still gives a 100-photo journey 300px cells. */
-/* COLLAGE_MAX_AREA stays exported only for its own test (AU-09 test-only
-   review). */
+/* COLLAGE_MAX_AREA stays exported only for its own test. */
 export const COLLAGE_MAX_AREA = 12_000_000;
 
 const NOMINAL = { cell: 360, caption: 44, gap: 12, pad: 20, fontSize: 26 } as const;
@@ -155,11 +149,10 @@ export const timelapseDurationMs = (count: number): number => count * TIMELAPSE_
 
 /* --- fitting one rectangle into another --------------------------------- */
 
-/* Neither of these ever scales a photo up, which is ticket 27's out-of-scope
-   line ("upscaling beyond what the already-normalized source photos
-   support") and the rule normalize.ts already follows for the same reason:
-   there is no detail left to recover, so a bigger draw only buys a softer
-   picture. A photo smaller than the frame sits smaller in it. */
+/* Neither of these ever scales a photo up, which is out-of-scope line ("upscaling beyond
+   what the already-normalized source photos support") and the rule normalize.ts already
+   follows for the same reason: there is no detail left to recover, so a bigger draw only
+   buys a softer picture. A photo smaller than the frame sits smaller in it. */
 
 /** Where the whole photo lands inside the box, centred, with empty space on
     the sides that run short. Used for a video frame, which is one fixed size
@@ -218,11 +211,11 @@ export const JOURNEY_MIME: Record<JourneyOutput, string> = {
   timelapse: 'video/webm'
 };
 
-/** `alicja-journey-2025-08-13.jpg`. Deliberately not exportFileName()'s
-    `-journal-`: a collage of progress photos is not a copy of the journal,
-    and someone with both files in a downloads folder has to be able to
-    tell which is the backup. The slug is shared with it, though, because
-    what survives a share sheet and a foreign filesystem is one question. */
+/** `journal-name-journey-2025-08-13.jpg`. Deliberately not exportFileName's `-journal-`: a
+    collage of progress photos is not a copy of the journal, and someone with both files in
+    a downloads folder has to be able to tell which is the backup. The slug is shared with
+    it, though, because what survives a share sheet and a foreign filesystem is one
+    question. */
 export function journeyFileName(
   name: string,
   output: JourneyOutput,

@@ -38,8 +38,14 @@ const snapshot = (count: number): ArchiveSnapshot => {
 const preferences = { ...PREFERENCE_DEFAULTS, name: 'Backup proof' };
 
 const probe = {
+  pageId: crypto.randomUUID(),
   result: null as unknown,
   ready: false,
+  async pickPowerCutDestination() {
+    const picked = await androidAutoExport.pickDestination();
+    await androidAutoExport.configure({ enabled: true, schedule: 'weekly' });
+    return picked;
+  },
   async run(count: number, scheduled = false) {
     probe.ready = false;
     let recorded: number | null = null;
@@ -108,6 +114,7 @@ const probe = {
       const { openPreferences } = await import('../../../src/lib/data/prefs/preferences');
       const stored = await openPreferences(sqlite.driver);
       await stored.set('onboarded', true);
+      await stored.set('language', 'en');
       const { writeCachedAccessMode } = await import('../../../src/lib/data/prefs/boot-cache');
       writeCachedAccessMode('passphrase');
       await sqlite.driver.close();
@@ -191,6 +198,110 @@ const probe = {
       probe.result = { currentRows: true, attachments, decodedImage: true, publicRestore: true };
     } catch (error) { probe.result = { error: String(error) }; }
     probe.ready = true;
+  },
+  newJournalStep: 'idle',
+  nativeCallTimes: [] as { method: string; startedAt: number; finishedAt?: number }[],
+  pendingBackupNativeCall: null as string | null,
+  lastBackupNativeCall: null as string | null,
+  async backUpNewJournal() {
+    probe.ready = false;
+    probe.newJournalStep = 'loading setup';
+    try {
+      const { setupJournalPassphrase } = await import('../../../src/lib/data/journal-passphrase');
+      const { createAndroidSqlite } = await import('../../../src/lib/data/sqlite/android-driver');
+      const { JOURNAL_DATABASE } = await import('../../../src/lib/data/legacy-journal');
+      const { boot } = await import('../../../src/lib/data/sqlite/boot');
+      const { openJournal } = await import('../../../src/lib/data/journal/journal');
+      const { appPrivatePhotoFiles } = await import('../../../src/lib/data/photos/android-file-store');
+      const { encryptedFileStore } = await import('../../../src/lib/data/photos/encrypted-file-store');
+      probe.newJournalStep = 'creating credentials';
+      const key = await setupJournalPassphrase('synthetic new journal credential');
+      probe.newJournalStep = 'opening SQLite';
+      const sqlite = createAndroidSqlite(JOURNAL_DATABASE, key);
+      try {
+        probe.newJournalStep = 'migrating journal';
+        const opened = await boot({ createDriver: () => sqlite.driver, fileOps: sqlite.fileOps, requestPersistentStorage: sqlite.requestPersistentStorage });
+        if (opened.phase === 'error') throw opened.error;
+        probe.newJournalStep = 'opening journal handle';
+        const live = openJournal(sqlite.driver, encryptedFileStore(appPrivatePhotoFiles(), key));
+        probe.newJournalStep = 'saving new entry';
+        await live.entries.upsertEntry({ epochDay: 20000, mood: 4, note: 'New journal after reset', dims: {}, tags: [] });
+        probe.newJournalStep = 'reading new snapshot';
+        const source = { snapshot: await live.archive.snapshot(), snapshotAt: Date.now(), preferences };
+        const capacitor = (window as unknown as { Capacitor: {
+          nativePromise(plugin: string, method: string, options: unknown): Promise<unknown>
+        } }).Capacitor;
+        const nativePromise = capacitor.nativePromise;
+        capacitor.nativePromise = (plugin, method, options) => {
+          if (plugin === 'AutoExport') {
+            probe.pendingBackupNativeCall = method;
+            probe.lastBackupNativeCall = method;
+          }
+          const timing = { method: `${plugin}.${method}`, startedAt: Date.now(), finishedAt: undefined as number | undefined };
+          probe.nativeCallTimes.push(timing);
+          return nativePromise(plugin, method, options).finally(() => {
+            timing.finishedAt = Date.now();
+            if (probe.pendingBackupNativeCall === method) probe.pendingBackupNativeCall = null;
+          });
+        };
+        try {
+          probe.newJournalStep = 'manual backup';
+          const manual = await runAndroidAutoExport(source, { recordBackup: () => {} });
+          probe.result = { manual, rows: source.snapshot.journal.entries.length };
+          probe.newJournalStep = 'scheduled backup';
+          const scheduled = await runAndroidAutoExport(source, { scheduled: true, recordBackup: () => {},
+            watch: { onProgress: () => { probe.newJournalStep = 'scheduled packing'; } } });
+          probe.result = { manual, scheduled, rows: source.snapshot.journal.entries.length };
+        } finally { capacitor.nativePromise = nativePromise; }
+      } finally { probe.newJournalStep = 'closing SQLite'; await sqlite.driver.close(); key.fill(0); }
+    } catch (error) { probe.result = { error: String(error) }; }
+    probe.newJournalStep = 'finished';
+    probe.ready = true;
+  },
+  resetReadStarted: false,
+  resetRequested: false,
+  resetError: null as string | null,
+  async resetDuringTransfer(duringDerivation = false, scheduler = false) {
+    const { resetApp } = await import('../../../src/lib/stores/boot.svelte');
+    if (duringDerivation) {
+      const capacitor = (window as unknown as { Capacitor: {
+        nativePromise(plugin: string, method: string, options: unknown): Promise<unknown>
+      } }).Capacitor;
+      const nativePromise = capacitor.nativePromise;
+      capacitor.nativePromise = (plugin, method, options) => {
+        const result = nativePromise(plugin, method, options);
+        if (plugin === 'AutoExport' && method === 'deriveKey') {
+          capacitor.nativePromise = nativePromise;
+          probe.resetRequested = true;
+          void resetApp().catch((error) => { probe.resetError = String(error); });
+        }
+        return result;
+      };
+    }
+    const source = snapshot(2);
+    source.readFile = async () => {
+      probe.resetReadStarted = true;
+      if (scheduler) await new Promise(() => {});
+      else if (!duringDerivation) await new Promise((resolve) => setTimeout(resolve, 10_000));
+      return bytes;
+    };
+    if (scheduler) {
+      const { attachJournal, journalIsOpen } = await import('../../../src/lib/data/live/journal.svelte');
+      const { startAutoExportScheduler } = await import('../../../src/lib/data/archive/auto-export-scheduler');
+      attachJournal({ reconcileBuiltIns: async () => {}, discardEverything: async () => {}, archive: { snapshot: async () => source } } as unknown as import('../../../src/lib/data/journal/journal').Journal);
+      journalIsOpen();
+      startAutoExportScheduler();
+    } else {
+      void runAndroidAutoExport(
+        { snapshot: source, snapshotAt: Date.now(), preferences },
+        { scheduled: true, recordBackup: () => {} }
+      ).then((result) => { probe.result = result; });
+    }
+    if (!duringDerivation) {
+      while (!probe.resetReadStarted) await new Promise((resolve) => setTimeout(resolve, 10));
+      probe.resetRequested = true;
+      await resetApp().catch((error) => { probe.resetError = String(error); });
+    }
   },
   heldTransfer: null as string | null,
   async hold() {

@@ -21,12 +21,28 @@ final class PhotoFiles {
     private PhotoFiles() {}
 
     static PhotoWriteOrder.Request reserveWrite(File target) {
-        return writes.reserve(target.getAbsolutePath(), bytes -> {
-            try (FileOutputStream out = new FileOutputStream(target, false)) {
-                out.write(bytes);
-                out.getFD().sync();
+        return writes.reserve(target.getAbsolutePath(), bytes -> writeWhole(target, bytes));
+    }
+
+    /**
+     * Writes and syncs the whole file, or leaves nothing under its name.
+     * Opening the stream creates the file before a byte lands, so a disk that
+     * refused the bytes (ENOSPC) used to leave an empty photo behind.
+     * Removing it is safe because every caller writes a fresh name - a new
+     * uuid, or restore's fresh replacement - and no row names a file until
+     * its write has succeeded. The failure itself is rethrown untouched, so
+     * the WebView still reads ENOSPC in its message.
+     */
+    static void writeWhole(File target, byte[] bytes) throws IOException {
+        try (FileOutputStream out = new FileOutputStream(target, false)) {
+            out.write(bytes);
+            out.getFD().sync();
+        } catch (IOException | RuntimeException error) {
+            if (!target.delete() && target.exists()) {
+                error.addSuppressed(new IOException("could not remove " + target.getName()));
             }
-        });
+            throw error;
+        }
     }
 
     static File directory(Context context, String directoryName) {
@@ -58,12 +74,12 @@ final class PhotoFiles {
     }
 
     /**
-     * Deletes the photo directory and everything in it, for the reset
-     * (ux-carpet 214). Nothing else ever removed it: the web's reset empties
-     * OPFS, which is not where these live, and the orphan sweep that would
-     * reach them skips any boot that writes, which a first run always does.
-     * So every photo a journal had outlived its start-over, sealed under a
-     * key that no longer exists, and kept its space.
+     * Deletes the photo directory and everything in it, for the reset.
+     * Nothing else ever removed it: the web's reset empties OPFS, which is
+     * not where these live, and the orphan sweep that would reach them skips
+     * any boot that writes, which a first run always does. So every photo a
+     * journal had outlived its start-over, sealed under a key that no longer
+     * exists, and kept its space.
      *
      * <p>Flat by construction - names are validated as single path segments
      * on the way in - so one level is everything. Throws rather than leaving
@@ -93,12 +109,26 @@ final class PhotoFiles {
         throw new IllegalArgumentException("invalid photo directory name");
     }
 
-    static File fileFor(Context context, String directoryName, String name) {
-        String trimmed = name.trim();
-        if (trimmed.isEmpty() || trimmed.contains("/") || trimmed.contains("\\") || trimmed.contains("..")) {
-            throw new IllegalArgumentException("invalid photo file name");
+    /**
+     * The same rule as isStorableFileName in photos/names.ts, so a name means
+     * one file on every store. A name is refused rather than trimmed: a
+     * trimmed " target.jpg" used to land on the real target.jpg, which then
+     * never decrypted because its sealed name is the other one. Everything
+     * the app writes is "uuid.extension", which passes.
+     */
+    static boolean isCanonicalName(String name) {
+        if (name == null || name.isEmpty() || !name.equals(name.trim()) || name.startsWith(".")) return false;
+        if (name.contains("/") || name.contains("\\") || name.contains("..")) return false;
+        for (int i = 0; i < name.length(); i++) {
+            char c = name.charAt(i);
+            if (c < 0x20 || c == 0x7f) return false;
         }
-        return new File(directory(context, directoryName), trimmed);
+        return true;
+    }
+
+    static File fileFor(Context context, String directoryName, String name) {
+        if (!isCanonicalName(name)) throw new IllegalArgumentException("invalid photo file name");
+        return new File(directory(context, directoryName), name);
     }
 
     /** Shared by both transports so a failure looks the same to either

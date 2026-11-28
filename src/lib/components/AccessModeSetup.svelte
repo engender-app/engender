@@ -40,38 +40,17 @@
 </script>
 
 <script lang="ts">
-  /* One security module, four named choices (ticket 53, ADR-0041; the
-     fourth added by ticket 55).
+  /* Onboarding and Settings share access mode choices (ADR-0041).
+     Device-bound has its own row. Android's device-bound key already uses
+     platform presence through Keystore. Web offers WebAuthn PRF only after
+     the browser confirms support.
 
-     What a person used to meet was three disconnected things at three
-     moments: a passphrase gate that looked mandatory but hid a "Skip" into
-     device-bound mode, a PIN toggle buried in onboarding that encrypted
-     nothing, and on Android a biometric prompt that just happened. This is
-     all of it, once, as a choice between equals - and it is the same
-     component in both places it appears, the first run (ticket 54 wires it
-     there) and Settings.
-
-     No "Skip" anywhere. Device-bound mode is a row like the others, with its
-     trade written next to it rather than behind an acknowledgement
-     checkbox.
-
-     Four rows, or three, and which one is not a guess. ADR-0041's fourth
-     mode is the web's WebAuthn PRF biometric (ticket 55), and it appears
-     only where the browser answers that it can actually do PRF - a mode
-     that is unavailable is one that is never offered, never one that is
-     offered and fails. On Android the biometric is not a fourth thing at
-     all but what device-bound mode already does, so that row says so
-     instead of offering a second mechanism (its Keystore key is not
-     released until the platform confirms who is present).
-
-     Copy rule for this screen, and it is the strict one (docs/ui-copy.md,
-     "The screens that carry risk"): every mode states its own consequence
-     before it is chosen, not after. Three of the four tie the journal to this
-     device, and for those the archive is the only thing that survives losing
-     it - so that sentence sits under the choice rather than in a help page
-     nobody opens. */
+     State each mode's consequences before selection.
+     For device-tied modes, explain the value of an archive if the device
+     is lost. */
 
   import { onMount } from 'svelte';
+  import { focusNamedTarget } from '$lib/navigation/arrivalFocus';
   import { m } from '$lib/paraglide/messages';
   import { isAndroid } from '$lib/platform';
   import { PIN_LENGTH } from '$lib/crypto/params';
@@ -107,14 +86,13 @@
     onChoose,
     chosen = $bindable(null)
   }: {
-    /** `recovered` is a change with two differences that both showed up in
-        a render (ADR-0054, ticket sec-02). The screen holding it already
-        carries its own paragraph saying what happened, so a second one
-        about rewrapping is a wall of explanation nobody reads; and the mode
-        it names as current is the one that just failed, which above a list
-        of alternatives reads as a reassurance that it still works. So this
-        purpose draws neither. It is otherwise a change in every way that
-        matters, including which modes are offered. */
+    /** `recovered` is a change with two differences that both showed up in a render
+        (ADR-0054). The screen holding it already carries its own paragraph saying what
+        happened, so a second one about rewrapping is a wall of explanation nobody reads;
+        and the mode it names as current is the one that just failed, which above a list of
+        alternatives reads as a reassurance that it still works. So this purpose draws
+        neither. It is otherwise a change in every way that matters, including which modes
+        are offered. */
     purpose?: 'setup' | 'change' | 'recovered';
     current?: Mode | null;
     busy?: boolean;
@@ -135,8 +113,7 @@
   let localError = $state('');
   /* Which mode the parent's `error` answers. The parent owns that text and
      keeps it until its next attempt, so without this a refusal of one mode
-     ("needs a device lock") sat under the next mode's form (after-release
-     ticket 09). Choosing again, or going back, lets go of it here. */
+     ("needs a device lock") sat under the next mode's form. Choosing again, or going back, lets go of it here. */
   let attempted = $state<Mode | null>(null);
 
   function submit(mode: Mode, secret: string) {
@@ -145,11 +122,16 @@
   }
   let refusals = $state(0);
 
-  /* The two screens (ticket 30), as one state machine: accessModeSetup.ts
+  /* The two screens, as one state machine: accessModeSetup.ts
      decides what the next screen is, this only ever holds what it returns. */
   let screen = $state<AccessModeScreen>({ screen: 'list' });
 
   let confirmingPin = $derived(chosenPin !== '');
+  let stepTitle = $derived(screen.screen === 'list'
+    ? (purpose === 'setup' ? m.am_setup_title() : m.am_change_title())
+    : screen.screen === 'secret' && screen.mode === 'pin'
+      ? (confirmingPin ? m.pin_again_title() : m.pin_choose_title())
+      : accessModeTitle(screen.mode));
 
   /* Asked of the browser once, when the module mounts, because the answer
      needs an await and a row cannot wait for one. False until it comes back,
@@ -168,7 +150,7 @@
   /* On Android, the native Keystore bridge wraps an existing data key for
      both 'device-bound' (gated by lock screen) and 'unlocked' (hardware key,
      no prompt), so both can be selected on setup and on change without
-     re-encrypting the journal (ticket 101). On the web, 'device-bound' is
+     re-encrypting the journal. On the web, 'device-bound' is
      the ungated mode. */
   let candidateModes: Mode[] = $derived(
     android
@@ -257,8 +239,15 @@
     attempted = null;
   }
 
-  /** Screen two back to screen one, the mode still chosen (ticket 30) - only
+  /** Screen two back to screen one, the mode still chosen - only
       the typed-so-far secret is thrown away, not the choice that led here. */
+  /** Delegate setup's external Back to the same controls this module draws. */
+  export function back(): void {
+    if (busy) return;
+    if (screen.screen === 'secret') backFromSecret();
+    else if (screen.screen === 'detail') pickAnother();
+  }
+
   function backFromSecret() {
     screen = backToDetail(screen);
     resetSecretFields();
@@ -308,18 +297,22 @@
   );
 </script>
 
-<!-- One step in three states, and a state change moves (ADR-0078). The
-     module's screens used to swap in a single frame: the four modes were
-     there and then the chosen one's consequence was, with nothing in
-     between - "a mode picked inside the gate, yank between frame 1 and 2"
-     (Alicja, round one on redesign ticket 34). They cross now, on the same
-     crossfade setup's own steps take, over a grid cell that holds both so
-     the two overlap rather than stacking and doubling the page's height
-     while they do. The field's edge is already travelling underneath, since
-     the gate's title changes with the screen. -->
+<!-- One step in three states, and a state change moves. The module's screens used to swap
+     in a single frame: the four modes were there and then the chosen one's consequence was,
+     with nothing in between.
+     They cross now, on the same crossfade setup's own steps take, over a grid cell that
+     holds both so the two overlap rather than stacking and doubling the page's height while
+     they do. The field's edge is already travelling underneath, since the gate's title
+     changes with the screen. -->
 <div class="am-stage">
   {#key screen.screen}
-    <div class="am-stage-screen" in:fieldPart out:fieldPart>
+    <div class="am-stage-screen" in:fieldPart out:fieldPart onintroend={(event) => {
+      if (document.activeElement === document.body || document.activeElement?.closest('[inert]'))
+        focusNamedTarget(event.currentTarget.querySelector<HTMLElement>('[data-access-step-heading]'));
+    }}>
+      {#key stepTitle}
+        <h2 class="visually-hidden" data-access-step-heading {@attach focusNamedTarget}>{stepTitle}</h2>
+      {/key}
 {#if screen.screen === 'list'}
   {#if purpose !== 'recovered'}
     <div class="am-intro">
@@ -347,22 +340,12 @@
     <p class="gate-note" data-access-current>{m.am_current({ mode: title(current) })}</p>
   {/if}
 {:else if screen.screen === 'detail'}
-  <!-- Screen one's second half (ticket 30): every consequence lives here,
+  <!-- Screen one's second half: every consequence lives here,
        never on the screen that follows it. -->
   <div class="am-chosen" data-access-chosen={screen.mode}>
-    <!-- The consequence, on the screen where the choice is actually made and
-         above the control that makes it. Left, as everything on a gate is
-         since redesign ticket 34: this is four or five lines of prose whose
-         whole job is being read once and understood, and centred prose goes
-         ragged at both edges. It was centred in the first build of this
-         screen, which is what the render caught.
-
-         Neutral rather than the danger surface. Every mode here has a
-         consequence, this is the one the person just chose, and dressing a
-         chosen option in the colour of an error says they got it wrong. The
-         words carry the weight - docs/ui-copy.md's rule for the risk screens
-         is that the sentence is as final as the behaviour, not that the box
-         is red. -->
+    <!-- Put the consequence above the control that selects it. Left-align
+         the prose and use a neutral surface for each option. The words
+         state exactly what the chosen mode does. -->
     <div class="am-notice">
       <span class="am-notice-ico"><Icon name={tiedToDevice(screen.mode) ? 'alert' : 'shield'} size={20} /></span>
       <p>{consequence(screen.mode)}</p>
@@ -392,21 +375,21 @@
            screen could show. -->
       <div class="gate-actions">
         <button class="btn btn-primary" data-access-submit disabled={busy} onclick={() => submit('biometric', '')}>
-          <span>{busy ? m.pp_encrypting() : m.am_confirm_biometric()}</span>
+          <span>{busy ? m.encrypting() : m.am_confirm_biometric()}</span>
         </button>
       </div>
       <p class="pin-status small" role="alert" data-access-status>{shownError}</p>
     {:else if screen.mode === 'unlocked'}
       <div class="gate-actions">
         <button class="btn btn-primary" data-access-submit disabled={busy} onclick={() => submit('unlocked', '')}>
-          <span>{busy ? m.pp_encrypting() : m.am_confirm_unlocked()}</span>
+          <span>{busy ? m.encrypting() : m.am_confirm_unlocked()}</span>
         </button>
       </div>
       <p class="pin-status small" role="alert" data-access-status>{shownError}</p>
     {:else}
       <div class="gate-actions">
         <button class="btn btn-primary" data-access-submit disabled={busy} onclick={() => submit('device-bound', '')}>
-          <span>{busy ? m.pp_encrypting() : android ? m.am_confirm_device() : m.am_confirm_unlocked()}</span>
+          <span>{busy ? m.encrypting() : android ? m.am_confirm_device() : m.am_confirm_unlocked()}</span>
         </button>
       </div>
       <p class="pin-status small" role="alert" data-access-status>{shownError}</p>
@@ -452,7 +435,7 @@
         </div>
         <p class="pin-status small" role="alert" data-access-status>{shownError}</p>
         <button class="btn btn-primary" type="submit" data-access-submit disabled={busy}>
-          <span>{busy ? m.pp_encrypting() : m.am_confirm_passphrase()}</span>
+          <span>{busy ? m.encrypting() : m.am_confirm_passphrase()}</span>
         </button>
       </form>
     {:else if screen.mode === 'pin'}
@@ -496,22 +479,9 @@
     min-height: 0;
   }
 
-  /* The module's own notice surface: one outline, an icon, and as many lines
-     as the consequence being stated actually needs. Local rather than in
-     screens.css because this is its only consumer
-     (scripts/check-screens-classes.mjs enforces that), and named for the
-     module rather than the gate frame because it appears inside a settings
-     card too.
-
-     It replaces .gate-modes, the passphrase gate's old "here are your
-     options" block. The options are rows now; what this carries is one
-     mode's consequence.
-
-     Left, as everything on a gate is since redesign ticket 34: four or five
-     lines of prose that has to be read once and understood does not go in a
-     centred column. The gate frame used to centre everything by default and
-     the first build of this screen inherited it, which is what looking at
-     the render caught. */
+  /* Show one mode's consequence as a left-aligned notice with an icon and
+     outline. Keep the style local to the access-mode module, which is also
+     used inside Settings. */
   .am-notice {
     display: flex;
     gap: var(--space-3);

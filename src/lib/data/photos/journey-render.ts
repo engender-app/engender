@@ -1,20 +1,6 @@
-/* Turning a photo journey into one file (ticket 27).
-
-   The browser half of journey.ts: it needs a decoder, a canvas and - for
-   the timelapse - MediaRecorder, so it is tested against a real Chromium in
-   the browser tier rather than stubbed in Node, the same split normalize.ts
-   already lives under.
-
-   Both outputs read one photo at a time and let it go before the next. A
-   three-year journey can be hundreds of photos and every stored one is up
-   to 2048px on the long edge (ADR-0008), which is 16MB of bitmap each -
-   decoding them all first would be the export that runs out of memory on
-   the phone it matters on.
-
-   Nothing here writes a file anywhere. It hands back a Blob and the screen
-   decides what happens to it, which is the whole point of the ticket: the
-   generated picture only leaves the device when a person does something
-   about it. */
+/* Render a photo journey on canvas, using MediaRecorder for timelapse.
+   Decode and release one photo at a time. At the 2048px stored limit
+   (ADR-0008), a bitmap can take 16MB. Return a Blob to the caller. */
 
 import { fixWebmDuration } from '@fix-webm-duration/fix';
 import {
@@ -27,14 +13,13 @@ import {
   TIMELAPSE_MS_PER_PHOTO
 } from './journey';
 
-/** One photo's place in the export. The caption is already worded and
-    formatted by the screen: dates read differently per locale and ADR-0016
-    keeps paraglide out of anything the Node tier imports.
+/** One photo's place in the export. The caption is already worded and formatted by the
+    screen: dates read differently per locale and Node imports avoid Paraglide.
 
-    `fileName` is nullable because Photo.fileName is (types.ts): a photo with
-    no stored file draws the same gap as one whose file has gone, which is what
-    PhotoThumb does with the same case rather than the screen having to filter
-    the selection down and disagree with the count it showed. */
+    `fileName` is nullable because Photo.fileName is (types.ts): a photo with no stored file
+    draws the same gap as one whose file has gone, which is what PhotoThumb does with the
+    same case rather than the screen having to filter the selection down and disagree with
+    the count it showed. */
 export interface JourneyFrame {
   fileName: string | null;
   caption: string;
@@ -58,9 +43,9 @@ interface JourneyRenderOptions {
 }
 
 /** The abort check, spelled out rather than taken from signal's own
-    throwIfAborted(): that landed in Chrome 100 and this app's floor is
-    WebView 87 (ADR-0023), which is exactly the trap Object.hasOwn set there.
-    `aborted` and the DOMException constructor are both far below it. */
+    throwIfAborted(): that landed in Chrome 100, above the former WebView 87
+    floor (ADR-0023). The explicit check remains compatible with the other
+    browser targets. Android's current floor is WebView 104. */
 function stopIfAsked(signal: AbortSignal | undefined): void {
   if (signal?.aborted) throw new DOMException('the journey export was stopped', 'AbortError');
 }

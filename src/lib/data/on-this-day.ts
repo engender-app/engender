@@ -1,24 +1,14 @@
-/* Which past days on-this-day checks today (phase 4 features ticket 03).
-
-   Three lookback points - a month, six months and a year ago - each a
-   calendar-arithmetic answer over `todayEpochDay`, kept here rather than in
-   a screen for the same reason wrapped.ts is: the awkward edges are
-   calendar rules, not something that needs a browser to work out.
-
-   Whether a candidate day is worth resurfacing - CONTEXT.md's "good day" -
-   is a journal read (mood, tags), not calendar arithmetic, so it lives on
-   StatsArea.isGoodDay instead of here. This file only says which epoch days
-   to ask about; each is checked against that rule independently, and
-   nothing here decides which (if any) qualify. */
+/* Candidate dates for On this day. Calendar clamping comes from
+   epochDayMonthsAgo; the journal bounds how far annual checks reach.
+   Good-day and mute decisions belong to the journal and consent layer. */
 
 import { epochDayMonthsAgo } from './epochDay';
 
-export type OnThisDayLookback = 'month' | 'sixMonths' | 'year';
+export type OnThisDayLookback = 'month' | 'sixMonths' | 'year' | `year-${number}`;
 
 /** Longest first, the order the retrospective page shows them in when more
     than one qualifies. */
-/* ON_THIS_DAY_LOOKBACKS stays exported only for its own test (AU-09 test-only
-   review). */
+/* ON_THIS_DAY_LOOKBACKS stays exported only for its own test. */
 export const ON_THIS_DAY_LOOKBACKS: { key: OnThisDayLookback; months: number }[] = [
   { key: 'year', months: 12 },
   { key: 'sixMonths', months: 6 },
@@ -28,6 +18,7 @@ export const ON_THIS_DAY_LOOKBACKS: { key: OnThisDayLookback; months: number }[]
 interface OnThisDayCandidate {
   key: OnThisDayLookback;
   epochDay: number;
+  years?: number;
 }
 
 /** Whether a lookback day is worth showing: a good day, or one that carries
@@ -37,10 +28,19 @@ export function onThisDayQualifies(good: boolean, dayLetters: readonly unknown[]
   return good || dayLetters.length > 0;
 }
 
-/** The three days on-this-day checks today. */
-export function onThisDayCandidates(todayEpochDay: number): OnThisDayCandidate[] {
-  return ON_THIS_DAY_LOOKBACKS.map(({ key, months }) => ({
+/** Month, six months and annual anniversaries through the earliest journal day. */
+export function onThisDayCandidates(todayEpochDay: number, earliestEpochDay?: number): OnThisDayCandidate[] {
+  const older: OnThisDayCandidate[] = [];
+  if (earliestEpochDay !== undefined) {
+    for (let years = 2; ; years++) {
+      const epochDay = epochDayMonthsAgo(todayEpochDay, years * 12);
+      if (epochDay < earliestEpochDay) break;
+      older.push({ key: `year-${years}`, epochDay, years });
+    }
+    older.reverse();
+  }
+  return [...older, ...ON_THIS_DAY_LOOKBACKS.map(({ key, months }) => ({
     key,
     epochDay: epochDayMonthsAgo(todayEpochDay, months)
-  }));
+  }))];
 }

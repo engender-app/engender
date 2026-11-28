@@ -39,8 +39,7 @@
 
   let branch = $derived(gateBranch(read));
 
-  /* The answer fades in over the skeleton fading out (ux-carpet ticket
-     184). The skeleton's `out:crossfade` only ever handled the leaving
+  /* The answer fades in over the skeleton fading out. The skeleton's `out:crossfade` only ever handled the leaving
      half: whatever replaced it was inserted at full opacity, so a whole
      screen's worth of headings, lines and rows appeared in one frame on
      top of a placeholder still on its way out - measured on Care's cold
@@ -95,7 +94,7 @@
   });
 </script>
 
-<!-- The skeleton and whatever replaces it share one wrapper (ticket 144),
+<!-- The skeleton and whatever replaces it share one wrapper,
      so the swap between them is a resize this persistent node can watch
      rather than a mount/unmount neither `resize` nor a transition can
      see: `out:crossfade` already takes the skeleton out of flow the
@@ -125,7 +124,12 @@
     {#if shown === 'rows' || (shown === 'stale' && read.rows.length > 0)}
       {@render rows(read.rows)}
     {:else if shown === 'empty'}
-      {@render empty()}
+      <!-- The empty state leaves the flow as the first row arrives. In flow, its notice
+           closed below the list that had just been drawn, so everything under the gate went
+           down by the list's height and back up by the notice's (112px, then 154px, on the
+           first question to raise). Out of flow, it fades over the rows and the wrapper's
+           `resize` travels once, from the notice's height to the list's. -->
+      <div class="gate-empty" out:crossfade>{@render empty()}</div>
     {/if}
   {/if}
 </div>
@@ -133,5 +137,17 @@
 <style>
   :global(.screen-part[data-gate-revealing] > :not([data-gate-skeleton])) {
     opacity: 0;
+  }
+  /* The empty state's wrapper stands where its blocks stood, so they keep
+     the floor app.css gives a screen part's children (the wrapper's own 20
+     and its last child's collapse into one, as they did on the part). */
+  :global(:is(.screen, .read-reserve-body) > .screen-part > .gate-empty > *) {
+    margin-bottom: var(--space-5);
+  }
+  :global(:is(.screen, .read-reserve-body) > .screen-part > .gate-empty > .kit-heading) {
+    margin-bottom: var(--space-3);
+  }
+  :global(:is(.screen, .read-reserve-body) > .screen-part > .gate-empty > :is(.segmented-wrap, .btn):last-child) {
+    margin-bottom: 0;
   }
 </style>

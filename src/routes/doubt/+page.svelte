@@ -1,46 +1,11 @@
 <script lang="ts">
-  /* Safe space (ADR-0040, CONTEXT: "Safe space"), rebuilt by phase 10
-     redesign ticket 47 to open on one thing.
+  /* Safe space opens on the breathing exercise with the same choices from Today, the hub or
+     an Android launch. Link personal support above the breath so it is reachable without
+     starting the exercise.
 
-     It used to be a dashboard: a breathing exercise, then two tiles, two
-     charts, three letters, six photographs, twenty entries, a run of saved
-     snapshots and the comfort list, 5908px of it on a demo journal with
-     every feature filled - the second longest screen in the app after the
-     roadmap. It is also the screen a person opens on their worst day, and
-     it is reachable from a live tile on Today, from a hub row and as a
-     pinned Android launch route (ADR-0028), so a cold start can land
-     straight on it. The app's longest surface was the one its most
-     distressed reader arrived at, and it asked them to scroll past their
-     own charts to reach the breathing exercise.
-
-     Nothing was cut. The screen keeps the breath, full bleed, and
-     everything it held is one tap down, in the order safeSpaceWays.ts
-     states and explains. The sections themselves moved wholesale into
-     /doubt/moments, /doubt/comfort, /doubt/evidence and /doubt/readings
-     with their bounds, their handovers and their reasons intact.
-
-     Phase 11 ticket 15 folds two of those four away again, and the rows
-     stay: "Letters and photos" was a second copy of what /transition/letters
-     already showed in its Open section, and the readings were a Look back
-     page on this door. Both rows now point where the thing actually lives.
-     The five ways and their order do not move - what a person taps here is
-     what they tapped before.
-
-     Personal support is now linked above the breath, so it is reachable
-     on a short screen without starting the exercise (UI/UX ticket 14). It
-     is the only way to it: the same list as a row among the ways down said
-     "Things that help" twice on one screen (phase 14 ticket 18, release
-     audit U11).
-
-     **The same choices, however you arrived.** A surface that
-     opens differently depending on whether you came from the tile, the hub
-     or a launch intent is one you cannot learn, and learning it is the
-     whole point for a person who is not in a state to read. Same screen
-     every time.
-
-     The breath paints without waiting for SQLite. Bounded pool and snapshot reads
-     decides whether Good moments has anything to open; until it answers,
-     that optional row stays absent. Each way down owns its full reads. */
+     The breath renders before SQLite answers. A bounded pool read decides whether to offer
+     Good moments, which stays absent until the read finds something. Each destination owns
+     its full reads. */
   import { m } from '$lib/paraglide/messages';
   import BreathingExercise from '$lib/components/BreathingExercise.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
@@ -48,30 +13,19 @@
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import { SAFE_SPACE_WAYS, type SafeSpaceWayKey } from '$lib/data/safeSpaceWays';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
-  import { roleAt } from '$lib/theme/roles';
+  import { calmRole, roleAt } from '$lib/theme/roles';
   import { liveList } from '$lib/data/live/journal.svelte';
   import { EUPHORIA_TAG_KEYS } from '$lib/data/vocabulary/builtinTemplates';
   import { disclose } from '$lib/motion/reveal';
   import { navigating } from '$app/state';
 
   const evidenceQuery = liveList((j) => j.entries.counterevidencePool(EUPHORIA_TAG_KEYS, 1));
-  const snapshotsQuery = liveList((j) => j.doubtJournal.getSnapshots(1));
 
-  /* The words for each way, beside the list rather than in it: the order is
-     a fact about the product and lives in the module (ADR-0016 keeps
-     paraglide out of the node tier), and three of these four titles are the
-     section headings the person already read on the screen this replaces -
-     the same names, one tap further in.
-
-     The readings row is the one that no longer matches its destination's
-     own title, and deliberately: it lands on the Look back door, where the
-     good days are one reading among nine, so the row names the reading
-     rather than the door (ticket 15). */
+  /* The words for each way, beside the list rather than in it: the order is a fact about
+     the product and lives in the module. */
   const WAY_COPY: Record<SafeSpaceWayKey, { title: () => string; sub?: () => string }> = {
-    resources: { title: m.resources_title, sub: m.resources_row_sub },
-    moments: { title: m.safe_space_moments_title, sub: m.safe_space_moments_sub },
-    evidence: { title: m.safe_space_counterevidence_title, sub: m.safe_space_evidence_sub },
-    readings: { title: m.safe_space_readings_row_title, sub: m.safe_space_readings_sub }
+    resources: { title: m.resources_title },
+    evidence: { title: m.safe_space_counterevidence_title, sub: m.safe_space_evidence_sub }
   };
 </script>
 
@@ -81,12 +35,12 @@
   <a class="btn btn-soft btn-block" href="/doubt/comfort">{m.comfort_list_title()}</a>
 
   <div class="breath-stage">
-    <BreathingExercise role={roleAt(activeFlag.roles, 0)} />
+    <BreathingExercise role={calmRole(activeFlag.roles)} />
   </div>
 
   <ListCard role={roleAt(activeFlag.roles, 1)}>
     {#each SAFE_SPACE_WAYS as way, i (way.key)}
-      {#if way.key !== 'evidence' || evidenceQuery.rows.length || snapshotsQuery.rows.length}
+      {#if way.key !== 'evidence' || evidenceQuery.rows.length}
         <div class="rows-divide" transition:disclose={{ skip: way.key !== 'evidence' || navigating.to !== null }}>
           <ListRow
             key={way.key}
@@ -113,26 +67,13 @@
     flex-direction: column;
   }
 
-  /* Full bleed in the only sense that matters on this screen: the ring is
-     centred in everything the header and the list leave, so at 390x844 it
-     is what a person sees and there is nothing above it to read first. It
-     never shrinks below its own drawing - 272px of ring plus the
-     description and the control - so a 320x568 phone scrolls rather than
-     squashing it.
+  /* Centre the breath in the remaining space and preserve the
+     272px ring, description and control. Short screens scroll.
+     Enter from 94% over --dur-authored. Fill both ways so
+     the 1ms reduced-motion clamp still lands at rest.
 
-     The breath arrives rather than being painted where it lands: it comes
-     up from 94% over --dur-authored on --ease-out (rule 10, ADR-0078).
-     --dur-authored is Home's cold-boot entrance and the longest arrival the
-     app has, read here rather than redefined: this is the one screen where
-     slow is the subject, and a calming tool that snaps into place is the
-     thing the ticket refused. Filled both ways, so the 1ms reduced-motion
-     clamp ends it at rest instead of leaving it at 94%.
-
-     The animation is on this wrapper and not on the component's own root,
-     because the halo inside it is a button and press.css puts the app's
-     press on every button at zero specificity - a transform of ours on the
-     control itself would outrank :active and make the one thing on this
-     screen unpressable. */
+     Animate the wrapper. Transforming the button would override
+     press.css's :active transform. */
   .breath-stage {
     flex: 1 1 auto;
     display: flex;
@@ -147,20 +88,10 @@
     to { opacity: 1; transform: scale(1); }
   }
 
-  /* Each way down arrives as every block in the app does: its icon square
-     clips open from its own left edge over --dur-slow, one --stagger-step
-     per row, the words beside it cutting (rule 10, ADR-0078; the agenda's
-     day block and the return surface's rows are the same movement at the
-     same size). They start one --dur-fast behind the breath rather than
-     after it: the first cut of this waited the breath's whole 700ms before
-     the first row moved and the last row then landed 1305ms after the tap,
-     measured off the trace, which is a screen still assembling long after
-     it arrived. At 150ms the rows open under a breath that is still
-     growing and the last one settles at 730ms, a beat after the breath
-     itself - so the breath still leads and the screen is done in one.
-
-     :global because the square is drawn inside ListRow and a scoped
-     selector would never reach it. */
+  /* Icon blocks clip from the left over --dur-slow, staggered per row.
+     Text cuts. Start --dur-fast after the breath begins so the last row
+     settles around 730ms. Waiting for the full breath took 1305ms in the
+     trace. Use :global to reach ListRow's icon square. */
   .screen-safe-space :global(.kit-row-ico) {
     animation: kit-block-in var(--dur-slow) var(--ease-out) both;
     animation-delay: calc(var(--dur-fast) + var(--row-index, 0) * var(--stagger-step));

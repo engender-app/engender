@@ -7,7 +7,7 @@
    This module imports nothing, and that is a rule rather than an accident:
    its callers want arithmetic and should not have a charting library come
    with it. Path building is charts/areaPath.ts and the bar length is
-   charts/share.ts for that reason alone. tests/chart-library-graph.test.ts
+   charts/share.ts for that reason alone. tests/node/ui/chart-library-graph.test.ts
    holds the rule and carries the measurement behind it. */
 
 /** The plot's drawn height in CSS px, which every line chart in the kit
@@ -165,38 +165,12 @@ export function paddedSeries(points: Point[], minPad: number): PaddedSeries | nu
   return { points, ...range, from: points[0].x, to: points[points.length - 1].x };
 }
 
-/** Which corner of the plot the scrub readout takes (AreaChart.svelte),
-    picked so the plate never lands on the reading it names.
-
-    A plate fixed in one corner sits over any reading that lands near it -
-    carpet ticket 08, filed off a value near the top of its own range with
-    a plate answering for it right on top of the curve. The fix is not to
-    chase the finger: kit.css's own note above `.kit-area-readout` already
-    ruled that out for touch, a label glued to the touch point is a label
-    under the thumb holding it. So the plate jumps between the plot's four
-    corners instead - whichever half `x` (and, on the other axis, `topY`)
-    is *not* in, so the mark always lands in the half the plate gives up.
-
-    That only fully holds on the x axis, where kit.css caps the plate at
-    half the plot's width (`max-width: 50%` on `.kit-area-readout`) - a
-    plate that could grow past the half it was given would reach back
-    across the midline and cover the mark anyway, so the corner alone is
-    not enough there without the cap doing its half of the work. The y axis
-    takes the same half-split with no matching cap: the plot's height is a
-    fixed 132px the plate's content does not answer to the way its width
-    answers to the card, and capping it clips a wrapped annotation name
-    mid-line with no ellipsis to say so, worse than the overlap it would be
-    guarding against - so a plate carrying an unusually tall stack of
-    annotations can still reach past the vertical midline it was placed to
-    clear. What it never does any more is sit in a corner picked without
-    looking at the mark at all, which is what carpet ticket 08 was filed
-    against.
-
-    `x` and `topY` are plot-local pixels, the same space `plotWidth` and
-    `plotHeight` bound them in - AreaChart's own dot and plot-box
-    coordinates, not screen ones. `topY` is the higher (smaller-y) of the
-    two marks where a second metric shares the plot, so one flip clears
-    both. */
+/** Place AreaChart's scrub readout in the plot corner opposite the mark.
+    x and topY are plot-local pixels. With two metrics, topY is the higher
+    mark's coordinate. A stationary corner keeps the label away from the
+    finger. kit.css caps its width at half the plot, preventing horizontal
+    overlap. A tall annotation can still cross the vertical midpoint since
+    a height cap could clip wrapped text. */
 export function readoutCorner(
   x: number,
   topY: number,
@@ -206,13 +180,12 @@ export function readoutCorner(
   return { left: x > plotWidth / 2, below: topY < plotHeight / 2 };
 }
 
-/* The value gutter's three labels (audit item 1). A domain of 0 to 1 -
-   any count chart's own minimum - puts the midpoint at 0.5, which
-   `formatValue` rounds to the same digits as one of the ends; printing it
-   then reads as "1, 1, 0" rather than as a scale. Dropping the mid label
-   when it lands on either end's own text is a property of the formatted
-   text, not of the raw numbers, so a caller whose `formatValue` never
-   rounds (a percentage with a decimal, say) keeps its midpoint. */
+/* The value gutter's three labels. A domain of 0 to 1 - any count chart's own minimum -
+   puts the midpoint at 0.5, which `formatValue` rounds to the same digits as one of the
+   ends; printing it then reads as "1, 1, 0" rather than as a scale. Dropping the mid label
+   when it lands on either end's own text is a property of the formatted text, not of the
+   raw numbers, so a caller whose `formatValue` never rounds (a percentage with a decimal,
+   say) keeps its midpoint. */
 export function gutterLabels(
   min: number,
   max: number,

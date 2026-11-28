@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readReserve, rememberReserve, reserveKey } from './homeReserve';
+import { foldLegacyReserves, readReserve, rememberReserve, reserveKey, type ReserveStore } from './homeReserve';
 
 function memoryStorage(): Storage {
   const map = new Map<string, string>();
@@ -18,7 +18,6 @@ function memoryStorage(): Storage {
 describe('the home reserve', () => {
   it('keeps its key under the prefix reset clears', () => {
     expect(reserveKey('above')).toMatch(/^engender-/);
-    expect(reserveKey('measurements-now')).toMatch(/^engender-/);
     expect(reserveKey('hosted-care')).toMatch(/^engender-/);
   });
 
@@ -60,5 +59,34 @@ describe('the home reserve', () => {
     } as Storage;
     expect(() => rememberReserve('above', 100, throwing)).not.toThrow();
     expect(readReserve('above', throwing)).toBe(0);
+  });
+
+  /* A screen's own height named the screen, in plaintext, so it lives in the encrypted
+     journal now. */
+  it('keeps every screen but Home out of Web Storage', () => {
+    const storage = memoryStorage();
+    let value: Record<string, number> = {};
+    const store: ReserveStore = { read: () => value, write: (next) => (value = next) };
+    rememberReserve('dilation', 321.4, storage, store);
+    rememberReserve('hosted-care', 88, storage, store);
+    expect(storage.length).toBe(0);
+    expect(value).toEqual({ dilation: 321, 'hosted-care': 88 });
+    expect(readReserve('dilation', storage, store)).toBe(321);
+  });
+
+  it('reserves nothing for a screen before the journal holds its heights', () => {
+    expect(readReserve('dilation', memoryStorage(), null)).toBe(0);
+    expect(() => rememberReserve('dilation', 10, memoryStorage(), null)).not.toThrow();
+  });
+
+  it('moves the old screen keys into the journal and names them for deletion, Home left alone', () => {
+    const storage = memoryStorage();
+    storage.setItem('engender-reserve-dilation', '444');
+    storage.setItem('engender-reserve-wear', 'tall');
+    storage.setItem('engender-reserve-doses', '120');
+    storage.setItem('engender-home-reserve-above', '200');
+    const { next, keys } = foldLegacyReserves(storage, { doses: 90 });
+    expect(next).toEqual({ dilation: 444, doses: 90 });
+    expect(keys.sort()).toEqual(['engender-reserve-dilation', 'engender-reserve-doses', 'engender-reserve-wear']);
   });
 });

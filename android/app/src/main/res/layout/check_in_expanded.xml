@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The check-in notification unfolded: the
+     same five faces, larger, each with its mood's name under it. A cell is
+     the touch target, face and word together, and carries the face's
+     contentDescription and PendingIntent (ReminderAlarmReceiver). The
+     words come from the app, in its language, so they are set at post
+     time rather than here. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingTop="4dp"
+    android:paddingBottom="4dp"
+    android:orientation="horizontal">
+
+    <LinearLayout
+        android:id="@+id/check_in_face_1"
+        style="@style/CheckInFaceCell">
+
+        <ImageView
+            style="@style/CheckInFaceUnfolded"
+            android:src="@drawable/check_in_mood_1" />
+
+        <TextView
+            android:id="@+id/check_in_face_1_label"
+            style="@style/CheckInFaceLabel" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/check_in_face_2"
+        style="@style/CheckInFaceCell">
+
+        <ImageView
+            style="@style/CheckInFaceUnfolded"
+            android:src="@drawable/check_in_mood_2" />
+
+        <TextView
+            android:id="@+id/check_in_face_2_label"
+            style="@style/CheckInFaceLabel" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/check_in_face_3"
+        style="@style/CheckInFaceCell">
+
+        <ImageView
+            style="@style/CheckInFaceUnfolded"
+            android:src="@drawable/check_in_mood_3" />
+
+        <TextView
+            android:id="@+id/check_in_face_3_label"
+            style="@style/CheckInFaceLabel" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/check_in_face_4"
+        style="@style/CheckInFaceCell">
+
+        <ImageView
+            style="@style/CheckInFaceUnfolded"
+            android:src="@drawable/check_in_mood_4" />
+
+        <TextView
+            android:id="@+id/check_in_face_4_label"
+            style="@style/CheckInFaceLabel" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/check_in_face_5"
+        style="@style/CheckInFaceCell">
+
+        <ImageView
+            style="@style/CheckInFaceUnfolded"
+            android:src="@drawable/check_in_mood_5" />
+
+        <TextView
+            android:id="@+id/check_in_face_5_label"
+            style="@style/CheckInFaceLabel" />
+    </LinearLayout>
+
+</LinearLayout>

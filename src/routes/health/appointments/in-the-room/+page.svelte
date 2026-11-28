@@ -1,48 +1,24 @@
 <script lang="ts">
-  /* In the room (phase 8 features ticket 60, ADR-0066): the standing prep
-     list, one question per screen, at a size somebody can read while a
-     doctor is talking to them.
+  import { journalTextAutocomplete } from '$lib/platform';
+  /* Show the standing prep list one question at a time (ADR-0066).
+     Answers are optional and stay paired with their questions for
+     the debrief. This view owns no journal record. The shell hides
+     the tab bar so an accidental tap cannot leave the room. The
+     header Back leaves, while the foot control continues.
 
-     This holds nothing of its own. The questions are the prep list's
-     (checklists.ts), the appointment is the record's (appointments.ts), and
-     what gets jotted is the debrief's, pre-filled through the deep link
-     the debrief offer already uses. No table, no row, no column: what is
-     added here is a shape for a list that already existed.
-
-     WHY THE SCREEN IS CHROMELESS. The tab bar floats over every other
-     screen, and here it would be four ways to leave by accident in the
-     middle of a sentence. That absence is the shell's own chrome
-     (chromeless.ts) and is unrelated to the screen's header, which carries
-     the ordinary field and back control every deep screen owes (rule 7,
-     carpet 27) - the foot's one control stays what carries an answer
-     forward; the header's is what leaves without one.
-
-     WHY ADVANCING IS FREE. Somebody who wants nothing but their questions
-     at 32px pays no tap cost at all: the field under each question is
-     optional, an untouched one leaves nothing behind (answeredQuestions,
-     debriefNote.ts), and there is no counter or progress bar anywhere,
-     because a bar that fills is a chore being tracked.
-
-     WHY THE ANSWERS ARE PER QUESTION. One free note loses which answer went
-     with which question, and that pairing is the whole value of reading
-     this back at debrief time.
-
-     WHICH VISIT (ticket 12, audit I3). A day can hold two appointments, and
-     which room somebody is sitting in is a fact only they have. One appointment
-     needs no step: it is the room's own appointment. Two put one quiet
-     control above the question and nothing else changes - the prep list
-     stays standing and shared (ADR-0066), and the answers and the debrief
-     handoff key off the chosen appointment rather than off whichever row the
-     journal happened to list first. */
-  import { goto } from '$app/navigation';
-  import { page } from '$app/state';
+     One visit today can be used directly. With several, show a
+     picker. Key the answers and debrief handoff to the chosen
+     appointment while leaving the prep list shared. */
+  import { untrack } from 'svelte';
+  import { goto, onNavigate } from '$app/navigation';
+  import { navigating, page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { liveList } from '$lib/data/live/journal.svelte';
   import { todayEpochDay } from '$lib/data/epochDay';
   import { appointmentsOnDay, chosenAppointmentOnDay } from '$lib/data/journal/appointments';
   import { answeredQuestions } from '$lib/data/journal/debriefNote';
-  import { holdRoomAnswers, restoreRoomAnswers } from '$lib/stores/inTheRoom';
-  import { smartBack, replaceRoute } from '$lib/navigation/smart-back';
+  import { holdRoomAnswers, restoreRoomAnswers, rememberRoomVisit, restoreRoomVisit } from '$lib/stores/inTheRoom';
+  import { smartBack, replaceRoute, depthAfter, navigationDepth } from '$lib/navigation/smart-back';
   import Icon from '$lib/components/Icon.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
@@ -64,19 +40,17 @@
   let items = $derived(checklistQuery.rows);
 
   /* The appointment this room is, resolved by the rule the room owns
-     (chosenAppointmentOnDay, appointments.ts): the appointment chosen below when the
-     day holds more than one, the one appointment when the day holds exactly one,
-     and none when the day is ambiguous and unchosen - or when the chosen
-     appointment was deleted or moved off the day, where falling back to
-     whichever appointment is left would attach this room's answers to an appointment
-     the person never chose (ticket 12, audit I3).
+     (chosenAppointmentOnDay, appointments.ts): the appointment chosen below when the day
+     holds more than one, the one appointment when the day holds exactly one, and none when
+     the day is ambiguous and unchosen - or when the chosen appointment was deleted or moved
+     off the day, where falling back to whichever appointment is left would attach this
+     room's answers to an appointment the person never chose.
 
-     None is an ordinary state, not a failure. The list is standing and
-     unowned (ADR-0066), so reading it on a day with nothing booked is
-     allowed - somebody rehearsing the night before is reading the same
-     questions. What that day has nowhere to put is an answer, and the
-     screen says so by not offering a field rather than by taking one and
-     dropping it. */
+     None is an ordinary state, not a failure. The list is standing and unowned (ADR-0066),
+     so reading it on a day with nothing booked is allowed - somebody rehearsing the night
+     before is reading the same questions. What that day has nowhere to put is an answer,
+     and the screen says so by not offering a field rather than by taking one and dropping
+     it. */
   let appointmentsQuery = liveList((j) => j.appointments.getAppointments());
   let todaysAppointments = $derived(appointmentsOnDay(appointmentsQuery.rows, today));
   let ambiguousDay = $derived(todaysAppointments.length > 1);
@@ -110,15 +84,21 @@
   const nameOf = (appointment: { kind: string | null; procedureId: string | null }) =>
     appointment.kind ?? (appointment.procedureId ? procedureNames.get(appointment.procedureId) : undefined) ?? m.appointments_untitled();
 
-  let index = $state(0);
+  const visitDepth = untrack(() => navigating.type ? depthAfter(navigating.type, navigating.delta) : navigationDepth());
+  let index = $state(untrack(() => restoreRoomVisit(visitDepth, navigating.type === 'popstate', chosenAppointmentId)));
+
+  // Read the settled depth when leaving: automatic appointment selection
+  // can replace the route while its first arrival is still settling.
+  onNavigate(() => {
+    rememberRoomVisit(navigationDepth(), chosenAppointmentId, index);
+  });
   /* Keyed by item id rather than by position: the list is live, and an item
      deleted from the prep screen in another tab must not slide somebody
      else's answer onto a different question. */
-  /* Drafts per appointment, because two appointments on one day are two visits
-     and each holds its own answers (ticket 12, audit I3): switching the
-     choice above switches which set the field reads, and nothing typed
-     under one appointment can land under another. Restored into from what was
-     held (below), so a remount finds them again (ticket 05, audit I2). */
+  /* Drafts per appointment, because two appointments on one day are two visits and each
+     holds its own answers: switching the choice above switches which set the field reads,
+     and nothing typed under one appointment can land under another. Restored into from what
+     was held (below), so a remount finds them again. */
   let drafts = $state<Record<string, Record<string, string>>>({});
   let appointmentDrafts = $derived((appointment ? drafts[appointment.id] : undefined) ?? {});
 
@@ -179,13 +159,11 @@
 </script>
 
 <div class="screen room">
-  <!-- No actions: nothing lives beside the title. The back control returns
-       to whichever screen led here, which is the appointment screen and nowhere
-       else since phase 11 all-four-doors ticket 12 (smartBack), falling
-       back to it by name for a deep link or a reload (carpet 27). The title
-       is shown in the field like every other screen's (after-release 28,
-       audit UI-10): hidden, the field held only the back arrow and read as
-       a band with nothing in it above the question. -->
+  <!-- No actions: nothing lives beside the title. The back control returns to whichever
+       screen led here, which is the appointment screen and nowhere else (smartBack),
+       falling back to it by name for a deep link or a reload. The title is shown in the
+       field like every other screen's: hidden, the field held only the back arrow and read
+       as a band with nothing in it above the question. -->
   <ScreenHeader
     title={m.in_the_room_title()}
     screen="in-the-room"
@@ -195,12 +173,10 @@
   <ReadGate read={checklistQuery} variant="block" count={1}>
     {#snippet rows()}
       <div class="room-stage" data-in-the-room>
-        <!-- Only when the day is ambiguous (ticket 12, audit I3): which
-             appointment these answers belong to is a fact only the person has.
-             One control above the question, so it is reachable before any
-             answering starts and states the choice the field under it keys
-             off; a day with one booking needs no step and shows nothing
-             here. -->
+        <!-- Only when the day is ambiguous: which appointment these answers belong to is a
+             fact only the person has. One control above the question, so it is reachable
+             before any answering starts and states the choice the field under it keys off;
+             a day with one booking needs no step and shows nothing here. -->
         {#if ambiguousDay || (chosenAppointmentId !== null && !appointment && todaysAppointments.length > 0)}
           <button
             class="room-visit"
@@ -241,13 +217,13 @@
         {#if appointment}
           <Field label={m.in_the_room_answer_label()} id="room-answer">
             {#snippet children(id)}
-              <textarea
+              <textarea autocomplete={journalTextAutocomplete()}
                 class="input room-answer"
                 {id}
                 name="room-answer"
                 rows="3"
                 data-room-answer
-                placeholder={m.in_the_room_answer_placeholder()}
+                placeholder={m.optional_placeholder()}
                 value={appointmentDrafts[current.id] ?? ''}
                 oninput={(event) => setAnswer(current.id, event.currentTarget.value)}
               ></textarea>
@@ -281,7 +257,6 @@
         key="in-the-room-empty"
         role={roleAt(activeFlag.roles, 0)}
         title={m.in_the_room_empty_title()}
-        text={m.in_the_room_empty_body()}
         action={{
           label: m.in_the_room_empty_action(),
           primary: true,
@@ -302,7 +277,7 @@
         <ListRow
           key={appointment.id}
           data-visit-pick={appointment.id}
-          icon="calendar"
+          icon="appointment"
           title={nameOf(appointment)}
           subtitle={appointment.place ?? undefined}
           onclick={() => pickAppointment(appointment.id)}
@@ -339,14 +314,12 @@
     gap: var(--space-6);
   }
 
-  /* Which appointment these answers belong to (ticket 12, audit I3). Quiet on
-     purpose: it sits above the largest text in the app and must not compete
-     with it, so it reads as a line of small text that happens to open the
-     choice, not as a fourth control. Left-aligned rather than centred under
-     the question, because it states a fact about the day ("morning, at the
-     clinic") rather than asking anything. The hit area is the full-height
-     row it occupies, which clears the touch floor without padding the pill
-     out to a button's size. */
+  /* Which appointment these answers belong to. Quiet on purpose: it sits above the largest
+     text in the app and must not compete with it, so it reads as a line of small text that
+     happens to open the choice, not as a fourth control. Left-aligned rather than centred
+     under the question, because it states a fact about the day ("morning, at the clinic")
+     rather than asking anything. The hit area is the full-height row it occupies, which
+     clears the touch floor without padding the pill out to a button's size. */
   .room-visit {
     display: inline-flex;
     align-items: center;
@@ -389,6 +362,13 @@
     line-height: var(--leading-display);
     letter-spacing: var(--display-track);
     text-wrap: balance;
+    /* The words are the person's own, and a single one can be wider than the screen:
+       "spironolactone" at this size is wider than the 155px a 390px phone leaves at 200%
+       zoom. As a flex item the question took that word's width as its own floor and ran off
+       the right edge, cutting every line with it. It breaks inside the word instead, the
+       rule .screen-title takes for the same reason; a question whose words fit is untouched. */
+    min-width: 0;
+    overflow-wrap: break-word;
   }
 
   /* Bigger than an ordinary input for the same reason the question is: this

@@ -1,29 +1,10 @@
-/* The app opening for its owner (redesign ticket 34).
+/* Unlock is a layout state change rather than navigation. Wrap it in a view
+   transition so carryBlind and app.css can move the short gate field down
+   to the app's 175px field, carrying the gate title while Today's sun stays
+   still. data-nav selects each screen's motion.
 
-   Every other screen change in the app is a navigation, so `+layout.svelte`
-   catches it in `onNavigate` and runs the blind over it. This one is not: a
-   gate is not a route. It renders instead of the route, out of the `{#if}`
-   chain in the layout, and it stops rendering the moment the secret is
-   accepted - so the app arriving was a `{#if}` flipping, which the browser
-   draws as one frame of gate and the next of Home.
-
-   That moment is the one piece of motion in the product somebody sees
-   hundreds of times, and a cut is what it was. So the state change that ends
-   a gate runs inside a view transition here, with the same blind every
-   navigation carries: the gate's field is short - the title and nothing else
-   - and the app's is 175px of flag with a sun in it, so the edge opens
-   downward, the wordmark rides down with it onto the place Home draws its
-   own, and the page follows the edge instead of appearing under it.
-
-   Nothing about the arrival is new machinery. `carryBlind` names both sides
-   and publishes the two heights, app.css moves them, and `data-nav` says
-   which pattern the two screens themselves take. What is new is only that
-   there is no navigation to hang it on.
-
-   The reverse - a gate arriving - deliberately does not come through here.
-   A cold start has nothing to come from, and a mid-session lock arriving is
-   the one state change whose whole value is being instant (GateScreen.svelte
-   says why, at length). */
+   Cold start has no outgoing screen. Showing a gate during a mid-session
+   lock stays instant; see GateScreen.svelte. */
 
 import { tick } from 'svelte';
 
@@ -61,7 +42,13 @@ export function openApp(
   /* Before the old side is captured, and released when the transition is
      over: see $lib/motion/fieldBlind for why the name is handed over rather
      than written as a rule. */
-  const blind = carryBlind(doc);
+  /* An unlock without disguise draws Today's own sun, at Today's size in Today's corner.
+     Held, its rings stay unnamed on both sides and ride each side's blind capture, so the
+     two photographs of the sun are the same picture in the same place and the field opens
+     around one sun - rather than the gate's closing ring by ring while Today's opens. Read
+     before the gate goes. */
+  const holdSun = !!doc.querySelector('[data-gate-frame][data-gate-sun]');
+  const blind = carryBlind(doc, { holdSun });
   const root = doc.documentElement;
   root.dataset.nav = PATTERN;
 
@@ -103,16 +90,16 @@ export function openApp(
 }
 
 /**
- * Commits a boot failure over the screen that was drawn while it booted, or
- * a retry leaving one (ux-carpet 213).
+ * Commits a boot failure over the screen that was drawn while it booted, or a
+ * retry leaving one.
  *
  * A cold start renders the route while the journal opens, so Today is on
  * screen by the time an open can fail, and the failure replaces it with the
- * notice alone; a retry puts the route back. As bare state changes those
- * were one screen gone and the other there in the same frame. This runs
- * them as the tabs' fade-through instead: one screen settles out, the other
- * comes in, and the notice, which is outside the named screen, crossfades
- * in the root group.
+ * notice alone; a retry puts the route back. As bare state changes those were
+ * one screen gone and the other there in the same frame. This runs them as
+ * the tabs' fade-through instead: one screen settles out, the other comes in,
+ * and the notice, which is outside the named screen, crossfades in the root
+ * group.
  */
 export function crossBootFailure(
   commit: () => void,

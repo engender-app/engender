@@ -1,15 +1,13 @@
-/* What a screen reader is told, and when (after-release 21, audit L05-07).
+/* What a screen reader is told, and when.
 
-   A live region only speaks a change of text inside a region that was
-   already there. A toast, a progress bar or a notice inserted already
-   holding its words is often missed, so the app keeps two regions that
-   never leave (the root layout draws them) and everything that has to be
-   heard goes through here.
+   A live region only speaks a change of text inside a region that was already there. A
+   toast, a progress bar or a notice inserted already holding its words is often missed, so
+   the app keeps two regions that never leave (the root layout draws them) and everything
+   that has to be heard goes through here.
 
-   Emptied first and written a moment later, so the same sentence said
-   twice (two saves in a row) is two changes and is heard twice. A second
-   sentence inside that gap replaces the first, which is what a stage
-   change on a progress bar wants. */
+   Emptied first and written a moment later, so the same sentence said twice (two saves in a
+   row) is two changes and is heard twice. A second sentence inside that gap replaces the
+   first, which is what a stage change on a progress bar wants. */
 
 export type Region = 'polite' | 'assertive';
 
@@ -19,10 +17,22 @@ export const ANNOUNCE_GAP_MS = 100;
 
 export function createAnnouncer(write: (region: Region, text: string) => void) {
   const pending: Partial<Record<Region, ReturnType<typeof setTimeout>>> = {};
-  return (text: string, urgent = false) => {
+  const announce = (text: string, urgent = false) => {
     const region: Region = urgent ? 'assertive' : 'polite';
     clearTimeout(pending[region]);
     write(region, '');
-    pending[region] = setTimeout(() => write(region, text), ANNOUNCE_GAP_MS);
+    pending[region] = setTimeout(() => {
+      delete pending[region];
+      write(region, text);
+    }, ANNOUNCE_GAP_MS);
   };
+  return Object.assign(announce, {
+    clear() {
+      for (const region of ['polite', 'assertive'] as const) {
+        clearTimeout(pending[region]);
+        delete pending[region];
+        write(region, '');
+      }
+    }
+  });
 }

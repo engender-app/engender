@@ -1,0 +1,136 @@
+/* The first-load ratchet: a first visit's shipped
+   bytes and file count, watched the same way every other cost in the repo
+   is - measured, budgeted, and failing loud rather than waiting for an
+   audit to notice they grew. */
+import { gzipSync } from 'node:zlib';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { describe, expect, it } from 'vitest';
+import { budgetFailures, firstLoadBudgetFor, firstLoadUrls, gzipTotal, localeGraphsForShell } from '../../../scripts/check-first-load-budget.mjs';
+
+describe('recorded production startup budget', () => {
+  const { firstLoad } = JSON.parse(readFileSync('scripts/first-load-budget.json', 'utf8'));
+
+  it('keeps the recorded file count without spare round trips', () => {
+    const files = firstLoad.filesBudget + 1;
+    expect(budgetFailures({ files, gzipBytes: firstLoad.gzipBytesBaseline }, firstLoad))
+      .toEqual([`first-load file count is ${files}, over the ${firstLoad.filesBudget} budget`]);
+  });
+
+  it('allows only the 1,024-byte build wobble above the recorded bytes', () => {
+    const baseline = { files: firstLoad.filesBaseline, gzipBytes: firstLoad.gzipBytesBaseline };
+    expect(budgetFailures({ ...baseline, gzipBytes: baseline.gzipBytes + 1024 }, firstLoad)).toEqual([]);
+    expect(budgetFailures({ ...baseline, gzipBytes: baseline.gzipBytes + 1025 }, firstLoad))
+      .toHaveLength(1);
+  });
+
+  it('rejects the audit\'s 14,139-byte eager d3 increase even without another file', () => {
+    const measured = { files: firstLoad.filesBudget, gzipBytes: firstLoad.gzipBytesBaseline + 14139 };
+    expect(budgetFailures(measured, firstLoad)).toEqual([
+      `first-load gzip total is ${measured.gzipBytes}B, over the ${firstLoad.gzipBytesBudget}B budget`
+    ]);
+  });
+});
+
+describe('localeGraphsForShell', () => {
+  const html = '<script>const engenderLocaleGraphs = { en: {}, pl: {} };</script>';
+  const metadata = { graph: { en: ['en.js'], pl: ['pl.js'] }, selectorGzipBytes: 12,
+    shellHash: createHash('sha256').update(html).digest('hex'), demo: true };
+
+  it('accepts locale graphs only for the shell they measure', () => {
+    expect(localeGraphsForShell(html, metadata)).toBe(metadata);
+    expect(() => localeGraphsForShell(html + '\n', metadata)).toThrow('metadata is missing or stale');
+  });
+
+  it('refuses to undercount a locale shell without measurement metadata', () => {
+    expect(() => localeGraphsForShell(html, undefined)).toThrow('metadata is missing or stale');
+  });
+
+  it('ignores stale demo exemption metadata after an ordinary build', () => {
+    const ordinary = '<script>import("/_app/immutable/entry/app.new.js")</script>';
+    expect(localeGraphsForShell(ordinary, metadata)).toBeUndefined();
+    expect(firstLoadUrls(ordinary)).toEqual(['/_app/immutable/entry/app.new.js']);
+  });
+});
+
+describe('firstLoadUrls', () => {
+  it('reads a modulepreload href and a bootstrap script\'s import(...) call', () => {
+    // The two entry chunks (SvelteKit's kit and app modules) never get a
+    // modulepreload link of their own - only the inline bootstrap script's
+    // own import("...") names them.
+    const html = `
+      <link href="/_app/immutable/chunks/DPZW1atx.js" rel="modulepreload">
+      <script>Promise.all([import("/_app/immutable/entry/start.CMqcOQj5.js"), import("/_app/immutable/entry/app.abc123.js")])</script>
+    `;
+    expect(firstLoadUrls(html)).toEqual(
+      [
+        '/_app/immutable/chunks/DPZW1atx.js',
+        '/_app/immutable/entry/app.abc123.js',
+        '/_app/immutable/entry/start.CMqcOQj5.js'
+      ].sort()
+    );
+  });
+
+  it('de-duplicates a URL named twice', () => {
+    const html = `
+      <link href="/_app/immutable/chunks/DPZW1atx.js" rel="modulepreload">
+      <link href="/_app/immutable/chunks/DPZW1atx.js" rel="modulepreload">
+    `;
+    expect(firstLoadUrls(html)).toEqual(['/_app/immutable/chunks/DPZW1atx.js']);
+  });
+
+  it('ignores a URL outside /_app/immutable/', () => {
+    const html = `<link href="/manifest.webmanifest" rel="manifest">`;
+    expect(firstLoadUrls(html)).toEqual([]);
+  });
+});
+
+describe('gzipTotal', () => {
+  it('sums the gzipped size of every buffer', () => {
+    const a = Buffer.from('a'.repeat(1000));
+    const b = Buffer.from('b'.repeat(1000));
+    expect(gzipTotal([a, b])).toBe(gzipSync(a).length + gzipSync(b).length);
+  });
+
+  it('is zero for no buffers', () => {
+    expect(gzipTotal([])).toBe(0);
+  });
+});
+
+describe('firstLoadBudgetFor', () => {
+  it('carries the file count through with no headroom', () => {
+    expect(firstLoadBudgetFor({ files: 111, gzipBytes: 295873 }).filesBudget).toBe(111);
+  });
+
+  it('adds a fixed byte floor over the baseline, to absorb build-to-build hash wobble', () => {
+    expect(firstLoadBudgetFor({ files: 111, gzipBytes: 295873 }).gzipBytesBudget).toBe(295873 + 1024);
+  });
+});
+
+describe('budgetFailures', () => {
+  const budget = { filesBudget: 111, gzipBytesBudget: 295873 };
+
+  it('passes at exactly the budget', () => {
+    expect(budgetFailures({ files: 111, gzipBytes: 295873 }, budget)).toEqual([]);
+  });
+
+  it('passes under the budget', () => {
+    expect(budgetFailures({ files: 100, gzipBytes: 200000 }, budget)).toEqual([]);
+  });
+
+  it('fails over the byte budget', () => {
+    const failures = budgetFailures({ files: 111, gzipBytes: 400000 }, budget);
+    expect(failures).toHaveLength(1);
+    expect(failures[0]).toMatch(/gzip total is 400000B/);
+  });
+
+  it('fails over the file budget', () => {
+    const failures = budgetFailures({ files: 130, gzipBytes: 295873 }, budget);
+    expect(failures).toHaveLength(1);
+    expect(failures[0]).toMatch(/file count is 130/);
+  });
+
+  it('reports both a byte and a file breach at once', () => {
+    expect(budgetFailures({ files: 130, gzipBytes: 400000 }, budget)).toHaveLength(2);
+  });
+});

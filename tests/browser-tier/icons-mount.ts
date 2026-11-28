@@ -1,4 +1,4 @@
-/* Mounts the icon gallery (phase 5 ticket 31) against the app's own tokens
+/* Mounts the icon gallery against the app's own tokens
    and fonts, the way the kit's gallery does - a mark judged against a copy of
    the palette is a mark judged against the wrong colours.
 

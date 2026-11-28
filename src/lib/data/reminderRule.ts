@@ -1,24 +1,11 @@
-/* The reminder rule (ADR-0010, CONTEXT: "Reminder"): a local wall-clock
-   time plus either a recurrence (DAILY needs nothing else,
-   EVERY_N_DAYS carries its interval and an anchor day) or a concrete epoch
-   day for a one-off. Never a stored next-fire instant - that would need
-   rewriting after every fire, reboot and timezone change, and would shift
-   a 20:00 reminder by an hour across a DST boundary.
-
-   nextOccurrence() answers one question - when does this rule fire next,
-   strictly after now - and the editor's "Next: ..." preview is its only
-   caller. What decides when a notification actually fires is
-   ReminderPlanner.nextReminder in Java, which cannot import this file and
-   reimplements the same arithmetic. The two are held to the same answers by
-   src/lib/android/fixtures/reminder-rule.json, which both suites iterate
-   (ADR-0028's shape). Editing the rule here without adding the case there
-   leaves the two free to drift, which is how they came to disagree about an
-   elapsed one-off with both suites green. */
+/* Keep reminders as local wall time plus a recurrence or one-off day (ADR-0010).
+   nextOccurrence previews the first fire strictly after now. ReminderPlanner supplies
+   Android scheduling. Add cases to the shared reminder-rule.json fixture so both
+   implementations stay aligned. */
 
 import { epochDayFromLocalDate, timestampAtLocalTime } from './epochDay';
 
-// WEEKLY remains in the input type for older journals and archives.
-type Recurrence = 'DAILY' | 'WEEKLY' | 'EVERY_N_DAYS';
+type Recurrence = 'DAILY' | 'EVERY_N_DAYS';
 
 export interface ReminderRule {
   /** Local wall-clock time, 'HH:MM'. */
@@ -33,9 +20,7 @@ export interface ReminderRule {
   epochDay: number | null;
 }
 
-/** Current writes use a one-off day, anchored EVERY_N_DAYS, or bare DAILY.
-    The schema also accepts legacy WEEKLY inserts and anchors them by trigger.
-    Validated before the row is written so a bad rule fails as one clear
+/** A one-off day, anchored EVERY_N_DAYS, or bare DAILY. Validated before the row is written so a bad rule fails as one clear
     error rather than as a constraint violation from inside the driver. */
 export function assertValidRule(r: ReminderRule) {
   const oneOff = r.recurrence === null && r.epochDay != null && r.interval == null && r.anchorEpochDay == null;
@@ -81,15 +66,41 @@ export function nextOccurrence(rule: ReminderRule, now: Date): Date | null {
     return occurrenceOn(day, rule.time);
   }
 
-  if (rule.recurrence === 'WEEKLY') throw new Error('WEEKLY reminder must be anchored before planning');
   const todayAt = occurrenceOn(today, rule.time);
   return todayAt > now ? todayAt : occurrenceOn(today + 1, rule.time);
 }
 
-/* The editor's own vocabulary (F25). The segmented control offers five
+/** The latest moment the rule fired at or before `at`, or null when it had
+    not fired yet. Which firing a Taken or Skip tap answers: the tap can land after midnight, after quiet hours
+    held the alarm, or days later, and the dose belongs to the occurrence's
+    own day. JavaScript only - the alarm side never needs to look back. */
+export function previousOccurrence(rule: ReminderRule, at: Date): Date | null {
+  if (rule.recurrence === null) {
+    if (rule.epochDay == null) throw new Error('one-off reminder has no epochDay');
+    const once = occurrenceOn(rule.epochDay, rule.time);
+    return once <= at ? once : null;
+  }
+
+  const today = epochDayFromLocalDate(at);
+
+  if (rule.recurrence === 'EVERY_N_DAYS') {
+    if (rule.interval == null || rule.anchorEpochDay == null) {
+      throw new Error('EVERY_N_DAYS reminder has no interval or anchor');
+    }
+    if (today < rule.anchorEpochDay) return null;
+    let day = rule.anchorEpochDay + Math.floor((today - rule.anchorEpochDay) / rule.interval) * rule.interval;
+    if (occurrenceOn(day, rule.time) > at) day -= rule.interval;
+    return day < rule.anchorEpochDay ? null : occurrenceOn(day, rule.time);
+  }
+
+  const todayAt = occurrenceOn(today, rule.time);
+  return todayAt <= at ? todayAt : occurrenceOn(today - 1, rule.time);
+}
+
+/* The editor's own vocabulary (F25). The segmented control offers four
    options where the stored rule has three shapes: a one-off, DAILY, and
-   anchored EVERY_N_DAYS split into the two intervals worth a button. Weekly
-   writes the same seven-day progression. The pair below handles that
+   anchored EVERY_N_DAYS split into the two intervals worth a button. The
+   pair below handles that
    translation, and it lived in settings/reminders/[id]/+page.svelte where
    nothing could run it.
 
@@ -97,7 +108,7 @@ export function nextOccurrence(rule: ReminderRule, now: Date): Date | null {
    about the Java side: a rule this app writes and a rule the scheduler
    reads have to be the same rule, so everything that builds one belongs
    next to `assertValidRule` and to the fixture. */
-export type RecurrenceChoice = 'ONCE' | 'DAILY' | 'EVERY_3_DAYS' | 'EVERY_7_DAYS' | 'WEEKLY';
+export type RecurrenceChoice = 'ONCE' | 'DAILY' | 'EVERY_3_DAYS' | 'EVERY_7_DAYS';
 
 const CHOICE_INTERVAL: Record<'EVERY_3_DAYS' | 'EVERY_7_DAYS', number> = { EVERY_3_DAYS: 3, EVERY_7_DAYS: 7 };
 
@@ -135,8 +146,8 @@ export function ruleFromChoice(
     const at = nextOccurrence({ ...none, time, recurrence: 'DAILY' }, now)!;
     return { ...none, time, recurrence: null, epochDay: epochDayFromLocalDate(at) };
   }
-  if (choice === 'EVERY_3_DAYS' || choice === 'EVERY_7_DAYS' || choice === 'WEEKLY') {
-    const interval = choice === 'WEEKLY' ? 7 : CHOICE_INTERVAL[choice];
+  if (choice === 'EVERY_3_DAYS' || choice === 'EVERY_7_DAYS') {
+    const interval = CHOICE_INTERVAL[choice];
     const anchorEpochDay =
       existing?.recurrence === 'EVERY_N_DAYS' && existing.interval === interval
         ? existing.anchorEpochDay

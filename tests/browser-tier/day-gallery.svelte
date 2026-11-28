@@ -1,36 +1,16 @@
 <script lang="ts">
-  /* What a day looks like, at its three sizes (phase 5 deepening ticket 21).
-
-     The composition is the part of that ticket that needed deciding - a day
-     with an entry and nothing else must still look like the screen it was,
-     and a day with eleven kinds of record must not read as a database dump -
-     and a composition is judged by looking at it. The route cannot be driven
-     to those three shapes without seeding three journals, so what this mounts
-     is DayRecords.svelte, which is the whole of the screen below its header
-     and takes a `DayRecords` as a prop. The component is the real one; what
-     the fixture supplies is the day.
-
-     Photographs come through with `fileName: null`, which is the shape the
-     demo persona's own placeholders have (types.ts): PhotoThumb draws its
-     gradient rather than reaching for a file that no fixture has encrypted.
-     What is being looked at here is the row, not the picture in it.
-
-     Two rows read differently here than they do in the app, and it is the
-     fixture rather than the rows: a measurement type and a physical change
-     are both named from the reference mirror (vocabulary.ts), which only a
-     booted journal fills, and `reference` exposes getters precisely so
-     nothing outside it can assign one. So those two show their keys -
-     `waist`, `skin_softening` - where the app shows "Waist" and "Skin
-     softening". The rows' shape is what this page is for.
-
-     tests/day-gallery.mjs drives the selectors below across the three days,
-     all 8 palettes and both themes. */
+  /* Mount DayRecords with three day sizes. Photo placeholders use
+     fileName: null so PhotoThumb draws its gradient. Measurement and
+     change names show keys because the fixture has no booted reference
+     mirror. tests/tools/day-gallery.mjs captures all three days across eight
+     palettes and both themes. */
   import DayRecordsView from '$lib/components/DayRecords.svelte';
   import { DAY_SECTION_KEYS, type DayRecords } from '$lib/data/journal/day';
   import { startOfDayTimestamp } from '$lib/data/epochDay';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { PALETTES } from '../palettes.mjs';
+  import { NO_COST } from '$lib/data/cost';
 
   const DAY = 20690;
 
@@ -64,17 +44,12 @@
     doses: [],
     labResults: [],
     voiceBenchmarks: [],
-    measurements: [],
-    sizeRecords: [],
     taperSessions: [],
     sideEffects: [],
     personalEffects: [],
     cycleEvents: [],
-    tallyEvents: [],
     wearSessions: [],
     feltSense: [],
-    hairStages: [],
-    hairPhotos: [],
     hairRemovalSessions: [],
     appointments: [],
     procedureRecords: [],
@@ -89,8 +64,7 @@
     entries: [entry(1, 21, 4, 'Long walk after work. Quiet head for once.', ['g-calm'])]
   };
 
-  /* Typical: a day someone logged properly - two entries, the dose, the
-     binder, one measurement. Four rows under the card. */
+  /* Typical: two entries, then a dose and a wear session under the card. */
   const typical: DayRecords = {
     ...empty(),
     entries: [
@@ -112,9 +86,7 @@
         vehicle: 'oil'
       }
     ],
-    measurements: [{ id: 'm1', type: 'waist', epochDay: DAY, value: 78.5, unit: 'cm' }],
-    wearSessions: [{ id: 'w1', kind: 'binder', startTimestamp: at(9), durationMs: 5_400_000, note: null }],
-    tallyEvents: [{ id: 't1', epochDay: DAY, kind: 'correctly_gendered' }]
+    wearSessions: [{ id: 'w1', kind: 'binder', startTimestamp: at(9), durationMs: 5_400_000, note: null }]
   };
 
   /* Maximal: every registered section with something in it, which is the
@@ -171,7 +143,8 @@
         note: '',
         drawTime: '09:20',
         provider: 'Diagnostyka',
-        timing: null
+        timing: null,
+        cost: NO_COST
       },
       {
         id: 'l2',
@@ -182,58 +155,45 @@
         note: '',
         drawTime: '09:20',
         provider: 'Diagnostyka',
-        timing: null
+        timing: null,
+        cost: NO_COST
       }
     ],
-    measurements: [
-      { id: 'm1', type: 'waist', epochDay: DAY, value: 78.5, unit: 'cm' },
-      { id: 'm2', type: 'hips', epochDay: DAY, value: 99, unit: 'cm' }
-    ],
-    sizeRecords: [{ id: 's1', epochDay: DAY, category: 'bras', size: '70B', brand: 'Triumph', fitNote: '' }],
-    taperSessions: [{ id: 'ts1', epochDay: DAY, note: 'went fine' }],
-    sideEffects: [{ id: 'se1', name: 'Headache', severity: 2, epochDay: DAY }],
+    taperSessions: [{ id: 'ts1', epochDay: DAY, note: 'went fine', slot: null }],
+    sideEffects: [{ id: 'se1', name: 'Headache', severity: 2, epochDay: DAY, resolvedEpochDay: null }],
     personalEffects: [{ id: 'pe1', effect: 'skin_softening', firstNoticedEpochDay: DAY }],
     cycleEvents: [{ id: 'c1', kind: 'spotting', epochDay: DAY }],
-    tallyEvents: [
-      { id: 't1', epochDay: DAY, kind: 'correctly_gendered' },
-      { id: 't2', epochDay: DAY, kind: 'correctly_gendered' },
-      { id: 't3', epochDay: DAY, kind: 'misgendered' }
-    ],
     wearSessions: [
       { id: 'w1', kind: 'binder', startTimestamp: at(9), durationMs: 5_400_000, note: null },
       { id: 'w2', kind: 'binder', startTimestamp: at(19), durationMs: null, note: 'still on' }
     ],
     feltSense: [
-      { id: 'f1', epochDay: DAY, mood: 5, note: 'It stopped feeling like a costume.', owner: { kind: 'tryout', id: 'ty1', name: 'Robin' } }
-    ],
-    hairStages: [{ id: 'hs1', epochDay: DAY, scale: 'norwood_hamilton', stage: '3', description: '' }],
-    hairPhotos: [
-      { id: 'hp1', epochDay: DAY, fileName: noFile() },
-      { id: 'hp2', epochDay: DAY, fileName: noFile() },
-      { id: 'hp3', epochDay: DAY, fileName: noFile() }
+      { id: 'f1', epochDay: DAY, mood: 5, note: 'It stopped feeling like a costume.', owner: { id: 'ty1', name: 'Robin' } }
     ],
     hairRemovalSessions: [
-      { id: 'hr1', epochDay: DAY, area: 'chin', method: 'laser', painRating: 3, cost: '250 zł', provider: 'Klinika' }
+      { id: 'hr1', epochDay: DAY, area: 'chin', method: 'laser', painRating: 3, minutes: 60, cost: { amount: 250, currency: 'PLN', refunded: false }, provider: 'Klinika', note: null }
     ],
     appointments: [
-      { id: 'ap1', kind: 'endokrynolog', place: 'Poradnia', procedureId: null, procedureName: null },
-      { id: 'ap2', kind: null, place: null, procedureId: 'pr1', procedureName: 'Orchiectomy' }
+      { id: 'ap1', event: 'visit', status: null, kind: 'endokrynolog', place: 'Poradnia', procedureId: null, procedureName: null, appointmentId: 'ap1' },
+      { id: 'ap2', event: 'visit', status: null, kind: null, place: null, procedureId: 'pr1', procedureName: 'Orchiectomy', appointmentId: 'ap2' }
     ],
     procedureRecords: [
       { id: 'pp1', procedureId: 'pr1', procedureName: 'Orchiectomy', fileName: noFile() },
       { id: 'pp2', procedureId: 'pr1', procedureName: 'Orchiectomy', fileName: noFile() }
     ],
     tryoutPhotos: [
-      { id: 'tp1', tryoutId: 'ty1', tryoutLabel: 'Robin', epochDay: DAY, fileName: noFile() }
+      { id: 'tp1', tryoutId: 'ty1', tryoutLabel: 'Robin', epochDay: DAY, fileName: noFile() },
+      { id: 'tp2', tryoutId: 'ty1', tryoutLabel: 'Robin', epochDay: DAY, fileName: noFile() },
+      { id: 'tp3', tryoutId: 'ty1', tryoutLabel: 'Robin', epochDay: DAY, fileName: noFile() }
     ],
     // A row of title and date and no page image at all, which is what
-    // ADR-0065 asks every list to be (phase 8 features ticket 52).
+    // ADR-0065 asks every list to be.
     documents: [
       { id: 'dc1', epochDay: DAY, title: 'Psychiatric opinion', fileName: noFile(), targetKind: null, targetId: null }
     ]
   };
 
-  /* Concurrent doses that differ by name alone (phase 11 ticket 19): three
+  /* Concurrent doses that differ by name alone: three
      drugs taken the same way at the same amount, plus one two regimens
      could both explain and one no episode ever covered. The named rows are
      identical but for the drug, which is the fact the day view has to
@@ -279,7 +239,7 @@
      stops being the widest day this screen can draw - which is what the
      overflow assertions in tests/browser-tier/run.mjs rest on. Published
      as two numbers so that runner can hold them to being equal without
-     importing the registry itself (phase 9 audit ticket 12). */
+     importing the registry itself. */
   const coveredSections = DAY_SECTION_KEYS.filter((key) => maximal[key].length).length;
 
   let shape = $state('typical');

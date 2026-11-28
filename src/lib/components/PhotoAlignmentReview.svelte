@@ -8,12 +8,10 @@
   import Sheet from './Sheet.svelte';
   import Slider from './Slider.svelte';
 
-  /* The compare-and-retake step ticket 12 asks for instead of a live camera
-     overlay (ADR-0033): once the native camera intent returns a shot, this is
-     where the person judges it against their last photo before anything is
-     ever written to storage. Retaking re-invokes the same native capture -
-     there is no camera surface here, only two already-decoded photos and a
-     slider. */
+  /* Compare and retake after capture (ADR-0033): once the native camera intent returns a
+     shot, this is where the person judges it against their last photo before anything is
+     ever written to storage. Retaking re-invokes the same native capture - there is no
+     camera surface here, only two already-decoded photos and a slider. */
 
   let {
     photo,
@@ -81,9 +79,8 @@
         referenceUrl = objectUrl;
       },
       (error) => {
-        /* A tampered or missing reference throws (PhotoThumb says so too).
-           The review still works without the overlay; it says why the
-           overlay is not there (after-release 06, L05-06). */
+        /* A tampered or missing reference throws (PhotoThumb says so too). The review still
+           works without the overlay; it says why the overlay is not there. */
         console.error('the alignment reference could not be read', error);
         if (!stale) toast(m.photo_unreadable(), { kind: 'failed' });
       }

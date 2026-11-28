@@ -15,28 +15,11 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 /**
- * The two things the permissions list needs and nothing else already owns
- * (phase 10 redesign ticket 31).
- *
- * The microphone and the camera are asked for by `getUserMedia` - Capacitor's
- * BridgeWebChromeClient turns the WebView's request into the OS prompt, so
- * there is no plugin in that path and this one does not add itself to it.
- * What the web side cannot do is *read* whether the grant is already there:
- * asking `navigator.permissions` inside a WebView answers about the page
- * rather than about the app, and the only honest way to show a granted row as
- * granted without opening the microphone to find out is checkSelfPermission.
- * That is `getStatus`.
- *
- * `openAppInfo` is the gap the inventory named. Android offers no settings
- * screen for a single runtime permission, so a refused microphone or camera
- * has been unrecoverable from inside the app: the prompt does not come back a
- * second time and nothing links out. The app's own details page is what
- * Android does offer, and it is the same fallback branch RemindersPlugin
- * already writes for a device with no notification-settings screen.
- *
- * Notifications and exact alarms are deliberately absent here. RemindersPlugin
- * owns both already, prompt and deep-link and status, and a second reader of
- * the same two permissions is how the two answers drift apart.
+ * Read microphone and camera grants with checkSelfPermission.
+ * WebView's navigator.permissions describes the page, while
+ * getUserMedia delegates OS prompts to BridgeWebChromeClient.
+ * openAppInfo opens Android's app details for a denied grant.
+ * RemindersPlugin owns notification and exact alarm permissions.
  */
 @CapacitorPlugin(name = "Permissions")
 public class PermissionsPlugin extends Plugin {

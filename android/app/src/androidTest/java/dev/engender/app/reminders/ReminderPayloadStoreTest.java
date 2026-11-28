@@ -27,8 +27,7 @@ import java.nio.file.Files;
 import java.security.KeyStore;
 
 /**
- * Audit finding G-02: what a copy of the app's
- * directory reads out of the reminder store.
+ * What a copy of the app's directory reads out of the reminder store.
  *
  * <p>Read from the file rather than through the API, in the same spirit as
  * {@code AndroidEncryptionClaimTest} - an assertion that goes back through
@@ -40,7 +39,6 @@ import java.security.KeyStore;
 public class ReminderPayloadStoreTest {
 
     private static final String TITLE = "Estradiol patch";
-    private static final String AFFIRMATION = "Your body is your own to describe";
 
     private Context context;
 
@@ -56,18 +54,29 @@ public class ReminderPayloadStoreTest {
     }
 
     @Test
-    public void theStoredPayloadHoldsNoTitleAndNoAffirmationInItsBytes() throws Exception {
+    public void theStoredPayloadHoldsNoTitleInItsBytes() throws Exception {
         ReminderScheduler.saveAndSchedule(context, payload());
 
         String onDisk = preferenceBytes();
         assertFalse("the reminder title is readable on disk", onDisk.contains(TITLE));
-        assertFalse("the affirmation is readable on disk", onDisk.contains(AFFIRMATION));
         assertFalse("the check-in prompt is readable on disk", onDisk.contains("How are you today?"));
         assertTrue("nothing was written at all", onDisk.contains(ReminderPayloadStore.KEY_CIPHERTEXT));
 
         JSONObject loaded = ReminderScheduler.loadPayload(context);
         assertNotNull(loaded);
-        assertEquals(payload().toString(), loaded.toString());
+        JSONObject reminder = loaded.getJSONArray("reminders").getJSONObject(0);
+        long pendingAt = reminder.getLong(ReminderScheduler.PENDING_AT);
+        assertTrue("the pending occurrence is not wrapped", pendingAt > System.currentTimeMillis());
+        assertFalse("the pending occurrence is readable on disk", onDisk.contains(Long.toString(pendingAt)));
+        JSONObject expected = payload();
+        java.time.ZonedDateTime occurrence = java.time.Instant.ofEpochMilli(pendingAt)
+            .atZone(java.time.ZoneId.systemDefault());
+        expected.getJSONArray("reminders").getJSONObject(0)
+            .put(ReminderScheduler.PENDING_AT, pendingAt)
+            .put(ReminderScheduler.PENDING_DAY, occurrence.toLocalDate().toEpochDay())
+            .put(ReminderScheduler.PENDING_ZONE, occurrence.getZone().getId());
+        assertFalse("the pending zone is readable on disk", onDisk.contains(occurrence.getZone().getId()));
+        assertEquals(expected.toString(), loaded.toString());
     }
 
     @Test
@@ -188,7 +197,6 @@ public class ReminderPayloadStoreTest {
                 .put("enabled", true)))
             .put("checkInEnabled", true)
             .put("checkInTime", "21:00")
-            .put("checkInAffirmations", new JSONArray().put(AFFIRMATION))
             .put("hideNotificationTitles", false)
             .put("latestEntryEpochDay", 20313)
             .put("texts", new JSONObject()

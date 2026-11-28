@@ -28,6 +28,8 @@ export type EntrySessionOptions = {
   preparing?: () => boolean;
   creation?: () => Pick<EntryInput, 'debriefForAppointment'>;
   destination?: (moodOnly: boolean) => (id: number) => string;
+  /** A departure the editor takes as a step back rather than as leaving. */
+  ownsDeparture?: LeaveGuardOptions['ownsDeparture'];
 };
 
 type EntrySaveRecovery = {
@@ -60,7 +62,8 @@ export function entrySessionCore(options: EntrySessionOptions, state = initialEn
   const guardOptions: LeaveGuardOptions = {
     holding: () => state.baseline !== null && state.draft.savedId === undefined &&
       entryDraftFingerprint(state.draft) !== state.baseline,
-    busy: () => state.saving
+    busy: () => state.saving,
+    ownsDeparture: options.ownsDeparture
   };
 
   async function prepare(operation: () => Promise<void>) {
@@ -117,8 +120,15 @@ export function entrySessionCore(options: EntrySessionOptions, state = initialEn
 
   function mirror() {
     if (state.draft.savedId !== undefined) return;
-    const snapshot = serializeDraft(state.draft);
-    if (state.mirrorRead) void draftStore.write(snapshot);
+    if (!state.mirrorRead) return;
+    /* A draft that still equals its baseline holds nothing the person did
+       (a notification face's seed is part of the baseline), so there is
+       nothing to recover and nothing may outlive a killed process. */
+    if (state.baseline !== null && entryDraftFingerprint(state.draft) === state.baseline) {
+      draftStore.clear();
+      return;
+    }
+    void draftStore.write(serializeDraft(state.draft));
   }
 
   function dispose(locked: boolean) {

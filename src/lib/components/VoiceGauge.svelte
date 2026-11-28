@@ -1,75 +1,7 @@
 <script lang="ts">
-  /* The quality gate, drawn while the take is still happening (phase 5
-     deepening ticket 15), now on an absolute axis (phase 8 features
-     ticket 09, ADR-0059).
-
-     This is the only live audio component in the tree, deliberately: a
-     second one drifts from the gate it is supposed to be showing, and the
-     screen would then be encouraging a take the save rejects.
-
-     Two callers, one per reading. The practise tab watches pitch, which is
-     the whole of where a live curve of where-your-voice-is belongs. The
-     vowel step watches steadiness, because holding a note has exactly one
-     shape to hit and a figure is how somebody sees they are holding it.
-     Reading a passage has neither: pitch moves by design there, so that
-     step keeps this component's words and none of its marks (Alicja,
-     2026-09-04).
-
-     Four conditions hold at once for three seconds of held breath, and the
-     obvious build is four indicator dots going on and off. That version
-     tells somebody *that* a take failed and never what to do about it, and
-     four things blinking independently is the shape of a fault panel. This
-     is one object instead, and each condition is the same measurement the
-     gate makes, drawn as itself:
-
-       the trace   the pitch of the last two seconds, frame by frame, now
-                   against an absolute Hz axis with the reference bands
-                   behind it (PitchFigure.svelte). A break in the line is a
-                   frame that was not voiced.
-       the floor   the room, thickening up from the field's bottom edge. The
-                   gap between it and the trace is the signal-to-noise
-                   ratio, so a loud room is visibly crowding the voice
-                   rather than lighting a warning.
-       the roof    the level. It thickens as the peak approaches full scale
-                   and goes solid when the take is clipping, and the whole
-                   field presses down into it - the physical read of a level
-                   that has nowhere left to go.
-       the run     the continuous voiced stretch, against what the step
-                   needs. It retreats when voicing breaks, because the
-                   measurement itself does: the gate counts the longest
-                   unbroken run, so a take that stops really does start that
-                   count again, and a bar that kept its ground would be
-                   lying about what would be stored. Drawn only where the
-                   task is a hold, which is the vowel step and nothing else
-                   (`targetSeconds` null). Free speech had it too until
-                   redesign ticket 41, which was the same mistake the
-                   passage step's copy of it was: a hold meter under a task
-                   nobody is holding anything for.
-
-     **What the absolute axis changed, and what it did not.** The trace used
-     to be plotted in semitones around the median of whatever was on screen,
-     which put a steady voice in the middle of the box wherever it actually
-     was. That is the half Alicja called confusing and it is gone. The
-     hundred-millisecond poll behind it has *not* changed: the trace's
-     smoothness comes from the tracker's 10 ms frames, all of which are
-     drawn, not from how often the screen asks for them, so an absolute axis
-     needs no more readings per second than a relative one did. The reason
-     the poll is slower than an animation frame is written down in
-     stores/voiceBenchmark.ts and still holds.
-
-     Nothing here is a verdict on a voice. Every mark is about the recording,
-     and colour never carries the judgement: there is one hue, the section's
-     own flag stripe, and what changes when a check fails is a shape and a
-     weight. A red-to-green meter is exactly what ADR-0012 forbids, and it
-     would be a worse readout anyway - the information is *which* condition
-     and by how much, and hue cannot say that while it is busy saying good
-     or bad.
-
-     Motion: tier 3. Data moves, the container does not, and only transform
-     and opacity are animated, so under either reduced-motion path the app's
-     duration clamp turns every reading into an instant cut rather than a
-     tween. The advice underneath is words, so nothing here depends on
-     movement to be readable. */
+  /* Live quality readout. Pitch uses a fixed hertz axis; the vowel step
+     uses semitones around its own note. Recording checks change shape,
+     never verdict colour (ADR-0012, ADR-0059). */
   import { m } from '$lib/paraglide/messages';
   import { MAX_F0_CV, PEAK_CEILING, type QualityReport } from '$lib/audio/quality';
   import type { PitchFrame } from '$lib/audio/pitch';
@@ -80,7 +12,6 @@
     plainHzTicks,
     steadinessAxis,
     steadinessTicks,
-    type BandLanguage,
     type PitchAxis
   } from '$lib/audio/bands';
   import { median } from '$lib/audio/series';
@@ -97,8 +28,6 @@
     advice,
     comfort = null,
     reading = 'pitch',
-    language,
-    languageGuessed = false,
     role,
     ...rest
   }: {
@@ -107,7 +36,7 @@
     /** The continuous voicing this step is working towards, and null where
         the task has no hold in it - free speech on the practise tab, where
         a run meter under the trace was the hold task's readout on a task
-        that is not a hold (redesign ticket 41). Null draws no run bar and
+        that is not a hold. Null draws no run bar and
         prints no held stretch. */
     targetSeconds: number | null;
     label: string;
@@ -117,26 +46,13 @@
     comfort?: { lowHz: number; highHz: number } | null;
     /** Which of the two questions this figure is answering.
 
-        `pitch` is where the voice is: absolute hertz, the passage
-        language's bands behind it, the comfort band, the caption. That is
-        what somebody reading a passage is watching, and Alicja's
-        instruction is that reading always gets the full graph.
+        `pitch` is where the voice is: absolute hertz, with the person's optional comfort
+        bracket.
 
-        `steadiness` is whether one note is being held: semitones either
-        side of the note itself, no bands, no citation. The vowel step's
-        task is keeping a pitch rather than reaching one, so a flat line is
-        the whole answer and an absolute scale is not what the eye is on
-        (Alicja, 2026-09-04). */
+        `steadiness` is whether one note is being held: semitones either side of the note
+        itself. The vowel step's task is keeping a pitch rather than reaching one, so a flat
+        line is the whole answer and an absolute scale is not what the eye is on. */
     reading?: 'pitch' | 'steadiness';
-    /** Whose figures the bands are (bands.ts's `bandsFor`). Read only in
-        `pitch`; a steadiness figure cites nothing. */
-    /** Whose published ranges belong behind the trace, or null for none.
-        Null is not an omission: ADR-0059's rule is that bands never appear
-        without their citation, so a figure with no population to cite draws
-        neither, and both the vowel step and the reading step are that
-        figure for their own reasons (see `reading`). */
-    language: BandLanguage | null;
-    languageGuessed?: boolean;
     role?: Role;
     [attribute: string]: unknown;
   } = $props();
@@ -153,10 +69,9 @@
       `pitchAxis` is a pure function of what it is given, and what it is
       given here is a rolling two-second window. Recomputed per reading that
       made the "absolute" axis quietly elastic: one octave-error frame
-      widened the field, the bands slid, and two seconds later the frame
-      scrolled out of the window and everything slid back. Bands that move
-      are the whole defect this ticket set out to fix, so the widening is
-      kept rather than re-derived - the axis only ever grows, and only while
+      widened the field, and two seconds later the frame scrolled out and
+      the axis shrank. The widening is kept rather than re-derived: it only
+      grows, and only while
       one take is on screen. */
   let widened = $state<PitchAxis>(DEFAULT_PITCH_AXIS);
   $effect(() => {
@@ -230,16 +145,10 @@
     trace={frames}
     {traceWeight}
     gate={{ roomFraction, roofWeight, clipping }}
-    ticks={steadiness && heldHz !== null
-      ? steadinessTicks(heldHz)
-      : language === null
-        ? plainHzTicks(axis)
-        : undefined}
+    ticks={steadiness && heldHz !== null ? steadinessTicks(heldHz) : plainHzTicks(axis)}
     tickLabel={steadiness && heldHz !== null
       ? (hz) => semitoneLabel(semitonesFrom(heldHz, hz))
       : hzLabel}
-    language={steadiness ? null : language}
-    {languageGuessed}
   >
     {#snippet underPlot()}
       {#if targetSeconds !== null}

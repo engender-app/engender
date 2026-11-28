@@ -1,6 +1,5 @@
 import { withReadSnapshots } from './transactor.ts';
-/* Unit tests for the boot sequence's ordering and error handling (ticket
-   04). Runs against a fake driver wrapping node:sqlite - the real
+/* Unit tests for the boot sequence's ordering and error handling. Runs against a fake driver wrapping node:sqlite - the real
    createWebSqlite() (driver.ts) needs a browser and is proven
    separately in the browser tier. */
 
@@ -10,7 +9,9 @@ import { DatabaseSync } from 'node:sqlite';
 import type { SqliteDriver } from './driver.ts';
 import { journalIsBusy, prepareJournalHandover } from '../journal-busy.ts';
 import { boot, migrateJournal } from './boot.ts';
-import { noopFileOps } from './test-support/migrated-db.ts';
+import { migratedDb, noopFileOps } from './test-support/migrated-db.ts';
+import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
+import { sweepOrphanPhotos } from '../journal/photos.ts';
 import { LATEST_SCHEMA_VERSION } from './schema-version.ts';
 
 function makeFakeDriver(): SqliteDriver {
@@ -55,6 +56,24 @@ test('opens the database, runs migrations, and reports ready', async () => {
   }
 });
 
+test('normal boot skips attachment sweep until weekly due', async () => {
+  const driver = await migratedDb();
+  const files = fakeFileStore();
+  let listed = 0;
+  const list = files.list;
+  files.list = async () => { listed++; return list(); };
+  const result = await boot({
+    createDriver: () => driver,
+    fileOps: noopFileOps(),
+    shouldSweepOrphans: () => false,
+    sweepOrphanPhotos: (opened) => sweepOrphanPhotos(opened, files)
+  });
+  assert.equal(result.phase, 'ready');
+  if (result.phase === 'ready') await result.housekeeping;
+  assert.equal(listed, 0);
+  await driver.close();
+});
+
 test('runs steps in the documented order: prefs, then open+migrate, then persist, then reference data, trash purge and photo sweep', async () => {
   const order: string[] = [];
   const result = await boot({
@@ -85,10 +104,10 @@ test('runs steps in the documented order: prefs, then open+migrate, then persist
 });
 
 test('reports ready before either housekeeping pass has run', async () => {
-  /* Phase 5 audit finding 03: journalIsOpen() unparks every liveQuery in the
-     app, and it only runs once boot() resolves - so a screen's first read used
-     to wait on two passes whose results no screen needs. The purge and the
-     sweep both grow with the journal; what a screen waits for must not. */
+  /* Audit finding 03: journalIsOpen unparks every liveQuery in the app, and it only runs
+     once boot resolves - so a screen's first read used to wait on two passes whose results
+     no screen needs. The purge and the sweep both grow with the journal; what a screen
+     waits for must not. */
   const order: string[] = [];
   let housekeepingScheduled = false;
   let runHousekeeping: (() => void) | null = null;
@@ -158,7 +177,7 @@ test('persistRequest resolves not-denied when no hook is given', async () => {
   if (result.phase === 'ready') assert.equal(await result.persistRequest, false);
 });
 
-test('reports ready without waiting on the persistence request (ticket 202: Firefox answers it only through a permission prompt, unbounded)', async () => {
+test('reports ready without waiting on the persistence request (Firefox answers it only through a permission prompt, unbounded)', async () => {
   const result = await boot({
     createDriver: makeFakeDriver,
     fileOps: noopFileOps(),
@@ -199,7 +218,7 @@ test('does not load reference data or sweep photos after a failed migration', as
 });
 
 test('migrations hold the update guard, so a waiting worker cannot take over mid-migration', async () => {
-  // The dangerous one of the four (ticket 04): a save interrupted costs a
+  // The dangerous one of the four: a save interrupted costs a
   // spinner, a migration interrupted can cost the journal.
   const duringMigration: boolean[] = [];
   const watchingDriver = (): SqliteDriver => {
@@ -235,7 +254,7 @@ test('a failed migration lets the update guard go, so the app is not stuck on th
 });
 
 test('a failing photo sweep still boots: housekeeping must not cost the app its screens', async () => {
-  // Ticket 11 made this reachable - the sweep hits OPFS, which can fail on
+  // Made this reachable - the sweep hits OPFS, which can fail on
   // quota or in a browser without it. Reference data is different: a screen
   // cannot render without it, so that failure is still the caller's.
   const result = await boot({
@@ -253,7 +272,7 @@ test('a failing photo sweep still boots: housekeeping must not cost the app its 
 });
 
 test('a failing trash purge still boots: housekeeping must not cost the app its screens', async () => {
-  // Phase 5 ticket 19, the same reasoning the photo sweep above gets: a
+  // The same reasoning the photo sweep above gets: a
   // failed purge leaves the trash for the next boot to try again.
   let sweptAnyway = false;
   const result = await boot({
@@ -303,11 +322,10 @@ test('retries transient database lock errors during boot with exponential backof
   assert.deepEqual(sleepCalls, [50, 100]);
 });
 
-/* ux-carpet 243: a tab that just navigated away or reloaded can still be
-   letting go of the OPFS SAH pool when this tab's own worker asks for it,
-   and the browser reports that collision through the web driver's own
-   message rather than through SQLite's "database is locked" - so boot()'s
-   already-retrying loop has to recognise this one too. */
+/* A tab that just navigated away or reloaded can still be letting go of the OPFS SAH pool
+   when this tab's own worker asks for it, and the browser reports that collision through
+   the web driver's own message rather than through SQLite's "database is locked" - so
+   boot()'s already-retrying loop has to recognise this one too. */
 test('retries the OPFS access-handle collision the web driver reports on a raced reload', async () => {
   let attempts = 0;
   const sleepCalls: number[] = [];
@@ -481,7 +499,7 @@ test('opens at most one driver per clean boot attempt', async () => {
 test('the auto-log pass runs last of the three, and a failure in it is the next boot\'s problem', async () => {
   /* Last because it writes rows the other two only ever remove, and a
      warning rather than an error because a slot it did not fill is still
-     open tomorrow (phase 11 ticket 11). */
+     open tomorrow. */
   const order: string[] = [];
   const result = await boot({
     createDriver: makeFakeDriver,

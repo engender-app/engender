@@ -1,18 +1,16 @@
-/* Packing and unpacking an archive: the payload and the photo files on one
-   side, the framed container (container.ts) on the other.
+/* Packing and unpacking an archive: the payload and the photo files on one side, the framed
+   container (container.ts) on the other.
 
-   The body is the payload as JSON behind its own length, then every photo
-   file it names, back to back, in manifest order. Nothing is base64'd -
-   the whole point of a binary container is that a photo can travel as
-   bytes rather than as a third more bytes of text - and nothing describes
-   a file twice: the manifest inside the JSON says how long each one is,
-   which is also what settles the chunk count before the first chunk is
-   encrypted (ADR-0007).
+   The body is the payload as JSON behind its own length, then every photo file it names,
+   back to back, in manifest order. Nothing is base64'd - the whole point of a binary
+   container is that a photo can travel as bytes rather than as a third more bytes of text -
+   and nothing describes a file twice: the manifest inside the JSON says how long each one
+   is, which is also what settles the chunk count before the first chunk is encrypted
+   (ADR-0007).
 
-   Both directions are streams. Packing holds one photo and one chunk;
-   unpacking hands photos over one at a time as the body reaches them, so
-   ticket 14 can write each file as it arrives instead of holding a
-   restored journal's worth of images in memory. */
+   Both directions are streams. Packing holds one photo and one chunk; unpacking hands
+   photos over one at a time as the body reaches them, so can write each file as it arrives
+   instead of holding a restored journal's worth of images in memory. */
 
 import { deriveKey, randomSalt } from '../../crypto/argon2id';
 import { resolveCredentialProfile } from '../../crypto/credential-consumers';
@@ -53,8 +51,7 @@ export type KeyDerivation = (
   kdf: Argon2Params
 ) => Promise<Uint8Array<ArrayBuffer>>;
 
-/** Watching a pack that is already under way (phase 9 audit ticket 11,
-    ADR-0070). Both halves are optional and neither changes what comes out:
+/** Watching a pack that is already under way. Both halves are optional and neither changes what comes out:
     an export packed without them is byte for byte the one packed with. */
 export interface PackWatch {
   /** Plaintext body bytes handed to the encryptor, against the body's
@@ -67,10 +64,19 @@ export interface PackWatch {
       payload's own JSON is real work too on a decade of entries. */
   onProgress?(done: number, total: number): void;
   /** Stops the pack. Safe at any point: an interrupted export has written
-      nothing to the journal, so cancelling only means trying again
-      (ADR-0070). The abort surfaces to the caller as an AbortError from
+      nothing to the journal, so cancelling only means trying again.
+      The abort surfaces to the caller as an AbortError from
       whatever is draining the generator. */
   signal?: AbortSignal;
+}
+
+/* An archive may be exported with the password left empty, and hash-wasm refuses an empty
+   Argon2 password. Such a file is meant to open for anyone, so it is sealed under this
+   fixed phrase instead, and an empty field opens it again. Older archives required non-empty passwords and derive as before. */
+const NO_PASSWORD = 'engender archive without a password';
+
+function archiveSecret(password: string): string {
+  return password === '' ? NO_PASSWORD : password;
 }
 
 export async function* packArchive(
@@ -86,7 +92,7 @@ export async function* packArchive(
   const key =
     typeof keyOrPassword === 'function'
       ? await keyOrPassword(salt, kdf)
-      : await deriveKey(keyOrPassword, salt, kdf);
+      : await deriveKey(archiveSecret(keyOrPassword), salt, kdf);
 
   yield* frameArchive(
     key,
@@ -124,14 +130,18 @@ async function* watched(
 /** Reads an archive far enough to hand back its payload. The header is
     checked first, so an unknown format is refused before the password is
     put anywhere near a key derivation that takes a second. */
-export async function openArchive(source: AsyncIterable<Uint8Array>, password: string): Promise<OpenedArchive> {
+export async function openArchive(
+  source: AsyncIterable<Uint8Array>,
+  keyOrPassword: string | KeyDerivation
+): Promise<OpenedArchive> {
   const reader = byteReader(source);
   const { header, headerBytes } = await readArchiveHeader(reader);
-  const key = await deriveKey(
-    password,
-    header.salt,
-    resolveCredentialProfile('archive-import', { persistedParams: header.kdf })
-  );
+  const kdf = resolveCredentialProfile('archive-import', { persistedParams: header.kdf });
+  /* A derivation is the saved backup password behind the Android bridge (folder sync), the
+     same door packing an auto-export uses. */
+  const key = typeof keyOrPassword === 'function'
+    ? await keyOrPassword(header.salt, kdf)
+    : await deriveKey(archiveSecret(keyOrPassword), header.salt, kdf, { mainThread: false });
   const plaintext = byteReader(unframeArchive(reader, header, headerBytes, key));
   return decodeArchive(plaintext, header.formatVersion);
 }

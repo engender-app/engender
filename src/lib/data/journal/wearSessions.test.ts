@@ -1,7 +1,5 @@
-/* The wear log (phase 5 ticket 04, CONTEXT: "Wear session"):
-   the live/backfill duality is a null-vs-set duration_ms, and the optional
-   reminder is reconciled by an auto_source marker rather than stored on the
-   session itself. */
+/* The wear log: the live/backfill duality is a null-vs-set duration_ms, and the optional
+   reminder is reconciled by an auto_source marker rather than stored on the session itself. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
@@ -11,8 +9,7 @@ import {
   binderCueShowing,
   BINDER_CUE_HOURS,
   hoursMinutesOf,
-  hoursMinutesSecondsOf,
-  wearTrendRegion
+  hoursMinutesSecondsOf
 } from './wearSessions.ts';
 
 test('hoursMinutesOf formats milliseconds span into hours and minutes', () => {
@@ -45,7 +42,7 @@ test('the duration cue is a running binder session past eight hours, and nothing
   assert.equal(binderCueShowing(running('binder'), BINDER_CUE_HOURS * HOUR, true), true);
   assert.equal(binderCueShowing(running('binder'), 30 * HOUR, true), true);
 
-  // No equivalent computation for the other two (ADR-0064): the evidence
+  // No equivalent computation for the other two: the evidence
   // for a tucking figure is weaker than the practice it would flag, and
   // there is no compression figure anywhere to borrow.
   assert.equal(binderCueShowing(running('tucking'), 30 * HOUR, true), false);
@@ -60,29 +57,6 @@ test('the duration cue is a running binder session past eight hours, and nothing
   // And the preference switches the whole thing off, for a session that
   // would otherwise be showing it.
   assert.equal(binderCueShowing(running('binder'), 30 * HOUR, false), false);
-});
-
-test('the trend region follows the kind until the person picks one, and falls back to what is offered', () => {
-  const ALL = ['chest', 'hips_waist', 'genitals'];
-
-  // The kind's own default, one per kind, with nothing picked.
-  assert.equal(wearTrendRegion('binder', null, ALL), 'chest');
-  assert.equal(wearTrendRegion('tucking', null, ALL), 'genitals');
-  assert.equal(wearTrendRegion('compression', null, ALL), 'hips_waist');
-
-  // A pick overrides it for any kind, including a pick of another kind's
-  // default - the picker stays free, which is the whole point of it.
-  assert.equal(wearTrendRegion('binder', 'genitals', ALL), 'genitals');
-  assert.equal(wearTrendRegion('compression', 'chest', ALL), 'chest');
-
-  // A region the person has turned off in their own vocabulary is not
-  // drawn against, whether it arrived as the pick or as the default.
-  assert.equal(wearTrendRegion('binder', 'genitals', ['chest']), 'chest');
-  assert.equal(wearTrendRegion('tucking', null, ['chest', 'hips_waist']), 'chest');
-
-  // Nothing offered at all: the kind's default, which is what the picker
-  // would be empty beside anyway.
-  assert.equal(wearTrendRegion('tucking', null, []), 'genitals');
 });
 
 test('a session carries its kind through a save, an edit and a read back', async () => {
@@ -197,7 +171,6 @@ test('an optional reminder is created N hours after the start, with no app-impos
   const [reminder] = reminders;
   assert.equal(reminder.autoSource, `wear:${id}`);
   assert.equal(reminder.title, 'Binder check-in');
-  assert.equal(reminder.type, 'other');
   assert.equal(reminder.recurrence, null);
   assert.equal(reminder.time, '02:00'); // 20:00 + 30h = 02:00 two days later
   assert.equal(reminder.epochDay, 19002);

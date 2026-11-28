@@ -1,49 +1,22 @@
-/* What each of the search registry's areas looks like as a hit (phase 5
-   deepening ticket 24).
+/* Add labels, icons and destinations to textSearch.ts results. Use the owning screen's icon
+   from the More hub and name the record kind in its subtitle. Keep results in one
+   newest-first list across all areas.
 
-   textSearch.ts holds the keys, the tables and the reads and speaks no
-   paraglide (ADR-0016); this is where they get their words, the same split
-   dayRows.ts keeps from day.ts. Beside the components rather than in
-   vocabulary/ for the reason dayRows.ts is: none of it is vocabulary, it is
-   one screen's reading of rows other screens own.
-
-   Three rules the whole map answers to, and the first and third are
-   dayRows.ts's:
-
-   *A hit's icon is the icon of the screen it goes to.* Not one glyph per
-   record type - the disc says where the hit leads, so a milestone and a
-   surgery journey both wearing `flag` is the app agreeing with itself. The
-   More hub is where those icons are decided.
-
-   *Every hit says what kind of thing it is, on the row.* That is the
-   ticket's own condition, and it was first met by grouping - a heading per
-   area, in the registry's order. Built and looked at, that was wrong for the
-   same reason DayRecords.svelte gives for refusing it: eighteen areas can
-   answer a query, and a display-size heading over a card of one row turns
-   three hits into a screen of framework with slivers of content in it.
-   Grouping also threw away the order the hits arrived in, which is newest
-   first across every area and is the useful one.
-
-   So the kind is the row's subtitle and the hits stay in one list, newest
-   first. `search_elsewhere_heading` names the list once, the way
-   "Also this day" names a day's context list.
-
-   *A hit goes to the record where there is a screen for one, and to the
-   screen that owns it otherwise.* A letter and a tryout have their own
-   route; a side effect does not, and sending somebody to the side-effects
-   screen is honest where inventing a deep link would not be. */
+   Link to the individual record if it has a route. Otherwise, link to the screen that owns
+   it. The search registry owns reads and tables. */
 
 import { m } from '$lib/paraglide/messages';
 import { photoCaptionDate } from '$lib/data/dates';
 import { hubRow, type HubRow } from '$lib/data/hubRows';
-import { PROCEDURE_CHECKLIST_OWNER_KIND } from '$lib/data/journal/procedures';
+import { hitsForPlatform } from '$lib/data/journal/searchPlatform';
+import { isAndroid } from '$lib/platform';
 import { type SearchAreaKey, type SearchHit } from '$lib/data/journal/textSearch';
 import { matchWindow } from '$lib/data/searchQuery';
 import { iconOf } from './rowIcon';
 
 /** One hit as a row: where it goes, and what it says. */
 interface SearchHitRow extends Pick<HubRow, 'icon'> {
-  /** The row's own walkthrough handle (ADR-0029) - stable, never the copy. */
+  /** The row's own walkthrough handle - stable, never the copy. */
   key: string;
   /** The registered area's key, for the walkthrough's handle on the row. */
   area: SearchAreaKey;
@@ -51,7 +24,7 @@ interface SearchHitRow extends Pick<HubRow, 'icon'> {
   label: string;
   href: string;
   /** The day the record belongs to, already worded, or undefined for an area
-      whose records have no day (a roadmap goal, an affirmation). */
+      whose records have no day (a roadmap goal, a checklist). */
   date?: string;
   /** What the row reads: the text around the match rather than the field's
       first line, since a letter runs to paragraphs and the match can be
@@ -76,34 +49,37 @@ const AREA_ROWS: Record<
     href: (hit) => `${hubRow('letters').href}/${hit.id}`
   },
   milestones: { ...iconOf('milestones'), label: () => m.milestones(), href: () => hubRow('milestones').href },
-  procedures: { ...iconOf('surgery'), label: () => m.surgery_journey_title(), href: () => hubRow('surgery').href },
+  procedures: {
+    ...iconOf('surgery'),
+    label: () => m.surgery_journey_title(),
+    // Open the procedure screen directly.
+    href: (hit) => `${hubRow('surgery').href}/${encodeURIComponent(hit.id)}`
+  },
   appointments: {
     ...iconOf('appointments'),
     label: () => m.appointments_title(),
-    href: () => hubRow('appointments').href
+    // Open the appointment screen directly.
+    href: (hit) => `${hubRow('appointments').href}/${hit.id}`
   },
-  /* One area, two screens. A question written for an appointment belongs to
-     the prep list, which is a section of the visit screen since phase 11
-     all-four-doors ticket 12; a line of a procedure's recovery checklist
-     belongs to that journey, and the owner kind on the row is what tells
-     them apart (procedures.ts). The prep list is the more common of the two,
-     so its screen is what the row's own icon names. */
+  /* One area, two screens. A question written for an appointment belongs to the prep list,
+     which is a section of the visit screen; a line of a procedure's recovery checklist
+     belongs to that journey, and the owner's id on the row is what tells them apart and
+     names the procedure to open (textSearch.ts). The prep list is the more common of the
+     two, so its screen is what the row's own icon names. */
   checklistItems: {
     ...iconOf('appointments'),
     label: () => m.appointment_prep_title(),
-    href: (hit) => (hit.context === PROCEDURE_CHECKLIST_OWNER_KIND ? hubRow('surgery').href : hubRow('appointments').href)
+    href: (hit) =>
+      hit.context ? `${hubRow('surgery').href}/${encodeURIComponent(hit.context)}` : hubRow('appointments').href
   },
   sideEffects: { ...iconOf('effects'), label: () => m.side_effects(), href: () => hubRow('effects').href },
-  /* A felt sense hangs off a tryout or off a milestone, and the tryout's id
-     travels with the hit for exactly this (textSearch.ts): with one, the hit
-     opens that tryout, which is where its history is read; without one, the
-     owner is a milestone and the milestones screen is as close as there is.
-     The tryout is the more common of the two, so its screen is what the
-     row's own icon names. */
+  /* A felt sense hangs off a tryout, and the tryout's id travels with the
+     hit for exactly this (textSearch.ts): the hit opens that tryout, which
+     is where its history is read. */
   feltSense: {
     ...iconOf('tryouts'),
     label: () => m.search_area_felt_sense(),
-    href: (hit) => (hit.context ? `${hubRow('tryouts').href}/${hit.context}` : hubRow('milestones').href)
+    href: (hit) => `${hubRow('tryouts').href}/${hit.context}`
   },
   tryouts: {
     ...iconOf('tryouts'),
@@ -113,15 +89,10 @@ const AREA_ROWS: Record<
   presentations: {
     icon: 'palette',
     label: () => m.presentations_title(),
-    href: () => '/settings/presentations'
+    href: () => '/settings'
   },
-  eras: { icon: 'columns', label: () => m.eras_title(), href: () => '/settings/eras' },
+  eras: { icon: 'era', label: () => m.eras_title(), href: () => '/settings/eras' },
   roadmapGoals: { ...iconOf('roadmap'), label: () => m.roadmap_title(), href: () => hubRow('roadmap').href },
-  affirmations: {
-    icon: 'sparkle',
-    label: () => m.affirmations_row_title(),
-    href: () => '/settings/affirmations'
-  },
   /* Goes to the document itself rather than to the list: a hit is one
      piece of paper somebody is looking for, and its own screen is the only
      place the page image is drawn at all (ADR-0065). */
@@ -134,7 +105,6 @@ const AREA_ROWS: Record<
      (hubRows.ts's own LAST_WRITE_WITHOUT_A_ROW), so there is no single
      screen's icon to read these off and they keep their own. */
   labResults: { icon: 'flask', label: () => m.lab_results(), href: () => '/care/labs' },
-  sizeRecords: { icon: 'package', label: () => m.size_log(), href: () => '/body/sizes' },
   taperSessions: { ...iconOf('dilation'), label: () => m.dilation(), href: () => hubRow('dilation').href },
   wearSessions: { ...iconOf('wear'), label: () => m.wear_log(), href: () => hubRow('wear').href },
   // The compare surface rather than the recorder: a hit is a take somebody
@@ -144,7 +114,6 @@ const AREA_ROWS: Record<
     label: () => m.vb_title(),
     href: () => `${hubRow('voice-benchmark').href}?tab=compare`
   },
-  hairStages: { ...iconOf('hair-progress'), label: () => m.hair_progress(), href: () => hubRow('hair-progress').href },
   hairRemovalSessions: {
     ...iconOf('hair-removal'),
     label: () => m.hair_removal(),
@@ -154,7 +123,7 @@ const AREA_ROWS: Record<
   // icon it always had already agrees with that row's, so read it off there.
   regimenEpisodes: { ...iconOf('care'), label: () => m.regimen(), href: () => '/care/regimen' },
   /* No screen of its own to deep-link into any more - the stock editor is
-     a sheet off Care's own regimen block (ticket 09, ADR-0084) - so a hit
+     a sheet off Care's own regimen block (ADR-0084) - so a hit
      lands on Care itself rather than on a stub that would bounce it there
      a second time. That is the care row's own screen, exactly, so its icon
      comes from there too. */
@@ -192,7 +161,7 @@ function excerptOf(text: string, query: string): string {
     is not the registry - a journal from a build that had an area this one
     does not. */
 export function searchHitRows(hits: readonly SearchHit[], query: string): SearchHitRow[] {
-  return hits.flatMap((hit) => {
+  return hitsForPlatform(hits, isAndroid()).flatMap((hit) => {
     const declared = AREA_ROWS[hit.area as SearchAreaKey];
     if (!declared) return [];
     return [

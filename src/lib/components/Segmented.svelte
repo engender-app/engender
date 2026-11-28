@@ -2,6 +2,8 @@
   import { rovingRadio } from '$lib/components/rovingRadio';
   import Icon from './Icon.svelte';
   import { nearestScrollLeft } from './segmentedTrack';
+  import { EASE_OUT, crossfadeDuration, fadeOnly, isReducedMotion, motionDuration, scrollBehavior } from '$lib/motion/tokens';
+  import type { TransitionConfig } from 'svelte/transition';
   import {
     boxesMatch,
     insets,
@@ -14,61 +16,110 @@
     type Schedule
   } from '$lib/motion/indicator';
 
-  /* A choice among a few peers. The pill behind the chosen one is a single
-     element that slides between them rather than a background that appears on
-     one and disappears from another: the point of a segmented control is that
-     the options are a set, and a pill crossing the set says which one you came
-     from as well as which one you are on.
-
-     It stretches along the way. Nothing physical changes position without
-     deforming a little, and a pill that arrives the same width it left reads
-     as a diagram of a slide rather than as a thing sliding.
-
-     How it stretches is the navigation's mechanic, shared rather than
-     transcribed (2026-09-08, Alicja: "apply the same motion to the switcher
-     animations... the leading/trailing animation and pace only"). It used to
-     deform symmetrically - both edges leaving together, out from the centre,
-     by a fixed 12% - which reads as one object pulled from both ends. Now the
-     edge nearer the destination leaves first and decelerates, and the edge
-     left behind holds, gathers and catches up, so the width in between is the
-     real gap between the two segments rather than a tuned percentage of
-     anything. $lib/motion/indicator.ts owns both the arithmetic and the two
-     edges' clocks; what stays here is the measuring, because only the DOM
-     knows where a segment is.
-
-     Not taken from the navigation: its pill's outline, and the swing its
-     destination icon does on arrival. A segment has no icon, and this pill is
-     a block of ink rather than a tinted field, so it needs no help being
-     seen. */
+  /* One pill moves between segments. Share the navigation's indicator.ts
+     timing: the leading edge decelerates towards the target and the trailing
+     edge catches up. The gap between the segments determines the stretch.
+     Measure the segments here because their bounds belong to the DOM. */
   let {
     name,
     options,
     value,
     onChange,
     compact = false,
-    key
+    selectOnArrow = true,
+    key,
+    grows = false
   }: {
     name: string;
-    /** A `href` makes the segment a link and the group a nav: each choice is
-        its own screen at its own URL, so switching is navigation and belongs
-        in history. Wrapped's four cadences are that, and they had a
-        hand-written copy of this control with no pill on it, so the same
-        gesture looked like two different controls one tab apart (Alicja,
-        2026-08-25). */
+    /** A `href` makes the segment a link and the group a nav: each choice is its own screen
+        at its own URL, so switching is navigation and belongs in history. Wrapped's four
+        cadences are that, and they had a hand-written copy of this control with no pill on
+        it, so the same gesture looked like two different controls one tab apart. */
     options: { value: string; label: string; href?: string; aria?: string }[];
     value: string;
     onChange?: (v: string) => void;
-    /** For a set of short labels - a range in days, a number of steps. The
-        buttons keep their 48dp press height and the pill is drawn shorter
-        inside it, so what slides reads as a pill crossing the set rather
-        than as a dot moving between dots. Six segments reading "7d" to
-        "365d" were 52px wide and 42px tall, which is a circle, and a circle
-        sliding says nothing about the set it is crossing (Alicja,
-        2026-08-25). */
+    /** For a set of short labels - a range in days, a number of steps. The buttons keep
+        their 48dp press height and the pill is drawn shorter inside it, so what slides
+        reads as a pill crossing the set rather than as a dot moving between dots. Six
+        segments reading "7d" to "365d" were 52px wide and 42px tall, which is a circle, and
+        a circle sliding says nothing about the set it is crossing. */
     compact?: boolean;
-    /** The group's own identity for the walkthrough's handle (ADR-0029). */
+    /** Disable when a selection changes context, such as a language reload. */
+    selectOnArrow?: boolean;
+    /** The group's own identity for the walkthrough's handle. */
     key?: string;
+    /** For a set the person edits while the screen is up: a segment added, removed or
+        renamed opens or closes its own width rather than landing in one frame and shoving
+        its neighbours along. A rename is a new segment in place of the old one, so its
+        width travels too. Off everywhere else, where the set is fixed and nothing about
+        this is wanted. */
+    grows?: boolean;
   } = $props();
+
+  /* The segment's width, its side padding and its share of the gap all
+     travel, with the label fading: animating width alone left the padding
+     standing, so a new segment arrived 24px wide in its first frame. */
+  /* While a segment opens or closes, the chosen one moves or the track
+     changes width under the pill every frame, and the pill is pinned by
+     two insets that otherwise travel on their own clocks: measured once,
+     it stretched with the growing track (72 to 101px) or sat at the
+     width a renamed segment had in its first frame (0px). So for the
+     length of the change it is re-pinned each frame, instantly. */
+  function followChosen() {
+    const target = track?.querySelector<HTMLElement>(`.segment[data-segment="${CSS.escape(value)}"]:not([data-leaving])`);
+    if (!track || !target || !pill.shown) return;
+    const box = { x: target.offsetLeft, y: target.offsetTop, w: target.offsetWidth, h: target.offsetHeight };
+    pill = { ...pill, box, at: insets(box, { w: track.clientWidth, h: track.clientHeight }), near: PLACE, far: PLACE };
+  }
+
+  function segmentLeaving(node: Element): TransitionConfig {
+    node.setAttribute('data-leaving', '');
+    return segmentWidth(node);
+  }
+
+  function segmentWidth(node: Element): TransitionConfig {
+    if (!grows || !(node instanceof HTMLElement)) return { duration: 0 };
+    /* Reduced motion keeps the arrival as a crossfade: the width lands at
+       once, the label still fades rather than cutting in. */
+    if (isReducedMotion()) return fadeOnly(crossfadeDuration());
+    const style = getComputedStyle(node);
+    const width = node.getBoundingClientRect().width;
+    const padStart = parseFloat(style.paddingInlineStart) || 0;
+    const padEnd = parseFloat(style.paddingInlineEnd) || 0;
+    const gap = node.previousElementSibling?.classList.contains('segment')
+      ? parseFloat(getComputedStyle(node.parentElement!).columnGap) || 0
+      : 0;
+    /* Written from `tick` rather than as `css`, so the segment's width and
+       the pill's re-pinning land in the same frame: a CSS animation is
+       resolved after this frame's script, and a pill measured against it
+       ran one frame behind the track (101px on a 72px segment). */
+    const at = (t: number) => {
+      const set = (name: string, value: string) => node.style.setProperty(name, value);
+      set('overflow', 'hidden');
+      set('white-space', 'nowrap');
+      set('box-sizing', 'border-box');
+      set('min-width', '0');
+      set('width', `${t * width}px`);
+      set('max-width', `${t * width}px`);
+      set('padding-inline', `${t * padStart}px ${t * padEnd}px`);
+      set('opacity', `${t}`);
+      if (gap) set('margin-inline-start', `${(t - 1) * gap}px`);
+    };
+    /* An arriving segment is closed before the frame it was inserted in
+       paints; the first tick comes a frame later, and the segment drew
+       itself whole for that one frame (the track read 240px, then 229). */
+    if (!node.hasAttribute('data-leaving')) at(0);
+    return {
+      duration: motionDuration('--dur-med'),
+      easing: EASE_OUT,
+      tick: (t) => {
+        if (t >= 1 && !node.hasAttribute('data-leaving')) node.removeAttribute('style');
+        else at(t);
+        followChosen();
+      }
+    };
+  }
+
 
   let links = $derived(options.some((o) => o.href !== undefined));
   let buttons = $state<(HTMLElement | undefined)[]>([]);
@@ -91,54 +142,31 @@
     far: LEAD
   });
 
-  /* The track scrolls rather than shrinks when its segments run wider than
-     it is (Alicja, 2026-08-26, "the pill came out 48 by 48" - shrinking was
-     tried and rejected). But its scrollbar is hidden (`.segmented`'s own
-     rule, below) for the same reason a native one is hidden everywhere else
-     in the app, and a control that scrolls with no visible scrollbar and no
-     other hint looks exactly like one that has simply run out of room -
-     "pain"/"severity" cut "severe" off flush against the sheet's edge with
-     nothing to suggest there was more (Alicja, 2026-08-27). These two flags
-     draw a fade over whichever edge still has content past it, which is the
-     hint a hidden scrollbar took away.
-
-     The fade alone still missed the case that named it: the label past the
-     edge only shows however many of its own pixels the track has not
-     already clipped, and a short gap between segments can leave next to
-     nothing there to fade at all - "barely noticeable" cutting "mild" off
-     with no sign there was more (Alicja, 2026-08-28). A chevron is a fixed
-     hint that never depends on how a neighbouring label happens to break,
-     so it carries the affordance the fade alone could not promise.
-
-     The two are one box now (ticket 43): the fade is the chevron's own
-     background rather than a mask over the track, because a chevron drawn
-     straight onto a clipped label is not legible either - "Garme>e" on this
-     control's own kind picker at 390px. components.css says the rest. */
+  /* The track scrolls when segments exceed its width. Each overflow flag
+     adds an edge fade and a chevron to replace the hidden scrollbar's cue.
+     The chevron stays visible even if too little of a clipped label is
+     left to fade. Its background supplies the fade so text cannot obscure
+     the mark. */
   let track = $state<HTMLElement | undefined>();
   let trackSize = $state({ w: 0, h: 0 });
   let canScrollStart = $state(false);
   let canScrollEnd = $state(false);
-  /* Whether the track has anywhere to scroll at all, which is a different
-     question from either of the two above: those say which edge still has
-     something past it *right now*, and both are false at rest on a track
-     that does scroll but happens to be sitting at one end. The trailing
-     spacer is keyed to this one (ticket 99 item 24, "last value highlight
-     in switcher doesn't reach the end of the bg") - on a track that fits,
-     the spacer and the gap in front of it were 11px of dead background
-     after the last segment, so the pill stopped short of the end while the
-     first segment sat flush against the start. */
+  /* Whether the track has anywhere to scroll at all, which is a different question from
+     either of the two above: those say which edge still has something past it *right now*,
+     and both are false at rest on a track that does scroll but happens to be sitting at one
+     end. The trailing spacer is keyed to this one - on a track that fits, the spacer and
+     the gap in front of it were 11px of dead background after the last segment, so the pill
+     stopped short of the end while the first segment sat flush against the start. */
   let canScroll = $state(false);
 
   function updateScrollFade() {
     if (!track) return;
-    /* Against the first and last segment's own edges, not scrollWidth and
-       clientWidth: the track carries a few pixels of trailing padding past
-       its last segment on purpose (the spacer below, so that segment does
-       not run flush into the track's rounded corner), and that padding is
-       itself a few pixels of "more to scroll" with no segment behind it.
-       Measuring the raw scroll range flagged that padding as more content
-       and hinted at it even with the last option already fully in view
-       (Alicja, 2026-08-28, on the wrapped cadence tabs opened on "Range"). */
+    /* Against the first and last segment's own edges, not scrollWidth and clientWidth: the
+       track carries a few pixels of trailing padding past its last segment on purpose (the
+       spacer below, so that segment does not run flush into the track's rounded corner),
+       and that padding is itself a few pixels of "more to scroll" with no segment behind
+       it. Measuring the raw scroll range flagged that padding as more content and hinted at
+       it even with the last option already fully in view. */
     const first = buttons[0];
     const last = buttons[buttons.length - 1];
     if (!first || !last) {
@@ -163,14 +191,12 @@
     updateScrollFade();
   });
 
-  /* Drag to scroll, for the pointer that has no flick. A touch pans the
-     track natively; a mouse had nothing - "i cannot click and slide nor
-     scroll on web" (Alicja, phase 5 ticket 99 round 3) - so pressing and
-     sliding now moves the track itself, and the press only becomes a
-     selection if it never turned into a drag. The moved flag is what keeps
-     those two honest: a release after a real drag suppresses the click the
-     browser still fires at the segment under the pointer, link or button,
-     so a flick past "90d" does not land on "180d". */
+  /* Drag to scroll, for the pointer that has no flick. A touch pans the track natively; a
+     mouse needs drag scrolling. Pressing and
+     sliding now moves the track itself, and the press only becomes a selection if it never
+     turned into a drag. The moved flag is what keeps those two honest: a release after a
+     real drag suppresses the click the browser still fires at the segment under the
+     pointer, link or button, so a flick past "90d" does not land on "180d". */
   let dragStartX = 0;
   let dragStartScroll = 0;
   let dragMoved = false;
@@ -216,27 +242,24 @@
 
   $effect(() => {
     void trackSize;
-    const target = buttons[options.findIndex((o) => o.value === value)];
+    /* With `grows`, a renamed segment is a new node beside the old one for
+       the length of the old one's exit, and the index the binding writes
+       to is not guaranteed to hold the arriving one: the pill followed the
+       leaving "Front" down to nothing. So it finds the chosen segment by
+       its value, skipping one on its way out. */
+    const target = grows
+      ? track?.querySelector<HTMLElement>(`.segment[data-segment="${CSS.escape(value)}"]:not([data-leaving])`) ?? undefined
+      : buttons[options.findIndex((o) => o.value === value)];
     if (!target) return;
-    /* The active segment answers for itself: a track wider than it is (the
-       cadence tabs opened straight onto the last one, "Range") never had a
-       reason to scroll before this ran, so nothing had brought it into view -
-       the pill sat correctly positioned past the visible edge, and only the
-       track's own clip made it look like the highlight had not reached the
-       end of the background (Alicja, 2026-08-28).
-
-       This was `target.scrollIntoView({ inline: 'nearest', block: 'nearest' })`
-       and the comment beside it claimed that never touches the page's own
-       scroll. It does, whenever the control is below the fold: `block:
-       'nearest'` scrolls every scrollable ancestor the least amount that
-       brings the element into view, and the app's own scroll region is one
-       of those. Arriving on the wear log - a switcher under a long list -
-       scrolled the screen down to the switcher before the person had
-       touched anything (phase 8 features ticket 66). Moving the track's own
-       scrollLeft is what this always meant, and it cannot move an ancestor
-       at all. */
-    if (track) track.scrollLeft = nearestScrollLeft(track, target);
+    /* Make the active segment visible by adjusting the track's scrollLeft.
+       scrollIntoView can scroll ancestors, including the page, even with
+       block: 'nearest'. Keep first placement instant and ease later
+       corrections up to the chevron's 26px. */
     if (!track) return;
+    const left = nearestScrollLeft(track, target);
+    if (Math.abs(track.scrollLeft - left) >= 1) {
+      track.scrollTo({ left, behavior: pill.shown ? scrollBehavior() : 'auto' });
+    }
     /* Named rather than inlined twice: the first-placement branch below
        measures again, a frame later, against whichever of `target`/`track`
        is current then - which is the same shape, at a different time, not a
@@ -264,29 +287,13 @@
       pill.at = at;
       return;
     }
-    /* The control does not slide into its own initial state, it starts
-       there: the first placement moves neither edge (PLACE), so what shows
-       is the pill fading in on its segment rather than across the whole
-       track. A later re-measure that is not a slide keeps both edges on the
-       leading clock, so the shape moves as one piece.
+    /* Place the pill on its initial segment before fading it in. A later
+       non-slide measurement moves both edges on the leading clock.
 
-       Held for a real painted frame rather than written here: a control
-       mounted from a `{#if loading}Skeleton{:else}...{/if}` swap (the
-       tryout edit screen's kind picker, ticket 274) runs this effect in the
-       same tick the control itself is created, before the browser has ever
-       painted `.segment-pill`'s resting `opacity: 0`. A transition needs an
-       earlier painted frame to fade from; with none, the browser skips
-       straight to `is-shown`'s opacity and the pill arrives fully lit
-       instead of fading in. A bare `requestAnimationFrame` only guarantees
-       running *before* the next paint, not after one - `reveal.ts`'s
-       `resize` action already fought this exact race (`let painted = ...;
-       requestAnimationFrame(() => setTimeout(() => (painted = true)))`),
-       so this holds the same shape rather than the weaker single rAF
-       `overlayLock.ts` gets away with for a class that is already present.
-       The box is re-measured then too, against whichever `target`/`track`
-       are current by that point, rather than reused from this tick: a
-       control created the same tick as its neighbour's swap is also the
-       one whose own layout is least likely to have settled yet. */
+       After mounting, schedule a timer inside requestAnimationFrame so
+       opacity: 0 has a frame to paint. A bare rAF runs before that paint
+       and can skip the fade. Remeasure the current track and target when
+       the timer fires because layout may have changed. */
     if (!pill.shown) {
       const settledTarget = target;
       const settledTrack = track;
@@ -325,8 +332,6 @@
       bind:this={track}
       class="segmented"
       class:is-compact={compact}
-      class:can-scroll-start={canScrollStart}
-      class:can-scroll-end={canScrollEnd}
       class:can-scroll={canScroll}
       data-segmented={key}
       aria-label={name}
@@ -345,14 +350,13 @@
     >
       {@render pillMark()}
       {#each options as o, i (o.value)}
-        <!-- Replaces rather than pushes. A switcher shows a different view of
-             the screen you are already on, so each flick of it is not a place
-             to come back to: pushed, the back arrow spent one tap per switch
-             undoing them instead of leaving the screen (Alicja, 2026-08-26).
-             `screen-transition.ts` already says the same thing about these in
-             its own table, where crossing them is tier 3 rather than a
-             navigation. data-no-press (ticket 15): the pill crossing the set
-             is already this control's press response. -->
+        <!-- Replaces rather than pushes. A switcher shows a different view of the screen
+             you are already on, so each flick of it is not a place to come back to: pushed,
+             the back arrow spent one tap per switch undoing them instead of leaving the
+             screen. `screen-transition.ts` already says the same thing about these in its
+             own table, where crossing them is tier 3 rather than a navigation.
+             data-no-press: the pill crossing the set is already this control's press
+             response. -->
         <a
           bind:this={buttons[i]}
           class="segment"
@@ -370,12 +374,10 @@
       bind:this={track}
       class="segmented"
       class:is-compact={compact}
-      class:can-scroll-start={canScrollStart}
-      class:can-scroll-end={canScrollEnd}
       class:can-scroll={canScroll}
       data-segmented={key}
       role="radiogroup"
-      use:rovingRadio
+      use:rovingRadio={{ selectOnArrow }}
       tabindex="-1"
       aria-label={name}
       onpointerdown={onTrackPointerDown}
@@ -392,8 +394,8 @@
       style:--seg-far-delay={pill.far.delay}
     >
       {@render pillMark()}
-      {#each options as o, i (o.value)}
-        <!-- data-no-press (ticket 15): the pill crossing the set is already
+      {#each options as o, i (grows ? `${o.value}:${o.label}` : o.value)}
+        <!-- data-no-press: the pill crossing the set is already
              this control's press response; scaling the label too would answer
              the same touch twice. -->
         <button
@@ -405,15 +407,21 @@
           aria-label={o.aria}
           data-segment={o.value}
           data-no-press
+          in:segmentWidth
+          out:segmentLeaving
           onclick={() => onChange?.(o.value)}>{o.label}</button
         >
       {/each}
     </div>
   {/if}
-  {#if canScrollStart}
-    <span class="segmented-hint segmented-hint-start" aria-hidden="true"><Icon name="chevronLeft" size={14} /></span>
-  {/if}
-  {#if canScrollEnd}
-    <span class="segmented-hint segmented-hint-end" aria-hidden="true"><Icon name="chevronRight" size={14} /></span>
-  {/if}
+  <!-- Always in the page and faded by class rather than added and removed:
+       a choice that scrolls the track brings a
+       chevron in or takes one away, and an {#if} painted it whole in one
+       frame. -->
+  <span class="segmented-hint segmented-hint-start" class:is-shown={canScrollStart} aria-hidden="true"
+    ><Icon name="chevronLeft" size={14} /></span
+  >
+  <span class="segmented-hint segmented-hint-end" class:is-shown={canScrollEnd} aria-hidden="true"
+    ><Icon name="chevronRight" size={14} /></span
+  >
 </div>

@@ -1,37 +1,11 @@
 <script lang="ts" generics="TPhoto extends { id: string; epochDay: number; fileName: string | null }">
-  /* Two photographs of the same body months apart, in one frame, with one
-     draggable divider between them (phase 10 redesign ticket 55).
+  /* The hard divider keeps each photo at full frame width without blending
+     pixels. The divider uses a flat stripe handle. Dates pinned
+     to opposite corners stay readable as the divider moves. Neither photo
+     gets a visual verdict (ADR-0012).
 
-     What this replaces on both of its callers is a two-up grid: two
-     half-width thumbnails side by side, which at 390px is about 170px of
-     picture each and is the hardest possible way to see what changed. A
-     wipe puts both photographs at full width in the same frame, so the eye
-     compares the same pixels in the same place instead of travelling
-     between two small pictures and holding one of them in memory.
-
-     The reference is Photoroom's before/after (Mobbin, iOS,
-     https://mobbin.com/screens/c81968f1-67c1-4652-bd13-bf8595e8605c): one
-     frame, a hard divider, no crossfade and no verdict. Taken from it: the
-     divider is a line rather than a soft blend, because a blend invents
-     pixels that are in neither photograph. Not taken: its round white
-     handle with a shadow, which is the iOS material DIRECTION.md's rule 10
-     refuses - the handle here is a flat block of the area's own stripe.
-     The two dates pinned to the frame's top corners are Hers'
-     (https://mobbin.com/screens/dc7b6682-eff4-4591-be82-a6d5d9fd6f62),
-     where "Month 0" and "Month 6" sit on the pictures rather than under
-     them, which is what keeps both of them readable at every divider
-     position.
-
-     Colour never judges here and nothing about the drawing says which of
-     the two photographs is better (ADR-0012). The wipe shows two
-     photographs; the person reads them.
-
-     Full bytes, not thumbnails: a stored thumbnail is 320px on its long
-     edge (normalize.ts), and this frame is 358px wide on a phone at 1x and
-     more than a thousand device pixels at 3x. The whole point of the screen
-     is that the two pictures are the same pixels, so a blurred pair would
-     miss it. Two deliberate reads of two photographs, which is what
-     readPhoto is for (photoFiles.ts). */
+     Read the full photos with readPhoto. A thumbnail's 320px long edge
+     undersamples this 358px phone frame even at 1x. */
   import { m } from '$lib/paraglide/messages';
   import type { ComparePair, CompareSide } from '$lib/data/photos/compare-state';
   import { stepPair } from '$lib/data/photos/compare-state';
@@ -57,10 +31,10 @@
     /** Which two are being compared: `left` is the earlier photograph and
         `right` the later one, always. */
     pair: ComparePair;
-    /** A press of one of the four earlier/later controls. The caller owns
-        the pair, because on one screen it comes from a selection grid and
-        on the other from this control alone. */
-    onPair: (next: ComparePair) => void;
+    /** A press of one of the four earlier/later controls. The caller owns the pair. A
+        caller that picks its pair with these controls alone passes this; Progress photos
+        picks both from its own grid, and without it the controls are not drawn. */
+    onPair?: (next: ComparePair) => void;
     /** The date block pinned to that photograph's corner of the frame. */
     date: (photo: TPhoto) => string;
     /** That side's own line under the frame - what the photograph belongs
@@ -212,7 +186,7 @@
 
   function step(side: CompareSide, delta: -1 | 1) {
     const next = stepPair(pair, side, delta, photos.length);
-    if (next) onPair(next);
+    if (next) onPair?.(next);
   }
 
   const percent = $derived(Math.round(fraction * 100));
@@ -231,7 +205,7 @@
     <p role="status" data-wipe-unavailable>{m.photo_unreadable()}</p>
   {/if}
   {#if wipeable && !earlierFailed && !laterFailed}
-    <div class="wipe-frame" class:is-dragging={dragging} bind:this={frame} style:--wipe-at={fraction}>
+    <div class="wipe-frame sheet-fit-frame" class:is-dragging={dragging} bind:this={frame} style:--wipe-at={fraction}>
       <div class="wipe-plate">
         {#each laterStack as url (url)}
           <img
@@ -264,9 +238,16 @@
       <span class="wipe-date is-earlier" data-wipe-date="left">{date(earlier)}</span>
       <span class="wipe-date is-later" data-wipe-date="right">{date(later)}</span>
 
+      <!-- `data-sheet-no-drag`: a gesture that starts on the handle is the
+           divider's alone. Without it the sheet's drag-to-dismiss saw the
+           same pointer bubble up, took its capture away from the handle
+           once the finger had gone 4px down, and carried the whole sheet
+           off with a diagonal drag while the divider stood still.
+           -->
       <div
         class="wipe-handle"
         data-wipe-handle
+        data-sheet-no-drag
         role="slider"
         tabindex="0"
         aria-label={m.photo_wipe_handle()}
@@ -306,6 +287,7 @@
     <p class="wipe-note" data-wipe-crop-note>{m.photo_wipe_crop()}</p>
   {/if}
 
+  {#if onPair}
   <div class="wipe-steps">
     {#each steps as group (group.side)}
       <div class="wipe-step" data-wipe-step={group.side}>
@@ -333,6 +315,7 @@
       </div>
     {/each}
   </div>
+  {/if}
 </div>
 
 <style>
@@ -355,6 +338,16 @@
   .wipe {
     container: wipe / inline-size;
   }
+  /* In a sheet that fits its picture (.sheet-fit, components.css), the
+     frame is the part that gives way, so the wipe passes the shrink on to
+     it rather than holding its full height. */
+  :global(.sheet-fit) > .wipe {
+    flex: 0 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  :global(.sheet-fit) > .wipe > :not(.wipe-frame) { flex: none; }
 
   /* A block (rule 4): 6px corners and its own --outline edge, so the frame
      is visible on both themes before any photograph has decoded. No
@@ -493,7 +486,7 @@
   }
 
   .wipe-handle:focus-visible .wipe-grip {
-    outline: 2px solid var(--focus-ring);
+    outline: var(--focus-ring-width) solid var(--focus-ring);
     outline-offset: 2px;
   }
 
@@ -580,8 +573,13 @@
     }
   }
 
+  /* `width: 100%` because auto side margins turn off a flex item's
+     stretch, and this box is a size container: with no width of its own it
+     measured 0 and the frame inside it 2px, a dot (progress photos
+     compare, desktop). */
   @container app (min-width: 1024px) {
     .wipe {
+      width: 100%;
       max-width: 560px;
       margin-left: auto;
       margin-right: auto;

@@ -1,4 +1,4 @@
-/* The generalised day re-keying (phase 8 features ticket 16): both rules,
+/* The generalised day re-keying: both rules,
    tested without a driver. The repeating rule's cases are the ones
    dayOfIntervalPattern carried before it became a caller of this - they are
    here unchanged on purpose, because "the existing chart answers identically

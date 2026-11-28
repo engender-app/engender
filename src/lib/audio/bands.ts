@@ -1,186 +1,11 @@
-/* The absolute pitch axis, and the reference bands drawn on it.
+/* Pitch axes and the person's optional comfort bracket.
+   No population ranges are drawn or stored here. */
 
-   **Why this exists at all.** The live gauge used to plot semitones against
-   a rolling median of whatever was on screen, chosen so the figure could
-   never imply a target. It could not: it also could not say where a voice
-   was, because its own middle moved with the voice. Alicja's verdict was
-   that the relative graph was confusing, and an axis that moves is an axis
-   nothing can be drawn against - no reference band, no comfort band, no
-   comparison between two takes months apart.
-
-   So the axis is absolute Hz, narrowing PRODUCT.md's rule to allow two
-   typical speaking-pitch ranges on it, with their figures, their source
-   and a caveat. The narrowing stops there: it is the pitch graph and
-   nothing else. There is still no verdict, no score, no label on a voice and
-   no direction of travel. Formant search windows are untouched
-   (resonance.ts), and the semitone spread never gets a band at all - it is
-   a measurement, not a preference.
-
-   **The bands are per language, because pitch is.** They were English
-   figures on both passages until 2026-09-04, which was wrong in the
-   direction that hurts. Andreeva et al. 2014 measured read passages across
-   four languages and say it plainly: the register of Polish male speakers
-   "is in the same range of absolute f0 values as that of English and German
-   female speakers". A Polish cis man reading aloud sits near 163 Hz, so
-   English-sourced bands put him inside the band labelled cis woman - and
-   put a Polish trans woman at 190 Hz inside that same band while she is
-   still inside a male distribution centred above her. So a band renders
-   only where the cited population's language matches the passage being
-   read, keyed the way passages.ts already keys the passage itself.
-
-   **Each range is mean +/- one standard deviation** of its published
-   population, computed here rather than written down as bounds, so what the
-   sources say and what the figure draws cannot drift apart. One SD is about
-   two thirds of the speakers measured; it is the tightest claim the sources
-   support, and widening it to two would put "typical cis man" on a range
-   from 73 to 157 Hz, which is not a typical anything.
-
-   **The middle band is computed, and it is usually a gap.** On sourced
-   figures neither language's ranges meet, so the region between them is a
-   gap rather than an intersection and is captioned as one. It is drawn
-   because a bare line where two blocks touch reads as a pass mark, and
-   because it is the region a great many of this app's users are working
-   through. `middleBand` reports which kind it found; nothing here decides
-   in advance.
-
-   **Semitone-linear.** The axis is log2 in Hz, so the distance from 100 to
-   200 Hz is the distance from 150 to 300: pitch is heard in ratios, the
-   spread the benchmark already reports is in semitones, and on a linear Hz
-   axis the low half of a voice would be squashed into a third of the
-   height. Every figure here is a fraction of the drawing box, so the
-   component holding it owns its own pixels.
-
-   Pure arithmetic, like its siblings: no clock, no database, nothing from
-   paraglide. The band captions and the caveat are the screen's, because
-   they are copy. */
-
-/** The languages there are published read-passage figures for. Not "the
-    languages the app speaks": a passage in a language with no figures falls
-    back rather than inventing a band (`bandLanguageOf`). */
 export type BandLanguage = 'en' | 'pl';
 
-type PopulationKey = 'cisMan' | 'cisWoman';
-type PitchBandKey = PopulationKey | 'between';
-
-interface PopulationBand {
-  key: PopulationKey;
-  lowHz: number;
-  highHz: number;
-}
-
-export interface MiddleBand {
-  key: 'between';
-  /** Which one the arithmetic found. `overlap` where the two ranges
-      genuinely coincide, `gap` where neither covers the region. The caption
-      differs, because the two say opposite things about the same picture. */
-  kind: 'overlap' | 'gap';
-  lowHz: number;
-  highHz: number;
-}
-
-export type PitchBand = PopulationBand | MiddleBand;
-
-/** Mean and standard deviation of speaking f0 over a read passage, by
-    language and population. These are the numbers those papers report.
-
-      en  Leung, Oates, Papp & Chan (2022), Journal of Voice 36(3):
-          379 speakers of Australian English aged 18-60 reading a passage,
-          creak separated from modal phonation before averaging.
-      pl  Andreeva, Demenko, Moebius, Zimmerer, Juegler &
-          Oleskowicz-Popiel (2014), Interspeech 2014: 48 Polish speakers
-          from BABEL reading three five-sentence passages. */
-const POPULATIONS: Record<BandLanguage, Record<PopulationKey, { meanHz: number; sdHz: number }>> = {
-  en: {
-    cisMan: { meanHz: 115, sdHz: 21 },
-    cisWoman: { meanHz: 199, sdHz: 28 }
-  },
-  pl: {
-    cisMan: { meanHz: 163, sdHz: 22 },
-    cisWoman: { meanHz: 266, sdHz: 24 }
-  }
-};
-
-/** The two typical ranges for a language, low band first. */
-/* typicalRanges stays exported only for its own test (AU-09 test-only review). */
-export function typicalRanges(language: BandLanguage): readonly PopulationBand[] {
-  const population = POPULATIONS[language];
-  return (['cisMan', 'cisWoman'] as const).map((key) => ({
-    key,
-    lowHz: population[key].meanHz - population[key].sdHz,
-    highHz: population[key].meanHz + population[key].sdHz
-  }));
-}
-
-/** What sits between two ranges: their intersection where they coincide,
-    the space between them where they do not, or nothing at all where they
-    meet exactly at a point.
-
-    Computed rather than written down, so the middle band cannot drift out
-    of agreement with the ranges it is the middle of, and so the caption
-    cannot claim an overlap that the figures do not support. */
-/* middleBand stays exported only for its own test (AU-09 test-only review). */
-export function middleBand(a: PopulationBand, b: PopulationBand): MiddleBand | null {
-  const [lower, upper] = a.lowHz <= b.lowHz ? [a, b] : [b, a];
-  if (lower.highHz > upper.lowHz) {
-    return { key: 'between', kind: 'overlap', lowHz: upper.lowHz, highHz: lower.highHz };
-  }
-  if (lower.highHz < upper.lowHz) {
-    return { key: 'between', kind: 'gap', lowHz: lower.highHz, highHz: upper.lowHz };
-  }
-  return null;
-}
-
-/** What the figure draws for a language: the two ranges, and the middle
-    band in its own right with its own caption. */
-export function referenceBands(language: BandLanguage): readonly PitchBand[] {
-  const ranges = typicalRanges(language);
-  const middle = middleBand(ranges[0], ranges[1]);
-  return middle ? [...ranges, middle] : ranges;
-}
-
-/** Which population's figures belong on a figure, and whether that is
-    known or guessed. The two always travel together - a caption that names
-    a language has to say when the language is a guess - so they are one
-    object rather than two props that can be passed inconsistently.
-
-    A built-in passage carries its language in its key
-    (data/voice/passages.ts). A custom passage carries a fingerprint of its
-    own text and no language at all, and the practise tab reads no passage
-    whatsoever; for both, the app's own language is the best signal there is
-    - Alicja's call on 2026-09-04 - and `guessed` is what makes the caption
-    admit to it rather than presenting a guess as a fact. Pass `''` for "no
-    passage".
-
-    A language with no published figures falls back to English rather than
-    drawing a band for a population nobody has measured. */
-export function bandsFor(
-  passageKey: string,
-  appLocale: string
-): { language: BandLanguage; guessed: boolean } {
-  const known = passageLanguage(passageKey);
-  return { language: known ?? asBandLanguage(appLocale), guessed: known === null };
-}
-
-/** The language a passage key names, or null where it names none: a custom
-    passage carries a fingerprint of its own text and the practise tab reads
-    no passage at all (data/voice/passages.ts).
-
-    Its own function because two callers ask it and they do different things
-    with the null. The bands guess the app's own language and say they
-    guessed (above); the gate's plausible-rate check takes the most
-    permissive threshold there is rather than guess at all (quality.ts). One
-    place that knows how a key is shaped, so the two cannot disagree about
-    what a built-in key looks like. */
 export function passageLanguage(passageKey: string): BandLanguage | null {
   if (!passageKey.startsWith('builtin-')) return null;
-  return asBandLanguage(passageKey.slice('builtin-'.length));
-}
-
-/** A locale as a band language. Anything with no published figures of its
-    own reads English's rather than drawing a band for a population nobody
-    has measured. */
-function asBandLanguage(locale: string): BandLanguage {
-  return locale === 'pl' ? 'pl' : 'en';
+  return passageKey.slice('builtin-'.length) === 'pl' ? 'pl' : 'en';
 }
 
 export interface PitchAxis {
@@ -188,12 +13,7 @@ export interface PitchAxis {
   highHz: number;
 }
 
-/** The axis an ordinary take is drawn on. Fixed, and wide enough that every
-    band of every language sits clear of both edges: two benchmarks months
-    apart are only comparable by eye if the axis under them did not move, so
-    the common case must not compute its own bounds from its own data. The
-    ceiling clears the Polish cis woman range, which is the highest band
-    there is. */
+/** Fixed axis for comparison between takes. */
 export const DEFAULT_PITCH_AXIS: PitchAxis = { lowHz: 70, highHz: 330 };
 
 /** A quarter-octave of air, in ratio terms, kept between the axis end and
@@ -201,8 +21,8 @@ export const DEFAULT_PITCH_AXIS: PitchAxis = { lowHz: 70, highHz: 330 };
 const WIDEN_RATIO = 2 ** (3 / 12);
 
 /** The axis for one figure: the default, widened only by what would
-    otherwise be drawn off it. A voice below the lowest band or above the
-    highest is a real voice and gets shown, not clipped to the edge where it
+    otherwise be drawn off it. A voice below the default floor or above its
+    ceiling is shown, not clipped to the edge where it
     would read as a flat line against the frame. */
 export function pitchAxis(subject: {
   hz?: readonly (number | null)[];
@@ -229,28 +49,12 @@ export function axisFraction(hz: number, axis: PitchAxis): number {
   return Math.max(0, Math.min(1, at));
 }
 
-/** The frequencies worth a number in the gutter: the band edges of the
-    language being read, which are the only values on this axis that mean
-    anything. Deduplicated - the middle band's edges are the two ranges'
-    own, so there are four of them and not six. */
-export function bandEdges(language: BandLanguage): number[] {
-  const edges = new Set<number>();
-  for (const band of referenceBands(language)) {
-    edges.add(band.lowHz);
-    edges.add(band.highHz);
-  }
-  return [...edges].sort((a, b) => a - b);
-}
-
 /** Pushes a descending list of label positions apart so no two are closer
     than `minGap`, keeping each crowded pair centred on where it was and
     keeping every label inside the 0-to-100 box.
 
-    Here rather than in the component because it is geometry, and because it
-    is the kind of arithmetic that silently stops working: two band edges
-    can land under six per cent of the axis apart, so their numbers render as
-    one smudge, and both of them are load-bearing. Dropping one was the
-    other option and it loses a band's edge from the readout.
+    Here rather than in the component because it is geometry: nearby tick
+    labels can render as one smudge. Both marks stay readable.
 
     One pass down, then one back up. The downward pass fixes every collision
     and can push the last label off the bottom; the upward pass pulls the
@@ -285,8 +89,6 @@ const COMFORT_CEILING_HZ = 500;
 
 /** The person's own comfort band, from the two numbers they typed. There is
     no default and no norm table behind it: absent unless both ends are set,
-    and it is a different object from the reference bands - theirs is a
-    citation, this one is a decision.
 
     Read the way round it was meant if the two arrived swapped, and refused
     outright if either end is somewhere no voice goes. */
@@ -307,34 +109,28 @@ export function comfortBand(
     (quality.ts's MAX_F0_CV), which is about 1.4 semitones of spread - so a
     take about to fail is plainly off the middle without slamming into the
     edges. */
-/* STEADINESS_SEMITONES stays exported only for its own test (AU-09 test-only
-   review). */
+/* STEADINESS_SEMITONES stays exported only for its own test. */
 export const STEADINESS_SEMITONES = 3;
 
-/** The axis a held note is judged on: not absolute hertz but semitones
-    around the note itself, because the vowel step's task is keeping one
-    pitch rather than reaching one (Alicja, 2026-09-04) and a flat line is
-    the whole answer. Null where nothing has been voiced yet and there is no
+/** The axis a held note is judged on: not absolute hertz but semitones around the note
+    itself, because the vowel step's task is keeping one pitch rather than reaching one and
+    a flat line is the whole answer. Null where nothing has been voiced yet and there is no
     note to centre on.
 
-    This is deliberately the shape the whole ticket took the live gauge off:
-    a relative axis is unreadable for "where is my voice" and exactly right
-    for "am I holding still". The difference is that it is now one of two
-    named instruments rather than the only one there is. */
+    This is deliberately the shape the whole ticket took the live gauge off: a relative axis
+    is unreadable for "where is my voice" and exactly right for "am I holding still". The
+    difference is that it is now one of two named instruments rather than the only one there
+    is. */
 export function steadinessAxis(referenceHz: number | null): PitchAxis | null {
   if (referenceHz === null) return null;
   const edge = 2 ** (STEADINESS_SEMITONES / 12);
   return { lowHz: referenceHz / edge, highHz: referenceHz * edge };
 }
 
-/** Round hertz across an axis, for a figure that draws no bands.
+/** Round hertz across an axis, without population ranges.
 
-    A scale mark, not a claim: these are the round numbers between the axis
-    ends and they name nobody's range, which is what lets an absolute figure
-    be readable without a citation under it (ADR-0059's rule is about
-    published ranges, and a hundred hertz is not one). The reading step took
-    this when the bands left it - a trace on an unlabelled box says the voice
-    moved and never says where it is.
+    These numbers mark scale positions and name nobody's range. A trace on
+    an unlabelled box shows movement without saying where it sits.
 
     Fifty hertz apart, which puts four or five marks on the default 70-330
     axis: closer and the labels collide at 148px of figure, wider and the

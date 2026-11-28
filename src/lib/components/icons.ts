@@ -1,61 +1,19 @@
 /* Lucide-style 24px/2px-stroke icon set, inlined (ISC-licensed path data style).
-   The app deliberately inlines SVG so icons colour via currentColor tokens.
+   Inline SVG inherits the currentColor tokens.
 
-   ## Optical centring
+   Keep the optical center within 0.75 units of (12, 12). It is the
+   midpoint of the ink bounding-box center and the arc-length-weighted
+   ink centroid. tests/node/ui/icon-geometry.test.ts holds this rule, including
+   marks whose ink sits off center to balance its weight.
 
-   Every mark in here is held to one rule, and `tests/icon-geometry.test.ts`
-   fails on a glyph that breaks it:
-
-     A mark's optical centre is the midpoint between the centre of its ink
-     bounding box and its arc-length-weighted ink centroid, and it must lie
-     within 0.75 user units of (12, 12).
-
-   The reasoning, and why neither half of that measure works alone, is in
-   that test's header. What it means in practice is that a mark is allowed to
-   sit off-centre in its box when its weight is lopsided - `shuffle` has
-   3 units of clear space on the right and 1.5 on the left precisely because
-   its two arrowheads live on the right - and that "centred" is never decided
-   by eyeballing a bounding box again.
-
-   ## The navigation set
-
-   `home`, `calendar`, `stats`, `grid` and `plus` are drawn as one family
-   rather than borrowed one at a time, because they are the only five marks a
-   person sees on every screen (phase 5 ticket 31). What makes them a set:
-
-   - One stroke: 2 units, round caps and joins, set once by `icon()` below.
-   - One corner: 2 units of radius wherever a silhouette turns, as an
-     absolute value and not a proportion of the shape. At 22px a corner is
-     read as a corner, so a big shape and a small one want the same radius,
-     which is why `calendar`'s page and one of `grid`'s four tiles are both
-     rx 2 despite one being three times the other's width.
-   - One optical size: the five fill about 16 of the box's 24 units, so no
-     mark looks larger than its neighbour because it reaches further. Sized
-     against each other in the gallery rather than pinned to one rectangle -
-     a mark whose weight is lopsided has to sit off the middle of its box to
-     look centred in it, so a shared bounding rectangle and the centring rule
-     above cannot both hold. `home` is the case in point: a house is a thin
-     roof over a heavy base, and it centres by sitting about a unit higher
-     than `calendar` does, which is under a pixel at either shipped size.
-   - One level of detail: a silhouette plus its internal marks, and never
-     more than two of those.
-
-   `stats` carries the app's own chart language rather than a generic bar
-   chart: no baseline, because DIRECTION.md's chart style has no axis
-   furniture, and heights that go medium, tall, short rather than ascending.
-   Three bars climbing left to right is a picture of improvement, and this
-   app does not tell anyone their transition is going well (ADR-0012 is the
-   same principle applied to colour).
-
-   `grid` is the More tab's mark and it is deliberately not `dots`. Three
-   dots is an overflow menu - the thing that opens when there is no room for
-   the real controls - and /more is not that: it is a hub of feature cards,
-   which is what four tiles say. `dots` stays as it is for the two places
-   that do mean a row of dots, a drag handle and an entry's day count. */
+   The five navigation icons share round 2-unit strokes and corners.
+   Fill about 16 of the 24 units and use at most two internal marks.
+   The stats bars run medium, tall, short, with no baseline or visual
+   suggestion of improvement (ADR-0012). Use grid for the More hub and
+   dots for handles and day-count marks. */
 
 /* PATHS stays exported only for hubRows.test.ts, icons-gallery.svelte,
-   icon-geometry.test.ts, which cross-check against it (AU-09 test-only
-   review). */
+   icon-geometry.test.ts, which cross-check against it. */
 export const PATHS: Record<string, string> = {
   home: '<path d="M4 9.5 12 3.1l8 6.4"/><path d="M6 8.1V19.1h12V8.1"/><path d="M9.6 19.1v-5h4.8v5"/>',
   calendar: '<rect x="4" y="5.6" width="16" height="14.4" rx="2"/><path d="M8.5 4v3.2M15.5 4v3.2"/><path d="M4 10.6h16"/>',
@@ -72,25 +30,21 @@ export const PATHS: Record<string, string> = {
   bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10.3 21a2 2 0 0 0 3.4 0"/>',
   lock: '<rect x="4" y="10.49" width="16" height="10" rx="3"/><path d="M8 10.49V6.49a4 4 0 0 1 8 0v4"/>',
   shield: '<path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5z"/>',
-  /* The open padlock: the Unlocked access mode (after-release 28). It drew
-     the key, which is also the recovery key's mark. */
+  /* The open padlock: the Unlocked access mode. It drew the key, which is also the recovery
+     key's mark. */
   unlock: '<rect x="4" y="10.49" width="16" height="10" rx="3"/><path d="M8 10.49V6.49a4 4 0 0 1 7.8-1.25"/>',
-  /* Medication, wherever a dose or a regimen is drawn (after-release 28).
-     Regimen drew the lab's flask, Dose log a clock and Reminders a heart. */
+  /* Medication, wherever a dose or a regimen is drawn. Regimen drew the lab's flask, Dose
+     log a clock and Reminders a heart. */
   pill: '<path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7z"/><path d="m8.5 8.5 7 7"/>',
   /* A routine kept up on a schedule: dilation, which drew the lab's flask. */
   repeat: '<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',
-  /* A random draw (search's "pick one at random"). It drew `shuffle`, which
-     is Hair removal's mark on the More hub. */
+  /* A random pick (Milestones' "show me others"). It drew `shuffle`, which
+     was Hair removal's mark on the More hub. */
   dice: '<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="16" cy="16" r="1.3"/>',
   download: '<path d="M12 1.79v12M7 8.79l5 5 5-5"/><path d="M5 19.79h14"/>',
   upload: '<path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 21h14"/>',
   tag: '<path d="M2.81 12.31V4.81a2 2 0 0 1 2-2h7.5L21.81 12.31a2.1 2.1 0 0 1 0 3L15.31 21.81a2.1 2.1 0 0 1-3 0z"/><circle cx="8.31" cy="8.31" r="1.3"/>',
-  /* Redrawn rather than shifted. Ticket 21 moved this glyph to put its
-     bounding box in the middle of the box and said in as many words that
-     optical centring across the set was ticket 31's - this is that: the pole
-     is shorter, the banner reaches further right, and the whole mark now
-     measures 0.28 off centre where the shifted version measured 1.6. */
+  /* Shorten the pole and extend the banner to centre the ink within the icon. */
   flag: '<path d="M6 21V5"/><path d="M6 6h12.5l-2.4 4 2.4 4H6"/>',
   flask: '<path d="M10 1.38v7L4.5 18.38a2 2 0 0 0 1.8 3h11.4a2 2 0 0 0 1.8-3L14 8.38V1.38"/><path d="M8 1.38h8M7.5 14.38h9"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
@@ -105,7 +59,7 @@ export const PATHS: Record<string, string> = {
   sparkle: '<path d="M10.2 2l1.9 5.1L17.2 9l-5.1 1.9L10.2 16l-1.9-5.1L3.2 9l5.1-1.9z"/><path d="M17.2 16l0.8 2.2L20.2 19l-2.2 0.8L17.2 22l-0.8-2.2L14.2 19l2.2-0.8z"/>',
   heart: '<path d="M19.5 6a5 5 0 0 0-7.5 0.7A5 5 0 0 0 4.5 6c-2 2-2 5.1 0 7.1L12 21l7.5-7.9c2-2 2-5.1 0-7.1z"/>',
   dots: '<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
-  /* The handle a row is dragged by (phase 10 redesign ticket 14). Six dots
+  /* The handle a row is dragged by. Six dots
      in two columns, which is what a handle looks like everywhere a list can
      be reordered. Drawn as dots rather than as the two rules that were here
      first: at 22px two rules read as an equals sign, and an equals sign
@@ -133,7 +87,6 @@ export const PATHS: Record<string, string> = {
   book: '<path d="M4.11 18.88A2.5 2.5 0 0 1 6.61 16.38H20.11V1.38H6.61A2.5 2.5 0 0 0 4.11 3.88z"/><path d="M20.11 16.38v5H6.61a2.5 2.5 0 0 1 0-5"/>',
   zap: '<path d="M14 2 5 14h6l-1 8 9-12h-6z"/>',
   ruler: '<path d="M3 8h18v8H3z"/><path d="M7 8v3M11 8v3M15 8v3"/>',
-  comb: '<path d="M3.7 4.37h16v4H3.7z"/><path d="M5.7 8.37v13M9.2 8.37v10M12.7 8.37v13M16.2 8.37v10M19.7 8.37v13"/>',
   package:
     '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96 12 12.01l8.73-5.05"/><path d="M12 22.08V12"/>',
   mic: '<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4M9 21h6"/>',
@@ -141,7 +94,7 @@ export const PATHS: Record<string, string> = {
   play: '<polygon points="6 3 20 12 6 21 6 3"/>',
   pause: '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>',
   video: '<rect x="2" y="6" width="14" height="12" rx="2"/><path d="m16 11 6-3.5v9L16 13z"/>',
-  // The two halves of the video note's full-screen control (ticket 46):
+  // The two halves of the video note's full-screen control:
   // four corners opening outwards, and the same four closing back in. Both
   // are symmetric about the centre of the box, so neither needs the optical
   // offset a lopsided mark like `shuffle` does.
@@ -149,33 +102,120 @@ export const PATHS: Record<string, string> = {
   collapse: '<path d="M9 4v5H4"/><path d="M15 4v5h5"/><path d="M9 20v-5H4"/><path d="M15 20v-5h5"/>',
   star: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
   bookmark: '<path d="M6 3.5h12a1 1 0 0 1 1 1V21l-7-4.5-7 4.5V4.5a1 1 0 0 1 1-1z"/>',
-  // A margin note (phase 8 features ticket 07): a page with its corner
+  // A margin note: a page with its corner
   // turned down, the way a person folds one to mark a place they came back
   // to - distinct from `book` (a whole journal or letter) and `pencil`
   // (editing what is already there).
   note: '<path d="M5 3h9l5 5v13H5z"/><path d="M14 3v5h5"/><path d="M8 12h6M8 16h4"/>',
-  // The documents area (phase 8 features ticket 52, ADR-0065): two plain
+  // The documents area (ADR-0065): two plain
   // sheets, one behind the other. Deliberately not `note`'s page - that one
   // is a single sheet with its corner turned down and writing on it, which
   // is a note somebody made, and this is paper that arrived. The sheet
   // behind is drawn only where it shows, so the two outlines never cross
   // through each other's middle.
   documents:
-    '<rect x="4" y="7" width="12" height="14" rx="1.5"/><path d="M8 7V4.5a1.5 1.5 0 0 1 1.5-1.5h9A1.5 1.5 0 0 1 20 4.5v11A1.5 1.5 0 0 1 18.5 17H16"/>'
+    '<rect x="4" y="7" width="12" height="14" rx="1.5"/><path d="M8 7V4.5a1.5 1.5 0 0 1 1.5-1.5h9A1.5 1.5 0 0 1 20 4.5v11A1.5 1.5 0 0 1 18.5 17H16"/>',
+  // Five marks for the Transition group's rows, each
+  // drawn to say what its module is. Roadmap drew `globe`, tryouts `tag`,
+  // wear `clock`, hair removal `shuffle` and voice `curve`.
+  //
+  // A road from where you are to where you are going: two waypoints and the
+  // way between them. Point-symmetric about the centre, so centred by
+  // construction. Not `timeline`, which is a straight rail of two dates.
+  route: '<circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="6" r="2.5"/><path d="M9 18h7.5a3 3 0 0 0 0-6h-9a3 3 0 0 1 0-6H15"/>',
+  // Trying something on. A hanger rather than a garment, so it holds a
+  // name or pronouns as well as a style, and favours no one's wardrobe.
+  hanger: '<path d="M9.8 5.1a2.2 2.2 0 1 1 3.2 2L12 7.8v1.2"/><path d="M12 9 3.4 16.6a1.3 1.3 0 0 0 .8 2.4h15.6a1.3 1.3 0 0 0 .8-2.4z"/>',
+  // Something worn, for a length of time: a face on a strap. It names the
+  // timing without drawing a binder, which would leave out tucking.
+  watch: '<circle cx="12" cy="12" r="6"/><path d="M12 9.5V12l1.6 1.6"/><path d="M8.7 6.99 9.3 4.3A1.6 1.6 0 0 1 10.9 3h2.2a1.6 1.6 0 0 1 1.6 1.3l.6 2.69"/><path d="M8.7 17.01l.6 2.69A1.6 1.6 0 0 0 10.9 21h2.2a1.6 1.6 0 0 0 1.6-1.3l.6-2.69"/>',
+  // A razor at 45 degrees: a head with its blade, and a handle. Upright it
+  // read as a T, and without the blade line as a hammer.
+  razor: '<path d="M12.41 4.52 19.48 11.59a1.5 1.5 0 0 1 0 2.12l-2.12 2.12a1.5 1.5 0 0 1-2.12 0L8.17 8.76a1.5 1.5 0 0 1 0-2.12l2.12-2.12a1.5 1.5 0 0 1 2.12 0z"/><path d="M11.35 7.7 16.3 12.65"/><path d="M11.71 12.29 3.22 20.78"/>',
+  // A voice as sound: bars about a midline with no baseline, which keeps it
+  // apart from `stats`'s three bars standing on one.
+  waveform: '<path d="M4.5 10.5v3M8.25 7.5v9M12 4v16M15.75 6.5v11M19.5 9.5v5"/>',
+  // Five marks for the Health and Support rows, drawn
+  // the same way. Appointments drew `check`, surgery `flag`, letters `book`,
+  // Safe Space `heart` and resources `info`. Care took `pill`, which is
+  // already the medication mark on its own screen.
+  //
+  // A visit: a calendar page with a clock over its corner, a day and a time
+  // booked. Not plain `calendar`, which is the Journal tab's and the cycle's.
+  appointment: '<path d="M20 11V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5.5"/><path d="M7.5 3v4M15.5 3v4"/><path d="M3 10.5h7.5"/><circle cx="16.5" cy="16.5" r="4.5"/><path d="M16.5 14.5v2l1.4 1.4"/>',
+  // A medical chart on a clipboard, for the prep, the consults and the
+  // recovery. Nothing sharp and nothing red. A plaster was tried and drawn
+  // at row size it was `pill` again: a capsule on the diagonal with a line
+  // across it.
+  clipboard: '<path d="M8.5 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1.5"/><rect x="8.5" y="3" width="7" height="4" rx="1"/><path d="M12 11v6M9 14h6"/>',
+  // A letter kept shut: an envelope with a seal where its flap meets. The
+  // seal is what says it waits for a day rather than being mail.
+  envelope: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3.6 6.4 10.4 11.6M20.4 6.4 13.6 11.6"/><circle cx="12" cy="12.8" r="1.9"/>',
+  // A heart under a roof, somewhere to shelter. Walls and a door would make
+  // it `home`, the Today tab.
+  shelter: '<path d="M4 10.5 12 3.5l8 7"/><path d="M12 21 7.35 16.35A2.9 2.9 0 1 1 12 13a2.9 2.9 0 1 1 4.65 3.35z"/>',
+  // Help to hold on to, for the helplines and support groups. Four bands on
+  // a ring, symmetric, so centred by construction.
+  lifebuoy: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="m5.64 5.64 3.53 3.53M14.83 9.17l3.53-3.53M14.83 14.83l3.53 3.53M9.17 14.83l-3.53 3.53"/>',
+  // A flag planted on a summit, for the milestones: a day reached. It took
+  // `sparkle`, which said "celebrate" but not "milestone" and was already the
+  // mark on Today's offers and the roadmap. Not `flag`, which the surgery
+  // journey used before it took `clipboard`.
+  summit: '<path d="M3 20 10 9l3.2 5 2.3-3L21 20z"/><path d="M10 9V3.5h5l-1.4 1.75L15 7h-5"/>',
+  // Something that grew since you looked: a seedling with two leaves, for the
+  // changes somebody has noticed. It took `eye`, which says "watching" about
+  // a screen that is a record of what came of a regimen.
+  sprout: '<path d="M12 21v-9"/><path d="M12 14c-4.2 0-6.5-2.1-6.5-6 4.2 0 6.5 2.1 6.5 6z"/><path d="M12 12c0-4 2.4-6.5 6.5-6.5 0 4-2.4 6.5-6.5 6.5z"/>',
+  // Posed shots over time: a portrait frame with a figure and the outline of
+  // a second head behind it, the earlier shot. It took `camera`, which any
+  // photo screen could draw and which Photos' own tabs already do.
+  progressShot: '<rect x="3.5" y="3" width="17" height="18" rx="3"/><circle cx="10.5" cy="9.5" r="2.3"/><path d="M6.5 18a4 4 0 0 1 8 0"/><path d="M15.6 7.3a2.3 2.3 0 0 1 0 4.4"/>',
+  // Eight marks from the icon audit after the hub redo (
+  // 12), each for a place that borrowed a mark already standing for
+  // something else.
+  //
+  // Somebody you see: a head and shoulders, for providers. It took `note`,
+  // which is a page of writing.
+  person: '<circle cx="12" cy="8" r="4"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/>',
+  // Three sliders, each knob somewhere else along its track: the gender
+  // scales an entry is scored on. It took `heart`, which also stood for
+  // body regions, recovery, feelings and support.
+  scales: '<path d="M4 6h3.5M11.5 6H20M4 12h9.5M17.5 12H20M4 18h5M13 18h7"/><circle cx="9.5" cy="6" r="2"/><circle cx="15.5" cy="12" r="2"/><circle cx="11" cy="18" r="2"/>',
+  // A whole standing body, for the body regions behind the body map. Kept a
+  // full figure so it does not read as `person`'s bust.
+  figure: '<circle cx="12" cy="5" r="2.5"/><path d="M12 9.5c-2.9 0-4.6 1.7-4.6 4.2v3.1h2.1l.5 4.2h4l.5-4.2h2.1v-3.1c0-2.5-1.7-4.2-4.6-4.2z"/>',
+  // A face, the shape the mood scale is drawn in, for mood colours and the
+  // daily check-in that asks for a mood.
+  mood: '<circle cx="12" cy="12" r="9"/><path d="M9 9.5v1M15 9.5v1"/><path d="M8.5 14.5a4.2 4.2 0 0 0 7 0"/>',
+  // A screen with a dot on its corner: something waiting to be seen, for
+  // notices and notifications. Apart from the reminders' `bell` above it,
+  // and from `zap`, which is battery optimisation in Permissions.
+  badge: '<path d="M13 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><circle cx="18" cy="6" r="2.5"/>',
+  // A switch, turned on: the permissions list, which is things switched on
+  // or off. It took `key`, the recovery key a row up.
+  toggle: '<rect x="2" y="6.5" width="19" height="11" rx="5.5"/><circle cx="15.5" cy="12" r="2.5"/>',
+  // The accessibility figure, standing with its arms out. It took `eye`,
+  // which is show and hide everywhere else. No ring around it: Settings'
+  // first card puts it beside `mood` and `globe`, both rings already.
+  access: '<circle cx="12" cy="5" r="2"/><path d="M5 9.5 12 11l7-1.5M12 11v4M8.5 21.5l3.5-6.5 3.5 6.5"/>',
+  // An era of somebody's life: a sun coming up over a horizon, a new stretch
+  // starting. It took `columns`, which reads as side by side and stays the
+  // mark for comparing. Three short rays and a ground line under the
+  // horizon keep it apart from `sun` (a whole disc) and from the logo's
+  // corner sun.
+  era: '<path d="M3 14.5h18"/><path d="M7 14.5a5 5 0 0 1 10 0"/><path d="M12 4v2.5M5.6 7.1l1.7 1.7M18.4 7.1l-1.7 1.7"/><path d="M8 18h8"/>'
 };
 
-/* The two parameters are constrained rather than escaped, because both have
-   one shape and neither wants a wider one (phase 5 security ticket 03). This
-   string is rendered through {@html} in Icon.svelte - one of two {@html}
-   sinks in the app, the other being Mark.svelte's - so an argument that
-   could carry a quote could carry an attribute, and
-   an argument that could carry `<` could carry an element. `name` needs
-   nothing: it is a key into the fixed map above and an unknown one falls back
-   to `info`.
+/* The two parameters are constrained rather than escaped, because both have one shape and
+   neither wants a wider one. This string is rendered through {@html} in Icon.svelte - one
+   of two {@html} sinks in the app, the other being Mark.svelte's - so an argument that
+   could carry a quote could carry an attribute, and an argument that could carry `<` could
+   carry an element. `name` needs nothing: it is a key into the fixed map above and an
+   unknown one falls back to `info`.
 
-   Every call site passes literals today, which is why nothing here was
-   injectable, and that is exactly the property a test should hold rather than
-   a habit: src/lib/components/icons.test.ts. */
+   Every call site passes literals today, which is why nothing here was injectable, and that
+   is exactly the property a test should hold rather than a habit:
+   src/lib/components/icons.test.ts. */
 
 /** A positive, finite pixel size, or the default. */
 function pixelSize(size: number): number {

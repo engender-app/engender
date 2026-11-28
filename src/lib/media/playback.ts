@@ -1,4 +1,4 @@
-/* What both transports share (ticket 46): the clock, and the rule that one
+/* What both transports share: the clock, and the rule that one
    thing plays at a time. */
 
 /**

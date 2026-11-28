@@ -1,28 +1,14 @@
-/* The archive container (ADR-0007, ticket 13): a plaintext header followed
-   by the body encrypted as a sequence of AES-256-GCM chunks of roughly
-   1 MB, each with its own nonce.
+/* Archive container (ADR-0007). Read the plaintext version and KDF
+   parameters before key derivation. The body streams in roughly
+   1 MB AES-256-GCM chunks, each with its own nonce.
 
-   The header is plaintext because F14 wants unknown and corrupt files
-   rejected safely, and that is only possible if the format version and the
-   key-derivation parameters can be read before any key is derived. Reading
-   it costs nothing and reveals nothing an attacker could not work out from
-   the file's length.
-
-   Every chunk's AAD is the whole header followed by the chunk's index. The
-   header carries the total chunk count, so binding it means truncating,
-   reordering or re-labelling the file fails authentication instead of
-   decrypting into a silently short archive - the worst possible outcome
-   for a restore. It also covers the salt and the KDF parameters, which
-   costs one concatenation and makes the whole plaintext prefix
-   tamper-evident rather than just the parts that would have failed anyway.
-
-  Nothing here knows what the body means; codec.ts owns the versioned body
-  encode/decode contract and pack.ts routes archives through it. Everything
-  is an async iterable of byte pieces, so neither side ever holds more than
-  a chunk plus whatever the caller is holding. */
+   Authenticate the full header and chunk index as AAD. The authenticated
+   count, salt and KDF parameters bind the prefix and detect missing,
+   reordered or relabeled chunks. `codec.ts` versions the body and
+   `pack.ts` selects its codec. Streaming bounds buffering per chunk. */
 
 import { open, seal, SEAL_OVERHEAD } from '../../crypto/aesGcm';
-import { ARCHIVE_ARGON2_PARAMS, type Argon2Params } from '../../crypto/params';
+import { ARCHIVE_ARGON2_MAX_PARAMS, type Argon2Params } from '../../crypto/params';
 import { ARCHIVE_FORMAT_VERSION } from './codec';
 import { CorruptArchiveError, u32 } from './wire';
 
@@ -37,20 +23,30 @@ const PREFIX_LENGTH = MAGIC.length + 2 + 4;
     length is read off an untrusted file and allocated against. */
 const MAX_HEADER_JSON = 64 * 1024;
 
-/** Eight times today's archive profile (ADR-0013): room for a real re-tune,
-    well under a request that would itself crash the allocation it is meant
-    to guard against - F-07, these numbers come off a file from anywhere. */
-const MAX_KDF_MEMORY_SIZE = ARCHIVE_ARGON2_PARAMS.memorySize * 8;
-const MAX_KDF_ITERATIONS = ARCHIVE_ARGON2_PARAMS.iterations * 8;
-
 export { ARCHIVE_FORMAT_VERSION } from './codec';
+
+/** Import work budget for the numbers a header carries, which are read
+    before anything is authenticated. The app has only ever written
+    CHUNK_SIZE chunks; the floor leaves room for tests and future tuning
+    while keeping a hostile file from asking for one decryption per byte. */
+export const MIN_CHUNK_SIZE = 64 * 1024;
+
+/** Largest body a header may declare. Chunk count times chunk size must stay
+    within it, which at the floor is 131072 chunks and at 1 MiB is 8192. */
+export const MAX_ARCHIVE_BODY_BYTES = 8 * 1024 * 1024 * 1024;
 
 /** Roughly 1 MB (ADR-0007). Small enough that peak memory stays bounded on
     a phone, large enough that the 28 bytes of nonce and tag per chunk are
     noise. */
 export const CHUNK_SIZE = 1024 * 1024;
 
-export const ARCHIVE_FILE_EXTENSION = '.ttbackup';
+export const ARCHIVE_FILE_EXTENSION = '.gnd';
+
+/** What backups were called before they became `.gnd`, after the app's first name. Older
+    files and the backups of a phone on an older build still carry it, so whatever finds
+    backups by name takes both. Restore reads the contents, never the name. Android keeps
+    the same pair in FolderArchives.java. */
+export const LEGACY_ARCHIVE_FILE_EXTENSION = '.ttbackup';
 
 /** The file is not something this build can read at all: not an archive,
     or an archive from a later format version. Distinct from a decryption
@@ -60,7 +56,7 @@ export const ARCHIVE_FILE_EXTENSION = '.ttbackup';
 /** Which of the two refusals it was. The screen picks its wording from this
     rather than from the message: the message is a diagnostic and stays
     English for the console, while the sentence a person reads has to exist
-    in both catalogues (docs/ui-copy.md). */
+    in both catalogues. */
 type UnsupportedArchiveKind = 'not-an-archive' | 'newer-version';
 
 export class UnsupportedArchiveError extends Error {
@@ -73,7 +69,7 @@ export class UnsupportedArchiveError extends Error {
   }
 }
 
-/* ArchiveHeader stays exported only for its own test (AU-09 test-only review). */
+/* ArchiveHeader stays exported only for its own test. */
 export interface ArchiveHeader {
   formatVersion: number;
   kdf: Argon2Params;
@@ -233,10 +229,13 @@ export async function readArchiveHeader(
 }
 
 function parseHeaderJson(json: Uint8Array): Omit<ArchiveHeader, 'formatVersion'> {
-  let parsed: { kdf?: Argon2Params; salt?: string; chunkSize?: number; totalChunks?: number };
+  let parsed: { kdf?: Argon2Params; salt?: string; chunkSize?: number; totalChunks?: number } | null;
   try {
     parsed = JSON.parse(new TextDecoder().decode(json));
   } catch {
+    throw new CorruptArchiveError('the archive header is not readable');
+  }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
     throw new CorruptArchiveError('the archive header is not readable');
   }
 
@@ -247,9 +246,12 @@ function parseHeaderJson(json: Uint8Array): Omit<ArchiveHeader, 'formatVersion'>
   if (typeof salt !== 'string' || !counts.every((n) => Number.isInteger(n) && (n as number) > 0)) {
     throw new CorruptArchiveError('the archive header is not readable');
   }
+  if (chunkSize! < MIN_CHUNK_SIZE || totalChunks! * chunkSize! > MAX_ARCHIVE_BODY_BYTES) {
+    throw new CorruptArchiveError('the archive header is not readable');
+  }
   if (chunkSize! > CHUNK_SIZE * 16) throw new CorruptArchiveError('the archive header is not readable');
-  if (kdf!.memorySize > MAX_KDF_MEMORY_SIZE || kdf!.iterations > MAX_KDF_ITERATIONS
-    || kdf!.hashLength !== 32 || kdf!.parallelism > 4) {
+  if (kdf!.memorySize > ARCHIVE_ARGON2_MAX_PARAMS.memorySize || kdf!.iterations > ARCHIVE_ARGON2_MAX_PARAMS.iterations
+    || kdf!.hashLength !== ARCHIVE_ARGON2_MAX_PARAMS.hashLength || kdf!.parallelism > ARCHIVE_ARGON2_MAX_PARAMS.parallelism) {
     throw new CorruptArchiveError('the archive header is not readable');
   }
 

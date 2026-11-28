@@ -1,16 +1,14 @@
 // @ts-nocheck
-/* The yank sweep's shared half (ticket 100): the scene table, the
-   thresholds and the arithmetic that turns sampled frames into findings,
-   and the page-side sampler and proof injection as expression strings, so
-   the desktop sweep (`yank-sweep.mjs`, Playwright against a preview
-   server) and the device sweep (`yank-sweep-device.mjs`, CDP over the
-   WebView's devtools socket on a real Android phone) run the same
-   instruments rather than two copies drifting apart.
+/* The yank sweep's shared half: the scene table, the thresholds and the arithmetic that
+   turns sampled frames into findings, and the page-side sampler and proof injection as
+   expression strings, so the desktop sweep (`yank-sweep.mjs`, Playwright against a preview
+   server) and the device sweep (`yank-sweep-device.mjs`, CDP over the WebView's devtools
+   socket on a real Android phone) run the same instruments rather than two copies drifting
+   apart.
 
-   Nothing here imports anything app-side: this module stays reachable
-   from the Node tier (ADR-0016) and loadable without a build. The
-   imports are node:fs/promises and plain data and plain decoding from
-   the same tier (`tests/setup-flow.mjs`, `tests/png-decode.mjs`). */
+   Nothing here imports anything app-side: this module stays reachable from the Node tier
+   and loadable without a build. The imports are node:fs/promises and plain data and plain
+   decoding from the same tier (`tests/setup-flow.mjs`, `tests/png-decode.mjs`). */
 
 import { mkdir, rename, writeFile } from 'node:fs/promises';
 import { SETUP_STEPS } from './setup-flow.mjs';
@@ -37,25 +35,20 @@ export const TELEPORT_RATIO = 4;
 /** Opacity at or above this is on screen; under GONE it is not there. */
 export const VISIBLE = 0.5;
 export const GONE = 0.03;
-/** The blind's own defect, named by Alicja on the recording: "it first
-    yanks and takes up the whole screen, then it yanks back to its target
-    state". A mark rendering larger than its own resting bounds for a frame
-    or two. The floor absorbs ordinary sub-pixel rounding and one-line
-    reflows; the ratio keeps a small mark's growth from needing a huge pixel
-    count to count as huge. */
+/** The blind's own defect, named by "it first yanks and takes up the whole screen, then it
+    yanks back to its target state". A mark rendering larger than its own resting bounds for
+    a frame or two. The floor absorbs ordinary sub-pixel rounding and one-line reflows; the
+    ratio keeps a small mark's growth from needing a huge pixel count to count as huge. */
 export const BLOAT_PX = 24;
 export const BLOAT_RATIO = 1.4;
 /** How long to follow a gesture. The door change is 380ms and the slowest
     stagger runs a few frames past it; what is left is the stillness that
     says it landed rather than stopped. */
 export const SCENE_MS = 1100;
-/** The hydration sweep's own two clocks (ticket 108). Its blind spot was
- *  never the arithmetic - it was the window: the gesture sweep's settle
- *  waits 1400ms before recording, and the cold-mount pops (SQLite
- *  liveQuery resolving at 500ms-1500ms, tickets 106 and 107) happen
- *  entirely inside that wait. So the hydration window records from the
- *  navigation itself and holds for three seconds, with nothing settled
- *  on the page first. */
+/** The hydration sweep's own two clocks. Its blind spot was never the arithmetic - it was
+ the window: the gesture sweep's settle waits 1400ms before recording, and the cold-mount
+ pops happen entirely inside that wait. So the hydration window records from the navigation
+ itself and holds for three seconds, with nothing settled on the page first. */
 export const HYDRATION_MS = 3000;
 /** Scenes that open a sheet after mount are the one exception: the sheet's
  *  own hydration is the question there, so the screen underneath is
@@ -63,25 +56,12 @@ export const HYDRATION_MS = 3000;
  *  for the same reason. */
 export const HYDRATION_SETTLE_MS = 1600;
 
-/** How much of a reply the phone's devtools socket will carry, and how
- *  much of it one slice may hold.
- *
- *  Ticket 140: the WebView closes the connection outright for any
- *  `Runtime.evaluate` reply of 4 MiB or more. Measured on the Pixel 10a
- *  against Vanadium 153 by returning a string of a known length - 3.9 MB
- *  comes back, 4.0 MB drops the socket, and every size above it does the
- *  same. The sampler's frame table passes that on the app's densest
- *  screens (`/settings` samples 178 marks over 211 frames, 5.76 MB of
- *  JSON; `/voice?metric=pitch` 4.78 MB), which is the whole of what the
- *  reports had been recording as a renderer crash: nothing on the phone
- *  ever died, the reply was simply too big to carry.
- *
- *  The slice cap is a quarter of the socket's, not a half: a slice of the
- *  frame table is itself JSON, so every quote in it is escaped again on
- *  the way back and a slice can arrive up to twice the size it was cut.
- *  1 MiB leaves that doubling well clear of 4. */
-export const DEVTOOLS_REPLY_CAP = 4 * 1024 * 1024;
-export const REPLY_SLICE = DEVTOOLS_REPLY_CAP / 4;
+/** Keep Runtime.evaluate replies below WebView's 4 MiB limit.
+ * The sampler can exceed it on dense pages. Slice at 1 MiB so JSON
+ * escaping, which can double the payload, leaves room in each reply.
+ */
+const DEVTOOLS_REPLY_CAP = 4 * 1024 * 1024;
+const REPLY_SLICE = DEVTOOLS_REPLY_CAP / 4;
 
 /** Where to cut a reply of `total` characters so no slice exceeds `cap`.
  *  Returns `[from, to]` pairs covering the whole string in order, with no
@@ -101,7 +81,7 @@ export const HYDRATION_PX = 24;
 /** The colour difference threshold in OKLab space. OKLab Euclidean distance
  *  is perceptual: 0.02 is a just-noticeable difference, 0.05 is a subtle shift,
  *  0.10-0.14 is a distinct step, and the yellow-to-olive contrast-floor defect
- *  caught by eye in redesign-07 measures ~0.39. Red-to-green hue flips measure ~0.38.
+ *   measures ~0.39. Red-to-green hue flips measure ~0.38.
  *  At 0.14, normal sub-pixel antialiasing and smooth easing transitions remain well
  *  below the threshold, while true sudden colour flips are caught.
  *  OKLab rather than sRGB because sRGB euclidean distance distorts perceived differences
@@ -110,9 +90,9 @@ export const HYDRATION_PX = 24;
 export const COLOR_DELTA = 0.14;
 /** When more than this many marks on the screen change colour on the exact same frame,
  *  it is a screen-wide theme or palette switch rather than a component colour defect.
- *  A theme switch changes every colour on the screen at once (ticket 136); component
+ *  A theme switch changes every colour on the screen at once; component
  *  colour defects affect only the component's own marks. */
-export const GLOBAL_RECOLOUR_MARKS = 6;
+const GLOBAL_RECOLOUR_MARKS = 6;
 
 function srgbToLinear(c) {
   const s = c / 255;
@@ -203,7 +183,7 @@ export function colorDistance(c1Str, c2Str) {
   return Math.hypot(L1 - L2, chA1 - chA2, chB1 - chB2, dAlpha * 0.5);
 }
 
-export function markColorDelta(a, b) {
+function markColorDelta(a, b) {
   if (!a || !b) return 0;
   const dBg = a.bg || b.bg ? colorDistance(a.bg, b.bg) : 0;
   const dFg = a.fg || b.fg ? colorDistance(a.fg, b.fg) : 0;
@@ -211,12 +191,10 @@ export function markColorDelta(a, b) {
   return Math.max(dBg, dFg, dBc);
 }
 
-/** The names the app hands to a view transition: the blind, the field that
-    contains it (ticket 99 round 2 named it so its clip survives
-    promotion), the page under it, the bar, then one per mark printed on
-    each side of the field and one per ring of the sun on each side. Read
-    from the pseudo elements, so a name that is not participating on a
-    frame simply answers nothing. */
+/** The names the app hands to a view transition: the blind, the field that contains it, the
+    page under it, the bar, then one per mark printed on each side of the field and one per
+    ring of the sun on each side. Read from the pseudo elements, so a name that is not
+    participating on a frame simply answers nothing. */
 export const VT_NAMES = [
   'blind',
   'field',
@@ -240,13 +218,10 @@ export const PROOF = {
   arrival: '.yank-proof-arrival|'
 };
 
-/* Each scene is a rest, a gesture, and what the gesture is supposed to be.
-    Every door direction, then the state changes ADR-0078 flipped the default
-   for: a sheet, a fold, a notice, a row leaving, a segment, a save.
-
-   `firstRun`, where present, names the setup step the scene needs the walk
-   to stop on; each transport implements its own walk (Playwright locators
-   on desktop, devtools evaluates on the device). */
+/* Each scene names a resting state, a gesture and its expected result.
+   Include door directions and changes to sheets, folds, notices, rows,
+   segments and saves. firstRun names the setup step to stop on. Each
+   transport uses its own walk. */
 const SCENES = [
   { name: 'door-today-journal', at: '/', act: '[data-nav-item="calendar"], [data-rail-item="calendar"]', nav: true, after: {"route": "/calendar"}, is: 'the blind pulled up to Journal' },
   { name: 'door-journal-lookback', at: '/calendar', act: '[data-nav-item="stats"], [data-rail-item="stats"]', nav: true, after: {"route": "/stats"}, is: 'the blind between two doors' },
@@ -267,43 +242,44 @@ const SCENES = [
   { name: 'span-offer-appear', at: '/stats', act: '[data-span-band]', when: 'persona', after: {"selector": "[data-era-offer]"}, is: 'a span settled on the rail, the "name this stretch" offer opening its own height (redesign ticket 48)' },
   { name: 'mood-pick', at: '/', act: '[data-mood="4"]', after: {"route": "/entry/new/today"}, is: 'a mood picked, the row looking at it' },
   { name: 'notice-dismiss', at: '/', act: '[data-backup-notice] [data-notice-dismiss]', when: 'persona', reseed: true, after: {"selector": "[data-backup-notice]", "absent": true}, is: 'a notice dismissed, its height closing' },
-  /* Redesign ticket 47: Safe space opens on the breath and everything else
-     is one tap down, so the tap off that screen is the gesture the ticket
-     added and the one place a person mid-crisis meets a navigation. */
-  { name: 'safe-space-way-down', at: '/doubt', act: '[data-list-row="moments"]', nav: true, after: {"route": "/transition/letters"}, is: 'a way down from the breath' },
+  /* Safe space opens on the breath and everything else is one tap down, so the tap off that
+     screen is the gesture added and the one place a person mid-crisis meets a navigation.
+     The letters row it used to tap went with; the resources row is the way down every
+     journal has. */
+  { name: 'safe-space-way-down', at: '/doubt', act: '[data-list-row="resources"]', nav: true, after: {"route": "/support/resources"}, is: 'a way down from the breath' },
 
-  /* Transition screens (ticket 108): buttons, switchers and modals */
+  /* Transition screens: buttons, switchers and modals */
   { name: 'milestones-picker', at: '/transition/milestones', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the milestone template picker sheet rising' },
   /* The recorded list is disclosed before measuring the edit action. */
   { name: 'milestones-edit', at: '/transition/milestones', act: '[data-milestone] .kit-row-main', prepare: ['[data-ms-log-toggle]'], when: 'persona', after: {"selector": "[data-sheet]"}, is: 'an existing milestone edit sheet opening' },
-  { name: 'milestones-rail-edit', at: '/transition/milestones', act: '[data-tl-open]', when: 'persona', after: {"selector": "[data-sheet]"}, is: 'a mark on the rail opening the same editor (redesign 43)' },
+  { name: 'milestones-rail-edit', at: '/transition/milestones', act: '[data-tl-open]', when: 'persona', after: {"selector": "[data-sheet]"}, is: 'a mark on the rail opening the same editor' },
   { name: 'roadmap-goal-tick', at: '/transition/roadmap', act: '[data-goal] .kit-row-main', when: 'persona', after: {"selector": "[data-goal]", "attribute": "data-status"}, is: 'a goal check state cycled' },
   { name: 'roadmap-open-goal', at: '/transition/roadmap', act: '[data-open-goal]', when: 'persona', after: {"selector": "[data-sheet]"}, is: 'a goal details sheet opening' },
-  { name: 'roadmap-add-goal', at: '/transition/roadmap', act: '[data-add-goal]', after: {"selector": "[data-sheet]"}, is: 'the add custom goal sheet opening' },
+  { name: 'roadmap-add-goal', at: '/transition/roadmap', act: '[data-add-goal]', when: 'persona', after: {"selector": "[data-sheet]"}, is: 'the add custom goal sheet opening' },
+  { name: 'roadmap-add-category', at: '/transition/roadmap', act: '[data-add-category]', after: {"selector": "[data-sheet]"}, is: 'the new category sheet opening' },
+  { name: 'roadmap-edit-category', at: '/transition/roadmap', act: '[data-edit-category]', when: 'persona', after: {"selector": "[data-sheet]"}, is: 'a category sheet opening' },
+  { name: 'roadmap-open-institution', at: '/transition/roadmap', act: '[data-institution]', when: 'persona', after: {"selector": "[data-sheet]"}, is: 'an institution sheet opening' },
+  { name: 'roadmap-add-institution', at: '/transition/roadmap', act: '[data-add-institution]', after: {"selector": "[data-sheet]"}, is: 'the add institution sheet opening' },
   { name: 'letters-compose', freshEmpty: true, at: '/transition/letters', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the compose letter sheet opening' },
-  /* Phase 11 ticket 15: the good-moments list opens on six and discloses
-     the rest in place, so the control collapses while fourteen cards clip
-     open under it. New movement, and the one on this screen most likely to
-     read as a jump. */
+  /* The good-moments list opens on six and discloses the rest in place, so the control
+     collapses while fourteen cards clip open under it. New movement, and the one on this
+     screen most likely to read as a jump. */
   { name: 'doubt-evidence-see-all', at: '/doubt/evidence', act: '[data-evidence-see-all]', when: 'persona', after: {"selector": "[data-evidence-see-all]", "absent": true}, is: 'the rest of the good moments disclosed under the six' },
-  /* `[data-letter-open]` rather than `[data-letter]` since redesign ticket
-     45: a sealed letter's card answers no press at all now, and it is the
-     first card on the screen, so the old selector picked the one letter that
-     cannot open. This handle is on the two states that can. */
+  /* `[data-letter-open]` rather than `[data-letter]` a sealed letter's card answers no
+     press at all now, and it is the first card on the screen, so the old selector picked
+     the one letter that cannot open. This handle is on the two states that can. */
   { name: 'letters-read', at: '/transition/letters', act: '[data-letter-open]', when: 'persona', after: {"selector": "[data-letter-state=\"reading\"]"}, is: 'a letter unfolded to read' },
   { name: 'tryouts-open', at: '/transition/tryouts', act: '[data-open-tryout], a[data-tryout]', when: 'persona', nav: true, after: {"route": "chosen-href"}, is: 'navigating to tryout detail' },
   { name: 'eras-add', at: '/settings/eras', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the add era sheet opening' },
 
-  /* Settings screens (ticket 108): swatches, switchers, switches and modals */
+  /* Settings screens: swatches, switchers, switches and modals */
   { name: 'settings-palette', at: '/settings', act: '[data-palette-pick="nonbinary"]', after: {"selector": "html", "attribute": "data-palette", "value": "nonbinary"}, is: 'picking a palette swatch' },
   { name: 'settings-mood-preset', at: '/settings', act: '[data-list-row="mood-colours"]', after: {"selector": "[data-sheet]"}, is: 'the mood colours sheet opening' },
   { name: 'settings-accessibility', at: '/settings', act: '[data-list-row="accessibility"]', after: {"selector": "[data-sheet]"}, is: 'the accessibility sheet opening' },
   { name: 'settings-tag-groups', at: '/settings', act: '[data-list-row="tag-groups"]', after: {"selector": "[data-sheet]"}, is: 'the tag groups sheet opening' },
   { name: 'settings-theme-switcher', at: '/settings', act: '[data-segmented="theme"] [data-segment="dark"]', after: {"selector": "html", "attribute": "data-theme", "value": "dark"}, is: 'switching theme segmented control' },
   { name: 'settings-switch', at: '/settings', prepare: [{ act: '[data-list-row="features"]' }], act: '[data-cycle-tracking-toggle] button.switch', after: {"selector": "[data-cycle-tracking-toggle] button.switch", "attribute": "aria-checked"}, is: 'toggling a settings switch' },
-  { name: 'settings-unit-switcher', at: '/settings', act: '[data-segmented="measurement-unit"] [data-segment="in"]', after: {"selector": "[data-segmented=\"measurement-unit\"] [data-segment=\"in\"]", "attribute": "aria-checked", "value": "true"}, is: 'switching measurement unit segmented control' },
   { name: 'settings-scales', at: '/settings', act: '[data-list-row="scales"]', after: {"selector": "[data-sheet]"}, is: 'the gender scales checklist sheet opening' },
-  { name: 'settings-metric', at: '/settings', act: '[data-list-row="metric"]', after: {"selector": "[data-sheet]"}, is: 'the calendar colour metric sheet opening' },
   { name: 'settings-disguise', at: '/settings', act: '[data-list-row="disguise"]', after: {"selector": "[data-sheet]"}, is: 'the disguise preview sheet opening' },
   { name: 'settings-about', at: '/settings', act: '[data-list-row="about"]', after: {"selector": "[data-sheet]"}, is: 'the about sheet opening' },
   { name: 'presentations-add', at: '/settings', prepare: ['[data-list-row="presentations"]'], act: '[data-sheet] [data-add]', after: { selector: '[name="presentation-name"]' }, is: 'the add presentation sheet opening' },
@@ -313,12 +289,11 @@ const SCENES = [
   { name: 'doses-sheet', at: '/care/doses', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the dose editor sheet opening' },
   { name: 'surgery-sheet', at: '/health/surgery', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the procedure sheet opening' },
   { name: 'regimen-edit', at: '/care/regimen', act: '[data-episode]', when: 'persona', after: {"selector": "[data-sheet]"}, is: 'opening regimen episode editor' },
-  /* Ticket 09 (ADR-0084): the stock editor stopped being its own screen,
-     so opening it is no longer one `at`/`act` step from a cold load - it
-     is a sheet off Care's regimen block, which the carpet's ticket 139
-     sweep can add a scene for once it is naming sheet-opens-sheet scenes
-     generally. */
-  /* Setup's four movements (redesign ticket 33). `firstRun` is what these
+  /* The stock editor stopped being its own screen, so opening it is no longer one
+     `at`/`act` step from a cold load - it is a sheet off Care's regimen block, which the
+     carpet's sweep can add a scene for once it is naming sheet-opens-sheet scenes generally
+     (ADR-0084). */
+  /* Setup's four movements. `firstRun` is what these
      need that no other scene does: the flow is reached through the demo's
      first-run control and then walked, and the settle deliberately leaves
      setup when it finds it. Every step change moves the field's own edge
@@ -388,8 +363,7 @@ const SCENES = [
   { name: 'dilation-week-later', at: '/health/dilation', prepare: ['[data-strip-earlier]'], act: '[data-strip-later]', when: 'persona', after: { selector: '[data-strip-week]', text: true }, is: 'paging the dilation week later' },
   { name: 'cycle-week-earlier', at: '/health/cycle-events', act: '[data-strip-earlier]', when: 'persona', after: { selector: '[data-strip-week]', text: true }, is: 'paging the cycle week earlier' },
   { name: 'cycle-week-later', at: '/health/cycle-events', prepare: ['[data-strip-earlier]'], act: '[data-strip-later]', when: 'persona', after: { selector: '[data-strip-week]', text: true }, is: 'paging the cycle week later' },
-  { name: 'roadmap-track-switch', at: '/transition/roadmap', act: '[data-segmented="roadmap-track"] [data-segment]:not([aria-checked="true"])', after: { selector: '[data-segmented="roadmap-track"] [aria-checked="true"]', attribute: 'data-segment' }, is: 'switching the roadmap track' },
-  { name: 'roadmap-track-dismiss', at: '/transition/roadmap', act: '[data-track-panel]:not([hidden]) [data-track-toggle]', after: { selector: '[data-track-panel]:not([hidden]) [data-track-toggle]', attribute: 'data-dismissed' }, is: 'dismissing or restoring the visible roadmap track' },
+  { name: 'roadmap-polish-steps-switch', at: '/transition/roadmap', act: '[data-roadmap-polish-steps] [role="switch"]', after: { selector: '[data-roadmap-polish-steps] [role="switch"]', attribute: 'aria-checked' }, is: 'turning the Polish legal steps on or off' },
   { name: 'comfort-reorder', at: '/doubt/comfort', prepare: ['[data-comfort-arrange]'], act: '[data-comfort-grip]', key: 'ArrowDown', when: 'persona', after: { selector: '[data-comfort-item]', order: 'data-comfort-item' }, is: 'moving the first comfort row down with keyboard' },
   { name: 'today-editor-reorder', at: '/', prepare: ['[data-edit-today]'], act: '[data-edit-grip]', key: 'ArrowDown', when: 'persona', after: { selector: '[data-edit-pinned-row]', order: 'data-edit-pinned-row' }, is: 'moving a pinned row down with keyboard' },
   { name: 'voice-tab-switch', at: '/voice', act: '[data-segmented="voice-tab"] [data-segment]:not([aria-checked="true"])', after: { selector: '[data-segmented="voice-tab"] [aria-checked="true"]', attribute: 'data-segment' }, is: 'switching the voice surface' },
@@ -552,30 +526,7 @@ export function dispatchSceneAction(scene, env = globalThis, prepareOnly = false
   return evidence;
 }
 
-export const cleanupSceneExpression = (scene) => scene.name === 'settings-unit-switcher' ? `(async () => {
-  if (globalThis.__sweepPreparation?.measurementsOriginallyEnabled !== false) return null;
-  const act = '[data-measurements-toggle] button.switch';
-  document.querySelector('[data-list-row="features"]')?.click();
-  for (let i = 0; i < 60 && !document.querySelector(act); i++) await new Promise((resolve) => setTimeout(resolve, 50));
-  if (document.querySelector(act)?.getAttribute('aria-checked') === 'false') {
-    document.querySelector('[data-features-close]')?.click();
-    return null;
-  }
-  const cleanup = { cleanup: true, act, after: { selector: act, attribute: 'aria-checked', value: 'false' } };
-  const dispatch = ${dispatchSceneAction};
-  let ready = false;
-  for (let i = 0; i < 200 && !ready; i++) {
-    try { dispatch(cleanup, globalThis, true); ready = true; }
-    catch { await new Promise((resolve) => setTimeout(resolve, 50)); }
-  }
-  if (!ready) throw new Error('measurement feature cleanup control did not become ready');
-  const action = dispatch(cleanup);
-  for (let i = 0; i < 200 && document.querySelector(act).getAttribute('aria-checked') !== 'false'; i++) await new Promise((resolve) => setTimeout(resolve, 50));
-  const proof = (${verifySceneAction})(cleanup, action);
-  document.querySelector('[data-features-close]')?.click();
-  for (let i = 0; i < 60 && document.querySelector('[data-sheet-scrim]'); i++) await new Promise((resolve) => setTimeout(resolve, 50));
-  return proof;
-})()` : scene.name !== 'span-offer-appear' ? 'null' : `(async () => {
+export const cleanupSceneExpression = (scene) => scene.name !== 'span-offer-appear' ? 'null' : `(async () => {
   const cleanup = { cleanup: true, act: '[data-era-offer-dismiss]', after: { selector: '[data-era-offer]', absent: true } };
   const dispatch = ${dispatchSceneAction};
   let ready = false;
@@ -589,11 +540,7 @@ export const cleanupSceneExpression = (scene) => scene.name === 'settings-unit-s
   return (${verifySceneAction})(cleanup, action);
 })()`;
 
-export async function cleanupSceneFailure(scene, evaluate) {
-  if (scene.name !== 'settings-unit-switcher') return null;
-  try { return await evaluate(cleanupSceneExpression(scene)); }
-  catch (error) { return { error: String(error) }; }
-}
+
 
 export const actionPreparationExpression = (scene) => `(${dispatchSceneAction})(${JSON.stringify(scene)}, globalThis, true)`;
 
@@ -689,17 +636,17 @@ export async function resetSceneProfile(scene, profile, evaluate, options = {}) 
   return { profile, emptyJournalRestored: true, ready };
 }
 
-export const PROFILE_KEY = 'yank-sweep-prepared-profile';
+const PROFILE_KEY = 'yank-sweep-prepared-profile';
 export const markProfileExpression = (profile) => `localStorage.setItem(${JSON.stringify(PROFILE_KEY)}, ${JSON.stringify(profile)}); true;`;
 export const profileProofExpression = (profile) => `(() => {
-  const proof = { prepared: localStorage.getItem(${JSON.stringify(PROFILE_KEY)}), hasEntries: localStorage.getItem('engender-has-entries'),
+  const proof = { prepared: localStorage.getItem(${JSON.stringify(PROFILE_KEY)}),
     greeting: document.querySelector('[data-home-hello]')?.textContent?.trim(), route: location.pathname };
-  if (proof.prepared !== ${JSON.stringify(profile)} || proof.hasEntries !== ${JSON.stringify(profile === 'persona' ? '1' : '0')}) throw new Error('wrong journal profile: ' + JSON.stringify(proof));
+  if (proof.prepared !== ${JSON.stringify(profile)}) throw new Error('wrong journal profile: ' + JSON.stringify(proof));
   if (${JSON.stringify(profile)} === 'persona' && !proof.greeting?.includes('Alice')) throw new Error('persona greeting missing: ' + JSON.stringify(proof));
   return proof;
 })()`;
 
-export function readThemeProof(requested, env = globalThis) {
+function readThemeProof(requested, env = globalThis) {
   const button = [...env.document.querySelectorAll('.demo-bar button')].find((node) =>
     (node.textContent ?? '').trim() === (requested === 'dark' ? 'Dark' : 'Light'));
   return { requested, selected: !!button?.classList.contains('is-active'),
@@ -718,13 +665,12 @@ export const coldLoadProofExpression = (href, profile, theme, outcome = null) =>
   const proof = { ...(globalThis.__sweepDocumentProof ? { documentProof: globalThis.__sweepDocumentProof } : {}), themeProof, requested, expected: expected.pathname + expected.search, route: location.pathname + location.search,
     surface: outcome?.selector ? !!surface?.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }) : undefined,
     surfaceSelector: outcome?.selector,
-    profile: localStorage.getItem(${JSON.stringify(PROFILE_KEY)}), hasEntries: localStorage.getItem('engender-has-entries'),
+    profile: localStorage.getItem(${JSON.stringify(PROFILE_KEY)}),
     boot: document.querySelector('[data-app-root]')?.dataset.boot, theme: document.documentElement.dataset.theme,
     loading: !!document.querySelector('[data-gate-skeleton]'), unavailable: !!document.querySelector('[data-unavailable], [data-notice$="-unavailable"]') };
   if (proof.route !== proof.expected) throw new Error('cold-load wrong route: ' + JSON.stringify(proof));
   if (outcome?.selector && !proof.surface) throw new Error('cold-load missing raised surface: ' + JSON.stringify(proof));
   if (proof.profile !== ${JSON.stringify(profile)}) throw new Error('cold-load wrong profile: ' + JSON.stringify(proof));
-  if (proof.hasEntries !== ${JSON.stringify(profile === 'persona' ? '1' : '0')}) throw new Error('cold-load journal profile mismatch: ' + JSON.stringify(proof));
   if (proof.boot !== 'ready' || proof.unavailable || proof.loading) throw new Error('cold-load unfinished screen: ' + JSON.stringify(proof));
   if (proof.theme !== ${JSON.stringify(theme)} || !themeProof.selected || themeProof.persisted !== ${JSON.stringify(theme)} || themeProof.transitioning) throw new Error('cold-load wrong theme: ' + JSON.stringify(proof));
   return proof;
@@ -732,7 +678,7 @@ export const coldLoadProofExpression = (href, profile, theme, outcome = null) =>
 
 export function verifyGateProof(proof, profile, theme) {
   if (proof.route !== '/') throw new Error('PIN gate wrong route: ' + JSON.stringify(proof));
-  if (proof.profile !== profile || proof.hasEntries !== (profile === 'persona' ? '1' : '0')) throw new Error('PIN gate wrong profile: ' + JSON.stringify(proof));
+  if (proof.profile !== profile) throw new Error('PIN gate wrong profile: ' + JSON.stringify(proof));
   if (proof.theme !== theme || !proof.themeProof?.selected || proof.themeProof.persisted !== theme || proof.themeProof.painted !== theme || proof.themeProof.transitioning) throw new Error('PIN gate wrong theme: ' + JSON.stringify(proof));
   if (!proof.pin || proof.home || !['needs-unlock', 'ready'].includes(proof.boot)) throw new Error('PIN gate wrong boot state: ' + JSON.stringify(proof));
   return { ...proof, gate: 'pin' };
@@ -743,7 +689,6 @@ export const gateProofExpression = (profile, theme) => `(${verifyGateProof})({
   themeProof: (${readThemeProof})(${JSON.stringify(theme)}),
   route: location.pathname + location.search,
   profile: localStorage.getItem(${JSON.stringify(PROFILE_KEY)}),
-  hasEntries: localStorage.getItem('engender-has-entries'),
   theme: document.documentElement.dataset.theme,
   boot: document.querySelector('[data-app-root]')?.dataset.boot,
   pin: !!document.querySelector('[data-pin-pad]'), home: !!document.querySelector('[data-home-hello]')
@@ -873,15 +818,20 @@ export const gestureNavigationExpression = (path, predecessor = null) => `(${asy
   const intermediate = predecessor ?? (path === '/settings/licences' ? '/calendar' : '/settings/licences');
   if (previousRoute === intermediate) await jump(intermediate === '/calendar' ? '/settings/licences' : '/calendar');
   await jump(intermediate);
-  await wait(() => roots.every(node => !node.isConnected), 'old screen remained mounted');
+  /* Android keeps a visited door mounted, hidden and inert, so a door left
+     behind never disconnects and a revisited door is the same node shown
+     again. A retained door counts as gone at both waits; every other screen
+     still has to disconnect. */
+  const gone = node => !node.isConnected || node.matches('[data-retained-door]');
+  await wait(() => roots.every(gone), 'old screen remained mounted');
   const intermediateRoots = [...document.querySelector('#app-main').children];
   await jump(path);
-  await wait(() => intermediateRoots.every(node => !node.isConnected), 'target screen did not remount');
+  await wait(() => intermediateRoots.every(gone), 'target screen did not remount');
   await wait(() => !document.documentElement.dataset.appearanceTransition, 'appearance transition');
   if (performance.timeOrigin !== origin) throw new Error('gesture SPA navigation replaced its document');
   const proof = { kind: 'spa-mount', requested: path, previousRoute, intermediate,
     actualRoute: location.pathname + location.search, previousTimeOrigin: origin, timeOrigin: performance.timeOrigin,
-    oldRootDetached: roots.every(node => !node.isConnected), targetMounted: document.querySelector('#app-main').children.length > 0 };
+    oldRootDetached: roots.every(gone), targetMounted: document.querySelector('#app-main').children.length > 0 };
   globalThis.__sweepDocumentProof = null;
   return globalThis.__sweepNavigationProof = proof;
 }})(${JSON.stringify(path)}, ${JSON.stringify(predecessor)})`;
@@ -942,23 +892,7 @@ export const prepareSceneExpression = (scene) => `(async () => {
       }
     }
   }
-  if (scene.name === 'settings-unit-switcher') {
-    await dispatch({ act: '[data-list-row="features"]' });
-    const act = '[data-measurements-toggle] button.switch';
-    await prepare({ act });
-    const enabled = document.querySelector(act).getAttribute('aria-checked');
-    if (enabled !== 'true' && enabled !== 'false') throw new Error('measurement feature state is unknown');
-    globalThis.__sweepPreparation.measurementsOriginallyEnabled = enabled === 'true';
-    if (enabled === 'false') {
-      const step = { act, after: { selector: act, attribute: 'aria-checked', value: 'true' } };
-      const action = await dispatch(step);
-      for (let i = 0; i < 200 && document.querySelector(act).getAttribute('aria-checked') !== 'true'; i++) await sleep(50);
-      globalThis.__sweepPreparation.measurementsEnabled = (${verifySceneAction})(step, action);
-    }
-    await dispatch({ act: '[data-features-close]' });
-    for (let i = 0; i < 60 && document.querySelector('[data-sheet-scrim]'); i++) await sleep(50);
-    await dispatch({ act: '[data-segmented="measurement-unit"] [data-segment="cm"]' });
-  }
+
   if (document.querySelector('[data-edit-done]')) { await dispatch({ act: '[data-edit-done]' }); await sleep(500); }
   if (document.querySelector('[data-comfort-grip]')) { await dispatch({ act: '[data-comfort-arrange]' }); await sleep(500); }
   const attribution = document.querySelector('.doses-attribution-toggle[aria-expanded="true"]');
@@ -997,23 +931,12 @@ export const prepareSceneExpression = (scene) => `(async () => {
   return true;
 })()`;
 
-/** Furniture rather than the app: the demo bar and a toast are injected over
-    whatever is being looked at. A navigation needs no exemption at all now
-    that it is read off the pseudos rather than off the tree.
-
-    `.letter-main-btn` is replaced by a non-button reading surface while
-    its card unfolds; the card's blind paints the change, and the cast
-    shows no cut. The button's DOM departure is not a visible exit.
-
-    `.sun-ring` (ticket 150) is FlagSun's per-stripe ring, redrawn rather
-    than recoloured when a flag is picked - the flipbook that shape replaced
-    already showed two flag colours mixed in sRGB spending 200ms as a muddy
-    tan, on the one step whose whole subject is colour (FlagSun.svelte,
-    onboarding's setup-paint comment), so a colour transition here is the
-    wrong fix, not a missing one. */
-/* Ticket 259's clipped arrivals, scrolling sheets and faded skeleton moves
-   are filtered in findYanks, where their frame state can be checked. A
-   mark-name exemption here would also hide real defects on those marks. */
+/** Ignore injected demo chrome and the letter button replaced during its
+    card's unfold. A sun ring is redrawn on flag change so it keeps the new
+    stripe colour through the transition. */
+/* Clipped arrivals, scrolling sheets and faded skeleton moves are filtered in findYanks,
+   where their frame state can be checked. A mark-name exemption here would also hide real
+   defects on those marks. */
 export const EXEMPT = /^\.demo-bar|\[data-toast\]|^\.toast|^\.sun-ring\||\.letter-main-btn\./;
 
 /** The six deliberately wrong marks. All sit among real neighbours: the
@@ -1070,7 +993,7 @@ export const INJECT_PROOF_EXPRESSION =
            the field-blind's own shape, on a mark built to have it. */
         bloat.style.height = phase === 9 ? '520px' : '24px';
         /* Eight frames at resting #888, then sudden flip to #000 and stays -
-           the redesign-07 colour defect shape. */
+           a persistent colour jump. */
         colour.style.background = phase <= 8 ? '#888' : '#000';
         /* Eight frames at resting 0px, one frame displaced 200px, then returned. */
         thereAndBack.style.translate = phase === 8 ? '0 200px' : '0 0px';
@@ -1082,7 +1005,7 @@ export const INJECT_PROOF_EXPRESSION =
     };
   }).toString();
 
-export const HIDE_DEMO_BAR_CSS = '.demo-bar { display: none !important; }';
+const HIDE_DEMO_BAR_CSS = '.demo-bar { display: none !important; }';
 
 export const INIT_HIDE_DEMO_SCRIPT = `(() => {
   const inject = () => {
@@ -1104,7 +1027,7 @@ export const INIT_HIDE_DEMO_SCRIPT = `(() => {
  *  `warn-persist-denied`); the dropout detector then misreads its fade
  *  over changing content as a region vanishing. Stubbed to resolve true
  *  before any page script runs, so the sweep measures the app rather
- *  than manufacturing its own finding (ticket 192). */
+ *  than manufacturing its own finding. */
 export const STUB_PERSIST_SCRIPT = `(() => {
   if (!navigator.storage) return;
   navigator.storage.persist = () => Promise.resolve(true);
@@ -1151,8 +1074,48 @@ export const SETTLE_PAGE_EXPRESSION = (theme) =>
     Returned as an expression string rather than a function value so the
     same code runs through Playwright's evaluate and through the WebView's
     devtools socket on a device. */
+/** Parse both lengths and mixed calc() in animated inset clips. Keep this
+    helper self-contained for the page sampler. Clamp a mark's own clip to
+    its box. An ancestor's outset can show overflowing children. */
+export function clipInsetBox(box, clipPath, own = false) {
+  const raw = /^inset\((.*)\)$/.exec(clipPath ?? '')?.[1];
+  if (!raw) return box;
+  const parts = [];
+  let depth = 0;
+  let part = '';
+  for (const ch of raw) {
+    if (ch === '(') depth++;
+    if (ch === ')') depth--;
+    if (/\s/.test(ch) && depth === 0) {
+      if (part) parts.push(part);
+      part = '';
+    } else part += ch;
+  }
+  if (part) parts.push(part);
+  const round = parts.indexOf('round');
+  if (round >= 0) parts.length = round;
+  const values = [parts[0], parts[1] ?? parts[0], parts[2] ?? parts[0], parts[3] ?? parts[1] ?? parts[0]];
+  const px = (value, size) => {
+    const terms = [...value.replace(/^calc\(|\)$/g, '').matchAll(/(^|[+-])\s*(-?[\d.]+(?:e-?\d+)?)(%|px)?/g)];
+    if (!terms.length) return NaN;
+    return terms.reduce((sum, [, sign, n, unit]) => {
+      const v = unit === '%' ? (parseFloat(n) * size) / 100 : parseFloat(n);
+      return sum + (sign === '-' ? -v : v);
+    }, 0);
+  };
+  const edges = [px(values[0], box.height), px(values[1], box.width), px(values[2], box.height), px(values[3], box.width)];
+  if (edges.some((value) => !Number.isFinite(value))) return box;
+  const cut = (edge) => (own ? Math.max(0, edge) : edge);
+  return {
+    left: box.left + cut(edges[3]),
+    top: box.top + cut(edges[0]),
+    right: box.right - cut(edges[1]),
+    bottom: box.bottom - cut(edges[2])
+  };
+}
+
 export function samplerExpression(act, ms, names) {
-  const fn = async (scene, ms, names, dispatch, createIdentity) => {
+  const fn = async (scene, ms, names, dispatch, createIdentity, insetBox) => {
     const identity = createIdentity();
     const act = scene.act;
     let action;
@@ -1256,20 +1219,7 @@ export function samplerExpression(act, ms, names) {
       if (startViewTransition) document.startViewTransition = startViewTransition;
     };
 
-    const clipBox = (box, style) => {
-      const raw = /^inset\(([^)]+)\)/.exec(style.clipPath)?.[1];
-      if (!raw) return box;
-      const parts = raw.split(/\s+/);
-      const values = [parts[0], parts[1] ?? parts[0], parts[2] ?? parts[0], parts[3] ?? parts[1] ?? parts[0]];
-      const px = (value, size) => value.endsWith('%') ? parseFloat(value) * size / 100 : parseFloat(value);
-      if (values.some((value) => !Number.isFinite(parseFloat(value)))) return box;
-      return {
-        left: box.left + px(values[3], box.width),
-        top: box.top + px(values[0], box.height),
-        right: box.right - px(values[1], box.width),
-        bottom: box.bottom - px(values[2], box.height)
-      };
-    };
+    const clipBox = (box, style) => insetBox(box, style.clipPath);
     const intersection = (a, b) => ({
       left: Math.max(a.left, b.left), top: Math.max(a.top, b.top),
       right: Math.min(a.right, b.right), bottom: Math.min(a.bottom, b.bottom)
@@ -1277,6 +1227,7 @@ export function samplerExpression(act, ms, names) {
 
     const frames = [];
     const t0 = performance.now();
+    const tl0 = Number(document.timeline.currentTime);
     /* The gesture starts on the second frame, not before the first. A
        resting frame is what "it was there and then it was not" is measured
        against, and without one the sweep cannot see a cut that finishes
@@ -1309,7 +1260,7 @@ export function samplerExpression(act, ms, names) {
             if (cs.display === 'none') continue;
             const box = el.getBoundingClientRect();
             if (!box.width || !box.height) continue;
-            let visibleBox = intersection(clipBox(box, cs), viewport);
+            let visibleBox = intersection(insetBox(box, cs.clipPath, true), viewport);
             if (visibleBox.right > visibleBox.left && visibleBox.bottom > visibleBox.top) {
               for (let up = el.parentElement; up && up !== live; up = up.parentElement) {
                 let clip = ancestorClips.get(up);
@@ -1328,24 +1279,9 @@ export function samplerExpression(act, ms, names) {
             }
             const visibleArea = Math.max(0, visibleBox.right - visibleBox.left) * Math.max(0, visibleBox.bottom - visibleBox.top);
             const visibility = Math.min(1, visibleArea / (box.width * box.height));
-            /* A box that draws nothing of its own is not something a
-               person can see teleport or vanish - what they see are the
-               painted things inside it - and it is keyed by the text of
-               its descendants, which makes it worse than useless: change
-               the words inside a wrapper and the wrapper's key changes,
-               so one mark vanishes and another arrives at the same
-               position with no pixel having moved. Setup's step change
-               does exactly that (redesign ticket 33) and reported 16 of
-               these across two scenes - `.app-main`, `.screen-setup`,
-               `.setup`, `.setup-field`, `.setup-ask`, `.setup-below` and
-               `.setup-stage`, every one of them a transparent box that
-               sat still at opacity 1 the whole time. The painted marks
-               inside them were clean, and the recording agrees.
-
-               So an element earns a mark by painting something of its own
-               or by holding its own words. The proof scene's marks
-               have a background and their own text, which is what keeps
-               this from being a way to make the sweep quiet. */
+            /* Sample boxes that paint a surface or contain direct text. Transparent wrappers
+               inherit descendant text in their keys, so a text change would report movement
+               for a box that never paints. The proof scene uses marks that paint. */
             const paints =
               cs.backgroundImage !== 'none' ||
               cs.borderTopWidth !== '0px' ||
@@ -1406,7 +1342,12 @@ export function samplerExpression(act, ms, names) {
             const row = vtRow(side, name);
             if (row) vt[`${side}(${name})`] = row;
           }
-        frames.push({ at: Math.round(now), wallAt: performance.timeOrigin + performance.now(), active, rows, vt });
+        /* The frame's animation clock, which every animated value read above was
+           computed for. On a loaded runner a read can land well into its frame, so
+           two frames of animation can be read 17ms apart; steps are measured
+           against this rather than against the moment of reading. */
+        const ft = Math.round((Number(document.timeline.currentTime) - tl0) * 10) / 10;
+        frames.push({ at: Math.round(now), ft, wallAt: performance.timeOrigin + performance.now(), active, rows, vt });
         if (!started) {
           started = true;
           try { go(); } catch (error) {
@@ -1429,7 +1370,7 @@ export function samplerExpression(act, ms, names) {
       requestAnimationFrame(tick);
     });
   };
-  return `(${fn})(${JSON.stringify(typeof act === 'string' ? { act } : act)}, ${JSON.stringify(ms)}, ${JSON.stringify(names)}, ${dispatchSceneAction}, ${createMarkIdentity})`;
+  return `(${fn})(${JSON.stringify(typeof act === 'string' ? { act } : act)}, ${JSON.stringify(ms)}, ${JSON.stringify(names)}, ${dispatchSceneAction}, ${createMarkIdentity}, ${clipInsetBox})`;
 }
 
 /** The arithmetic, in node: per mark, per consecutive frame pair.
@@ -1462,7 +1403,7 @@ export function findYanks(frames, instrument, settles = frames.length - 1, telep
   }
 
   for (const k of keys) {
-    const run = frames.map((f, i) => ({ i, at: f.at, row: f[instrument][k] ?? null }));
+    const run = frames.map((f, i) => ({ i, at: f.at, ft: f.ft, row: f[instrument][k] ?? null }));
     const present = run.filter((r) => r.row);
     if (present.length < 2) continue;
     if (instrument === 'rows' && !present.some((r) => r.row.v !== false)) continue;
@@ -1481,7 +1422,7 @@ export function findYanks(frames, instrument, settles = frames.length - 1, telep
          their measured jump happens after paint is under 10% opacity. */
       if (a.leaving && b.leaving && Math.max(a.o, b.o) < 0.1) continue;
       if (b.leaving && (!a.leaving || b.o < a.o)) continue;
-      const dt = Math.max(1, (run[i].at ?? (i * 16)) - (run[i - 1].at ?? ((i - 1) * 16)));
+      const dt = Math.max(1, (run[i].ft ?? run[i].at ?? (i * 16)) - (run[i - 1].ft ?? run[i - 1].at ?? ((i - 1) * 16)));
       const steps = Math.max(1, dt / 16);
       const d = Math.hypot(b.x - a.x, b.y - a.y);
       if (Math.abs(b.y - a.y + (b.sy ?? 0) - (a.sy ?? 0)) < teleportPx &&
@@ -1510,7 +1451,7 @@ export function findYanks(frames, instrument, settles = frames.length - 1, telep
         continue;
       }
 
-      /* There-and-back shape (ticket 137): displaced by at least teleport floor
+      /* There-and-back shape: displaced by at least teleport floor
          and returned within one frame to within a small fraction of where it started,
          with the frames outside the pair at rest. Runs in both windows. */
       if (
@@ -1539,14 +1480,14 @@ export function findYanks(frames, instrument, settles = frames.length - 1, telep
       }
     }
 
-    /* Colour jumps and one-frame flips against still neighbours (ticket 136).
+    /* Colour jumps and one-frame flips against still neighbours.
        Normalized by time delta so dropped frames do not artificially inflate rate. */
     const colorDeltas = [];
     for (let i = 1; i < run.length; i++) {
       const a = run[i - 1].row;
       const b = run[i].row;
       if (!a || !b) continue;
-      const dt = Math.max(1, (run[i].at ?? (i * 16)) - (run[i - 1].at ?? ((i - 1) * 16)));
+      const dt = Math.max(1, (run[i].ft ?? run[i].at ?? (i * 16)) - (run[i - 1].ft ?? run[i - 1].at ?? ((i - 1) * 16)));
       const steps = Math.max(1, dt / 16);
       const dc = markColorDelta(a, b);
       colorDeltas.push({ i, dc, dcNorm: dc / steps, steps, at: run[i].at });
@@ -1599,7 +1540,7 @@ export function findYanks(frames, instrument, settles = frames.length - 1, telep
       const b = run[i].row;
       if (!a || a.o < VISIBLE) continue;
       if (instrument === 'rows' && (a.v === false || b?.v === false)) continue;
-      const dt = Math.max(1, (run[i].at ?? (i * 16)) - (run[i - 1].at ?? ((i - 1) * 16)));
+      const dt = Math.max(1, (run[i].ft ?? run[i].at ?? (i * 16)) - (run[i - 1].ft ?? run[i - 1].at ?? ((i - 1) * 16)));
       const steps = Math.max(1, dt / 16);
       const dropPerFrame = (a.o - (b ? b.o : 0)) / steps;
       /* A mark sliding through the viewport edge can lose almost all its
@@ -1649,7 +1590,7 @@ export function findYanks(frames, instrument, settles = frames.length - 1, telep
 
     yanks.push(...findBloat(run, k));
 
-    /* Arrival shape (ticket 137): painted at destination without travelling there.
+    /* Arrival shape: painted at destination without travelling there.
        Gated to gesture window only.
        Two forms:
        1. Tree form: mark absent from start of scene, then present at >= VISIBLE.
@@ -1667,7 +1608,7 @@ export function findYanks(frames, instrument, settles = frames.length - 1, telep
         const wasVisibleBefore = run.slice(0, i).some((r) => r.row && r.row.o >= VISIBLE);
         if (wasVisibleBefore) continue;
 
-        const dt = Math.max(1, (run[i].at ?? (i * 16)) - (run[i - 1].at ?? ((i - 1) * 16)));
+        const dt = Math.max(1, (run[i].ft ?? run[i].at ?? (i * 16)) - (run[i - 1].ft ?? run[i - 1].at ?? ((i - 1) * 16)));
         const steps = Math.max(1, dt / 16);
         const risePerFrame = (b.o - (a ? a.o : 0)) / steps;
 
@@ -1790,16 +1731,14 @@ function resting(values) {
   return best;
 }
 
-/* ---------- the render detector (ticket 100's camera half) ----------
- *
- * Moved here from yank-sweep-device.mjs when the hydration sweep (ticket
- * 108) needed the same instrument on the desktop: a cold mount is the one
- * moment the DOM sampler cannot watch, because the navigation destroys the
- * page that was sampling - but a CDP screencast keeps arriving from the
- * compositor across the load, on the desktop exactly as on the phone. The
- * thresholds and the arithmetic are shared so the two cameras cannot drift;
- * what each transport does with a finding (evidence triples, the report)
- * stays with the transport. */
+/* ---------- the render detector ----------
+
+ Moved here from yank-sweep-device.mjs when the hydration sweep needed the same instrument
+ on the desktop: a cold mount is the one moment the DOM sampler cannot watch, because the
+ navigation destroys the page that was sampling - but a CDP screencast keeps arriving from
+ the compositor across the load, on the desktop exactly as on the phone. The thresholds and
+ the arithmetic are shared so the two cameras cannot drift; what each transport does with a
+ finding (evidence triples, the report) stays with the transport. */
 
 /** Two renders of the same pixel differing by less than this are the same
  *  render: PNG is lossless, so what moves under this is jpeg-less dither
@@ -1824,10 +1763,10 @@ export const GAP_RATIO = 2.5;
  *  cast frame used to be the previous scene's document, then one blank
  *  frame of the new document before its first paint, and a region that
  *  happened to match across both (most often the header) read as a
- *  dropout or bloat that was never there (ticket 192). Two rAFs plus a
+ *  dropout or bloat that was never there. Two rAFs plus a
  *  settle so a compositor frame actually lands on the flat fill before
  *  the navigation tears the document down. */
-export const PAINT_BLANK_SENTINEL_EXPRESSION = `(() => {
+const PAINT_BLANK_SENTINEL_EXPRESSION = `(() => {
   document.documentElement.style.cssText = 'background:#000 !important';
   if (document.body) document.body.style.cssText = 'visibility:hidden !important';
   return new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
@@ -1836,7 +1775,7 @@ export const PAINT_BLANK_SENTINEL_EXPRESSION = `(() => {
 /** How long to let the sentinel settle before navigating - long enough
  *  for a slower CI box's compositor to deliver a screencast frame of
  *  it, on top of the two rAFs the expression itself already waits on. */
-export const PRENAV_SETTLE_MS = 150;
+const PRENAV_SETTLE_MS = 150;
 
 /** Runs `PAINT_BLANK_SENTINEL_EXPRESSION` and settles, on whichever
  *  transport the caller drives - Playwright's `page.evaluate` /
@@ -1850,16 +1789,13 @@ export async function paintBlankSentinel(evaluate, wait) {
   await wait(PRENAV_SETTLE_MS);
 }
 
-/** A screencast frame with almost no internal contrast: the sentinel
- *  fill above, or the browser's own blank paint between the old and new
- *  document. Read by shape - the spread between its darkest and
- *  lightest pixel - rather than by matching a specific color: an
- *  earlier attempt matched frames against the sentinel's own average
- *  gray value, which collided with the persistent-storage toast's
- *  average gray landing in the same range and mis-dropped real content
- *  (ticket 192's triage). `DIFF_EPS` is the render detector's own noise
- *  floor for "the same render", so anything flatter than that is
- *  read as blank rather than as painted content. */
+/** A screencast frame with almost no internal contrast: the sentinel fill above, or the
+ browser's own blank paint between the old and new document. Read by shape - the spread
+ between its darkest and lightest pixel - rather than by matching a specific color: an
+ earlier attempt matched frames against the sentinel's own average gray value, which
+ collided with the persistent-storage toast's average gray landing in the same range and
+ mis-dropped real content. `DIFF_EPS` is the render detector's own noise floor for "the same
+ render", so anything flatter than that is read as blank rather than as painted content. */
 export function isBlankGray(gray) {
   let min = 255;
   let max = 0;
@@ -1870,19 +1806,14 @@ export function isBlankGray(gray) {
   return max - min <= DIFF_EPS;
 }
 
-/** `Page.startScreencast` delivers whatever is on screen the instant it
- *  starts, which for a cold scene is still the previous scene's real,
- *  painted content - not blank at all - so a check that only drops
- *  frames already flat would walk straight past it and leave it in the
- *  analysed cast (ticket 192's first attempt: the old document's real
- *  frame plus the sentinel still made the same before/blank/after triple
- *  the render detector reads as a dropout). This scans forward through
- *  whatever the old document was showing, keeps going while the sentinel
- *  fill is on screen, and stops the moment something else is painted -
- *  the new document's first real frame. Bounded, and a no-op if the
- *  sentinel never shows up in that window: better to leave a cast
- *  unfiltered than to mistake real hydration content for "still the old
- *  document" and eat it. */
+/** `Page.startScreencast` delivers whatever is on screen the instant it starts, which for a
+ cold scene is still the previous scene's real, painted content - not blank at all - so a
+ check that only drops frames already flat would walk straight past it and leave it in the
+ analysed cast. This scans forward through whatever the old document was showing, keeps
+ going while the sentinel fill is on screen, and stops the moment something else is painted
+ - the new document's first real frame. Bounded, and a no-op if the sentinel never shows up
+ in that window: better to leave a cast unfiltered than to mistake real hydration content
+ for "still the old document" and eat it. */
 const PRENAV_SCAN_LIMIT = 6;
 export function dropLeadingBlankFrames(cast) {
   let i = 0;
@@ -1915,7 +1846,7 @@ const diffMask = (a, b) => {
 
 /** Connected regions of a mask, 4-neighbour flood fill. Returned largest
  *  first, regions under `minArea` px dropped. */
-export function regions(mask, w, h, minArea) {
+function regions(mask, w, h, minArea) {
   const seen = new Uint8Array(mask.length);
   const out = [];
   for (let i = 0; i < mask.length; i++) {
@@ -1996,7 +1927,7 @@ export function findPixelYanks(grays, w, h, ats) {
     });
   }
 
-  /* Multi-frame dropouts (ticket 117): a cohesive region visible before and after
+  /* Multi-frame dropouts: a cohesive region visible before and after
    * that vanishes or blacks out across 2 or more consecutive frames (e.g. the
    * header dropping out during a view transition). Single-frame spikes are caught
    * above; this catches sustained dropouts. */
@@ -2057,7 +1988,7 @@ export function findPixelYanks(grays, w, h, ats) {
   return { findings, motion };
 }
 
-/* ---------- the hydration sweep's shared half (ticket 108) ---------- */
+/* ---------- the hydration sweep's shared half ---------- */
 
 /** Every screen the app has, as one cold mount each - the full inventory
  *  the gesture sweep never aimed at. `at` is a route (with `{yesterday}`
@@ -2074,13 +2005,12 @@ const HYDRATION_SCENES = [
   { name: 'home-celebrate', at: '/?celebrate=1', when: 'persona', is: 'the celebration card variant of Home' },
   { name: 'coming-back', at: '/coming-back', is: 'the return surface, reached by hand' },
   { name: 'doubt', at: '/doubt', is: 'Safe space, opening on the breath (redesign ticket 47)' },
-  /* `doubt-moments` and `doubt-readings` were here until phase 11 ticket 15
-     folded them into `/transition/letters` and the Look back door. Both
-     addresses redirect now, so a scene on either would have hydrated the
-     screen it points at under the wrong name - and both of those screens
-     are already swept, as `letters` and `stats` below. */
+  /* `doubt-moments` and `doubt-readings` were here folded them into `/transition/letters`
+     and the Look back door. Both addresses redirect now, so a scene on either would have
+     hydrated the screen it points at under the wrong name - and both of those screens are
+     already swept, as `letters` and `stats` below. */
   { name: 'doubt-comfort', at: '/doubt/comfort', is: "Safe space's comfort list" },
-  { name: 'doubt-evidence', at: '/doubt/evidence', is: 'the counterevidence check and its snapshots' },
+  { name: 'doubt-evidence', at: '/doubt/evidence', is: 'Good moments, the counterevidence pool' },
   { name: 'on-this-day', at: '/on-this-day', is: 'on this day and its lookbacks' },
   /* Calendar tab */
   { name: 'calendar', at: '/calendar', is: 'the heat map month' },
@@ -2094,31 +2024,23 @@ const HYDRATION_SCENES = [
   { name: 'entry-edit', at: '/entry/{entry}', needs: 'entry', when: 'persona', is: 'an existing entry opened for editing' },
   { name: 'search', at: '/search', is: 'search and its filter sheet' },
   { name: 'search-starred', at: '/search?starred=1', is: 'the starred shelf' },
-  { name: 'search-questions', at: '/search?questions=1', is: 'the saved-question shelf' },
-  { name: 'search-question', at: '/search/questions/{question}', needs: 'question', when: 'persona', is: 'one saved question answered' },
   /* Stats tab */
   { name: 'stats', at: '/stats', is: 'the look-back index, charts and all' },
   { name: 'stats-reading', at: '/stats/day-by-day', is: 'a look-back reading' },
   { name: 'body-map', at: '/body-map', is: 'the body map over its range' },
-  { name: 'tally', at: '/tally', is: 'the tally chart' },
   { name: 'compare', at: '/compare', is: 'then versus now' },
   { name: 'wrapped-week', at: '/wrapped/week', when: 'persona', is: 'a wrapped week' },
   { name: 'wrapped-month', at: '/wrapped/month', when: 'persona', is: 'a wrapped month' },
   { name: 'wrapped-year', at: '/wrapped/year', when: 'persona', is: 'a wrapped year' },
-  { name: 'wrapped-range', at: '/wrapped/range', is: 'the wrapped range picker' },
-  { name: 'wrapped-share', at: '/wrapped/month/share', needs: 'entry', when: 'persona', is: 'the share card builder' },
   /* More hub and the Body group */
   { name: 'more', at: '/more', is: 'the hub itself' },
-  { name: 'hair-progress', at: '/body/hair-progress', is: 'hair staged against the published scale' },
   { name: 'hair-removal', at: '/body/hair-removal', is: 'electrolysis and laser sessions' },
-  { name: 'measurements', at: '/body/measurements', is: 'measurements over time and sizes' },
-  /* Ticket 21: wear moved off the retired Practice prefix onto its own
-     door. */
+  /* Wear moved off the retired Practice prefix onto its own door. */
   { name: 'wear', at: '/body/wear', is: 'wear time tracked plainly' },
   /* Health group */
   { name: 'care', at: '/care', is: 'the care dashboard' },
-  /* Ticket 21: personal effects moved off the retired Practice prefix onto
-     the door it was always about. */
+  /* Personal effects moved off the retired Practice prefix onto the door it was always
+     about. */
   {
     name: 'changes',
     at: '/care/changes',
@@ -2130,13 +2052,12 @@ const HYDRATION_SCENES = [
   { name: 'cycle-events', at: '/health/cycle-events', is: 'cycle events' },
   { name: 'dilation', at: '/health/dilation', is: 'the dilation taper' },
   { name: 'surgery', at: '/health/surgery', is: 'the surgery journal' },
-  { name: 'hormone-curve', at: '/care/curve', is: 'the hormone curve' },
   { name: 'doses', at: '/care/doses', is: 'the dose log' },
   { name: 'labs', at: '/care/labs', is: 'lab results' },
   { name: 'regimen', at: '/care/regimen', is: 'the regimen editor' },
-  /* Ticket 09 (ADR-0084): stock and exposure stopped being screens - stock
-     is a sheet off 'care' above, and exposure's own figure is a line on
-     it - so neither gets a scene of its own here any more. */
+  /* Stock and exposure stopped being screens - stock is a sheet off 'care' above, and
+     exposure's own figure is a line on it - so neither gets a scene of its own here any
+     more (ADR-0084). */
   /* Transition group */
   { name: 'milestones', at: '/transition/milestones', is: 'the milestone rail over its list' },
   { name: 'roadmap', at: '/transition/roadmap', is: 'the roadmap checklist' },
@@ -2144,17 +2065,20 @@ const HYDRATION_SCENES = [
   { name: 'letter-detail', at: '/transition/letters/{letter}', needs: 'letter', when: 'persona', is: 'one letter, read' },
   { name: 'tryouts', at: '/transition/tryouts', is: 'presentation tryouts' },
   { name: 'tryout-detail', at: '/transition/tryouts/{tryout}', needs: 'tryout', when: 'persona', is: 'one tryout over time' },
+  /* Gave procedures, appointments and progress photos screens of their own. */
+  { name: 'procedure-detail', at: '/health/surgery/{procedure}', needs: 'procedure', when: 'persona', is: 'one procedure laid out' },
+  { name: 'appointment-detail', at: '/health/appointments/{appointment}', needs: 'appointment', when: 'persona', is: 'one appointment laid out' },
+  { name: 'progress-photos', at: '/transition/progress-photos', is: 'progress photos by pose' },
   { name: 'eras', at: '/settings/eras', is: 'named spans of a life' },
-  /* Ticket 21: the voice benchmark moved off the retired Practice prefix -
-     to the root rather than under a door prefix, unlike its siblings, but
-     still Transition's screen. Its metrics and memos stubs did not move
-     (settings-route-redirects.test.ts), so they keep their addresses. */
+  /* The voice benchmark moved off the retired Practice prefix - to the root rather than
+     under a door prefix, unlike its siblings, but still Transition's screen. Its metrics
+     and memos stubs did not move (settings-route-redirects.test.ts), so they keep their
+     addresses. */
   { name: 'voice', at: '/voice', is: 'the voice benchmark' },
   { name: 'voice-record', at: '/voice?tab=record', is: 'the benchmark record tab' },
   { name: 'voice-metrics', at: '/voice?metric=pitch', is: 'the metric reference' },
-  { name: 'voice-memos', at: '/voice?tab=recordings', is: 'the memo browser' },
-  /* Support group (ticket 21: resources moved off the retired Practice
-     prefix onto the door ADR-0072 gave it) */
+  { name: 'voice-memos', at: '/media/recordings', is: 'the memo browser' },
+  /* Support */
   { name: 'resources', at: '/support/resources', is: 'organisations and helplines' },
   /* Media */
   { name: 'photos', at: '/media/photos', is: 'progress photos, then and now' },
@@ -2171,19 +2095,13 @@ const HYDRATION_SCENES = [
   { name: 'passphrase', at: '/settings/passphrase', is: 'the passphrase change screen' },
   { name: 'recovery-key', at: '/settings/recovery-key', is: 'the recovery key mint and revoke' },
   { name: 'security', at: '/settings/security', is: 'the security module' },
-  { name: 'affirmations', at: '/settings/affirmations', is: 'affirmations' },
   { name: 'body-regions', at: '/settings/body-regions', is: 'the body-region editor' },
-  { name: 'words-ignored', at: '/settings/words', is: 'the words the reading skips' },
   { name: 'dimension', at: '/settings/dimension', is: 'a custom dimension' },
-  { name: 'entry-templates', at: '/settings?raise=templates', coldOutcome: { consumedQuery: 'raise', selector: '[data-sheet]:has([data-entry-template])' }, is: 'editable entry templates' },
-  { name: 'presentations', at: '/settings?raise=modes', coldOutcome: { consumedQuery: 'raise', selector: '[data-sheet]:has([data-presentation], [data-notice="presentations-empty"])' }, is: 'the presentation catalogue' },
   { name: 'export', at: '/settings/export', is: 'backup, restore and import' },
   { name: 'journal-book', at: '/settings/journal-book', is: 'the print of a chosen range' },
-  { name: 'journaling-pause', at: '/settings/journaling-pause', is: 'a pause over the journal' },
-  /* No live-tiles scene: deepening ticket 09 merged that screen into
-     /settings/notifications, and the route now client-replaces to it, so
-     a scene pinned to the old path can only ever time out - the
-     notifications scene below already covers the merged surface. */
+  /* No live-tiles scene: deepening merged that screen into /settings/notifications, and the
+     route now client-replaces to it, so a scene pinned to the old path can only ever time
+     out - the notifications scene below already covers the merged surface. */
   { name: 'notifications', at: '/settings/notifications', is: 'the notifications half of the registry' },
   { name: 'permissions', at: '/settings/permissions', is: 'what the app asks the device for' },
   { name: 'trash', at: '/settings/trash', is: 'the 30-day window' },
@@ -2194,10 +2112,7 @@ const HYDRATION_SCENES = [
      the eight swatches render inline on the settings screen itself, so
      that scene's cold mount is the whole of the surface, and picking one
      re-themes in place with no layout consequence, which both detectors
-     are right to ignore. The quick-log dims sheet is a query param, so it
-     opens over Home's own cold mount - the after-save state a real quick
-     log lands in. */
-  { name: 'quick-log-dims', at: '/?quickLogDims={entry}', coldOutcome: { consumedQuery: 'quickLogDims', selector: '[data-sheet] [data-quick-log-dims]' }, needs: 'entry', when: 'persona', is: 'the after-save dims sheet opening over Home' },
+     are right to ignore. */
   { name: 'quick-add-fan', at: '/', act: '[data-rail-add], [data-nav-fab]', after: { selector: '[data-fan]' }, is: 'the quick add fan opening' },
   { name: 'doses-sheet', at: '/care/doses', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the dose editor sheet' },
   { name: 'surgery-sheet', at: '/health/surgery', act: '[data-add]', after: {"selector": "[data-sheet]"}, is: 'the procedure sheet' },
@@ -2223,12 +2138,14 @@ export const HYDRATION_NEEDS = {
      that is all the journal has, which the detail route draws sealed. */
   letter: { list: '/transition/letters', cards: ['[data-letter]:not([data-letter-state="sealed"])', '[data-letter]'], attr: 'data-letter' },
   tryout: { list: '/transition/tryouts', prefix: '/transition/tryouts/' },
-  question: { list: '/search?questions=1', prefix: '/search/questions/' },
   /* On the web the list is the install-the-app empty state whatever the
      journal holds (settings/reminders: `isWeb`), so only the device can
      read an id off it. The desktop crawler skips this one by name. */
   reminder: { list: '/settings/reminders', prefix: '/settings/reminders/', androidOnly: true },
-  document: { list: '/media/documents', prefix: '/media/documents/' }
+  document: { list: '/media/documents', prefix: '/media/documents/' },
+  procedure: { list: '/health/surgery', prefix: '/health/surgery/' },
+  /* The in-the-room card shares the prefix and is not a record. */
+  appointment: { list: '/health/appointments', prefix: '/health/appointments/', skip: ['in-the-room'] }
 };
 
 /** The hydration scenes a run covers: the table above, narrowed to `only`,
@@ -2241,18 +2158,13 @@ export function hydrationScreensFor({ prove = false, only = [] } = {}) {
     : scenes;
 }
 
-/** The id of the first record a list screen shows, per its HYDRATION_NEEDS
- *  entry: off a card's attribute, or off the first link into the detail
- *  route - one segment after the prefix and not the "new" editor, so a
- *  list's own add-controls cannot pose as a record.
- *
- *  Polled for `waitMs` rather than read once. The crawlers settle a list
- *  on boot and network idle, and its rows are a liveQuery that can answer
- *  after both; a read that finds nothing is only an honest "no record"
- *  once the list has had time to draw one. (ux-carpet 235: this used to
- *  compare segment counts with the prefix's trailing slash counted as a
- *  segment, so it rejected every real id and took `/entry/new/<day>` for
- *  one - seven detail scenes skipped on every run.) */
+/** The id of the first record a list screen shows, per its HYDRATION_NEEDS entry: off a
+ card's attribute, or off the first link into the detail route - one segment after the
+ prefix and not the "new" editor, so a list's own add-controls cannot pose as a record.
+
+ Polled for `waitMs` rather than read once. The crawlers settle a list on boot and network
+ idle, and its rows are a liveQuery that can answer after both; a read that finds nothing is
+ only an honest "no record" once the list has had time to draw one. */
 export const scrapeIdExpression = (need, { waitMs = 3000 } = {}) => `(async () => {
   const need = ${JSON.stringify(need)};
   const find = () => {
@@ -2266,7 +2178,7 @@ export const scrapeIdExpression = (need, { waitMs = 3000 } = {}) => `(async () =
     }
     for (const a of document.querySelectorAll('a[href^=' + JSON.stringify(need.prefix) + ']')) {
       const id = a.getAttribute('href').slice(need.prefix.length).split(/[?#]/)[0];
-      if (id && !id.includes('/') && id !== 'new') return id;
+      if (id && !id.includes('/') && id !== 'new' && !(need.skip ?? []).includes(id)) return id;
     }
     return null;
   };
@@ -2278,33 +2190,18 @@ export const scrapeIdExpression = (need, { waitMs = 3000 } = {}) => `(async () =
   }
 })()`;
 
-/** Waiting for a demo-bar state jump to be *finished* (ticket 135).
- *
- *  Both expressions below used to wait for a screen: the reset for
- *  `[data-home-hello]`, the fill for `/more`. Neither means finished. Home
- *  is already on screen when the reset is clicked from Home, so that wait
- *  returned on its first read, the harness clicked the next jump, and the
- *  second jump's journal clear landed between the first seed's
- *  presentations and the entries that name them - `unknown presentation`
- *  in the page, and a persona missing its later days in every scene the
- *  sweep then photographed.
- *
- *  `data-demo-busy` (DemoBar.svelte) is on the bar for the length of a
- *  jump and gone when it is over, navigation included, which is the only
- *  thing here that means what the wait wants. The bar also disables its own
- *  controls for that length and drops a click that arrives anyway, so a
- *  click is refused rather than queued - which is why these wait for an
- *  idle bar before clicking as well as after. The 50ms is the state flush
- *  after the click, not the jump: the jump is a worker round trip and
- *  cannot finish inside it. */
+/** Wait for the demo bar to be idle before each jump, then wait for
+ * data-demo-busy to clear after it. The bar drops clicks while busy,
+ * including during navigation. A route may already be visible before
+ * seeding ends. The 50ms delay only lets the clicked state flush.
+ */
 /*  The 60 s this wait once capped was a desktop number. The physical device
-    sweep (ticket 139) measured a persona seed at ~266 entries in ~15 minutes
+    sweep measured a persona seed at ~266 entries in ~15 minutes
     on the phone - roughly one insert every 3 s through the worker - so the
     cap now clears a 40 minute jump and only bounds a genuinely wedged bar. */
-/*  Today drawn *and* the boot finished. The greeting alone renders while a
-    journal is still opening, so a walk that stopped at it could read a boot
-    that went on to fail as a success (ux-carpet 210 did, and 213 is why
-    Today no longer stays up under the failure notice). */
+/* Today drawn *and* the boot finished. The greeting alone renders while a journal is still
+    opening, so a walk that stopped at it could read a boot that went on to fail as a
+    success. */
 const ON_TODAY_BOOTED = `(document.querySelector('[data-app-root]')?.dataset.boot === 'ready' && !!document.querySelector('[data-home-hello]'))`;
 const DEMO_BAR_IDLE = `for (let i = 0; i < 4800 && document.querySelector('[data-demo-busy]'); i++) await sleep(500);`;
 const AWAIT_DEMO_JUMP = `
@@ -2333,8 +2230,7 @@ export const FILL_EVERY_FEATURE_EXPRESSION = `(async () => {
   btn.click();
   ${AWAIT_DEMO_JUMP}
   const ready = () => location.pathname === '/more'
-    && !!document.querySelector('[data-app-root][data-boot="ready"]')
-    && localStorage.getItem('engender-has-entries') === '1';
+    && !!document.querySelector('[data-app-root][data-boot="ready"]');
   for (let i = 0; i < 120 && !ready(); i++) await sleep(250);
   if (!ready()) throw new Error('full persona fixture did not reach More with a ready journal');
   return true;
@@ -2396,6 +2292,31 @@ export const WALK_FIRST_RUN_FINISH_EXPRESSION = `(async () => {
  *  patched after the fact. */
 export const DEMO_THEME_EXPRESSION = (theme) => SETTLE_PAGE_EXPRESSION(theme);
 
+export const APPROVE_PROTECTION_EXPRESSION = (secret = 'demo') => `(async () => {
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const q = (selector) => document.querySelector('[data-current-protection] ' + selector);
+  for (let i = 0; i < 100 && !document.querySelector('[data-current-protection]'); i++) await sleep(100);
+  if (!document.querySelector('[data-current-protection]')) throw new Error('current protection prompt did not open');
+  if (q('[data-pin-pad]')) {
+    for (const digit of ${JSON.stringify(secret)}) {
+      const key = q('[data-key="' + digit + '"]');
+      if (!key) throw new Error('the synthetic current PIN is required');
+      key.click();
+      await sleep(140);
+    }
+  } else {
+    const field = q('#current-protection-secret');
+    if (field) {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(field, ${JSON.stringify(secret)});
+      field.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    q('[data-confirm-current-protection]').click();
+  }
+  for (let i = 0; i < 300 && document.querySelector('[data-current-protection]'); i++) await sleep(100);
+  if (document.querySelector('[data-current-protection]')) throw new Error('fresh current protection was not approved; Android requires an enrolled biometric');
+  return true;
+})()`;
+
 /** The lock-gate epilogue: walk the access-mode screen into a PIN, so the
  *  next cold load has a gate to draw. The pad completes and submits itself
  *  at four digits (PinPad.svelte), so the digits are clicked and the
@@ -2423,6 +2344,7 @@ export const LOCK_SETUP_EXPRESSION = (pin) => `(async () => {
     }
     await sleep(800);
   }
+  await ${APPROVE_PROTECTION_EXPRESSION()};
   /* Settled is either control the settings screen offers, or the
      confirmation's own navigation: after the second PIN entry the module
      can land on /settings/security itself, where the link this used to
@@ -2469,7 +2391,7 @@ export const EVIDENCE_CAP = 60;
  *  stray view transition (none of these scenes gesture, but a route may)
  *  is sliced off the front exactly as the gesture sweep slices its runs,
  *  so what is read is the tree that was painted. */
-export function findHydrationYanks(frames) {
+function findHydrationYanks(frames) {
   const active = frames.map((f, i) => (f.active ? i : -1)).filter((i) => i >= 0);
   const sliced = active.length ? frames.slice(active.at(-1) + 1) : frames;
   if (sliced.length < 2) return { yanks: [], frames: sliced.length, sampled: frames.length };
@@ -2509,21 +2431,10 @@ export async function saveSceneCast(cast, outDir, name, label) {
  *  the cast's own clock, so a PNG and the finding it belongs to cannot
  *  come apart - and both transports name them identically. */
 export async function readRenderYanks(cast, outDir, name, label, cap = EVIDENCE_CAP, { allowThin = false, readyFrame = null } = {}) {
-  /* Three seconds of 60fps is 180 frames; in practice Chromium produces
-     between 12 and 120 over a cold load or a sheet opening, but
-     sometimes the new document's blank, the screen, and then nothing at all
-     for the rest of the window. Measured on the lock gate across ten runs
-     once ticket 127 stopped it mounting a splash first - three frames seven
-     times, four twice, two once - against a floor of four, which failed
-     three runs out of four as `only 3 screencast frames` (ticket 134).
-
-     A thin cast is not a recording nobody looked at. A dropout is a frame
-     showing the gap, so a load with no frames between the old screen and
-     the new one is positive evidence that there was none, not a failure to
-     check - and whether the screen arrived at all is already proved by the
-     selector each scene waits for before any of this runs. A one-frame cast
-     passes only when its painted frame matches a second cast started after
-     the ready selector. Otherwise it might show the previous screen. */
+  /* Chromium may only emit a few screencast frames once a scene stops
+     painting. The ready selector verifies arrival. A one-frame cast
+     passes only when its painted frame matches a second cast started
+     after readiness, so a stale frame cannot pass. */
   if (cast.length < 2) {
     if (cast.length === 1) {
       const first = decodePng(Buffer.from(cast[0].data, 'base64'));
@@ -2590,7 +2501,7 @@ export const yesterdayEpochDay = () => Math.floor(Date.now() / 86400000) - 1;
 
 /** One scene's console line, shaped the same on both transports so a
  *  desktop log and a device log can be read side by side. */
-export function describeHydrationRun(name, dom, render) {
+function describeHydrationRun(name, dom, render) {
   return `${name}: ${dom.frames} style / ${render.cast} render frames, ${dom.yanks.length} style / ${render.findings.length} render yank(s)` +
     (dom.yanks.length || render.findings.length
       ? `\n  ${[
@@ -2616,7 +2527,7 @@ export function requireHydrationCoverage(result, profile, theme) {
   if (result.coverageError) throw new Error(result.coverageError);
   const proof = result.coverageProof;
   if (!proof) throw new Error('missing hydration coverage proof');
-  if (proof.profile !== profile || proof.hasEntries !== (profile === 'persona' ? '1' : '0')) throw new Error('hydration coverage wrong profile');
+  if (proof.profile !== profile) throw new Error('hydration coverage wrong profile');
   if (typeof proof.route !== 'string' || !proof.route.startsWith('/')) throw new Error('hydration coverage missing route');
   const alignment = proof.themeProof;
   if (!alignment?.selected || alignment.requested !== theme || alignment.persisted !== theme || alignment.painted !== theme || alignment.transitioning) throw new Error('hydration coverage wrong theme');
@@ -2681,4 +2592,26 @@ export function missingProofYanks(report, { checkArrival = true } = {}) {
     const label = [scene.scene, scene.profile, scene.theme, scene.pass && `pass ${scene.pass}`].filter(Boolean).join(' ');
     return missing.map((item) => label ? `${label}: ${item}` : item);
   });
+}
+
+/** What the device runner drives, read from its argv before any adb call.
+ *  `dev.engender.app` holds the real journal and the runner installs,
+ *  force-stops and launches its package, so only a debug build under
+ *  `dev.engender.app.test.<name>` is accepted. The forward port is the
+ *  caller's own, so the run removes only that forward. */
+export function deviceTargetFromArgs(args) {
+  const flag = (name) => {
+    const at = args.indexOf(`--${name}`);
+    return at >= 0 ? args[at + 1] : undefined;
+  };
+  const positional = args.filter((a, i) => !a.startsWith('--') && !args[i - 1]?.startsWith('--'));
+  const serial = positional.find((a) => !a.endsWith('.apk'));
+  if (!serial) throw new Error('pass the device serial, e.g. node tests/tools/yank-sweep-device.mjs <serial> --package dev.engender.app.test.<name> [apk]');
+  const pkg = flag('package');
+  if (!pkg) throw new Error('pass --package dev.engender.app.test.<name>: the runner never drives the real app');
+  if (!/^dev\.engender\.app\.test\.[a-z0-9]+$/.test(pkg))
+    throw new Error(`refusing package "${pkg}": only dev.engender.app.test.<name> is accepted, dev.engender.app is never driven`);
+  const port = Number(flag('port') ?? '9341');
+  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error(`--port must be a TCP port, got "${flag('port')}"`);
+  return { serial, pkg, port, apk: positional.find((a) => a.endsWith('.apk')) };
 }

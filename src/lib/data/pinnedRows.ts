@@ -1,53 +1,29 @@
-/* What a person put on the front page, and which of the agenda's kinds they
-   left switched on (phase 10 redesign ticket 05, ADR-0073, CONTEXT: "Pinned
-   row").
+/* Resolve the pins a person chose for Today (ADR-0073). Use the saved
+   onboarding choice or defaults when there is no saved arrangement.
+   A pin carries only a hub row key. DrawnRow and the registry supply
+   its icon, route, areas and description.
 
-   The front page used to be a list the app decided. It pictured one reader -
-   on HRT, under a clinician, logging most days, with a history that begins
-   when the journal does - and every reader who differs met a screen
-   describing somebody else. Nothing here ranks anything: a pinned row is on
-   Today because the person put it there, in the place they put it, and the
-   only pin this module ever produces without being asked is the default set
-   derived from what onboarding chose.
-
-   A **pinned row** is what a person put on Today. A **hub row** is
-   navigation. One row has one shape - `hubRows.ts`'s `DrawnRow`, which both
-   surfaces use - and the two are still not the same object, because what
-   may be done to them differs: the hub groups its rows and sweeps a
-   finished one into a set of its own, and neither of those may happen to
-   somewhere the person arranged by hand. So this module resolves an order
-   and never touches it again.
-
-   Nothing is restated. A pin is a `hubRows.ts` key and nothing else; the
-   icon, the route, which areas sit behind the row and what its second line
-   says all come off the registry, and `areaState` answers hidden and
-   finished. That is `statsAreas.ts`'s own lesson, which paid for four wrong
-   fields on a shipped screen in one afternoon by restating five.
-
-   Node-tier safe, like the two registries it reads: no clock, no driver, no
-   paraglide, no runes. Today arrives inside `HubReading`, the same as it
-   does for the hub. */
+   Preserve the person's order when a row is finished. areaState
+   supplies hidden and finished state. HubReading supplies today,
+   so there is no separate clock or journal read here. */
 
 import { HUB_ROWS, rowHidden, rowLine, rowReads, type DrawnRow, type HubReading, type HubRow, type HubRowKey } from './hubRows';
 import { ROW_FORWARD_KEYS } from './rowForward';
 import { AREA_STATES_BEFORE_READ } from './areaState';
-import { DAY_AHEAD_MARK_KINDS, type DayAheadMarkKind } from './journal/dayAhead';
 import type { PreferenceValues } from './prefs/catalogue';
 
-/** The set a new journal sees pre-ticked in setup. New journals store it
-    explicitly even when the question is skipped, so older journals whose
-    `onboardingAreas` is null keep their former four-pin default.
+/** Default pins for a new journal and an older journal without an areas answer.
+    Older journals with `onboardingAreas` set keep their chosen pins.
 
     It is the one central guess in this module, and it is confined to a
-    person who has not answered. Three rows: the transition's dated points,
-    medication, and what is being tried out. Measurements is available in
-    setup, but starts off because it can be triggering.
+    person who has not arranged pins. Three rows: the transition's dated points,
+    medication, and what is being tried out.
 
     Typed `readonly HubRowKey[]` rather than left as strings so a row renamed
     out from under it is a compile error rather than rows that quietly
     resolve to nothing. */
 export const DEFAULT_ONBOARDING_AREAS = ['care', 'milestones', 'tryouts'] as const satisfies readonly HubRowKey[];
-const LEGACY_UNANSWERED_AREAS = ['measurements', ...DEFAULT_ONBOARDING_AREAS] as const satisfies readonly HubRowKey[];
+const LEGACY_UNANSWERED_AREAS = DEFAULT_ONBOARDING_AREAS;
 
 /** What the person has stored about their front page.
 
@@ -57,35 +33,20 @@ const LEGACY_UNANSWERED_AREAS = ['measurements', ...DEFAULT_ONBOARDING_AREAS] as
     would leave this reading a key nobody writes. */
 export type PinPreferences = Pick<PreferenceValues, 'pinnedRows' | 'onboardingAreas'>;
 
-/** The switch list, the same way and for the same reason. All three of the
-    front page's preferences are nullable lists of strings, so a function
-    taking one of them raw would accept any of the other two: passing the
-    pins to the agenda would have compiled and quietly switched every kind
-    off. */
-export type AgendaSwitches = Pick<PreferenceValues, 'agendaKinds'>;
-
-/** One row as the front page draws it - `hubRows.ts`'s `DrawnRow` under the
-    name `CONTEXT.md` gives it, because a pinned row is the domain object
-    and a drawn row is the shape.
-
-    The line is `rowLine`'s, unchanged and not reinterpreted. A pinned row
-    that has gone quiet says the same thing about itself as its hub row
-    does, which is what stops the app having two opinions about one area. */
+/** The front page draws a pinned row as a hubRows.ts DrawnRow. Use the
+    same rowLine reading that the hub shows, including when it goes quiet. */
 export type PinnedRow = DrawnRow;
 
-/** The default set: what onboarding chose, or the old four-row answer where
-    it was never stored. New setup stores its three-row default explicitly.
+/** The default set: saved onboarding choices for older journals, or the three-row default
+    when no choice was stored.
 
-    In registry order rather than in the order somebody ticked a list of
-    checkboxes, which is an artefact of reading down a page rather than an
-    arrangement. The hub's order is one they have already met, and ticket 14
-    is where an order of their own is made.
+    In registry order rather than in the order somebody ticked a list of checkboxes, which
+    is an artefact of reading down a page rather than an arrangement. The hub's order is one
+    they have already met, and is where an order of their own is made.
 
-    Held apart from the arrangement rather than flattened into it so that
-    "back to what I said at the start" stays computable after the front page
-    has been rearranged. */
-/* defaultPins stays exported only for its own test (AU-09 test-only
-   review). */
+    Held apart from the arrangement rather than flattened into it so that "back to what I
+    said at the start" stays computable after the front page has been rearranged. */
+/* defaultPins stays exported only for its own test. */
 export function defaultPins(
   onboardingAreas: readonly string[] | null,
   rows: readonly HubRow[] = HUB_ROWS
@@ -108,8 +69,8 @@ function pinKeys(prefs: PinPreferences, rows: readonly HubRow[]): readonly strin
 
 /** A quiet reading for initial render before SQLite queries settle.
     Every row reports its standing line ('not-yet' or 'no-stream'),
-    so screens can render their pinned list without a cold-mount pop
-    (phase 10 UX carpet ticket 106). */
+    so screens can render their pinned list without a cold-mount pop.
+    */
 export function fallbackReading(todayEpochDay: number): HubReading {
   return {
     todayEpochDay,
@@ -120,47 +81,16 @@ export function fallbackReading(todayEpochDay: number): HubReading {
   };
 }
 
-/** The front page's rows, resolved: the person's pins, the area registry and
-    area state, in the person's own order.
-
-    Three ways a stored pin resolves to nothing, and all three are the same
-    statement - a pin is about a row on a screen, so a pin with no row is not
-    a pin:
-
-      - a key the registry does not hold, which is what a renamed or retired
-        row leaves behind. It resolves to nothing rather than to a guess:
-        matching it against something similar would be the app deciding what
-        somebody meant
-      - a row whose areas the person has hidden, which is `areaState`'s rule
-        and the hub's - a hidden area is out of the navigation, and a front
-        page that kept drawing it would be a second navigation that never
-        heard
-      - the same key twice, which the editing surface cannot produce and an
-        edited archive can. The first place it was put wins, because that is
-        where they put it
-
-    A row the hub does not draw is not one of them either. Seven rows are
-    hosted on a screen of their own rather than listed on the hub
-    (ADR-0072), and all seven are pinnable: where the hub draws a row is the
-    hub's own ranking of itself, and somebody with a dilation log or a hair
-    progression they check daily is exactly the reader who should be able to
-    put it in front of them. The one row this needs saying about is the
-    cycle log, which ADR-0043 gates one-directionally: pinning it is the
-    person asking for it, but the list they pick from has to apply that gate
-    so it is never *offered* cold. That list is ticket 14's, and this is the
-    note it inherits.
-
-    A finished area is **not** one of them. It keeps its row, carrying the
-    day it ended, exactly the way its hub row does - finishing is a statement
-    about a practice rather than a delete. It also keeps its place: the hub
-    sweeps a finished row into a finished set, and doing that to somewhere
-    the person arranged by hand would be the app reordering their front page,
-    which is the one thing this module exists to refuse.
-
-    `rows` is the registry, defaulted rather than reached for, so
-    `pinnedRows.test.ts` can drive this same function over a registry one row
-    short and watch the rule actually fail - the discipline `unregisteredKinds`
-    holds itself to next door. */
+/**
+ * Resolve stored pins in the person's order against the row registry and area
+ * visibility. Skip unknown or hidden rows. The first occurrence wins if an
+ * Archive repeats a key.
+ *
+ * Rows hosted outside the hub can still be pinned. Apply the cycle visibility
+ * gate when offering pins. A saved cycle pin already records the person's
+ * choice. Finished rows keep their place and date. The injected registry lets
+ * tests exercise a missing row.
+ */
 export function pinnedRows(
   prefs: PinPreferences,
   reading: HubReading,
@@ -184,29 +114,7 @@ export function pinnedRows(
   return drawn;
 }
 
-/** Which of the agenda's kinds to draw: the ones left switched on, or all
-    five while nobody has switched any off.
-
-    A switch and not a dismissal, which is the whole of why it is stored -
-    a kind somebody does not want is otherwise one they dismiss every week
-    for the life of the journal.
-
-    Filtered against `DAY_AHEAD_MARK_KINDS` and returned in its order, which
-    is ADR-0067's. Both halves matter and neither is bookkeeping. The order
-    is the ADR's rather than the order somebody switched things back on in,
-    so the agenda reads the same way for everybody who has the same kinds on.
-    The filter is what stops the switch list being a back door: ADR-0067
-    refuses six kinds a mark - a run-out day, a reminder, a daily dose slot,
-    a taper session, the next hair photo, a revisit - and a stored list is a
-    person's answer about the five that earn one, never a way to register a
-    sixth. Amending that list means amending the ADR. */
-export function shownAgendaKinds(switches: AgendaSwitches): DayAheadMarkKind[] {
-  if (switches.agendaKinds === null) return [...DAY_AHEAD_MARK_KINDS];
-  const on = new Set(switches.agendaKinds);
-  return DAY_AHEAD_MARK_KINDS.filter((kind) => on.has(kind));
-}
-
-/* ---------- editing it (ticket 14) ----------
+/* ---------- editing it ----------
 
    The five functions below are the whole of what the editing surface may
    do, and they are here rather than in the screen for the reason the
@@ -305,19 +213,17 @@ export function movedPin(keys: readonly string[], key: string, targetKey: string
 
 /** What the add list may offer, each with its own line.
 
-    Three exclusions and one gate. A row already pinned is not offered
-    twice; a row whose areas are hidden cannot be added at all, which is
-    `pinnedRows`'s second resolution rule read forwards - an area out of the
-    navigation may not be walked back in through the front page; and the
-    cycle log is offered only where `cycleTrackingVisible` already says so
-    (ADR-0043), which is the note `pinnedRows` above says this list
-    inherits. The gate arrives as an answer rather than being computed here,
-    because it needs the regimen episodes and a clock and this module has
-    neither.
+    Three exclusions and one gate. A row already pinned is not offered twice; a row whose
+    areas are hidden cannot be added at all, which is `pinnedRows`'s second resolution rule
+    read forwards - an area out of the navigation may not be walked back in through the
+    front page; and the cycle log is offered only where `cycleTrackingVisible` already says
+    so, which is the note `pinnedRows` above says this list inherits. The gate arrives as an
+    answer rather than being computed here, because it needs the regimen episodes and a
+    clock and this module has neither.
 
-    A finished area is offered like any other and carries the day it ended
-    in its line, for the reason a finished pin keeps its row: finishing is
-    a statement about a practice, not a delete. */
+    A finished area is offered like any other and carries the day it ended in its line, for
+    the reason a finished pin keeps its row: finishing is a statement about a practice, not
+    a delete. */
 export function addablePins(
   prefs: PinPreferences,
   reading: HubReading,
@@ -331,24 +237,4 @@ export function addablePins(
     .filter((spec) => !rowHidden(spec, reading.states))
     .filter((spec) => spec.key !== 'cycle-events' || gate.cycleVisible)
     .map((spec) => ({ spec, line: rowLine(spec, reading) }));
-}
-
-/** The switch list after one kind was switched on or off.
-
-    Materialised the same way an arrangement is, and for the same reason:
-    null is "nobody has switched anything off", so the first switch has to
-    write the other four down. The result is `DAY_AHEAD_MARK_KINDS`'s order
-    rather than the order somebody switched things back on in, which is the
-    order `shownAgendaKinds` reads it in anyway. Switching the last one off
-    stores the empty list - the agenda goes quiet, which is what they
-    asked for. */
-export function withAgendaKind(
-  switches: AgendaSwitches,
-  kind: DayAheadMarkKind,
-  on: boolean
-): DayAheadMarkKind[] {
-  const next = new Set(shownAgendaKinds(switches));
-  if (on) next.add(kind);
-  else next.delete(kind);
-  return DAY_AHEAD_MARK_KINDS.filter((each) => next.has(each));
 }

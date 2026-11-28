@@ -1,49 +1,17 @@
 <script lang="ts">
-  /* One time-capsule letter, in whichever of its states it is in (phase 10
-     redesign ticket 45).
+  /* A sealed letter shows its wait in 40px role-coloured blocks. The blocks
+     and the written duration share durationParts. The card exposes calendar
+     handoff and deletion. Its contents stay inaccessible until opening day.
 
-     The screen used to draw all of them as the same list row: a lock glyph,
-     the word "Sealed" and `Opens 19 Aug 2031` in secondary grey - five years
-     of waiting set in the same shape and the same weights as a size record
-     saying `XS - H&M`. This is the only feature in the app with a refusal
-     built into it, and the row said nothing about it.
+     An unread open letter shows a marker beside the date. Once read, the
+     folded card clamps the same paragraph to two lines. Opening removes the
+     clamp and reveals the paragraph downward, keeping its typography and
+     starting height.
 
-     **Sealed.** The wait is the card's own number, on blocks of the area's
-     stripe at display size (rule 2's "a number on a block, 40px", rule 3's
-     "every colour is a stripe, and it is a block"). One block per unit,
-     which is one or two of them - `durationParts` decides which, and
-     `fmtDuration` renders the same parts as a sentence elsewhere, so a card
-     and a sentence about one gap can never disagree. Nothing on it is
-     pressable towards the text, because there is no text to reach: the
-     calendar handoff is its own control at the trailing edge, beside
-     deleting, and the card itself answers no press at all. The refusal is
-     the feature (spec: sealed contents are out of scope under any
-     circumstance) and this is what it looks like.
-
-     **Open.** The day it was written and, once it has been read, its first
-     lines, which is what somebody with ten of them scans for. Until then a
-     mark beside the date instead of any text - the "ready" reading, which
-     Today's live tile already carries and which this screen only has to not
-     lose.
-
-     **The unfold is a blind, and that is why the folded card and the open
-     one are the same paragraph in the same type.** Folded is the whole
-     letter clamped to two lines; open is the clamp taken off. So the first
-     frame of an opening is pixel-for-pixel the frame before it - the box is
-     still its old height and the two lines under the date are the two lines
-     that were already there, or for a first reading no lines, with the text
-     waiting under the folded edge - and everything after it is the box being
-     uncovered downwards. Nothing is swapped, nothing appears at its
-     destination, and no frame has anything in neither place.
-
-     `maskHeight` rather than `resize`, and that is the whole of the
-     difference: `resize` watches for a change and starts its animation from
-     a ResizeObserver, which is delivered after the frame that laid the new
-     height out has already painted. Measured on this card it cost one frame
-     at 149px before the travel from 105px began - the destination painted
-     first, then the journey. `maskHeight` is called at a known moment with a
-     height its caller measured before the layout changed, which is exactly
-     what an opening is. */
+     Measure the folded height before changing layout and pass it to
+     maskHeight. ResizeObserver would start after the expanded box had
+     already painted, which let a 149px frame appear before the motion
+     from 105px. */
   import { tick, untrack } from 'svelte';
   import { navigating } from '$app/state';
   import Icon from './Icon.svelte';
@@ -51,7 +19,7 @@
   import { fmtDay } from '$lib/data/dates';
   import { calendarDuration, durationParts } from '$lib/data/epochDay';
   import type { DurationUnit } from '$lib/data/epochDay';
-  import { collapse, maskHeight } from '$lib/motion/reveal';
+  import { collapse, crossfade, maskHeight } from '$lib/motion/reveal';
   import { isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import type { Letter } from '$lib/data/types';
 
@@ -126,18 +94,17 @@
     else onopen?.();
   }
 
-  /* Tile's panel contract, and the same reasoning: `|global` because what
-     creates and destroys a card is the caller's `{#each}`, a parent block a
-     local transition never sees, and `skip` so a screen leaving does not
-     spend --dur-slow folding its letters up on the way out.
+  /* Tile's panel contract, and the same reasoning: `|global` because what creates and
+     destroys a card is the caller's `{#each}`, a parent block a local transition never
+     sees, and `skip` so a screen leaving does not spend --dur-slow folding its letters up
+     on the way out.
 
-     A function called as the transition starts, not a `$derived` (ticket
-     197, the same fix Tile had in 196): Svelte reads the params again when
-     the outro starts, and a derived read from a card that is already being
+     A function called as the transition starts, not a `$derived`: Svelte reads the params
+     again when the outro starts, and a derived read from a card that is already being
      destroyed hands back its value from mount - `skip: false` - and warns
-     (`derived_inert`), once per card on every navigation off a screen of
-     letters. The cards still did not fold, but only because the screen's
-     arrival window also stands `collapse` down (screenArrival.ts). */
+     (`derived_inert`), once per card on every navigation off a screen of letters. The cards
+     still did not fold, but only because the screen's arrival window also stands `collapse`
+     down (screenArrival.ts). */
   const panel = () => ({ skip: navigating.to !== null });
 </script>
 
@@ -179,19 +146,21 @@
          the layout) rather than by being gone. -->
     {#if !read}
       <span class="letter-ready" out:collapse>
-        <Icon name="book" size={14} />
+        <Icon name="envelope" size={14} />
         <span>{m.letters_ready_title()}</span>
       </span>
     {/if}
   </span>
-  <!-- The whole letter, clamped to two lines while the card is folded, once
-       it has been read. Until then nothing of it is on the card, folded or
-       on the arrival: the first lines are the letter, and a letter nobody
-       has opened yet should not be read off its envelope (Alicja,
-       2026-10-05, after audit L04-18). Opening it puts the text under the
-       mask below the folded edge, so it is uncovered by the same travel. -->
+  <!-- The whole letter, clamped to two lines while the card is folded, once it has been
+       read. Until then nothing of it is on the card, folded or on the arrival: the first
+       lines are the letter, and a letter nobody has opened yet should not be read off its
+       envelope. Opening it puts the text under the mask below the folded edge, so it is
+       uncovered by the same travel. -->
   {#if open || read}
-    <span class="letter-text" class:is-folded={!open} data-letter-text={open ? '' : undefined}>{letter.text}</span>
+    <!-- The first line sits above the folded edge, so the mask uncovers only what is under
+         it: without a fade of its own that line was painted whole in the frame the letter
+         opened. -->
+    <span class="letter-text" class:is-folded={!open} data-letter-text={open ? '' : undefined} in:crossfade>{letter.text}</span>
   {/if}
 {/snippet}
 
@@ -283,10 +252,16 @@
     text-align: start;
   }
 
+  /* The press reaches into the card's own padding, above and below, so an unread letter's
+     one line ("Written 15 May 2026 - Ready", 23px) is still a 48px target. The negative
+     margin hands the padding straight back, so the drawing does not move. Below, it takes
+     only --space-3: that is the gap above the close button on an open letter, and two
+     controls must not share a strip of screen. */
   .letter-main-btn {
     background: none;
     border: 0;
-    padding: 0;
+    padding: var(--space-4) 0 var(--space-3);
+    margin-block: calc(-1 * var(--space-4)) calc(-1 * var(--space-3));
     color: inherit;
     font: inherit;
     cursor: pointer;
@@ -303,11 +278,9 @@
     color: var(--text-2);
   }
 
-  /* The state marks - Sealed, and Ready while a letter is unlocked and
-     unread. The words take the role's ink, held to 4.5:1 as small text;
-     the glyphs keep its mark colour, which only owes a glyph's 3:1. The
-     words in --role-mark measured 3.53:1 on trans light (after-release
-     21, audit A11Y-09). */
+  /* The state marks - Sealed, and Ready while a letter is unlocked and unread. The words
+     take the role's ink, held to 4.5:1 as small text; the glyphs keep its mark colour,
+     which only owes a glyph's 3:1. The words in --role-mark measured 3.53:1 on trans light. */
   .letter-mark > span:not(.letter-when),
   .letter-ready {
     color: var(--role-ink);
@@ -411,10 +384,9 @@
     overflow: hidden;
   }
 
-  /* The two actions are the touch floor square (after-release 18; they
-     were 36px). The negative margin hands the extra height back to the
-     card's own vertical padding, so the first line of the letter keeps its
-     place beside them. */
+  /* The two actions are the touch floor square (they were 36px). The negative margin hands
+     the extra height back to the card's own vertical padding, so the first line of the
+     letter keeps its place beside them. */
   .letter-acts {
     display: flex;
     gap: var(--space-1);

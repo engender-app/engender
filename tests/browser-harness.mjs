@@ -1,14 +1,12 @@
 /* Shared by the three browser-driven scripts (browser-tier/run.mjs,
-   browser-tier/verify-build.mjs, walkthrough.test.mjs - ticket 20): the
-   PASS/FAIL reporting and the Chromium launch, which used to be declared
-   three times over, including three copies of the same hardcoded
-   /usr/bin/chromium-browser path. Starting the actual server each script
-   drives Chromium against stays with that script - a probe-page server, a
-   built-app preview server and a real dev server are different enough not
-   to share. `fillDate` joined the same way (redesign ticket 17), once the
-   walkthrough and a gallery script both needed it. `previewBuild` is the
-   one exception to that: every probe that takes `--root` needs the same
-   chdir, and twelve copies of it had already gone wrong (ticket 226). */
+   browser-tier/verify-build.mjs): the PASS/FAIL reporting and the Chromium launch, which
+   used to be declared three times over, including three copies of the same hardcoded
+   /usr/bin/chromium-browser path. Starting the actual server each script drives Chromium
+   against stays with that script - a probe-page server, a built-app preview server and a
+   real dev server are different enough not to share. `fillDate` joined the same way, once
+   the walkthrough and a gallery script both needed it. `previewBuild` is the one exception
+   to that: every probe that takes `--root` needs the same chdir, and twelve copies of it
+   had already gone wrong. */
 import { chromium, firefox, webkit } from 'playwright-core';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -23,11 +21,26 @@ const NO_CRASH_REPORTER = ['--disable-crash-reporter', '--disable-breakpad'];
     binary (e.g. on a machine or CI image where chromium-browser lives
     somewhere else) instead of editing source.
 
-    The crash reporter is off in both launchers (ticket 239): system
+    The crash reporter is off in both launchers: system
     Chromium aborted at startup inside crash_reporter::InitializeCrashpad
     seven times on 2026-09-24, and each core dump raised a notification on
     the desktop. Neither flag touches rendering. A caller's own `args`
     are kept after them. */
+/** Chromium puts its singleton socket under TMPDIR, and a Unix socket path stops at 108
+    bytes, so a long TMPDIR kills it at launch with only "Target page, context or browser
+    has been closed" on the first line (a 130-character TMPDIR turned 32 matrix rows into
+    silent not-runs). This names the cause on the first line instead. */
+/** @param {unknown} error
+ * @returns {never} */
+function explainLaunchFailure(error) {
+  if (!/Socket path too long/.test(String(/** @type {Error} */ (error)?.message))) throw error;
+  throw new Error(
+    `Chromium could not start: TMPDIR (${tmpdir().length} characters) makes its socket path longer than ` +
+    `a Unix socket allows. Point TMPDIR at a shorter directory. ${tmpdir()}`,
+    { cause: error }
+  );
+}
+
 /** @param {import('playwright-core').LaunchOptions} options */
 export function launchChromium(options = {}) {
   return chromium.launch({
@@ -35,12 +48,12 @@ export function launchChromium(options = {}) {
     headless: true,
     ...options,
     args: [...NO_CRASH_REPORTER, ...(options.args ?? [])],
-  });
+  }).catch(explainLaunchFailure);
 }
 
 /** Launches headless Chromium against a real profile directory and returns
-    the context, for the checks a throwaway incognito context cannot answer
-    (ticket 03): Chromium calls an incognito profile uninstallable before it
+    the context, for the checks a throwaway incognito context cannot answer:
+Chromium calls an incognito profile uninstallable before it
     looks at anything else, and "restart the app" means a profile that was
     still there afterwards. The caller owns `userDataDir` and removes it. */
 /** @param {string} userDataDir
@@ -51,7 +64,7 @@ export function launchPersistentChromium(userDataDir, options = {}) {
     headless: true,
     ...options,
     args: [...NO_CRASH_REPORTER, ...(options.args ?? [])],
-  });
+  }).catch(explainLaunchFailure);
 }
 
 /** Selects the runtime for capability checks without changing Chromium callers. */
@@ -110,9 +123,9 @@ export async function newCapabilityContext(browser, options = {}) {
   return context;
 }
 
-/** The `yyyy-mm-dd` a DatePicker field holds. The field itself shows the
-    day written out ("3 Oct 2026", after-release 28), so its `inputValue()`
-    is what a person reads; the stored value rides on `data-date-value`. */
+/** The `yyyy-mm-dd` a DatePicker field holds. The field itself shows the day written out
+    ("3 Oct 2026"), so its `inputValue()` is what a person reads; the stored value rides on
+    `data-date-value`. */
 /** @param {import('playwright-core').Locator} locator */
 export async function dateValue(locator) {
   return locator.getAttribute('data-date-value');
@@ -139,7 +152,7 @@ export async function fillTime(page, selector, hhmm) {
 }
 
 /** Until the splash mark lets go of input. The mark holds after boot until
-    the screen under it has painted and settled (ticket 08), about 350 ms in
+    the screen under it has painted and settled, about 350 ms in
     headless Chromium, and until it starts to fade the app takes no pointer
     input, so a press or a wheel given at boot-ready lands on nothing. */
 /** @param {import('playwright-core').Page} page */
@@ -150,16 +163,55 @@ export async function untilSplashLets(page) {
   }, null, { timeout: 30000 });
 }
 
-/** A screen at rest, the yank sweep's own settle (ticket 100 wrote it;
- *  the hydration sweep, ticket 108, needed the same one for its sheet
- *  scenes and profile prologues): the page navigated, boot waited ready,
- *  a first run left if it was in the way, and the page-side settle
- *  stamped - toasts gone, demo bar hidden, theme on <html> the way
- *  +layout.svelte stamps it. */
-/** @param {import('playwright-core').Page} page
+/** A new entry walks steps: how is
+ *  today, what marked it, the body, then the note and the attachments, and a
+ *  step with nothing to show is skipped. Walks forward through the steps
+ *  until `selector` is in the page, then back from the last if it was not
+ *  ahead. Each hop waits until the step it left has gone: both are in the
+ *  page for the length of the change, so a handle for either is ambiguous
+ *  until then. An entry that exists has no steps and is left as it is.
+ *  @param {import('playwright-core').Page} page
+ *  @param {string} selector */
+export async function toEntryStepWith(page, selector) {
+  await page.waitForSelector(`[data-entry-step], #ed-note, ${selector}`);
+  if (!(await page.locator('[data-entry-step]').count())) return;
+  for (const way of ['[data-entry-continue]', '[data-screen-back]']) {
+    for (let hop = 0; hop < 6; hop++) {
+      await page.waitForFunction(() => document.querySelectorAll('[data-entry-step]').length === 1);
+      if (await page.locator(selector).count()) return;
+      const control = page.locator(way).first();
+      const at = await page.locator('[data-entry-step]').getAttribute('data-entry-step');
+      // The last step's way on is still fading out as it arrives.
+      if (!(await control.count()) || at === (way === '[data-screen-back]' ? 'today' : 'writing')) break;
+      // The way on from the first step waits for a face.
+      if (at === 'today' && way === '[data-entry-continue]' && !(await page.locator('[data-entry-step="today"] [data-mood][aria-checked="true"]').count())) {
+        await page.locator('[data-entry-step="today"] [data-mood="3"]').click();
+      }
+      await control.click();
+      await page.waitForFunction((was) => {
+        const steps = document.querySelectorAll('[data-entry-step]');
+        return steps.length === 1 && steps[0].getAttribute('data-entry-step') !== was;
+      }, at);
+    }
+  }
+  throw new Error(`no step of this new entry shows ${selector}`);
+}
+
+/** The note, on a new entry's last step or an existing entry's page.
+ *  @param {import('playwright-core').Page} page */
+export async function continueToTheRest(page) {
+  await toEntryStepWith(page, '#ed-note');
+  await page.waitForSelector('#ed-note');
+}
+
+/**
+ * Navigate, wait for boot and leave setup if needed. Clear toasts, hide the
+ * demo bar and apply the theme before taking measurements.
+ * @param {import('playwright-core').Page} page
  * @param {string} base
  * @param {string} path
- * @param {string} theme */
+ * @param {string} theme
+ */
 export async function settlePage(page, base, path, theme) {
   await page.goto(`${base}${path}`, { waitUntil: 'networkidle' });
   /* Attached, not visible: at a 200%-zoom width the demo bar wraps taller
@@ -173,15 +225,36 @@ export async function settlePage(page, base, path, theme) {
     await page.waitForSelector('[data-app-root][data-boot="ready"]');
   }
   await untilSplashLets(page);
-  /* The demo bar is hidden rather than removed since redesign ticket 33:
-     setup's own scenes reach the flow through the demo's first-run control,
-     and a removed bar takes the control with it. Nothing measures the bar
-     either way - it is out of the frame and out of the flow. */
+  /* Hide the demo bar without removing its first-run control. Setup
+     scenes use that control to enter the flow. */
   await page.evaluate(SETTLE_PAGE_EXPRESSION(theme));
 }
 
+/** Choose a durable language through Settings before a locale fixture reloads.
+ *  Paraglide's storage entry alone does not change SQLite's language choice.
+ *  Works against source servers and locale-specific production builds.
+ *  @param {import('playwright-core').Page} page
+ *  @param {'en' | 'pl'} locale */
+export async function setAppLanguage(page, locale) {
+  const returnUrl = page.url();
+  await page.goto(new URL('/settings', page.url()).href, { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 60000 });
+  await untilSplashLets(page);
+  const current = await page.getAttribute('html', 'lang');
+  const reloaded = current !== locale ? page.waitForEvent('load') : null;
+  await page.locator(`[data-segmented="language"] [data-segment="${locale}"]`).click();
+  if (reloaded) await reloaded;
+  await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 60000 });
+  await page.waitForFunction(({ locale, label }) =>
+    document.documentElement.lang === locale &&
+    document.querySelector('[data-segmented="language"] [aria-checked="true"]')?.textContent.includes(label),
+    { locale, label: locale === 'pl' ? 'Polski' : 'English' });
+  await page.goto(returnUrl, { waitUntil: 'networkidle' });
+  await page.waitForSelector('[data-app-root][data-boot="ready"]', { timeout: 60000 });
+}
+
 /** Collect compositor frames while `fn` runs, via CDP Page.startScreencast.
- *  Shared between tests/hydration-sweep.mjs and tests/yank-sweep.mjs. */
+ *  Shared between tests/tools/hydration-sweep.mjs and tests/guards/yank-sweep.mjs. */
 /** @template T
  * @param {import('playwright-core').Page} page
  * @param {(frames: {data: string, at: number}[]) => Promise<T>} fn */
@@ -220,7 +293,7 @@ export async function screencast(page, fn) {
 
 /** Collects PASS/FAIL lines in the format all three scripts already
     printed, plus the closing summary line and failure count, and `block()`
-    (ticket 06) for a group of checks that has an expected roster: without
+ for a group of checks that has an expected roster: without
     one, a throw partway through a block silently abandons whatever checks
     were still to come, and a summary that only counts failures says
     nothing happened. */
@@ -276,16 +349,15 @@ export function createReporter() {
   return { ok, fail, finish, block };
 }
 
-/** A server over the built app in `root`, serving build/index.html itself
-    under the production headers (serve-build.mjs, ticket 31). It was vite
-    preview until then, whose document had no CSP and no held module hints.
+/** A server over the built app in `root`, serving build/index.html itself under the
+    production headers (serve-build.mjs). It was vite preview until then, whose document had
+    no CSP and no held module hints.
 
-    It still changes into `root` first, as it did for vite preview, whose
-    SvelteKit adapter read the built server from the working directory
-    (tickets 224 and 226): a probe given `--root <other tree>` that reads
-    relative paths afterwards keeps reading that tree. Resolve any output
-    path the caller takes before calling it. Without `--root` the root is
-    the checkout the probe runs in and the change is a no-op. */
+    It still changes into `root` first, as it did for vite preview, whose SvelteKit adapter
+    read the built server from the working directory: a probe given `--root <other tree>`
+    that reads relative paths afterwards keeps reading that tree. Resolve any output path
+    the caller takes before calling it. Without `--root` the root is the checkout the probe
+    runs in and the change is a no-op. */
 /** @param {string} root */
 export function previewBuild(root) {
   process.chdir(root);

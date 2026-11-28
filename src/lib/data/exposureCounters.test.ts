@@ -10,6 +10,7 @@ function episode(overrides: Partial<RegimenEpisode> = {}): RegimenEpisode {
   return {
     id: 'ep-1',
     drug: 'estradiol valerate',
+    drugClass: 'hrt',
     ester: 'valerate',
     dose: 4,
     doseUnit: 'mg',
@@ -69,7 +70,7 @@ test('a dose outside the requested range is left out even when the caller hands 
   assert.equal(totals[0].total, 4);
 });
 
-test('a dose with no episode to resolve against is left out and not counted as excluded: there was nothing to attribute against before ticket 38 either', () => {
+test('omits doses with no episode without counting them as excluded', () => {
   const doses = [dose(DAY_0 - 100)];
 
   const { totals, excludedDoses } = cumulativeDoseTotals(doses, [episode({ startEpochDay: DAY_0 })], DAY_0 - 100, DAY_0 + 30);
@@ -78,7 +79,7 @@ test('a dose with no episode to resolve against is left out and not counted as e
   assert.equal(excludedDoses, 0);
 });
 
-test('a dose with no drug of its own is excluded and counted when two concurrent episodes name different drugs (phase 5 ticket 38)', () => {
+test('a dose with no drug of its own is excluded and counted when two concurrent episodes name different drugs', () => {
   const estradiol = episode({ id: 'ep-1', drug: 'estradiol', startEpochDay: DAY_0 });
   const spiro = episode({ id: 'ep-2', drug: 'spironolactone', startEpochDay: DAY_0 });
   const doses = [dose(DAY_0 + 1)];

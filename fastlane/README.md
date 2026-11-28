@@ -24,10 +24,12 @@ opens an existing browser profile. A production build without demo controls
 fails before screenshot capture.
 
 Screenshots are 1080 × 1920 PNGs, in the default trans palette and light
-theme. Their order is Today, Care, new entry, Transition roadmap, Voice
-(Compare tab), Look back and Settings privacy, so the set covers the
-transition areas the description names: HRT records, the journal, plans,
-voice practice and looking back. The entry screenshot is scrolled to its
+theme. Their order is new entry, Look back, Today, Care, Voice (Compare
+tab), Transition roadmap and Settings privacy. The listing leads with
+learning about your gender from what you track, so the first two shots are a
+scale being set and what Look back makes of it; the rest cover the areas the
+description names. Play orders shots by file name, and the script captures
+Today first because it ends the demo's running binder session. The entry screenshot is scrolled to its
 note, with the first scale and the mood bar under it. Each capture waits
 until finite animations are done and every box has held still for 600ms,
 then keeps a shot only when two taken 500ms apart match. The script empties
@@ -38,5 +40,9 @@ icons from their existing SVGs. Store icons use the opaque square export from
 corner mask. `render:mark` also updates the PWA and Apple touch icons.
 
 Review the screenshots and feature graphics before committing regenerated
-images. Text validation runs with `npm test -- tests/store-listing-assets.test.ts`.
+images. Text validation runs with `npm test -- tests/node/release/store-listing-assets.test.ts`.
 This directory contains assets only; nothing here uploads them to a store.
+
+The Android runtime requirement is Android 8.0 or newer with WebView 104
+or newer. WebView updates separately from Android; the OS version alone
+does not establish whether the app can run.

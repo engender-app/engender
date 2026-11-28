@@ -62,7 +62,7 @@
           }
         }
       });
-      /* The series itself, for tests/year-days-list.mjs to check each
+      /* The series itself, for tests/guards/year-days-list.mjs to check each
          listed day against rather than against the cells. */
       window.__yearFixture = { year: YEAR, startEpochDay: start, values: Object.fromEntries(days.map((d) => [d.day, d.value])) };
       document.body.dataset.ready = '1';

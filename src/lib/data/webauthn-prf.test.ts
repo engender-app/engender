@@ -1,10 +1,9 @@
 import { test, expect, afterEach } from 'vitest';
 import { BiometricUnavailableError, browserAuthenticator, prfAvailable } from './webauthn-prf.ts';
 
-/* The two halves of "offered only where it actually works": what
-   prfAvailable() answers before a row is drawn, and what the authenticator
-   does when a platform advertised PRF and then did not deliver. Both are
-   ticket 55's acceptance, and both are about a mode that must fail as
+/* The two halves of "offered only where it actually works": what prfAvailable answers
+   before a row is drawn, and what the authenticator does when a platform advertised PRF and
+   then did not deliver. Both are acceptance, and both are about a mode that must fail as
    unavailable rather than as a wrong secret. */
 
 const withCapabilities = (capabilities: Record<string, boolean> | null, platformAuthenticator = true) => {
@@ -61,10 +60,10 @@ test('a browser that throws on being asked has answered the question', async () 
   expect(await prfAvailable()).toBe(false);
 });
 
-/* The failure ticket 55 names by hand: a create that succeeds, reports the
-   extension enabled, and then hands back nothing. Enrolment falls through to
-   an assertion in that case, so the stub refuses there too - which is the
-   platform that advertised PRF and returned no output. */
+/* The failure names by hand: a create that succeeds, reports the extension enabled, and
+   then hands back nothing. Enrolment falls through to an assertion in that case, so the
+   stub refuses there too - which is the platform that advertised PRF and returned no
+   output. */
 const stubCredential = (extensionResults: unknown) => ({
   rawId: new Uint8Array([1, 2, 3]).buffer,
   getClientExtensionResults: () => extensionResults

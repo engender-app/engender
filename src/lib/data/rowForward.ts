@@ -1,43 +1,14 @@
-/* What a row says instead of reporting a gap (phase 11 all-four-doors ticket
-   02, DIRECTION.md rule 16, ADR-0067, ADR-0073, ADR-0012).
+/* Project one forward-looking fact per row from records the journal
+   already holds (ADR-0067, ADR-0073). rowForwardReads.ts supplies
+   the data and vocabulary/hubLabels.ts supplies the words.
 
-   Nine of the seventeen rows on the Transition door carried a date-derived
-   second line and all nine looked backwards. The milestones row said
-   "Nothing logged for 1 year 4 months" over a screen showing a name-change
-   hearing in sixteen days, because a milestone still ahead is not a last
-   write and `lastWrite.ts` only answers the backwards question. Rule 16
-   puts what is running and what is next before what changed, so this module
-   is the forwards half: one fact per row, or none where there is nothing
-   ahead to say.
-
-   Pure, above the journal seam, beside `agenda.ts` and `comingBack.ts` and
-   split from its reads the same way (`rowForwardReads.ts` fetches, this
-   projects). No clock, no driver, no paraglide, no runes: today arrives as
-   an argument and the words are `vocabulary/hubLabels.ts`'s.
-
-   **Nothing here is a new kind of fact.** Every row below is read off
-   something a screen already draws - the milestone mirror, the letters'
-   seals, the running wear session, the running tryout, the appointment
-   list, the procedure list, the agenda's own dose slot (ADR-0067) and the
-   stock projection. What is new is only that a *row* may now say it.
-
-   Names are read off the records rather than off `dayAhead`'s marks, and
-   that is deliberate: ADR-0067 is explicit that a mark carries a day and a
-   kind and nothing else - "never which appointment, never which letter" -
-   and the copy here has to name the thing ("Name-change hearing in 16
-   days"). The one fact this takes from `dayAhead` is the next dose slot,
-   which needs no name and does need the schedule arithmetic that registry
-   already owns.
-
-   **Nothing here ranks.** A row states the one fact nearest its own reason
-   for existing, and no row is urgent, late or due: the app ranks nothing
-   centrally (ADR-0073), so the rows keep their registry order and this
-   module never reorders anything. Nothing is coloured by how far off a fact
-   is either, which is ADR-0012's rule about what colour may encode - it is
-   for a normalized value on a scale, never for a distance in time. */
+   Use the record's name where copy needs it. Calendar marks carry only
+   a day and kind. Ask the dose area for the next uncovered slot, since
+   it can pair schedules with logged doses. Preserve registry order
+   and reserve color for normalized scale values (ADR-0012). */
 
 import { recoveryDay } from './recoveryDay';
-import type { Appointment, Measurement, Milestone, Procedure, Tryout, WearKind } from './types';
+import type { Appointment, Milestone, Procedure, Tryout, WearKind } from './types';
 
 /** The rows that can carry a forward fact.
 
@@ -47,12 +18,8 @@ import type { Appointment, Measurement, Milestone, Procedure, Tryout, WearKind }
     key renamed there is a compile error here rather than a row that
     silently stops speaking.
 
-    Eight rows, and the eight are not an arbitrary cut: they are every row
-    whose area holds either a dated future or a span that is running now,
-    plus `measurements`, which holds neither and states its last value
-    instead (see `RowValue`). */
+    Eight rows, each backed by a dated future or a running span. */
 export const ROW_FORWARD_KEYS = [
-  'measurements',
   'care',
   'surgery',
   'appointments',
@@ -110,26 +77,10 @@ export type NextWhat =
   /** Stock running out, where there is no dose slot to put it beside. */
   | { area: 'runOut' };
 
-/** The one row with neither a span nor a date: it states its last value
-    rather than the age of it, since a value is more of a reading than a
-    gap. Still carries the day, because the line says both ("Waist 77 cm, 8
-    days ago"). */
-export interface RowValue {
-  kind: 'value';
-  epochDay: number;
-  /** The measurement type's key. The name is looked up at display time
-      (`vocabulary.measurementTypeName`), the split every built-in
-      vocabulary keeps. */
-  type: string;
-  value: number;
-  unit: string;
-}
-
 /** What one row says, where it has something forward to say. */
 export type RowForward =
   | { kind: 'running'; what: RunningWhat }
-  | { kind: 'next'; epochDay: number; what: NextWhat }
-  | RowValue;
+  | { kind: 'next'; epochDay: number; what: NextWhat };
 
 /** Everything the projection needs, each piece from the read its own screen
     already makes (`rowForwardReads.ts`).
@@ -159,8 +110,6 @@ export interface RowForwardFacts {
       nothing projects one (`stockProjection.ts` returns null for a stock
       with no rate to project from). */
   runOutEpochDay: number | null;
-  /** The most recent measurement of any type, at or before today. */
-  latestMeasurement: Pick<Measurement, 'epochDay' | 'type' | 'value' | 'unit'> | null;
 }
 
 /** The soonest day at or after today in a list, or null. */
@@ -193,10 +142,9 @@ function nextLetter(facts: RowForwardFacts): RowForward | null {
 function nextAppointment(facts: RowForwardFacts): RowForward | null {
   const ahead = facts.appointments
     .filter((appointment) => appointment.epochDay >= facts.todayEpochDay)
-    /* A consult belongs to the surgery row, which states it there
-       (ADR-0066: one appointment record, two screens reading it). Saying it
-       on both rows would be the app repeating itself, which is the whole
-       complaint phase 11 is answering. */
+    /* A consult belongs to the surgery row, which states it there (ADR-0066: one
+       appointment record, two screens reading it). Saying it on both rows would be the app
+       repeating itself, which is the whole complaint is answering. */
     .filter((appointment) => appointment.procedureId === null)
     .sort((a, b) => a.epochDay - b.epochDay);
   const first = ahead[0];
@@ -294,20 +242,12 @@ function wearFact(facts: RowForwardFacts): RowForward | null {
     : null;
 }
 
-function measurementFact(facts: RowForwardFacts): RowForward | null {
-  const latest = facts.latestMeasurement;
-  return latest
-    ? { kind: 'value', epochDay: latest.epochDay, type: latest.type, value: latest.value, unit: latest.unit }
-    : null;
-}
-
 /** One fact per row, for the rows that have one.
 
     Declared as a total record over `RowForwardKey` so a key added to the
     list above without a rule is a typecheck failure rather than a row that
     quietly keeps reporting its gap. */
 const FACTS: Record<RowForwardKey, (facts: RowForwardFacts) => RowForward | null> = {
-  measurements: measurementFact,
   care: careFact,
   surgery: surgeryFact,
   appointments: nextAppointment,

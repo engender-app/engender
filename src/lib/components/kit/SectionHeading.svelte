@@ -1,6 +1,6 @@
 <script lang="ts">
   /* A screen reads as a few named areas rather than as one column of cards
-     (DIRECTION.md 3c), and this is what names them: the display face at the
+     and this heading names them: the display face at the
      screen-title size, with no icon. The rows underneath carry the icons.
 
      The text arrives as a string rather than as copy written here, so the
@@ -14,21 +14,28 @@
     id,
     focusable = false,
     action,
-    sub
+    sub,
+    crossfade = false
   }: {
     text: string;
+    /** For a heading whose words the person can change while it is on screen: the old and
+        the new words crossfade in one grid cell, the way `sub` does, rather than swapping
+        in one frame. The words take what the line leaves beside the action and wrap inside
+        it, and the row is top-aligned, so a new name a line longer or shorter only grows or
+        shrinks the heading downward: the action never wraps to a line of its own and
+        nothing re-centres. The caller animates that height. */
+    crossfade?: boolean;
     /** A second line under the heading saying which part of the area comes
-        first - the Journal's month over its first day (ux-carpet ticket 282).
+        first - the Journal's month over its first day.
         An empty string draws the line with nothing on it yet (its
         min-height keeps the room), for a sub-line that waits on a read: the
         text then fades in on a line that is already there, and nothing
         under the heading moves.
         Omitted, there is no second line. */
     sub?: string;
-    /** An anchor for the area this names, when something links into the
-        middle of a screen (phase 11 ticket 15: Safe space's way down lands
-        on the letters screen's Open section). Omitted everywhere else - a
-        heading needs no id to name an area, only to be addressed by one. */
+    /** An anchor for the area this names, when something links into the middle of a screen.
+        Omitted everywhere else - a heading needs no id to name an area, only to be
+        addressed by one. */
     id?: string;
     /** Lets a same-page link move keyboard focus onto the named area. */
     focusable?: boolean;
@@ -47,8 +54,14 @@
   const subFade = (_node: Element) => fadeOnly(crossfadeDuration());
 </script>
 
-<div class="kit-heading" data-section-heading id={focusable ? undefined : id}>
-  {#if focusable}
+<div class="kit-heading" class:is-crossfade={crossfade} data-section-heading id={focusable ? undefined : id}>
+  {#if crossfade}
+    <h2 class="kit-heading-fade">
+      {#key text}
+        <span transition:subFade>{text}</span>
+      {/key}
+    </h2>
+  {:else if focusable}
     <h2 {id} tabindex="-1">{text}</h2>
   {:else}
     <h2>{text}</h2>
@@ -81,5 +94,11 @@
     font-weight: var(--weight-medium);
     line-height: 1.3;
   }
-  .kit-heading-sub > * { grid-area: 1 / 1; }
+  .kit-heading-sub > *,
+  .kit-heading-fade > * { grid-area: 1 / 1; }
+  .kit-heading-fade {
+    display: grid;
+    flex: 1 1 0;
+  }
+  .is-crossfade { align-items: flex-start; }
 </style>

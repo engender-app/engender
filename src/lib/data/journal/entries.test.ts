@@ -1,4 +1,4 @@
-/* The entries area, exercised through the driver interface (ticket 07).
+/* The entries area, exercised through the driver interface.
    The preset-switch regression test is the one that matters most here:
    dimension values belong to the entry, not to the preset that was active
    when they were logged. */
@@ -121,39 +121,74 @@ test('a new entry never arrives with a presentation pre-filled', async () => {
   assert.equal((await journal.entries.getEntry(id))?.presentationId, null);
 });
 
+const appointmentOn = (journal: Awaited<ReturnType<typeof journalWithBuiltIns>>['journal'], epochDay: number) =>
+  journal.appointments.upsertAppointment({ epochDay, procedureId: null, kind: null, place: null, note: null });
+
 test('creation saves the star and appointment debrief with the entry', async () => {
   const { journal } = await journalWithBuiltIns();
+  const appointment1 = await appointmentOn(journal, 99);
   const id = await journal.entries.upsertEntry({
     epochDay: 100,
     mood: 4,
     starred: true,
-    debriefForAppointment: 'appointment-1'
+    debriefForAppointment: appointment1
   });
 
   assert.equal((await journal.entries.getEntry(id))?.starred, true);
-  assert.equal(await journal.checklists.getDebriefEntryId('appointment-1'), id);
+  assert.equal(await journal.checklists.getDebriefEntryId(appointment1), id);
 
+  const appointment2 = await appointmentOn(journal, 100);
   await journal.entries.setEntryStarred(id, false);
-  await journal.entries.upsertEntry({ id, note: 'edited', starred: true, debriefForAppointment: 'appointment-2' });
+  await journal.entries.upsertEntry({ id, note: 'edited', starred: true, debriefForAppointment: appointment2 });
   assert.equal((await journal.entries.getEntry(id))?.starred, false);
-  assert.equal(await journal.checklists.getDebriefEntryId('appointment-1'), id);
-  assert.equal(await journal.checklists.getDebriefEntryId('appointment-2'), null);
+  assert.equal(await journal.checklists.getDebriefEntryId(appointment1), id);
+  assert.equal(await journal.checklists.getDebriefEntryId(appointment2), null);
+});
+
+/* `?debriefFor=` is an address anyone can send: the save links the entry only to the
+   appointment the offer could be naming on that day - the most recent past one, or one on
+   the entry's own day (In the room) - and never takes over a debrief already on file. */
+test('a debrief link to a missing, stale or already-debriefed appointment changes no association', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const older = await appointmentOn(journal, 90);
+  const latest = await appointmentOn(journal, 95);
+  const future = await appointmentOn(journal, 120);
+  const olderDebrief = await journal.entries.upsertEntry({ epochDay: 91, mood: 3, debriefForAppointment: older });
+  assert.equal(await journal.checklists.getDebriefEntryId(older), olderDebrief, 'the offer of its own day links');
+
+  const bogus = await journal.entries.upsertEntry({ epochDay: 100, mood: 2, debriefForAppointment: 'bogus' });
+  const stale = await journal.entries.upsertEntry({ epochDay: 100, mood: 2, debriefForAppointment: older });
+  const ahead = await journal.entries.upsertEntry({ epochDay: 100, mood: 2, debriefForAppointment: future });
+  assert.ok(bogus && stale && ahead);
+  assert.equal(await journal.checklists.getDebriefEntryId('bogus'), null);
+  assert.equal(await journal.checklists.getDebriefEntryId(older), olderDebrief);
+  assert.equal(await journal.checklists.getDebriefEntryId(future), null);
+
+  const real = await journal.entries.upsertEntry({ epochDay: 100, mood: 4, debriefForAppointment: latest });
+  assert.equal(await journal.checklists.getDebriefEntryId(latest), real, 'the legitimate offer still links');
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 1, debriefForAppointment: latest });
+  assert.equal(await journal.checklists.getDebriefEntryId(latest), real, 'a second link does not take it over');
+
+  const room = await appointmentOn(journal, 100);
+  const roomEntry = await journal.entries.upsertEntry({ epochDay: 100, mood: 4, debriefForAppointment: room });
+  assert.equal(await journal.checklists.getDebriefEntryId(room), roomEntry, 'an appointment on the entry day links');
 });
 
 for (const failure of ['star', 'debrief'] as const) {
   test(`a ${failure} failure rolls back attachments and a contextual dose before retry`, async () => {
     const { journal, db } = await journalWithBuiltIns();
+    const appointment = await appointmentOn(journal, 99);
     await journal.stock.upsertEntry({ drug: 'Estradiol', quantity: 30, unit: 'mg', recordedEpochDay: 90 });
     await db.exec(failure === 'star'
       ? `CREATE TRIGGER fail_creation BEFORE INSERT ON entry WHEN NEW.starred = 1
          BEGIN SELECT RAISE(ABORT, 'injected star failure'); END`
-      : `CREATE TRIGGER fail_creation BEFORE UPDATE OF debrief_entry_id ON checklist
+      : `CREATE TRIGGER fail_creation BEFORE INSERT ON appointment_debrief
          BEGIN SELECT RAISE(ABORT, 'injected debrief failure'); END`);
     const input = {
       epochDay: 100,
       mood: 4,
       starred: true,
-      debriefForAppointment: 'appointment-1',
+      debriefForAppointment: appointment,
       attachPhotos: [{ full: new Uint8Array([1]), thumb: new Uint8Array([2]) }],
       attachRecordings: [new Uint8Array([3])],
       attachVideos: [new Uint8Array([4])],
@@ -164,7 +199,7 @@ for (const failure of ['star', 'debrief'] as const) {
     assert.deepEqual(await journal.entries.entriesForDay(100), []);
     assert.deepEqual(await journal.doses.getDoses(100, 100), []);
     assert.equal((await journal.stock.getEntries())[0].quantity, 30);
-    assert.equal(await journal.checklists.getDebriefEntryId('appointment-1'), null);
+    assert.equal(await journal.checklists.getDebriefEntryId(appointment), null);
     assert.equal(await journal.checklists.getStandaloneChecklist(), undefined);
 
     await db.exec('DROP TRIGGER fail_creation');
@@ -176,7 +211,7 @@ for (const failure of ['star', 'debrief'] as const) {
     assert.equal(entry.recordings.length, 1);
     assert.equal(entry.videos.length, 1);
     assert.equal(entry.starred, true);
-    assert.equal(await journal.checklists.getDebriefEntryId('appointment-1'), id);
+    assert.equal(await journal.checklists.getDebriefEntryId(appointment), id);
     assert.equal((await journal.doses.getDoses(100, 100)).length, 1);
     assert.equal((await journal.stock.getEntries())[0].quantity, 30);
   });
@@ -430,8 +465,6 @@ test.each(['ON', 'OFF'])('purgeExpiredTrash reclaims expired children and keeps 
   const freshId = await journal.entries.upsertEntry({ epochDay: 101, mood: 3, note: 'just trashed' });
   await journal.marginNotes.add({ entryId: expiredId, epochDay: 102, text: 'old reflection' });
   await journal.marginNotes.add({ entryId: freshId, epochDay: 103, text: 'keep this reflection' });
-  await journal.revisits.setRevisit({ entryId: expiredId, createdEpochDay: 100, targetEpochDay: 200 });
-  await journal.revisits.setRevisit({ entryId: freshId, createdEpochDay: 101, targetEpochDay: 201 });
   db.raw.exec(`PRAGMA foreign_keys = ${foreignKeys}`);
 
   await journal.entries.deleteEntry(expiredId);
@@ -451,8 +484,6 @@ test.each(['ON', 'OFF'])('purgeExpiredTrash reclaims expired children and keeps 
 
   assert.equal((db.raw.prepare('SELECT COUNT(*) AS n FROM entry WHERE id = ?').get(freshId) as { n: number }).n, 1);
   assert.deepEqual((await journal.entries.trashedEntries()).map((e) => e.id), [freshId]);
-  assert.equal(await journal.revisits.getRevisitForEntry(expiredId), null);
-  assert.ok(await journal.revisits.getRevisitForEntry(freshId));
   assert.deepEqual(await db.query('PRAGMA foreign_key_check'), []);
 
   assert.equal(await purgeExpiredTrash(db, files), 0, 'and nothing to take is nothing to announce');
@@ -473,15 +504,13 @@ test('a trashed entry drops out of entriesForDay, recentDays and entriesWithTag,
   await assert.rejects(journal.entries.upsertEntry({ id: trashed, mood: 5 }), /unknown entry/);
 });
 
-/* Voice recordings (ticket 24): entry-only, sharing the photo file store
-   and the same file-before-row / row-before-file ordering (voiceRecordings.ts).
-   First-class entry media alongside a photo, so the same rules photos.test.ts
-   exercises against journal.photos.attach apply here against upsertEntry's
-   attachRecordings/removeRecordingIds instead - there is no separate
-   attach/remove call for a recording, since ticket 24 gives it no owner but
-   an entry. journal.voice.inJournal (voiceRecordings.test.ts) is the one
-   read that lists recordings across entries, for ticket 25's compare
-   picker. */
+/* Voice recordings: entry-only, sharing the photo file store and the same file-before-row /
+   row-before-file ordering (voiceRecordings.ts). First-class entry media alongside a photo,
+   so the same rules photos.test.ts exercises against journal.photos.attach apply here
+   against upsertEntry's attachRecordings/removeRecordingIds instead - there is no separate
+   attach/remove call for a recording gives it no owner but an entry.
+   journal.voice.inJournal (voiceRecordings.test.ts) is the one read that lists recordings
+   across entries, for compare picker. */
 
 async function journalWithFiles() {
   const db = await migratedDb();
@@ -654,7 +683,7 @@ test('updating an entry costs fixed round trips however many tags and dimension 
   );
 });
 
-/* The bounded reads the screens use (ticket 08). A screen renders a
+/* The bounded reads the screens use. A screen renders a
    handful of days or a page of hits, and none of them may pull the whole
    entry table across the worker boundary to do it. */
 
@@ -722,7 +751,7 @@ test('entriesWithTag reads newest first, up to the limit, by key or by uuid', as
   assert.deepEqual(await journal.entries.entriesWithTag('no-such-tag', 0, 200, 10), []);
 });
 
-test('entriesWithTag is bound to its range, not the whole journal (carpet ticket 19)', async () => {
+test('entriesWithTag is bound to its range, not the whole journal', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.entries.upsertEntry({ epochDay: 90, mood: 1, tags: ['e-happy'] });
   await journal.entries.upsertEntry({ epochDay: 100, mood: 2, tags: ['e-happy'] });
@@ -789,18 +818,7 @@ test('setEntryStarred toggles the flag and throws on an unknown id', async () =>
   await assert.rejects(journal.entries.setEntryStarred(999, true), /unknown entry/);
 });
 
-test('noteEntries reads epoch day, note and presentation, skipping blank notes and trashed entries', async () => {
-  const { journal } = await journalWithBuiltIns();
-  await journal.entries.upsertEntry({ epochDay: 100, mood: 4, note: 'a good day' });
-  await journal.entries.upsertEntry({ epochDay: 101, mood: 3, note: '' });
-  const trashed = await journal.entries.upsertEntry({ epochDay: 102, mood: 2, note: 'gone' });
-  await journal.entries.deleteEntry(trashed);
-
-  const rows = await journal.entries.noteEntries();
-  assert.deepEqual(rows, [{ epochDay: 100, note: 'a good day', presentationId: null }]);
-});
-
-test('starring alone cannot rescue an otherwise-empty entry (CONTEXT: "Entry")', async () => {
+test('starring alone cannot rescue an otherwise-empty entry', async () => {
   const { journal } = await journalWithBuiltIns();
   const id = await journal.entries.upsertEntry({ epochDay: 100, mood: 4, note: 'leaving' });
   await journal.entries.setEntryStarred(id, true);
@@ -833,19 +851,6 @@ test('counterevidencePool unions the tag and starred entries, newest first, with
   assert.deepEqual(pool.map((e) => e.id), [both, starredOnly, tagOnly]);
 });
 
-test('counterevidencePool can be read over a span, both ends inclusive (phase 11 ticket 07)', async () => {
-  const { journal } = await journalWithBuiltIns();
-  for (const day of [100, 101, 102, 103]) {
-    const id = await journal.entries.upsertEntry({ epochDay: day, mood: 4 });
-    await journal.entries.setEntryStarred(id, true);
-  }
-
-  const pool = await journal.entries.counterevidencePool(['e-happy'], 10, { from: 101, to: 102 });
-  assert.deepEqual(pool.map((e) => e.epochDay), [102, 101]);
-  // No span reads the whole journal, as every caller before the span did.
-  assert.equal((await journal.entries.counterevidencePool(['e-happy'], 10)).length, 4);
-});
-
 test('counterevidencePool stops at the limit it is given, keeping the newest', async () => {
   const { journal } = await journalWithBuiltIns();
   for (const day of [100, 101, 102]) {
@@ -869,7 +874,7 @@ test('a trashed entry\'s body-region euphoria does not enter the counterevidence
 });
 
 test('counterevidencePool includes an entry whose body-region euphoria clears the floor, with no euphoria tag', async () => {
-  // The case ticket 44 was found by.
+
   const { journal } = await journalWithBuiltIns();
   const euphoriaFloorValue = euphoriaValue(GOOD_DAY_REGION_EUPHORIA_FLOOR);
   const byRegion = await journal.entries.upsertEntry({
@@ -916,8 +921,7 @@ test('counterevidencePool matches any tag id it is given, not just the first', a
 });
 
 test('the purge declines to run while a journal write is in flight', async () => {
-  /* Same rule as the orphan sweep's, and for the same reason (phase 5 audit
-     ticket 02): it reads which entries are past the window and then deletes
+  /* Same rule as the orphan sweep's, and for the same reason: it reads which entries are past the window and then deletes
      them, and it now runs with the screens live - so a restore landing in that
      gap would have its entry deleted anyway. One more boot in the trash is
      nothing; a restored entry deleted is gone. */
@@ -939,7 +943,7 @@ test('the purge declines to run while a journal write is in flight', async () =>
   assert.equal(await purgeExpiredTrash(db, files), 1, 'and taken once nothing is writing');
 });
 
-test('latestBadMomentEntry identifies bad moments and returns newest entry (ticket 50)', async () => {
+test('latestBadMomentEntry identifies bad moments and returns newest entry', async () => {
   const { journal } = await journalWithBuiltIns();
 
   // No entries -> undefined
@@ -1268,7 +1272,7 @@ test('a trashed entry leaves the whole-journal count, and comes back to it resto
   assert.equal(await journal.entries.countAll(), 2);
 });
 
-/* The qualification rule, narrowed (phase 11 ticket 15).
+/* The qualification rule, narrowed.
 
    The pool's third arm used to admit an entry on one positively marked
    body region alone, note and all. On the demo journal that handed Safe
@@ -1347,12 +1351,10 @@ test('counterevidencePool keeps an entry whose only mark is a high region, with 
 });
 
 test('the demo journal offers back no dysphoria-tagged day it was not starred on', async () => {
-  /* The rule stated over the fixture rather than over three hand-written
-     entries: what ticket 15 was found by is a screenful of real-looking
-     days, and the persona is the only place in the node tier that has
-     them. Its photos are drawn on a canvas, so the entries are written
-     here directly rather than through `seedPersonaJournal` - the pool
-     reads no photo. */
+  /* The rule stated over the fixture rather than over three hand-written entries: wh was
+     found by is a screenful of real-looking days, and the persona is the only place in the
+     node tier that has them. Its photos are drawn on a canvas, so the entries are written
+     here directly rather than through `seedPersonaJournal` - the pool reads no photo. */
   const { journal } = await journalWithBuiltIns();
   const today = 20_000;
   for (const { photoCount, presentationName, ...entry } of persona(today).entries) {
@@ -1373,7 +1375,7 @@ test('the demo journal offers back no dysphoria-tagged day it was not starred on
   );
 });
 
-test('an entry can mark several effects, and saving never moves the day of one already marked (ticket 289)', async () => {
+test('an entry can mark several effects, and saving never moves the day of one already marked', async () => {
   const { journal } = await journalWithBuiltIns();
   const first = await journal.personalEffects.addCustomEffectType('Softer skin');
   const second = await journal.personalEffects.addCustomEffectType('Slower hair');

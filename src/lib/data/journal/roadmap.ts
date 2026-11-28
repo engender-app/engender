@@ -1,26 +1,15 @@
-/* Transition-roadmap progress (phase 4 ticket 23, widened phase 5 ticket
-   20 for a "not my path" tri-state and custom goals; CONTEXT: "Roadmap
-   goal", "Country pack", "Custom"): which goals of which country pack
-   someone has ticked off, checked or ruled out, plus whatever goals they
-   added to a track themselves.
+/* Store bundled and custom roadmap goals separately (ADR-0002).
+   A bundled goal is keyed by pack and goal. Missing means unchecked
+   and visible. Remove its overlay when neither status nor visibility
+   is set. A custom goal always has its own row and `unchecked` status.
 
-   Two storage shapes for two identities, the same split ADR-0002 draws
-   between a built-in and a custom row. A bundled goal is named by its
-   pack and goal key and its row exists only because it has a status
-   or visibility recorded. No row means unchecked and visible. Clearing
-   either choice deletes the row only when neither choice remains. A custom
-   goal is the opposite: it is the user's own free text, so its row exists the moment
-   it is added regardless of its tick, and 'unchecked' is an ordinary
-   value of that same row's `status` column.
-
-   Track is roadmap.ts's business for a bundled goal (RoadmapGoal.track)
-   and the user's own choice for a custom one, fixed at creation: the
-   ticket's out-of-scope line refuses a reorder UI, so there is no setter
-   to move a custom goal between tracks either. */
+   A custom goal's `track` is `legal` for Polish legal steps or a
+   `roadmap_category` UUID. Migration 111 creates categories for
+   legacy social, presentational and medical tracks. */
 
 import type { SqliteDriver } from '../sqlite/driver';
-import type { CustomRoadmapGoal, RoadmapGoalStatus } from '../types';
-import type { RoadmapTrack } from '../roadmap';
+import type { CustomRoadmapGoal, InstitutionChange, RoadmapCategory, RoadmapGoalStatus, RoadmapInstitution } from '../types';
+import { INSTITUTION_STATUSES, assertOneOf } from '../rowValues';
 import { assertChanged, mintUuid, now } from './support';
 
 export interface RoadmapArea {
@@ -35,15 +24,15 @@ export interface RoadmapArea {
   /** Visibility only: never changes status, milestones or documents. */
   setGoalHidden(packKey: string, goalKey: string, hidden: boolean): Promise<void>;
 
-  /** Every custom goal across every track, in the order they were added -
-      the order a screen appends them in after a track's bundled goals. */
+  /** Every custom goal in every group, in the order they were added -
+      the order a screen appends them in to their group. */
   getCustomGoals(): Promise<CustomRoadmapGoal[]>;
-  /** Starts unchecked. `track` is fixed for the goal's whole life; there
-      is no reorder or move-track UI for a custom goal to feed. */
-  addCustomGoal(track: RoadmapTrack, text: string): Promise<CustomRoadmapGoal>;
+  /** Starts unchecked, appended to the end of its group: `track` is 'legal'
+      for the Polish legal steps (the default) or a category's uuid. */
+  addCustomGoal(text: string, track?: string): Promise<CustomRoadmapGoal>;
   setCustomGoalStatus(id: string, status: RoadmapGoalStatus): Promise<void>;
   /** The person's own words, so they can be changed after the fact
-      (phase 8 features ticket 69, ADR-0068). Throws on an unknown id the
+      (ADR-0068). Throws on an unknown id the
       way `setCustomGoalStatus` above it does. A milestone this goal minted
       keeps the name it was given on the day; only its provenance line
       moves, because that re-resolves through the join on every read. */
@@ -58,18 +47,43 @@ export interface RoadmapArea {
       to any of this: there is no row, so there is nothing to delete. */
   deleteCustomGoal(id: string): Promise<void>;
 
-  /** Which tracks the person has said are not their path (phase 8 features
-      ticket 49), sorted, so a caller comparing two reads gets the same
-      order. A track named here that `ROADMAP_TRACKS` no longer lists is
-      returned like any other and matches nothing on screen - the same
-      no-cleanup-job property a mute naming a deleted era has. */
-  getDismissedTracks(): Promise<string[]>;
-  /** Idempotent both ways: presence is the whole of the state, so
-      dismissing twice writes the same row and undoing one that was never
-      dismissed deletes nothing and is success. Never touches a goal's own
-      status - the fold is a reading of the ticks, not a write over them. */
-  setTrackDismissed(track: RoadmapTrack, dismissed: boolean): Promise<void>;
+  /** The person's categories, in the order they were made. */
+  getCategories(): Promise<RoadmapCategory[]>;
+  addCategory(name: string): Promise<RoadmapCategory>;
+  /** Throws on an unknown id, like `updateCustomGoalText`. */
+  renameCategory(id: string, name: string): Promise<void>;
+  /** Removes the category and every goal in it, unfiling the paper filed
+      against those goals the way `deleteCustomGoal` does; a milestone one
+      of them minted keeps its link. Idempotent (ADR-0053). */
+  deleteCategory(id: string): Promise<void>;
+
+  /** Institutions the person added to the list of name and document
+      changes, in the order added. The built-in
+      ones are keys in roadmap.ts and have no row. */
+  getInstitutions(): Promise<RoadmapInstitution[]>;
+  /** Refuses a blank name: a nameless row has nothing to be told apart by. */
+  addInstitution(name: string): Promise<RoadmapInstitution>;
+  /** Throws on an unknown id, like `renameCategory`. */
+  renameInstitution(id: string, name: string): Promise<void>;
+  /** Removes the institution and every change recorded at it, and unfiles
+      the paper filed against it the way `deleteCustomGoal` does.
+      Idempotent (ADR-0053). */
+  deleteInstitution(id: string): Promise<void>;
+  /** Every change at every institution, oldest first by day, then by the
+      order written. */
+  getInstitutionChanges(): Promise<InstitutionChange[]>;
+  /** `institution` is a built-in key or an added institution's uuid.
+      Refuses a status outside INSTITUTION_STATUSES; a blank note is none. */
+  addInstitutionChange(input: Omit<InstitutionChange, 'id'>): Promise<string>;
+  /** Idempotent (ADR-0053). */
+  deleteInstitutionChange(id: string): Promise<void>;
 }
+
+const nameOf = (name: string): string => {
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error('an institution needs a name');
+  return trimmed;
+};
 
 export function makeRoadmapArea(driver: SqliteDriver): RoadmapArea {
   return {
@@ -132,7 +146,7 @@ export function makeRoadmapArea(driver: SqliteDriver): RoadmapArea {
       return rows.map((row) => ({ id: row.uuid, track: row.track, text: row.text, status: row.status }));
     },
 
-    async addCustomGoal(track, text) {
+    async addCustomGoal(text, track = 'legal') {
       const uuid = mintUuid();
       await driver.run('INSERT INTO roadmap_goal (uuid, track, text, status, updated_at) VALUES (?, ?, ?, ?, ?)', [
         uuid,
@@ -178,21 +192,93 @@ export function makeRoadmapArea(driver: SqliteDriver): RoadmapArea {
       });
     },
 
-    async getDismissedTracks() {
-      const rows = await driver.query<{ track: string }>('SELECT track FROM roadmap_track ORDER BY track');
-      return rows.map((row) => row.track);
+    async getCategories() {
+      const rows = await driver.query<{ uuid: string; name: string }>('SELECT uuid, name FROM roadmap_category ORDER BY id');
+      return rows.map((row) => ({ id: row.uuid, name: row.name }));
     },
 
-    async setTrackDismissed(track, dismissed) {
-      if (!dismissed) {
-        await driver.run('DELETE FROM roadmap_track WHERE track = ?', [track]);
-        return;
-      }
-      await driver.run(
-        `INSERT INTO roadmap_track (track, updated_at) VALUES (?, ?)
-           ON CONFLICT (track) DO UPDATE SET updated_at = excluded.updated_at`,
-        [track, now()]
+    async addCategory(name) {
+      const uuid = mintUuid();
+      await driver.run('INSERT INTO roadmap_category (uuid, name, updated_at) VALUES (?, ?, ?)', [uuid, name, now()]);
+      return { id: uuid, name };
+    },
+
+    async renameCategory(id, name) {
+      const result = await driver.run('UPDATE roadmap_category SET name = ?, updated_at = ? WHERE uuid = ?', [
+        name,
+        now(),
+        id
+      ]);
+      assertChanged(result, `roadmap category: ${id}`);
+    },
+
+    async deleteCategory(id) {
+      await driver.transaction(async (driver) => {
+        await driver.run(
+          "UPDATE document SET target_kind = NULL, target_id = NULL WHERE target_kind = 'goal' AND target_id IN (SELECT uuid FROM roadmap_goal WHERE track = ?)",
+          [id]
+        );
+        await driver.run('DELETE FROM roadmap_goal WHERE track = ?', [id]);
+        await driver.run('DELETE FROM roadmap_category WHERE uuid = ?', [id]);
+      });
+    },
+
+    async getInstitutions() {
+      const rows = await driver.query<{ uuid: string; name: string }>('SELECT uuid, name FROM roadmap_institution ORDER BY id');
+      return rows.map((row) => ({ id: row.uuid, name: row.name }));
+    },
+
+    async addInstitution(name) {
+      const uuid = mintUuid();
+      const trimmed = nameOf(name);
+      await driver.run('INSERT INTO roadmap_institution (uuid, name, updated_at) VALUES (?, ?, ?)', [uuid, trimmed, now()]);
+      return { id: uuid, name: trimmed };
+    },
+
+    async renameInstitution(id, name) {
+      const result = await driver.run('UPDATE roadmap_institution SET name = ?, updated_at = ? WHERE uuid = ?', [
+        nameOf(name),
+        now(),
+        id
+      ]);
+      assertChanged(result, `roadmap institution: ${id}`);
+    },
+
+    async deleteInstitution(id) {
+      await driver.transaction(async (driver) => {
+        await driver.run("UPDATE document SET target_kind = NULL, target_id = NULL WHERE target_kind = 'goal' AND target_id = ?", [
+          id
+        ]);
+        await driver.run('DELETE FROM roadmap_institution_change WHERE institution = ?', [id]);
+        await driver.run('DELETE FROM roadmap_institution WHERE uuid = ?', [id]);
+      });
+    },
+
+    async getInstitutionChanges() {
+      const rows = await driver.query<{ uuid: string; institution: string; status: string; epoch_day: number; note: string | null }>(
+        'SELECT uuid, institution, status, epoch_day, note FROM roadmap_institution_change ORDER BY epoch_day, id'
       );
+      return rows.map((row) => ({
+        id: row.uuid,
+        institution: row.institution,
+        status: row.status,
+        epochDay: row.epoch_day,
+        note: row.note
+      }));
+    },
+
+    async addInstitutionChange({ institution, status, epochDay, note }) {
+      assertOneOf(INSTITUTION_STATUSES, 'institution status', status);
+      const uuid = mintUuid();
+      await driver.run(
+        'INSERT INTO roadmap_institution_change (uuid, institution, status, epoch_day, note, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+        [uuid, institution, status, epochDay, note?.trim() || null, now()]
+      );
+      return uuid;
+    },
+
+    async deleteInstitutionChange(id) {
+      await driver.run('DELETE FROM roadmap_institution_change WHERE uuid = ?', [id]);
     }
   };
 }

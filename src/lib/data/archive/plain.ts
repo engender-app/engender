@@ -1,18 +1,16 @@
-/* The plain export (ticket 15, PRD F22): the journal as CSV or JSON, with
-   no encryption anywhere near it. The screen puts it behind a warning and a
-   confirm; this file only knows how to write the two files.
+/* The plain export: the journal as CSV or JSON, with no encryption anywhere near it. The
+   screen puts it behind a warning and a confirm; this file only knows how to write the two
+   files.
 
-   It reads the same snapshot the encrypted archive is packed from, so
-   there is one description of what a journal holds rather than two that
-   drift. What it does not reuse is the archive's identity: uuids and file
-   names mean nothing in a spreadsheet, and there is no plain import path
-   to match rows for (F22). The CSV is what a person reads, so it carries
-   words - dimension names, tag labels, values in native units (ADR-0012).
+   It reads the same snapshot the encrypted archive is packed from, so there is one
+   description of what a journal holds rather than two that drift. What it does not reuse is
+   the archive's identity: uuids and file names mean nothing in a spreadsheet, and there is
+   no plain import path to match rows for (F22). The CSV is what a person reads, so it
+   carries words - dimension names, tag labels, values in native units (ADR-0012).
 
-   Built-in rows are stored as bare keys with no wording at all
-   (builtins.ts), so the names have to come from the message catalogue.
-   They arrive as functions rather than as an import: labels.ts is
-   paraglide, and nothing the Node tier touches may import it (ADR-0016). */
+   Built-in rows are stored as bare keys with no wording at all (builtins.ts), so the names
+   have to come from the message catalogue. They arrive as functions rather than as an
+   import: labels.ts is paraglide, and nothing the Node tier touches may import it. */
 
 import { dateInputValueFromEpochDay } from '../epochDay';
 import { ARCHIVE_FORMAT_VERSION } from './container';
@@ -46,8 +44,7 @@ function csvField(value: string): string {
 const csvRow = (fields: string[]) => fields.map(csvField).join(',');
 
 /** Wall-clock local time, the same clock the entry was logged against - the
-    day it belongs to is the epoch day beside it, never this (CONTEXT:
-    Timestamp). */
+    day it belongs to is the epoch day beside it, never this. */
 function localTime(timestamp: number): string {
   const d = new Date(timestamp);
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -56,8 +53,7 @@ function localTime(timestamp: number): string {
 /** One column per gender dimension anything was ever logged against, in the
     journal's own order. Custom and hidden dimensions are in it on the same
     terms as built-in ones: hiding a dimension removes it from the pickers
-    and changes nothing about the entries that already carry it (CONTEXT:
-    Hidden). A dimension nobody has used is left out rather than exported as
+    and changes nothing about the entries that already carry it. A dimension nobody has used is left out rather than exported as
     a column of blanks. */
 function dimensionColumns(journal: ArchiveJournal, naming: PlainNaming) {
   const used = new Set(journal.entries.flatMap((e) => Object.keys(e.dims)));

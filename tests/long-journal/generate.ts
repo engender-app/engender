@@ -1,36 +1,11 @@
-/* A deterministic ten-year Journal (phase 2 ticket 20).
+/* Write a ten-year journal through openJournal(driver, files), the same
+   handle used by the app (ADR-0017). The caller supplies storage and photo
+   bytes so the fixture can run on any platform. Use normalized JPEG sizes
+   for representative photo-grid and archive measurements (ADR-0008).
 
-   Everything in the app has been demoed against a Journal a few weeks old.
-   This writes the one the product actually asks people to keep: a decade of
-   entries, photos, lab results and milestones, through the same
-   `openJournal(driver, files)` handle a person's own writes go through
-   (ADR-0017). Nothing here reaches for a driver, a file store or a
-   platform, so the Android driver that ticket 11 is building drops in
-   underneath without this file changing.
-
-   Deterministic in the only sense a benchmark needs: the same seed writes
-   the same content, so two runs measure the code rather than the fixture.
-   Identity is the exception - the journal mints a uuid per row (ADR-0002)
-   and a seed cannot reach into that. No clock is read either, here or
-   below: `timestamp` comes from the day and the entry's place in it, and
-   the last day of the journal is a constant rather than today, so the
-   fixture does not drift as the calendar does.
-
-   Photo bytes arrive from the caller. A representative photo is a real
-   JPEG at the sizes ADR-0008 normalizes to, which needs a canvas the Node
-   tier has not got, and the byte size is most of what the photo grid and
-   the Archive export are measuring - so the platform that has the canvas
-   supplies it.
-
-   Phase 5 ticket 36 widened this from five kinds of content to nineteen.
-   `npm run benchmark:long-journal` still reports every measurement inside
-   its budget, but the generation step itself - not one of the individually
-   budgeted numbers, just the "Written in Xs" line the harness prints before
-   measuring anything - moved from 51s to 56s on the machine budgets.json
-   was recorded on. Recorded here, next to the old number, rather than
-   quietly replaced: a ~10% write-time increase for fourteen more areas of
-   content, nothing near the 5x budget headroom any of the measured reads
-   actually gates on. */
+   The same seed produces the same content and timestamps. The journal
+   allocates its own UUIDs (ADR-0002). The fixture ends on a fixed day so
+   benchmark inputs stay stable as the calendar advances. */
 
 import type { Journal } from '../../src/lib/data/journal/journal.ts';
 import type { NormalizedPhoto } from '../../src/lib/data/journal/photos.ts';
@@ -38,10 +13,9 @@ import type { TryoutKind } from '../../src/lib/data/types.ts';
 import type { InjectionSiteKey } from '../../src/lib/data/doseSchedule.ts';
 import { startOfDayTimestamp, weekdayOfEpochDay } from '../../src/lib/data/epochDay.ts';
 import { activeEpisodesAt } from '../../src/lib/data/regimenEpisode.ts';
-import { BUILT_IN_DIMENSIONS, BUILT_IN_MEASUREMENT_TYPES, BUILT_IN_PERSONAL_EFFECT_TYPES } from '../../src/lib/data/vocabulary/builtins.ts';
-import { GARMENT_CATEGORIES } from '../../src/lib/data/garmentCategories.ts';
+import { BUILT_IN_DIMENSIONS, BUILT_IN_PERSONAL_EFFECT_TYPES } from '../../src/lib/data/vocabulary/builtins.ts';
 import { HAIR_REMOVAL_AREAS } from '../../src/lib/data/hairRemovalAreas.ts';
-import { POLISH_PACK, ROADMAP_TRACKS } from '../../src/lib/data/roadmap.ts';
+import { POLISH_PACK } from '../../src/lib/data/roadmap.ts';
 import { demoAudioBytes, demoVideoBytes } from '../../src/lib/data/demoAudioBytes.ts';
 
 /** Fixture spans: one year and ten years, two of them leap. The unit is
@@ -52,7 +26,7 @@ export const TEN_YEARS_IN_DAYS = 3653;
 
 /** The last day the generated journal holds: 2026-08-11, fixed rather than
     today, so the fixture is the same one next month and next year. */
-export const LAST_EPOCH_DAY = 20676;
+const LAST_EPOCH_DAY = 20676;
 
 export interface LongJournalOptions {
   seed?: number;
@@ -78,31 +52,24 @@ export interface LongJournalSummary {
   commonWordEntries: number;
   rareWord: string;
   rareWordEntries: number;
-  /** A word that is a tag's label rather than note text. The search screen
-      always hands `searchEntries` the ids of tags whose label matches what
-      was typed, and a non-empty list unions a second query over `entry_tag`
-      onto the FTS clause - a different plan from the one a note-only word
-      takes. A custom tag, because a built-in stores a key and its wording
-      comes from the message catalogue above this seam (ADR-0016). */
+  /** A word that is a tag's label rather than note text. The search screen always hands
+      `searchEntries` the ids of tags whose label matches what was typed, and a non-empty
+      list unions a second query over `entry_tag` onto the FTS clause - a different plan
+      from the one a note-only word takes. A custom tag, because a built-in stores a key and
+      its wording comes from the message catalogue above this seam. */
   tagWord: string;
   tagWordEntries: number;
   /** Entries carrying a body-region feeling whose euphoria clears
       GOOD_DAY_REGION_EUPHORIA_FLOOR (stats.ts) - what isGoodDay's and
-      counterevidencePool's region clause (phase 5 ticket 44) needs to
+      counterevidencePool's region clause needs to
       actually match something, rather than costing a query plan for a
       clause that never does. */
   regionEuphoriaEntries: number;
-  /** Hair-progress stagings (phase 5 ticket 33). */
-  hairStagings: number;
-  /** Doses logged against the fixture's one regimen episode (phase 5
-      ticket 40). */
+  /** Doses logged against the fixture's one regimen episode. */
   doseEvents: number;
-  /** Doses logged against the two episodes phase 5 ticket 36 adds beside
-      the one above, so at least one stretch of the fixture has two
-      concurrent episodes overlapping (ticket 38's shape). */
+  /** Doses logged against the two episodes adds beside the one above, so at least one
+      stretch of the fixture has two concurrent episodes overlapping. */
   additionalDoseEvents: number;
-  measurements: number;
-  sizeRecords: number;
   hairRemovalSessions: number;
   roadmapChecks: number;
   letters: number;
@@ -115,8 +82,7 @@ export interface LongJournalSummary {
   checklistItems: number;
   voiceRecordings: number;
   videoNotes: number;
-  /** Standalone appointments, seeded at a quarterly cadence (phase 8
-      features ticket 59). Not counting the surgery's own two consults,
+  /** Standalone appointments, seeded at a quarterly cadence. Not counting the surgery's own two consults,
       which are appointments too (ADR-0066) but come from `addConsult`
       rather than from this loop - this is what the appointment-seeding loop
       itself wrote, the same way `doseEvents` counts one episode's doses and
@@ -124,11 +90,10 @@ export interface LongJournalSummary {
       density ADR-0066 describes: "somebody four years into endocrinology
       has roughly sixteen of these". */
   appointments: number;
-  /** One image document plus several PDFs (phase 8 features ticket 53,
-      ADR-0065), the latter sized to put tens of megabytes of
-      un-normalisable bytes through the archive - a scale this fixture had
-      never carried, since an image document is normalised down to
-      essentially nothing and ticket 52 never added one here at all. */
+  /** One image document plus several PDFs (ADR-0065), the latter sized to put tens of
+      megabytes of un-normalisable bytes through the archive - a scale this fixture had
+      never carried, since an image document is normalised down to essentially nothing and
+      never added one here at all. */
   documents: number;
   /** The start day of the earliest open-ended tryout (`endEpochDay: null`) -
       the widest possible span `searchEntries` can be asked to read for one
@@ -243,22 +208,19 @@ const CUSTOM_TAG_LABELS = [
    where logging a handful is the point. */
 const DIMENSION_KEYS: string[] = BUILT_IN_DIMENSIONS.map((d) => d.key);
 
-/* Built-in body regions (phase 5 ticket 30/31/44), a handful rather than
+/* Built-in body regions, a handful rather than
    all ten - the good-day and counterevidence measurements need a mix of
    floors cleared and not, not every region logged on every day. */
 const BODY_REGION_KEYS = ['chest', 'hairline', 'genitals', 'voice_throat', 'face_jaw'];
 
-/* Hair tracking (phase 5 ticket 33): a staging every ~200 days, the real
-   cadence a self-staging screen sees - nobody re-stages weekly. */
-const HAIR_STAGE_SCALE = 'norwood_hamilton';
-const HAIR_STAGES = ['1', '2', '2a', '3', '3v', '3a', '4', '4a', '5', '5a', '6', '7'];
+/* Hair-pose progress photos: one step every ~200 days,
+   the cadence a self-staging screen saw - nobody re-staged weekly. */
 const HAIR_STAGE_STEP_DAYS = 200;
 
-/* The dose schedule (schema v38, ADR-0027, phase 5 ticket 40): one episode
-   on a Monday/Wednesday/Friday recurrence with a two-amount cycle, starting
-   a month into the fixture so expectedSlots also has to clip to the
-   episode's own start day rather than the window's edge. Weekdays are
-   Monday-first (epochDay.ts's weekdayOfEpochDay), same as the calendar. */
+/* The dose schedule (ADR-0027): one episode on a Monday/Wednesday/Friday recurrence with a
+   two-amount cycle, starting a month into the fixture so expectedSlots also has to clip to
+   the episode's own start day rather than the window's edge. Weekdays are Monday-first
+   (epochDay.ts's weekdayOfEpochDay), same as the calendar. */
 const REGIMEN_WEEKDAYS = [0, 2, 4];
 const REGIMEN_DOSE_AMOUNTS = [
   { dose: 2, doseUnit: 'mg' },
@@ -266,7 +228,7 @@ const REGIMEN_DOSE_AMOUNTS = [
 ];
 
 /* One analyte in two unit spellings on purpose: mixed units are two series
-   and never one line (ticket 02), and a ten-year journal is where a person
+   and never one line, and a ten-year journal is where a person
    changes labs and the spelling comes back different. */
 const ANALYTES = [
   { analyte: 'Estradiol', unit: 'pg/mL' },
@@ -294,13 +256,11 @@ const MILESTONE_NAMES = [
     of a straight line would flatter every chart the stats screen draws. */
 const TREND_PERIOD = 620;
 
-/* Phase 5 ticket 36: every More-hub area a review pass needs real content
-   in, none of it spanning the whole decade - "a year of readings, at an
-   irregular cadence" is the product's own instruction for the body-tracking
-   areas, and the rest follow the same proportionate spirit rather than
-   multiplying the write count by ten for no reader-visible benefit. */
+/* Every More-hub area a review pass needs real content in, none of it spanning the whole
+   decade - "a year of readings, at an irregular cadence" is the product's own instruction
+   for the body-tracking areas, and the rest follow the same proportionate spirit rather
+   than multiplying the write count by ten for no reader-visible benefit. */
 
-const MEASUREMENT_TYPES = BUILT_IN_MEASUREMENT_TYPES.map((t) => t.key);
 const HAIR_REMOVAL_METHODS = ['laser', 'electrolysis', 'other'] as const;
 const INJECTABLE_SITES: InjectionSiteKey[] = [
   'thigh-left',
@@ -310,12 +270,11 @@ const INJECTABLE_SITES: InjectionSiteKey[] = [
   'ventrogluteal-left',
   'ventrogluteal-right'
 ];
-const TRYOUT_KINDS: TryoutKind[] = ['name', 'pronouns', 'style', 'garment', 'makeup', 'presentation_step'];
+const TRYOUT_KINDS: TryoutKind[] = ['name', 'pronouns', 'style', 'makeup'];
 const CYCLE_EVENT_KINDS = ['period_occurred', 'spotting', 'nothing_this_month'] as const;
 const SIDE_EFFECT_NAMES = ['hot flashes', 'nausea', 'breast tenderness', 'headache', 'fatigue', 'mood swings'];
-/* Phase 8 features ticket 59. A blank entry (`''`) is one of these on
-   purpose: `appointments.ts` stores it as NULL, which is the neutral-copy
-   case the annotation seam has to draw too. */
+/* A blank entry (`''`) is one of these on purpose: `appointments.ts` stores it as NULL,
+   which is the neutral-copy case the annotation seam has to draw too. */
 const APPOINTMENT_KINDS = ['endokrynolog', 'psycholog', 'ginekolog', '', 'laryngolog', 'dermatolog', ''];
 /** Roughly one appointment a quarter, which is the density ADR-0066 gives as
     typical: "somebody four years into endocrinology has roughly sixteen of
@@ -350,11 +309,8 @@ export async function generateLongJournal(
     tagWord: CUSTOM_TAG_LABELS[0].label,
     tagWordEntries: 0,
     regionEuphoriaEntries: 0,
-    hairStagings: 0,
     doseEvents: 0,
     additionalDoseEvents: 0,
-    measurements: 0,
-    sizeRecords: 0,
     hairRemovalSessions: 0,
     roadmapChecks: 0,
     letters: 0,
@@ -403,7 +359,7 @@ export async function generateLongJournal(
       }
       if (tags.includes(tagWordId)) summary.tagWordEntries++;
 
-      /* An entry has to carry a mood (CONTEXT: Entry); dimensions, tags,
+      /* An entry has to carry a mood; dimensions, tags,
          note and photo are all still optional on top of it. */
       const mood = between(1, 5);
 
@@ -417,7 +373,7 @@ export async function generateLongJournal(
       const attachRecordings = random() < 0.005 ? [demoAudioBytes(random)] : undefined;
       if (attachRecordings) summary.voiceRecordings++;
 
-      // A video note on about one entry in a hundred (ADR-0034) - raw webm bytes,
+      // A video note on about one entry in a hundred - raw webm bytes
       // ensuring all photo library sources are exercised.
       const attachVideos =
         (summary.videoNotes === 0 && day === firstEpochDay + 20) || random() < 0.01
@@ -429,7 +385,7 @@ export async function generateLongJournal(
       // GOOD_DAY_REGION_EUPHORIA_FLOOR (as a slider position: 75 or above)
       // about half the time - a mix, not an always-true or always-false
       // clause. A region is one value on the shared 0-100 scale now
-      // (ticket 39, ADR-0081), so this picks a side rather than rolling
+      //, so this picks a side rather than rolling
       // each axis independently; 50 itself (the midpoint) never comes up.
       const bodyRegions: Record<string, number> = {};
       if (random() < 0.16) {
@@ -445,7 +401,7 @@ export async function generateLongJournal(
            Increasing within a day and across days, which is all the journal
            asks of it: a timestamp orders several entries on one epoch day
            and is never the source of which day an entry belongs to
-           (CONTEXT: Timestamp). Not a wall-clock moment, and not claimed as
+. Not a wall-clock moment, and not claimed as
            one - epoch day is local (ADR-0001) and this arithmetic is not. */
         timestamp: (day * 24 + 8 + i * 4.5) * 3_600_000 + 40 * 60_000,
         mood,
@@ -491,25 +447,15 @@ export async function generateLongJournal(
     }
   }
 
-  // Hair-progress stagings, spread across the decade rather than clustered:
-  // hairAnchorEpochDay and the settings screen it feeds read every staging,
-  // and a handful all on one day would not exercise that any differently
-  // from a single row. A few dated photos alongside them, its own table
-  // (hairProgress.ts) rather than the entry photos above - getPhotos()
-  // would otherwise be reading an empty table at any journal size.
+  // Hair-pose progress photos, spread across the decade rather than
+  // clustered, in their own table (progressPhotos.ts) rather than the entry
+  // photos above - getPhotos() would otherwise be reading an empty table at
+  // any journal size. One every fourth step - about every 800 days, a photo
+  // shoot being rarer than a self-staging was.
   let hairPhotoIndex = 0;
   for (let day = firstEpochDay, i = 0; day <= lastEpochDay; day += HAIR_STAGE_STEP_DAYS, i++) {
-    await journal.hairProgress.upsertStage({
-      epochDay: day,
-      scale: HAIR_STAGE_SCALE,
-      stage: HAIR_STAGES[i % HAIR_STAGES.length]
-    });
-    summary.hairStagings++;
-
-    // One photo every fourth staging - about every 800 days, a photo shoot
-    // being rarer than a self-staging.
     if (i % 4 === 0) {
-      await journal.hairProgress.addPhoto(day, await makePhoto(hairPhotoIndex));
+      await journal.progressPhotos.addPhoto(day, 'hair', await makePhoto(hairPhotoIndex));
       hairPhotoIndex++;
     }
   }
@@ -561,10 +507,10 @@ export async function generateLongJournal(
     summary.doseEvents++;
   }
 
-  // A second, overlapping episode (phase 5 ticket 36): an antiandrogen
+  // A second, overlapping episode: an antiandrogen
   // running for about 500 days in the middle of the fixture, well inside
   // the first episode's still-open span - two concurrently active episodes
-  // for different drugs, the shape ticket 38's walkthrough test already
+  // for different drugs, the shape the walkthrough test already
   // exercises. Every dose on it names its own drug, the disambiguation a
   // person makes once two episodes can both be active.
   const secondEpisodeStartEpochDay = firstEpochDay + historicalOffset(830);
@@ -600,11 +546,8 @@ export async function generateLongJournal(
     summary.additionalDoseEvents++;
   }
 
-  // A third episode, injectable, confined to the fixture's final ~150 days
-  // (phase 5 ticket 36) - the hormone curve reads doses within
-  // CURVE_LOOKBACK_DAYS (~63 days) of wherever it is asked to draw, so a
-  // decade-long weekly schedule would spend nine and a half years of writes
-  // on doses no curve ever reads. Named distinctly from the first episode's
+  // A third injectable episode, confined to the fixture's final ~150 days
+  //. Named distinctly from the first episode's
   // "Estradiol" so the two read as a route switch rather than one typo.
   const thirdEpisodeStartEpochDay = lastEpochDay - historicalOffset(150);
   const thirdEpisodeId = await journal.regimen.upsertEpisode({
@@ -652,37 +595,8 @@ export async function generateLongJournal(
     summary.additionalDoseEvents++;
   }
 
-  // Measurements, sizes and hair-removal sessions: a year each, at an
-  // irregular cadence - an evenly spaced series is the one case every
-  // chart already handles, so this is deliberately not one.
+  // Hair-removal sessions cover one year at an irregular cadence.
   const trackingWindowStart = Math.max(firstEpochDay, lastEpochDay - 365);
-  for (let day = trackingWindowStart; day <= lastEpochDay; day++) {
-    if (random() < 0.94) continue;
-    const type = pick(MEASUREMENT_TYPES);
-    const unit = type === 'waist' && random() < 0.15 ? 'in' : 'cm';
-    const base = { waist: 78, hips: 92, chest: 88, underbust: 74 }[type]!;
-    const value = unit === 'in' ? Math.round(base / 2.54) : base + Math.round((random() - 0.5) * 6);
-    await journal.measurements.upsertMeasurement({ type, epochDay: day, value, unit });
-    summary.measurements++;
-  }
-  // A guaranteed second unit on waist - the random 15% above makes it rare
-  // enough that a run can land on zero or one 'in' reading, which draws as
-  // "two measurements make a trend, add another" rather than a trend.
-  await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: lastEpochDay - historicalOffset(200), value: 31, unit: 'in' });
-  await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: lastEpochDay - historicalOffset(40), value: 30, unit: 'in' });
-  summary.measurements += 2;
-  for (let day = trackingWindowStart; day <= lastEpochDay; day++) {
-    if (random() < 0.97) continue;
-    const category = pick(GARMENT_CATEGORIES);
-    await journal.sizeRecords.upsertRecord({
-      epochDay: day,
-      category,
-      size: pick(['XS', 'S', 'M', 'L', '32', '34', '36', '8', '10']),
-      brand: pick(['', 'Zara', "Levi's", 'H&M', 'Uniqlo']),
-      fitNote: pick(['', 'true to size', 'runs small', 'runs large'])
-    });
-    summary.sizeRecords++;
-  }
   let hairRemovalPhotoIndex = 0;
   for (let day = trackingWindowStart; day <= lastEpochDay; day++) {
     if (random() < 0.95) continue;
@@ -691,7 +605,7 @@ export async function generateLongJournal(
       area: pick(HAIR_REMOVAL_AREAS),
       method: pick(HAIR_REMOVAL_METHODS),
       painRating: between(1, 5),
-      cost: random() < 0.7 ? `${between(150, 450)} PLN` : '',
+      cost: random() < 0.7 ? { amount: between(150, 450), currency: 'PLN', refunded: false } : null,
       provider: random() < 0.7 ? 'Klinika Laserowa' : ''
     });
     summary.hairRemovalSessions++;
@@ -701,16 +615,13 @@ export async function generateLongJournal(
     }
   }
 
-  // Roadmap: a few ticks across every track, plus one custom goal.
-  for (const track of ROADMAP_TRACKS) {
-    const goals = POLISH_PACK.goals.filter((g) => g.track === track);
-    for (const goal of goals) {
-      if (random() < 0.65) continue;
-      await journal.roadmap.setGoalStatus(POLISH_PACK.key, goal.key, random() < 0.85 ? 'checked' : 'not-my-path');
-      summary.roadmapChecks++;
-    }
+  // Roadmap: a few ticks across the legal steps, plus one custom goal.
+  for (const goal of POLISH_PACK.goals) {
+    if (random() < 0.65) continue;
+    await journal.roadmap.setGoalStatus(POLISH_PACK.key, goal.key, random() < 0.85 ? 'checked' : 'not-my-path');
+    summary.roadmapChecks++;
   }
-  const customGoal = await journal.roadmap.addCustomGoal('social', 'Tell my sister');
+  const customGoal = await journal.roadmap.addCustomGoal('Tell my sister');
   await journal.roadmap.setCustomGoalStatus(customGoal.id, 'checked');
   summary.roadmapChecks++;
 
@@ -750,9 +661,10 @@ export async function generateLongJournal(
   }
 
   // Personal effects: several feminizing markers across categories, plus
-  // one non-default category switched on so its disclosure group has
-  // something in it too.
-  await journal.effectCategories.setCategoryEnabled('genital_sexual', true);
+  // the two non-default genital and sexual categories switched on so their
+  // disclosure groups have something in them too.
+  await journal.effectCategories.setCategoryEnabled('genital', true);
+  await journal.effectCategories.setCategoryEnabled('sexual', true);
   const effectTypes = BUILT_IN_PERSONAL_EFFECT_TYPES.filter((t) => t.direction === 'feminizing').filter(
     (_, i) => i % 3 === 0
   );
@@ -768,7 +680,7 @@ export async function generateLongJournal(
      one of the three kinds off a single draw - a second conditional draw
      would spend a different count of the seeded sequence depending on the
      first, and every fixture value generated after this would move with
-     it (ticket 50). */
+     it. */
   const wearKindFor = (roll: number) => (roll < 0.6 ? 'binder' : roll < 0.8 ? 'tucking' : 'compression');
   for (let day = trackingWindowStart; day <= lastEpochDay; day++) {
     if (random() < 0.55) continue;
@@ -792,7 +704,8 @@ export async function generateLongJournal(
     await journal.sideEffects.upsertSideEffect({
       name: pick(SIDE_EFFECT_NAMES),
       severity: between(1, 5),
-      epochDay: firstEpochDay + Math.floor(((i + 1) / 11) * days)
+      epochDay: firstEpochDay + Math.floor(((i + 1) / 11) * days),
+      resolvedEpochDay: null
     });
     summary.sideEffects++;
   }
@@ -832,7 +745,7 @@ export async function generateLongJournal(
     summary.checklistItems++;
   }
 
-  // Documents (phase 8 features ticket 53, ADR-0065): one image, which goes
+  // Documents (ADR-0065): one image, which goes
   // through the same normalisation a photo does and so weighs almost
   // nothing, and several PDFs sized in whole megabytes - the container
   // chunks at 1 MB (archive/container.ts) and had never been measured
@@ -849,7 +762,7 @@ export async function generateLongJournal(
   const DOCUMENT_PDF_SIZES_MB = [3, 5, 4, 6, 5];
   for (const [i, sizeMb] of DOCUMENT_PDF_SIZES_MB.entries()) {
     const pdfBytes = new Uint8Array(sizeMb * 1024 * 1024).fill(between(1, 254));
-    // The first page, as a real import produces one (ticket 55): a
+    // The first page, as a real import produces one: a
     // thumbnail-sized fill, since what the archive measures is the byte
     // count either way.
     const thumb = new Uint8Array(28 * 1024).fill(between(1, 254));

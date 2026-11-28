@@ -1,45 +1,24 @@
-/* Home's live-tile grid, as one read (phase 8 deepening ticket 07).
+/* Collect Home tile queries, preferences, snoozes and writes here. liveTiles.ts owns the
+   pure composition, ordering and contents (ADR-0017). Call homeTiles() once while Home
+   initializes to create the liveQuery and liveList effects.
 
-   The eighteen queries behind the twelve tiles, the preference each tile
-   answers to, its snooze, and the writes its controls make. What comes out
-   is the ordered list Home draws and nothing else - the composition, the
-   order and the twelve tiles' own content are liveTiles.ts's, which is a
-   plain module so the Node tier can test them (ADR-0016, ADR-0017).
+   Read only the fact each tile displays. Eighteen narrow reads cross the worker boundary
+   with fewer bytes than the previous sixteen wide reads (tests/long-journal, mount-home). */
 
-   A `.svelte.ts` because the reads are runes: `liveQuery`/`liveList` are
-   effects, and an effect has to be created while a component is
-   initialising. `homeTiles()` is therefore called once from Home's script
-   block, like activeFlag.svelte.ts and recordEditor.svelte.ts before it.
-
-   Eight of these reads render nothing themselves. They existed on the route
-   only to be arguments to a `shouldShow*` predicate whose answer the markup
-   read, which is what kept the query and the rule from ever meeting.
-
-   Every read here asks for the fact its tile draws (phase 8 audit ticket
-   13). Six of them used to ask for a list and reduce it: every voice
-   benchmark with its pitch track for one `MAX(epoch_day)`, every
-   measurement ever stored for a count and a day, every letter with its body
-   for three ids, the whole hair-removal table for its newest row, a
-   hydrated bad-moment entry for its id, and one felt-sense query per active
-   tryout. More subscriptions than that shape, and a small fraction of the
-   bytes: eighteen narrow reads cost less to cross the worker boundary than
-   sixteen wide ones, which is what this architecture actually pays for
-   (tests/long-journal, `mount-home`). */
-
-import { liveList, liveQuery, journal } from './live/journal.svelte';
+import { liveList, liveQuery, liveQueryWhen, journal } from './live/journal.svelte';
 import { AREA_STATES_BEFORE_READ } from './areaState';
 import { prefs } from './prefs/store.svelte';
 import { fmtDay, fmtTime, fmtNumber } from './dates';
-import { todayEpochDay as clockDay } from './epochDay';
-import { hairRemovalAreaName } from './vocabulary/labels';
-import { spanCoversDay } from './span';
+import { SPINE_FORWARD_DAYS } from './careSpine';
 import { isLetterSnoozed, snoozeLetterTile } from './letterStatus';
 import { isTileSnoozed, snoozeTile } from './liveTilesSnooze';
+import { acknowledgementStore } from './prefs/acknowledgementStore.svelte';
+import { routeLabel } from './vocabulary/doseLabels';
+import type { DoseRoute } from './types';
+import { UNPROMPTED_ROWS, surfaceOn, unpromptedQuiet } from '../unprompted/registry';
 import {
   LIVE_TILE_ORDER,
-  LIVE_TILE_PREF_KEY,
   composeHomeTiles,
-  dosePanelCoversEveryRegimen,
   type HomeTile,
   type LiveTileKind
 } from './liveTiles';
@@ -50,16 +29,15 @@ interface HomeTileGrid {
   /** Whether every read behind the grid has answered, so `tiles` is the
       composition rather than the empty list it holds until then. One-way,
       like the `loading` it is made of. Home holds its reserve until this
-      and its own reads agree (ticket 183). */
+      and its own reads agree. */
   readonly ready: boolean;
   /** The grid's own second hand, so a surface next to it that also counts
       up reads the same tick rather than starting a loop of its own. */
   readonly nowMs: number;
-  /** Whether the dose panel accounts for every dose slot the agenda could
-      draw, which is what Today withholds the `doseSlot` kind on (phase 11
-      ticket 03). The rule itself is `liveTiles.ts`'s, so it has a Node test;
-      this is the grid's own reads applied to it. */
-  readonly dosePanelCoversEveryRegimen: boolean;
+  /** Whether the dose panel is drawn, which is what Today withholds the agenda's `doseSlot`
+      kind on. Drawn is enough the panel names every regimen the agenda would have drawn a
+      row for (`liveTiles.ts`, `panelDoses`). */
+  readonly dosePanelDrawn: boolean;
   /** Snoozes a tile for 24 hours. Home calls it for the ready letter, whose
       dismiss opens a sheet on the route rather than acting in place; the
       other ten dismiss themselves. */
@@ -77,8 +55,8 @@ interface HomeTileGrid {
     gate can stay uniform across all eleven. */
 const snoozeStoreOf = (kind: LiveTileKind) =>
   kind === 'ready-letter'
-    ? { snoozed: (nowMs: number) => isLetterSnoozed(nowMs), snooze: () => snoozeLetterTile() }
-    : { snoozed: (nowMs: number) => isTileSnoozed(kind, nowMs), snooze: () => snoozeTile(kind) };
+    ? { snoozed: (nowMs: number) => isLetterSnoozed(acknowledgementStore, nowMs), snooze: () => snoozeLetterTile(acknowledgementStore) }
+    : { snoozed: (nowMs: number) => isTileSnoozed(kind, acknowledgementStore, nowMs), snooze: () => snoozeTile(kind, acknowledgementStore) };
 
 export function homeTiles(
   /** A getter, so the reads below follow the day across midnight. */
@@ -88,72 +66,76 @@ export function homeTiles(
         off for the ready-letter tile. */
     onLetterDismiss: () => void;
   },
-  active: () => boolean = () => true
+  active: () => boolean = () => true,
+  /** Whether something else on the screen counts seconds and needs the
+      clock to tick every second even when the wear tile reads nothing -
+      Home's pinned wear row, which rides this clock. */
+  secondHand: () => boolean = () => false
 ): HomeTileGrid {
   const todayEpochDay = $derived(today());
   let nowTick = $state(Date.now());
   let snoozeRevision = $state(0);
   const snoozeMinute = $derived(Math.floor(nowTick / 60_000));
-  const runningWear = liveQuery((j) => j.wearSessions.getRunningSession());
+
+  /* Which areas are hidden or finished. One
+     query for the whole grid rather than one per tile: the cascade is a
+     property of the grid, and `unpromptedQuiet` is what spends this. */
+  const areaStates = liveQuery((j) => j.areaStates.getAreaStates());
+
+  /* Skip journal reads when every tile they feed is disabled, hidden or
+     finished. Check preferences and area state before the first await so
+     the live query sees those dependencies and reruns when needed.
+
+     Use liveQueryWhen to wait for area state before the first query.
+     This avoids reading hidden data or painting a late tile after an
+     initial empty result. Tiles with no area do not depend on area state. */
+  const AREA_OF = new Map(UNPROMPTED_ROWS.map((row) => [row.key, row.area]));
+  const areaStatesAnswered = () => !areaStates.loading;
+  function wanted(...kinds: LiveTileKind[]): boolean {
+    return kinds.some((kind) => {
+      if (!surfaceOn(prefs.surfaceOverrides, kind)) return false;
+      if (AREA_OF.get(kind) == null) return true;
+      return !unpromptedQuiet(kind, areaStates.value ?? AREA_STATES_BEFORE_READ, todayEpochDay);
+    });
+  }
+  const none = <T,>(value: T) => Promise.resolve(value);
+
+  const runningWear = liveQueryWhen(areaStatesAnswered, (j) =>
+    wanted('wear-timer') ? j.wearSessions.getRunningSession() : none(null)
+  );
   $effect(() => {
     if (!active()) return;
     nowTick = Date.now();
-    const interval = runningWear.value ? 1000 : 60_000;
+    const interval = runningWear.value || secondHand() ? 1000 : 60_000;
     const id = setInterval(() => (nowTick = Date.now()), interval);
     return () => clearInterval(id);
   });
 
-  const episodes = liveList((j) => j.regimen.getEpisodes());
-  const procedures = liveList((j) => j.procedures.getProcedures());
-  const letters = liveList((j) => j.letters.getLetterSeals(100));
-  const dueRevisits = liveList((j) => j.revisits.getDueRevisits(todayEpochDay));
-  const latestBadEntryId = liveQuery((j) => j.entries.latestBadMomentEntryId());
-  const tryouts = liveList((j) => j.tryouts.getTryouts());
-  /* One statement for every active tryout at once, fed the list the line
-     above already holds rather than reading it again. `tryouts.rows` is read
-     synchronously, before the call, which is what makes this re-run when a
-     tryout is added, ended or removed (journal.svelte.ts: reads after an
-     await are invisible). */
-  const tryoutFeltSense = liveQuery((j) =>
-    j.feltSense.latestDaysForTryouts(
-      tryouts.rows.filter((tryout) => spanCoversDay(tryout, todayEpochDay)).map((tryout) => tryout.id)
-    )
+  const episodes = liveList((j) => (wanted('dose-panel') ? j.regimen.getEpisodes() : none([])));
+  const procedures = liveList((j) => (wanted('surgery-countdown') ? j.procedures.getProcedures() : none([])));
+  const letters = liveList((j) => (wanted('ready-letter') ? j.letters.getLetterSeals(100) : none([])));
+  const latestBadEntryId = liveQuery((j) =>
+    wanted('safe-space-nudge') ? j.entries.latestBadMomentEntryId() : none(null)
   );
-  const schedules = liveList((j) => j.doses.getSchedules());
-  const dosePauses = liveList((j) => j.doses.getPauses());
-  const todayDoses = liveList((j) => j.doses.getDoses(todayEpochDay, todayEpochDay));
-  const yesterdayDoses = liveList((j) => j.doses.getDoses(todayEpochDay - 1, todayEpochDay - 1));
-  const latestBenchmarkDay = liveQuery((j) => j.voiceBenchmarks.lastWriteEpochDay(todayEpochDay));
-  const journalingPauses = liveList((j) => j.journalingPauses.getPauses());
-  /* Which areas are hidden or finished (phase 8 features ticket 04). One
-     query for the whole grid rather than one per tile: the cascade is a
-     property of the grid, and `unpromptedQuiet` is what spends this. */
-  const areaStates = liveQuery((j) => j.areaStates.getAreaStates());
-  const latestHairRemoval = liveQuery((j) => j.hairRemoval.latestSession(todayEpochDay));
-  /* Two scalars asked as two scalars. The nudge wants how many measurements
-     there are and the latest day, and the read used to fetch every
-     measurement ever stored to reduce to exactly that. */
-  const measurementCount = liveQuery((j) => j.measurements.countAll());
-  const latestMeasurementDay = liveQuery((j) => j.measurements.lastWriteEpochDay(todayEpochDay));
-  const todayAppointments = liveList((j) => j.appointments.getDayRecords(todayEpochDay));
+  const schedules = liveList((j) => (wanted('dose-panel') ? j.doses.getSchedules() : none([])));
+  const dosePauses = liveList((j) => (wanted('dose-panel') ? j.doses.getPauses() : none([])));
+  const scheduleDoses = liveList((j) =>
+    wanted('dose-panel')
+      ? j.doses.getDosesForSlots(todayEpochDay, todayEpochDay + SPINE_FORWARD_DAYS)
+      : none([])
+  );
+  const yesterdayDoses = liveList((j) =>
+    wanted('dose-panel') ? j.doses.getDoses(todayEpochDay - 1, todayEpochDay - 1) : none([])
+  );
 
   function snooze(kind: LiveTileKind): void {
     snoozeStoreOf(kind).snooze();
     snoozeRevision += 1;
   }
 
-  async function resumePause(pauseId: string, startEpochDay: number): Promise<void> {
-    const endEpochDay = clockDay() - 1;
-    if (endEpochDay < startEpochDay) {
-      await journal.journalingPauses.deletePause(pauseId);
-      return;
-    }
-    await journal.journalingPauses.upsertPause({ id: pauseId, startEpochDay, endEpochDay });
-  }
-
-  /* Which preference switches a tile off is the unprompted registry's to
-     say - the same field Today's own editor draws its switch from - so
-     this indexes the store by it rather than naming eleven preferences. */
+  /* Whether a tile is switched on is the unprompted registry's to say - its
+     default and the person's `surfaceOverrides`, the same answer Today's own
+     editor draws its switch from. */
   const gates = $derived.by(() => {
     snoozeRevision;
     snoozeMinute;
@@ -161,7 +143,7 @@ export function homeTiles(
     const enabled = {} as Record<LiveTileKind, boolean>;
     const snoozed = {} as Record<LiveTileKind, boolean>;
     for (const kind of LIVE_TILE_ORDER) {
-      enabled[kind] = prefs[LIVE_TILE_PREF_KEY[kind]];
+      enabled[kind] = surfaceOn(prefs.surfaceOverrides, kind);
       snoozed[kind] = snoozeStoreOf(kind).snoozed(snoozeNow);
     }
     return { enabled, snoozed };
@@ -174,23 +156,14 @@ export function homeTiles(
     episodes,
     procedures,
     letters,
-    dueRevisits,
     latestBadEntryId,
-    tryouts,
-    tryoutFeltSense,
     schedules,
     dosePauses,
-    todayDoses,
+    scheduleDoses,
     yesterdayDoses,
-    latestBenchmarkDay,
-    journalingPauses,
-    areaStates,
-    latestHairRemoval,
-    measurementCount,
-    latestMeasurementDay,
-    todayAppointments
+    areaStates
   ];
-  /* Whether the grid may be composed yet (phase 11 ticket 146). Composed
+  /* Whether the grid may be composed yet. Composed
      while the reads are still landing, it states an arrangement it does not
      mean: on a cold boot letters and tryouts answer before procedures, so the
      ready letter and the safe-space nudge take the top slots and the fold's
@@ -218,21 +191,14 @@ export function homeTiles(
         episodes: episodes.rows,
         procedures: procedures.rows,
         letters: letters.rows,
-        dueRevisits: dueRevisits.rows,
+        readLetterIds: prefs.acknowledgements.readLetterIds,
         latestBadEntryId: latestBadEntryId.value,
         wearDurationCue: prefs.wearDurationCueEnabled,
         safeSpaceDismissedEntryId: prefs.safeSpaceNudgeDismissedEntryId,
-        tryouts: tryouts.rows,
-        latestFeltSenseByTryoutId: tryoutFeltSense.value ?? new Map(),
         schedules: schedules.rows,
         dosePauses: dosePauses.rows,
-        todayDoses: todayDoses.rows,
-        yesterdayDoses: yesterdayDoses.rows,
-        latestBenchmarkEpochDay: latestBenchmarkDay.value ?? null,
-        journalingPauses: journalingPauses.rows,
-        latestHairRemovalSession: latestHairRemoval.value ?? null,
-        measurements: { count: measurementCount.value ?? 0, latestDay: latestMeasurementDay.value ?? null },
-        todayAppointments: todayAppointments.rows
+        scheduleDoses: scheduleDoses.rows,
+        yesterdayDoses: yesterdayDoses.rows
       },
       actions: {
         stopWear: (session) => {
@@ -247,21 +213,19 @@ export function homeTiles(
         dismissSafeSpace: (entryId) => {
           prefs.safeSpaceNudgeDismissedEntryId = entryId;
         },
-        openLetterDismiss: handlers.onLetterDismiss,
-        dismissRevisit: (id) => void journal.revisits.deleteRevisit(id),
-        resumePause: (pauseId, startEpochDay) => void resumePause(pauseId, startEpochDay),
-        snooze
+        openLetterDismiss: handlers.onLetterDismiss
       },
       format: {
         number: fmtNumber,
         fullDay: (epochDay) => fmtDay(epochDay, { day: 'numeric', month: 'short', year: 'numeric' }),
-        shortDay: (epochDay) => fmtDay(epochDay, { day: 'numeric', month: 'short' }),
         /* The agenda band's own day format, so the dose panel's next slot
            and the rows under "Coming up" write a day the same way on the
            one screen that draws both. */
         weekdayDay: (epochDay) => fmtDay(epochDay, { weekday: 'long', day: 'numeric', month: 'long' }),
         time: (timestamp) => fmtTime(timestamp),
-        hairRemovalArea: hairRemovalAreaName
+        /* An episode's route is free text in the type; routeLabel answers an
+           unknown one with the text itself. */
+        doseRoute: (route) => routeLabel(route as DoseRoute)
       }
     });
   });
@@ -273,16 +237,14 @@ export function homeTiles(
     get ready() {
       return composable;
     },
-    /* The grid's own clock, handed out so Home's pinned rows ride it rather
-       than opening a second one (ADR-0051). The wear row counts up beside
-       the wear tile and the two may not disagree by a second, which is only
-       true while both read the same tick (phase 11 all-four-doors ticket
-       02). */
+    /* The grid's own clock, handed out so Home's pinned rows ride it rather than opening a
+       second one. The wear row counts up beside the wear tile and the two may not disagree
+       by a second, which is only true while both read the same tick. */
     get nowMs() {
       return nowTick;
     },
-    get dosePanelCoversEveryRegimen() {
-      return dosePanelCoversEveryRegimen(tiles, episodes.rows, schedules.rows, nowTick);
+    get dosePanelDrawn() {
+      return tiles.some((tile) => tile.key === 'dose-panel');
     },
     snooze
   };

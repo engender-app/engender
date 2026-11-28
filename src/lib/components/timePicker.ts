@@ -1,9 +1,8 @@
-/* The arithmetic under TimePicker (phase 12 pickers, ticket 02), kept out of
-   the components so the node tier can hold it: what a typed time means,
-   which row of a drum sits in its band, and where a key moves it.
+/* The arithmetic under TimePicker, kept out of the components so the node tier can hold it:
+   what a typed time means, which row of a drum sits in its band, and where a key moves it.
 
-   A time is the string an `<input type="time">` holds, `HH:MM` on a 24-hour
-   clock, so every caller keeps the value it stored before the picker. */
+   A time is the string an `<input type="time">` holds, `HH:MM` on a 24-hour clock, so every
+   caller keeps the value it stored before the picker. */
 
 export type Time = { hour: number; minute: number };
 

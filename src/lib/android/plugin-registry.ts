@@ -8,7 +8,6 @@ export const androidPluginOwners = {
   reminders: 'reminders/android-bridge',
   autoExport: 'data/archive/android-auto-export-bridge',
   fileDelivery: 'data/archive/android-file-delivery-bridge',
-  retrospectiveNotifications: 'retrospective/android-bridge',
   disguise: 'disguise/android-bridge',
   lockTiming: 'lock/lock-timing-bridge',
   screenCapture: 'lock/screen-capture-bridge',
@@ -17,6 +16,7 @@ export const androidPluginOwners = {
   sensitiveClipboard: 'data/recovery-key-clipboard-bridge',
   permissions: 'permissions/android-bridge',
   statusBar: 'android/status-bar-bridge',
+  stepBack: 'android/step-back-bridge',
   // Official @capacitor/app plugin, not one of ours - imported directly
   // from that package rather than through registerAndroidPlugin() below,
   // but still asserted at startup like every other required plugin
@@ -39,7 +39,6 @@ const androidPluginRegistry = [
   { name: 'Reminders', owner: androidPluginOwners.reminders },
   { name: 'AutoExport', owner: androidPluginOwners.autoExport },
   { name: 'FileDelivery', owner: androidPluginOwners.fileDelivery },
-  { name: 'RetrospectiveNotifications', owner: androidPluginOwners.retrospectiveNotifications },
   { name: 'Disguise', owner: androidPluginOwners.disguise },
   { name: 'LockTiming', owner: androidPluginOwners.lockTiming },
   { name: 'ScreenCapture', owner: androidPluginOwners.screenCapture },
@@ -48,12 +47,12 @@ const androidPluginRegistry = [
   { name: 'SensitiveClipboard', owner: androidPluginOwners.sensitiveClipboard },
   { name: 'Permissions', owner: androidPluginOwners.permissions },
   { name: 'StatusBarAppearance', owner: androidPluginOwners.statusBar },
+  { name: 'StepBack', owner: androidPluginOwners.stepBack },
   { name: 'App', owner: androidPluginOwners.backNavigation },
 ] as const satisfies readonly AndroidPluginRegistryEntry[];
 
-/* requiredAndroidPluginNames stays exported for its own test, and
-   cross-checked in android-back-navigation-wiring.test.ts (AU-09 test-only
-   review). */
+/* requiredAndroidPluginNames stays exported for its own test, and cross-checked in
+   android-back-navigation-wiring.test.ts. */
 export const requiredAndroidPluginNames = androidPluginRegistry.map((entry) => entry.name);
 
 const pluginNameByOwner = new Map<AndroidPluginOwner, string>(
@@ -68,8 +67,7 @@ export function registerAndroidPlugin<Bridge>(owner: AndroidPluginOwner): Bridge
   return registerPlugin<Bridge>(pluginName);
 }
 
-/* assertRequiredAndroidPluginsRegistered stays exported only for its own test
-   (AU-09 test-only review). */
+/* assertRequiredAndroidPluginsRegistered stays exported only for its own test. */
 export function assertRequiredAndroidPluginsRegistered(
   plugins: Record<string, unknown> | null | undefined
 ): void {

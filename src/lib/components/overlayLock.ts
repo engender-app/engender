@@ -1,30 +1,11 @@
-/* What an overlay owes the screen it covers: nothing behind it reachable,
-   nothing behind it scrolling, and focus back where it came from.
+/* Make the shell's other children inert while a sheet or letter arrival
+   is open. Skip the child containing the overlay. Lock the scroll region
+   and restore focus to the opener on close (SF-001).
 
-   Lifted out of Sheet.svelte by redesign ticket 45, which added the second
-   surface that covers the whole app - a letter's arrival, which is not a
-   sheet: it does not rise from the bottom edge and it must not be
-   dismissible by a drag, because the two ways out of it mean different
-   things. What it does share is all of this, and SF-001's reasoning applies
-   to it unchanged.
-
-   SF-001: every confirmation in the app is a sheet, and without this the
-   background stayed reachable behind an open dialog - Tab walked straight
-   out of it, and closing dropped focus to the document. `inert` on the app
-   shell's other children keeps assistive tech and Tab out of the background
-   regardless of how deep in that subtree the overlay itself lives (the
-   `.contains` check below skips whichever child holds it); the scroll lock
-   stops the scroll region moving underneath an overlay that does not cover
-   it edge to edge; focus returns to whatever opened it on close.
-
-   Full-frame overlays mount directly in `.app`: `.app-column` carries
-   `view-transition-name: screen` and is a stacking context, so an overlay
-   left inside it cannot beat the floating bar's 30. The background lock
-   then marks sibling surfaces inert while the overlay covers them.
-
-   Queries `data-app-root`/`data-app-scroll-region` rather than
-   `.app`/`.app-main` so this stays wired to the shell even if those
-   presentational class names ever change. */
+   Mount full-frame overlays directly in .app. .app-column's view
+   transition creates a stacking context that cannot cover the floating
+   bar at z-index 30. Query data-app-root and data-app-scroll-region so
+   class renames leave the lock wired to the shell. */
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [contenteditable="true"], [tabindex]:not([tabindex="-1"])';
@@ -56,6 +37,11 @@ const overlayOwners: OverlayOwner[] = [];
 
 function topOwner(): OverlayOwner | undefined {
   return overlayOwners[overlayOwners.length - 1];
+}
+
+/** Whether a transient surface owns Back right now. */
+export function hasActiveOverlay(): boolean {
+  return overlayOwners.length > 0;
 }
 
 /** Escape and native Back consume the same top surface, including one that
@@ -188,11 +174,10 @@ export function lockBackground(
   const priorFocusIndex = previouslyFocused ? priorFocusOrder.indexOf(previouslyFocused) : -1;
   const restoreInert: HTMLElement[] = [];
   if (root) {
-    /* The hosted foot too (carpet 26 moved it into the column, which holds
-       the sheet and so is never one of the root's inert children): left
-       live it paints over a sheet whose screen is an isolated stacking
-       context - the entry editor's mood row drew over "Record a physical
-       change" - and its buttons stayed reachable behind a modal. */
+    /* The hosted foot too (moved it into the column, which holds the sheet and so is never
+       one of the root's inert children): left live it paints over a sheet whose screen is
+       an isolated stacking context - the entry editor's mood row drew over "Record a
+       physical change" - and its buttons stayed reachable behind a modal. */
     const withdrawn = [...root.children, ...root.querySelectorAll('[data-app-savebar]')] as HTMLElement[];
     for (const child of withdrawn) {
       if (child.contains(node) || keep.some((kept) => child.contains(kept))) continue;
@@ -206,13 +191,11 @@ export function lockBackground(
       restoreInert.push(child);
     }
   }
-  /* The withdrawal crossfades rather than snapping (ux-carpet 232):
-     components.css fades a pre-blurred `::after` in. It needs the browser to have
-     painted the *un*-withdrawn state at least once first or there is
-     nothing to crossfade from - an `::after` this selector has never
-     matched has no prior frame to animate away from. One
-     `requestAnimationFrame` is that one frame; a class added in the same
-     tick as `inert` would never be seen on its own. */
+  /* The withdrawal crossfades rather than snapping: components.css fades a pre-blurred
+     `::after` in. It needs the browser to have painted the *un*-withdrawn state at least
+     once first or there is nothing to crossfade from - an `::after` this selector has never
+     matched has no prior frame to animate away from. One `requestAnimationFrame` is that
+     one frame; a class added in the same tick as `inert` would never be seen on its own. */
   let withdrawRaf: ReturnType<typeof requestAnimationFrame> | undefined =
     options.withdraw === false
       ? undefined
@@ -226,12 +209,11 @@ export function lockBackground(
     mainEl.style.overflow = 'hidden';
   }
 
-  /* The blurred copy over the background fades out with the overlay's own
-     exit rather than vanishing when the node is finally destroyed: dropped
-     at release, it went from fully blurred to sharp in one frame at the end
-     of every sheet's dismissal (phase 15 ticket 04, measured on the discard
-     sheet). Only an element no other open overlay still holds is let go,
-     so a sheet closing over another leaves the background withdrawn. */
+  /* The blurred copy over the background fades out with the overlay's own exit rather than
+     vanishing when the node is finally destroyed: dropped at release, it went from fully
+     blurred to sharp in one frame at the end of every sheet's dismissal. Only an element no
+     other open overlay still holds is let go, so a sheet closing over another leaves the
+     background withdrawn. */
   const recede = () => {
     if (withdrawRaf !== undefined) cancelAnimationFrame(withdrawRaf);
     withdrawRaf = undefined;

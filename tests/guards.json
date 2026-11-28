@@ -1,13 +1,33 @@
 [
   {
+    "name": "entry-source-return-check",
+    "tier": "dev",
+    "holds": "entry Save and Delete return to Voice recordings, Search and margin-note hits, Today tiles, chart annotations and day lists with private query context"
+  },
+  {
     "name": "pending-unlock-lock-check",
     "tier": "dev",
     "holds": "a newer lock cancels pending authentication and its opening transition"
   },
   {
+    "name": "feedback-concealment-check",
+    "tier": "dev",
+    "holds": "lock clears private live regions, pending announcements and toast actions; disguise leaves unlocked feedback alone; fresh feedback and keyboard actions still work"
+  },
+  {
+    "name": "lock-leaves-nothing-check",
+    "tier": "dev",
+    "holds": "after a lock, Web Storage names no tile, category, letter, screen height or search; legacy plaintext keys move into the journal and go; a disguised gate and boot mirror wear only the neutral palette; a quick-add tap in the lock's first frame reaches no session; a failed unlock or a reset shows no journal text"
+  },
+  {
     "name": "blind-edge-padding-check",
     "tier": "dev",
     "holds": "a padding-only change to a field still moves `--blind-edge`"
+  },
+  {
+    "name": "gate-flag-check",
+    "tier": "dev",
+    "holds": "an undisguised unlock draws Today's sun, still, on a field whose edge cuts no ring where the window allows it (390x844, desktop) and that arrives at its height; a disguised one draws none of the flag at the base's height, by DOM and pixels on every palette and theme; gates that are not unlocks keep their titles; the accessible name, focus order and no scroll at 360x640, 360x568 and 320x568 hold"
   },
   {
     "name": "dilation-schedule-action",
@@ -18,6 +38,11 @@
     "name": "letters-ready-jump",
     "tier": "dev",
     "holds": "the ready-letters count and the jump above the waiting list"
+  },
+  {
+    "name": "deep-link-consumption-check",
+    "tier": "dev",
+    "holds": "ready-letter and lab links apply once; folding, another analyte, URL replacement and return context survive"
   },
   {
     "name": "body-map-selected-context",
@@ -46,9 +71,19 @@
     "holds": "the yearly grid's days as a list: the painted cells out of the accessibility tree, every day's value (or \"Not logged\") read off it a month at a time, three tab stops, a tap or Enter to open and step, and the fold and a month change never moving anything in one frame"
   },
   {
+    "name": "year-month-labels",
+    "tier": "dev",
+    "holds": "Year wrapped's twelve month names stay apart, uncut and on their own month's days at 390px, 200% zoom and desktop in both languages"
+  },
+  {
     "name": "voice-task-names",
     "tier": "dev",
     "holds": "the voice task chooser's labels fit their segments in both languages"
+  },
+  {
+    "name": "segmented-chosen-clear",
+    "tier": "dev",
+    "holds": "Wrapped's chosen cadence stays clear of the track's chevrons in both languages at 390px and 200% zoom, and the chevrons fade in and out with the scroll"
   },
   {
     "name": "android-door-motion",
@@ -57,6 +92,11 @@
     "diagnostics": [
       ".claude/android-door-motion/*"
     ]
+  },
+  {
+    "name": "margin-note-dismissal-check",
+    "tier": "dev",
+    "holds": "changed margin notes ask before closing; keeping preserves the composer, untouched notes close silently, and failed or pending writes retain their admission"
   },
   {
     "name": "record-dismissal-check",
@@ -77,22 +117,37 @@
   {
     "name": "save-and-failure-check",
     "tier": "dev",
-    "holds": "a save confirms within 1.2s, a rejected save or delete says so and keeps its sheet, a double tap writes once, surgery notes ask before a switch, Today rings the mood saved today"
+    "holds": "a save confirms within 1.2s, a rejected save or delete says so and keeps its sheet, a double tap writes once, surgery notes ask before a switch, Today rings the mood saved today; effect types, appointment prep add/tick/flag, Add to appointment prep, dilation schedule and felt sense write once per double tap and say a failure"
   },
   {
     "name": "recovery-key-departure-check",
     "tier": "dev",
-    "holds": "every way off the recovery key screen asks before the key is lost"
+    "holds": "every way off the recovery key screen asks before the key is lost; a lock hides the key from the gate and storage and the same key comes back after unlocking, until it is acknowledged"
+  },
+  {
+    "name": "recovery-key-replacement-check",
+    "tier": "dev",
+    "holds": "a recovery key replacement interrupted at each cut leaves the old key working until the new one is confirmed, says so after the restart, and finishes, redoes or discards from the screen; the gate promotes a waiting key and no key characters are stored"
+  },
+  {
+    "name": "missing-access-recovery-check",
+    "tier": "dev",
+    "holds": "retained encrypted storage with missing or unreadable access refuses setup, reaches recovery or confirmed Archive/reset, and keeps entry/photo counts and decrypted media through a new access mode and another cold boot"
   },
   {
     "name": "photo-browse-compare",
     "tier": "dev",
-    "holds": "browsing, selecting and wiping photos on a small library"
+    "holds": "browsing, selecting and wiping photos on a small library; the change-day button stays clear of every date caption at 320, 390 and 1280px"
   },
   {
     "name": "photo-grid-batching",
     "tier": "dev",
     "holds": "the grid stays whole batches deep at 3000 photos"
+  },
+  {
+    "name": "in-place-scroll-check",
+    "tier": "dev",
+    "holds": "opening and closing a photo and picking a chip keep the library's scroll within 1px; forward visits still open at the top and back still restores"
   },
   {
     "name": "photo-export",
@@ -102,12 +157,12 @@
   {
     "name": "chosen-appointment",
     "tier": "dev",
-    "holds": "the room's answers stay attached to the appointment they were given in"
+    "holds": "history restores the room's question and answers; fresh visits start at question one, appointment answers stay separate, and web lock/unlock clears both"
   },
   {
     "name": "appointment-entry-check",
     "tier": "dev",
-    "holds": "appointment field order, saved values, suggestions, surgery links, draft dismissal, calendar handoff and deletion; English and Polish at 390px and 200% zoom"
+    "holds": "appointment field order, saved values, suggestions, surgery links, draft dismissal, calendar handoff, deletion and the next visit card's body face; English and Polish at 390px and 200% zoom"
   },
   {
     "name": "content-before-dates-check",
@@ -123,22 +178,6 @@
     "name": "empty-reflection",
     "tier": "dev",
     "holds": "Safe space's empty and sparse states, and a comfort link above the fold at 320x568"
-  },
-  {
-    "name": "hair-progress-photo-jump-check",
-    "tier": "dev",
-    "holds": "the hair progress jump reaches its photo and keeps its context",
-    "diagnostics": [
-      ".claude/hair-progress-shots/*"
-    ]
-  },
-  {
-    "name": "hair-progress-photo-actions",
-    "tier": "dev",
-    "holds": "Hair progress opens its own photos in shared collage/timelapse export and preserves comparison and scroll after completion or cancellation",
-    "diagnostics": [
-      ".claude/hair-progress-photo-actions-shots/*"
-    ]
   },
   {
     "name": "hair-removal-entry-check",
@@ -162,14 +201,6 @@
     ]
   },
   {
-    "name": "measurements-sizes-jump-check",
-    "tier": "dev",
-    "holds": "the Measurements/Sizes jump moves focus and keeps an open editor's input",
-    "diagnostics": [
-      ".claude/measurements-jump-shots/*"
-    ]
-  },
-  {
     "name": "roadmap-tick-motion-check",
     "tier": "dev",
     "holds": "ticking a roadmap step animates the box's fill, the tick and the strike rather than cutting them in"
@@ -177,7 +208,7 @@
   {
     "name": "search-filter-scope",
     "tier": "dev",
-    "holds": "search says what its filter covers and what a saved question holds"
+    "holds": "search says what its filter covers, and mode, body region and a scale range narrow it alone, with text and across a trip into an entry"
   },
   {
     "name": "mark-edge-fringe",
@@ -210,7 +241,22 @@
   {
     "name": "tryout-milestone-felt-check",
     "tier": "dev",
-    "holds": "tryout felt-sense rows name their mood, adoption sets the app name to the stored tryout name, and a milestone's anniversary offers a felt sense, names it, saves, says so and goes"
+    "holds": "tryout felt-sense rows name their mood, and adoption sets the app name to the stored tryout name"
+  },
+  {
+    "name": "milestone-celebration-check",
+    "tier": "dev",
+    "holds": "the milestone add sheet lists every template with no shuffle, a new milestone asks for no felt sense, the celebrate switch saves, and Today throws no confetti for a milestone set not to be celebrated or an anniversary in a muted era"
+  },
+  {
+    "name": "dose-amount-check",
+    "tier": "dev",
+    "holds": "taken and changed doses refuse non-positive or non-finite amounts; fractions, skipped zero and animated EN/PL feedback survive"
+  },
+  {
+    "name": "range-editors-check",
+    "tier": "dev",
+    "holds": "regimen, dose-pause and tryout end-picker limits, inverted-save guards, equal/open bounds and feedback motion in English and Polish, light and dark; `RANGE_SIGNOFF` saves crops"
   },
   {
     "name": "regimen-editor-check",
@@ -223,14 +269,19 @@
     "holds": "document import field order, saved values, owner links, draft dismissal, failures and privacy in English and Polish"
   },
   {
-    "name": "lab-entry-check",
+    "name": "accessible-names-check",
     "tier": "dev",
-    "holds": "lab result field order, saved values, draft dismissal, failures and privacy in English and Polish"
+    "holds": "English and Polish accessible names retain lab analytes, values, units and dates, resource numbers and domains, and benchmark pitches and dates"
   },
   {
-    "name": "measurements-entry-check",
+    "name": "lab-entry-check",
     "tier": "dev",
-    "holds": "measurement field order, saved values, draft dismissal, failures and privacy in English and Polish"
+    "holds": "lab result field order, saved values typed key by key, draft dismissal, failures and privacy in English and Polish"
+  },
+  {
+    "name": "wear-entry-check",
+    "tier": "dev",
+    "holds": "a wear session duration typed key by key keeps decimals and a minus, saves the hours typed and reopens as typed; empty and negative durations stay refused"
   },
   {
     "name": "leave-lock-check",
@@ -243,9 +294,49 @@
     "holds": "Milestones exposes era creation, shares the Settings editor with era bands and retains disclosure and scroll on return"
   },
   {
+    "name": "milestone-era-label-clear",
+    "tier": "dev",
+    "holds": "an era's name on the milestone rail is drawn whole and clear of every dot's ring, today's included, at 390px, 195px and 1280px, light and dark, English and Polish, text at 100% and 200%, and still opens its era"
+  },
+  {
+    "name": "plane-date-labels-clear",
+    "tier": "dev",
+    "holds": "Two scales at once writes each date clear of every dot, the head's ring, the trail's joins, the readout and the other dates, inside the plot and at 4.5:1 on the card, with the head at the end and scrubbed back, at 390px and 1280px, light and dark, English and Polish, text at 100% and 200%; with motion on, no date arrives or leaves at full opacity in one frame across a play sweep and a keyboard scrub"
+  },
+  {
+    "name": "toast-stack-check",
+    "tier": "dev",
+    "holds": "two toasts up at once never overlap: deleting two entries inside one toast's four seconds leaves both Restore actions reachable at their centre and across a 48px target, each restoring its own entry; the earlier toast never moves while the newer arrives above it, and the later one travels into the gap over several frames when the earlier leaves; the stack centres on the content column at 1280px, failures over an open sheet stack at the top undimmed, reduced motion keeps the stack, and a lock clears it"
+  },
+  {
+    "name": "update-notice-check",
+    "tier": "dev",
+    "holds": "the waiting-update notice sits 12px under the field at the inset phone width at 390px and at the full 680px header width at 1024px and 1280px, with the rail and column keeping their places and widths; it opens and closes over several frames with the line under it travelling instead of jumping; a navigation carries it as one object from under one field to under the next, and on one side of a transition it fades; it is announced once, not by every screen that draws it; a dismissal survives lock and unlock without a second announcement, a fresh page offers the release again, unlock remounts Home and preserves an unsaved editor note on its route, Update now still hands over, and reduced motion cuts it in at the same place"
+  },
+  {
+    "name": "device-bound-writes",
+    "tier": "dev",
+    "holds": "device-bound mode reuses its wrapping key and keeps its private key out of reach, and a failed metadata write or close leaves the journal openable, on real OPFS and IndexedDB"
+  },
+  {
+    "name": "device-bound-cleanup-check",
+    "tier": "dev",
+    "holds": "a failed PIN removal says it is incomplete and keeps retry available, a retry removes the old key material, and a cold PIN boot removes a surveyed leftover after a successful unlock"
+  },
+  {
+    "name": "pin-credential-contention",
+    "tier": "dev",
+    "holds": "on the cold, session and Settings PIN gates in English and Polish, a correct PIN waits for held credentials without touching the throttle, a competing credential change is refused, and only a genuine wrong guess counts"
+  },
+  {
+    "name": "restore-preferences-check",
+    "tier": "dev",
+    "holds": "an Archive Replace killed before, between or after its preference writes, or after COMMIT, boots into a complete row and preference pair"
+  },
+  {
     "name": "bfcache-journal-check",
     "tier": "built",
-    "holds": "real BFCache Back and Forward restore journal reads and writes without bypassing lock policy or retaining obsolete workers"
+    "holds": "real BFCache Back and Forward restore journal reads and writes, including a held admitted save through navigation and reload, another navigation during a held private reopen and its late reply, without bypassing lock policy or retaining obsolete workers"
   },
   {
     "name": "date-picker-check",
@@ -304,11 +395,6 @@
     "name": "settings-scroll-check",
     "tier": "built",
     "holds": "Settings scroll survives detail returns and manager sheets; fresh visits start at the top and gates hide manager content"
-  },
-  {
-    "name": "sheet-handoff-scroll-check",
-    "tier": "built",
-    "holds": "a sheet raised by another's close keeps the shell inert while it is up, and the editor still scrolls once both close"
   },
   {
     "name": "sheet-touch-drag-check",
@@ -389,15 +475,7 @@
   {
     "name": "chart-a11y-check",
     "tier": "built",
-    "holds": "every screen that places a chart card has an unbroken heading order and no axe target-size, nested-interactive or heading-order finding; the changes line's marks meet 24px and each has a 48px row, the Look back rail's reachable controls are its two 48px handles and its list holds every fact it draws, and the hormone curve's image holds no control while a list beside it names every marked thing and opens its record by keyboard, at 320 and 390px"
-  },
-  {
-    "name": "tally-chip-row-yank",
-    "tier": "built",
-    "holds": "Tally's presentation chip row on a cold load: chips land with (or before) the chart, never after",
-    "diagnostics": [
-      ".claude/tally-chip-row/*"
-    ]
+    "holds": "every screen that places a chart card has an unbroken heading order and no axe target-size, nested-interactive or heading-order finding; the changes line's marks meet 24px and each has a 48px row, the Look back rail's reachable controls are its two 48px handles and its list holds every fact it draws at 320 and 390px"
   },
   {
     "name": "changes-methodology-check",
@@ -406,11 +484,6 @@
     "diagnostics": [
       ".claude/changes-shots/*"
     ]
-  },
-  {
-    "name": "words-reading-scope-check",
-    "tier": "built",
-    "holds": "the words reading's scope and baseline on stats, stats/words and settings/words"
   },
   {
     "name": "entry-pending-save",
@@ -427,11 +500,6 @@
     "diagnostics": [
       ".claude/radio-groups-shots/*"
     ]
-  },
-  {
-    "name": "roadmap-track-summary",
-    "tier": "built",
-    "holds": "the selected track travels with the goal list it shows"
   },
   {
     "name": "prep-context-check",
@@ -493,9 +561,14 @@
     ]
   },
   {
+    "name": "home-ambient-check",
+    "tier": "built",
+    "holds": "Home pauses its ambient loops after 30 seconds, keeps their clocks frozen, resumes on touch without replacement or phase reset, and respects reduced motion in light and dark"
+  },
+  {
     "name": "home-idle-raster",
     "tier": "built",
-    "holds": "Home at idle rasters nothing beyond a timer's tick, and wakes the main thread only while a mood face moves: the flag sun's breath runs on the compositor, and the faces pause their loops between moves"
+    "holds": "During Home's first 30 seconds after input, sun breath runs on the compositor and faces wake only while moving; raster work stays within the timer-tick budget"
   },
   {
     "name": "demo-worker-startup",
@@ -518,6 +591,11 @@
     "holds": "malformed day addresses keep the unavailable notice, navigation and Back; ISO dates select the right day, future entries are refused, and same-route navigation reads the second letter"
   },
   {
+    "name": "search-return-privacy",
+    "tier": "built",
+    "holds": "a search restored after opening an entry never writes its query to Web Storage, and a closed profile holds no trace of it"
+  },
+  {
     "name": "device-recovery-check",
     "tier": "built",
     "holds": "recovery after real key loss, against a production build, where the first run is real",
@@ -531,5 +609,11 @@
     "diagnostics": [
       "/tmp/settings-erase-*-failure.png"
     ]
+  },
+  {
+    "name": "reset-restart-check",
+    "tier": "built",
+    "holds": "Delete everything killed within 160 ms of the reset, at seeds 6501 to 6530, against a production build: an erased cut returns to first run with no app-owned mirrors or preferences left, and a partial cut keeps an openable journal",
+    "build": "production"
   }
 ]

@@ -16,50 +16,19 @@ import android.util.Base64;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
-/**
- * A clipboard copy that hides itself and then takes itself back.
+/** Copies a value with Android's sensitive label and a timed clear.
  *
- * Android's clipboard is not a private buffer. Whatever is on it is offered
- * by the keyboard's own clipboard history to anyone who long-presses in any
- * text field in any app, and shown in the paste preview besides, and nothing
- * ever clears it. For the recovery key that is a complete bypass of the
- * passphrase, the PIN, the biometric, disguise mode, Safe Space and
- * FLAG_SECURE, which is the one thing the screen's own copy tells people not
- * to do with those characters.
+ * <p>The sensitive label asks the keyboard to omit the value from history and
+ * paste previews. The clear compares a SHA-256 digest to avoid wiping a newer
+ * clipboard value. The pending record stores the digest and deadline, so the
+ * plugin retries at startup and resume if Android kills the process.
  *
- * Two things are done about it here, neither reachable from the web
- * clipboard API, which is why this exists at all:
- *
- * <ul>
- *   <li>the clip is marked sensitive, which asks the keyboard to keep the
- *       value out of its history and out of the paste preview;</li>
- *   <li>the clipboard is cleared again after the interval the caller states,
- *       and the screen's copy names that interval so the person knows how
- *       long they have to paste.</li>
- * </ul>
- *
- * The clear refuses to wipe something the person copied afterwards, so it
- * only fires while the clipboard still holds what we put there. What is kept
- * to decide that is a SHA-256 of the value rather than the value: once
- * setPrimaryClip has returned, nothing in this process and nothing on this
- * disk holds the characters, so neither a heap dump taken while the timer is
- * still running nor the preference file below has anything in it to find.
- * Nothing here is logged, and there is no read method - see the plugin.
- *
- * That pending clear is written down rather than held in memory, and the
- * reason is the ordinary path rather than a corner case: the person copies
- * the key, leaves for their password manager, and Android is free to kill
- * this process while they are gone. A clear that lived only in a static
- * field would die with it and leave the key on the clipboard for good, while
- * the screen's copy promises it goes. So the record outlives the process,
- * and the plugin asks again when the app is next loaded as well as at every
- * resume.
- *
- * Everything below runs on the main thread: the plugin marshals the copy
- * there (clipboard writes off it crash on some OEMs), the delayed clear is
- * posted to the main looper, and the resume retry arrives on it. So no
- * locking.
+ * <p>The plugin exposes copy and clear operations. Clipboard access and the
+ * delayed retry run on the main thread for compatibility with Android devices.
  */
 public final class SensitiveClipboard {
     private SensitiveClipboard() {}
@@ -151,13 +120,21 @@ public final class SensitiveClipboard {
             return;
         }
 
-        CharSequence onClipboard = clip.getItemCount() == 0 ? null : clip.getItemAt(0).getText();
-        if (!isWhatWeCopied(Base64.decode(digest, Base64.NO_WRAP), onClipboard)) {
+        if (!clearIfOurs(context, digest, clip)) {
             // Somebody has copied something since. It is not ours to clear.
             forget(context);
             return;
         }
+        forget(context);
+    }
 
+    /** Clears the clipboard when {@code clip} is what {@link #copy} put
+        there. False when it is something else, which is left untouched. */
+    private static boolean clearIfOurs(Context context, String digest, ClipData clip) {
+        CharSequence onClipboard = clip.getItemCount() == 0 ? null : clip.getItemAt(0).getText();
+        if (!isWhatWeCopied(Base64.decode(digest, Base64.NO_WRAP), onClipboard)) return false;
+
+        ClipboardManager clipboard = clipboardOf(context);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             clipboard.clearPrimaryClip();
         } else {
@@ -165,7 +142,7 @@ public final class SensitiveClipboard {
             // closest thing, and it replaces the key either way.
             clipboard.setPrimaryClip(sensitiveClip(""));
         }
-        forget(context);
+        return true;
     }
 
     /** Whether what is on the clipboard is the string {@code digest} was
@@ -189,17 +166,66 @@ public final class SensitiveClipboard {
     /** Drops the pending clear, having done it or found it was not ours. */
     static void forget(Context context) {
         prefs(context).edit().clear().apply();
+        cancelArmedClear();
+    }
+
+    private static void cancelArmedClear() {
         if (armedClear != null) {
             new Handler(Looper.getMainLooper()).removeCallbacks(armedClear);
             armedClear = null;
         }
     }
 
-    /** The reset path. What is here is a digest of something that
-        may still be on the clipboard, which is not the journal but is a
-        record the reset claims to have left nothing of. */
+    /** The reset path. The recovery key may still be on the clipboard, and
+        what is stored here is the only way to tell it from something copied
+        since, so it is used before it goes: the clipboard is cleared if it
+        still holds the key, left alone if it holds anything else, and then
+        the record and the armed timer are dropped. Reset runs with the app
+        in front, which is what lets Android answer the clipboard read. Without
+        focus the read is refused, nothing is cleared and nothing is guessed.
+
+        Runs on the main thread like everything else here; a caller on
+        another thread waits for it. */
     public static void wipe(Context context) {
-        prefs(context).edit().clear().commit();
+        Context appContext = context.getApplicationContext() != null ? context.getApplicationContext() : context;
+        try {
+            onMainThread(() -> {
+                String digest = prefs(appContext).getString(KEY_DIGEST, null);
+                if (digest == null) return;
+                ClipData clip = clipboardOf(appContext).getPrimaryClip();
+                if (clip != null) clearIfOurs(appContext, digest, clip);
+            });
+        } finally {
+            /* Whatever the read did, the record and the timer go: a reset
+               that throws here must not leave the digest behind. */
+            prefs(appContext).edit().clear().commit();
+            cancelArmedClear();
+        }
+    }
+
+    private static void onMainThread(Runnable work) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            work.run();
+            return;
+        }
+        CountDownLatch done = new CountDownLatch(1);
+        AtomicReference<RuntimeException> failure = new AtomicReference<>();
+        new Handler(Looper.getMainLooper()).post(() -> {
+            try {
+                work.run();
+            } catch (RuntimeException e) {
+                failure.set(e);
+            } finally {
+                done.countDown();
+            }
+        });
+        try {
+            if (!done.await(5, TimeUnit.SECONDS)) throw new IllegalStateException("the clipboard wipe did not run");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("interrupted while wiping the clipboard", e);
+        }
+        if (failure.get() != null) throw failure.get();
     }
 
     private static ClipData sensitiveClip(String value) {

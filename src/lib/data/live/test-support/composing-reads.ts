@@ -7,7 +7,7 @@
 
 import type { TableName } from '../writes.ts';
 
-export type Read = readonly [area: string, operation: string];
+type Read = readonly [area: string, operation: string];
 
 export interface ComposingRead {
   read: Read;
@@ -30,31 +30,11 @@ export const COMPOSING_READS: readonly ComposingRead[] = [
     ]
   },
   {
-    read: ['hormoneCurve', 'getCurves'],
-    composes: [
-      ['doses', 'getDoses'],
-      ['regimen', 'getEpisodes'],
-      ['labs', 'getUsedAnalytes'],
-      ['labs', 'getResults']
-    ]
-  },
-  {
-    // The same two models over one day, for the one word Care's curve row
-    // states (phase 11 ticket 10). No lab read at all: a direction needs no
-    // fit, and a scale factor cannot turn a rise into a fall.
-    read: ['hormoneCurve', 'getCurveDirection'],
-    composes: [
-      ['doses', 'getDoses'],
-      ['regimen', 'getEpisodes']
-    ]
-  },
-  {
     read: ['chartAnnotations', 'getAnnotations'],
     composes: [
       ['milestones', 'getMilestones'],
       ['regimen', 'getEpisodes'],
       ['doses', 'getPauses'],
-      ['journalingPauses', 'getPauses'],
       ['tryouts', 'getTryouts'],
       ['procedures', 'getProcedures'],
       ['eras', 'getEras'],
@@ -66,23 +46,10 @@ export const COMPOSING_READS: readonly ComposingRead[] = [
     }
   },
   {
-    // The hormone curve's own markers (phase 8 features ticket 15). Two of
-    // the four are records with a day on them and two are days that stood
-    // out against the person's own recent spread, which is why the tally and
-    // entry reads are here at all.
-    read: ['chartAnnotations', 'getCurveMarkers'],
-    composes: [
-      ['sideEffects', 'getSideEffectsInRange'],
-      ['doses', 'getDoses'],
-      ['regimen', 'getEpisodes'],
-      ['stats', 'tallyTrend'],
-      ['stats', 'bodyRegionReadings']
-    ]
-  },
-  {
-    // Its declaration is the section registry's own union
-    // (clinicianSummary.ts's CLINICIAN_SUMMARY_TABLES), so this entry checks
-    // the registry's per-section tables rather than a copy in writes.ts.
+    // Its declaration is the union of the section registry's tables
+    // (writes.ts's CLINICIAN_SUMMARY_TABLES, held equal to the registry by
+    // clinicianSummary.test.ts), so this entry checks that union against
+    // what the sections really read.
     read: ['clinicianSummary', 'getSummary'],
     composes: [
       ['regimen', 'getEpisodes'],
@@ -90,7 +57,11 @@ export const COMPOSING_READS: readonly ComposingRead[] = [
       ['labs', 'getUsedAnalytes'],
       ['labs', 'getResults'],
       ['exposure', 'getCounters'],
-      ['sideEffects', 'getSideEffectsInRange'],
+      ['sideEffects', 'getSideEffects'],
+      ['personalEffects', 'getMarkers'],
+      ['personalEffects', 'getEffectTypes'],
+      ['effectCategories', 'getEffectCategories'],
+      ['cycleEvents', 'getCycleEventsInRange'],
       ['procedures', 'getProcedures'],
       ['procedures', 'getChecklist'],
       ['procedures', 'getPhotos'],
@@ -108,17 +79,12 @@ export const COMPOSING_READS: readonly ComposingRead[] = [
       ['doses', 'getDoses'],
       ['labs', 'getResultsOnDay'],
       ['voiceBenchmarks', 'getBenchmarksOnDay'],
-      ['measurements', 'getMeasurementsInRange'],
-      ['sizeRecords', 'getRecordsOnDay'],
       ['taper', 'getSessionsOnDay'],
       ['sideEffects', 'getSideEffectsInRange'],
       ['personalEffects', 'getMarkersFirstNoticedOn'],
       ['cycleEvents', 'getCycleEventsInRange'],
-      ['tally', 'getEventsOnDay'],
       ['wearSessions', 'getSessions'],
       ['feltSense', 'onDay'],
-      ['hairProgress', 'getStagesOnDay'],
-      ['hairProgress', 'getPhotosOnDay'],
       ['hairRemoval', 'getSessionsOnDay'],
       ['appointments', 'getDayRecords'],
       ['procedures', 'getDayRecords'],
@@ -129,8 +95,6 @@ export const COMPOSING_READS: readonly ComposingRead[] = [
   {
     // Its own registry's union too (lastWrite.ts's LAST_WRITE_TABLES), checked
     // the same way: one entry here per registered area's own last-write read.
-    // hairProgress appears twice, the same reason it does under 'day' above:
-    // two registered areas share one owning module.
     read: ['lastWrite', 'getLastWrites'],
     composes: [
       ['entries', 'lastWriteEpochDay'],
@@ -138,18 +102,14 @@ export const COMPOSING_READS: readonly ComposingRead[] = [
       ['doses', 'lastWriteEpochDay'],
       ['labs', 'lastWriteEpochDay'],
       ['voiceBenchmarks', 'lastWriteEpochDay'],
-      ['measurements', 'lastWriteEpochDay'],
-      ['sizeRecords', 'lastWriteEpochDay'],
       ['taper', 'lastWriteEpochDay'],
       ['sideEffects', 'lastWriteEpochDay'],
       ['personalEffects', 'lastWriteEpochDay'],
       ['cycleEvents', 'lastWriteEpochDay'],
-      ['tally', 'lastWriteEpochDay'],
       ['wearSessions', 'lastWriteEpochDay'],
       ['feltSense', 'lastWriteEpochDay'],
-      ['hairProgress', 'lastStageWriteEpochDay'],
-      ['hairProgress', 'lastPhotoWriteEpochDay'],
       ['hairRemoval', 'lastWriteEpochDay'],
+      ['progressPhotos', 'lastWriteEpochDay'],
       ['procedures', 'lastWriteEpochDay'],
       ['tryouts', 'lastWriteEpochDay'],
       ['documents', 'lastWriteEpochDay']
@@ -195,17 +155,5 @@ export const COMPOSING_READS: readonly ComposingRead[] = [
       ['stats', 'tagInsights'],
       ['stats', 'dayAverages']
     ]
-  },
-  {
-    read: ['intervalMoodPattern', 'dayOfInterval'],
-    composes: [
-      ['stats', 'dayAverages'],
-      ['doses', 'getDoses']
-    ]
-  },
-  {
-    // The custom fold reads no dose log: it folds by the epoch day itself.
-    read: ['intervalMoodPattern', 'byCustomInterval'],
-    composes: [['stats', 'dayAverages']]
   }
 ];

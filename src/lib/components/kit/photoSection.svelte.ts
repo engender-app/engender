@@ -1,6 +1,6 @@
 /* The picker, the review store and the delete-only record editor every
    photo-owning screen assembled for itself around recordEditor.svelte.ts
-   and photoReview.svelte.ts (phase 5 audit ticket 11) - wired here once
+   and photoReview.svelte.ts - wired here once
    instead of at each of five call sites. The reactive half of
    photoSection.ts, deliberately thin: `$state` only works here, so every
    branch stays in the rune-free module and this delegates to it, the same
@@ -26,7 +26,7 @@ interface PhotoSectionOptions<TPhoto extends { id: string }> {
   /** `false` keeps a reviewed shot open after a write that failed. */
   add(photo: NormalizedPhoto): void | boolean | Promise<void | boolean>;
   /** Delete a stored photo by id. */
-  remove(id: string): void | Promise<void>;
+  remove(id: string): unknown;
   /** What the toast says once `remove` lands; null where the removal is
       only from a draft and nothing is deleted until its Save. Omitted,
       "Deleted.". */

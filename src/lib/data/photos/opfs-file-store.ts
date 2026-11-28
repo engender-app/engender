@@ -43,13 +43,26 @@ export function opfsPhotoFiles(directory = PHOTO_DIRECTORY): PhotoFileStore {
   };
 
   return {
+    /* Every caller writes a fresh name (a new uuid, or restore's fresh replacement), so a
+       failed write removes the file it created rather than leaving it empty for the boot
+       sweep, and nothing a row names can be under it yet. Aborted rather than closed on the
+       way out: close() on a stream whose write failed rejects too, and that rejection used
+       to replace a quota refusal with a generic error. */
     async write(name, bytes) {
-      const handle = await (await dir()).getFileHandle(name, { create: true });
-      const writable = await handle.createWritable();
+      const directory = await dir();
+      const handle = await directory.getFileHandle(name, { create: true });
       try {
-        await writable.write(bytes as unknown as BufferSource);
-      } finally {
+        const writable = await handle.createWritable();
+        try {
+          await writable.write(bytes as unknown as BufferSource);
+        } catch (error) {
+          await writable.abort().catch(() => {});
+          throw error;
+        }
         await writable.close();
+      } catch (error) {
+        await directory.removeEntry(name).catch(() => {});
+        throw error;
       }
     },
 

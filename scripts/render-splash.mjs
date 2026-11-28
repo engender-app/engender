@@ -1,7 +1,7 @@
 /* Rewrites the generated block of src/app.html's first frame: one rule per
    palette, ground and sun, read out of src/lib/theme/palettes.css. See
    src/lib/theme/splash.ts for why it is generated. Run after a palette is
-   added or a ground changes: npm run render:splash. tests/splash.test.ts is
+   added or a ground changes: npm run render:splash. tests/node/ui/splash.test.ts is
    what fails if the run was forgotten. */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';

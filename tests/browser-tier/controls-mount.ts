@@ -1,4 +1,4 @@
-/* Mounts the control kit (phase 5 ticket 30) with the app's own stylesheets.
+/* Mounts the control kit with the app's own stylesheets.
 
    components.css is imported here and deliberately is not by kit-mount.ts:
    the surface kit stands on its own and that page is where that gets checked,

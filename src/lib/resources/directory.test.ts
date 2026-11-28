@@ -1,10 +1,10 @@
-/* The bundled directory is the one place in this app where being out of date
-   is a safety problem rather than a cosmetic one: a crisis line that moved
-   number reads as help and gives none. So the invariants here are about what
-   makes an entry usable at all - something to dial or open, a key that can
-   carry its wording, and a review date that says when a person last checked.
+/* The bundled directory is the one place in this app where being out of date is a safety
+   problem rather than a cosmetic one: a crisis line that moved number reads as help and
+   gives none. So the invariants here are about what makes an entry usable at all -
+   something to dial or open, a key that can carry its wording, and a review date that says
+   when a person last checked.
 
-   Node tier, so this imports directory.ts and never labels.ts (ADR-0016). */
+   Node tier, so this imports directory.ts and never labels.ts. */
 
 import { test, expect } from 'vitest';
 import { RESOURCES, RESOURCES_REVIEWED_ON, resourcesFor } from './directory.ts';
@@ -29,12 +29,41 @@ test('every phone number is dialable as written', () => {
   expect(undialable.map((r) => r.key)).toEqual([]);
 });
 
-test('every number carries its country code, so it dials from anywhere', () => {
-  // Trevor and Mindline Trans+ publish theirs nationally, as 1-866 and 0300.
-  // Neither rings from a Polish phone that way, and this app is used from one.
-  const local = RESOURCES.filter((r) => r.phone && !r.phone.startsWith('+'));
+test('every number dials from a Polish phone as written', () => {
+  // Mindline Trans+ publishes its number nationally, as 0300, which does not
+  // ring from a Polish phone, and this app is used from one. Polish 116 short
+  // codes and 800 freephone numbers are the other way round: they exist only
+  // inside the Polish network and are published without +48.
+  const polishNational = /^(116 \d{3}|800 \d{2} \d{4})$/;
+  const local = RESOURCES.filter(
+    (r) => r.phone && !r.phone.startsWith('+') && !(r.region === 'pl' && polishNational.test(r.phone))
+  );
 
   expect(local.map((r) => r.key)).toEqual([]);
+});
+
+test('an adult in Poland has a free line that answers at night and at weekends', () => {
+  // Lambda answers on weekday evenings only. 116 123 and 800 70 2222 answer
+  // at any hour; 116 111 does too, but only for under-18s.
+  const polishLines = resourcesFor('pl').flatMap((r) => (r.kind === 'helpline' && r.phone ? [r.phone] : []));
+
+  expect(polishLines).toEqual(expect.arrayContaining(['116 123', '800 70 2222']));
+});
+
+test('the UK and US group holds no line for under-25s only', () => {
+  // The Trevor Project serves under-25s in the US. The person holding this
+  // phone is in Poland, and under-25s only is not who the group is for.
+  expect(RESOURCES.map((r) => r.key)).not.toContain('int-trevor');
+});
+
+test('no url points at a domain known to be parked, lapsed or broken', () => {
+  // Each looks like the obvious address and is not: transfuzja.pl and
+  // 116123.pl are for sale, mindlinetrans.org.uk serves casino spam, and
+  // 116123.edu.pl shows a certificate for another host and stale hours.
+  const known = ['transfuzja.pl', '116123.pl', '116123.edu.pl', 'mindlinetrans.org.uk'];
+  const bad = RESOURCES.filter((r) => r.url && known.includes(new URL(r.url).host.replace(/^www\./, '')));
+
+  expect(bad.map((r) => r.key)).toEqual([]);
 });
 
 test('every url is https, so nothing sends a person to a plaintext page', () => {

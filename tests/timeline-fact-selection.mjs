@@ -1,27 +1,12 @@
-/* Selecting a fact on a timeline without precision tapping (phase 11 UI/UX
-   ticket 25, first audit U4).
+/* Hit-test a crowded journal at 390px and 195px (200% zoom). Care
+   captions have 48px targets without overlap. Lane labels open and
+   focus the drug block by pointer and keyboard. Look back targets
+   match the marks, with no milestone covering a band or another
+   milestone. The list gives exact dates, selects and marks the same
+   span, and stays bounded at forty milestones. Range handles still move.
 
-   The two surfaces the audit measured, checked the way it asked for: hit
-   testing rather than bounding boxes alone, at 390px and at the 195px that
-   200% zoom leaves of it, with a crowded history rather than a tidy one.
-
-   What it holds:
-
-   - every caption on the Care rail is a target at the product's 48px floor,
-     and no two of them lie over each other;
-   - a lane's name opens that drug's own block, by pointer and by keyboard,
-     and lands the focus on it;
-   - nothing on the Look back rail owns a point it does not draw - a
-     milestone's target no longer covers the regimen band under it, and two
-     milestones a few pixels apart no longer cover each other;
-   - the list under the rail holds every fact with its exact dates, selects
-     the same span the band on the rail selects, keeps the selection marked,
-     and stays bounded on a journal with forty milestones;
-   - the range handles still move the span, which the audit asked to be left
-     alone.
-
-   Run on its own with `node tests/timeline-fact-selection.mjs`; part of the
-   browser tier's own run. */
+   node tests/timeline-fact-selection.mjs
+   Included in the browser tier. */
 import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { createServer } from 'vite';
@@ -217,7 +202,32 @@ try {
   const jump = page.locator('[data-care-lane-jump="Estradiol"]');
   const jumpBox = await jump.boundingBox();
   assert.ok(jumpBox.height >= FLOOR - SLACK, `the lane name is ${jumpBox.height.toFixed(1)}px tall`);
+  /* And it travels there: the fragment's own jump covered the whole distance in one frame.
+     Every frame's scroll offset from the tap until the region holds still, and no single
+     frame may carry half the trip. With motion allowed for this one check: under reduced
+     motion the trip is meant to be instant. */
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await jump.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+  await page.evaluate(() => {
+    const region = document.querySelector('[data-app-scroll-region]');
+    const samples = (window.__laneTrip = [region.scrollTop]);
+    const tick = () => {
+      samples.push(region.scrollTop);
+      const still = samples.length > 20 && samples.slice(-10).every((top) => top === samples.at(-1));
+      if (!still && samples.length < 300) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
   await jump.click();
+  const trip = await page.waitForFunction(() => {
+    const samples = window.__laneTrip;
+    return samples.length > 20 && samples.slice(-10).every((top) => top === samples.at(-1)) && samples;
+  }).then((handle) => handle.jsonValue());
+  const travel = trip.at(-1) - trip[0];
+  const biggestStep = Math.max(...trip.slice(1).map((top, i) => Math.abs(top - trip[i])));
+  assert.ok(travel > 100, `the lane name moved the screen ${travel}px`);
+  assert.ok(biggestStep < travel / 2, `the trip down to the block took ${biggestStep}px of ${travel}px in one frame`);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   const landed = await page.evaluate(() => {
     const block = document.activeElement?.closest('[data-care-regimen-block]');
     if (!block) return null;
@@ -249,22 +259,9 @@ try {
     await page.waitForSelector('[data-span-timeline]');
     const at = `at ${viewport.width}px`;
 
-    /* Who owns the middle of each band and each mark. Three answers are
-       allowed and the rest are the defect this ticket is about:
-
-       - itself, which is the point;
-       - a range handle, which owns 48px at each end of the span by design
-         and which the audit asked to be left exactly as it is;
-       - another fact whose own drawing lies over it, which is two regimens
-         running at once in one row, or two milestones a fortnight apart
-         where a fortnight is three pixels. A drawing that overlaps is not
-         an invisible region that does, and nothing a hit box can do
-         separates them; the list under the rail is the way to the one
-         underneath.
-
-       What is left is the defect: a fact taken by something that does not
-       draw where it took it, which is what the fixed 36x48px mark target
-       did to every band and every neighbouring mark near it. */
+    /* A band's or mark's centre may hit itself, a 48px range handle or a visible
+       overlap. Flag invisible targets that take a neighbour's centre. Use the list
+       below the rail to reach an obscured fact. */
     const owners = await page.evaluate(() => {
       const facts = [...document.querySelectorAll('[data-span-band], [data-span-milestone], [data-span-surgery]')];
       const overlaps = (a, b) =>
@@ -323,10 +320,9 @@ try {
   const kinds = await page.$$eval('[data-span-fact]', (els) => [...new Set(els.map((el) => el.dataset.spanFact))].sort());
   assert.deepEqual(kinds, ['era', 'milestone', 'regimen', 'surgery', 'tryout'], 'the list holds every kind the rail draws');
 
-  /* Bounded before anything scrolls it: forty-one milestones and a handful
-     of stretches, rendered a batch at a time. Asked first because the list
-     grows as it is scrolled (ADR-0069) and the measuring below scrolls
-     every row into view. */
+  /* Bounded before anything scrolls it: forty-one milestones and a handful of stretches,
+     rendered a batch at a time. Asked first because the list grows as it is scrolled and
+     the measuring below scrolls every row into view. */
   const shown = await page.locator('[data-span-fact]').count();
   assert.ok(shown <= 30, `the list renders one batch (${shown} rows) rather than every fact`);
   assert.equal(await page.locator('[data-batched-more="lookback-facts"]').count(), 1, 'and says how to see more');
@@ -460,8 +456,7 @@ try {
 
   /* Replace demo rows with a one-day history. Public repository methods
      keep this isolated browser fixture inside normal journal invariants.
-     The demo's tally taps go too: since after-release 17 the first tap is
-     history as well and starts the rail, and the demo's are weeks old. */
+*/
   const oneDay = await page.evaluate(async () => {
     const { journal: j } = await import('/src/lib/data/live/journal.svelte.ts');
     const today = (await import('/src/lib/data/epochDay.ts')).todayEpochDay();
@@ -469,8 +464,6 @@ try {
     for (const entry of entries) await j.entries.deleteEntry(entry.id);
     for (const era of await j.eras.getEras()) await j.eras.deleteEra(era.id);
     for (const milestone of await j.milestones.getMilestones()) await j.milestones.deleteMilestone(milestone.id);
-    for (const kind of ['misgendered', 'correctly_gendered'])
-      for (const event of await j.tally.getEvents(kind)) await j.tally.deleteEvent(event.id);
     await j.entries.upsertEntry({ epochDay: today, mood: 4, note: 'One day' });
     const eraId = await j.eras.upsertEra({ name: 'One day era', startEpochDay: today, endEpochDay: today });
     return { today, eraId };

@@ -1,40 +1,11 @@
-/* What is coming up: one read, and five kinds of fact earn a mark (phase 8
-   features ticket 61, ADR-0067, CONTEXT: "Coming up").
+/* Register facts that mark upcoming days (ADR-0067). The caller supplies
+   the date range and todayEpochDay, so Calendar can ask for a month and
+   Today can ask for one day. No mark can fall before today.
 
-   `dayAhead(from, to)` is a registry in the shape `day.ts` and `lastWrite.ts`
-   already share: a key, the tables it touches, a read, and an opt-out record
-   naming every excluded area with a reason. A **range**, not a horizon - the
-   calendar asks for a month, Home for today, a day view for one day, and no
-   single number is right for all three (`careSpine.ts`'s 120 days stay
-   `careSpine`'s own).
-
-   `DAY_AHEAD_OPT_OUTS` below is `day.ts`'s own opt-out record inverted: most
-   of what a day view refuses to show because it is a schedule, a span or
-   reference data is refused here for the same reason, restated for "a day
-   still to come" instead of "something that already happened". Five areas
-   flip the other way: `appointments`, `procedures`, `milestones`, `letters`
-   and `doseSchedules` say nothing about a day that already happened but do
-   say something about one still ahead, so they are covered here and opted
-   out nowhere else that asks the forward question.
-
-   What one section declares:
-
-     key     the mark's own kind, which is also the whole of what a mark
-             says - never a countdown, a due date or a verdict
-     covers  which archive sections this one accounts for, the same
-             completeness check DAY_OPT_OUTS uses (day.ts)
-     tables  the tables its read touches, single-sourced here the same
-             reason DAY_TABLES/LAST_WRITE_TABLES are
-     read    every day in range this kind has a fact for, through that
-             area's own read path - never a raw SQL string written here,
-             for the reason lastWrite.ts's own header gives
-
-   Every read is bounded below by `todayEpochDay`, the same discipline
-   lastWrite.ts holds above it: a day already passed is `day.ts`'s question,
-   not this one's, so a fact whose day has gone by never earns a mark here
-   even when the range asked for includes it. Nothing here reads a clock -
-   `todayEpochDay` arrives as an argument, the same as every pure module
-   above this seam. */
+   Appointments, procedures, milestones, letters and dose schedules qualify.
+   Each section declares its mark kind, archive coverage, tables and its
+   area's existing read path. DAY_AHEAD_OPT_OUTS accounts for every excluded
+   section. A mark conveys the kind of fact and no judgement or countdown. */
 
 import { expectedSlots, isDailySchedule, pauseCoversDay } from '../doseSchedule';
 import { lastDayWithin } from '../regimenEpisode';
@@ -47,15 +18,14 @@ import type { MilestonesArea } from './milestones';
 import type { ProceduresArea } from './procedures';
 import type { RegimenArea } from './regimen';
 
-/** The five kinds a mark comes in, and nothing else - the ADR's own list,
-    in its own order. A mark carries no other information: never which
-    appointment, never which letter, never an amount or a status.
+/** The five kinds a mark comes in, and nothing else - the ADR's own list, in its own order.
+    A mark carries no other information: never which appointment, never which letter, never
+    an amount or a status.
 
-    The array rather than the union is what is declared, so the two cannot
-    drift: the union below is read off it, the way `FINISHABLE_AREAS` and
-    `HUB_GROUP_KEYS` are read off theirs. Phase 10's agenda switches need
-    the kinds at runtime - a person turns one off rather than dismissing it
-    every time (`pinnedRows.ts`) - and a hand-written second list beside the
+    The array rather than the union is what is declared, so the two cannot drift: the union
+    below is read off it, the way `FINISHABLE_AREAS` and `HUB_GROUP_KEYS` are read off
+    theirs. agenda switches need the kinds at runtime - a person turns one off rather than
+    dismissing it every time (`pinnedRows.ts`) - and a hand-written second list beside the
     union is the drift `statsAreas.ts` already paid for once. */
 export const DAY_AHEAD_MARK_KINDS = ['appointment', 'surgery', 'milestone', 'letterUnlock', 'doseSlot'] as const;
 
@@ -93,8 +63,7 @@ interface DayAheadReading extends DayAheadAreas {
     over its own area dependency, the same reason `DaySection` and
     `LastWriteEntry` are: the list holds every kind at once, and a test
     registers a kind this file has never named. */
-/* DayAheadSection stays exported only for its own test (AU-09 test-only
-   review). */
+/* DayAheadSection stays exported only for its own test. */
 export interface DayAheadSection {
   key: string;
   covers: readonly string[];
@@ -136,11 +105,10 @@ function stillAhead({
 }
 
 const SECTIONS = [
-  /* An appointment still ahead (ADR-0066's general case, ticket 57).
-     `getAppointments()` reads the whole small table the same way the care
-     page reads a journal's whole episode list - nothing here adds a second,
-     bounded query for a table that never holds more than a handful of
-     rows across a lifetime. */
+  /* An appointment still ahead (ADR-0066's general case). `getAppointments()` reads the
+     whole small table the same way the care page reads a journal's whole episode list -
+     nothing here adds a second, bounded query for a table that never holds more than a
+     handful of rows across a lifetime. */
   section({
     key: 'appointment',
     covers: ['appointments'],
@@ -196,13 +164,10 @@ const SECTIONS = [
       return reading.letters.getUnlockDaysInRange(range.from, range.to);
     }
   }),
-  /* A dose slot, only where the schedule is not daily (ADR-0067): a
-     daily slot would mark every cell a calendar could draw, which is
-     wallpaper rather than information. Every episode the range meets is
-     asked (phase 11 ticket 10 made it every active one; after-release
-     ticket 01 every one in the range, bounded by its own end). A pause
-     suppresses a slot the same way it does everywhere else a schedule is
-     read against one (doseSchedule.ts's own `adherence`). */
+  /* A dose slot, only where the schedule is not daily (ADR-0067): a daily slot would mark
+     every cell a calendar could draw, which is wallpaper rather than information. Every
+     episode the range meets is asked. A pause suppresses a slot the same way it does
+     everywhere else a schedule is read against one (doseSchedule.ts's own `adherence`). */
   section({
     key: 'doseSlot',
     covers: ['doseSchedules'],
@@ -242,7 +207,7 @@ const SECTIONS = [
    day.ts's own `EverySectionRegistered` holds itself to. */
 type UnregisteredKind = Exclude<DayAheadMarkKind, (typeof SECTIONS)[number]['key']>;
 type AssertNoneUnregisteredKind<Missing extends never> = Missing;
-export type EveryKindRegistered = AssertNoneUnregisteredKind<UnregisteredKind>;
+type EveryKindRegistered = AssertNoneUnregisteredKind<UnregisteredKind>;
 
 /** Which archive sections the five kinds above account for. */
 type Covered = (typeof SECTIONS)[number]['covers'][number];
@@ -259,32 +224,26 @@ type Covered = (typeof SECTIONS)[number]['covers'][number];
     with no day at all has no day already passed to report. Where a reason
     is this registry's own rather than a restatement, a comment says so -
     the six the ADR spends a paragraph on each get one. */
-/* DAY_AHEAD_OPT_OUTS stays exported only for its own test (AU-09 test-only
-   review). */
+/* DAY_AHEAD_OPT_OUTS stays exported only for its own test. */
 export const DAY_AHEAD_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> = {
   dimensions: 'reference data, not a day still to come',
   presets: 'reference data, not a day still to come',
   tagGroups: 'reference data, not a day still to come',
-  affirmations: 'reference data, not a day still to come',
   bodyRegions: 'reference data, not a day still to come',
+  progressPoses: 'reference data, not a day still to come',
   presentations: 'reference data, not a day still to come',
-  entryTemplates: 'reference data, not a day still to come',
-  measurementTypes: 'reference data, not a day still to come',
   effectCategories: 'reference data, not a day still to come',
   personalEffectTypes: 'reference data, not a day still to come',
 
   entries: 'written on the day it happened, never ahead of it',
+  providers: 'no date of its own: notes on somebody the person sees (functional-audit ticket 27)',
   documents: 'added on the day it was imported, not scheduled ahead of time',
   labResults: 'recorded when drawn, not scheduled ahead of time',
-  measurements: 'recorded when taken, not scheduled ahead of time',
   taperSessions:
     "recorded when it happened - the taper's own future sessions are what taper above already excludes",
-  sizeRecords: 'recorded when taken, not scheduled ahead of time',
   sideEffects: 'noted when it started, not scheduled ahead of time',
   cycleEvents: 'logged when it happened, not scheduled ahead of time',
   personalEffects: 'noted when first seen, not scheduled ahead of time',
-  tallyEvents: 'logged when it happened, not scheduled ahead of time',
-  hairStages: 'recorded when assessed, not scheduled ahead of time',
   doseEvents: "logged when it happened, not scheduled ahead of time - a schedule's own future slots are doseSlot above",
   wearSessions: 'recorded when it started (or is still running), not scheduled ahead of time',
   voiceBenchmarks: 'recorded when taken, not scheduled ahead of time',
@@ -292,7 +251,6 @@ export const DAY_AHEAD_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, st
 
   regimenEpisodes: 'a span: what is being taken across a stretch of days, not a single day still ahead',
   dosePauses: 'a span: a break declared across days',
-  journalingPauses: 'a span: a break declared across days',
   eras: 'a span the person named, not a single day still ahead',
   tryouts:
     'a span with no day still ahead of its own - its photos are recorded when taken, the same reasoning voiceBenchmarks gets',
@@ -305,11 +263,7 @@ export const DAY_AHEAD_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, st
   // ADR-0067: a projection off a trailing rate, not a date - already legible
   // on the care spine, where its own nature as a moving projection is clear.
   medicationStock: 'a projection off a trailing rate, not a date - already on the care spine',
-  // ADR-0067: hairPhotoSchedule.ts computes a next due day, but refuses due
-  // framing on the hair-progress screen itself, and a calendar mark is a due
-  // date whatever the copy calls it.
-  hairPhotos:
-    'the next fixed-position photo is computed, but a calendar mark is a due date whatever the copy says (ADR-0067)',
+  progressPhotos: 'taken when taken, with no schedule, so there is no next day to mark',
   // The screen this row belongs to refuses due framing outright
   // (hairRemovalSchedule.ts's own header), so there is no due day to carry
   // forward even before the calendar-mark objection above applies.
@@ -317,29 +271,24 @@ export const DAY_AHEAD_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, st
 
   eraMutes: 'no date of its own: a uuid naming a muted era',
   roadmapChecks: 'no date of its own',
-  roadmapTracks: 'no date of its own',
+  roadmapCategories: 'no date of its own',
   roadmapGoals: 'no date of its own',
+  roadmapInstitutions: 'no date of its own',
+  roadmapInstitutionChanges: 'a record of what happened, never scheduled ahead',
   checklists: 'no date of its own',
 
-  counterevidenceSnapshots: 'a Safe Space artefact, not a day still to come',
   comfortItems: 'a Safe Space artefact with no date of its own',
   // A letter's own mark is what "sealed until its unlock day" earns
   // (letterUnlock above); a practice take stays sealed with no forward
   // mark of its own, the same restraint day.ts and lastWrite.ts both hold.
   voicePracticeTakes: 'a past take, sealed until the day after it happened - not a day still ahead',
   importLog: 'device bookkeeping, dated by when the import ran, not a day still to come',
+  deletions: 'which records were deleted, for an archive Merge to carry; nothing that happens on a day',
   areaStates: 'a statement about the practice of tracking, not a day still to come',
-  savedQuestions: 'a name for a search, not a day still to come',
-  // ADR-0067, the one most likely to be reopened: marking a sealed entry
-  // forward turns an arrival into a countdown to the person's own past,
-  // which is the opposite of what the resurfacing consent layer exists for.
-  revisits: "sealed until the day chosen to see the entry again - marking it forward would turn an arrival into a countdown to the person's own past",
-  marginNotes: 'drawn beside the entry it annotates, not a day still to come of its own',
-  wordIgnore: 'reference data, not a day still to come'
+  marginNotes: 'drawn beside the entry it annotates, not a day still to come of its own'
 };
 
-/* DAY_AHEAD_SECTIONS stays exported only for its own test (AU-09 test-only
-   review). */
+/* DAY_AHEAD_SECTIONS stays exported only for its own test. */
 export const DAY_AHEAD_SECTIONS: readonly DayAheadSection[] = SECTIONS;
 
 /** Every table any section reads, de-duplicated - the same single-sourcing

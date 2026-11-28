@@ -1,25 +1,10 @@
-/* Where the changes somebody noticed fall against each other in time (phase
-   10 redesign ticket 57, DIRECTION.md rule 16). Pure, and kept above the
-   journal seam beside procedureRail.ts and careSpine.ts for those modules'
-   reason: nothing here is stored, which day is "today" is a local calendar
-   question the data layer has no business answering, and the arithmetic of
-   putting a set of days on one line wants one home with tests while the
-   wording stays with the screen.
+/* Plot first-noticed dates on a linear timeline. Distances represent real
+   days and months, unlike the order-focused procedure and care rails. The
+   caller supplies today and the screen supplies wording.
 
-   The scale is linear, which is where this parts company with procedureRail
-   and careSpine. Both of those put a day under a square root, because what
-   they draw is order and rough nearness around one pivot. This line is the
-   opposite claim: the whole point of the screen is that a first-noticed day
-   is a date somebody goes back for, so a length along this axis has to be a
-   number of months, or the ticks above it are a lie.
-
-   What this refuses to compute, and why the screen's own header says it
-   again: anything about when a change was due. There is no expected window
-   here, no comparison against one, and no right end of the line to have
-   arrived at. The literature's windows are drawn elsewhere on that screen
-   and stay there; this is the record of what somebody noticed and when they
-   noticed it, and ADR-0012 is the standing rule that no end of a scale is
-   the good end. */
+   Expected windows belong to the separate literature view. This axis
+   records where changes fell, with neither endpoint treated as a target
+   (ADR-0012). */
 
 import type { EffectDirectionGroup } from './effectDirections';
 import { epochDayFromLocalDate, epochDayMonthsAgo, localDateFromEpochDay } from './epochDay';
@@ -35,22 +20,12 @@ import { epochDayFromLocalDate, epochDayMonthsAgo, localDateFromEpochDay } from 
     screen exists not to make. */
 export const AXIS_MIN_SPAN_DAYS = 31;
 
-/** How much of the line two marks need between them to stand side by side,
-    before the later one is stacked above the earlier.
-
-    A share of the line rather than a number of days, because what collides
-    is dots and not dates: a month is a fifth of a six-month line and a
-    fortieth of a three-year one.
-
-    Nine and a half per cent, from a measurement rather than a taste. A
-    mark is a control and its tap target is 24px wide (NoticedAxis.svelte
-    says why it is that and not 48), and at 320px - the narrowest width the
-    app supports - the plot is 280px and the line between the two inset
-    marks 256px, so two targets stop overlapping at 24/256, or 0.094.
-    Anything under that puts two marks in one lane whose targets steal each
-    other's taps, which is exactly what the lanes exist to prevent, and
-    closer than WCAG's 24px (phase 14 ticket 29; it was 0.09 against a
-    270px line nobody had measured, which axe found at 23.2px). */
+/**
+ * Stack marks when their tap targets would overlap. At the supported
+ * 320px width, a 280px plot leaves 256px between inset endpoints.
+ * A 24px target needs 24/256 ≈ 0.094 of that span; use 9.5%. A fraction
+ * of the line keeps the collision rule consistent across date ranges.
+ */
 export const MARK_MIN_GAP = 0.095;
 
 /** The most months the axis will name. Eight labels is what fits across a
@@ -63,10 +38,9 @@ const TICK_STRIDES = [1, 2, 3, 6, 12];
 
 export type { EffectDirectionGroup } from './effectDirections';
 
-/** The two things that land on this axis (phase 11 all-four-doors ticket 13):
-    a personal effect's own catalogue entry, marked at the day it was first
-    noticed, and a side effect logged free-form at its own day. Telling them
-    apart is `NoticedAxis.svelte`'s job - a mark shape, never a colour alone
+/** The two things that land on this axis: a personal effect's own catalogue entry, marked
+    at the day it was first noticed, and a side effect logged free-form at its own day.
+    Telling them apart is `NoticedAxis.svelte`'s job - a mark shape, never a colour alone
     (ADR-0012) - and this is the one field it reads to do it. */
 export type NoticedChangeKind = 'personal-effect' | 'side-effect';
 
@@ -80,13 +54,13 @@ export interface NoticedChange {
   firstNoticedEpochDay: number;
   kind: NoticedChangeKind;
   /** The severity word, for a side effect that carries one - drawn into the
-      mark's own label rather than as a size or a hue (ticket 13, ADR-0012).
+      mark's own label rather than as a size or a hue (ADR-0012).
       Null where none was given; undefined on a personal effect, which has
       no severity to carry. */
   severity?: string | null;
 }
 
-export interface NoticedMark extends NoticedChange {
+interface NoticedMark extends NoticedChange {
   /** Where it is drawn, 0 at the line's left end and 1 at its right. */
   position: number;
   /** Which row above the line it stands in, 0 being the one on the line.
@@ -96,7 +70,7 @@ export interface NoticedMark extends NoticedChange {
   lane: number;
 }
 
-export interface NoticedTick {
+interface NoticedTick {
   epochDay: number;
   position: number;
   /** Whole months from the regimen's start, negative before it - or null on
@@ -139,6 +113,23 @@ function strideFor(count: number): number {
   return TICK_STRIDES.find((stride) => Math.ceil(count / stride) <= MAX_TICKS) ?? 12;
 }
 
+/** More months than this between the axis's ends (two hundred years) is not
+    a journal: the ticks are then built at a stride from the month index
+    instead of by visiting every month, so a day stored near the minimum JS
+    date cannot make the axis allocate a month for each. */
+const MAX_SCANNED_MONTHS = 2400;
+/** The ticks that survive on such an axis. */
+const MAX_WIDE_TICKS = 100;
+
+/** Every `stride`th month index in [first, last], where the stride is a
+    multiple of twelve that keeps no more than MAX_WIDE_TICKS of them. */
+function wideMonthIndexes(first: number, last: number): number[] {
+  const stride = 12 * Math.ceil((last - first + 1) / (12 * MAX_WIDE_TICKS));
+  const indexes: number[] = [];
+  for (let n = Math.ceil(first / stride) * stride; n <= last; n += stride) indexes.push(n);
+  return indexes;
+}
+
 /** The months the axis names.
 
     On the onset axis these are the start day's own monthly anniversaries,
@@ -151,6 +142,11 @@ function onsetTicks(anchorEpochDay: number, fromEpochDay: number, toEpochDay: nu
      clamping, so this is a loop over the months drawn and not a search. */
   const first = monthIndex(fromEpochDay) - monthIndex(anchorEpochDay) - 1;
   const last = monthIndex(toEpochDay) - monthIndex(anchorEpochDay) + 1;
+  if (last - first > MAX_SCANNED_MONTHS) {
+    return wideMonthIndexes(first, last)
+      .map((n) => ({ epochDay: epochDayMonthsAgo(anchorEpochDay, -n), position: 0, monthsSinceOnset: n }))
+      .filter((tick) => tick.epochDay >= fromEpochDay && tick.epochDay <= toEpochDay);
+  }
   const months: number[] = [];
   for (let n = first; n <= last; n++) {
     const day = epochDayMonthsAgo(anchorEpochDay, -n);
@@ -163,6 +159,12 @@ function onsetTicks(anchorEpochDay: number, fromEpochDay: number, toEpochDay: nu
 }
 
 function calendarTicks(fromEpochDay: number, toEpochDay: number): NoticedTick[] {
+  if (monthIndex(toEpochDay) - monthIndex(fromEpochDay) > MAX_SCANNED_MONTHS) {
+    return wideMonthIndexes(monthIndex(fromEpochDay), monthIndex(toEpochDay))
+      .map((index) => epochDayFromLocalDate(new Date(Math.floor(index / 12), index % 12, 1)))
+      .filter((day) => day >= fromEpochDay && day <= toEpochDay)
+      .map((day) => ({ epochDay: day, position: 0, monthsSinceOnset: null }));
+  }
   const days: number[] = [];
   for (let index = monthIndex(fromEpochDay); index <= monthIndex(toEpochDay); index++) {
     const day = epochDayFromLocalDate(new Date(Math.floor(index / 12), index % 12, 1));
@@ -176,7 +178,7 @@ function calendarTicks(fromEpochDay: number, toEpochDay: number): NoticedTick[] 
 
 /** The axis.
 
-    `anchorEpochDay` is the day the person's earliest regimen episode began,
+    `anchorEpochDay` is the HRT start (personalEffectWindow.ts's hrtAnchor),
     or null where there is none - which is a state the screen has to draw
     rather than refuse, since somebody can notice a change before they are
     on anything, and somebody restoring a journal may not have typed a

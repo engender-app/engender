@@ -153,7 +153,7 @@ function writeEmittedClientAssets() {
   };
 }
 
-/* One copy of each WASM file in the build (phase 14 pre-release ticket 13).
+/* One copy of each WASM file in the build.
 
    SvelteKit names an asset `assets/[name].[hash][ext]` in the client bundle
    and `workers/assets/[name]-[hash][ext]` in the worker bundle, so a file
@@ -211,7 +211,7 @@ function dropParaglideOverrideWarning(): Plugin {
   };
 }
 
-/* The licence notices screen's data (phase 15 release-blockers ticket 10),
+/* The licence notices screen's data,
    generated from what this build actually bundled.
 
    /settings/licences imports `virtual:licence-notices`. Which packages
@@ -324,8 +324,7 @@ function isolateServer(server: ViteDevServer | PreviewServer): void {
 }
 
 /* `npm run build` joins an English and a Polish build into build/ and gives
-   build/index.html the selector that picks one (scripts/build-locales.mjs,
-   after-release ticket 32). SvelteKit's preview renders its own document
+   build/index.html the selector that picks one (scripts/build-locales.mjs). SvelteKit's preview renders its own document
    from .svelte-kit/output, which holds only the last of the two builds, so
    every page it served was Polish whatever the saved language. When build/
    holds the joined shell, preview serves build/ itself, as serve-build.mjs

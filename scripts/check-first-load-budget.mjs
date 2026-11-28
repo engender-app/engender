@@ -1,35 +1,14 @@
-/* The shipped-bytes ratchet (phase 9 audit ticket 01). Between 27 August and
-   6 September the first-load graph grew from 224KB gzip/81 files to
-   296KB/111 files - honest growth, six real features landing in ten days -
-   and nothing in the repository would have said so: tests/long-journal/
-   budgets.json watches statements and bytes at the driver seam, never what
-   a first visit actually downloads. This is that measurement.
+/* Measure gzip bytes and file count for the /_app/immutable URLs requested
+   by build/index.html. The original 27 August–6 September increase was
+   224 KB/81 files to 296 KB/111 files. Installed OCR is reported separately
+   so its storage and transfer costs leave the initial graph budget intact.
 
-   Reads the emitted build rather than the source: every /_app/immutable URL
-   build/index.html asks for, gzipped the way the August audit measured it.
-
-   File count is exactly reproducible - five straight rebuilds of one commit
-   with no source change all emitted 111 files - so its budget is the
-   baseline itself, no headroom, the same rule the mount-* statement counts in
-   tests/long-journal/budgets.json use. Bytes are not: those same five
-   rebuilds gzipped to 295868-295884B, a ~16B spread with no commit in
-   between - Vite/Rollup's content hashing is not fully deterministic run to
-   run. GZIP_WOBBLE_FLOOR_BYTES absorbs exactly that, the same job FLOOR_MS
-   does for the timing budgets - a fixed floor rather than a percentage,
-   because the noise is a small constant amount unrelated to bundle size, and
-   a percentage of 296KB would swallow the small regressions this exists to
-   catch.
-
-   Also reports the on-demand set - the OCR engine and the standard PDF
-   fonts, the largest things the app can ask for after the first visit - but
-   does not gate on it: it is not what tickets 02/03 are narrowing, and a
-   number recorded is worth more than a number nobody knows.
-
-   Run with `node scripts/check-first-load-budget.mjs` after `npm run
-   build`, which is what `npm run check:first-load-budget` does. With
-   --record it prints the budget block in the shape
-   scripts/first-load-budget.json wants and fails on nothing. */
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+   Five builds of the same source all emitted 111 files but gzipped to
+   295868–295884 bytes. The file limit uses the exact baseline.
+   GZIP_WOBBLE_FLOOR_BYTES allows a fixed byte spread, since a percentage
+   would hide small regressions. Run npm run check:first-load-budget after
+   building. --record prints the JSON budget block without enforcing limits. */
+import { existsSync, readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 import { join } from 'node:path';
@@ -89,17 +68,6 @@ export function budgetFailures(measured, budget) {
   return failures;
 }
 
-/**
- * Every file under `dir`, as paths relative to it.
- * @param {string} dir
- * @returns {string[]}
- */
-function filesUnder(dir) {
-  return readdirSync(dir, { recursive: true, encoding: 'utf8' })
-    .map((name) => join(dir, name))
-    .filter((path) => statSync(path).isFile());
-}
-
 /** @typedef {{graph: Record<string, string[]>; selectorGzipBytes: number; shellHash: string; demo: boolean}} LocaleGraphs */
 
 /** @param {string} html @param {LocaleGraphs | undefined} metadata */
@@ -123,14 +91,12 @@ function measureFirstLoad(html, metadata, locale) {
   return { files: urls.length, gzipBytes: gzipTotal(buffers) };
 }
 
-/** The OCR engine (tests/browser-tier/verify-build.mjs's OCR_ASSETS names
-    the same directory) and the standard PDF fonts - both on-demand, neither
-    gated here. */
-function measureOnDemand() {
-  const buffers = [...filesUnder(join(BUILD_DIR, 'tesseract')), ...filesUnder(join(BUILD_DIR, 'pdf-fonts'))].map(
-    (path) => readFileSync(path)
-  );
-  return { files: buffers.length, gzipBytes: gzipTotal(buffers) };
+/** Installed OCR bytes, separated from app startup and optional PDF rendering. */
+function measureInstalledOcr() {
+  /** @type {{ assets: string[], legacyRuntime: {path: string}[] }} */
+  const { assets, legacyRuntime } = JSON.parse(readFileSync(join(BUILD_DIR, 'tesseract/assets.json'), 'utf8'));
+  const buffers = [...assets, ...legacyRuntime.map(asset => asset.path)].map((asset) => readFileSync(join(BUILD_DIR, asset)));
+  return { files: buffers.length, gzipBytes: gzipTotal(buffers), storedBytes: buffers.reduce((sum, buffer) => sum + buffer.length, 0) };
 }
 
 /** @param {number} bytes */
@@ -148,14 +114,14 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     : [{ locale: 'all', ...measureFirstLoad(html, metadata) }];
   const firstLoad = { files: Math.max(...measurements.map((value) => value.files)), gzipBytes: Math.max(...measurements.map((value) => value.gzipBytes)) };
   for (const measured of measurements) console.log(`locale ${measured.locale}: ${measured.files} files, ${measured.gzipBytes}B gzip (selector included)`);
-  const onDemand = measureOnDemand();
+  const installedOcr = measureInstalledOcr();
 
   console.log(
     `first-load: ${firstLoad.files} files, ${firstLoad.gzipBytes}B gzip (${kb(firstLoad.gzipBytes)})` +
       (recording ? '' : `  budget ${budget.firstLoad.filesBudget} files, ${budget.firstLoad.gzipBytesBudget}B`)
   );
   console.log(
-    `on-demand (not gated): ${onDemand.files} files, ${onDemand.gzipBytes}B gzip (${kb(onDemand.gzipBytes)})`
+    `installed OCR: ${installedOcr.files} files, ${installedOcr.gzipBytes}B gzip (${kb(installedOcr.gzipBytes)}), ${installedOcr.storedBytes}B stored`
   );
 
   if (recording) {
@@ -171,11 +137,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
             gzipBytesBaseline: firstLoad.gzipBytes,
             ...firstLoadBudgetFor(firstLoad)
           },
-          onDemand: {
-            what: budget.onDemand.what,
+          installedOcr: {
+            what: 'Complete OCR generation installed before offline readiness; execution stays deferred',
             recordedOn: today,
-            files: onDemand.files,
-            gzipBytes: onDemand.gzipBytes
+            ...installedOcr
           }
         },
         null,

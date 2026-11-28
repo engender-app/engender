@@ -1,36 +1,18 @@
 <script lang="ts">
-  /* Offering a recovery key at the two moments the risk is legible
-     (ADR-0054, ticket sec-02), and nowhere else.
+  /* Offer a recovery key at two points (ADR-0054). Onboarding lacks the
+     context for someone to understand and store a separate way into the
+     journal.
 
-     Not in onboarding. ADR-0054 rejects that placement outright and the
-     reasoning is worth repeating where somebody might be tempted to add a
-     third caller: onboarding is the moment with the least context and the
-     highest skip rate, so most people skip it and keep the cliff, and the
-     ones who accept mint a bypass before they understand what it opens and
-     keep it on the same phone.
+     device-bound follows a switch away from a secret on web. Android
+     Keystore mints its own data key and cannot wrap an existing one
+     (ADR-0041), so AccessModeSetup cannot make that switch.
 
-     The two moments this does cover:
+     secret-changed follows a passphrase or PIN change. The caller checks
+     that no recovery key exists. The change rewraps the same data key, so
+     an existing recovery key keeps working.
 
-     `device-bound` - somebody has just chosen the mode with no secret at
-     all, which is the choice that creates the unrecoverable state, and they
-     are already thinking about what happens if it goes wrong. Web only, and
-     not by preference: Android cannot move an open journal to device-bound
-     at all, because its Keystore bridge mints its own data key and cannot be
-     asked to wrap an existing one (ADR-0041), so `AccessModeSetup` does not
-     offer that row there and this moment does not exist on a phone. An
-     Android-worded body was written for it and then deleted rather than
-     left as copy nothing can reach.
-
-     `secret-changed` - a passphrase or PIN has just been changed, which is
-     the moment somebody is thinking about the secret at all. Shown only
-     where no recovery key exists, and the caller checks that: changing a
-     secret rewraps the same data key, so an existing recovery key keeps
-     working and there is nothing here to regenerate.
-
-     One screen and no navigation of its own. The caller decides what "not
-     now" means, because for one of them it is a completed mode change and
-     for the other a completed secret change, and both had somewhere they
-     were already going. */
+     The caller handles navigation after the offer. */
+  import { focusNamedTarget } from '$lib/navigation/arrivalFocus';
   import { m } from '$lib/paraglide/messages';
   import { isAndroid } from '$lib/platform';
   import Notice from './kit/Notice.svelte';
@@ -45,6 +27,8 @@
   );
 </script>
 
+<h2 class="visually-hidden" data-recovery-offer-heading {@attach focusNamedTarget}>{m.rko_title()}</h2>
+
 <Notice data-recovery-offer={variant} icon="key" title={m.rko_title()} text={body} />
 
 <ListCard>
@@ -52,5 +36,5 @@
 </ListCard>
 
 <button class="btn btn-ghost" type="button" data-skip-recovery-offer onclick={onDismiss}>
-  <span>{m.rko_skip()}</span>
+  <span>{m.not_now()}</span>
 </button>

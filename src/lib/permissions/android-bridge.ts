@@ -3,7 +3,7 @@ import { androidPluginOwners, registerAndroidPlugin } from '$lib/android/plugin-
 /** What checkSelfPermission says about the two permissions no other plugin
     reads. "not-required" is deliberately not one of them: both are runtime
     permissions on every SDK level this app supports. */
-export interface AndroidPermissionStatus {
+interface AndroidPermissionStatus {
   microphone: 'granted' | 'denied';
   camera: 'granted' | 'denied';
 }

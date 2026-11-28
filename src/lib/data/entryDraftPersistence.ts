@@ -1,5 +1,4 @@
-/* What survives EntryEditor.svelte across an Android process death (ticket
-   14): a plain, JSON-safe snapshot of the draft's editable fields, matched
+/* What survives EntryEditor.svelte across an Android process death: a plain, JSON-safe snapshot of the draft's editable fields, matched
    back to whichever entry/day it belongs to and reapplied on top of a
    freshly created draft. Rune-free, tested under the Node tier like
    entryDraft.ts.
@@ -8,7 +7,7 @@
    localStorage mirror has no room for full-resolution JPEGs, so an unsaved
    photo attachment does not survive a killed process. A removal of an
    already-stored photo does survive, since that is just an id. A recording
-   just made (ticket 24) gets the same treatment as a picked photo, for the
+   just made gets the same treatment as a picked photo, for the
    same reason: its bytes are not small either, and a removed stored
    recording's id survives the same way a removed stored photo's does. */
 
@@ -38,11 +37,11 @@ export interface PersistedEntryDraft {
   doseLog?: EntryDoseLogInput | null;
   procedureRecovery?: { procedureId: string; notes?: string } | null;
   effectMarkers?: EntryEffectMarkerInput[];
-  /** Written before ticket 289, which made it a list; read, never written. */
+  /** Written, which made it a list; read, never written. */
   effectMarker?: EntryEffectMarkerInput | null;
   cycleEvent?: EntryCycleEventInput | null;
   presentationId?: string | null;
-  /** The chip open under the note (ticket 19). Optional because a mirror
+  /** The chip open under the note. Optional because a mirror
       written before the chips existed has none, and reads as nothing open. */
   openSection?: EntrySection | null;
 }
@@ -112,13 +111,12 @@ export function applyPersistedDraft(draft: EntryDraft, persisted: PersistedEntry
   draft.openSection = isEntrySection(persisted.openSection) ? persisted.openSection : null;
 }
 
-/** What the draft holds, as one comparable string, for telling whether
-    leaving the editor would lose anything (ticket 04, CONTEXT: "Draft").
+/** What the draft holds, as one comparable string, for telling whether leaving the editor
+    would lose anything.
 
-    The mirror's snapshot plus how many photos, recordings and videos were
-    added in this edit, which the snapshot leaves out because their bytes
-    are too large for it. Which section is open is left out: folding a
-    chip is not an edit. */
+    The mirror's snapshot plus how many photos, recordings and videos were added in this
+    edit, which the snapshot leaves out because their bytes are too large for it. Which
+    section is open is left out: folding a chip is not an edit. */
 export function entryDraftFingerprint(draft: EntryDraft): string {
   const { openSection: _openSection, ...content } = serializeDraft(draft);
   const added = (items: readonly { kind: string }[]) => items.filter((item) => item.kind !== 'stored').length;

@@ -1,0 +1,11 @@
+{
+  "baseSha": "d9c411a83bc05e488cd664e2bd05cbbb84266471",
+  "device": "Pixel10a, Android API37",
+  "artifacts": {
+    "native-app.apk": "24e23a5e50b5e6074bf6b219718bb98dec163cb9847802b56513d9db08985c18",
+    "instrumentation.apk": "1351a8ff6ed650f8f530f4d182388e44665049513d72a4c58ba36bc6d2e4452e",
+    "shell-app.apk": "d1bb34ff78b79cc454374cd1544bdfe16267a93dc495c5f6abe5ba4f093edb1d"
+  },
+  "limits": "Twelve quiet native samples; actual demo shell current/deferred correctness under host verification load. No release-channel proof.",
+  "cleanup": "Synthetic isolated app/test packages and forward18664 removed; phone lease released; no settings changed."
+}

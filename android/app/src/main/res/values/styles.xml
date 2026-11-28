@@ -20,16 +20,15 @@
         <item name="android:background">@drawable/splash</item>
     </style>
 
-    <!-- The buttons of all three widgets (tickets 26, 33, 34): identical
-         beyond the glyph each carries, so nothing about the layout itself
-         reveals which is which - that's the button's own contentDescription
-         at render time (DisguisableWidgetProvider), not this shared style.
+    <!-- The buttons of all three widgets: identical beyond the glyph each carries, so
+         nothing about the layout itself reveals which is which - that's the button's own
+         contentDescription at render time (DisguisableWidgetProvider), not this shared
+         style.
 
-         The view is the touch target, 48dp tall and with no margins, so it
-         takes the whole slot it is given. The visible pill is 40dp, drawn
-         inside the background's inset, and the layouts' padding shrank by
-         the same amount, so the pills sit exactly where they did when the
-         view itself was 40dp (after-release 19). -->
+         The view is the touch target, 48dp tall and with no margins, so it takes the whole
+         slot it is given. The visible pill is 40dp, drawn inside the background's inset,
+         and the layouts' padding shrank by the same amount, so the pills sit exactly where
+         they did when the view itself was 40dp. -->
     <style name="WidgetMoodButton">
         <item name="android:layout_width">0dp</item>
         <item name="android:layout_height">48dp</item>
@@ -39,5 +38,55 @@
         <item name="android:textColor">#1A1A1A</item>
         <item name="android:textSize">16sp</item>
         <item name="android:textStyle">bold</item>
+    </style>
+    <!-- The check-in notification's faces.
+         Folded, a face is 32dp inside a 48dp-tall share of the row; unfolded
+         it is 40dp over its name. Either way the share is the touch target,
+         so the gaps between faces are part of a face rather than dead space
+         between them. -->
+    <style name="CheckInFaceFolded">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">48dp</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:padding">8dp</item>
+        <item name="android:scaleType">fitCenter</item>
+    </style>
+
+    <!-- The folded question: one line under the faces, shortened rather than
+         wrapped so the row never grows past the height the system gives a
+         folded notification, at any font scale. -->
+    <style name="CheckInQuestionFolded" parent="TextAppearance.Compat.Notification">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:paddingBottom">4dp</item>
+        <item name="android:importantForAccessibility">no</item>
+    </style>
+
+    <style name="CheckInFaceCell">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:minHeight">48dp</item>
+        <item name="android:orientation">vertical</item>
+        <item name="android:gravity">center_horizontal</item>
+        <item name="android:paddingTop">4dp</item>
+        <item name="android:paddingBottom">4dp</item>
+    </style>
+
+    <style name="CheckInFaceUnfolded">
+        <item name="android:layout_width">40dp</item>
+        <item name="android:layout_height">40dp</item>
+        <item name="android:importantForAccessibility">no</item>
+    </style>
+
+    <style name="CheckInFaceLabel" parent="TextAppearance.Compat.Notification.Info">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">4dp</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:importantForAccessibility">no</item>
     </style>
 </resources>

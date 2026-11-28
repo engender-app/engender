@@ -1,29 +1,8 @@
 <script lang="ts">
-  /* The weekly, monthly and picked-range wrapped (phase 4 features ticket
-     01, rebuilt on the kit by phase 5 UX ticket 23). One screen you scroll
-     once, glance at, and leave. The three share it because the questions a
-     week, a month and an arbitrary window answer are the same size - how
-     much did I log, how did it move, what did I tag - and the only
-     difference between them is the heading, which arrives as a prop.
-
-     A year does not share it. WrappedYear.svelte is a separate presentation
-     rather than this one with more sections, because twelve months of data
-     supports a shape a week's worth cannot fill.
-
-     What changed in the rebuild. The figures were four small tiles in a row
-     and are a list card, so a figure can carry a supporting line under it
-     instead of every one of them being a tile saying a bare number. The
-     mood arc is the kit's area chart, so it carries a value scale and a
-     mark per day and re-tweens rather than being redrawn. Tag insights and
-     the tally are the kit's horizontal bars. The rest - milestones, photos, the tags you used
-     - is the same content on the kit's own surfaces.
-
-     Sections with nothing in them are left out rather than rendered saying
-     "none". That is the same call the entry floor makes about the period as
-     a whole, applied one card down: a wrapped is worth opening or it is not
-     shown, and a card is worth reading or it is not there. Every one of the
-     four sections spec 06 adds arrives already answered - null for "no
-     section" - from $lib/data/wrappedSections. */
+  /* Weekly, monthly and custom-range summaries share this presentation and
+     take the heading as a prop. WrappedYear has its own month-by-month view.
+     Skip empty sections. wrappedSections returns null when an entire
+     section has no reading. */
   import { m } from '$lib/paraglide/messages';
   import { fmtDay } from '$lib/data/dates';
   import { atGrain, type Grain } from '$lib/charts/grain';
@@ -35,14 +14,13 @@
     WRAPPED_AREA_ROLE,
     nativeValue,
     signedValue,
-    tagInsightRows,
-    tallyRows
+    tagInsightRows
   } from '$lib/data/wrappedDisplay';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import type { DayAverage, Recap } from '$lib/data/journal/stats';
   import type { RecapDimChange } from '$lib/data/recapDisplay';
-  import type { WrappedTagInsight, WrappedTallyCounts } from '$lib/data/wrappedSections';
+  import type { WrappedTagInsight } from '$lib/data/wrappedSections';
   import ResurfacedPhoto from './ResurfacedPhoto.svelte';
   import AreaChart from './kit/AreaChart.svelte';
   import BarRows from './kit/BarRows.svelte';
@@ -60,25 +38,23 @@
     topTags,
     anchorDuration = null,
     insights = [],
-    tally = null,
   }: {
     title: string;
     subtitle: string;
     recap: Recap;
     moodTrend: DayAverage[];
     /** The gender dimension that moved furthest, already named - the screens
-        say "scale" for it (CONTEXT: Gender dimension). Carries the signed
+        say "scale" for it. Carries the signed
         movement as well as the two endpoints (spec 06). */
     dimChange: RecapDimChange | null;
     topTags: { id: string; label: string; count: number }[];
-    /** The journey anchor's duration (phase 5 ticket 25), already named and
+    /** The journey anchor's duration, already named and
         formatted. Optional and null by default so a caller with no anchor
         concept of its own does not have to pass one. */
     anchorDuration?: { name: string; duration: string } | null;
     /** Which tags went with better or worse days, already named. Empty
         where the period has nothing to say (spec 06). */
     insights?: (WrappedTagInsight & { label: string })[];
-    tally?: WrappedTallyCounts | null;
   } = $props();
 
   /* Which stripe each area takes, and the two ways this app writes a
@@ -111,7 +87,6 @@
      change the scale it is a retrospective of. */
   let metric = $derived(metricKey(prefs));
   let insightRows = $derived(tagInsightRows(insights, metric));
-  let tally_rows = $derived(tallyRows(tally));
 </script>
 
 <header class="wrapped-head">
@@ -187,16 +162,7 @@
   <p class="wrapped-note">{m.insights_note()}</p>
 {/if}
 
-{#if tally_rows.length}
-  <ChartCard level={3} heading={m.tally_trend_title()} kind="wrapped-tally" role={roleAt(activeFlag.roles, AREA_ROLE.charts)}>
-    <BarRows rows={tally_rows} />
-  </ChartCard>
-{/if}
-
-<!-- The tags you used, as the chip row: flush to the page with no container
-     at all, which is the surface DIRECTION.md 2b gives a set of small
-     labels. A different question from the insights above - how often, not
-     which days - so the two are not one card said twice. -->
+<!-- Tags sit flush on the page. Their counts answer how often each was used. -->
 {#if topTags.length}
   <SectionHeading text={m.wrapped_tags()} />
   <div class="tag-row" data-wrapped-tags>
@@ -210,7 +176,7 @@
   <SectionHeading text={m.wrapped_milestones()} />
   <ListCard role={roleAt(activeFlag.roles, AREA_ROLE.milestones)}>
     {#each recap.milestones as ms (ms.id)}
-      <ListRow static data-wrapped-milestone icon="flag" title={ms.name}>
+      <ListRow static data-wrapped-milestone icon="summit" title={ms.name}>
         {#snippet trailing()}
           <span class="wrapped-figure-date">{fmtDay(ms.epochDay, { day: 'numeric', month: 'short' })}</span>
         {/snippet}
@@ -231,7 +197,7 @@
 <style>
   /* The recap's tag counts, a quieter chip than a picker's (.tag-chip,
      components.css). Here since the old entry card, its other reader, gave
-     way to the kit's day entry (phase 14 ticket 18). --text-2 on
+     way to the kit's day entry. --text-2 on
      --surface-2 clears 4.5:1 in every palette without any extra opacity
      (P10-007/probe 2). */
   .tag-chip.is-mini {

@@ -1,4 +1,4 @@
-/* The documents index's grouping rule (phase 10 redesign ticket 58). */
+/* The documents index's grouping rule. */
 
 import assert from 'node:assert/strict';
 import { test } from 'vitest';

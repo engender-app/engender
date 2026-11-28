@@ -3,10 +3,11 @@ import v8 from 'node:v8';
 import { runInNewContext } from 'node:vm';
 import { DOCUMENT_SIZE_CEILING } from '../documents/limits.ts';
 import { test, vi } from 'vitest';
-import { byteReader, type ByteReader } from './container.ts';
-import { decodeArchive, encodeArchive, type ArchiveCodec } from './codec.ts';
+import { ARCHIVE_FORMAT_VERSION, CorruptArchiveError, byteReader, type ByteReader } from './container.ts';
+import { MAX_PAYLOAD_JSON_BYTES, decodeArchive, encodeArchive, type ArchiveCodec } from './codec.ts';
 import type { ArchivePayload } from './payload.ts';
 import type { ArchiveContents } from './pack.ts';
+import { LATEST_SCHEMA_VERSION } from '../sqlite/schema-version.ts';
 import { u32 } from './wire.ts';
 
 const payload = (name: string): ArchivePayload =>
@@ -19,6 +20,16 @@ const emptyContents: ArchiveContents = {
   readFile: async () => new Uint8Array()
 };
 
+test('new payloads stamp current app and schema without changing archive format', async () => {
+  const encoded = await encodeArchive(emptyContents);
+  const chunks: Uint8Array[] = [];
+  for await (const chunk of encoded.body) chunks.push(chunk);
+  const written = JSON.parse(new TextDecoder().decode(chunks[1]));
+  assert.equal(encoded.formatVersion, ARCHIVE_FORMAT_VERSION);
+  assert.equal(ARCHIVE_FORMAT_VERSION, 2);
+  assert.deepEqual(written.writer, { app: __APP_VERSION__, schema: LATEST_SCHEMA_VERSION });
+});
+
 test('codec imports first in a fresh module graph and encodes an archive', async () => {
   vi.resetModules();
   const codec = await import('./codec.ts');
@@ -29,6 +40,7 @@ test('codec imports first in a fresh module graph and encodes an archive', async
   assert.equal(encoded.formatVersion, 2);
   assert.equal(chunks.reduce((length, chunk) => length + chunk.length, 0), encoded.bodyLength);
   assert.deepEqual(JSON.parse(new TextDecoder().decode(chunks[1])), {
+    writer: { app: __APP_VERSION__, schema: LATEST_SCHEMA_VERSION },
     journal: emptyContents.journal, preferences: emptyContents.preferences, files: []
   });
 });
@@ -221,4 +233,90 @@ test('current and pending photo batches share the byte bound', async () => {
   await Promise.resolve();
   assert.deepEqual(calls.map((call) => call.length), [4, 4]);
   await body.return(undefined);
+});
+
+
+function plaintext(json: string, ...files: Uint8Array[]): ByteReader {
+  const bytes = new TextEncoder().encode(json);
+  return byteReader(oneShot(u32(bytes.length), bytes, ...files));
+}
+
+for (const actualLength of [2, 4]) {
+  test(`single-read export refuses a file changed from 3 to ${actualLength} bytes`, async () => {
+    const { body } = await encodeArchive({
+      ...emptyContents,
+      files: [{ name: 'photo.jpg', length: 3 }],
+      readFile: async () => new Uint8Array(actualLength)
+    });
+    await assert.rejects(async () => {
+      for await (const _ of body) { /* Drain the deferred file read. */ }
+    }, /photo\.jpg changed length while exporting/);
+  });
+}
+
+test('unreadable payload JSON is refused as corrupt', async () => {
+  await assert.rejects(decodeArchive(plaintext('{'), ARCHIVE_FORMAT_VERSION), CorruptArchiveError);
+});
+
+for (const [label, value] of [
+  ['null', null],
+  ['array', []],
+  ['number', 5],
+  ['missing journal', { files: [] }],
+  ['missing files', { journal: emptyContents.journal }],
+  ['files is not an array', { journal: emptyContents.journal, files: 'file' }],
+  ['null file', { journal: emptyContents.journal, files: [null] }],
+  ['missing name', { journal: emptyContents.journal, files: [{ length: 1 }] }],
+  ['numeric name', { journal: emptyContents.journal, files: [{ name: 5, length: 1 }] }],
+  ['negative length', { journal: emptyContents.journal, files: [{ name: 'file', length: -1 }] }],
+  ['fractional length', { journal: emptyContents.journal, files: [{ name: 'file', length: 1.5 }] }],
+  ['string length', { journal: emptyContents.journal, files: [{ name: 'file', length: '1' }] }],
+  ['missing length', { journal: emptyContents.journal, files: [{ name: 'file' }] }]
+] as const) {
+  test(`payload with ${label} is refused as corrupt before reading files`, async () => {
+    await assert.rejects(decodeArchive(plaintext(JSON.stringify(value)), ARCHIVE_FORMAT_VERSION), CorruptArchiveError);
+  });
+}
+
+test('a declared empty file is valid and remains in the decoded file stream', async () => {
+  const file = { name: 'empty', length: 0 };
+  const opened = await decodeArchive(plaintext(JSON.stringify({ ...payload('source'), files: [file] })), ARCHIVE_FORMAT_VERSION);
+  const files = [];
+  for await (const file of opened.files) files.push(file);
+  assert.deepEqual(files, [{ name: 'empty', bytes: new Uint8Array() }]);
+});
+
+test('plaintext bytes after the declared files are refused as corrupt', async () => {
+  const file = { name: 'photo.jpg', length: 2 };
+  const opened = await decodeArchive(plaintext(JSON.stringify({ ...payload('source'), files: [file] }),
+    new Uint8Array([1, 2, 9])), ARCHIVE_FORMAT_VERSION);
+  await assert.rejects(async () => {
+    for await (const _ of opened.files) { /* Include the final boundary check. */ }
+  }, CorruptArchiveError);
+});
+
+// a name the file stores refuse reached the store
+// mid-restore and failed there with an untyped "invalid photo file name".
+for (const name of ['a/b.jpg', '../b.jpg', 'a\\b.jpg', '..', '   ', '']) {
+  test(`a manifest naming the file ${JSON.stringify(name)} is refused before its files are read`, async () => {
+    const json = new TextEncoder().encode(JSON.stringify({ ...payload('x'), files: [{ name, length: 0 }] }));
+    await assert.rejects(
+      decodeArchive(byteReader((async function* () { yield u32(json.length); yield json; })()), ARCHIVE_FORMAT_VERSION),
+      CorruptArchiveError
+    );
+  });
+}
+
+test('a payload length one byte over the limit is refused before the payload is read', async () => {
+  const requested: number[] = [];
+  const reader = (jsonLength: number): ByteReader => ({
+    async readExactly(n) { requested.push(n); return n === 4 ? u32(jsonLength) : new Uint8Array(n); },
+    async readAtMost() { return new Uint8Array(0); },
+    async atEnd() { return true; }
+  });
+  await assert.rejects(decodeArchive(reader(MAX_PAYLOAD_JSON_BYTES + 1), ARCHIVE_FORMAT_VERSION), CorruptArchiveError);
+  assert.deepEqual(requested, [4]);
+  requested.length = 0;
+  await assert.rejects(decodeArchive(reader(MAX_PAYLOAD_JSON_BYTES), ARCHIVE_FORMAT_VERSION), CorruptArchiveError);
+  assert.deepEqual(requested, [4, MAX_PAYLOAD_JSON_BYTES]);
 });

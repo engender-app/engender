@@ -1,4 +1,4 @@
-/* The database worker started ahead of the key (ux-carpet ticket 209), over
+/* The database worker started ahead of the key, over
    a stand-in Worker: what reaches the worker and when, not what SQLite does
    with it (the browser tier opens real databases). */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -162,10 +162,9 @@ describe('the database worker started ahead of the key', () => {
   });
 });
 
-/* ux-carpet 215: a boot that failed closes its driver twice - once in boot()
-   and once in closeActiveDriver() - and the second close went to a worker
-   the first had terminated, which answers nothing. The boot waited on it
-   forever and never showed the failure. */
+/* A boot that failed closes its driver twice - once in boot() and once in
+   closeActiveDriver() - and the second close went to a worker the first had terminated,
+   which answers nothing. The boot waited on it forever and never showed the failure. */
 describe('a closed worker', () => {
   it('refuses what is sent to it after close instead of leaving it unanswered', async () => {
     const { driver } = createEncryptedWebSqlite('journal.sqlite3', key);
@@ -181,8 +180,8 @@ describe('a closed worker', () => {
   });
 });
 
-/* ux-carpet 219: the copy check and the restore are what a failed boot does
-   after it has closed its driver, so they cannot go to that driver's worker. */
+/* The copy check and the restore are what a failed boot does after it has closed its
+   driver, so they cannot go to that driver's worker. */
 describe('the pre-migration copy after the driver has closed', () => {
   it('is asked of a worker of its own, pointed at the files without opening them, and closed after', async () => {
     const { driver, fileOps } = createEncryptedWebSqlite('journal.sqlite3', key);
@@ -210,9 +209,9 @@ describe('the pre-migration copy after the driver has closed', () => {
   });
 });
 
-/* ux-carpet 222: a retry pressed while the copy check's worker still holds
-   the pool asked for it at once and failed with "Access Handles cannot be
-   created". A new connection waits for that worker to close. */
+/* A retry pressed while the copy check's worker still holds the pool asked for it at once
+   and failed with "Access Handles cannot be created". A new connection waits for that
+   worker to close. */
 describe('a connection made while a recovery worker is running', () => {
   it('sends nothing until the recovery worker has closed', async () => {
     const { driver, fileOps } = createEncryptedWebSqlite('journal.sqlite3', key);
@@ -236,10 +235,10 @@ describe('a connection made while a recovery worker is running', () => {
   });
 });
 
-/* ux-carpet 243: a tab that reloads or navigates away leaves its own
-   worker's pool for the browser to reclaim from a worker it is about to
-   kill outright, which can race the next boot's own `attach()`. Posting a
-   `close` on this tab's own `pagehide` ahead of that is what narrows it. */
+/* A tab that reloads or navigates away leaves its own worker's pool for the browser to
+   reclaim from a worker it is about to kill outright, which can race the next boot's own
+   `attach()`. Posting a `close` on this tab's own `pagehide` ahead of that is what narrows
+   it. */
 describe('releasing every live connection on pagehide', () => {
   it('posts close before retiring an unused prewarm worker', async () => {
     void prewarmJournalWorker('journal.sqlite3');
@@ -410,3 +409,103 @@ describe('locking a stalled web database', () => {
     });
   }
 });
+
+it('retained pagehide waits for an admitted transaction before retiring its worker', async () => {
+  const { driver } = createEncryptedWebSqlite('journal.sqlite3', key);
+  const [worker] = FakeWorker.made;
+  let reached!: () => void;
+  let finish!: () => void;
+  const entered = new Promise<void>(resolve => { reached = resolve; });
+  const held = new Promise<void>(resolve => { finish = resolve; });
+  const saving = driver.transaction(async scope => {
+    await scope.exec('INSERT INTO entry VALUES (1)');
+    reached();
+    await held;
+    await scope.exec('INSERT INTO entry VALUES (2)');
+    return 'saved';
+  });
+  const result = saving.then(value => ({ value }), error => ({ error }));
+  await entered;
+  const released = releaseOnPageHide(true);
+  try {
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(worker.terminated).toBe(false);
+    expect(worker.posted.some(message => message.op === 'close')).toBe(false);
+    const replacement = createEncryptedWebSqlite('journal.sqlite3', key);
+    const next = FakeWorker.made.at(-1)!;
+    expect(next.posted).toEqual([]);
+    finish();
+    expect(await result).toEqual({ value: 'saved' });
+    await released;
+    const operations = worker.posted.map(message => message.args.sql ?? message.op);
+    expect(operations.indexOf('COMMIT')).toBeLessThan(operations.indexOf('close'));
+    expect(worker.terminated).toBe(true);
+    await replacement.driver.exec('SELECT 1');
+    await replacement.driver.close();
+  } finally {
+    finish();
+    await result;
+    await released;
+  }
+});
+
+for (const stalled of ['transaction', 'query', 'close']) {
+  it(`retained pagehide release settles after bounded session disposal (${stalled})`, async () => {
+    vi.useFakeTimers();
+    const warned = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    let finish!: () => void;
+    const held = new Promise<void>(resolve => { finish = resolve; });
+    const { driver } = createEncryptedWebSqlite('journal.sqlite3', key);
+    const [worker] = FakeWorker.made;
+    const session = journalSession<Uint8Array, SqliteDriver>({
+      async suspend() {},
+      release() {}, prewarm() {},
+      async open(_key, _current, own) {
+        const fresh = createEncryptedWebSqlite('journal.sqlite3', key).driver;
+        own(fresh);
+        return fresh;
+      }
+    }, { suspendLimitMs: 20 });
+    session.adopt(key, driver);
+    let waiting: Promise<unknown> = Promise.resolve();
+    try {
+      if (stalled === 'transaction') {
+        let reached!: () => void;
+        const entered = new Promise<void>(resolve => { reached = resolve; });
+        waiting = session.connection.run(connection => connection.transaction(async scope => {
+          await scope.exec('INSERT INTO entry VALUES (1)');
+          reached();
+          await held;
+          await scope.exec('INSERT INTO entry VALUES (2)');
+        })).catch(error => error);
+        await entered;
+      } else {
+        FakeWorker.silent = true;
+        if (stalled === 'query') waiting = session.connection.run(connection => connection.exec('SELECT 1')).catch(error => error);
+      }
+      const released = releaseOnPageHide(true);
+      const suspended = session.suspendForNavigation(true);
+      expect(session.key.current).toBeNull();
+      expect(session.connection.current).toBeNull();
+      await vi.advanceTimersByTimeAsync(25);
+      await Promise.all([released, suspended]);
+      expect(worker.terminated).toBe(true);
+      if (stalled !== 'close') expect((await waiting as Error).message).toMatch(/disposed|closed/);
+      const sent = worker.posted.length;
+      FakeWorker.silent = false;
+      await session.resumeAfterNavigation(() => {});
+      await session.connection.run(connection => connection.exec('SELECT 1'));
+      expect(FakeWorker.made).toHaveLength(2);
+      finish();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(worker.posted, 'late work cannot reach the retired worker').toHaveLength(sent);
+      expect(session.key.current).toBe(key);
+      await session.lock();
+    } finally {
+      finish();
+      FakeWorker.silent = false;
+      warned.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+}

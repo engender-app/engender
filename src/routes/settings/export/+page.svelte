@@ -3,14 +3,15 @@
   import { m } from '$lib/paraglide/messages';
   import { runExport, type ExportPath } from '$lib/data/archive/backup';
   import { runAndroidAutoExport } from '$lib/data/archive/android-auto-export';
-  import { androidAutoExport, type AutoExportStatus } from '$lib/data/archive/android-auto-export-bridge';
-  import { backupAgeDays, backupIsStale } from '$lib/data/backupHealth';
+  import { androidAutoExport, type AutoExportStatus, type FolderSyncOutcome } from '$lib/data/archive/android-auto-export-bridge';
+  import { backupAgeDays, backupStanding } from '$lib/data/backupHealth';
   import { preferencesAttached, prefs } from '$lib/data/prefs/store.svelte';
-  import { resize } from '$lib/motion/reveal';
-  import { scrollBehavior } from '$lib/motion/tokens';
+  import { disclose, resize } from '$lib/motion/reveal';
+  import { crossfadeDuration, fadeOnly, scrollBehavior } from '$lib/motion/tokens';
   import { archivePasswordProblem } from '$lib/data/archive/password';
+  import { changeBackupPassword, checkBackupNow } from '$lib/data/archive/backup-password';
   import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
-  import { importFailureMessage, verifyFailureMessage } from '$lib/data/vocabulary/archiveErrorLabels';
+  import { exportFailureMessage, importFailureMessage, verifyFailureMessage } from '$lib/data/vocabulary/archiveErrorLabels';
   import type { PickedArchive } from '$lib/data/archive/pick';
   import {
     pickForRestore,
@@ -23,7 +24,8 @@
   import { DaylioBackupError, type DaylioBackupPreview, type DaylioSkipKind } from '$lib/data/archive/daylioBackup';
   import { normalizePhoto } from '$lib/data/photos/normalize';
   import { recognizeSource } from '$lib/data/archive/sources';
-  import { IMPORT_FILE_SIZE_CEILING_BYTES, ZipTooLargeError } from '$lib/data/archive/zipReader';
+  import { IMPORT_FILE_SIZE_CEILING_BYTES } from '$lib/data/archive/zipReader';
+  import { checkDaylioCsvFileSize, ImportTooLargeError } from '$lib/data/archive/daylioInputBudget';
   import type { ArchiveImportLogRecord } from '$lib/data/archive/payload';
   import { chooseFiles } from '$lib/data/fileDialog';
   import { dimensionName, moodName, tagLabel } from '$lib/data/vocabulary/labels';
@@ -48,16 +50,25 @@
 
   let android = $derived(isAndroid());
   let backupAge = $derived(backupAgeDays(prefs.lastBackupAt));
-  let stale = $derived(backupIsStale(prefs.lastBackupAt));
+  let standing = $derived(backupStanding(prefs.lastBackupAt));
+  /* The last-backup mark comes and goes on this screen: a first export puts
+     a tick where there was none, a fresh one replaces the stale mark. Both
+     fade in place rather than cut in one frame. The leaving one is out of
+     the accessibility tree from its first frame, so a screen reader never
+     reads "Time for a new backup" beside "today" while it fades. */
+  const markFade = (_node: Element) => fadeOnly(crossfadeDuration());
+  const markLeave = (node: Element) => {
+    node.setAttribute('aria-hidden', 'true');
+    return fadeOnly(crossfadeDuration());
+  };
   let verifiedAge = $derived(backupAgeDays(prefs.lastVerifiedAt));
 
   let expPass = $state('');
   let impPass = $state('');
   let impMode = $state<'merge' | 'replace'>('merge');
-  /* Replace asks first (phase 15 release-blockers ticket 05). It used to
-     run straight from the Import button with a muted note as its only
-     warning, the one action in the app that throws a whole journal away
-     on a single tap. Merge only adds, so it still runs at once. */
+  /* Replace asks first. It used to run straight from the Import button with a muted note as
+     its only warning, the one action in the app that throws a whole journal away on a
+     single tap. Merge only adds, so it still runs at once. */
   let replaceSheet = $state(false);
   /* Set by the sheet's "Make a backup first" row, and read once the sheet
      has gone: the screen is locked while it is up, so the scroll to the
@@ -108,7 +119,7 @@
   let autoHasPassword = $state(false);
   let autoBusy = $state(false);
 
-  /* Five bars for six operations (phase 9 audit ticket 11, ADR-0070).
+  /* Five bars for six operations.
      Import and verify share one because they share their two buttons and
      cannot run at once; everything else has its own place on the screen.
      Each carries a label beside it because these operations move between
@@ -147,24 +158,19 @@
     json: m.exp_done_json
   };
 
-  /* The floor lives in archive/password.ts and the wording lives here:
-     each caller has its own sentence for an empty field, and all of them
-     share the journal passphrase's too-short line rather than inventing a
-     second one (phase 5 security ticket 02). */
-  function expPassRefusal(whenMissing: () => string): string | null {
-    const problem = archivePasswordProblem(expPass);
-    if (problem === null) return null;
-    return problem === 'missing'
-      ? whenMissing()
-      : m.pp_too_short({ min: String(MIN_PASSPHRASE_LENGTH) });
-  }
+  /* The floor lives in archive/password.ts and the wording lives here, sharing the journal
+     passphrase's too-short line. An empty field is allowed: the warning then says the file
+     opens for anyone instead of asking to keep a password. Its wording is fixed when the
+     sheet opens, so typing behind a closing sheet does not rewrite it. */
+  let exportWithoutPassword = $state(false);
 
   function openExportWarning() {
-    const refusal = expPassRefusal(m.exp_password_first);
-    if (refusal) {
-      toast(refusal);
+    const problem = archivePasswordProblem(expPass);
+    if (problem === 'too-short') {
+      toast(m.pp_too_short({ min: String(MIN_PASSPHRASE_LENGTH) }));
       return;
     }
+    exportWithoutPassword = problem === 'missing';
     exportWarningOpen = true;
   }
 
@@ -176,6 +182,25 @@
   let autoSnapshotAt = $state<number | null>(null);
   let autoStagedAt = $state<number | null>(null);
   let autoDeferredAt = $state<number | null>(null);
+  /* Folder sync: this device's own switch, and how the last archive from another device
+     ended. */
+  let autoFolderSync = $state(false);
+  let autoFolderOutcome = $state<FolderSyncOutcome | null>(null);
+  let autoFolderAt = $state<number | null>(null);
+  /* Which wording the line under the switch shows, and whether the switch
+     shows at all. Both wait for the first status read, so nothing is painted
+     that the read then replaces: the switch takes its state while hidden,
+     with its own transition off, and fades in a frame later rather than
+     sliding from off to on as the screen arrives. */
+  let autoFolderLoaded = $state(false);
+  const folderSyncState = $derived(
+    !autoFolderLoaded ? null
+      : autoFolderOutcome == null || autoFolderAt == null ? 'never'
+      : autoFolderOutcome === 'merged' || autoFolderOutcome === 'wrong-password' || autoFolderOutcome === 'no-space'
+        ? autoFolderOutcome
+      : 'failed'
+  );
+  const folderWhen = $derived(stampText(autoFolderAt));
 
   function applyAutoStatus(status: AutoExportStatus) {
     prefs.autoExportEnabled = status.enabled;
@@ -189,6 +214,10 @@
     autoDeferredAt = status.deferredAt ?? null;
     autoLastFailureAt = status.lastFailureAt;
     autoLastFailureReason = status.lastFailureReason;
+    autoFolderSync = status.folderSync ?? false;
+    autoFolderOutcome = status.folderLastOutcome ?? null;
+    autoFolderAt = status.folderLastAt ?? null;
+    if (!autoFolderLoaded) requestAnimationFrame(() => requestAnimationFrame(() => (autoFolderLoaded = true)));
   }
 
   async function refreshAutoStatus() {
@@ -216,27 +245,91 @@
     }
   }
 
-  async function setAutoEnabled(enabled: boolean) {
-    if (enabled && !autoHasPassword) {
-      const refusal = expPassRefusal(m.exp_auto_password_needed);
-      if (refusal) {
-        toast(refusal);
-        prefs.autoExportEnabled = false;
-        return;
-      }
-      try {
-        await androidAutoExport.setPassword({ password: expPass });
-      } catch (error) {
-        // The switch goes back off rather than claiming a schedule with no password behind it.
-        console.error('could not store the auto-export password', error);
-        toast(m.exp_auto_config_failed(), { kind: 'failed' });
-        prefs.autoExportEnabled = false;
+  /* The backup password is set and changed here and nowhere else. It used to be taken from
+     the export field by the switch and by "Back up now", silently, so a typo became the
+     password of every later backup. Now it is typed twice in its own sheet and says when it
+     has worked. */
+  let passwordSheet = $state(false);
+  let newBackupPass = $state('');
+  let repeatBackupPass = $state('');
+  let passwordError = $state('');
+  let passwordErrorAt = $state<'new' | 'repeat' | null>(null);
+  let passwordSaving = $state(false);
+  /* Turning the schedule on with no password opens the sheet first, and the
+     switch goes on only once a password is saved. */
+  let enableAfterPassword = false;
+
+  let sheetChanging = $state(false);
+
+  function openPasswordSheet(enableAfter = false) {
+    sheetChanging = autoHasPassword;
+    newBackupPass = '';
+    repeatBackupPass = '';
+    passwordError = '';
+    passwordErrorAt = null;
+    enableAfterPassword = enableAfter;
+    passwordSheet = true;
+  }
+
+  function clearPasswordError() {
+    passwordError = '';
+    passwordErrorAt = null;
+  }
+
+  async function saveBackupPassword(event: SubmitEvent) {
+    event.preventDefault();
+    if (passwordSaving) return;
+    passwordSaving = true;
+    try {
+      const result = await changeBackupPassword(newBackupPass, repeatBackupPass);
+      if (result !== 'saved') {
+        passwordErrorAt = result === 'mismatch' ? 'repeat' : 'new';
+        passwordError =
+          result === 'missing'
+            ? m.exp_password_first()
+            : result === 'too-short'
+              ? m.pp_too_short({ min: String(MIN_PASSPHRASE_LENGTH) })
+              : m.exp_backup_password_mismatch();
         return;
       }
       autoHasPassword = true;
+      passwordSheet = false;
+      toast(sheetChanging ? m.exp_backup_password_changed_toast() : m.exp_backup_password_saved_toast());
+      if (enableAfterPassword) {
+        prefs.autoExportEnabled = true;
+        await configureAutoExport(true, prefs.autoExportSchedule);
+      }
+    } catch (error) {
+      console.error('could not store the backup password', error);
+      passwordErrorAt = null;
+      passwordError = m.exp_auto_config_failed();
+    } finally {
+      passwordSaving = false;
+      enableAfterPassword = false;
+    }
+  }
+
+  async function setAutoEnabled(enabled: boolean) {
+    if (enabled && !autoHasPassword) {
+      // The switch stays off until the sheet has a password behind it.
+      prefs.autoExportEnabled = false;
+      openPasswordSheet(true);
+      return;
     }
     prefs.autoExportEnabled = enabled;
     await configureAutoExport(enabled, prefs.autoExportSchedule);
+  }
+
+  async function setFolderSync(enabled: boolean) {
+    if (!android) return;
+    autoFolderSync = enabled;
+    try {
+      applyAutoStatus(await androidAutoExport.configureFolderSync({ enabled }));
+    } catch (error) {
+      console.error('could not configure folder sync', error);
+      autoFolderSync = !enabled;
+      toast(m.exp_auto_config_failed());
+    }
   }
 
   async function setAutoSchedule(value: string) {
@@ -261,12 +354,28 @@
     }
   }
 
+  /* Not autoBusy: the check is one bridge call, and a refusal would flash
+     the button to "Backing up…" and back for a backup that never started. */
+  let checkingPassword = false;
+
   async function backupNowToDestination() {
-    if (!android || autoBusy) return;
-    const refusal = expPassRefusal(m.exp_password_first);
-    if (refusal) {
-      toast(refusal);
+    if (!android || autoBusy || checkingPassword) return;
+    checkingPassword = true;
+    try {
+      /* The saved password is what the backup is sealed with. A password in the export
+         field is only compared with it: a mismatch is refused, never saved over it. */
+      const check = await checkBackupNow(expPass);
+      if (!check.ok) {
+        if (check.problem === 'no-password') openPasswordSheet();
+        else toast(m.exp_backup_password_wrong(), { kind: 'failed' });
+        return;
+      }
+    } catch (error) {
+      console.error('could not check the backup password', error);
+      toast(m.exp_auto_failed());
       return;
+    } finally {
+      checkingPassword = false;
     }
 
     autoBusy = true;
@@ -277,11 +386,6 @@
     const stop = new AbortController();
     autoProgress.start({ onCancel: () => stop.abort() });
     try {
-      if (expPass) {
-        await androidAutoExport.setPassword({ password: expPass });
-        autoHasPassword = true;
-      }
-
       const snapshot = await journal.archive.snapshot();
       const snapshotAt = Date.now();
       const result = await runAndroidAutoExport(
@@ -298,13 +402,9 @@
           watch: {
             signal: stop.signal,
             onProgress: (done, total) => {
-              /* The pack is the countable half. What follows it - base64
-                 across the bridge and the SAF write of a multi-megabyte
-                 archive - has no unit of work to report, so the bar goes
-                 back to sweeping under a sentence that says which half
-                 this is. Leaving it parked at 100% through the slower half
-                 would be the bar lying, which is the whole thing ADR-0070
-                 is about. */
+              /* Count packed entries. The bridge transfer and SAF write have no
+                 measurable unit, so switch to the indeterminate sweep
+                 and name the stage. */
               if (done === total) {
                 autoLabel = m.exp_auto_running_writing();
                 autoProgress.report(0, 0);
@@ -364,7 +464,7 @@
   };
 
   const IMPORT_LOG_KIND_LABEL: Record<string, (n: number) => string> = {
-    entries: (n) => m.imp_log_n_entries({ n }),
+    entries: (n) => m.n_entries({ n }),
     tags: (n) => m.imp_log_n_tags({ n }),
     milestones: (n) => m.imp_log_n_milestones({ n }),
     attachments: (n) => m.imp_log_n_attachments({ n })
@@ -400,14 +500,14 @@
     const stop = new AbortController();
     /* Cancellable on the encrypted path alone, and not because the other
        two are dangerous to stop - nothing an export does touches the
-       journal (ADR-0070) - but because there is nothing there to stop.
+       journal - but because there is nothing there to stop.
        journalCsv and journalJson build one string before the body is ever
        pulled, so a stop button on them would refuse the only work they do
        after it was already done. */
     exportProgress.start(path === 'encrypted' ? { onCancel: () => stop.abort() } : undefined);
     try {
       // No "still opening" branch: a call through data/live's handle queues until
-      // the database is open (ticket 08), and every screen reaches it that way.
+      // the database is open, and every screen reaches it that way.
       const delivery = await runExport(
         path,
         {
@@ -435,7 +535,7 @@
         return;
       }
       // Before the toast, so the bar finishes its sentence rather than
-      // being talked over by the answer (ADR-0070).
+      // being talked over by the answer.
       await exportProgress.finish();
       const what = done[path]();
       toast(delivery === 'shared' ? m.exp_done_shared({ what }) : m.exp_done_downloaded({ what }));
@@ -446,7 +546,7 @@
         return;
       }
       console.error(`the ${path} export failed`, error);
-      toast(m.exp_failed());
+      toast(exportFailureMessage(error));
     } finally {
       running = null;
     }
@@ -479,7 +579,7 @@
       impError = '';
       impErrorKind = '';
     } catch {
-      toast(m.imp_picker_failed());
+      toast(m.picker_failed());
     }
   }
 
@@ -513,13 +613,13 @@
   }
 
   /* The import, run by restoreFlow.ts so the welcome step's restore and this
-     one are the same act (ticket 36). What is left here is what this screen
+     one are the same act. What is left here is what this screen
      says about it. */
   async function doImport() {
     impError = '';
     impErrorKind = '';
     importing = true;
-    /* No stop button, on either mode (ADR-0070): Replace discards this
+    /* No stop button, on either mode: Replace discards this
        device's journal before installing the archive's and Merge writes as
        it reads, so an abort part way through has no defined rollback
        anywhere in the code. The bar says how far along it is and nothing
@@ -539,7 +639,7 @@
     importing = false;
   }
 
-  /* The backup health drill (ticket 28): the same picked file and password
+  /* The backup health drill: the same picked file and password
      as import, but only decrypting, parsing and validating it - nothing here
      is written to. */
   async function doVerify() {
@@ -548,7 +648,7 @@
     verifying = true;
     // Not cancellable either, though nothing is written: a half-drained
     // archive proves nothing, and a drill that can be stopped early is a
-    // drill somebody can believe they passed (ADR-0070).
+    // drill somebody can believe they passed.
     importLabel = m.verify_running_files();
     importProgress.start();
     const result = await runVerify(picked, impPass, (done, total) => importProgress.report(done, total));
@@ -578,6 +678,8 @@
       daylioName = file.name;
       daylioPreview = null;
       daylioError = '';
+      // Before `File.text()` reads the whole file into a string.
+      checkDaylioCsvFileSize(file.size);
       const { tagLabels } = await import('$lib/data/vocabulary/import-labels');
       daylioPreview = await journal.archive.previewDaylioImport(await file.text(), { tagLabels });
       if (daylioPreview.unmappedMoodLabels.length > 0) {
@@ -587,7 +689,7 @@
       console.error('the Daylio preview failed', error);
       daylioPreview = null;
       // Same rule as importFailure: the parse detail is a console diagnostic.
-      daylioError = m.daylio_unreadable();
+      daylioError = error instanceof ImportTooLargeError ? m.daylio_too_large() : m.daylio_unreadable();
     }
   }
 
@@ -597,7 +699,7 @@
     daylioError = '';
     /* A CSV export carries no photos, so this is one stage and one label
        and it may well finish inside the bar's show delay - which is the
-       case that delay is for (ADR-0070). */
+       case that delay is for. */
     daylioProgress.start();
     try {
       const result = await journal.archive.commitDaylioImport(daylioPreview, (progress) =>
@@ -612,7 +714,7 @@
     } catch (error) {
       daylioProgress.abandon();
       console.error('the Daylio import failed', error);
-      daylioError = m.daylio_failed();
+      daylioError = m.dlb_failed();
     } finally {
       daylioImporting = false;
     }
@@ -620,7 +722,7 @@
 
   /* The backup import, beside the CSV one above and deliberately not folded
      into it: the two files carry different things, and somebody holding a
-     CSV export has a CSV export (phase 7 ticket 09). */
+     CSV export has a CSV export. */
 
   function openBackup() {
     backupName = '';
@@ -636,18 +738,17 @@
   const arrivingRows = (preview: DaylioBackupPreview): { label: string; value: string }[] =>
     [
       { label: m.dlb_entries(), count: preview.entryCount, value: String(preview.entryCount) },
-      { label: m.dlb_milestones(), count: preview.milestoneCount, value: String(preview.milestoneCount) },
+      { label: m.milestones(), count: preview.milestoneCount, value: String(preview.milestoneCount) },
       {
         /* Counted on the new tags alone, though it reports both: a matched
            tag is one this journal already has, so a file whose every
            activity is already a tag here is adding nothing and this row
            would otherwise be the only thing standing under "Arriving". */
-        label: m.dlb_tags(),
+        label: m.tags_label(),
         count: preview.newTagCount,
         value: m.dlb_tag_counts({ matched: String(preview.matchedTagCount), new: String(preview.newTagCount) })
       },
       { label: m.dlb_scales(), count: preview.dimensionCount, value: String(preview.dimensionCount) },
-      { label: m.dlb_templates(), count: preview.templateCount, value: String(preview.templateCount) },
       {
         label: m.dlb_attachments(),
         count: preview.photoCount + preview.audioCount,
@@ -661,6 +762,7 @@
     achievements: m.dlb_skip_achievements,
     preferences: m.dlb_skip_preferences,
     reminders: m.dlb_skip_reminders,
+    templates: m.dlb_skip_templates,
     icons: m.dlb_skip_icons,
     anniversaries: m.dlb_skip_anniversaries,
     scales: m.dlb_skip_scales,
@@ -674,7 +776,7 @@
     try {
       // Some Android file providers type a .daylio file as
       // application/octet-stream rather than zip, and Capacitor's picker
-      // greys out a file that matches no accept entry at all (ticket 66) -
+      // greys out a file that matches no accept entry at all -
       // application/zip alone made that file unselectable.
       const [file] = await chooseFiles('.daylio,application/zip,application/octet-stream');
       if (!file) return;
@@ -717,7 +819,7 @@
          when the real answer is "not this platform" sends them looking for
          a fix that does not exist. A ceiling refusal is its own case too,
          ahead of the rest: it isn't a corrupt container. */
-      if (error instanceof ZipTooLargeError) {
+      if (error instanceof ImportTooLargeError) {
         backupError = m.dlb_too_large();
       } else if (error instanceof DaylioBackupError && error.kind === 'platform') {
         backupError = m.dlb_not_android();
@@ -768,8 +870,8 @@
   <!-- Both ages are preferences outside the boot set, so on a cold
        navigation straight here they read null until SQLite opens: the card
        said "never" with a tick for a persona backed up 34 days ago, then
-       lost a line and shoved everything under it up 19px in one frame
-       (ticket 176). The rows stand from the first frame and only their
+       lost a line and shoved everything under it up 19px in one frame.
+The rows stand from the first frame and only their
        values wait, a one-line bar in each, so a one-line age lands without
        moving anything; the two-line "never" grows the card through
        `resize`. -->
@@ -787,22 +889,28 @@
             {backupAge == null
               ? m.exp_last_backup_never()
               : backupAge === 0
-                ? m.exp_last_backup_today()
-                : m.exp_last_backup_days({ days: m.n_days({ n: backupAge }) })}
+                ? m.today_status()
+                : m.days_ago({ days: m.n_days({ n: backupAge }) })}
           {/if}
         </span>
       </span>
-      {#if !preferencesAttached()}
-        <!-- Neither mark until the age is known: the tick was the half of the
-             wrong answer that looked most sure of itself. -->
-      {:else if stale}
-        <!-- The age beside it already says how long ago; the mark only says
-             that it is long enough to act on. It used to be a badge reading
-             "Over 30 days ago" under "34 days ago" (audit UX-11). -->
-        <span class="notice-warn backup-stale-mark" data-backup-stale role="img" aria-label={m.exp_stale_mark_aria()}><Icon name="alert" size={18} /></span>
-      {:else}
-        <Icon name="check" size={20} />
-      {/if}
+      <!-- One slot that is always there, so a mark arriving or leaving never
+           moves the row; the two marks share its cell while they cross. -->
+      <span class="backup-mark-slot">
+        {#if !preferencesAttached()}
+          <!-- Neither mark until the age is known: the tick was the half of the
+               wrong answer that looked most sure of itself. -->
+        {:else if standing === 'stale'}
+          <!-- The age beside it already says how long ago; the mark only says that it is
+               long enough to act on. It used to be a badge reading "Over 30 days ago" under
+               "34 days ago". -->
+          <span class="notice-warn backup-stale-mark" data-backup-stale role="img" aria-label={m.exp_stale_mark_aria()} in:markFade out:markLeave><Icon name="alert" size={18} /></span>
+        {:else if standing === 'recent'}
+          <span class="backup-tick" data-backup-tick in:markFade out:markLeave><Icon name="check" size={20} /></span>
+        {/if}
+        <!-- Never exported draws no mark: the tick stood beside "No export recorded on this
+             device" because that journal is not stale either. -->
+      </span>
     </div>
     <div class="hr" style="margin:var(--space-3) 0"></div>
     <div class="spread">
@@ -815,8 +923,8 @@
             {verifiedAge == null
               ? m.exp_last_verified_never()
               : verifiedAge === 0
-                ? m.exp_last_verified_today()
-                : m.exp_last_verified_days({ days: m.n_days({ n: verifiedAge }) })}
+                ? m.today_status()
+                : m.days_ago({ days: m.n_days({ n: verifiedAge }) })}
           {/if}
         </span>
       </span>
@@ -833,7 +941,7 @@
   {#if importLog.length > 0}
     <SectionHeading text={m.imp_log_section()} />
     <!-- The card is gone, so the hairline a list begins and ends with
-         (DIRECTION.md rule 4) is the list card's own, and the separator
+          is the list card's own, and the separator
          between two rows is `.kit-row + .kit-row`'s rather than an `.hr`
          written out per row. -->
     <ListCard>
@@ -850,10 +958,9 @@
 
   <SectionHeading text={m.exp_encrypted_section()} />
   <p class="small" style="margin-bottom:var(--space-3)">{m.exp_encrypted_body()}</p>
-  <!-- autocomplete off here and on import: an archive's password is not
-       this site's login, and a password manager should not offer to save
-       it as one (after-release 21, audit A11Y-16). -->
-  <Field label={m.exp_password_label()} id="exp-pass">
+  <!-- autocomplete off here and on import: an archive's password is not this site's login,
+       and a password manager should not offer to save it as one. -->
+  <Field label={m.backup_password_label()} id="exp-pass">
     {#snippet children(id)}
       <input class="input" type="password" {id} name="exp-pass" placeholder={m.exp_password_placeholder()}
         autocomplete="off" bind:value={expPass} />
@@ -861,7 +968,7 @@
   </Field>
   <button class="btn btn-primary" data-export onclick={openExportWarning} disabled={running !== null}>
     <Icon name={android ? 'share' : 'download'} size={20} />
-    <span>{running === 'encrypted' ? m.exp_running() : android ? m.exp_run_share() : m.exp_run_download()}</span>
+    <span>{running === 'encrypted' ? m.encrypting() : android ? m.exp_run_share() : m.exp_run_download()}</span>
   </button>
   <!-- The encrypted path only. journalCsv and journalJson build their
        whole string synchronously before the body is ever pulled, so
@@ -900,6 +1007,44 @@
       {autoDestination ?? (autoDestinationUri ? m.exp_auto_destination_chosen() : m.exp_auto_destination_missing())}
     </p>
 
+    <!-- The backup password's own row: the one place it is set or changed. Both wordings of
+         the button and of the line under it are always laid out in one grid cell and only
+         their opacity moves, so the row keeps its size when a password is first saved. -->
+    <div class="spread" data-backup-password-row>
+      <span class="small muted">{m.backup_password_label()}</span>
+      <button class="btn btn-soft" type="button" onclick={() => openPasswordSheet()} disabled={autoBusy}
+        data-change-backup-password>
+        <span class="swap">
+          <span class:is-on={!autoHasPassword} aria-hidden={autoHasPassword}>{m.exp_backup_password_set()}</span>
+          <span class:is-on={autoHasPassword} aria-hidden={!autoHasPassword}>{m.exp_backup_password_change()}</span>
+        </span>
+      </button>
+    </div>
+    <p class="muted small swap" data-backup-password-state={autoHasPassword ? 'saved' : 'missing'}>
+      <span class:is-on={autoHasPassword} aria-hidden={!autoHasPassword}>{m.exp_auto_password_saved()}</span>
+      <span class:is-on={!autoHasPassword} aria-hidden={autoHasPassword}>{m.exp_auto_password_missing()}</span>
+    </p>
+
+    <!-- Folder sync: the folder above, read back. Always laid out, so switching it moves
+         nothing on the screen. -->
+    <div class="spread" data-folder-sync-row>
+      <span class="small muted">{m.exp_folder_title()}</span>
+      <span class="folder-switch" class:is-loaded={autoFolderLoaded}>
+        <Switch checked={autoFolderSync} label={m.exp_folder_title()} onChange={setFolderSync} />
+      </span>
+    </div>
+    <p class="muted small">{m.exp_folder_note()}</p>
+    <!-- Every wording laid out in one cell and crossfaded, so the first
+         status read and a later outcome change no height and swap no text
+         in a frame (the backup password line's own pattern). -->
+    <p class="muted small swap" data-folder-sync-state={folderSyncState ?? 'loading'}>
+      <span class:is-on={folderSyncState === 'never'} aria-hidden={folderSyncState !== 'never'}>{m.exp_folder_never()}</span>
+      <span class:is-on={folderSyncState === 'merged'} aria-hidden={folderSyncState !== 'merged'}>{m.exp_folder_last_merged({ when: folderWhen })}</span>
+      <span class:is-on={folderSyncState === 'wrong-password'} aria-hidden={folderSyncState !== 'wrong-password'}>{m.exp_folder_last_wrong_password({ when: folderWhen })}</span>
+      <span class:is-on={folderSyncState === 'failed'} aria-hidden={folderSyncState !== 'failed'}>{m.exp_folder_last_failed({ when: folderWhen })}</span>
+      <span class:is-on={folderSyncState === 'no-space'} aria-hidden={folderSyncState !== 'no-space'}>{m.exp_folder_last_no_space({ when: folderWhen })}</span>
+    </p>
+
     {#if prefs.autoExportEnabled}
       <div class="spread">
         <span class="small muted">{m.exp_schedule()}</span>
@@ -916,9 +1061,6 @@
       <Progress run={autoProgress} label={autoLabel} handle="auto-export" />
     {/if}
 
-    <p class="muted small">
-      {autoHasPassword ? m.exp_auto_password_saved() : m.exp_auto_password_missing()}
-    </p>
     <div role="status" aria-live="polite" aria-atomic="true" data-auto-backup-status>
       <p class="muted small">
         {m.exp_auto_last_success({ when: stampText(autoLastSuccessAt) })}
@@ -956,7 +1098,7 @@
       </button>
     {/snippet}
   </Field>
-  <Field label={m.exp_password_label()} id="imp-pass">
+  <Field label={m.backup_password_label()} id="imp-pass">
     {#snippet children(id)}
       <input class="input" type="password" {id} name="imp-pass" autocomplete="off"
         placeholder={m.imp_password_placeholder()} bind:value={impPass} />
@@ -1015,11 +1157,9 @@
   <!-- One bar for the two buttons above it: they are disabled by each
        other, so only one of them is ever running. -->
   <Progress run={importProgress} label={importLabel} handle="import" />
-  <!-- Two entries of one list: the hairlines the list card draws are what
-       separates them and what says where they begin and end, so the tonal
-       ground each row used to carry is gone (Alicja, 2026-09-09: "the list
-       entries have both the bg and the line separators - lose the bg"). The
-       `.hr` that used to sit above them was doing the list card's job. -->
+  <!-- Two entries of one list: the hairlines the list card draws are what separates them
+       and what says where they begin and end, so the tonal ground each row used to carry is
+       gone. The `.hr` that used to sit above them was doing the list card's job. -->
   <div data-import-rows>
     <ListCard>
       <ListRow
@@ -1046,20 +1186,61 @@
     <button class="btn btn-soft" data-plain="json" disabled={running !== null} onclick={() => (plainSheet = 'json')}><span>{m.plain_json()}</span></button>
   </div>
 
-  <Sheet open={exportWarningOpen} title={m.exp_warning_sheet()} onClose={() => (exportWarningOpen = false)}>
-    <h3>{m.exp_warning_title()}</h3>
+  <Sheet open={exportWarningOpen} title={exportWithoutPassword ? m.exp_nopass_title() : m.exp_warning_title()} onClose={() => (exportWarningOpen = false)}>
+    <h3>{exportWithoutPassword ? m.exp_nopass_title() : m.exp_warning_title()}</h3>
     <div class="notice notice-danger" style="margin-bottom:var(--space-4)">
       <Icon name="alert" size={20} />
       <div class="notice-body">
-        {m.exp_warning_body()}
+        {exportWithoutPassword ? m.exp_nopass_body() : m.exp_warning_body()}
       </div>
     </div>
     <div class="stack-3">
       <button class="btn btn-danger" data-confirm-export onclick={confirmExport}>
-        <span>{m.exp_warning_confirm()}</span>
+        <span>{exportWithoutPassword ? m.exp_nopass_confirm() : m.exp_warning_confirm()}</span>
       </button>
       <button class="btn btn-ghost" onclick={() => (exportWarningOpen = false)}><span>{m.cancel()}</span></button>
     </div>
+  </Sheet>
+
+  <!-- Typed twice, and it says when it worked. The wording is fixed when the sheet opens,
+       so saving a first password does not rewrite the title of a sheet that is on its way
+       out. -->
+  <Sheet bind:open={passwordSheet} title={sheetChanging ? m.exp_backup_password_change_title() : m.exp_backup_password_set_title()}>
+    <h3>{sheetChanging ? m.exp_backup_password_change_title() : m.exp_backup_password_set_title()}</h3>
+    <p class="small" style="margin-bottom:var(--space-4)">
+      {sheetChanging ? m.exp_backup_password_change_body() : m.exp_backup_password_set_body()}
+    </p>
+    <form onsubmit={saveBackupPassword} data-backup-password-form>
+      <Field label={m.exp_backup_password_new()}>
+        {#snippet children(id)}
+          <input class="input" type="password" {id} name="new-backup-password" autocomplete="off"
+            bind:value={newBackupPass} oninput={clearPasswordError} readonly={passwordSaving}
+            aria-invalid={passwordErrorAt === 'new'}
+            aria-describedby={passwordErrorAt === 'new' ? 'backup-password-error' : undefined}
+            data-new-backup-password />
+        {/snippet}
+      </Field>
+      <Field label={m.exp_backup_password_repeat()}>
+        {#snippet children(id)}
+          <input class="input" type="password" {id} name="repeat-backup-password" autocomplete="off"
+            bind:value={repeatBackupPass} oninput={clearPasswordError} readonly={passwordSaving}
+            aria-invalid={passwordErrorAt === 'repeat'}
+            aria-describedby={passwordErrorAt === 'repeat' ? 'backup-password-error' : undefined}
+            data-repeat-backup-password />
+        {/snippet}
+      </Field>
+      <!-- Opens its own height rather than pushing the buttons down in one
+           frame, and closes again as soon as either field is edited. -->
+      {#if passwordError}
+        <p class="small backup-password-error" role="alert" id="backup-password-error" data-backup-password-error transition:disclose>{passwordError}</p>
+      {/if}
+      <div class="stack-3">
+        <button class="btn btn-primary" type="submit" disabled={passwordSaving} data-save-backup-password>
+          <span>{m.exp_backup_password_save()}</span>
+        </button>
+        <button class="btn btn-ghost" type="button" onclick={() => (passwordSheet = false)}><span>{m.cancel()}</span></button>
+      </div>
+    </form>
   </Sheet>
 
   <Sheet open={plainSheet !== null} title={m.plain_section()} onClose={() => (plainSheet = null)}>
@@ -1081,9 +1262,8 @@
     {/if}
   </Sheet>
 
-  <!-- The erase sheet's shape (Settings, phase 14 pre-release 15): the loss
-       first, then the way to keep a copy with how old the last one is, then
-       the act in danger red and the way out. -->
+  <!-- The erase sheet's shape: the loss first, then the way to keep a copy with how old the
+       last one is, then the act in danger red and the way out. -->
   <Sheet bind:open={replaceSheet} title={m.imp_replace_sheet_title()} onClosed={afterReplaceSheet}>
     <h3>{m.imp_replace_sheet_title()}</h3>
     <div class="notice notice-danger" style="margin-bottom:var(--space-4)">
@@ -1139,7 +1319,7 @@
           <strong>{m.daylio_tag_counts({ matched: String(daylioPreview.matchedTagCount), new: String(daylioPreview.newTagCount) })}</strong>
         </div>
         <div class="rows-divide value-row"><span>{m.daylio_notes_row()}</span><strong>{m.daylio_notes_kept()}</strong></div>
-        <div class="rows-divide value-row"><span>{m.daylio_photos_row()}</span><strong>{m.daylio_photos_absent()}</strong></div>
+        <div class="rows-divide value-row"><span>{m.photos_row()}</span><strong>{m.daylio_photos_absent()}</strong></div>
         <div class="hr"></div>
         <p class="small" style="margin-bottom:var(--space-2)"><strong>{m.daylio_mood_mapping()}</strong></p>
         {#if daylioPreview.moodMappings.length > 0}
@@ -1239,7 +1419,6 @@
               {#if skip.count !== undefined}<strong>{skip.count}</strong>{/if}
             </div>
           {/each}
-          <p class="muted small" style="margin:var(--space-3) 0 0">{m.dlb_left_behind_note()}</p>
         {/if}
       </div>
       <p class="muted small" style="margin-bottom:var(--space-4)">{m.daylio_always_merge()}</p>
@@ -1258,6 +1437,22 @@
 </div>
 
 <style>
+  /* The stale mark's footprint, held whether a mark is in it or not. The
+     tick sits at the slot's end edge, where it sat before the slot. */
+  .backup-mark-slot {
+    display: grid;
+    flex: none;
+    width: 28px;
+    height: 28px;
+    align-items: center;
+    justify-items: end;
+  }
+  .backup-mark-slot > * {
+    grid-area: 1 / 1;
+  }
+  .backup-tick {
+    display: flex;
+  }
   /* The same footprint as the tick it stands in for, on the warning ground. */
   .backup-stale-mark {
     display: grid;
@@ -1266,12 +1461,54 @@
     height: 28px;
     border-radius: var(--r-block);
   }
-  /* From components.css once Settings stopped drawing one (ticket 277):
+  /* From components.css once Settings stopped drawing one:
      this screen is the only reader left. */
   .hr {
     border: none;
     border-top: 1px solid var(--hairline);
     margin: var(--space-4) 0;
+  }
+  /* Two wordings in one cell: the cell is as big as the longer one either
+     way, and changing state crossfades rather than swapping text in a
+     frame. */
+  .swap {
+    display: inline-grid;
+  }
+  p.swap {
+    display: grid;
+  }
+  /* The resting wording leaves selection and hit-testing once it has faded:
+     visibility flips after the fade on the way out and at once on the way
+     in. */
+  .swap > * {
+    grid-area: 1 / 1;
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity var(--dur-fast) var(--ease-out),
+      visibility 0s linear var(--dur-fast);
+  }
+  .swap > .is-on {
+    opacity: 1;
+    visibility: visible;
+    transition:
+      opacity var(--dur-fast) var(--ease-out),
+      visibility 0s;
+  }
+  .folder-switch {
+    display: inline-flex;
+    opacity: 0;
+    transition: opacity var(--dur-fast) var(--ease-out);
+  }
+  .folder-switch.is-loaded {
+    opacity: 1;
+  }
+  .folder-switch:not(.is-loaded) :global(*) {
+    transition: none;
+  }
+  .backup-password-error {
+    color: var(--danger);
+    margin: 0 0 var(--space-4);
   }
   .mode-mark {
     display: inline-flex;

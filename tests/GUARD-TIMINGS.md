@@ -94,10 +94,9 @@ minutes for this candidate.
 
 [PR 8 run 37223138118](https://github.com/engender-app/engender/actions/runs/37223138118)
 ran the reviewed scheduling code. The public branch head was
-`47b0aeb8cd1bab8f3b1aebd26fa2143bae8105fa`, code-equivalent to local ticket tip
-`8a0f84365820137e4fde9b2e2ad520cf4bd9529c`. Actions checked out the PR merge
+`47b0aeb8cd1bab8f3b1aebd26fa2143bae8105fa`. Actions checked out the PR merge
 revision `07d8347caa92f7b0ab8a4fc0788f4d46497289c5`; the Node build recorded
-`0.0.0-dev+g07d8347c`. The candidate does not contain ticket 01's cold-notice repair.
+`0.0.0-dev+g07d8347c`. The candidate does not contain the cold-notice repair.
 
 The workflow failed. Every one of the 74 guards ran exactly once at the guard
 level, with the existing second attempt on failure. There were 67 passing guards,
@@ -161,7 +160,7 @@ The seven guard failures remain visible:
   `/day/today`.
 - `cold-screen-moves`: both attempts reported "measuring notice was not visible
   during cold load" on the first light measurements case. This candidate still
-  has the old sampling contract; ticket 01's repair is separate.
+  uses the original cold-notice sampling contract.
 - `date-picker-check`: both attempts failed "\"Use date\" can be brought inside
   the zoomed visual viewport" at line 189.
 - `settings-erase-check`: both attempts found an extra `photos` directory in the
@@ -183,7 +182,6 @@ counts as the same roster guard.
 | dev 1/3 | `photo-export` | pass | 0 / 26.11s |
 | dev 1/3 | `content-before-dates-check` | pass | 0 / 56.83s |
 | dev 1/3 | `document-reader` | pass | 0 / 17.44s |
-| dev 1/3 | `hair-progress-photo-jump-check` | pass | 0 / 11.09s |
 | dev 1/3 | `hair-removal-recency-handoff-check` | pass | 0 / 9.69s |
 | dev 1/3 | `search-filter-scope` | pass | 0 / 19.56s |
 | dev 1/3 | `noticed-effects-picker-check` | pass | 0 / 31.66s |
@@ -216,7 +214,6 @@ counts as the same roster guard.
 | built 2/6 | `sheet-touch-drag-check` | pass | 0 / 9.04s |
 | built 2/6 | `yank-sweep` | pass | 0 / 153.69s |
 | built 2/6 | `calendar-month-a11y-check` | pass | 0 / 197.43s |
-| built 2/6 | `tally-chip-row-yank` | pass | 0 / 57.84s |
 | built 2/6 | `radio-groups-gallery` | fail | 1 / 34.41s; 1 / 34.27s |
 | built 2/6 | `boot-error-alone` | pass | 0 / 15.04s |
 | built 3/6 | `no-auto-keyboard` | pass | 0 / 25.17s |
@@ -270,17 +267,13 @@ build estimates; the refreshed build estimates add their measured difference.
 These replays hold attempt costs fixed and exclude setup and queue time. They
 are a reason to rerun the candidate, not a replacement for that run.
 
-The next section records the second candidate's hosted evidence. Ticket 01
-changes the cold guard's runtime when integrated, and ticket 05 owns the
-subsequent integrated samples.
-
 ## Second hosted candidate
 
 [PR 8 run 37224740045](https://github.com/engender-app/engender/actions/runs/37224740045)
 checked public head `a903638593fe032069d87adf6e8055b3118b18e9`, code-equivalent
 to local `b562d15168f90eda1502370602fa41c5e941e57c`. Actions tested PR merge
 revision `93a9315c770bbd109d356a9f6bac7dfdfa9216bc`, and the Node build recorded
-`0.0.0-dev+g93a9315c`. This run also preceded integration of ticket 01.
+`0.0.0-dev+g93a9315c`. This run also preceded the cold-notice repair.
 
 All 74 guards executed, with no omissions, duplicate assignments or blocked
 guards. There were 68 first-attempt passes, one recovered guard and five failures.
@@ -314,10 +307,9 @@ equal wall-clock durations. The longest remaining job was the 1147s walkthrough.
 
 The measured allocation, full coverage and independent job execution are
 verified. The duration file keeps the first hosted run's measurements used by
-this verified candidate. There is no further calibration in this ticket. Ticket
-05 must measure the integrated candidate, whose cold-guard behavior differs,
-and report the remaining runtime tradeoff. Neither the ten-minute target nor a
-passing full workflow has been reached here.
+this verified candidate. The integrated candidate needs a new measurement
+because the cold guard behaves differently. These runs missed the ten-minute
+target and the full workflow failed.
 
 The five failures were `record-dismissal-check`, `date-picker-check`,
 `entry-pending-save`, `radio-groups-gallery` and `settings-erase-check`. Their
@@ -330,13 +322,12 @@ Its first failure was the light `/more` case: the section heading moved up 19px
 at 371ms and down 19px at 376ms. This was a movement finding, not the earlier
 missing-notice message. The successful retry does not erase that observation.
 The existing workflow labels it PASS; this report identifies it as recovered.
-Retry-evidence retention changes belong to ticket 02.
 
 ## Independent old-allocation comparison
 
 [PR 7 run 37223064935](https://github.com/engender-app/engender/actions/runs/37223064935)
 used the same application code and shared metadata repair, the old one-dev/two-
-built allocation, and ticket 01's different cold-notice guard. Its head was
+built allocation, and the revised cold-notice guard. Its head was
 `f9fcde7b420f1768e345dd5b9a256002682f983e`. It is not an untouched-main control.
 It ran concurrently with parts of both PR 8 samples.
 
@@ -374,7 +365,6 @@ means a failed first attempt followed by a successful bounded retry.
 | dev 1/3 | `photo-export` | pass | 0 / 28.63s |
 | dev 1/3 | `chosen-appointment` | pass | 0 / 10.13s |
 | dev 1/3 | `appointment-entry-check` | pass | 0 / 17.87s |
-| dev 1/3 | `hair-progress-photo-jump-check` | pass | 0 / 11.35s |
 | dev 1/3 | `hair-removal-entry-check` | pass | 0 / 19.74s |
 | dev 1/3 | `measurements-sizes-jump-check` | pass | 0 / 13.59s |
 | dev 1/3 | `search-filter-scope` | pass | 0 / 22.06s |
@@ -409,7 +399,6 @@ means a failed first attempt followed by a successful bounded retry.
 | built 1/6 | `boot-error-alone` | pass | 0 / 16.43s |
 | built 2/6 | `sheet-focus-check` | pass | 0 / 21.23s |
 | built 2/6 | `care-cold-load-yank` | pass | 0 / 71.98s |
-| built 2/6 | `tally-chip-row-yank` | pass | 0 / 60.44s |
 | built 2/6 | `changes-methodology-check` | pass | 0 / 8.56s |
 | built 2/6 | `documents-rows-settle` | pass | 0 / 89.76s |
 | built 2/6 | `tile-arrival-timing` | pass | 0 / 121.89s |
@@ -442,9 +431,7 @@ means a failed first attempt followed by a successful bounded retry.
 | built 6/6 | `device-recovery-check` | pass | 0 / 18.18s |
 | built 6/6 | `settings-erase-check` | fail | 1 / 39.65s; 1 / 39.48s |
 
-After these measurements, local integration tip
-`c8f38bec4e8e4d6118875ac5692881841e4bc5c9` was merged into the ticket branch.
-That brings in ticket 01's cold-notice repair and preserves the hosted scheduling
-candidate's runner, matrix and duration inputs. The hosted revision identities
+The integration after these measurements adds the cold-notice repair and
+keeps the hosted candidate's runner, matrix and duration inputs. The hosted revision identities
 above remain the evidence for these timings. Post-merge focused checks verify
-compatibility; integrated hosted sampling remains ticket 05's work.
+compatibility. The integrated candidate still needs a hosted sample.

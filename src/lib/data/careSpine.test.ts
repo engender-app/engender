@@ -24,6 +24,7 @@ function episode(overrides: Partial<RegimenEpisode> = {}): RegimenEpisode {
   return {
     id: 'ep-1',
     drug: 'estradiol',
+    drugClass: 'hrt',
     ester: null,
     dose: 4,
     doseUnit: 'mg',
@@ -308,10 +309,9 @@ test('a dose today, one tomorrow and a run-out weeks out all stay readable', () 
   }
 });
 
-/* The same rule at a width nobody measured it at (phase 11 UI/UX ticket
-   25): 200% zoom on a 390px phone leaves the rail about 97px, where the
-   fraction sized for 292px is 33px and two captions at 34px apart print
-   over each other. */
+/* The same rule at a width nobody measured it at: 200% zoom on a 390px phone leaves the
+   rail about 97px, where the fraction sized for 292px is 33px and two captions at 34px
+   apart print over each other. */
 test('a rail narrow enough to be measured in is the rule the captions follow', () => {
   const facts = { labDrawEpochDay: null, lanes: [lane({ lastDoseEpochDay: TODAY, nextDoseEpochDay: TODAY + 3, runOutEpochDay: TODAY + 25 })] };
   const wide = careSpine(facts, TODAY, 292);
@@ -354,7 +354,7 @@ test('every row from 0 up is used, so a lane is never taller than it needs', () 
 });
 
 /* Three running drugs: three lanes of their own marks, one set of shared
-   ones (phase 11 ticket 10) */
+   ones */
 
 test('three running episodes draw three lanes with their own last, next and run-out', () => {
   const spine = careSpine(
@@ -422,24 +422,24 @@ test('one episode yields one lane, over the same span and positions as three wou
   );
 });
 
-/* Which order the lanes are drawn in (phase 11 ticket 10) */
+/* Which order the lanes are drawn in */
 
-test('every running episode gets a lane, curve drugs first', () => {
+test('every running episode gets a lane, oldest first', () => {
   const curve = episode({ id: 'ep-curve', drug: 'estradiol', startEpochDay: TODAY - 10 });
   const other = episode({ id: 'ep-other', drug: 'sertraline', startEpochDay: TODAY - 300 });
   assert.deepEqual(
     railEpisodes([other, curve]).map((e) => e.id),
-    ['ep-curve', 'ep-other']
+    ['ep-other', 'ep-curve']
   );
 });
 
-test('two curve episodes both get a lane rather than cancelling each other out', () => {
+test('two hormone episodes both get a lane rather than cancelling each other out', () => {
   const first = episode({ id: 'ep-1', drug: 'estradiol', startEpochDay: TODAY - 400 });
   const second = episode({ id: 'ep-2', drug: 'testosterone', startEpochDay: TODAY - 40 });
   assert.deepEqual(
     railEpisodes([second, first]).map((e) => e.id),
     ['ep-1', 'ep-2'],
-    'the older of the two curve drugs is drawn first; neither is primary'
+    'the older episode is drawn first; neither is primary'
   );
 });
 
@@ -519,13 +519,12 @@ test('a dose from an earlier episode of the same drug still counts as the last o
   assert.equal(facts.lastDoseEpochDay, TODAY - 60);
 });
 
-/* The one edge the drug-name scoping reads differently to the whole-log
-   scan it replaced: a dose logged before any episode covered it at all
-   (nothing running yet, or an episode later deleted from under it). The
-   old, unfiltered read counted it regardless; attributeDrug has nothing to
-   attribute it to and drops it. A deliberate, documented narrowing
-   (ticket 38's Decisions), not an oversight - a dose with no regimen
-   covering it has nothing to say about that regimen's rail. */
+/* The one edge the drug-name scoping reads differently to the whole-log scan it replaced: a
+   dose logged before any episode covered it at all (nothing running yet, or an episode
+   later deleted from under it). The old, unfiltered read counted it regardless;
+   attributeDrug has nothing to attribute it to and drops it. A deliberate, documented
+   narrowing, not an oversight - a dose with no regimen covering it has nothing to say about
+   that regimen's rail. */
 test('a dose predating any episode does not count as that episode’s last one', () => {
   const solo = episode({ startEpochDay: TODAY - 10 });
   const facts = scheduleDoseFacts(solo, [solo], null, [dose(TODAY - 20)], [], TODAY);

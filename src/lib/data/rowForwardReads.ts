@@ -1,43 +1,16 @@
-/* The reads behind a row's forward fact (phase 11 all-four-doors ticket 02).
+/* Fetch the facts that rowForward.ts projects. Today, Transition and Care
+   share the same reads. The dose owner supplies the next uncovered slot;
+   raw calendar expectations cannot tell if an early dose covered it.
 
-   Split from `rowForward.ts` the way `agendaReads.ts` is split from
-   `agenda.ts` and `comingBackReads.ts` from `comingBack.ts`: the projection
-   is where the rules are and it wants a Node test with no driver, so it
-   takes rows. This is what fetches them, in one place, so the two surfaces
-   that draw rows ask the same nine questions rather than each assembling
-   its own idea of what is coming.
-
-   **Nine reads, none of them new as a question.** Every one is a method a
-   screen already calls - the milestone list the milestones screen draws,
-   the seals the letters tile reads, the running session the wear tile
-   reads, the tryouts the tryout tile reads, the appointments Today already
-   holds for its debrief offer, the procedures the surgery tile reads, the
-   agenda's own forward read, the stock projections the Care screen draws,
-   and one bounded row of measurements. The ticket's own line: no new data,
-   no new read, no new screen.
-
-   The dose slot comes through `dayAhead` rather than through the schedule
-   arithmetic directly, which is the one place this file defers to another
-   registry. ADR-0067 already owns "which day does a schedule next expect a
-   dose", pauses and logged-ahead doses included, and a second answer to
-   that question is exactly the drift `lastWrite.ts`'s own header refuses.
-   Nothing else is taken from there, because a mark carries no name and
-   eight of the nine lines have to say what the thing is.
-
-   Every read is issued inside one `Promise.all`, before this function's
-   first `await`, so a `liveQuery` wrapping it discovers all nine
-   dependencies on its first run - the problem `WAITING_TABLES` exists for
-   is not this one's (`agendaReads.ts` says the same about its two).
-
-   Nothing here reads a clock: `todayEpochDay` arrives as an argument, the
-   same as everywhere above the journal seam. */
+   Start all reads in one Promise.all before the first await so liveQuery
+   discovers every dependency on its first run. The caller supplies
+   todayEpochDay. rowForward.ts stays driver-free for Node tests. */
 
 import { rowForward, type RowForwardFacts, type RowForwardMap, type RowForwardKey } from './rowForward';
 import { SPINE_FORWARD_DAYS } from './careSpine';
 import type { AppointmentsArea } from './journal/appointments';
-import type { DayAheadArea } from './journal/dayAhead';
+import type { DosesArea } from './journal/doses';
 import type { LettersArea } from './journal/letters';
-import type { MeasurementsArea } from './journal/measurements';
 import type { MilestonesArea } from './journal/milestones';
 import type { ProceduresArea } from './journal/procedures';
 import type { StockArea } from './journal/stock';
@@ -55,9 +28,8 @@ export interface RowForwardAreas {
   tryouts: TryoutsArea;
   appointments: AppointmentsArea;
   procedures: ProceduresArea;
-  dayAhead: DayAheadArea;
+  doses: DosesArea;
   stock: StockArea;
-  measurements: MeasurementsArea;
 }
 
 /** How far ahead the dose-slot read looks.
@@ -91,7 +63,7 @@ export async function readRowForward(
   rows?: readonly RowForwardKey[]
 ): Promise<RowForwardMap> {
   const includes = (row: RowForwardKey) => rows === undefined || rows.includes(row);
-  const [milestones, seals, runningWear, tryouts, appointments, procedures, marks, stock, latestMeasurement] =
+  const [milestones, seals, runningWear, tryouts, appointments, procedures, nextDose, stock] =
     await Promise.all([
       includes('milestones') ? areas.milestones.getMilestones() : [],
       includes('letters') ? areas.letters.getLetterSeals(LETTER_SEAL_PAGE) : [],
@@ -99,14 +71,9 @@ export async function readRowForward(
       includes('tryouts') ? areas.tryouts.getTryouts() : [],
       includes('appointments') ? areas.appointments.getAppointments() : [],
       includes('surgery') ? areas.procedures.getProcedures() : [],
-      includes('care') ? areas.dayAhead.getDayAhead(todayEpochDay, todayEpochDay + DOSE_SLOT_REACH_DAYS, todayEpochDay, ['doseSlot']) : [],
-      includes('care') ? areas.stock.getProjections(todayEpochDay) : [],
-      includes('measurements') ? areas.measurements.latestMeasurement(todayEpochDay) : null
+      includes('care') ? areas.doses.getNextUncoveredSlot(todayEpochDay, todayEpochDay + DOSE_SLOT_REACH_DAYS) : null,
+      includes('care') ? areas.stock.getProjections(todayEpochDay) : []
     ]);
-
-  /* Marks arrive in day order across every kind (dayAhead.ts sorts them), so
-     the first dose slot in the list is the next one. */
-  const nextDose = marks.find((mark) => mark.kind === 'doseSlot');
 
   /* The soonest run-out across every tracked drug, which is the one the row
      can state in a line. A drug with no rate to project from has no run-out
@@ -125,8 +92,7 @@ export async function readRowForward(
     appointments,
     procedures,
     nextDoseEpochDay: nextDose?.epochDay ?? null,
-    runOutEpochDay: runOutDays.length === 0 ? null : Math.min(...runOutDays),
-    latestMeasurement
+    runOutEpochDay: runOutDays.length === 0 ? null : Math.min(...runOutDays)
   };
 
   return rowForward(facts);

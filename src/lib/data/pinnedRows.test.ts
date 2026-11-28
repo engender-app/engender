@@ -1,7 +1,6 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { HUB_ROWS, type HubReading } from './hubRows.ts';
-import { DAY_AHEAD_MARK_KINDS } from './journal/dayAhead.ts';
 import {
   addablePins,
   DEFAULT_ONBOARDING_AREAS,
@@ -11,8 +10,6 @@ import {
   pinArrangement,
   pinnedRows,
   pinReadScope,
-  shownAgendaKinds,
-  withAgendaKind,
   withoutPin,
   withPin,
   type PinPreferences
@@ -40,25 +37,25 @@ const keysOf = (rows: ReturnType<typeof pinnedRows>) => rows.map((row) => row.sp
 // --- the person's own order -------------------------------------------------
 
 test('rows come back in the order the person put them in, not the registry order', () => {
-  /* `wear` is declared after `measurements` on the hub, so a resolution
+  /* `wear` is declared after effects in the registry, so a resolution
      that quietly sorted by the registry would come back the other way
      round. That is the whole claim of the feature: the app ranks nothing. */
-  const rows = pinnedRows(arranged(['wear', 'measurements']), reading());
+  const rows = pinnedRows(arranged(['wear', 'effects']), reading());
 
-  assert.deepEqual(keysOf(rows), ['wear', 'measurements']);
+  assert.deepEqual(keysOf(rows), ['wear', 'effects']);
 });
 
 test('a pinned row carries its own reading and the day of that reading', () => {
   const rows = pinnedRows(
-    arranged(['measurements']),
-    reading({ lastWrites: { measurements: TODAY - 3 } })
+    arranged(['effects']),
+    reading({ lastWrites: { personalEffects: TODAY - 3 } })
   );
 
   assert.deepEqual(rows[0].line, { kind: 'last', epochDay: TODAY - 3, daysAgo: 3 });
 });
 
 test('a pinned row with nothing written yet says so rather than showing a blank', () => {
-  const rows = pinnedRows(arranged(['measurements']), reading());
+  const rows = pinnedRows(arranged(['effects']), reading());
 
   assert.deepEqual(rows[0].line, { kind: 'not-yet' });
 });
@@ -73,11 +70,10 @@ test('a pinned row that can never report a reading says what is behind it', () =
 });
 
 test('a pin naming a finished area carries the day it ended', () => {
-  /* Both halves: the measurements row fronts two sections since redesign
-     ticket 61, and a group half-finished is not finished (areaGroups.ts). */
+  /* Effects fronts two sections. A group half-finished is not finished. */
   const rows = pinnedRows(
-    arranged(['measurements']),
-    reading({ states: { measurements: finished(TODAY - 40), sizeRecords: finished(TODAY - 40) } })
+    arranged(['effects']),
+    reading({ states: { personalEffects: finished(TODAY - 40), sideEffects: finished(TODAY - 40) } })
   );
 
   assert.deepEqual(rows[0].line, { kind: 'finished', epochDay: TODAY - 40 });
@@ -88,34 +84,34 @@ test('a finished pin stays where the person put it rather than moving to the end
      row is somewhere the person put it, so finishing an area may not move
      it - the hub's grouping is the hub's, and this is not the hub. */
   const rows = pinnedRows(
-    arranged(['measurements', 'wear']),
-    reading({ states: { measurements: finished(TODAY - 40), sizeRecords: finished(TODAY - 40) } })
+    arranged(['effects', 'wear']),
+    reading({ states: { personalEffects: finished(TODAY - 40), sideEffects: finished(TODAY - 40) } })
   );
 
-  assert.deepEqual(keysOf(rows), ['measurements', 'wear']);
+  assert.deepEqual(keysOf(rows), ['effects', 'wear']);
 });
 
 // --- what resolves to nothing -----------------------------------------------
 
 test('a stale pin naming a hidden area resolves to nothing', () => {
   const rows = pinnedRows(
-    arranged(['measurements', 'wear']),
+    arranged(['effects', 'wear']),
     reading({ states: { wearSessions: hidden } })
   );
 
-  assert.deepEqual(keysOf(rows), ['measurements']);
+  assert.deepEqual(keysOf(rows), ['effects']);
 });
 
 test('a pin naming a row the registry has never held resolves to nothing', () => {
-  const rows = pinnedRows(arranged(['measurements', 'a-row-from-a-newer-build']), reading());
+  const rows = pinnedRows(arranged(['effects', 'a-row-from-a-newer-build']), reading());
 
-  assert.deepEqual(keysOf(rows), ['measurements']);
+  assert.deepEqual(keysOf(rows), ['effects']);
 });
 
 test('a row pinned twice is drawn once, at the first place it was put', () => {
-  const rows = pinnedRows(arranged(['measurements', 'wear', 'measurements']), reading());
+  const rows = pinnedRows(arranged(['effects', 'wear', 'effects']), reading());
 
-  assert.deepEqual(keysOf(rows), ['measurements', 'wear']);
+  assert.deepEqual(keysOf(rows), ['effects', 'wear']);
 });
 
 test('pinning nothing shows nothing, which is not the same as never having arranged it', () => {
@@ -123,10 +119,10 @@ test('pinning nothing shows nothing, which is not the same as never having arran
      front page with none. Null is somebody who has never arranged it, and
      falls back to what onboarding chose - so unpinning the last row may not
      read as a fresh install. */
-  const chose: PinPreferences = { pinnedRows: [], onboardingAreas: ['measurements'] };
+  const chose: PinPreferences = { pinnedRows: [], onboardingAreas: ['effects'] };
 
   assert.deepEqual(keysOf(pinnedRows(chose, reading())), []);
-  assert.deepEqual(keysOf(pinnedRows({ ...chose, pinnedRows: null }, reading())), ['measurements']);
+  assert.deepEqual(keysOf(pinnedRows({ ...chose, pinnedRows: null }, reading())), ['effects']);
 });
 
 // --- the rule, run over a shortened registry --------------------------------
@@ -136,36 +132,36 @@ test('the resolution can be run over a shortened registry and seen to drop the r
      own output over a registry one row short, which is the same function
      the screen calls. A pin that resolved a line ago resolves to nothing
      here, which is what a renamed or retired row does to a stored pin. */
-  const pins = arranged(['measurements', 'wear']);
+  const pins = arranged(['effects', 'wear']);
   const shortened = HUB_ROWS.filter((row) => row.key !== 'wear');
 
-  assert.deepEqual(keysOf(pinnedRows(pins, reading())), ['measurements', 'wear']);
-  assert.deepEqual(keysOf(pinnedRows(pins, reading(), shortened)), ['measurements']);
+  assert.deepEqual(keysOf(pinnedRows(pins, reading())), ['effects', 'wear']);
+  assert.deepEqual(keysOf(pinnedRows(pins, reading(), shortened)), ['effects']);
 });
 
 // --- the default set --------------------------------------------------------
 
-test('the default set is what onboarding chose', () => {
-  const rows = pinnedRows({ pinnedRows: null, onboardingAreas: ['tryouts', 'measurements'] }, reading());
+test('an older journal keeps its chosen onboarding pins', () => {
+  const rows = pinnedRows({ pinnedRows: null, onboardingAreas: ['tryouts', 'documents'] }, reading());
 
-  assert.deepEqual(keysOf(rows), ['measurements', 'tryouts']);
+  assert.deepEqual(keysOf(rows), ['tryouts', 'documents']);
 });
 
 test('the default set is drawn in registry order rather than in ticking order', () => {
-  /* Which order somebody happened to tick a list of checkboxes in is an
-     artefact of reading down the page, not an arrangement. The hub's order
-     is one they have already met; ticket 14 is where they change it. */
-  assert.deepEqual(defaultPins(['tryouts', 'measurements']), defaultPins(['measurements', 'tryouts']));
+  /* Which order somebody happened to tick a list of checkboxes in is an artefact of reading
+     down the page, not an arrangement. The hub's order is one they have already met; is
+     where they change it. */
+  assert.deepEqual(defaultPins(['tryouts', 'effects']), defaultPins(['tryouts', 'effects']));
 });
 
-test('a skipped onboarding still produces a set', () => {
+test('a new journal without an areas answer gets default pins', () => {
   const skipped = pinnedRows({ pinnedRows: null, onboardingAreas: null }, reading());
 
-  assert.deepEqual(keysOf(skipped), ['measurements', ...DEFAULT_ONBOARDING_AREAS]);
+  assert.deepEqual(keysOf(skipped), [...DEFAULT_ONBOARDING_AREAS]);
   assert.ok(skipped.length > 0);
 });
 
-test('unticking every area at onboarding means a front page with no pinned rows', () => {
+test('an older journal with no selected areas keeps an empty front page', () => {
   const rows = pinnedRows({ pinnedRows: null, onboardingAreas: [] }, reading());
 
   assert.deepEqual(keysOf(rows), []);
@@ -175,9 +171,9 @@ test('the default set names only rows the registry holds, and no bad-hour row', 
   const keys = HUB_ROWS.map((row) => row.key);
   for (const key of DEFAULT_ONBOARDING_AREAS) assert.ok(keys.includes(key), `${key} is not a hub row`);
 
-  /* The counterevidence check, the letters and the resource list are what
-     somebody reaches for on a bad hour. Ticket 14 makes all three pinnable;
-     none of them is on the front page until somebody asks for it. */
+  /* The counterevidence check, the letters and the resource list are what somebody reaches
+     for on a bad hour. makes all three pinnable; none of them is on the front page until
+     somebody asks for it. */
   for (const key of ['doubt', 'letters', 'resources']) {
     assert.ok(!(DEFAULT_ONBOARDING_AREAS as readonly string[]).includes(key), `${key} is pinned by default`);
   }
@@ -190,35 +186,13 @@ test('the default set answers to a hidden area the same way any other pin does',
   assert.ok(!keysOf(rows).includes('milestones'));
 });
 
-// --- the agenda's switches --------------------------------------------------
-
-test('every one of the five kinds is on until somebody switches one off', () => {
-  assert.deepEqual(shownAgendaKinds({ agendaKinds: null }), [...DAY_AHEAD_MARK_KINDS]);
-});
-
-test('a switched-off kind stays off, and the rest keep the ADR order', () => {
-  assert.deepEqual(shownAgendaKinds({ agendaKinds: ['doseSlot', 'appointment'] }), ['appointment', 'doseSlot']);
-});
-
-test('switching every kind off leaves no agenda at all', () => {
-  assert.deepEqual(shownAgendaKinds({ agendaKinds: [] }), []);
-});
-
-test('a stored kind that is not one of the five cannot switch anything on', () => {
-  /* ADR-0067's six refusals - a run-out day, a reminder, a daily dose slot,
-     a taper session, the next hair photo, a revisit - are refusals about
-     what earns a mark. A switch list is a person's answer about the five
-     that do, and cannot be the back door that adds a sixth. */
-  assert.deepEqual(shownAgendaKinds({ agendaKinds: ['appointment', 'runOut', 'reminder'] }), ['appointment']);
-});
-
-// --- the editing surface's own rules (ticket 14) ----------------------------
+// --- the editing surface's own rules ----------------------------
 
 test('a person who has never arranged anything starts editing from the default set', () => {
   /* The default arrangement is resolved and never stored (ADR-0073), so the first edit
      has to write the whole set down: an arrangement that stored only the
      row somebody just added would silently unpin the others. */
-  assert.deepEqual(pinArrangement({ pinnedRows: null, onboardingAreas: null }), ['measurements', ...DEFAULT_ONBOARDING_AREAS]);
+  assert.deepEqual(pinArrangement({ pinnedRows: null, onboardingAreas: null }), [...DEFAULT_ONBOARDING_AREAS]);
   assert.deepEqual(pinArrangement({ pinnedRows: null, onboardingAreas: [...DEFAULT_ONBOARDING_AREAS] }), [...DEFAULT_ONBOARDING_AREAS]);
 });
 
@@ -227,24 +201,24 @@ test('an arrangement keeps a pin whose area is hidden and drops one the registry
      statement and survives an edit - it just draws nothing while the area
      is hidden. A key no row answers to is not a pin at all, and an edit is
      where the arrangement stops carrying it. */
-  const kept = pinArrangement(arranged(['measurements', 'wear', 'no-such-row']));
+  const kept = pinArrangement(arranged(['effects', 'wear', 'no-such-row']));
 
-  assert.deepEqual(kept, ['measurements', 'wear']);
+  assert.deepEqual(kept, ['effects', 'wear']);
 });
 
 test('a row added lands at the end rather than in registry order', () => {
   /* Where a new pin goes is the only answer that is not a ranking: last,
      because the app may not decide that a row somebody just asked for
      belongs above one they arranged earlier. */
-  assert.deepEqual(withPin(['tryouts', 'measurements'], 'wear'), ['tryouts', 'measurements', 'wear']);
+  assert.deepEqual(withPin(['tryouts', 'effects'], 'wear'), ['tryouts', 'effects', 'wear']);
 });
 
 test('adding a row that is already pinned changes nothing', () => {
-  assert.deepEqual(withPin(['wear', 'measurements'], 'wear'), ['wear', 'measurements']);
+  assert.deepEqual(withPin(['wear', 'effects'], 'wear'), ['wear', 'effects']);
 });
 
 test('removing a row takes it out and leaves the rest in place', () => {
-  assert.deepEqual(withoutPin(['wear', 'measurements', 'tryouts'], 'measurements'), ['wear', 'tryouts']);
+  assert.deepEqual(withoutPin(['wear', 'effects', 'tryouts'], 'effects'), ['wear', 'tryouts']);
 });
 
 test('removing the last row leaves an empty arrangement, which is not the default', () => {
@@ -288,9 +262,9 @@ const addable = (
 ) => addablePins(prefs, reading(over), { cycleVisible }).map((row) => row.spec.key as string);
 
 test('the add list offers every row the person has not pinned, in the hub order', () => {
-  const offered = addable(arranged(['measurements']));
+  const offered = addable(arranged(['effects']));
   const expected = HUB_ROWS.map((row) => row.key).filter(
-    (key) => key !== 'measurements' && key !== 'cycle-events'
+    (key) => key !== 'effects' && key !== 'cycle-events'
   );
 
   /* The hub's order rather than a ranking of its own: it is an order the
@@ -312,10 +286,9 @@ test('a hidden area cannot be added', () => {
 });
 
 test('the cycle log is offered only where its own gate is already open', () => {
-  /* ADR-0043 one-directionally: pinning it is the person asking for it, so
-     the pin resolves either way, but a list that offered it cold would be
-     the app putting a cycle prompt in front of somebody who will never
-     have one. */
+  /* Pinning it is the person asking for it, so the pin resolves either way, but a list that
+     offered it cold would be the app putting a cycle prompt in front of somebody who will
+     never have one. */
   assert.ok(!addable(arranged([])).includes('cycle-events'));
   assert.ok(addable(arranged([]), {}, true).includes('cycle-events'));
 });
@@ -340,39 +313,12 @@ test('a finished area can still be added, and says the day it ended', () => {
   assert.deepEqual(wear?.line, { kind: 'finished', epochDay: TODAY - 20 });
 });
 
-// --- the switches, written back ---------------------------------------------
-
-test('switching one kind off writes the other four down', () => {
-  /* Null is "nobody has switched anything off", so the first switch has to
-     materialise the five the way the first pin materialises the default
-     set. */
-  assert.deepEqual(withAgendaKind({ agendaKinds: null }, 'doseSlot', false), [
-    'appointment',
-    'surgery',
-    'milestone',
-    'letterUnlock'
-  ]);
-});
-
-test('switching a kind back on keeps the ADR order rather than the order it was switched in', () => {
-  assert.deepEqual(withAgendaKind({ agendaKinds: ['letterUnlock'] }, 'surgery', true), [
-    'surgery',
-    'letterUnlock'
-  ]);
-});
-
-test('switching the last kind off leaves an empty list, not a null', () => {
-  assert.deepEqual(withAgendaKind({ agendaKinds: ['surgery'] }, 'surgery', false), []);
-});
-
 // --- what the default pins say facing forwards ------------------------------
 
-/* Phase 11 all-four-doors ticket 02. The pinned rows on Today drew the same
-   backwards lines the Transition door did - "Last logged 8 days ago",
-   "Nothing logged for 1 year 4 months" - and they draw the forward ones now
-   through the same function, so a row cannot say one thing on one screen and
-   something else on the other. The rows here are `DEFAULT_ONBOARDING_AREAS`,
-   which is the ticket's own sign-off set. */
+/* The pinned rows on Today drew the same backwards lines the Transition door did - "Last
+   logged 8 days ago", "Nothing logged for 1 year 4 months" - and they draw the forward ones
+   now through the same function, so a row cannot say one thing on one screen and something
+   else on the other. The rows here are `DEFAULT_ONBOARDING_AREAS`, so the test covers the pins a new journal starts with. */
 
 test('the default pins draw whatever the forward read gave them', () => {
   const forward = {
@@ -404,8 +350,8 @@ test('a forward fact replaces the gap a pinned row used to report', () => {
     })
   );
 
-  /* 'last' rather than 'quiet' since after-release 17: milestones have
-     nothing to finish, so the gap is a plain last-written line. */
+  /* 'last' rather than 'quiet' since: milestones have nothing to finish, so the gap is a
+     plain last-written line. */
   assert.equal(backwards[0].line.kind, 'last');
   assert.equal(forwards[0].line.kind, 'next');
 });
@@ -418,18 +364,18 @@ test('the add list carries the forward line too', () => {
     letters: { kind: 'next', epochDay: TODAY + 42, what: { area: 'letter', several: true } }
   } as const;
 
-  const addable = addablePins(arranged(['measurements']), reading({ forward }), { cycleVisible: false });
+  const addable = addablePins(arranged(['effects']), reading({ forward }), { cycleVisible: false });
   const letters = addable.find((row) => row.spec.key === 'letters');
 
   assert.deepEqual(letters?.line, forward.letters);
 });
 
-// --- fallback reading for hydration (ticket 106) ----------------------------
+// --- fallback reading for hydration ----------------------------
 
 test('fallbackReading supplies an empty reading for synchronous initial render', () => {
   assert.deepEqual(fallbackReading(TODAY).lastWrites, {});
   assert.deepEqual(fallbackReading(TODAY).forward, {});
-  assert.deepEqual(keysOf(pinnedRows(arranged(['measurements']), fallbackReading(TODAY))), []);
+  assert.deepEqual(keysOf(pinnedRows(arranged(['effects']), fallbackReading(TODAY))), ['effects']);
 });
 
 test('pinnedRows with fallbackReading renders all default pins with quiet lines', () => {
@@ -446,10 +392,10 @@ test('pinnedRows with fallbackReading respects an explicitly unpinned empty list
 });
 
 test('pin reads follow current arrangement, and editing expands to every available row', () => {
-  const prefs = { pinnedRows: null, onboardingAreas: ['measurements', 'care'] };
+  const prefs = { pinnedRows: null, onboardingAreas: ['care', 'effects'] };
   const initial = pinReadScope(prefs, false);
-  assert.deepEqual(initial.rows, ['measurements', 'care']);
-  assert.deepEqual(initial.lastWrites, ['measurements', 'sizeRecords']);
+  assert.deepEqual(initial.rows, ['care', 'effects']);
+  assert.deepEqual(initial.lastWrites, ['personalEffects', 'sideEffects']);
   assert.deepEqual(pinReadScope({ ...prefs, pinnedRows: [] }, false).rows, []);
   const wear = pinReadScope({ ...prefs, pinnedRows: ['wear', 'wear', 'old-row'] }, false);
   assert.deepEqual(wear.rows, ['wear']);

@@ -1,9 +1,8 @@
-<!-- Multi-track anatomical inspector sheet (phase 5 deepening ticket 08).
+<!-- Multi-track anatomical inspector sheet.
      Tapping any body region opens this somatic breakdown combining:
      1. Dysphoria/Euphoria trajectory
-     2. Linked physical measurements
-     3. Filtered progress photos
-     4. Laser & hair removal sessions & hair staging records -->
+     2. Filtered progress photos
+     3. Laser & hair removal sessions -->
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
   import { liveQuery } from '$lib/data/live/journal.svelte';
@@ -20,9 +19,7 @@
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import {
     hairRemovalAreaName,
-    hairRemovalMethodName,
-    hairScaleName,
-    hairStageName
+    hairRemovalMethodName
   } from '$lib/data/vocabulary/labels';
 
   let {
@@ -33,9 +30,9 @@
   }: {
     open: boolean;
     region: string;
-    /** Ticket 18's body-map filter (ADR-0048), carried over from whichever
-        mode /body-map is currently reading - so the trajectory this sheet
-        shows agrees with the trend chart that opened it. */
+    /** Body-map filter (ADR-0048), carried over from whichever mode /body-map is currently
+        reading - so the trajectory this sheet shows agrees with the trend chart that opened
+        it. */
     presentationId?: string;
     onClose?: () => void;
   } = $props();
@@ -78,7 +75,7 @@
     </div>
   {:else if !breakdown || breakdown.isEmpty}
     <EmptyState
-      title={m.body_region_empty_title()}
+      title={m.empty_list_title()}
       text={m.body_region_empty_body()}
     />
   {:else}
@@ -123,33 +120,9 @@
         {/if}
       </section>
 
-      <!-- Track 2: Linked Measurements -->
-      <section class="inspector-section" data-track="measurements">
-        <SectionHeading text={m.body_region_track_measurements()} />
-        {#if breakdown.measurements.length > 0}
-          <ListCard>
-            {#each breakdown.measurements as mItem (mItem.id)}
-              <ListRow
-                icon="ruler"
-                title={vocabulary.measurementTypeName(mItem.type)}
-                subtitle={fmtDay(mItem.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })}
-                static
-                chevron={false}
-              >
-                {#snippet trailing()}
-                  <span class="muted small">{mItem.value} {mItem.unit}</span>
-                {/snippet}
-              </ListRow>
-            {/each}
-          </ListCard>
-        {:else}
-          <p class="muted small inspector-empty-track">{m.body_region_measurements_empty()}</p>
-        {/if}
-      </section>
-
-      <!-- Track 3: Progress Photos -->
+      <!-- Track 2: Progress Photos -->
       <section class="inspector-section" data-track="photos">
-        <SectionHeading text={m.body_region_track_photos()} />
+        <SectionHeading text={m.pph_title()} />
         {#if breakdown.photos.length > 0}
           <div class="inspector-photos-grid">
             {#each breakdown.photos as p (p.id)}
@@ -164,17 +137,18 @@
         {/if}
       </section>
 
-      <!-- Track 4: Laser & Hair Removal Sessions and Norwood / Sinclair Hair Staging -->
+      <!-- Track 3: Laser & Hair Removal Sessions and Norwood / Sinclair Hair Staging -->
       <section class="inspector-section" data-track="hair-removal">
         <SectionHeading text={m.body_region_track_hair_removal()} />
         {#if breakdown.hairRemovalSessions.length > 0}
           <ListCard>
             {#each breakdown.hairRemovalSessions as s (s.id)}
               <ListRow
-                icon="sparkle"
+                icon="razor"
                 title={`${hairRemovalAreaName(s.area)} · ${hairRemovalMethodName(s.method)}`}
                 subtitle={[
                   fmtDay(s.epochDay, { day: 'numeric', month: 'short', year: 'numeric' }),
+                  s.minutes !== null ? m.hair_removal_minutes_short({ n: s.minutes }) : false,
                   s.provider || false
                 ]}
                 static
@@ -182,7 +156,9 @@
               >
                 {#snippet trailing()}
                   <!-- Pain only: the method is already in the title. -->
-                  <span class="muted small">{m.body_region_session_pain({ pain: String(s.painRating) })}</span>
+                  {#if s.painRating !== null}
+                    <span class="muted small">{m.body_region_session_pain({ pain: String(s.painRating) })}</span>
+                  {/if}
                 {/snippet}
               </ListRow>
             {/each}
@@ -191,26 +167,6 @@
           <p class="muted small inspector-empty-track">{m.body_region_hair_removal_empty()}</p>
         {/if}
       </section>
-
-      {#if breakdown.hairStages.length > 0}
-        <section class="inspector-section" data-track="hair-staging">
-          <SectionHeading text={m.body_region_track_hair_staging()} />
-          <ListCard>
-            {#each breakdown.hairStages as st (st.id)}
-              <ListRow
-                icon="eye"
-                title={`${hairScaleName(st.scale)}: ${hairStageName(st.scale, st.stage)}`}
-                subtitle={[
-                  fmtDay(st.epochDay, { day: 'numeric', month: 'short', year: 'numeric' }),
-                  st.description || false
-                ]}
-                static
-                chevron={false}
-              />
-            {/each}
-          </ListCard>
-        </section>
-      {/if}
     </div>
   {/if}
 </Sheet>
@@ -231,9 +187,8 @@
     margin: 0;
     font-size: var(--text-lg);
   }
-  /* Sentence case from lowercase vocabulary: the first letter only.
-     `capitalize` title-cased every word ("Face And Jaw"), Polish too
-     (audit L04-17). */
+  /* Sentence case from lowercase vocabulary: the first letter only. `capitalize`
+     title-cased every word ("Face And Jaw"), Polish too. */
   .inspector-title::first-letter {
     text-transform: uppercase;
   }
@@ -271,6 +226,14 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
+  }
+
+  /* The first track's heading has no rule: it sits right under the sheet's title and the
+     averages, and the 3px line read as the sheet's top edge drawn a second time. The tracks
+     after it keep theirs, which is what divides them. */
+  [data-track='trajectory'] > :global(.kit-heading) {
+    border-top: 0;
+    padding-top: 0;
   }
 
   .inspector-empty-track {

@@ -1,44 +1,16 @@
-/* The device half of PIN mode's secret (ADR-0041, ticket 53).
+/* Bind the PIN to a device secret (ADR-0041, ADR-0018). Four digits
+   give only 10,000 values. KDF cost and UI throttling are insufficient
+   when the PIN protects a copied wrap on its own.
 
-   Four digits is 10,000 candidates. No KDF cost closes a gap that small, and
-   a growing-delay throttle - which is what protected the retired app-lock
-   PIN - protects nothing here, because the attack on a wrapping key is
-   offline: copy keystore.json, walk away, and guess on your own hardware
-   where none of this app's code runs. That is why ADR-0018 and ADR-0014 said
-   a PIN could not be the encryption key.
+   A non-extractable HMAC key signs a fixed label to derive stable
+   secret material without a nonce. The PIN and that material feed
+   the KDF. Web stores the key in IndexedDB, so a copy of the whole
+   browser profile includes both the key and the wrap. Android stores
+   the key in Keystore outside the app directory.
 
-   What makes four digits defensible is that the PIN is not the whole secret.
-   A non-extractable HMAC key is minted in this browser's IndexedDB and never
-   leaves it; signing one fixed label with it yields a stable, high-entropy
-   string, and the secret fed to the KDF is that string with the PIN. So a
-   copied keystore file cannot be guessed at at all without the device, and
-   the 10,000 candidates only ever matter to somebody who already has the
-   device and runs their own code on it.
-
-   HMAC rather than AES-GCM on purpose. Deriving a *deterministic* value from
-   a non-extractable AES key means encrypting a fixed plaintext under a fixed
-   nonce, which is safe here (one plaintext, one nonce, so no two messages
-   ever share one) but is exactly the shape a reader has to stop and check. A
-   signature over a label has no nonce and no reuse question.
-
-   **Where the key lives, per platform (ticket sec-02-06).** On the web it is
-   the browser's key store and there is nothing to move it to: non-extractable
-   keeps it away from JavaScript, but the browser's own IndexedDB files are on
-   disk next to `keystore.json`, so a copy of the profile takes both halves of
-   the secret and lands the copier in the 10,000-candidate bucket the setup
-   copy quotes five seconds for. On Android it is a Keystore alias, whose key
-   material is not in the app's directory at all - so the same copy yields
-   neither half, and PIN mode there is as strong against a forensic copy as
-   device-bound mode is. Both are the same mechanism over a different key
-   store, which is why this module takes a binding rather than reaching for
-   one, and why what wrapped a given keystore is recorded in it
-   (`crypto/keystore.ts`'s `pinBinding`) rather than inferred from the
-   platform.
-
-   Either way the trade device-bound mode already makes applies, and the setup
-   copy says so: the key cannot leave the device, so losing the device or the
-   profile loses the journal. An archive export is the only thing that
-   survives it. */
+   crypto/keystore.ts records the binding kind that made the wrap.
+   Recovery needs a separately saved Archive if the device or profile
+   that holds the key is lost. */
 
 import { browserKeySlot, type DeviceKeySlot } from './device-bound-journal.ts';
 

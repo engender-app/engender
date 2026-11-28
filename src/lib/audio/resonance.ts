@@ -1,33 +1,10 @@
-/* Vocal tract resonance by linear predictive coding (CONTEXT: "Voice
-   benchmark").
+/* Estimate F1 and F2 in Hz with linear predictive coding on voiced frames.
+   Reuse the caller's pitch track to select those frames. Report measured
+   resonance without scoring or narrowing the formant search to norms.
 
-   F1 and F2: the first two resonances of the tube between the vocal folds
-   and the lips. F1 moves with how open the jaw and throat are, F2 with where
-   the tongue sits and how the lips are shaped. Both are stated in Hz and
-   nothing here reads anything into them (PRODUCT.md:109) - deliberately not
-   narrowed the way F0 is: F1/F2 norms are much shakier than F0 norms and
-   move with vowel, height and room, so a narrowed search window is how an
-   analyser starts refusing to find the formants somebody actually has - they
-   are a measurement of a sustained vowel, not a verdict on a voice.
-
-   Pure, like pitch.ts: a buffer in, two numbers or nothing out.
-
-   **The pitch track is a parameter, not something this recomputes.** A
-   formant estimate is only meaningful on a frame that was voiced, and the
-   caller already has the track from pitch.ts. Recomputing YIN here would
-   double the most expensive part of the analysis to learn something already
-   known.
-
-   **The LPC order.** Two poles model one resonance, an adult vocal tract has
-   roughly one formant per kilohertz of bandwidth, and two more poles are
-   wanted for the glottal source's spectral tilt and the lip radiation. So
-   `2 + sampleRate/1000`, which is 18 at the 16 kHz the browser half decodes
-   to. This is the parameter that decides whether formants come out at all:
-   too low merges F1 and F2 into one broad peak, too high splits a single
-   formant into a pair of spurious ones and starts fitting individual
-   harmonics of a high voice. It is derived from the rate rather than written
-   down as 18, because a buffer at another rate would otherwise silently get
-   the wrong model. */
+   LPC order is 2 + sampleRate/1000, or 18 at 16 kHz. Too little order merges
+   resonances. Too much fits spurious peaks or individual harmonics.
+   Derive the order from the actual input rate. */
 
 import type { PitchTrack } from './pitch';
 import { median } from './series';

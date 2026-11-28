@@ -1,13 +1,12 @@
-/* Ticket 04 compatibility check, not a production path: writes a database
-   the way mc-worker.ts did before F-08 pinned the cipher - `PRAGMA hexkey`
-   with no `PRAGMA cipher` first, so sqlite3mc picks whatever its compiled
-   default is. Exists to prove the pin doesn't strand a journal that was
-   already on disk: open the file this writes through the real, pinned
+/* Compatibility check, not a production path: writes a database the way mc-worker.ts did
+   before F-08 pinned the cipher - `PRAGMA hexkey` with no `PRAGMA cipher` first, so
+   sqlite3mc picks whatever its compiled default is. Exists to prove the pin doesn't strand
+   a journal that was already on disk: open the file this writes through the real, pinned
    `createEncryptedWebSqlite` and see whether it still reads.
 
-   A worker for the same reason mc-worker.ts is one - SAHPool's sync access
-   handles only exist inside a worker - and its own worker rather than
-   sharing mc-worker.ts's, because the two must not hold the pool at once. */
+   A worker for the same reason mc-worker.ts is one - SAHPool's sync access handles only
+   exist inside a worker - and its own worker rather than sharing mc-worker.ts's, because
+   the two must not hold the pool at once. */
 
 import sqlite3InitModule, { type Sqlite3Static, type SAHPoolUtil } from '@evolu/sqlite-wasm';
 import { MC_VFS, poolDirectory } from '../../src/lib/data/sqlite/mc-worker.ts';

@@ -20,7 +20,7 @@ import {
   unframeArchive
 } from './container.ts';
 import { packArchive, openArchive, type ArchiveContents } from './pack.ts';
-import { pinnedRows, shownAgendaKinds } from '../pinnedRows.ts';
+import { pinnedRows } from '../pinnedRows.ts';
 import { portablePreferences, type ArchiveJournal } from './payload.ts';
 
 /* The archive parameters take about a second per derivation by design
@@ -52,7 +52,6 @@ async function populatedJournal() {
   await journal.labs.upsertResult({ epochDay: 20000, analyte: 'estradiol', value: 412.5, unit: 'pmol/L' });
   await journal.reminders.upsertReminder({
     title: 'injection',
-    type: 'injection',
     time: '08:00',
     recurrence: 'DAILY',
     interval: null,
@@ -76,20 +75,25 @@ function everyPreferenceSet(): PreferenceValues {
     theme: 'dark',
     palette: 'lesbian',
     language: 'pl',
-    lastWrappedNotifiedPeriodKey: 'DEVICE-LOCAL-ENTRY-ID',
+    lastExportFailureNotifiedAt: 1706000000000,
     lockAfter: 'immediately',
     disguise: true,
     allowScreenCapture: true,
     checkInEnabled: true,
     checkInTime: '07:30',
-    checkInAffirmationsEnabled: false,
     autoExportEnabled: true,
     autoExportSchedule: 'monthly',
     lastBackupAt: 1_700_000_000_000,
     backupNoticeDismissed: true,
-    pinnedRows: ['wear', 'measurements', 'care'],
-    agendaKinds: ['appointment', 'letterUnlock'],
-    onboardingAreas: ['measurements']
+    pinnedRows: ['wear', 'effects', 'care'],
+    onboardingAreas: ['effects'],
+    surfaceOverrides: { 'wear-timer': false },
+    acknowledgements: {
+      snoozes: { 'ready-letter': 1_800_000_000_000 },
+      readLetterIds: ['0b2f6c1e-5d3a-4f7e-9a10-1c2d3e4f5a6b'],
+      greetedLetterIds: ['7e9d4c2a-8b1f-4a3c-b5d6-0f1e2d3c4b5a'],
+      hasEntries: true
+    }
   };
 }
 
@@ -175,9 +179,8 @@ test('a lab result survives the encrypted archive and restores into another jour
   );
 });
 
-/* The floor added for phase 5 security ticket 02 sits on the two fields
-   that choose a password, never on the one that opens an archive: an
-   archive made before that floor existed has to keep opening. */
+/* The floor added sits on the two fields that choose a password, never on the one that
+   opens an archive: an archive made before that floor existed has to keep opening. */
 test('an archive made with a password under the floor still opens', async () => {
   const { contents } = await contentsOf();
 
@@ -187,17 +190,16 @@ test('an archive made with a password under the floor still opens', async () => 
 });
 
 test('the front page somebody arranged survives an archive, in their order', async () => {
-  /* The claim is not that three keys are present - `payload.test.ts` covers
+  /* The claim is not that two keys are present - `payload.test.ts` covers
      the allowlist. It is that a restore lands somebody back on the front
-     page they built: the same rows, in the same order, with the same
-     agenda kinds switched on. So the round trip is asserted through the
+     page they built: the same rows, in the same order. So the round trip is asserted through the
      resolution the screen itself calls, over the preferences as the archive
      hands them back.
 
      The pins deliberately disagree with the onboarding answer travelling
      beside them - three rows against one - so an import that dropped the
      arrangement and fell back to the default would come back as
-     `measurements` alone rather than as a passing test. */
+     `effects` alone rather than as a passing test. */
   const { contents } = await contentsOf();
 
   const { payload } = await unpack(await pack(contents));
@@ -206,9 +208,8 @@ test('the front page somebody arranged survives an archive, in their order', asy
 
   assert.deepEqual(
     pinnedRows(restored, reading).map((row) => row.spec.key),
-    ['wear', 'measurements', 'care']
+    ['wear', 'effects', 'care']
   );
-  assert.deepEqual(shownAgendaKinds(restored), ['appointment', 'letterUnlock']);
 });
 
 test('a wrong password is rejected cleanly, and says only that', async () => {
@@ -241,7 +242,7 @@ test('no device-local preference travels, in the archive or in its plaintext', a
     assert.ok(!plaintext.includes(`"${key}"`), `${key} is in the archive`);
   }
 
-  const deviceLocal = everyPreferenceSet().lastWrappedNotifiedPeriodKey!;
+  const deviceLocal = String(everyPreferenceSet().lastExportFailureNotifiedAt!);
   assert.ok(!plaintext.includes(deviceLocal), 'a device-local value is in the archive');
   assert.ok(
     !new TextDecoder('latin1').decode(archive).includes(deviceLocal),
@@ -289,7 +290,7 @@ test('a file that is not an archive is refused', async () => {
   await assert.rejects(unpack(bytes('PK a zip file, or a photo, or anything else')), UnsupportedArchiveError);
 });
 
-/* The backup health drill (ticket 28): proves an archive still opens
+/* The backup health drill: proves an archive still opens
    without ever handing it a driver or a file store to write into. Every
    case below reuses the same refusals openArchive/unpack already prove -
    the drill's whole point is that it is the restore path with the write
@@ -512,11 +513,10 @@ test('packArchive accepts a custom KeyDerivation function', async () => {
   assert.equal(opened.payload.preferences.name, 'Alicja');
 });
 
-/* Phase 9 audit ticket 11: an export is the one operation in the app that
-   can hold somebody for minutes, and until this it reported nothing. The
-   unit is body bytes rather than photos: the count is settled before the
-   first chunk is encrypted (ADR-0007), and it covers a journal whose
-   photos are all thumbnails as honestly as one that is mostly JPEG. */
+/* An export is the one operation in the app that can hold somebody for minutes, and until
+   this it reported nothing. The unit is body bytes rather than photos: the count is settled
+   before the first chunk is encrypted (ADR-0007), and it covers a journal whose photos are
+   all thumbnails as honestly as one that is mostly JPEG. */
 test('packArchive reports how much of the body has been packed', async () => {
   const { contents } = await contentsOf();
   const reports: { done: number; total: number }[] = [];

@@ -1,7 +1,5 @@
 package dev.engender.app.reminders;
 
-import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.time.LocalDate;
@@ -35,11 +33,16 @@ final class ReminderPlanner {
     /** Quiet hours can leave yesterday's occurrence waiting for this morning.
         Compare delivery times before discarding an elapsed rule occurrence. */
     static ZonedDateTime nextReminder(JSONObject reminder, ZonedDateTime now, JSONObject quietHours) {
+        ZonedDateTime occurrence = nextReminderOccurrence(reminder, now, quietHours);
+        return occurrence == null ? null : QuietHours.hold(occurrence, quietHours);
+    }
+
+    static ZonedDateTime nextReminderOccurrence(JSONObject reminder, ZonedDateTime now, JSONObject quietHours) {
         ZonedDateTime cursor = now.toLocalDate().minusDays(1).atStartOfDay(now.getZone()).minusNanos(1);
         ZonedDateTime candidate;
         while ((candidate = nextReminder(reminder, cursor)) != null) {
             ZonedDateTime held = QuietHours.hold(candidate, quietHours);
-            if (held.isAfter(now)) return held;
+            if (held.isAfter(now)) return candidate;
             cursor = candidate;
         }
         return null;
@@ -82,34 +85,18 @@ final class ReminderPlanner {
         return todayAt.isAfter(now) ? todayAt : occurrenceOn(today + 1, time, now.getZone());
     }
 
-    /** Cached WEEKLY rules have no recorded weekday. Keep the old planner's
-        next occurrence once, then persist that day as a seven-day anchor. */
-    static boolean anchorLegacyWeeklyRules(JSONObject payload, ZonedDateTime now) throws JSONException {
-        JSONArray reminders = payload.optJSONArray("reminders");
-        if (reminders == null) return false;
-        boolean changed = false;
-        int today = (int) now.toLocalDate().toEpochDay();
-        for (int i = 0; i < reminders.length(); i++) {
-            JSONObject reminder = reminders.optJSONObject(i);
-            if (reminder == null || !"WEEKLY".equals(reminder.optString("recurrence"))) continue;
-            ZonedDateTime todayAt = occurrenceOn(today, reminder.optString("time", "00:00"), now.getZone());
-            int anchor = todayAt.isAfter(now) ? today : today + 7;
-            reminder.put("recurrence", "EVERY_N_DAYS");
-            reminder.put("interval", 7);
-            reminder.put("anchorEpochDay", anchor);
-            reminder.put("epochDay", JSONObject.NULL);
-            changed = true;
-        }
-        return changed;
-    }
-
+    /** When the daily check-in fires next, or null when it is switched off.
+        The same rule as src/lib/reminders/checkIn.ts's nextCheckIn, held to
+        it by check-in-rule.json (CheckInRuleFixtureTest): silent through
+        `checkInPausedThrough`, and a day that already has an entry - or
+        whose prompt quiet hours would deliver on it - asks nothing. */
     static ZonedDateTime nextCheckIn(JSONObject payload, ZonedDateTime now) {
         if (!payload.optBoolean("checkInEnabled", false)) return null;
         String time = payload.optString("checkInTime", "21:00");
         int today = (int) now.toLocalDate().toEpochDay();
         int latestEntryDay = payload.optInt("latestEntryEpochDay", Integer.MIN_VALUE);
-        ZonedDateTime candidate = occurrenceOn(today - 1, time, now.getZone());
-        JSONArray pauses = payload.optJSONArray("journalingPauses");
+        int pausedThrough = pausedThrough(payload);
+        ZonedDateTime candidate = occurrenceOn(Math.max(today - 1, pausedThrough + 1), time, now.getZone());
 
         while (true) {
             int day = (int) candidate.toLocalDate().toEpochDay();
@@ -120,30 +107,21 @@ final class ReminderPlanner {
                 candidate = occurrenceOn(day + 1, time, now.getZone());
                 continue;
             }
-            JSONObject pause = coveringPause(pauses, day);
-            if (pause == null) pause = coveringPause(pauses, deliveryDay);
-            if (pause == null) return held;
-            if (pause.isNull("endEpochDay")) return null;
-            candidate = occurrenceOn(pause.optInt("endEpochDay") + 1, time, now.getZone());
+            return held;
         }
     }
 
+    /** Whether the check-in may fire on `day` at all: switched on, and past
+        the last paused day. Asked again when the alarm fires, so a pause set
+        after the alarm was scheduled still holds. */
     static boolean checkInAllowedOn(JSONObject payload, int day) {
-        return payload.optBoolean("checkInEnabled", false)
-            && coveringPause(payload.optJSONArray("journalingPauses"), day) == null;
+        return payload.optBoolean("checkInEnabled", false) && day > pausedThrough(payload);
     }
 
-    private static JSONObject coveringPause(JSONArray pauses, int day) {
-        if (pauses == null) return null;
-        for (int i = 0; i < pauses.length(); i++) {
-            JSONObject pause = pauses.optJSONObject(i);
-            if (pause == null || !pause.has("startEpochDay")) continue;
-            int start = pause.optInt("startEpochDay", Integer.MAX_VALUE);
-            int end = pause.isNull("endEpochDay") ? Integer.MAX_VALUE
-                : pause.optInt("endEpochDay", Integer.MIN_VALUE);
-            if (start <= day && day <= end) return pause;
-        }
-        return null;
+    /** The last silent day, or MIN_VALUE when the check-in is not paused. */
+    private static int pausedThrough(JSONObject payload) {
+        if (payload.isNull("checkInPausedThrough")) return Integer.MIN_VALUE;
+        return payload.optInt("checkInPausedThrough", Integer.MIN_VALUE);
     }
 
     private static ZonedDateTime occurrenceOn(int epochDay, String hhmm, ZoneId zone) {

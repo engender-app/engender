@@ -1,53 +1,16 @@
 <script lang="ts">
-  /* Arranging Today (phase 10 redesign ticket 14; ADR-0073, ADR-0067,
-     ADR-0043).
+  /* Arrange Today in place (ADR-0073, ADR-0067). The editor grows from the block it changes
+     and offers current pins, available pins, tile switches, reset and Done. pinnedRows.ts
+     owns all arrangement rules.
 
-     Ticket 05 made the front page a set the person put there and gave it a
-     default. This is where they change it, which is the whole point of the
-     feature: the app ranks nothing centrally and infers nothing, so the
-     only way Today becomes theirs is a surface where they say so.
+     Drag from the handle so the rest of the row still scrolls. Pointer moves measure each
+     row's box and shift intervening rows aside. The same handle accepts arrow keys and
+     moves one place through travelFrom.
 
-     One edit mode, four things in it, in the order somebody works through
-     them: the rows they have, the rows they could add, the tiles Today may
-     put above them, and the kinds of dated thing the agenda is allowed to
-     draw. Then the two exits - back to the default set, and done.
-
-     There is no per-row menu and no second reset (the ticket's own scope),
-     and nothing here sorts, scores, suggests or highlights: every rule about what the arrangement becomes
-     is `pinnedRows.ts`'s, and this file only says which gesture calls
-     which of them.
-
-     The tiles joined in phase 11 ticket 04. They were switched at
-     /settings/live-tiles, which is two taps and a screen away from the row
-     directly under them, so one front page was curated in two places - the
-     tell, as the ticket puts it, that tiles and pins are one system. Same
-     preferences, same registry, no migration: only the switches moved.
-
-     **Why it is not a screen.** The rows being arranged are the rows on
-     Today, so the arrangement happens where they are - the surface grows
-     out of the block it edits, at the place in the page where that block
-     sits. A route would have meant looking at a copy of the list somewhere
-     else, and it would have owed a screen registry entry, a header and a
-     back control for a mode that is two taps long.
-
-     **The drag.** Pointer events rather than HTML5 drag-and-drop, which
-     has no touch story at all, and a handle rather than the whole row:
-     dragging from anywhere on a row makes a list you cannot scroll with a
-     thumb. The gesture is measured against the rows' own boxes, so a
-     one-line row and a two-line row are each their own height rather than
-     a guessed constant, and the rows between the grab and the drop shift
-     out of the way as it moves. Its keyboard equivalent is on the same
-     handle - the arrow keys move a row one place, which is the whole of
-     what the drag does - and that move animates through `travelFrom`
-     ($lib/motion/reorder.svelte.ts, shared with Things that help), since a
-     row that teleports is exactly what DIRECTION.md's motion brief rules
-     out.
-
-     **What the person can see is not the whole arrangement.** A pin whose
-     area is hidden stays stored and draws nothing (`pinnedRows.ts`), so
-     every write here is stated as row keys - "put this one where that one
-     is" - and never as an index into what is on screen. */
-  import { tick } from 'svelte';
+     Pins for hidden areas remain stored. Write reorders against row keys because the
+     visible positions omit those pins. */
+  import { onMount, tick } from 'svelte';
+  import { focusNamedTarget } from '$lib/navigation/arrivalFocus';
   import { m } from '$lib/paraglide/messages';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { liveQuery } from '$lib/data/live/journal.svelte';
@@ -56,24 +19,19 @@
     addablePins,
     movedPin,
     pinArrangement,
-    shownAgendaKinds,
-    withAgendaKind,
     withoutPin,
     withPin,
     type PinnedRow
   } from '$lib/data/pinnedRows';
   import type { HubReading, HubRowKey } from '$lib/data/hubRows';
-  import { DAY_AHEAD_MARK_KINDS, type DayAheadMarkKind } from '$lib/data/journal/dayAhead';
-  import { LIVE_TILE_DRAW_ORDER, LIVE_TILE_PREF_KEY, type LiveTileKind } from '$lib/data/liveTiles';
-  import { PREFERENCE_DEFAULTS } from '$lib/data/prefs/catalogue';
-  import { UNPROMPTED_ROWS } from '$lib/unprompted/registry';
+  import { LIVE_TILE_DRAW_ORDER, type LiveTileKind } from '$lib/data/liveTiles';
+  import { UNPROMPTED_ROWS, surfaceOn, withSurface } from '$lib/unprompted/registry';
   import { hubRowLine, hubRowTitle } from '$lib/data/vocabulary/hubLabels';
   import { ListDrag, measureTops, travelFrom } from '$lib/motion/reorder.svelte';
   import { maskHeight } from '$lib/motion/reveal';
   import { announce } from '$lib/stores/announcer.svelte';
   import { isReducedMotion, motionDuration } from '$lib/motion/tokens';
   import type { Role } from '$lib/theme/roles';
-  import { dayAheadMarkLabel } from './dayAheadRows';
   import Icon from './Icon.svelte';
   import Switch from './Switch.svelte';
   import ConfirmDeleteSheet from './kit/ConfirmDeleteSheet.svelte';
@@ -94,27 +52,25 @@
     pinned: PinnedRow[];
     /** The hub's one assembled read, for the add list's own lines. */
     reading: HubReading;
-    /** Today's own second hand, handed down rather than started again here
-        (ADR-0051): a wear session running while somebody is arranging their
+    /** Today's own second hand, handed down rather than started again here:
+        a wear session running while somebody is arranging their
         front page counts up in the list they are arranging. */
     nowMs: number;
     /** The stripe the pinned area of Today takes. The whole edit mode is
-        that one area (DIRECTION.md 3), so its three lists share it. */
+        one area across its three lists. */
     role?: Role;
     onDone: () => void;
   } = $props();
 
-  /* ADR-0043's gate, read here rather than by Today: it is only ever
-     needed while somebody is looking at the add list, and this component
-     is the only thing that mounts then. Today would have had to carry the
-     query on every load to hand the answer down. */
+  /* The gate, read here rather than by Today: it is only ever needed while somebody is
+     looking at the add list, and this component is the only thing that mounts then. Today
+     would have had to carry the query on every load to hand the answer down. */
   let episodesQuery = liveQuery((j) => j.regimen.getEpisodes());
   let cycleVisible = $derived(
-    cycleTrackingVisible(episodesQuery.value ?? [], Date.now(), prefs.cycleTrackingEnabled, prefs.cycleTrackingChoice)
+    cycleTrackingVisible(episodesQuery.value ?? [], Date.now(), prefs.cycleTrackingChoice)
   );
 
   let addable = $derived(addablePins(prefs, reading, { cycleVisible }));
-  let kindsOn = $derived(new Set(shownAgendaKinds(prefs)));
 
   /* Every write goes through the arrangement rather than through what is
      drawn, and materialises the default the first time (ADR-0073: the
@@ -124,23 +80,22 @@
   }
 
   async function unpin(key: string) {
+    const next = pinned[pinned.findIndex((row) => row.spec.key === key) + 1]?.spec.key;
     const before = beforeWrite();
     prefs.pinnedRows = withoutPin(arrangement(), key);
     await afterWrite(before);
+    focusNamedTarget(next ? listEl?.querySelector(`[data-edit-unpin="${next}"]`) : editor?.querySelector('h2'));
   }
 
   async function pin(key: HubRowKey) {
     const before = beforeWrite();
     prefs.pinnedRows = withPin(arrangement(), key);
     await afterWrite(before);
+    focusNamedTarget(listEl?.querySelector(`[data-edit-unpin="${key}"]`));
   }
 
   function move(key: string, targetKey: string) {
     prefs.pinnedRows = movedPin(arrangement(), key, targetKey);
-  }
-
-  function toggleKind(kind: DayAheadMarkKind, on: boolean) {
-    prefs.agendaKinds = withAgendaKind(prefs, kind, on);
   }
 
   /* The tiles' own titles and lines, off the registry that already carries
@@ -152,42 +107,31 @@
   );
 
   function toggleTile(kind: LiveTileKind, on: boolean) {
-    prefs[LIVE_TILE_PREF_KEY[kind]] = on;
+    prefs.surfaceOverrides = withSurface(prefs.surfaceOverrides, kind, on);
   }
 
-  /** Back to what onboarding was told, which is null rather than a list:
-      an arrangement written back as the default set would be a set nobody
-      chose, and the next answer to onboarding's question would not reach
-      it. The switches go with it, both kinds - one edit mode, one reset.
-
-      The tiles come back from `PREFERENCE_DEFAULTS` rather than from a
-      null, because each of the thirteen is its own boolean in the catalogue
-      and has no unset state to resolve. Read from that file rather than
-      written as `true` thirteen times: what the app ships with is that
-      file's to say, and a default changed there would otherwise leave this
-      one handing back the old answer.
-
-      Behind a question, unlike every other write on this surface. The rest
-      are each one row and each undone by one tap; this is the only one that
-      throws away work, and what it throws away is somebody's own curation -
-      the row they took off because an anniversary is painful, the kind they
-      switched off during a taper. A stray tap on the button under Done may
-      not cost that silently. Unpinning stays unconfirmed for the same
-      reason read the other way: a row somebody wants gone should go the
-      moment they say so. */
+  /**
+    * Reset pins to null so future onboarding choices still determine
+    * defaults. Remove the displayed tile kinds' surfaceOverrides so
+    * they follow the registry again. Preserve other overrides.
+    *
+    * Ask before resetting because this discards someone's curation.
+    * Individual changes remain immediate and reversible.
+    */
   let resetAsked = $state(false);
 
   function reset() {
     resetAsked = false;
     prefs.pinnedRows = null;
-    prefs.agendaKinds = null;
-    for (const kind of LIVE_TILE_DRAW_ORDER) {
-      const key = LIVE_TILE_PREF_KEY[kind];
-      prefs[key] = PREFERENCE_DEFAULTS[key];
-    }
+    let overrides = prefs.surfaceOverrides;
+    for (const kind of LIVE_TILE_DRAW_ORDER) overrides = withSurface(overrides, kind, surfaceOn({}, kind));
+    prefs.surfaceOverrides = overrides;
   }
 
   /* ---------- the drag ---------- */
+
+  let editor: HTMLElement;
+  onMount(() => focusNamedTarget(editor.querySelector('h2')));
 
   let listEl: HTMLElement | undefined = $state();
   /** The add list's own box, so a row leaving it closes the same way one
@@ -221,16 +165,10 @@
     travelFrom(rowElements(), rowKey, before);
   }
 
-  /* ---------- a row arriving and leaving ----------
-
-     Neither list may cut. A pin added and a pin taken off are the two state
-     changes this surface makes most, and DIRECTION.md's motion brief is
-     that a list row leaves by closing its own height with the rows below
-     closing up after it. So a write is bracketed: measure both lists and
-     the rows in them, write, then clip each list from the height it had to
-     the height it now has (`maskHeight`, the primitive the Journal door's
-     month already uses) while every row that survived travels from where it
-     stood (`travelFrom`, the reorder module's FLIP). */
+  /* Animate a pinned row's arrival or departure. Measure both lists and
+     their rows before the write. Then maskHeight clips each list from its
+     old height to its new one and travelFrom moves surviving rows from
+     their old positions. */
 
   /** Where both lists and the pinned rows stand, taken before a write. */
   function beforeWrite() {
@@ -273,8 +211,8 @@
     const handle = listEl?.querySelector<HTMLElement>(`[data-edit-grip="${key}"]`);
     handle?.focus();
     travelFrom(rowElements(), rowKey, before);
-    /* The row travels where it can be seen; this says where it went to
-       somebody who cannot see it (after-release 21, audit L05-08). */
+    /* The row travels where it can be seen; this says where it went to somebody who cannot
+       see it. */
     announce(m.home_edit_moved({ position: String(at + delta + 1), total: String(pinned.length) }));
   }
 
@@ -289,7 +227,7 @@
   }
 </script>
 
-<div class="today-editor" data-today-editor>
+<div class="today-editor" data-today-editor bind:this={editor}>
   <SectionHeading text={m.home_edit_heading()} />
   <p class="today-editor-hint" id="today-editor-hint">{m.home_edit_hint()}</p>
 
@@ -375,27 +313,9 @@
     </div>
   {/if}
 
-  <!-- The tiles, in the order Home draws them: the three bands outside and
-       the kinds inside each one (`LIVE_TILE_DRAW_ORDER`), so the list reads
-       down the page the way the page does rather than alphabetically or in
-       the order the tiles were written. No icon on the row, unlike the pins
-       and the agenda kinds above: a tile has none on Today either, and
-       inventing thirteen of them here would name each tile a second way in
-       the one place both names would be read at once.
-
-       Each row keeps the registry's line, for the reason the add list above
-       keeps its own and the pinned list drops them: a line under a row being
-       dragged is in the way, and a line under a row being decided about is
-       the decision. "Revisit" and "Active tryout" are not self-evident, and
-       the screen these switches came from stated what each one puts in front
-       of you (the impeccable critique's own first finding, 2026-09-16).
-
-       Every kind, including one whose area is hidden or finished. The
-       switch means "never show me this kind" rather than "hide the instance
-       that is true today" (ADR-0039's amendment), so it answers a different
-       question from the area's own state, and a list that dropped rows
-       would make somebody turn an area back on to find the switch they came
-       for. -->
+  <!-- Match Home's band and tile order through LIVE_TILE_DRAW_ORDER. Keep the registry's
+       explanatory line next to each switch. Include hidden and finished areas because a
+       switch disables a kind independently of its area's current state. -->
   <SectionHeading text={m.home_edit_tiles_heading()} />
   <p class="today-editor-hint">{m.home_edit_tiles_hint()}</p>
   <div class="today-editor-tiles">
@@ -406,7 +326,7 @@
         <ListRow static key={kind} {title} subtitle={label?.line?.()} data-edit-tile={kind}>
           {#snippet trailing()}
             <Switch
-              checked={prefs[LIVE_TILE_PREF_KEY[kind]]}
+              checked={surfaceOn(prefs.surfaceOverrides, kind)}
               label={title}
               onChange={(on) => toggleTile(kind, on)}
             />
@@ -416,36 +336,9 @@
     </ListCard>
   </div>
 
-  <!-- The agenda's five kinds (ADR-0067), each named the way the agenda
-       itself names it, so a switch says exactly which rows it stops. A
-       switch rather than a dismissal is the point: a kind somebody does not
-       want is otherwise one they dismiss every week for the life of the
-       journal. -->
-  <SectionHeading text={m.home_edit_agenda_heading()} />
-  <ListCard {role}>
-    {#each DAY_AHEAD_MARK_KINDS as kind (kind)}
-      {@const label = dayAheadMarkLabel(kind)}
-      <ListRow
-        static
-        key={kind}
-        icon={label.icon}
-        title={label.title}
-        data-edit-kind={kind}
-      >
-        {#snippet trailing()}
-          <Switch
-            checked={kindsOn.has(kind)}
-            label={label.title}
-            onChange={(on) => toggleKind(kind, on)}
-          />
-        {/snippet}
-      </ListRow>
-    {/each}
-  </ListCard>
-
   <div class="today-editor-exits">
     <button type="button" class="btn btn-primary" data-edit-done onclick={onDone}>
-      <span>{m.home_edit_done()}</span>
+      <span>{m.done()}</span>
     </button>
     <button type="button" class="btn btn-ghost" data-edit-reset onclick={() => (resetAsked = true)}>
       <span>{m.home_edit_reset()}</span>
@@ -503,11 +396,8 @@
     outline: 1px solid var(--outline);
   }
 
-  /* Under 350px the icon block goes. At 320 the title column left over is
-     about 100px and "measurements" is 118, so the word broke into
-     "measurement" and a stranded "s"; the block names the area a second
-     time and the title already does that, and dropping it hands the title
-     the 48px it needs to stay on one line. */
+  /* Under 350px the icon block goes. It repeats the area's title and takes
+     48px from text that may already need to wrap. */
   @media (max-width: 350px) {
     .today-editor-list :global(.kit-row-ico) {
       display: none;
@@ -522,7 +412,7 @@
      today". So both rows become two lines, the text across the whole of the
      row and the controls under it at the trailing edge.
 
-     A row is 48 one line and 60 with a subtitle (DIRECTION.md 6). This is
+     A list row is 48px with one line or 60px with a subtitle. This is
      neither: it is one row wearing its controls at the accessibility floor,
      and 200% zoom is where the floor and the row disagree. */
   @media (max-width: 260px) {
@@ -573,7 +463,7 @@
     border-radius: var(--r-block);
   }
 
-  /* 20 between two blocks of one section (DIRECTION.md 1); the two exits
+  /* Leave 20px between blocks. The two exits
      are one block, 8 apart inside it. */
   .today-editor-exits {
     display: grid;

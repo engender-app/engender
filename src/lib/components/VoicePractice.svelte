@@ -1,32 +1,11 @@
 <script lang="ts">
-  /* Practising, with the live graph (phase 8 features tickets 09 and 10).
-
-     The benchmark flow is a measurement: a fixed passage, a held note, a
-     quality gate, a row written down. Practising is the other thing a
-     person does with a voice app - ticket 09 gave it the live figure, and
-     this ticket gives it something to keep: stopping offers a felt-sense
-     rating and a save, never both at once as a single "recording saved"
-     step, because the two observations the practice material is built on
-     (ears improve faster than muscles, and one bad take is one data point)
-     argue for asking how it felt before anything about the numbers is
-     shown at all - the numbers stay behind the seal `journal.voicePracticeTakes`
-     puts on every take until tomorrow (schema.ts's own note on why).
-     Declining to save is still there; `stop()` calls `finish()` now rather
-     than `discard()`, but nothing is written until Save is pressed, and
-     nothing is asked if the take captured no voice at all.
-
-     The gate's readings are still worth having, because the room and the
-     level are what make the trace trustworthy: a figure drawn from a take
-     that is clipping is a figure about the microphone. So the same advice
-     line runs, and it is the only thing on this tab that mentions the
-     recording while it is running.
-
-     One live audio component in the tree (ticket 09): this is a third
-     caller of VoiceGauge, not a second gauge. */
+  /* Practice shares VoiceGauge for live feedback about room and level.
+     After a nonempty take, ask how it felt before offering Save.
+     journal.voicePracticeTakes seals the numbers until tomorrow. Stopping
+     only finishes the capture, and only Save writes a take. */
   import { onDestroy } from 'svelte';
   import { m } from '$lib/paraglide/messages';
-  import { getLocale } from '$lib/paraglide/runtime';
-  import { bandsFor, comfortBand } from '$lib/audio/bands';
+  import { comfortBand } from '$lib/audio/bands';
   import { trackPitch, type PitchFrame } from '$lib/audio/pitch';
   import { practiceTakeStats, type PracticeTakeStats } from '$lib/audio/practiceTake';
   import { SPEECH_GATE, type QualityCheck, type QualityReport } from '$lib/audio/quality';
@@ -53,12 +32,11 @@
   const READING_MS = 100;
   /** Two seconds of trace on screen, at the tracker's 10 ms frame. */
   const TRACE_FRAMES = 200;
-  /** The ordinary use of this tab runs five to ten minutes, and nothing
-      bounded a single take before this (phase 8 audit issue 04). The poll no
-      longer costs more the longer the take runs (issue 05), so this is not
-      holding the gauge up any more - it is here because an unbounded take is
-      an unbounded recording, and two minutes cuts off only the excess of an
-      ordinary session, not the practising. */
+  /** The ordinary use of this tab runs five to ten minutes, and nothing bounded a single
+      take before this. The poll no longer costs more the longer the take runs,
+      so this is not holding the gauge up any more - it is here because an unbounded take is
+      an unbounded recording, and two minutes cuts off only the excess of an ordinary
+      session, not the practising. */
   const PRACTISE_CEILING_SECONDS = 120;
 
   let running = $state(false);
@@ -69,28 +47,19 @@
 
   /** Set once a stopped take has something to keep - the figures never
       shown here, only used to save them, so the review step cannot become
-      a second place to read a number the seal is meant to hold back
-      (vb_practice_sealed_note). */
+      a second place to read a number the seal is meant to hold back. */
   let review = $state<PracticeTakeStats | null>(null);
   let feltSense = $state<number | null>(null);
   const saving = writer();
 
   let session: TakeSession | null = null;
   let poll: ReturnType<typeof setInterval> | null = null;
-  /** Live only across the microphone-opening await, so `onDestroy` can abort
-      it if the screen goes before `start()` returns (voiceBenchmark.ts's
-      `startTake`, ticket AU-03). */
+  /** Live only across the microphone-opening await, so `onDestroy` can abort it if the
+      screen goes before `start()` returns (voiceBenchmark.ts's `startTake`). */
   let opening = $state<AbortController | null>(null);
 
   let role = $derived(roleAt(activeFlag.roles, 0));
   let comfort = $derived(comfortBand(prefs.voiceComfortLowHz, prefs.voiceComfortHighHz));
-  /* Practising reads nothing, so there is no passage to take a language
-     from and the app's is a guess at what is being spoken - which is what
-     `bandsFor` returns for an empty key, `guessed` included. The bands are
-     per language because pitch is, and a band drawn for the wrong
-     population is worse than no band (ADR-0059). */
-  let bands = $derived(bandsFor('', getLocale()));
-
   /** The gate's findings, in words, and only ever about the recording.
       `SPEECH_GATE` asks nothing about length, so there is nothing to filter
       out of this any more: on this tab a short stretch of speech is a short
@@ -172,9 +141,8 @@
     review = practiceTakeStats(track.frames);
   }
 
-  /* Confirms the way the benchmark's save does, and a failed write leaves
-     the take in review with a toast instead of both buttons disabled for
-     good (after-release 06, L05-06). */
+  /* Confirms the way the benchmark's save does, and a failed write leaves the take in
+     review with a toast instead of both buttons disabled for good. */
   async function saveTake() {
     const take = review;
     if (!take) return;
@@ -226,7 +194,6 @@
     <div class="screen-part vp-body">
       <SectionHeading text={m.vb_practice_review_heading()} />
       <MoodPicker value={feltSense} onPick={(v) => (feltSense = v)} />
-      <p class="muted small vp-sealed-note">{m.vb_practice_sealed_note()}</p>
     </div>
 
     <SaveBar arrange="row">
@@ -234,20 +201,16 @@
         <span>{m.vb_practice_discard()}</span>
       </button>
       <button class="btn btn-primary" data-vp-save disabled={saving.busy} onclick={saveTake}>
-        <Icon name="check" size={20} /><span>{m.vb_practice_save()}</span>
+        <Icon name="check" size={20} /><span>{m.save()}</span>
       </button>
     </SaveBar>
   {:else}
     <div class="screen-part vp-body">
-      <p class="muted small vp-lead">{m.vb_practise_lead()}</p>
-
       {#if running}
         <VoiceGauge
           data-vp-gauge
           {role}
           {comfort}
-          language={bands.language}
-          languageGuessed={bands.guessed}
           {frames}
           report={reading}
           targetSeconds={null}
@@ -263,11 +226,11 @@
     <SaveBar>
       {#if running}
         <button class="btn btn-primary" data-vp-stop onclick={stop}>
-          <Icon name="pause" size={20} /><span>{m.vb_stop()}</span>
+          <Icon name="pause" size={20} /><span>{m.stop_recording()}</span>
         </button>
       {:else}
         <button class="btn btn-primary" data-vp-start disabled={opening !== null} onclick={start}>
-          <Icon name="mic" size={20} /><span>{m.vb_record()}</span>
+          <Icon name="mic" size={20} /><span>{m.record()}</span>
         </button>
       {/if}
     </SaveBar>
@@ -275,20 +238,12 @@
 </div>
 
 <style>
-  /* The action bar is sticky and floats over whatever is beneath it at
-     rest, and everything under it here is load-bearing - the figure's
-     caveat, the advice - so the body reserves the bar's own height rather
-     than leaving it to a scroll somebody mid-take cannot make. */
+  /* The screen's own 20 under the panel, which sits a level too deep for the .screen floor
+     to reach. It held 96px here, a reserve for a foot that floated over the content; the
+     foot is the column's flex sibling now and covers nothing. */
   .vp-body {
-    padding-bottom: calc(var(--touch-target) * 2);
+    padding-bottom: var(--space-5);
   }
 
-  .vp-lead {
-    margin: 0 0 var(--space-4);
-  }
-
-  .vp-sealed-note {
-    margin: var(--space-4) 0 0;
-  }
 
 </style>

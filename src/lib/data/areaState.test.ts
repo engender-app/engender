@@ -17,22 +17,22 @@ const TODAY = 20000;
 test('an area with no row is neither hidden nor quiet, and nothing had to say so', () => {
   const states: AreaStates = {};
 
-  assert.equal(areaHidden('measurements', states), false);
-  assert.equal(areaQuiet('measurements', states, TODAY), false);
+  assert.equal(areaHidden('wearSessions', states), false);
+  assert.equal(areaQuiet('wearSessions', states, TODAY), false);
   assert.deepEqual(Object.keys(states), []);
 });
 
 test('hidden and finished are independent: either one alone makes an area quiet', () => {
-  const onlyHidden: AreaStates = { measurements: { hidden: true, finishedEpochDay: null, suspendedEpochDay: null } };
-  const onlyFinished: AreaStates = { measurements: { hidden: false, finishedEpochDay: 19900, suspendedEpochDay: null } };
+  const onlyHidden: AreaStates = { wearSessions: { hidden: true, finishedEpochDay: null, suspendedEpochDay: null } };
+  const onlyFinished: AreaStates = { wearSessions: { hidden: false, finishedEpochDay: 19900, suspendedEpochDay: null } };
 
-  assert.equal(areaHidden('measurements', onlyHidden), true);
-  assert.equal(areaQuiet('measurements', onlyHidden, TODAY), true);
+  assert.equal(areaHidden('wearSessions', onlyHidden), true);
+  assert.equal(areaQuiet('wearSessions', onlyHidden, TODAY), true);
 
   // The whole point of a finished area: it is still readable, so finishing
   // it did not hide it.
-  assert.equal(areaHidden('measurements', onlyFinished), false);
-  assert.equal(areaQuiet('measurements', onlyFinished, TODAY), true);
+  assert.equal(areaHidden('wearSessions', onlyFinished), false);
+  assert.equal(areaQuiet('wearSessions', onlyFinished, TODAY), true);
 });
 
 test('a finish day in the future has not happened yet', () => {
@@ -70,21 +70,17 @@ test('areaStateResting is true only where every field is at rest', () => {
 });
 
 test('one area answering does not answer for another', () => {
-  const states: AreaStates = { hairStages: { hidden: true, finishedEpochDay: 19000, suspendedEpochDay: null } };
+  const states: AreaStates = { personalEffects: { hidden: true, finishedEpochDay: 19000, suspendedEpochDay: null } };
 
-  assert.equal(areaQuiet('hairStages', states, TODAY), true);
-  assert.equal(areaQuiet('hairPhotos', states, TODAY), false);
+  assert.equal(areaQuiet('personalEffects', states, TODAY), true);
+  assert.equal(areaQuiet('sideEffects', states, TODAY), false);
 });
 
-test('the eleven finishable areas are the nine that were approved plus ticket 10s practice take and ticket 12s dilation, voice fronting two of them', () => {
+test('finishable areas include practice takes and dilation, with voice fronting two sections', () => {
   assert.deepEqual([...FINISHABLE_AREAS].sort(), [
-    'hairPhotos',
     'hairRemovalSessions',
-    'hairStages',
-    'measurements',
     'personalEffects',
     'sideEffects',
-    'sizeRecords',
     'taperSessions',
     'voiceBenchmarks',
     'voicePracticeTakes',
@@ -104,17 +100,16 @@ test('every area that is not finishable says why, and no area answers twice', ()
   }
 });
 
-/* ADR-0043's rule is one-directional on purpose: a testosterone regimen or
-   the explicit preference adds the cycle row back, and no preference is what
-   hides it, because read cold an unconditional cycle row is a dysphoria
-   trigger. A uniform bidirectional flag defaulting to shown would delete both
-   the asymmetry and the data-driven unhide, so cycle keeps its own gate and
-   this record does not reach it. The compile error is the load-bearing half;
+/* The rule is one-directional on purpose: a testosterone regimen or the explicit preference
+   adds the cycle row back, and no preference is what hides it, because read cold an
+   unconditional cycle row is a dysphoria trigger. A uniform bidirectional flag defaulting
+   to shown would delete both the asymmetry and the data-driven unhide, so cycle keeps its
+   own gate and this record does not reach it. The compile error is the load-bearing half;
    the four answers below are what a future refactor would have to break. */
 test('cycle tracking keeps its own gate: no row here changes what it answers', () => {
   assert.match(NOT_FINISHABLE.cycleEvents, /ADR-0043/);
 
-  // @ts-expect-error cycleEvents is not a key of this record at all (ADR-0043),
+  // @ts-expect-error cycleEvents is not a key of this record at all
   // so neither gate below can be asked about it and no state can be built that
   // would answer. That is what stops the record reversing a one-directional
   // rule; areaStates.test.ts covers the row a foreign archive could carry.
@@ -124,6 +119,7 @@ test('cycle tracking keeps its own gate: no row here changes what it answers', (
   const testosterone: RegimenEpisode = {
     id: 'ep',
     drug: 'Testosterone cypionate',
+    drugClass: 'hrt',
     ester: 'cypionate',
     dose: 100,
     doseUnit: 'mg',
@@ -135,8 +131,8 @@ test('cycle tracking keeps its own gate: no row here changes what it answers', (
   };
   const noon = 19500 * 24 * 60 * 60 * 1000 + 12 * 60 * 60 * 1000;
 
-  assert.equal(cycleTrackingVisible([], noon, false, null), false);
-  assert.equal(cycleTrackingVisible([], noon, true, null), true);
-  assert.equal(cycleTrackingVisible([testosterone], noon, false, null), true);
-  assert.equal(cycleTrackingVisible([testosterone], noon, true, null), true);
+  assert.equal(cycleTrackingVisible([], noon, null), false);
+  assert.equal(cycleTrackingVisible([], noon, true), true);
+  assert.equal(cycleTrackingVisible([testosterone], noon, null), true);
+  assert.equal(cycleTrackingVisible([testosterone], noon, true), true);
 });

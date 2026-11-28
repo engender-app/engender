@@ -1,4 +1,4 @@
-/* The stats area (ticket 10, ADR-0012). The case this module exists to
+/* The stats area (ADR-0012). The case this module exists to
    settle is the first one: the demo store answered "what is this metric's
    average" with three different numbers depending on which function was
    asked, because two of them multiplied mood by 20 to fake a 0-100 range
@@ -43,7 +43,7 @@ test('one metric, one number: every aggregate reports mood on the 1-to-5 range i
   assert.equal(recap.averageMood, 3);
 });
 
-test('a trashed entry is invisible everywhere in stats (phase 5 ticket 19)', async () => {
+test('a trashed entry is invisible everywhere in stats', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.entries.upsertEntry({ epochDay: 100, mood: 4, tags: ['e-happy'] });
   const trashed = await journal.entries.upsertEntry({ epochDay: 101, mood: 5, tags: ['e-happy'] });
@@ -102,7 +102,7 @@ test('an entry without the metric contributes nothing, and neither does a day ou
   );
 });
 
-/* the day's spread (phase 6 unprompted ticket 11) */
+/* The day's spread */
 
 test('a day reports the lowest and the highest of what was logged on it', async () => {
   const { journal } = await journalWithBuiltIns();
@@ -179,10 +179,9 @@ test('the spread agrees with the average about which days and which entries coun
 });
 
 test('a day reports its earliest and latest reading, which is not its lowest and highest', async () => {
-  /* The calendar splits a two-reading day chronologically (Alicja,
-     2026-09-02), so the read has to answer "which came first" separately
-     from "which was smaller" - and a day that went from good to bad is
-     exactly where the two answers come apart. */
+  /* The calendar splits a two-reading day chronologically, so the read has to answer "which
+     came first" separately from "which was smaller" - and a day that went from good to bad
+     is exactly where the two answers come apart. */
   const { journal } = await journalWithBuiltIns();
   await journal.entries.upsertEntry({ epochDay: 100, timestamp: startOfDayTimestamp(100) + 3600000, mood: 5 });
   await journal.entries.upsertEntry({ epochDay: 100, timestamp: startOfDayTimestamp(100) + 7200000, mood: 2 });
@@ -219,7 +218,7 @@ test('a metric nothing was logged against has no spread rather than an error', a
   assert.deepEqual(await journal.stats.daySpread('no-such-dimension', 100, 100), []);
 });
 
-/* body region trend (ticket 09) */
+/* body region trend */
 
 test('a body-region trend reports per-day averages the same way dayAverages does', async () => {
   const { journal } = await journalWithBuiltIns();
@@ -249,7 +248,7 @@ test('the two axes of a region trend independently, and an unlogged axis is abse
     mood: 3,
     bodyRegions: { chest: 80 } // euphoria 60
   });
-  // A region is one value now (ticket 39, ADR-0081), so a day carrying
+  // A region is one value now, so a day carrying
   // both a dysphoria and a euphoria reading needs two entries rather than
   // one row's two axes - the independence this test is about lives at the
   // day level, not the row.
@@ -285,7 +284,7 @@ test('a region nothing was ever logged against comes back empty rather than thro
   assert.deepEqual(await journal.stats.bodyRegionTrend('genitals', 'dysphoria', 100, 100), []);
 });
 
-test('a body-region trend filters by presentation, and partitions the unfiltered view (ADR-0048, ticket 18)', async () => {
+test('a body-region trend filters by presentation, and partitions the unfiltered view (ADR-0048)', async () => {
   const { journal } = await journalWithBuiltIns();
   const girl = await journal.presentations.addPresentation('Girl mode', 0);
   const boy = await journal.presentations.addPresentation('Boy mode', 1);
@@ -325,56 +324,39 @@ test('a body-region trend filters by presentation, and partitions the unfiltered
   assert.equal(totalCount(byGirl) + totalCount(byBoy) + totalCount(byNone), totalCount(unfiltered));
 });
 
-/* wear-time trend (phase 5 ticket 04) */
+/* Weekly wear hours. Epoch day 4 is Monday. */
 
-test('a wear-time trend averages completed sessions per day, in hours', async () => {
+test('weekly hours sum sessions and split a Sunday night across calendar weeks', async () => {
   const { journal } = await journalWithBuiltIns();
+  await journal.wearSessions.upsertSession({ kind: 'binder', startTimestamp: startOfDayTimestamp(10) + 23 * 3600000, durationMs: 3 * 3600000 });
+  await journal.wearSessions.upsertSession({ kind: 'tucking', startTimestamp: startOfDayTimestamp(11) + 9 * 3600000, durationMs: 2 * 3600000 });
 
-  await journal.wearSessions.upsertSession({ kind: 'binder', startTimestamp: startOfDayTimestamp(100) + 9 * 3600000, durationMs: 4 * 3600000 });
-  await journal.wearSessions.upsertSession({ kind: 'binder', startTimestamp: startOfDayTimestamp(100) + 15 * 3600000, durationMs: 2 * 3600000 });
-  await journal.wearSessions.upsertSession({ kind: 'binder', startTimestamp: startOfDayTimestamp(101) + 9 * 3600000, durationMs: 6 * 3600000 });
-
-  assert.deepEqual(await journal.stats.wearTimeTrend(100, 101), [
-    { day: 100, value: 3, count: 2 },
-    { day: 101, value: 6, count: 1 }
+  assert.deepEqual(await journal.stats.weeklyWearHours(4, 17, startOfDayTimestamp(18)), [
+    { weekStart: 4, hours: 1 },
+    { weekStart: 11, hours: 4 }
   ]);
 });
 
-test('a still-running session has no duration to average and is left out of the trend', async () => {
+test('chosen range clips overnight hours even when session started before range', async () => {
   const { journal } = await journalWithBuiltIns();
-
-  await journal.wearSessions.upsertSession({ kind: 'binder', startTimestamp: startOfDayTimestamp(100) + 9 * 3600000, durationMs: null });
-
-  assert.deepEqual(await journal.stats.wearTimeTrend(100, 100), []);
-});
-
-test('a range with no completed session comes back empty rather than throwing', async () => {
-  const { journal } = await journalWithBuiltIns();
-  assert.deepEqual(await journal.stats.wearTimeTrend(100, 100), []);
-});
-
-/* tally trend (ticket 10) */
-
-test('a tally trend counts taps per day, the two kinds kept apart', async () => {
-  const { journal } = await journalWithBuiltIns();
-  await journal.tally.log({ epochDay: 100, kind: 'misgendered' });
-  await journal.tally.log({ epochDay: 100, kind: 'misgendered' });
-  await journal.tally.log({ epochDay: 101, kind: 'misgendered' });
-  await journal.tally.log({ epochDay: 100, kind: 'correctly_gendered' });
-  await journal.tally.log({ epochDay: 102, kind: 'misgendered' }); // outside the queried range
-
-  assert.deepEqual(await journal.stats.tallyTrend('misgendered', 100, 101), [
-    { day: 100, value: 2, count: 2 },
-    { day: 101, value: 1, count: 1 }
+  await journal.wearSessions.upsertSession({ kind: 'binder', startTimestamp: startOfDayTimestamp(10) + 23 * 3600000, durationMs: 3 * 3600000 });
+  assert.deepEqual(await journal.stats.weeklyWearHours(11, 11, startOfDayTimestamp(12)), [
+    { weekStart: 11, hours: 2 }
   ]);
-  assert.deepEqual(await journal.stats.tallyTrend('correctly_gendered', 100, 101), [{ day: 100, value: 1, count: 1 }]);
 });
 
-test('a kind with no events in range comes back empty rather than throwing', async () => {
+test('running session counts through now and splits at midnight', async () => {
   const { journal } = await journalWithBuiltIns();
-  await journal.tally.log({ epochDay: 100, kind: 'misgendered' });
+  await journal.wearSessions.upsertSession({ kind: 'compression', startTimestamp: startOfDayTimestamp(10) + 23 * 3600000, durationMs: null });
+  assert.deepEqual(await journal.stats.weeklyWearHours(10, 11, startOfDayTimestamp(11) + 2 * 3600000), [
+    { weekStart: 4, hours: 1 },
+    { weekStart: 11, hours: 2 }
+  ]);
+});
 
-  assert.deepEqual(await journal.stats.tallyTrend('correctly_gendered', 100, 100), []);
+test('range with no elapsed wear returns no bars', async () => {
+  const { journal } = await journalWithBuiltIns();
+  assert.deepEqual(await journal.stats.weeklyWearHours(100, 100, startOfDayTimestamp(101)), []);
 });
 
 test('a metric key nothing was ever logged against comes back empty rather than throwing', async () => {
@@ -516,7 +498,7 @@ test('a recap of an empty month says so rather than dividing by zero', async () 
   });
 });
 
-/* Photo highlights (phase 4 features ticket 01). A wrapped shows pictures
+/* Photo highlights. A wrapped shows pictures
    from the period it covers, and it reads them off this seam like every
    other number in it - so there is still one range, one recomputation, and
    nothing stored. */
@@ -585,9 +567,8 @@ test("a milestone's photo is a highlight too, and a photo outside the range is n
   ]);
 });
 
-/* A photo moved to another day (the library's "this was taken on") belongs
-   to that day's period, the same way the library itself files it
-   (after-release 27, audit L01-08). */
+/* A photo moved to another day (the library's "this was taken on") belongs to that day's
+   period, the same way the library itself files it. */
 test('a photo with a day override counts in the period of its override, not of its entry', async () => {
   const { journal } = await journalWithBuiltIns();
   const before = await journal.entries.upsertEntry({ epochDay: 50, mood: 3 });
@@ -666,7 +647,7 @@ test('a hidden dimension is not the one a recap volunteers', async () => {
 /* Entries per day, which is not the same question as the metric's day
    average: the calendar shades a day by the metric but links it by whether
    anything was logged at all, so a day with entries that carry no value for
-   the metric charted is still a day with entries (ticket 08). */
+   the metric charted is still a day with entries. */
 
 test('entryCountsByDay counts every entry on a day, metric or no metric', async () => {
   const { journal } = await journalWithBuiltIns();
@@ -688,9 +669,8 @@ test('entryCountsByDay over a range with nothing in it is empty', async () => {
   assert.deepEqual(await journal.stats.entryCountsByDay(200, 230), []);
 });
 
-/* On-this-day's good-day rule (ticket 03, CONTEXT: Good day): a day average
-   mood at or above the mood scale's midpoint, a euphoria capture, or
-   either - and nothing else ever qualifies a day. */
+/* On-this-day's good-day rule: a day average mood at or above the mood scale's midpoint, a
+   euphoria capture, or either - and nothing else ever qualifies a day. */
 
 test('a day averaging at or above the mood midpoint is a good day', async () => {
   const { journal } = await journalWithBuiltIns();
@@ -728,7 +708,7 @@ test('a trashed entry\'s body-region euphoria does not make a day good', async (
 });
 
 test('a body region logged with high euphoria makes a day good, with no euphoria tag at all', async () => {
-  // The case ticket 44 was found by: someone whose good day shows up as a
+  // Someone whose good day shows up as a
   // high euphoria on a body region and never a tag.
   const { journal } = await journalWithBuiltIns();
   await journal.entries.upsertEntry({
@@ -794,7 +774,7 @@ test('a euphoria capture on one of several entries is enough, even with a low da
   assert.equal(await journal.stats.isGoodDay(100), true);
 });
 
-// The case ticket 32 was found by: someone whose euphoria is entirely
+// Someone whose euphoria is entirely
 // social or body-specific tags g-soc-eu/g-body-eu faithfully for months
 // and the general g-euphoria tag never once. Neither is the general tag,
 // so the bar must clear on either alone.
@@ -817,7 +797,7 @@ test('a day with nothing logged on it is not a good day', async () => {
   assert.equal(await journal.stats.isGoodDay(100), false);
 });
 
-test('the constellation reads one row per entry that carries both scales (ticket 19)', async () => {
+test('the constellation reads one row per entry that carries both scales', async () => {
   const { journal } = await journalWithBuiltIns();
   const girl = await journal.presentations.addPresentation('Girl mode', 0);
 
@@ -881,7 +861,24 @@ test('a constellation axis naming no scale plots nothing', async () => {
   assert.deepEqual(await journal.stats.constellationReadings('femininity', 'nope', 100, 100), []);
 });
 
-test('presentationDays names the distinct days a presentation was logged under, and only those (ticket 17, ADR-0048)', async () => {
+// The plane offers only pairs it can draw: a pair
+// of scales no entry carries together in the range is not a choice.
+test('constellationPairs counts the entries carrying each pair of scales in the range', async () => {
+  const { journal } = await journalWithBuiltIns();
+  await journal.entries.upsertEntry({ epochDay: 100, timestamp: 1, mood: 3, dims: { femininity: 70, masculinity: 20 } });
+  await journal.entries.upsertEntry({ epochDay: 101, timestamp: 2, mood: 3, dims: { femininity: 40, masculinity: 60 } });
+  // One scale only: pairs with nothing.
+  await journal.entries.upsertEntry({ epochDay: 101, timestamp: 3, mood: 3, dims: { femininity: 90 } });
+  // Out of range, and trashed: neither counts.
+  await journal.entries.upsertEntry({ epochDay: 120, timestamp: 4, mood: 3, dims: { femininity: 1, masculinity: 1 } });
+  const gone = await journal.entries.upsertEntry({ epochDay: 100, timestamp: 5, mood: 3, dims: { femininity: 1, masculinity: 1 } });
+  await journal.entries.deleteEntry(gone);
+
+  assert.deepEqual(await journal.stats.constellationPairs(100, 102), [{ a: 'femininity', b: 'masculinity', count: 2 }]);
+  assert.deepEqual(await journal.stats.constellationPairs(102, 110), []);
+});
+
+test('presentationDays names the distinct days a presentation was logged under, and only those (ADR-0048)', async () => {
   const { journal } = await journalWithBuiltIns();
   const girl = await journal.presentations.addPresentation('Girl mode', 0);
   const boy = await journal.presentations.addPresentation('Boy mode', 1);
@@ -916,13 +913,12 @@ test('a presentation with no days in the range answers with none, not an error',
   assert.deepEqual(await journal.stats.presentationDays(girl.id, 100, 100), []);
 });
 
-test('tagShare counts every tag, uncapped, so a ring can be a ring of the whole (phase 8 UX ticket 03)', async () => {
+test('tagShare counts every tag, uncapped, so a ring can be a ring of the whole', async () => {
   const { journal } = await journalWithBuiltIns();
   /* Four distinct tags, so the recap's own LIMIT 3 would drop one. That drop
      is the whole reason this read exists: a parts-of-a-whole form computes
      each share against the sum of what it is handed, so a top three drawn as
-     a full circle inflates every share and can never show the remainder
-     ADR-0058 requires. */
+       a full circle inflates every share and loses the remainder. */
   await journal.entries.upsertEntry({ epochDay: 100, mood: 3, tags: ['e-tired', 'e-happy'] });
   await journal.entries.upsertEntry({ epochDay: 101, mood: 3, tags: ['e-tired', 'e-calm'] });
   await journal.entries.upsertEntry({ epochDay: 102, mood: 3, tags: ['e-tired'] });
@@ -965,7 +961,53 @@ test('tagShare is bounded by its range at both ends', async () => {
   assert.deepEqual(await journal.stats.tagShare(100, 101), [{ id: 'e-tired', count: 2 }]);
 });
 
-/* the body map's own read (phase 10 redesign ticket 40) */
+/* The share ring on Tags has an "on good days" filter, and a good day here is the same bar
+   on-this-day holds a day to - checked day by day against isGoodDay so the two can never
+   disagree. */
+test('tagShare on good days counts only the days that clear the good-day bar', async () => {
+  const { journal } = await journalWithBuiltIns();
+  // 100: mood average 4, good. 101: mood 1, not good. 102: mood 1 but a
+  // euphoria capture that day, good. 103: two entries averaging 3, good.
+  // 104: mood 2 with a body region at the euphoria floor, good.
+  await journal.entries.upsertEntry({ epochDay: 100, mood: 4, tags: ['e-calm', 'e-tired'] });
+  await journal.entries.upsertEntry({ epochDay: 101, mood: 1, tags: ['e-tired', 'e-sad'] });
+  await journal.entries.upsertEntry({ epochDay: 102, mood: 1, tags: ['e-sad'] });
+  await journal.entries.upsertEntry({ epochDay: 102, mood: 1, tags: ['g-euphoria'] });
+  await journal.entries.upsertEntry({ epochDay: 103, mood: 1, tags: ['e-hopeful'] });
+  await journal.entries.upsertEntry({ epochDay: 103, mood: 5 });
+  await journal.entries.upsertEntry({
+    epochDay: 104,
+    mood: 2,
+    tags: ['e-anxious'],
+    bodyRegions: { chest: euphoriaValue(GOOD_DAY_REGION_EUPHORIA_FLOOR) }
+  });
+
+  const good = [100, 101, 102, 103, 104];
+  const verdicts = await Promise.all(good.map((day) => journal.stats.isGoodDay(day)));
+  assert.deepEqual(verdicts, [true, false, true, true, true]);
+
+  const share = await journal.stats.tagShare(100, 104, { goodDays: true });
+  assert.deepEqual(
+    [...share].sort((a, b) => (a.id < b.id ? -1 : 1)),
+    [
+      { id: 'e-anxious', count: 1 },
+      { id: 'e-calm', count: 1 },
+      { id: 'e-hopeful', count: 1 },
+      { id: 'e-sad', count: 1 },
+      { id: 'e-tired', count: 1 },
+      { id: 'g-euphoria', count: 1 }
+    ]
+  );
+  // Every day, the same read counts day 101 as well.
+  assert.deepEqual(
+    (await journal.stats.tagShare(100, 104)).find((t) => t.id === 'e-tired'),
+    { id: 'e-tired', count: 2 }
+  );
+  // A range with no good day in it answers nothing.
+  assert.deepEqual(await journal.stats.tagShare(101, 101, { goodDays: true }), []);
+});
+
+/* the body map's own read */
 
 test('the body map reads every region at once, each on the side it mostly sat on', async () => {
   const { journal } = await journalWithBuiltIns();

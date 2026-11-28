@@ -1,24 +1,11 @@
-/* NAV-005: a handful of screens hardcoded where "back" goes, so arriving at
-   Day from the Home heat-map and pressing back landed on Calendar - a screen
-   the user never visited. The question this answers is whether there is an
-   in-app entry behind this one to return to; where there is not - a deep
-   link, or a reload - the hardcoded destination is the fallback rather than
-   leaving the app.
+/* Use in-app history for Back. A deep link or reload falls back to the
+   screen's default destination so Back stays inside the app (NAV-005).
 
-   It used to answer that by reading `sveltekit:index` off `history.state`,
-   which SvelteKit no longer writes: the state carries `sveltekit:history`
-   and `sveltekit:navigation` timestamps now, and neither of them counts
-   anything. So the read was `undefined` on every screen and every back
-   control took its fallback - which is how opening an entry from the
-   counterevidence screen landed on that entry's day, and how going into the
-   dose log from a regimen came back to the More hub (Alicja, 2026-08-26).
-   The unit test did not catch it because it stubbed the key itself.
-
-   So the app counts its own depth instead. That is a number this app owns
-   rather than one it reads out of another project's private state, which is
-   the whole reason the old version could rot silently. */
+   Track depth here. SvelteKit no longer stores `sveltekit:index`;
+   its history and navigation timestamps cannot count entries. */
 
 import { goto } from '$app/navigation';
+import { holdScroll } from './scroll-region';
 
 /** Navigations pushed since the entry the app booted on. */
 let depth = 0;
@@ -27,35 +14,23 @@ let depth = 0;
 let replacing = false;
 
 /**
- * Called by the shell for every settled navigation.
- *
- * `enter` is the app arriving on its first entry, which is the floor: from
- * there, back leaves the app. Anything that pushes an entry adds one, and a
- * popstate moves by its own delta - negative going back, positive going
- * forward again. A navigation that replaced the current entry instead of
- * pushing one adds nothing, which is what `replaceRoute` is for: SvelteKit
- * reports it as an ordinary `goto`, so the app has to say so itself.
- *
- * Clamped at zero because the browser's history holds entries from before
- * the app was opened, so a back gesture can walk off the bottom of what this
- * has counted. Left negative, the next navigation would climb back to zero
- * without having pushed anything and the app would think it had somewhere to
- * return to.
+ * Track history depth after each settled navigation. Enter sets the floor.
+ * Push adds one, popstate applies its delta and replaceRoute adds nothing.
+ * Clamp to zero when navigation goes back past the app's first entry.
  */
 export function recordNavigation(type: string, delta?: number | null, sameUrl = false): void {
   depth = depthAfter(type, delta, sameUrl);
   replacing = false;
 }
 
-/** The depth `recordNavigation` will record for a navigation still under
-    way, without recording it: the shell keys what a history entry borrowed
-    by it before the page changes (chrome-tab-origin.ts).
+/** The depth `recordNavigation` will record for a navigation still under way, without
+    recording it: the shell keys what a history entry borrowed by it before the page changes
+    (chrome-tab-origin.ts).
 
-    `sameUrl` is a link or form to the address already showing - tapping
-    the lit tab - which SvelteKit turns into a replaceState of its own
-    accord, so it adds no entry either (a goto() to the same address still
-    pushes, and the caller does not pass it) (after-release 17 review: counted, it put every
-    entry behind it one deep too many). */
+    `sameUrl` is a link or form to the address already showing - tapping the lit tab - which
+    SvelteKit turns into a replaceState of its own accord, so it adds no entry either (a
+    goto() to the same address still pushes, and the caller does not pass it) (review:
+    counted, it put every entry behind it one deep too many). */
 export function depthAfter(type: string, delta?: number | null, sameUrl = false): number {
   if (type === 'enter') return 0;
   if (type === 'popstate') return Math.max(0, depth + (delta ?? 0));
@@ -81,31 +56,21 @@ export function navigationDepth(): number {
 }
 
 /**
- * Navigate by replacing the current history entry rather than pushing one.
+ * Replace the current entry when switching views of the same screen.
+ * SvelteKit reports these as `goto`, so mark the replacement to keep
+ * the app's history depth accurate. The navigation-depth boundary test
+ * requires callers to use this helper.
  *
- * The screens that do this are swapping a view of themselves - wrapped's
- * seven periods, a filter dropping out of a URL - and a pushed entry per
- * swap made back walk the switcher instead of leaving the screen. That part
- * `goto(url, { replaceState: true })` already did. What it could not do is
- * tell the count above, which sees `afterNavigate` report type `goto` and
- * has no way to know no entry was added; so a screen the app booted onto and
- * then replaced looked one deep, and its back control walked out of the app
- * instead of taking its fallback.
- *
- * Going through here rather than passing the option at the call site is what
- * keeps the two facts together. `tests/navigation-depth-boundary.test.ts`
- * holds the rest of the app to it.
- *
- * If the navigation never settles the mark is spent by whichever one settles
- * next, which undercounts by one - back takes its fallback where it could
- * have gone through history. That is the safe direction: a fallback stays
- * inside the app, and walking out of it does not.
+ * If navigation never settles, the next settlement spends the mark.
+ * Undercounting then favors an in-app fallback. Forward `noScroll` to
+ * the app's scroll region as well as SvelteKit.
  */
 export function replaceRoute(
   url: string | URL,
   options?: Omit<NonNullable<Parameters<typeof goto>[1]>, 'replaceState'>
 ): Promise<void> {
   replacing = true;
+  if (options?.noScroll) holdScroll(url);
   return goto(url, { ...options, replaceState: true });
 }
 

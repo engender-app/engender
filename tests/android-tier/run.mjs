@@ -1,44 +1,24 @@
-/* Android tier (ticket 11): the checks that need a real Android runtime.
+/* Run the Android instrumentation suite with npm run test:android.
+   Native checks run on API 26 and the current Android image. They cover
+   the APK's SQLCipher features (ADR-0020), native loading and the Keystore
+   authorization boundary at API 30.
 
-   Neither the Node tier nor the browser tier can answer what this asks.
-   Whether the native SQLite has FTS5 and window functions is a property of
-   the build that ships in the APK, and ticket 08 measured the framework
-   SQLite on API 35 to have no FTS5 at all - which is one of the two reasons
-   the journal is on SQLCipher (ADR-0020). So it is asserted here, on a
-   device, rather than assumed anywhere.
+   Only the current image runs the WebView contract and encryption suites.
+   The API 26 image's Chrome 69 lacks OPFS and current CSS transform support.
+   A real API 26 device can run the same bundle with a current WebView.
 
-   Two emulators, because the spec asks for API 26 and a current Android.
-   They do not run the same set, and the reason is worth knowing.
+   ANDROID_TIER_AVDS accepts a comma-separated list. Unknown AVD names run
+   every suite. The runner builds the probe bundle, starts the emulators and
+   reports the results of tests in android/app/src/androidTest/. */
 
-   The native checks run on both. That is the half that varies with the
-   platform: the framework, the linker and what the app process can load -
-   and, since ticket 13, what Android Keystore does with the journal's data
-   key, whose authorization model changed at API 30.
-
-   The WebView suites - the contract suite and the encryption claim gate -
-   run only on the current Android. They need a WebView,
-   and Android updates its WebView separately from the OS, so an API level
-   says nothing about what the app runs in. The API 26 emulator image ships
-   Chrome 69 from 2018, which has no OPFS - capacitor.config.ts puts the
-   floor at Chrome 87 for exactly that reason - so the app cannot start
-   there at all. A real API 26 phone with a current WebView runs the same
-   bundle as an API 35 one, and that is what the API 35 run covers.
-
-   Set ANDROID_TIER_AVDS to a comma-separated list to run others; an AVD
-   whose name is not known here gets the full set.
-
-   Run with `npm run test:android`.
-
-   It prints PASS/FAIL lines like the browser tier's run.mjs. The tests
-   themselves live in android/app/src/androidTest/; this script builds the
-   probe bundle they serve, brings the emulators up and turns the
-   instrumentation output into those lines. */
-
+import { beginAndroidTier, androidBuildIdentity, writeAndroidTierEvidence } from '../../scripts/android-tier-evidence.mjs';
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, mkdirSync, writeFileSync, mkdtempSync, openSync, closeSync, cpSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { createReporter } from '../browser-harness.mjs';
+import { offlineOcrStage } from './offline-ocr-stage.mjs';
+import { lockedProcessDeath } from './locked-process-death.mjs';
 import { installationRecovery } from './archive/recovery.mjs';
 import { runInstrumentation, reportStage } from './instrumentation.mjs';
 import { startOwnedEmulator, assertOwnedEmulator, stopOwnedEmulator } from './emulator.mjs';
@@ -46,9 +26,27 @@ import { startOwnedEmulator, assertOwnedEmulator, stopOwnedEmulator } from './em
 const here = dirname(fileURLToPath(import.meta.url));
 const repo = resolve(here, '../..');
 const androidDir = join(repo, 'android');
-const { ok, fail, finish } = createReporter();
+const reporter = createReporter();
+const finish = reporter.finish;
+const startEvidence = beginAndroidTier(repo);
+const evidenceRuns = [];
+let activeRun;
+let failureCount = 0;
+const ok = (name) => { activeRun?.completedChecks.push(name); reporter.ok(name); };
+const fail = (name, detail) => { failureCount++; reporter.fail(name, detail); };
 
 /* Headless runs use software graphics with Vulkan disabled. */
+const LOCK_ONLY = process.env.ANDROID_TIER_LOCK_ONLY === '1';
+const LOCK_PACKAGE = 'dev.engender.app.test.lockprobe';
+const OPTIMIZED = process.env.ANDROID_TIER_R8 === '1';
+const BUILD_TYPE = OPTIMIZED ? 'r8Instrumented' : 'debug';
+const BUILD_TASK = OPTIMIZED ? 'R8Instrumented' : 'Debug';
+const APP_PACKAGE = OPTIMIZED ? 'dev.engender.app.test.r8' : 'dev.engender.app';
+const TEST_PACKAGE = `${APP_PACKAGE}.test`;
+const TEST_RUNNER = `${TEST_PACKAGE}/androidx.test.runner.AndroidJUnitRunner`;
+const APP_APK = join(androidDir, `app/build/outputs/apk/${BUILD_TYPE}/app-${BUILD_TYPE}.apk`);
+const TEST_APK = join(androidDir, `app/build/outputs/apk/androidTest/${BUILD_TYPE}/app-${BUILD_TYPE}-androidTest.apk`);
+const ASSEMBLE_TASKS = [`:app:assemble${BUILD_TASK}`, `:app:assemble${BUILD_TASK}AndroidTest`];
 const HEADLESS = process.env.ANDROID_TIER_HEADLESS === '1';
 const RECOVERY_ONLY = process.env.ANDROID_TIER_RECOVERY_ONLY === '1';
 const BACKUP_ONLY = process.env.ANDROID_TIER_BACKUP_ONLY === '1';
@@ -56,7 +54,7 @@ const BACKUP_TEST = 'dev.engender.app.backup.NativeBackupSchedulingTest';
 const BACKUP_STAGES = new Set((process.env.ANDROID_TIER_BACKUP_STAGES ?? '').split(',').filter(Boolean));
 const KNOWN_BACKUP_STAGES = new Set(['defer', 'verify-deferred', 'catch-up', 'cleanup', 'prepare',
   'prepare-interrupted', 'resume-interrupted', 'verify', 'mounted-status', 'ownership-and-destination',
-  'activity-destruction', 'bounded-retries', 'existing-manual']);
+  'activity-destruction', 'bounded-retries', 'existing-manual', 'reset-transfers']);
 for (const stage of BACKUP_STAGES) if (!KNOWN_BACKUP_STAGES.has(stage)) throw new Error(`Unknown Android backup stage: ${stage}`);
 const executedBackupStages = new Set();
 if (BACKUP_STAGES.size) console.log(`Selected Android backup stages: ${[...BACKUP_STAGES].join(', ')}`);
@@ -66,12 +64,12 @@ const BOOT_TIMEOUT_MS = 300_000;
 /** The AVDs whose WebView is too old to start the app, so only the native
     half is asked of them. See the header for why this is not a gap. */
 const NATIVE_ONLY = new Set(['gd26']);
-/* The three suites that need no WebView: what the native SQLite build has
-   (ticket 11), what Android Keystore does with the journal's data key
-   (ticket 13), and which authenticators BiometricManager reports available
-   (ticket 09). The photo initialization checks also run without a WebView,
-   and so does the capture-on-leave check, which needs an Android below 13
-   to reach the FLAG_SECURE path. These are worth having on the older emulator
+/* The three suites that need no WebView: what the native SQLite build has,
+   what Android Keystore does with the journal's data key,
+   and which authenticators BiometricManager reports available.
+   The photo initialization checks also run without a WebView,
+   and so do the capture-on-leave and disguise capture checks, which need an
+   Android below 13 to reach the FLAG_SECURE-only path. These are worth having on the older emulator
    in particular - below API 30 the Keystore key is authorized by time
    rather than per-operation, and androidx.biometric's device-credential
    fallback exists specifically for that floor. */
@@ -80,8 +78,10 @@ const NATIVE_TESTS = [
   'dev.engender.app.keystore.JournalKeystoreTest',
   'dev.engender.app.keystore.BiometricAuthenticatorAvailabilityTest',
   'dev.engender.app.keystore.SessionDeviceCredentialTest',
+  'dev.engender.app.keystore.KeystorePromptLifecycleTest',
   'dev.engender.app.photos.PhotoDirectoryInitializationTest',
-  'dev.engender.app.screencapture.CaptureChoiceOnLeaveTest'
+  'dev.engender.app.screencapture.CaptureChoiceOnLeaveTest',
+  'dev.engender.app.screencapture.DisguiseCaptureTest'
 ].join(',');
 
 const sdkRoot =
@@ -146,8 +146,13 @@ async function startEmulator(avd, port) {
     .replace(/^sdcard.path=.*\n?/m, '');
   writeFileSync(join(clone, 'config.ini'), config);
   writeFileSync(join(avdHome, `${disposableName}.ini`), `avd.ini.encoding=UTF-8\npath=${clone}\n`);
-  const args = ['-avd', disposableName, '-port', String(port), '-no-snapshot', '-no-audio', '-wipe-data'];
-  if (HEADLESS) args.push('-no-window', '-gpu', 'swiftshader', '-feature', '-Vulkan');
+  const args = ['-avd', disposableName, '-port', String(port), '-no-snapshot', '-no-audio', '-no-metrics', '-crash-report-mode', 'disabled', '-wipe-data'];
+  if (LOCK_ONLY && !HEADLESS) args.push('-gpu', 'host');
+  // The API 26 goldfish kernel panics while mapping graphics DMA buffers.
+  // Keep its native checks running without the emulator's GLDMA transport.
+  if (HEADLESS) args.push('-no-window', '-gpu', 'swiftshader', '-feature',
+    NATIVE_ONLY.has(avd) ? '-Vulkan,-GLDMA' : '-Vulkan');
+  else if (NATIVE_ONLY.has(avd)) args.push('-feature', '-GLDMA');
   ownedEmulator = await startOwnedEmulator({
     name: disposableName, query: queryDevice, timeout: BOOT_TIMEOUT_MS,
     launch: () => {
@@ -169,7 +174,7 @@ async function stopEmulator() {
 const RESULTS_DIR = join(androidDir, 'app/build/outputs/androidTest-results/connected');
 
 // --- Build the probe bundles the instrumentation tests serve ---------------
-for (const probe of (RECOVERY_ONLY ? ['archive-recovery'] : BACKUP_ONLY ? ['auto-export'] : ['contract', 'encryption', 'archive', 'archive-recovery', 'auto-export', 'long-journal'])) {
+for (const probe of (LOCK_ONLY ? ['locked-journal'] : RECOVERY_ONLY ? ['archive-recovery'] : BACKUP_ONLY ? ['auto-export'] : ['contract', 'encryption', 'archive', 'archive-recovery', 'auto-export', 'key-gate', 'long-journal', 'ocr'])) {
   const probeBuild = run('npx', ['vite', 'build', '--config', 'tests/android-tier/android-tier.vite.config.ts'], {
     cwd: repo,
     env: { ...env, ANDROID_TIER_PROBE: probe }
@@ -217,6 +222,8 @@ const gradleEnv = { JAVA_HOME: home };
        -Pandroid.testInstrumentationRunnerArguments.class=dev.engender.app.longjournal.LongJournalBenchmarkTest
    Then copy the logged JSON block into android-budgets.json and commit it. */
 const PIN_WAIT_TEST = 'dev.engender.app.lock.PinAttemptWaitPersistenceTest';
+const KDF_BUDGET_TEST = 'dev.engender.app.archive.ArchiveKdfBudgetTest';
+console.log('SKIP emulator tier: Archive KDF budget needs an isolated app on the physical Pixel');
 const evidenceRoot = resolve(process.env.ANDROID_TIER_LOG_DIR ?? join(repo, '.claude/android-tier'));
 mkdirSync(evidenceRoot, { recursive: true });
 const evidenceDir = mkdtempSync(join(evidenceRoot, 'run-'));
@@ -226,14 +233,62 @@ const serial = `emulator-${port}`;
 if (!Number.isInteger(port) || port % 2 !== 0 || port < 5554 || port > 5682) throw new Error('ANDROID_TIER_PORT must be an even port from 5554 to 5682');
 const BENCHMARK_TEST = 'dev.engender.app.longjournal.LongJournalBenchmarkTest';
 
+// Every stage uses the same build type; isolated stages change only package IDs.
+function buildArguments(packageId = APP_PACKAGE) {
+  const args = ['--max-workers=2'];
+  if (packageId !== 'dev.engender.app') {
+    const init = join(evidenceDir, `${packageId}.gradle`);
+    writeFileSync(init, `allprojects { afterEvaluate { p -> if (p.path == ':app') {
+      p.android.defaultConfig.applicationId = '${packageId}'
+      p.android.defaultConfig.testApplicationId = '${packageId}.test'
+    } } }`);
+    args.push('-I', init);
+  }
+  if (OPTIMIZED) args.push('-I', join(here, 'r8.init.gradle'));
+  return args;
+}
+
+function buildIdentity() {
+  if (OPTIMIZED) {
+    const guard = run('node', ['tests/tools/android-r8-artifact.mjs',
+      `android/app/build/outputs/mapping/${BUILD_TYPE}/mapping.txt`], { cwd: repo });
+    if (guard.status !== 0 || guard.error || guard.signal) throw new Error('optimized Android artifact guard failed');
+    writeFileSync(join(evidenceDir, `${activeRun.avd}-r8-${Date.now()}.json`), guard.stdout);
+  }
+  return androidBuildIdentity(repo, BUILD_TYPE);
+}
+
 for (const avd of AVDS) {
   try {
     await startEmulator(avd, port);
+    const api = Number(device(['shell', 'getprop', 'ro.build.version.sdk']).stdout.trim());
+    if (!Number.isInteger(api) || api < 26) throw new Error('Android runtime API identity unavailable');
+    activeRun = { avd, serial, api, nativeOnly: NATIVE_ONLY.has(avd),
+      kind: LOCK_ONLY ? 'locked-process-death' : RECOVERY_ONLY ? 'archive-recovery' : BACKUP_ONLY || BACKUP_STAGES.size ? 'backup-selection' : 'core',
+      completedStages: [], completedChecks: [] };
+    const failuresBefore = failureCount;
     ok(`${avd} booted`);
 
     const nativeOnly = NATIVE_ONLY.has(avd);
     if (nativeOnly) {
-      console.log(`  (${avd}: native checks only - its WebView predates the app's Chrome 87 floor)`);
+      console.log(`  (${avd}: native checks only - its WebView predates the app's Chrome 104 floor)`);
+    }
+
+    if (LOCK_ONLY) {
+      if (nativeOnly) throw new Error('locked journal requires a supported Android WebView');
+      const built = run('./gradlew', [...ASSEMBLE_TASKS, ...buildArguments(LOCK_PACKAGE)], {
+        cwd: androidDir, env: { ...env, ...gradleEnv }, timeout: 600000
+      });
+      writeFileSync(join(evidenceDir, 'lock-assemble.log'), `${built.stdout ?? ''}${built.stderr ?? ''}`);
+      if (built.status !== 0 || built.error || built.signal) throw new Error('locked journal APK build failed');
+      for (const apk of [APP_APK, TEST_APK]) {
+        const installed = device(['install', '-r', apk], { timeout: 120000 });
+        if (installed.status !== 0 || installed.error || installed.signal) throw new Error('locked journal APK install failed');
+      }
+      activeRun.build = buildIdentity();
+      await lockedProcessDeath({ device, pkg: LOCK_PACKAGE, evidenceDir, reporter: { ok, fail } });
+      if (failureCount === failuresBefore) { activeRun.completedStages.push('locked-process-death'); evidenceRuns.push(activeRun); }
+      continue;
     }
 
     /* :app: rather than the whole build. The empty capacitor-cordova-android-plugins
@@ -241,12 +296,13 @@ for (const avd of AVDS) {
        fails to dex on a Kotlin stdlib clash between androidx.test's 1.8.22 and a
        transitive 1.6.21. Nothing of ours is in that module. */
     if (BACKUP_ONLY || RECOVERY_ONLY) {
-      const built = run('./gradlew', [':app:assembleDebug', ':app:assembleDebugAndroidTest', '--max-workers=2'], {
+      const built = run('./gradlew', [...ASSEMBLE_TASKS, ...buildArguments()], {
         cwd: androidDir, env: { ...env, ...gradleEnv }, timeout: 600_000
       });
       writeFileSync(join(evidenceDir, `${avd}-backup-assemble.log`), `${built.stdout ?? ''}${built.stderr ?? ''}\nexit=${built.status}\n`);
       if (built.status !== 0 || built.signal || built.error) throw new Error('backup APK build failed');
-    } else await runInstrumentation({
+    } else {
+      const passedInstrumentation = await runInstrumentation({
       label: avd,
       resultsDir: RESULTS_DIR,
       reporter: { ok, fail },
@@ -255,11 +311,12 @@ for (const avd of AVDS) {
         const result = run(
           './gradlew',
           [
-            ':app:connectedDebugAndroidTest',
+            `:app:connected${BUILD_TASK}AndroidTest`,
+            ...buildArguments(),
             '--console=plain',
             ...(nativeOnly
               ? [`-Pandroid.testInstrumentationRunnerArguments.class=${NATIVE_TESTS}`]
-              : [`-Pandroid.testInstrumentationRunnerArguments.notClass=${BENCHMARK_TEST},${PIN_WAIT_TEST},${BACKUP_TEST},dev.engender.app.backup.ArchiveInstallationRecoveryTest`])
+              : [`-Pandroid.testInstrumentationRunnerArguments.notClass=${BENCHMARK_TEST},${PIN_WAIT_TEST},${BACKUP_TEST},dev.engender.app.backup.ArchiveInstallationRecoveryTest,${KDF_BUDGET_TEST},dev.engender.app.reminders.LockedJournalProcessDeathTest,dev.engender.app.ocr.OcrOfflineRecognitionTest`])
           ],
           {
             cwd: androidDir,
@@ -272,14 +329,17 @@ for (const avd of AVDS) {
         return result;
       }
     });
+      if (passedInstrumentation) activeRun.completedStages.push('instrumentation');
+    }
+    activeRun.build = buildIdentity();
     if (existsSync(RESULTS_DIR)) cpSync(RESULTS_DIR, join(evidenceDir, `${avd}-results`), { recursive: true });
     {
-      // connectedDebugAndroidTest removes both packages when its invocation ends.
+      // Connected instrumentation removes both packages when its invocation ends.
       for (const [name, apk] of [
-        ['app', 'debug/app-debug.apk'],
-        ['test', 'androidTest/debug/app-debug-androidTest.apk']
+        ['app', APP_APK],
+        ['test', TEST_APK]
       ]) {
-        const installed = device(['install', '-r', join(androidDir, 'app/build/outputs/apk', apk)], { timeout: 120_000 });
+        const installed = device(['install', '-r', apk], { timeout: 120_000 });
         writeFileSync(join(evidenceDir, `${avd}-pin-wait-install-${name}.log`),
           `${installed.stdout ?? ''}${installed.stderr ?? ''}\nexit=${installed.status} signal=${installed.signal} error=${installed.error ?? ''}\n`);
         if (installed.status !== 0 || installed.signal || installed.error) {
@@ -288,23 +348,26 @@ for (const avd of AVDS) {
         ok(`${avd}: install ${name} APK for PIN wait stages`);
       }
       if (!nativeOnly && !BACKUP_ONLY) {
-        await installationRecovery({ device, repo, evidenceDir, avd, reporter: { ok, fail } });
+        const beforeRecovery = failureCount;
+        await installationRecovery({ device, repo, evidenceDir, avd, pkg: APP_PACKAGE, reporter: { ok, fail } });
+        if (failureCount === beforeRecovery) activeRun.completedStages.push('archive-recovery');
       } else if (RECOVERY_ONLY) throw new Error('selected Archive recovery requires a supported Android WebView');
-      if (RECOVERY_ONLY) continue;
+      if (RECOVERY_ONLY) { if (failureCount === failuresBefore) evidenceRuns.push(activeRun); continue; }
       const stage = (name, method = 'deadlineSurvivesActualProcessDeath') => {
         const result = device(['shell', 'am', 'instrument', '-w', '-r',
           '-e', 'class', `${PIN_WAIT_TEST}#${method}`, '-e', 'pinWaitStage', name,
-          'dev.engender.app.test/androidx.test.runner.AndroidJUnitRunner'], { timeout: 120_000 });
+          TEST_RUNNER], { timeout: 120_000 });
         writeFileSync(join(evidenceDir, `${avd}-pin-wait-${name}.log`), `${result.stdout ?? ''}${result.stderr ?? ''}\nexit=${result.status} signal=${result.signal} error=${result.error ?? ''}\n`);
         const proofLog = device(['logcat', '-d', '-s', 'PinWaitProof:I', '*:S']);
         writeFileSync(join(evidenceDir, `${avd}-pin-wait-${name}-process.log`), `${proofLog.stdout ?? ''}${proofLog.stderr ?? ''}`);
         return reportStage(`${avd}: PIN wait ${name}`, result, { ok, fail });
       };
+      const beforePin = failureCount;
       if (!BACKUP_ONLY) try {
-        stage('preferences', 'preferenceDeadlineSurvivesANewOwnerAndNewBoot');
+        stage('preferences', 'nativeDeadlineSurvivesANewOwnerAndNewBoot');
         if (stage('seed')) {
-          const killed = device(['shell', 'am', 'force-stop', 'dev.engender.app']);
-          const pid = device(['shell', 'pidof', 'dev.engender.app']);
+          const killed = device(['shell', 'am', 'force-stop', APP_PACKAGE]);
+          const pid = device(['shell', 'pidof', APP_PACKAGE]);
           writeFileSync(join(evidenceDir, `${avd}-pin-wait-termination.log`), `force-stop exit=${killed.status}\npidof exit=${pid.status} stdout=${pid.stdout}\n`);
           if (killed.status !== 0 || pid.status !== 1 || pid.stdout.trim()) {
             fail(`${avd}: PIN wait process termination`, 'force-stop did not leave the app process absent');
@@ -314,20 +377,23 @@ for (const avd of AVDS) {
           }
         }
       } finally { stage('cleanup'); }
+      if (!BACKUP_ONLY && failureCount === beforePin) activeRun.completedStages.push('pin-wait');
+      const beforeBackup = failureCount;
       const backupStage = (name, method = 'persistentDeliverySurvivesLifecycle') => {
         if (BACKUP_STAGES.size && !BACKUP_STAGES.has(name)) { console.log(`SKIP ${avd}: native backup ${name} (selected stages)`); return false; }
         executedBackupStages.add(name);
         const result = device(['shell', 'am', 'instrument', '-w', '-r', '-e', 'class',
           `${BACKUP_TEST}#${method}`, '-e', 'backupStage', name,
-          'dev.engender.app.test/androidx.test.runner.AndroidJUnitRunner'], { timeout: 180_000 });
+          TEST_RUNNER], { timeout: 180_000 });
         writeFileSync(join(evidenceDir, `${avd}-backup-${name}-${Date.now()}.log`),
           `${result.stdout ?? ''}${result.stderr ?? ''}\nexit=${result.status} signal=${result.signal} error=${result.error ?? ''}\n`);
         return reportStage(`${avd}: native backup ${name}`, result, { ok, fail });
       };
       try {
+        backupStage('cleanup');
         if (backupStage('defer')) {
-          const killed = device(['shell', 'am', 'kill', 'dev.engender.app']);
-          const absent = device(['shell', 'pidof', 'dev.engender.app']);
+          const killed = device(['shell', 'am', 'kill', APP_PACKAGE]);
+          const absent = device(['shell', 'pidof', APP_PACKAGE]);
           writeFileSync(join(evidenceDir, `${avd}-backup-deferred-process-death.log`),
             `${killed.stdout ?? ''}${killed.stderr ?? ''}\nexit=${killed.status}\npidof exit=${absent.status} pid=${absent.stdout}\n`);
           if (killed.status !== 0 || absent.status !== 1 || absent.stdout.trim()) {
@@ -337,7 +403,7 @@ for (const avd of AVDS) {
             let state, deferredAt = 0;
             const deadline = Date.now() + 120000;
             do {
-              state = device(['shell', 'run-as', 'dev.engender.app', 'cat', 'shared_prefs/engender-auto-export.xml']);
+              state = device(['shell', 'run-as', APP_PACKAGE, 'cat', 'shared_prefs/engender-auto-export.xml']);
               deferredAt = Number(/name="deferredAt" value="(\d+)"/.exec(state.stdout ?? '')?.[1] ?? 0);
               if (deferredAt) break;
               await sleep(1000);
@@ -360,7 +426,7 @@ for (const avd of AVDS) {
             try {
             const state = device(['shell', 'dumpsys', 'jobscheduler']);
             writeFileSync(join(evidenceDir, `${avd}-backup-${lifecycle}-jobs-before.log`), state.stdout ?? '');
-            if (!/dev\.engender\.app\/androidx\.work\.impl\.background\.systemjob\.SystemJobService/.test(state.stdout ?? '')) {
+            if (!(state.stdout ?? '').includes(`${APP_PACKAGE}/androidx.work.impl.background.systemjob.SystemJobService`)) {
               fail(`${avd}: native backup persistent work`, 'no WorkManager job in JobScheduler');
               continue;
             }
@@ -368,7 +434,7 @@ for (const avd of AVDS) {
               let partial;
               const deadline = Date.now() + 120000;
               do {
-                const marker = device(['shell', 'run-as', 'dev.engender.app.test', 'cat', 'files/backup-partial-state.json']);
+                const marker = device(['shell', 'run-as', TEST_PACKAGE, 'cat', 'files/backup-partial-state.json']);
                 try { partial = JSON.parse(marker.stdout); } catch {}
                 if (partial?.writtenBytes > 0) break;
                 await sleep(250);
@@ -377,14 +443,14 @@ for (const avd of AVDS) {
                 fail(`${avd}: interrupted native write`, 'provider never recorded written bytes');
                 continue;
               }
-              const writerPid = device(['shell', 'pidof', 'dev.engender.app']).stdout.trim();
+              const writerPid = device(['shell', 'pidof', APP_PACKAGE]).stdout.trim();
               if (!/^\d+$/.test(writerPid)) {
                 fail(`${avd}: interrupted native write`, 'no single writer process');
                 continue;
               }
-              const killed = device(['shell', 'run-as', 'dev.engender.app', 'kill', '-9', writerPid]);
+              const killed = device(['shell', 'run-as', APP_PACKAGE, 'kill', '-9', writerPid]);
               await sleep(250);
-              const absent = device(['shell', 'pidof', 'dev.engender.app']);
+              const absent = device(['shell', 'pidof', APP_PACKAGE]);
               writeFileSync(join(evidenceDir, `${avd}-backup-interrupted-write.json`),
                 JSON.stringify({ ...partial, writerPid, signal: 'SIGKILL', killExit: killed.status, pidExit: absent.status, pid: absent.stdout.trim() }, null, 2));
               if (killed.status !== 0 || absent.status !== 1 || absent.stdout.trim()) {
@@ -393,10 +459,10 @@ for (const avd of AVDS) {
               }
               backupStage('resume-interrupted');
             } else if (lifecycle === 'process-death') {
-              const previousPid = device(['shell', 'pidof', 'dev.engender.app']).stdout?.trim();
+              const previousPid = device(['shell', 'pidof', APP_PACKAGE]).stdout?.trim();
               writeFileSync(join(evidenceDir, `${avd}-backup-process-before.log`), `pid=${previousPid}\n`);
-              device(['shell', 'am', 'kill', 'dev.engender.app']);
-              const pid = device(['shell', 'pidof', 'dev.engender.app']);
+              device(['shell', 'am', 'kill', APP_PACKAGE]);
+              const pid = device(['shell', 'pidof', APP_PACKAGE]);
               writeFileSync(join(evidenceDir, `${avd}-backup-${lifecycle}-absence.log`), `exit=${pid.status} pid=${pid.stdout}\n`);
               if (pid.status !== 1 || pid.stdout.trim()) {
                 fail(`${avd}: native backup ordinary process death`, 'app process remained alive');
@@ -425,7 +491,7 @@ for (const avd of AVDS) {
             await sleep(50000);
             const activities = device(['shell', 'dumpsys', 'activity', 'activities']);
             writeFileSync(join(evidenceDir, `${avd}-backup-${lifecycle}-activities.log`), activities.stdout ?? '');
-            if (/mResumedActivity:.*dev\.engender\.app/.test(activities.stdout ?? '')) {
+            if ((activities.stdout ?? '').split('\n').some(line => line.includes('mResumedActivity:') && line.includes(`${APP_PACKAGE}/`))) {
               fail(`${avd}: native backup page absence`, 'MainActivity resumed during delivery proof');
               continue;
             }
@@ -433,12 +499,12 @@ for (const avd of AVDS) {
             let delivered;
             const deadline = Date.now() + 120000;
             do {
-              const metadata = device(['shell', 'run-as', 'dev.engender.app', 'cat', 'shared_prefs/engender-auto-export.xml']);
+              const metadata = device(['shell', 'run-as', APP_PACKAGE, 'cat', 'shared_prefs/engender-auto-export.xml']);
               const xml = metadata.stdout ?? '';
               const snapshotAt = Number(/name="lastSnapshotAt" value="(\d+)"/.exec(xml)?.[1] ?? 0);
               const deliveredAt = Number(/name="lastSuccessAt" value="(\d+)"/.exec(xml)?.[1] ?? 0);
               if (metadata.status === 0 && snapshotAt && deliveredAt > snapshotAt && !xml.includes('name="encryptedStage"')) {
-                delivered = { snapshotAt, deliveredAt, pid: device(['shell', 'pidof', 'dev.engender.app']).stdout?.trim() };
+                delivered = { snapshotAt, deliveredAt, pid: device(['shell', 'pidof', APP_PACKAGE]).stdout?.trim() };
                 break;
               }
               await sleep(1000);
@@ -453,10 +519,10 @@ for (const avd of AVDS) {
           }
           // Force-stop is a separate platform limitation, never process-death evidence.
           if (backupStage('prepare')) {
-            device(['shell', 'am', 'force-stop', 'dev.engender.app']);
+            device(['shell', 'am', 'force-stop', APP_PACKAGE]);
             await sleep(50000);
-            const state = device(['shell', 'dumpsys', 'package', 'dev.engender.app']);
-            const pid = device(['shell', 'pidof', 'dev.engender.app']);
+            const state = device(['shell', 'dumpsys', 'package', APP_PACKAGE]);
+            const pid = device(['shell', 'pidof', APP_PACKAGE]);
             writeFileSync(join(evidenceDir, `${avd}-backup-force-stop.log`), `${state.stdout}\npidof exit=${pid.status} pid=${pid.stdout}\n`);
             if (!/stopped=true/.test(state.stdout ?? '') || pid.status !== 1 || pid.stdout.trim()) {
               fail(`${avd}: native backup force-stop limitation`, 'package did not remain stopped with process absent');
@@ -471,21 +537,55 @@ for (const avd of AVDS) {
           backupStage('cleanup');
           backupStage('bounded-retries', 'nativeFailuresStopAfterThreeAttemptsUntilNextDay');
           backupStage('cleanup');
+          if (!BACKUP_STAGES.size || BACKUP_STAGES.has('reset-transfers')) {
+            executedBackupStages.add('reset-transfers');
+            const reset = device(['shell', 'am', 'instrument', '-w', '-r', '-e', 'class',
+              'dev.engender.app.backup.ExportResetTest,dev.engender.app.files.FileDeliveryTest#resetAndRecoveryDiscardOldSlotsWithoutAbortingTheNewOwner',
+              TEST_RUNNER], { timeout: 180_000 });
+            writeFileSync(join(evidenceDir, `${avd}-backup-reset-transfers.log`),
+              `${reset.stdout ?? ''}${reset.stderr ?? ''}\nexit=${reset.status} signal=${reset.signal} error=${reset.error ?? ''}\n`);
+            reportStage(`${avd}: reset transfer ownership`, reset, { ok, fail }, 4);
+          }
           if (!BACKUP_STAGES.size || BACKUP_STAGES.has('existing-manual')) {
           executedBackupStages.add('existing-manual');
           const manual = device(['shell', 'am', 'instrument', '-w', '-r', '-e', 'class',
             'dev.engender.app.backup.AutoExportDeliveryTest#completeLargeBackupRoundTripsAndFailuresPreserveRecovery',
-            'dev.engender.app.test/androidx.test.runner.AndroidJUnitRunner'], { timeout: 1_200_000 });
+            TEST_RUNNER], { timeout: 1_200_000 });
           writeFileSync(join(evidenceDir, `${avd}-backup-existing-manual.log`),
             `${manual.stdout ?? ''}${manual.stderr ?? ''}\nexit=${manual.status} signal=${manual.signal} error=${manual.error ?? ''}\n`);
           reportStage(`${avd}: existing large manual backup`, manual, { ok, fail });
           }
         } else console.log(`SKIP ${avd}: staged Archive production needs a supported WebView`);
       } finally { backupStage('cleanup'); }
+      if (failureCount === beforeBackup) activeRun.completedStages.push(BACKUP_STAGES.size ? 'selected-native-backup' : 'native-backup');
     }
+    if (!nativeOnly && activeRun.kind === 'core') {
+      // The test provider has a fixed authority; remove the completed core
+      // instrumentation package before installing the isolated OCR pair.
+      for (const pkg of [TEST_PACKAGE, APP_PACKAGE]) {
+        const removed = device(['uninstall', pkg]);
+        if (removed.status !== 0 || removed.error || removed.signal || !removed.stdout.includes('Success')) {
+          throw new Error(`could not remove completed core package before offline OCR: ${pkg}`);
+        }
+      }
+      const pkg = 'dev.engender.app.test.offlineocr';
+      const built = run('./gradlew', [...ASSEMBLE_TASKS, ...buildArguments(pkg)], {
+        cwd: androidDir, env: { ...env, ...gradleEnv }, timeout: 600000
+      });
+      writeFileSync(join(evidenceDir, `${avd}-ocr-assemble.log`), `${built.stdout ?? ''}${built.stderr ?? ''}`);
+      if (built.status !== 0 || built.error || built.signal) throw new Error('offline OCR APK build failed');
+      const ocrBuild = buildIdentity();
+      await offlineOcrStage({ device, pkg, avd, evidenceDir,
+        apk: APP_APK, testApk: TEST_APK });
+      activeRun.completedStages.push('offline-ocr');
+      activeRun.offlineOcr = { package: pkg, build: ocrBuild };
+      ok(`${avd}: fresh English and Polish OCR in airplane mode`);
+    }
+    if (failureCount === failuresBefore) evidenceRuns.push(activeRun);
   } catch (e) {
     fail(`${avd}: emulator`, e.message ?? String(e));
   } finally {
+    activeRun = undefined;
     await stopEmulator();
     await sleep(3000);
   }
@@ -493,4 +593,13 @@ for (const avd of AVDS) {
 
 for (const stage of BACKUP_STAGES) if (!executedBackupStages.has(stage)) fail(`selected Android backup stage ${stage}`, 'selected stage never executed');
 const failures = finish(BACKUP_STAGES.size ? 'ALL SELECTED ANDROID BACKUP STAGES PASS' : 'ALL ANDROID-TIER CHECKS PASS');
+if (!failures) {
+  try {
+    writeAndroidTierEvidence(repo, startEvidence, evidenceRuns);
+    console.log('PASS Android-tier evidence written to scripts/progressive-release-record.json');
+  } catch (error) {
+    console.error(error.message);
+    process.exit(1);
+  }
+}
 process.exit(failures ? 1 : 0);

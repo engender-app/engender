@@ -1,7 +1,6 @@
-/* The era area (phase 6 ticket 01, ADR-0049, CONTEXT: "Era"). The two
-   invariants themselves are eras.ts's own tests; what is asked here is that
-   the area actually enforces them before writing, and that an era with an
-   open bound survives the round trip. */
+/* The era area (ADR-0049). The two invariants themselves are eras.ts's own tests; what is
+   asked here is that the area actually enforces them before writing, and that an era with
+   an open bound survives the round trip. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

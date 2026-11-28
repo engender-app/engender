@@ -1,5 +1,7 @@
 package dev.engender.app.sqlite;
 
+import android.os.StatFs;
+
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -13,25 +15,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * The Android half of the driver seam (ADR-0017): SQL in, rows out, and
- * nothing above it can tell this from the web driver.
+ * Implement the SQL seam (ADR-0017) with SQLCipher and a raw random
+ * data key supplied as hex (ADR-0018, ADR-0020). Java derives no key.
  *
- * <p>Written here rather than taken from {@code @capacitor-community/sqlite}
- * because of the key model, not the library - see ADR-0020's ticket 11
- * amendment. That plugin takes a passphrase and derives the database key
- * itself; ADR-0018 wants a random data key held by the Keystore and handed to
- * SQLCipher raw. So the open below accepts a hex key and passes it through
- * unchanged, and derives nothing.
- *
- * <p>Every method is one bridge call. The JS side sends them without waiting
- * for each other and numbers them, and {@link CallSequencer} runs them in
- * that order on this plugin's one worker thread (ADR-0089), so the
- * connection is only ever used from one thread and needs no locking of its
- * own beyond what {@link SqliteConnection} already gives it. Transactions are
- * explicit begin/commit/rollback calls rather than a callback across the
- * bridge, matching what the web driver does over its worker for the same
- * reason: the migration runner's callback calls back into the driver's own
- * exec.
+ * <p>{@link CallSequencer} runs numbered bridge calls on the single
+ * plugin worker (ADR-0089). Keep begin, commit and rollback explicit,
+ * matching the web worker and allowing a migration to call exec
+ * within its transaction.
  */
 @CapacitorPlugin(name = "Sqlite")
 public class SqlitePlugin extends Plugin {
@@ -53,13 +43,20 @@ public class SqlitePlugin extends Plugin {
         SqliteConnection.loadNativeLibrary();
     }
 
+    @Override
+    protected synchronized void handleOnDestroy() {
+        // Finish admitted writes before releasing SQLCipher's keyed connection.
+        // Activity recreation otherwise leaves both it and this thread alive.
+        worker.execute(connection::dispose);
+        worker.shutdown();
+        super.handleOnDestroy();
+    }
+
     /**
-     * Opens (or creates) the journal.
+     * Open or create the journal.
      *
-     * <p>{@code hexKey} is optional and absent for now: ticket 11 lands the
-     * shell and the driver, ticket 13 lands the Keystore that produces the
-     * key. When it is present it is 64 hex characters of raw key, passed to
-     * SQLCipher without a KDF pass.
+     * <p>Pass an optional 64-character hex key directly to SQLCipher, without
+     * a KDF pass.
      */
     @PluginMethod
     public void open(PluginCall call) {
@@ -73,20 +70,20 @@ public class SqlitePlugin extends Plugin {
                 connection.open(getContext(), name, call.getString("hexKey"));
                 call.resolve();
             } catch (Exception e) {
-                call.reject(message(e), e);
+                fail(call, e);
             }
         });
     }
 
     /**
      * Whether the named database is a plaintext one, asked before anything is
-     * opened (ticket 13). A journal written by the pre-encryption Android
+     * opened. A journal written by the pre-encryption Android
      * build is the only way this is true, and the boot says so plainly rather
      * than letting a raw-key open fail as a corrupt file.
      */
     @PluginMethod
     public void isPlaintextDatabase(PluginCall call) {
-        worker.execute(() -> {
+        execute(call, () -> {
             String name = call.getString("name");
             if (name == null || name.isEmpty()) {
                 call.reject("isPlaintextDatabase requires a database name");
@@ -95,9 +92,10 @@ public class SqlitePlugin extends Plugin {
             try {
                 JSObject result = new JSObject();
                 result.put("plaintext", SqliteConnection.isPlaintextDatabase(getContext(), name));
+                result.put("exists", getContext().getDatabasePath(name).exists());
                 call.resolve(result);
             } catch (Exception e) {
-                call.reject(message(e), e);
+                fail(call, e);
             }
         });
     }
@@ -115,7 +113,7 @@ public class SqlitePlugin extends Plugin {
                 connection.exec(sql);
                 call.resolve();
             } catch (Exception e) {
-                call.reject(message(e), e);
+                fail(call, e);
             }
         });
     }
@@ -134,7 +132,7 @@ public class SqlitePlugin extends Plugin {
                 result.put("rows", connection.query(sql, params(call)));
                 call.resolve(result);
             } catch (Exception e) {
-                call.reject(message(e), e);
+                fail(call, e);
             }
         });
     }
@@ -156,7 +154,7 @@ public class SqlitePlugin extends Plugin {
             try {
                 call.resolve(connection.run(sql, params(call)));
             } catch (Exception e) {
-                call.reject(message(e), e);
+                fail(call, e);
             }
         });
     }
@@ -169,7 +167,7 @@ public class SqlitePlugin extends Plugin {
                 result.put("version", connection.getUserVersion());
                 call.resolve(result);
             } catch (Exception e) {
-                call.reject(message(e), e);
+                fail(call, e);
             }
         });
     }
@@ -186,7 +184,7 @@ public class SqlitePlugin extends Plugin {
                 connection.setUserVersion(version);
                 call.resolve();
             } catch (Exception e) {
-                call.reject(message(e), e);
+                fail(call, e);
             }
         });
     }
@@ -217,12 +215,12 @@ public class SqlitePlugin extends Plugin {
                 connection.copyDatabaseFile();
                 call.resolve();
             } catch (Exception e) {
-                call.reject(message(e), e);
+                fail(call, e);
             }
         });
     }
 
-    /** Whether there is a copy worth going back to (ticket 04). */
+    /** Whether there is a copy worth going back to. */
     @PluginMethod
     public void preMigrationCopyIsUsable(PluginCall call) {
         sequenced(call, () -> {
@@ -231,7 +229,7 @@ public class SqlitePlugin extends Plugin {
                 result.put("usable", connection.preMigrationCopyIsUsable());
                 call.resolve(result);
             } catch (Exception e) {
-                call.reject(message(e), e);
+                fail(call, e);
             }
         });
     }
@@ -244,7 +242,7 @@ public class SqlitePlugin extends Plugin {
                 connection.restorePreMigrationCopy();
                 call.resolve();
             } catch (Exception e) {
-                call.reject(message(e), e);
+                fail(call, e);
             }
         });
     }
@@ -256,17 +254,17 @@ public class SqlitePlugin extends Plugin {
                 connection.cleanupPreMigrationCopy();
                 call.resolve();
             } catch (Exception e) {
-                call.reject(message(e), e);
+                fail(call, e);
             }
         });
     }
 
-    /** The reset path's wipe (ticket 13): the journal's files, which are in
+    /** The reset path's wipe: the journal's files, which are in
         app-private storage rather than in the WebView's, so emptying OPFS
         does not reach them. */
     @PluginMethod
     public void deleteDatabase(PluginCall call) {
-        worker.execute(() -> {
+        execute(call, () -> {
             String name = call.getString("name");
             if (name == null || name.isEmpty()) {
                 call.reject("deleteDatabase requires a database name");
@@ -276,7 +274,7 @@ public class SqlitePlugin extends Plugin {
                 connection.deleteDatabaseFiles(getContext(), name);
                 call.resolve();
             } catch (Exception e) {
-                call.reject(message(e), e);
+                fail(call, e);
             }
         });
     }
@@ -289,7 +287,7 @@ public class SqlitePlugin extends Plugin {
                 sequencer.finish(call.getString("session"));
                 call.resolve();
             } catch (Exception e) {
-                call.reject(message(e), e);
+                fail(call, e);
             }
         });
     }
@@ -299,7 +297,7 @@ public class SqlitePlugin extends Plugin {
             connection.transactionStep(step);
             call.resolve();
         } catch (Exception e) {
-            call.reject(message(e), e);
+            fail(call, e);
         }
     }
 
@@ -317,7 +315,15 @@ public class SqlitePlugin extends Plugin {
             return;
         }
         long seq = data.optLong("seq", -1);
-        worker.execute(() -> sequencer.accept(session, seq, work, call::reject));
+        execute(call, () -> sequencer.accept(session, seq, work, call::reject));
+    }
+
+    private synchronized void execute(PluginCall call, Runnable work) {
+        if (worker.isShutdown()) {
+            call.reject("sqlite bridge is closed");
+            return;
+        }
+        worker.execute(work);
     }
 
     /** Bind parameters, defaulted to none so callers can omit them. */
@@ -328,6 +334,22 @@ public class SqlitePlugin extends Plugin {
 
     /* Capacitor turns a null message into a null error on the JS side, which
        is how a real SQLite failure becomes "undefined" in a boot error. */
+    /** Every failure keeps SQLite's own text; a full disk also carries the code {@code
+        storage-full}. */
+    private void fail(PluginCall call, Exception e) {
+        call.reject(message(e), SqliteFailure.storageCode(message(e), databaseVolumeAvailableBytes()), e);
+    }
+
+    /** Free bytes on the volume that holds the journal and its rollback
+        journal; unknown counts as plenty, so it never names a full disk. */
+    private long databaseVolumeAvailableBytes() {
+        try {
+            return new StatFs(getContext().getDatabasePath("journal").getParent()).getAvailableBytes();
+        } catch (Exception unknown) {
+            return Long.MAX_VALUE;
+        }
+    }
+
     private static String message(Exception e) {
         String detail = e.getMessage();
         return detail == null || detail.isEmpty() ? e.getClass().getName() : detail;

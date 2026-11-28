@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   import { m } from '$lib/paraglide/messages';
   import DatePicker from './DatePicker.svelte';
   import Icon from './Icon.svelte';
@@ -17,8 +18,7 @@
   import type { FeltSenseEntry, Tryout } from '$lib/data/types';
   import type { OfferCopy } from '$lib/data/offers';
 
-  /* The title and the two outer answers arrive as one `copy` object (phase
-     8 features ticket 22): this is one entry in the offer registry, and an
+  /* The title and the two outer answers arrive as one `copy` object: this is one entry in the offer registry, and an
      offer's words live beside what it writes. The middle button stays
      here - "adopt without a milestone" is this sheet's own third answer,
      not a word the registry has an opinion about. */
@@ -53,9 +53,9 @@
     return Math.max(1, currentDay() - tryout.startEpochDay + 1);
   });
 
-  /* The same step the adoption will write onto the milestone, and through
-     the same function, so the sheet never promises one reading and stores
-     another. `feltSense` arrives newest first, as forTryout reads it. */
+  /* How the tryout mostly felt, as a line about the tryout: adoption
+     writes no reading onto the milestone.
+     `feltSense` arrives newest first, as forTryout reads it. */
   let majorityMood = $derived(adoptionMood(feltSense));
 
   $effect(() => {
@@ -106,9 +106,9 @@
       {/if}
     </div>
 
-    <Field label={m.ms_name_label()} id="adopt-milestone-name">
+    <Field label={m.name_label()} id="adopt-milestone-name">
       {#snippet children(id)}
-        <input
+        <input autocomplete={journalTextAutocomplete()}
           class="input"
           {id}
           name="milestone-name"
@@ -118,7 +118,7 @@
       {/snippet}
     </Field>
 
-    <Field label={m.ms_date_label()} id="adopt-milestone-date">
+    <Field label={m.date_label()} id="adopt-milestone-date">
       {#snippet children(id)}
         <DatePicker bind:value={date} {id} name="milestone-date" />
       {/snippet}

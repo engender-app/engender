@@ -1,31 +1,12 @@
-/* Whether the journal is in the middle of something an update must not land
-   on (ticket 04).
+/* Block service worker activation and hide the update action during journal
+   writes and migrations. writes.ts wraps all journal writes, including
+   Archive imports; boot.ts covers migrations. Count overlapping operations so
+   the first completion cannot clear the guard. Keep the counter rune-free for
+   Node tests and service worker messaging.
 
-   A waiting service worker that takes over during a write swaps the code out
-   from under a half-finished one. For an entry save that is a spinner that
-   never resolves; for a migration it can be the
-   journal. So the app never asks a waiting worker to activate while anything
-   here is open, and never offers the update action either - update.ts reads
-   this, and the notice appears when it clears.
-
-   Journal writes and migrations enter: every journal write, which writes.ts wraps at one choke
-   point and which covers an Archive import too (an import is a declared write
-   on every table); and the migrations in boot.ts.
-
-   A counter rather than a flag, because two writes overlap routinely - an
-   entry save and the photo store's write land on their own schedules - and the
-   first one finishing does not mean the journal is idle. Rune-free like
-   writes.ts, for the same two reasons: the Node tier can test it, and a
-   service worker's message plumbing has no business in reactive state.
-
-   Two things it deliberately does not cover. Preference writes: one upsert
-   into `pref`, which either committed or did not, and a preference is not part
-   of the journal (CONTEXT: "Journal") - it is none of the four the ticket
-   names. And a second tab, which this counter cannot see: the guard is
-   per-page module state, so a tab sitting idle would not know another was
-   saving. ADR-0020 is what makes that moot rather than lucky - the encrypted
-   driver holds the pool's access handles for one connection per origin, so
-   the second tab has no journal open to write to. */
+   Preference writes are a single atomic pref upsert outside this guard.
+   The counter is page-local; the encrypted driver holds one writing
+   connection per origin (ADR-0020). */
 
 let open = 0;
 let failedWrites = 0;
@@ -70,8 +51,7 @@ export function onJournalBusyChange(listener: (busy: boolean) => void): () => vo
   return () => listeners.delete(listener);
 }
 
-/** For housekeeping that must not run alongside a write (phase 5 audit ticket
-    02). Both boot passes read rows and then act on what they read, and since
+/** For housekeeping that must not run alongside a write. Both boot passes read rows and then act on what they read, and since
     they moved off boot's critical path they run with the screens live - so a
     write that lands between the read and the act would make the purge delete
     an entry somebody restored, or the sweep delete the files of a photo
@@ -80,7 +60,7 @@ export function onJournalBusyChange(listener: (busy: boolean) => void): () => vo
     `sawWrite()` answers whether any write has been in flight since the watch
     started, itself included: a pass asks before every step it cannot take
     back, and gives up when the answer is yes. Giving up is safe by
-    construction - what a pass does not finish is what the next boot retries,
+    construction - what a pass does not finish is what the next due pass retries,
     which is what both of their failure paths already do.
 
     Not a lock. Nothing here can stop a write from starting; a screen saving an
@@ -93,6 +73,35 @@ export function watchJournalWrites(): { sawWrite: () => boolean; stop: () => voi
   return { sawWrite: () => saw, stop };
 }
 
+/** Check after write callers have handled their results. Another write
+    admitted in that gap keeps the listener until the next edge. */
+function checkAfterJournalWrites(check: () => boolean): void {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const run = () => {
+    timer = undefined;
+    if (check()) {
+      stop();
+      clearTimeout(timer);
+    }
+  };
+  const schedule = () => {
+    if (timer === undefined) timer = setTimeout(run, 0);
+  };
+  const stop = onJournalBusyChange(schedule);
+  schedule();
+}
+
+/** Wait for admitted writes before starting a fresh housekeeping read.
+    The pass still watches for writes starting after it begins. */
+export function waitForJournalIdle(): Promise<void> {
+  return new Promise((resolve) => {
+    checkAfterJournalWrites(() => {
+      if (journalIsBusy()) return false;
+      resolve();
+      return true;
+    });
+  });
+}
 
 /** Captures the write outcome before an asynchronous handover starts.
     Complete it only after activation settles. Reload runs in an idle task,
@@ -102,22 +111,16 @@ export function watchJournalWrites(): { sawWrite: () => boolean; stop: () => voi
 export function prepareJournalHandover(): (handover: () => void) => Promise<boolean> {
   const failuresBefore = failedWrites;
   return (handover) => new Promise<boolean>((resolve) => {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const check = () => {
-      timer = undefined;
+    checkAfterJournalWrites(() => {
       if (failedWrites !== failuresBefore) {
-        stop();
         resolve(false);
+        return true;
       } else if (!journalIsBusy()) {
-        stop();
         handover();
         resolve(true);
+        return true;
       }
-    };
-    const schedule = () => {
-      if (timer === undefined) timer = setTimeout(check, 0);
-    };
-    const stop = onJournalBusyChange(schedule);
-    schedule();
+      return false;
+    });
   });
 }

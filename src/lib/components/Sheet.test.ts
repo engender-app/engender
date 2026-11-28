@@ -4,17 +4,16 @@ import { describe, expect, it } from 'vitest';
 
 const root = fileURLToPath(new URL('../../..', import.meta.url));
 const sheetFile = readFileSync(root + '/src/lib/components/Sheet.svelte', 'utf8');
-/* The background lock and the focus trap moved here on redesign ticket 45,
-   when the letter arrival became the second surface that covers the whole
-   shell. The guarantees below are unchanged and still Sheet's, so they are
-   asserted against whichever file now carries each line rather than
+/* The background lock and the focus trap moved here, when the letter arrival became the
+   second surface that covers the whole shell. The guarantees below are unchanged and still
+   Sheet's, so they are asserted against whichever file now carries each line rather than
    loosened - a rule tested in one file holds nowhere else. */
 const overlayLockFile = readFileSync(root + '/src/lib/components/overlayLock.ts', 'utf8');
 
 describe('Sheet initial focus contract', () => {
   it('does not invoke focus synchronously upon attachment', () => {
     // Synchronous focus upon attachment flushes layout before CSS transition keyframes attach on Android WebView,
-    // causing a 434-607px entrance teleport (ticket 115).
+    // causing a 434-607px entrance teleport.
     expect(sheetFile).not.toMatch(/function focusInitial\(node[^{]*\{\s*sheetEl = node;\s*const field[^;]*;\s*\(field \?\? node\)\.focus\(\);/);
   });
 

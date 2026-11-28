@@ -1,8 +1,7 @@
-/* Which period a wrapped covers, and which one Home offers today (phase 4
-   features ticket 01).
+/* Which period a wrapped covers, and which one Home offers today.
 
    A wrapped is a retrospective on a *completed* week, month or year
-   (CONTEXT: Wrapped). Nothing here reads the clock and nothing here reads
+. Nothing here reads the clock and nothing here reads
    the journal: today arrives as an argument, the answer is a pair of epoch
    days, and the numbers inside that range come from the recap seam
    (journal/stats.ts) at the moment a screen asks for them. That is what
@@ -43,8 +42,7 @@ export const WRAPPED_ENTRY_FLOOR = 5;
     still news. The week's window can never expire - the previous
     Monday-to-Sunday week always ended one to seven days ago - so it is the
     fallback the other two displace while they are fresh. */
-/* WRAPPED_FRESH_DAYS stays exported only for its own test (AU-09 test-only
-   review). */
+/* WRAPPED_FRESH_DAYS stays exported only for its own test. */
 export const WRAPPED_FRESH_DAYS: Record<WrappedCadence, number> = {
   week: 7,
   month: 14,

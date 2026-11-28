@@ -1,4 +1,4 @@
-/* The contract suite over node:sqlite (ticket 11).
+/* The contract suite over node:sqlite.
 
    This is the baseline the Android tier has to match: the same suite runs on
    a phone from tests/android-tier/, over SQLCipher through the Capacitor

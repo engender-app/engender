@@ -9,6 +9,7 @@ import { test } from 'vitest';
 import { dateInputValueFromEpochDay } from '../epochDay.ts';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
+import { tagLabels } from '../vocabulary/import-labels.ts';
 import { openJournal } from './journal.ts';
 import { countingDriver } from './test-support.ts';
 import { journalWithBuiltIns } from './test-support.ts';
@@ -33,6 +34,23 @@ test('Daylio preview resolves built-in aliases to one tag per entry', async () =
   assert.deepEqual(preview.journal.entries[0].tags, ['a-exercise']);
   await journal.archive.commitDaylioImport(preview);
   assert.deepEqual((await journal.entries.recentDays(1))[0].tags, ['a-exercise']);
+});
+
+test('new emotion names still import as own tags without icons', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const preview = await journal.archive.previewDaylioImport(
+    [daylioHeader, '2026-01-15,January 15,Thursday,09:00,Rad,overwhelmed | hopeful,,walk'].join('\n'),
+    { tagLabels }
+  );
+
+  await journal.archive.commitDaylioImport(preview);
+  const [entry] = await journal.entries.recentDays(1);
+  const imported = (await journal.tags.getTagGroups()).find((group) => group.key === 'imported')!.tags;
+  const [own] = imported;
+  assert.equal(own.label, 'overwhelmed');
+  assert.equal(own.builtIn, false);
+  assert.equal(own.icon, undefined);
+  assert.deepEqual(new Set(entry.tags), new Set([own.id, 'e-hopeful']));
 });
 
 function daylioCsv(entryCount: number): string {
@@ -118,7 +136,7 @@ test('preview counts equal the merge, and importing the same Daylio CSV twice is
 
   const afterRepeat = (await journal.archive.snapshot()).journal;
   // A no-op re-import still commits - it is still authorship, just of
-  // nothing new - so it still gets its own record (ticket 03), even though
+  // nothing new - so it still gets its own record, even though
   // every other section is unchanged.
   assert.deepEqual({ ...afterRepeat, importLog: [] }, { ...afterFirstImport, importLog: [] });
   assert.equal(afterRepeat.importLog.length, 2);

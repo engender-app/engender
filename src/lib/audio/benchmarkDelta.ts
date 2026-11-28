@@ -1,24 +1,8 @@
-/* What changed between two voice benchmarks (CONTEXT: "Voice benchmark").
-
-   Descriptive only (PRODUCT.md:109): a difference in Hz, a difference in
-   semitones, a difference in F1/F2. No direction is named as better or
-   worse, and nothing here decides that on its own - a caller states the
-   numbers and stops.
-
-   Two benchmarks are comparable only if they were read from the same
-   passage (CONTEXT: "Benchmark passage") - a rate and a pitch measured over
-   different words are different numbers, not a trend. That gate lives here
-   rather than in the page, so a caller cannot compute a delta across
-   passages by forgetting to check first.
-
-   The second gate is the capture chain, and it is narrower. A change of
-   passage leaves nothing to
-   compare; a change of phone leaves the pitch figures intact and takes the
-   resonance ones away, because mean F0 shows no significant effect of
-   recording device while smartphone formants failed test-retest outright.
-   So a delta across chains is not null, it is a delta with no resonance in
-   it - and it says so with `sameChain` rather than by looking like a take
-   whose vowel step was skipped. */
+/* Compute descriptive changes without grading their direction. Require
+   the same benchmark passage before comparing. A capture-chain change
+   preserves pitch deltas and omits resonance because formants depend
+   on the device. sameChain distinguishes that omission from a missing
+   vowel take. */
 
 import { captureChainBreak, type ChainBreak } from './captureChain';
 
@@ -51,8 +35,7 @@ export function comparabilityBreak(from: ComparableTake, to: ComparableTake): Se
   return captureChainBreak(from.captureChain, to.captureChain);
 }
 
-/* BenchmarkForDelta stays exported only for its own test (AU-09 test-only
-   review). */
+/* BenchmarkForDelta stays exported only for its own test. */
 export interface BenchmarkForDelta extends ComparableTake {
   f0MedianHz: number;
   f1Hz: number | null;

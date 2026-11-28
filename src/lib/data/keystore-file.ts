@@ -1,55 +1,111 @@
-/* Where the web keeps the keystore metadata (ticket 09): one JSON file in
-   the OPFS root, beside the SAHPool directory whose contents it unlocks.
-   Everything in it survives disclosure without the passphrase
-   (crypto/keystore.ts), so it needs no protection of its own - what it
-   needs is to be readable before the database opens, and to go when a
-   reset empties the OPFS root (data/reset.ts already removes everything
-   under the root, this file included).
+/* Credential wraps live in OPFS on the web and in a durable app-private
+   file on Android. The native store becomes authoritative before an old
+   OPFS record is removed; a native tombstone prevents adopting it again. */
 
-   Android will keep the same serialized form behind Keystore-protected
-   storage instead (ticket 13); the functions stay this small so that
-   difference stays a storage difference. */
+import { KeystoreUnreadableError, parseKeystore, serializeKeystore, type JournalSecretSource, type KeystoreMetadata } from '../crypto/keystore';
+import { isAndroid } from '../platform';
+import { androidPluginOwners, registerAndroidPlugin } from '../android/plugin-registry';
 
-import { parseKeystore, serializeKeystore, type JournalSecretSource, type KeystoreMetadata } from '../crypto/keystore';
+interface CredentialWrapBridge {
+  readCredential(): Promise<{ initialized: boolean; serialized?: string }>;
+  adoptCredential(options: { serialized: string }): Promise<{ initialized: boolean; serialized?: string }>;
+  writeCredential(options: { serialized: string }): Promise<void>;
+  removeCredential(): Promise<void>;
+}
 
-/* KEYSTORE_FILE stays exported only for conversion-probe.ts, which
-   cross-checks against it (AU-09 test-only review). */
+const androidWraps = registerAndroidPlugin<CredentialWrapBridge>(androidPluginOwners.keystore);
+
+/* Reset also uses this name to keep credential deletion after data deletion. */
 export const KEYSTORE_FILE = 'keystore.json';
 
 const isNotFound = (error: unknown): boolean => (error as DOMException)?.name === 'NotFoundError';
 
+/** Presence is a setup refusal, including malformed metadata. Native
+    tombstones stay authoritative; stale OPFS must not resurrect a wrap. */
+export async function keystoreFileExists(): Promise<boolean> {
+  if (isAndroid()) {
+    const native = await androidWraps.readCredential();
+    if (native.initialized) return native.serialized !== undefined;
+  }
+  const root = await navigator.storage.getDirectory();
+  try {
+    await root.getFileHandle(KEYSTORE_FILE);
+    return true;
+  } catch (error) {
+    if (isNotFound(error)) return false;
+    throw error;
+  }
+}
+
 /** The stored metadata, or null on a first run - which is what tells boot
     to offer setup rather than unlock. */
 export async function readKeystoreFile(): Promise<KeystoreMetadata | null> {
+  if (isAndroid()) {
+    const native = await androidWraps.readCredential();
+    if (native.initialized) return native.serialized === undefined ? null : parseKeystore(native.serialized);
+    const legacy = await readOpfsKeystore();
+    if (legacy === null) return null;
+    // Adoption cannot replace a native record another caller has just published.
+    const adopted = await androidWraps.adoptCredential({ serialized: serializeKeystore(legacy) });
+    await removeOpfsKeystore();
+    return adopted.serialized === undefined ? null : parseKeystore(adopted.serialized);
+  }
+  return readOpfsKeystore();
+}
+
+/** Approval identity includes unreadable access wraps so recovery can repair
+    them. Reading identity never adopts a legacy wrap or revives a tombstone. */
+export async function readKeystoreText(): Promise<string | null> {
+  if (isAndroid()) {
+    const native = await androidWraps.readCredential();
+    if (native.initialized) return native.serialized ?? null;
+  }
+  return readOpfsKeystoreText();
+}
+
+async function readOpfsKeystore(): Promise<KeystoreMetadata | null> {
+  const serialized = await readOpfsKeystoreText();
+  return serialized === null ? null : parseKeystore(serialized);
+}
+
+async function readOpfsKeystoreText(): Promise<string | null> {
   const root = await navigator.storage.getDirectory();
   try {
     const handle = await root.getFileHandle(KEYSTORE_FILE);
-    return parseKeystore(await (await handle.getFile()).text());
+    return (await handle.getFile()).text();
   } catch (error) {
     if (isNotFound(error)) return null;
     throw error;
   }
 }
 
-export async function writeKeystoreFile(metadata: KeystoreMetadata): Promise<void> {
+export async function writeKeystoreFile(metadata: KeystoreMetadata, current: () => void = () => {}): Promise<void> {
   /* Serialized before the file is opened, because createWritable() truncates
      and serializeKeystore can refuse metadata (a biometric keystore with no
      credential id). Building the text first means a refusal leaves the old
      keystore where it was rather than emptying it. */
   const serialized = serializeKeystore(metadata);
+  current();
+  if (isAndroid()) {
+    // A native persistence failure must never fall back to the WebView store.
+    await androidWraps.writeCredential({ serialized });
+    return;
+  }
   const root = await navigator.storage.getDirectory();
   const handle = await root.getFileHandle(KEYSTORE_FILE, { create: true });
   const writable = await handle.createWritable();
   /* One write, and the swap file behind it is what makes every rewrap in the
-     app crash-safe rather than merely ordered: without `keepExistingData` the
+     web app safe from a process interruption: without `keepExistingData` the
      writable is a swap file that only replaces the real one on close(), so a
-     process that dies mid-write leaves the previous keystore intact. The
+     process that dies mid-write leaves the previous keystore intact.
+     close() does not promise persistence through power loss on the web. The
      access-mode changes and PIN mode's rebinding (data/journal-pin.ts) both
      state that an interruption leaves a journal openable under one secret or
      the other, and this is the half of that claim which is not about
      ordering. */
   try {
     await writable.write(serialized);
+    current();
     await writable.close();
   } catch (error) {
     await writable.abort().catch(() => {});
@@ -58,16 +114,34 @@ export async function writeKeystoreFile(metadata: KeystoreMetadata): Promise<voi
 }
 
 /** Which kind of secret opens this journal, or null on a first run. What
-    boot's survey asks (ticket 53): the mode is a property of the keystore
+    boot's survey asks: the mode is a property of the keystore
     rather than something tracked beside it, so there is nothing to drift. */
 export async function readKeystoreSource(): Promise<JournalSecretSource | null> {
   return (await readKeystoreFile())?.secretSource ?? null;
+}
+
+export type KeystoreBootSource = JournalSecretSource | 'unreadable' | null;
+
+/** Malformed authoritative metadata needs recovery, never setup or a weaker
+    leftover device credential. Unexpected storage failures still propagate. */
+export async function readKeystoreSourceForBoot(): Promise<KeystoreBootSource> {
+  try {
+    return await readKeystoreSource();
+  } catch (error) {
+    if (error instanceof KeystoreUnreadableError) return 'unreadable';
+    throw error;
+  }
 }
 
 /** Removes the keystore, for a move to device-bound mode where there is no
     secret to wrap under any more. Tolerates an absent file: the caller's
     goal is that it is gone. */
 export async function removeKeystoreFile(): Promise<void> {
+  if (isAndroid()) await androidWraps.removeCredential();
+  await removeOpfsKeystore();
+}
+
+async function removeOpfsKeystore(): Promise<void> {
   const root = await navigator.storage.getDirectory();
   try {
     await root.removeEntry(KEYSTORE_FILE);

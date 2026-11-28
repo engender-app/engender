@@ -24,16 +24,16 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Ticket 19's write channel, exercised end to end through the real WebView:
- * the registration this device's WebView gets, a write landing on disk where
- * the plugin's own {@code sizeFile}/{@code directoryPath} calls can see it,
- * and a path-traversal name rejected rather than silently written somewhere
- * unexpected - the one failure mode the ticket's "watch out for" section
- * names explicitly, on the one operation the user has no other copy of.
+ * Exercise the write channel through the WebView. the registration this
+ * device's WebView gets, a write landing on disk where the plugin's own
+ * {@code sizeFile}/{@code directoryPath} calls can see it, and a
+ * path-traversal name rejected rather than silently written somewhere
+ * unexpected - the one failure mode "watch out for" section names explicitly,
+ * on the one operation the user has no other copy of.
  *
  * <p>Plain {@code evaluateJavascript} rather than a built probe bundle
- * (unlike {@code LongJournalBenchmarkTest}/{@code JournalContractTest}):
- * this only needs the WebView's own APIs and the plugins {@code MainActivity}
+ * (unlike {@code LongJournalBenchmarkTest}/{@code JournalContractTest}): this
+ * only needs the WebView's own APIs and the plugins {@code MainActivity}
  * already registers, so there is nothing here for a bundle to add.
  */
 @RunWith(AndroidJUnit4.class)
@@ -94,6 +94,46 @@ public class PhotoWriteChannelTest {
             JSONObject ack = new JSONObject(raw);
 
             assertEquals(false, ack.getBoolean("ok"));
+        }
+    }
+
+    /* A name with a trailing space used to be trimmed by PhotoFiles and land on the real
+       file. Both transports must now refuse it, and the original bytes must be exactly as
+       they were. */
+    @Test
+    public void aTrailingSpaceNameNeverReachesTheFileItTrimsTo() throws Exception {
+        File original = PhotoFiles.fileFor(InstrumentationRegistry.getInstrumentation().getTargetContext(),
+            "write-channel-test", "alias-target.bin");
+        original.delete();
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            assertTrue(awaitBoolean(scenario, "typeof window.androidPhotoWriteChannel !== 'undefined'"));
+            String seed = "(function(){"
+                + "var channel = new MessageChannel();"
+                + "channel.port1.onmessage = function(e){ window.__aliasSeed = e.data; };"
+                + "window.androidPhotoWriteChannel.postMessage("
+                + "JSON.stringify({name:'alias-target.bin',directory:'write-channel-test'}), [channel.port2]);"
+                + "var bytes = new Uint8Array([1,2,3]); channel.port1.postMessage(bytes.buffer, [bytes.buffer]);"
+                + "})();";
+            assertTrue(new JSONObject(awaitResult(scenario, seed, "window.__aliasSeed")).getBoolean("ok"));
+
+            String channelScript = "(function(){"
+                + "var channel = new MessageChannel();"
+                + "channel.port1.onmessage = function(e){ window.__aliasChannel = e.data; };"
+                + "window.androidPhotoWriteChannel.postMessage("
+                + "JSON.stringify({name:'alias-target.bin ',directory:'write-channel-test'}), [channel.port2]);"
+                + "var bytes = new Uint8Array([9,9,9,9,9]); channel.port1.postMessage(bytes.buffer, [bytes.buffer]);"
+                + "})();";
+            assertFalse(new JSONObject(awaitResult(scenario, channelScript, "window.__aliasChannel")).getBoolean("ok"));
+
+            String bridgeScript = "window.Capacitor.Plugins.Photos.writeFile("
+                + "{name:' alias-target.bin',directory:'write-channel-test',base64:'CQkJCQk='})"
+                + ".then(function(){window.__aliasBridge=JSON.stringify({ok:true});})"
+                + ".catch(function(error){window.__aliasBridge=JSON.stringify({ok:false,error:String(error)});});";
+            assertFalse(new JSONObject(awaitResult(scenario, bridgeScript, "window.__aliasBridge")).getBoolean("ok"));
+
+            assertEquals(3, original.length());
+        } finally {
+            original.delete();
         }
     }
 

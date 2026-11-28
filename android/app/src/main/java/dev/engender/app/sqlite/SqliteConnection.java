@@ -30,8 +30,8 @@ import java.nio.file.StandardCopyOption;
  *
  * <p>And there is no key derivation. A hex key arrives already stretched or
  * already random (ADR-0013, ADR-0018) and is handed to SQLCipher in its raw
- * key form, which is the whole reason this bridge exists instead of
- * {@code @capacitor-community/sqlite} (ADR-0020, ticket 11 amendment).
+ * key form, which is the whole reason this bridge exists instead of {@code
+ * @capacitor-community/sqlite} (ADR-0020).
  */
 final class SqliteConnection {
 
@@ -98,9 +98,7 @@ final class SqliteConnection {
 
     /**
      * SQLCipher reads {@code x'<hex>'} as a raw key and runs no KDF over it.
-     * An absent key opens a plain, unencrypted database - which is where
-     * ticket 11 leaves the app, since the Keystore that produces the real key
-     * is ticket 13.
+     * An absent key opens an unencrypted database.
      */
     private static String rawKeyPassword(String hexKey) {
         if (hexKey == null || hexKey.isEmpty()) return "";
@@ -112,7 +110,7 @@ final class SqliteConnection {
 
     /**
      * Whether a database file on disk is an unencrypted one, asked without
-     * opening it (ticket 13).
+     * opening it.
      *
      * <p>Every SQLite file begins with the same 16-byte string; an encrypted
      * one begins with its own salt, so the header is the question. Asked
@@ -227,7 +225,7 @@ final class SqliteConnection {
 
     /**
      * Puts the copy back as the live database, after a migration that could
-     * not be finished (ticket 04, ADR-0006).
+     * not be finished (ADR-0006).
      *
      * <p>A file copy rather than the web tier's VACUUM INTO, because these are
      * ordinary files rather than an opaque OPFS pool. The connection is closed
@@ -269,24 +267,21 @@ final class SqliteConnection {
         }
     }
 
+    /** The bridge is gone, so even migration recovery must obtain a new key. */
+    void dispose() {
+        try {
+            close();
+        } finally {
+            password = "";
+            databaseFile = null;
+        }
+    }
+
     /**
-     * The reset path's half of the wipe on Android (ticket 13, ADR-0014).
-     *
-     * <p>Everything the web's reset gets for free by emptying the OPFS root:
-     * the database, its side files and ADR-0006's copy, all of which live in
-     * app-private storage here rather than in the WebView's storage. Without
-     * this a reset would erase the Keystore key and leave the ciphertext, and
-     * the next boot would mint a fresh key and meet a database it cannot open.
-     *
-     * <p>The connection goes first, because a file with an open handle on it
-     * deletes on some filesystems and not on others, and a reset that half
-     * worked is worse than one that failed.
-     *
-     * <p>The files are found by name, not through the last open. A reset is
-     * mostly asked for from a locked gate, and in a cold process nothing has
-     * opened the journal by then: going through the open's path, this used
-     * to delete nothing there, erase the key anyway, and leave the next
-     * setup minting a new key over the old ciphertext (ux-carpet 210).
+     * Close the open connection, then delete the Android database, side files
+     * and pre-migration copy (ADR-0006). Locate files by name even on a cold
+     * locked boot. Reset must remove the ciphertext before a fresh key is
+     * minted.
      */
     void deleteDatabaseFiles(Context context, String name) throws IOException {
         close();

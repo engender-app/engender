@@ -1,25 +1,7 @@
 <script lang="ts">
-  /* The rail's facts as a list (phase 11 UI/UX ticket 25, first audit U4).
-
-     The rail draws a history as a picture: eras 52px tall but a regimen
-     episode 8px, a tryout 6px and a milestone a 12px block. The picture is
-     the point - it says where a life's stretches lie against each other -
-     but selecting a fact on it is a tap at a target measured in single
-     digits, and the audit measured them. So the same facts are also a list,
-     under the rail and folded away until somebody wants it: one row per
-     fact, its own dates written out, the whole row the target, and the row
-     it selects the same span the band on the rail selects (lookBackSpan.ts,
-     `factSpan`).
-
-     Not a replacement for the rail. A person who can hit an 8px band keeps
-     hitting it, and the rail keeps every one of its own tab stops; this is
-     the way through for a finger, a magnified screen, or anyone who wants
-     to know the exact dates before choosing rather than after.
-
-     Bounded the way every long list in this app is bounded - BatchedList,
-     ADR-0069 - so a journal with two hundred milestones renders a batch and
-     grows as it is read rather than laying two hundred rows under the
-     door. */
+  /* The rail's marks can be as small as 6px. The disclosed list supplies full-width targets
+     and exact dates for the same facts. Keep each row's selection aligned with factSpan so
+     it chooses the same span as the rail. Use BatchedList for long journals. */
   import { m } from '$lib/paraglide/messages';
   import { factSpan, type RailFact, type RailFactKind, type Span } from '$lib/data/lookBackSpan';
   import { dayLabel, spanLabel } from '$lib/data/spanLabel';
@@ -69,9 +51,11 @@
 </script>
 
 <div class="span-facts" data-span-facts>
+  <!-- A full-width fold toggle answers with the wash, not a scale. -->
   <button
     type="button"
     class="disclosure-toggle"
+    data-no-press
     aria-expanded={open}
     data-span-facts-toggle
     onclick={() => (open = !open)}

@@ -1,4 +1,4 @@
-/* What each of a benchmark's two takes is worth (CONTEXT: "Voice benchmark").
+/* What each of a benchmark's two takes is worth.
 
    The engine's three modules answer three separate questions; this is the
    one place that says which questions get asked of which take, so the
@@ -8,7 +8,7 @@
    The passage is read aloud: it carries the pitch figures and the speaking
    rate, and steadiness is not asked of it. The vowel is held: it carries the
    resonance and the signal-to-noise the resonance was measured under, and
-   all four checks apply. Both are descriptive (PRODUCT.md:109).
+   all four checks apply. Both measures describe the sample.
 
    Pure, and node-tested: nothing here decodes audio (audio/capture.ts). */
 
@@ -50,12 +50,10 @@ interface VowelTake {
   formants: Formants | null;
 }
 
-/** The read passage: pitch, its span, its spread, and the rate it was read
-    at. `wordCount` is the passage's own, so the rate is words over the time
-    from the first voiced frame to the last (CONTEXT: "Benchmark passage") -
-    and it is also what the length gate scales with, since how much voice a
-    read should carry is a question about how many words there were
-    (`passageGate`, redesign ticket 41). */
+/** The read passage: pitch, its span, its spread, and the rate it was read at. `wordCount`
+    is the passage's own, so the rate is words over the time from the first voiced frame to
+    the last - and it is also what the length gate scales with, since how much voice a read
+    should carry is a question about how many words there were. */
 export function analysePassage(
   samples: Float32Array,
   sampleRate: number,

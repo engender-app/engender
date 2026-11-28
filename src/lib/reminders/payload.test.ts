@@ -1,27 +1,32 @@
 import { describe, expect, test } from 'vitest';
 import { buildAndroidReminderPayload } from './payload';
+import checkInFixture from '../android/fixtures/check-in-payload.json';
 
 describe('buildAndroidReminderPayload', () => {
+  test('shared check-in fixture leaves legacy affirmation out of the payload', () => {
+    const payload = buildAndroidReminderPayload(checkInFixture.input);
+    expect(payload).toEqual(checkInFixture.expected);
+  });
+
   test('copies reminders and scheduler state into bridge payload', () => {
     const payload = buildAndroidReminderPayload({
       reminders: [
         {
           id: 'r-1',
           title: 'Estradiol patch',
-          type: 'med',
           time: '20:00',
           recurrence: 'EVERY_N_DAYS',
           interval: 3,
           anchorEpochDay: 20300,
           epochDay: null,
           enabled: true,
-          autoSource: null
+          autoSource: null,
+          drug: null
         }
       ],
       checkInEnabled: true,
       checkInTime: '21:30',
-      journalingPauses: [],
-      checkInAffirmations: ['You are enough.', 'Your pace is the right pace.'],
+      checkInPausedThrough: null,
       latestEntryEpochDay: 20309,
       hideNotificationTitles: true,
     quietHours: { enabled: false, start: '22:00', end: '07:00' },
@@ -29,29 +34,35 @@ describe('buildAndroidReminderPayload', () => {
         channelReminders: 'Reminders',
         channelCheckIn: 'Check-in',
         checkInTitle: 'Daily check-in',
-        checkInBody: 'How are you today?'
+        checkInBody: 'How are you today?',
+        checkInMoods: ['awful', 'bad', 'meh', 'good', 'great'],
+        doseTaken: 'Taken',
+        doseDone: 'Done',
+        doseSkip: 'Skip',
+        doseNoted: 'Noted'
       }
     });
+
+    expect(payload).not.toHaveProperty('checkInAffirmations');
 
     expect(payload).toEqual({
       reminders: [
         {
           id: 'r-1',
           title: 'Estradiol patch',
-          type: 'med',
           time: '20:00',
           recurrence: 'EVERY_N_DAYS',
           interval: 3,
           anchorEpochDay: 20300,
           epochDay: null,
           enabled: true,
-          autoSource: null
+          autoSource: null,
+          drug: null
         }
       ],
       checkInEnabled: true,
       checkInTime: '21:30',
-      journalingPauses: [],
-      checkInAffirmations: ['You are enough.', 'Your pace is the right pace.'],
+      checkInPausedThrough: null,
       latestEntryEpochDay: 20309,
       hideNotificationTitles: true,
     quietHours: { enabled: false, start: '22:00', end: '07:00' },
@@ -59,7 +70,12 @@ describe('buildAndroidReminderPayload', () => {
         channelReminders: 'Reminders',
         channelCheckIn: 'Check-in',
         checkInTitle: 'Daily check-in',
-        checkInBody: 'How are you today?'
+        checkInBody: 'How are you today?',
+        checkInMoods: ['awful', 'bad', 'meh', 'good', 'great'],
+        doseTaken: 'Taken',
+        doseDone: 'Done',
+        doseSkip: 'Skip',
+        doseNoted: 'Noted'
       }
     });
   });
@@ -69,25 +85,22 @@ describe('buildAndroidReminderPayload', () => {
       {
         id: 'r-1',
         title: 'Reminder',
-        type: 'other' as const,
         time: '08:00',
         recurrence: 'DAILY' as const,
         interval: null,
         anchorEpochDay: null,
         epochDay: null,
         enabled: true,
-        autoSource: null
+        autoSource: null,
+        drug: null
       }
     ];
 
-    const affirmations = ['You are enough.'];
-    const journalingPauses = [{ startEpochDay: 21000, endEpochDay: null }];
     const payload = buildAndroidReminderPayload({
       reminders,
       checkInEnabled: false,
       checkInTime: '21:00',
-      journalingPauses,
-      checkInAffirmations: affirmations,
+      checkInPausedThrough: 21000,
       latestEntryEpochDay: 21000,
       hideNotificationTitles: false,
     quietHours: { enabled: false, start: '22:00', end: '07:00' },
@@ -95,15 +108,17 @@ describe('buildAndroidReminderPayload', () => {
         channelReminders: 'A',
         channelCheckIn: 'B',
         checkInTitle: 'C',
-        checkInBody: 'D'
+        checkInBody: 'D',
+        checkInMoods: ['awful', 'bad', 'meh', 'good', 'great'],
+        doseTaken: 'Taken',
+        doseDone: 'Done',
+        doseSkip: 'Skip',
+        doseNoted: 'Noted'
       }
     });
 
     reminders[0].title = 'Changed';
-    affirmations[0] = 'Changed';
-    journalingPauses[0].startEpochDay = 21001;
     expect(payload.reminders[0].title).toBe('Reminder');
-    expect(payload.checkInAffirmations[0]).toBe('You are enough.');
-    expect(payload.journalingPauses[0].startEpochDay).toBe(21000);
+    expect(payload.checkInPausedThrough).toBe(21000);
   });
 });

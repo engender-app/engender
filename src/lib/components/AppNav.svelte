@@ -1,27 +1,12 @@
 <script lang="ts">
-  /* The app's navigation, both of its shapes (phase 5 ticket 18).
-
-     One component rather than two blocks in +layout.svelte, which is what
-     the layout carried before: a bottom bar and a left rail, each with its
-     own copy of the same four destinations and its own `activeKey ===` test
-     against the same table. Two copies of a list is how the fourth tab's
-     href and its internal key drift apart, and ADR-0036 is specifically
-     about those two disagreeing on purpose - `href` is /more and `key` is
-     'settings' - which is exactly the kind of deliberate oddity a second
-     copy quietly normalises away.
-
-     Which shape renders is a container query in app.css, not a branch here.
-     Both are in the DOM at every width and one of them is display:none, so
-     there is no flash of the wrong navigation on a slow first paint. What
-     is measured is only whether the bar's four names fit one row of it
-     (`rows` below). */
+  /* Render the bottom bar and rail from one destination table. The container query in
+     app.css chooses which is visible. Keep /more paired with the settings key. Measure
+     label wrapping only for the bar. */
   import { tick } from 'svelte';
   import { page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
   import { litTabKey, RAIL_SETTINGS, railTabKey } from '$lib/navigation/active-tab';
   import { chromeTabOrigin } from '$lib/navigation/chrome-tab-origin';
-  import { appWordmark, hubTabLabel } from '$lib/disguise/identity';
-  import { prefs } from '$lib/data/prefs/store.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import {
     boxesMatch,
@@ -41,29 +26,23 @@
   import Mark from './Mark.svelte';
 
   const NAV = [
-    /* Today, Journal, Look back, Transition (ticket 08) - none of the four
-       reuses `nav_home`/`nav_calendar`/`nav_stats`/`nav_more`. Those keys
-       still say Calendar/Stats/More everywhere else that already reads them
-       (the calendar and stats screens' own headers, a couple of CTA
-       buttons), and this ticket's whole point is that the bar's word for a
-       door and a door's own word for itself are now free to differ.
-       `nav_home` is gone: the return moment's empty state was its last
-       caller and redesign ticket 35 drew that state as a line rather than
-       a notice with Home as its action. */
+    /* Today, Journal, Look back, Transition - none of the four reuses
+       `nav_home`/`nav_calendar`/`nav_stats`/`nav_more`. Those keys still say
+       Calendar/Stats/More everywhere else that already reads them (the calendar and stats
+       screens' own headers, a couple of CTA buttons), and whole point is that the bar's
+       word for a door and a door's own word for itself are now free to differ. `nav_home`
+       is gone: the return moment's empty state was its last drew that state as a line
+       rather than a notice with Home as its action. */
     { href: '/', key: 'home', icon: 'home', label: () => m.today() },
     { href: '/calendar', key: 'calendar', icon: 'calendar', label: () => m.nav_journal() },
     { href: '/stats', key: 'stats', icon: 'stats', label: () => m.nav_lookback() },
-    /* ADR-0036: the tab opens the More hub, not Settings directly, but
-       `key` stays 'settings' - it is what the walkthrough's data-nav-item
-       selector and active-tab.ts's own table already key off, and Settings
-       is still what this tab leads to, one hop further in. Disguised, the
-       label reverts to the existing `nav_more` string rather than staying
-       `nav_transition` - see hubTabLabel. */
+    /* The tab opens More while its internal key stays settings. Disguise changes the
+       launcher and tab, not this unlocked label. */
     {
       href: '/more',
       key: 'settings',
       icon: 'grid',
-      label: () => hubTabLabel(prefs.disguise, m.nav_more(), m.nav_transition())
+      label: () => m.nav_transition()
     }
   ];
 
@@ -74,15 +53,15 @@
   const LEADING = NAV.slice(0, 2);
   const TRAILING = NAV.slice(2);
 
-  /* Per shape (after-release 17): the rail has a Settings row of its own
-     and lights it on every /settings route, where the bar, which has no
-     such row, keeps borrowing the door the gear was pressed from. */
+  /* Per shape: the rail has a Settings row of its own and lights it on every /settings
+     route, where the bar, which has no such row, keeps borrowing the door the gear was
+     pressed from. */
   let activeKey = $derived(litTabKey(page.url.pathname, chromeTabOrigin()));
   let railKey = $derived(railTabKey(page.url.pathname, chromeTabOrigin()));
   let litKey = $derived<Record<string, string>>({ bar: activeKey, rail: railKey });
   /* A borrowed door is lit so the bar keeps its place, but it is not the
      page: settings chrome is, so nothing on the bar claims aria-current
-     there (UI-07: screen readers heard Today on /settings). */
+     there. Marking Today current would announce the wrong page. */
   let onChrome = $derived(page.url.pathname.startsWith('/settings'));
 
   /* Which mark the add control is wearing. All three are rendered and
@@ -102,22 +81,10 @@
     if (ui.chooserOpen && !(event.target as Element).closest('[data-nav-fab]')) ui.chooserOpen = false;
   }
 
-  /* Quick add opens on the way down, not on click, because the press and
-     the tap are the same gesture: holding it and sliding onto a target is
-     one continuous move, and a fan that waited for the click would not be
-     under the finger yet when the finger started moving. QuickAdd.svelte
-     listens on the window from there and resolves whatever the pointer is
-     over when it comes up.
-
-     The click that follows a pointer sequence is then swallowed, or the
-     control would toggle twice per tap. A keyboard Enter fires a click with
-     no pointer sequence in front of it, which is why the click handler is
-     still what opens the fan for a keyboard.
-
-     A press that slides onto a target and lets go there never clicks the
-     button, so the flag outlived its gesture and swallowed the next
-     keyboard Enter (audit L04-15). A keyboard click says so itself with
-     `detail` 0, and is never the click a pointer sequence owes. */
+  /* Open Quick add on pointerdown so a held press can slide onto a target.
+     QuickAdd resolves it on window pointerup. Ignore the follow-up pointer
+     click to avoid toggling twice. Accept a keyboard click with detail 0 even
+     if the last pointer gesture never clicked the button. */
   let openedByPointer = false;
 
   function addPointerDown() {
@@ -137,26 +104,10 @@
     ui.chooserOpen = !ui.chooserOpen;
   }
 
-  /* The lit tab, as one shape that travels rather than four backgrounds that
-     switch (phase 5 ticket 31). The arithmetic - when two measurements are
-     the same place, which way the shape is going, and which of its edges
-     leads on the way - is in
-     $lib/motion/indicator.ts with its own tests; what has to live here is the
-     measuring, because only the DOM knows where a tab actually is.
-
-     One table over both shapes rather than a block each. The first pass had
-     two of everything - two effects, two pills, two sets of five attributes -
-     and the cost showed up immediately as divergence: only the bar got a
-     ResizeObserver, on the reasoning that the rail's rows stack from the top
-     and stay put whatever the window does. Which is true, and irrelevant,
-     because the rail is `display: none` below the shell's breakpoint. Every
-     rail tab measures 0 on a phone, so the pill recorded {0, 0, 0, 0} as a
-     real position and, with nothing to re-measure it, held that forever -
-     widen the window and the rail's active row had no fill at all, because
-     this same commit took the background off `.rail-item.is-active`. The
-     `laidOut` guard below is the fix for the measurement and observing both
-     navs is the fix for the recovery; one table is what stops the next
-     divergence. */
+  /* Share measurements across bar and rail. indicator.ts handles the
+     edge motion. laidOut rejects zero bounds when the rail is
+     display: none. Observe both navs so the pill remeasures when a
+     breakpoint reveals another layout. */
   type Shape = { key: 'bar' | 'rail'; axis: Axis };
 
   const SHAPES: Shape[] = [
@@ -164,13 +115,11 @@
     { key: 'rail', axis: 'y' }
   ];
 
-  /* Where an arriving icon pivots: the bottom corner on the far side of the
-     travel, so a highlight coming from the right swings the icon on its
-     bottom left (Alicja, 2026-09-08). Keyed by the axis and by which edge
-     led, which is the pair of names indicator.ts already hands back - the
-     leading edge is on the side the motion is heading for, and that is the
-     side to pin. The rail tips about X, so its pivot is the far edge along Y
-     and centred across the row. */
+  /* Where an arriving icon pivots: the bottom corner on the far side of the travel, so a
+     highlight coming from the right swings the icon on its bottom left. Keyed by the axis
+     and by which edge led, which is the pair of names indicator.ts already hands back - the
+     leading edge is on the side the motion is heading for, and that is the side to pin. The
+     rail tips about X, so its pivot is the far edge along Y and centred across the row. */
   const ANCHOR = {
     x: { near: 'left bottom', far: 'right bottom' },
     y: { near: 'center top', far: 'center bottom' }
@@ -237,17 +186,14 @@
     if (!laidOut(el) || !nav) return { next: prev.shown ? { ...prev, shown: false } : prev, dir: 0 };
     const box = { x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight };
     const host: Host = { w: nav.clientWidth, h: nav.clientHeight };
-    /* Both have to match, not just the tab's own box (Alicja, 2026-09-10:
-       "when i f5 on web, the nav bar gets no selection at all"). A hard
-       reload can measure the rail before its content has settled the nav's
-       own height - one bad clientHeight baked into `at` forever, because a
-       later ResizeObserver tick finds the *tab* sitting exactly where it
-       already was and short-circuits here without ever recomputing insets
-       against the container's now-correct size. The pill still opened
-       (`shown: true`), just pinned by a `bottom` inset left over from a
-       nav a few hundred pixels short of its real height - a sliver rather
-       than a missing pill, which is why it read as no selection at all
-       rather than as an error. */
+    /* Both have to match, not just the tab's own box. A hard reload can measure the rail
+       before its content has settled the nav's own height - one bad clientHeight baked into
+       `at` forever, because a later ResizeObserver tick finds the *tab* sitting exactly
+       where it already was and short-circuits here without ever recomputing insets against
+       the container's now-correct size. The pill still opened (`shown: true`), just pinned
+       by a `bottom` inset left over from a nav a few hundred pixels short of its real
+       height - a sliver rather than a missing pill, which is why it read as no selection at
+       all rather than as an error. */
     if (prev.shown && boxesMatch(prev.box, box) && prev.host.w === host.w && prev.host.h === host.h) {
       return { next: prev, dir: 0 };
     }
@@ -259,7 +205,7 @@
        travel would be the app claiming something happened.
        The first moves neither edge (PLACE): the unplaced pill is pinned at
        the whole bar, so edges on a clock there faded it in across every tab
-       before it shrank onto one (tickets 184 and 166). A nav coming back from
+       before it shrank onto one. A nav coming back from
        display: none is this case too, since the early return above hid its
        pill, so it lands where it belongs and fades in rather than sliding
        from wherever it was last drawn. The re-measure keeps both edges on
@@ -328,22 +274,11 @@
     return () => observer.disconnect();
   });
 
-  /* Whether the four names fit the bar's one-row layout, where each tab is a
-     fifth of the bar (after-release 18, audit A11 and A11Y-04). At 320px
-     with default text "Look back" and "Transition" were 4-5px too wide and
-     ended in an ellipsis; at 130% text two names did, at 200% all four.
-     When one does not fit, the bar takes two rows of two tabs either side
-     of the add button, which gives each name more than twice the room. In
-     those wider tabs the icon goes beside the name when both fit, so two
-     rows cost 42px more than one rather than twice the height; where they
-     do not (320px at 200%), the icon stays above.
-
-     Measured as rendered rather than reasoned from the type scale: Android's
-     font scale reaches the WebView as text zoom, which grows the glyphs but
-     not the rem units the type tokens are written in. The comparison is
-     always against the one-row cell, whichever layout is showing, so the
-     answer does not change because the layout did. Labels never wrap, in
-     either layout, so a label's range is its whole name on one line. */
+  /* Measure each rendered label on one line against its one-row cell,
+     regardless of current layout. Android text zoom scales glyphs
+     without scaling rem tokens. When a label overflows, use two rows
+     around the add button. Place the icon beside its label only
+     where both fit. Keep labels unwrapped in either layout. */
   let rows = $state<'one' | 'two' | 'two-inline'>('one');
 
   function fitLabels() {
@@ -406,13 +341,10 @@
 {/snippet}
 
 <nav bind:this={navs.rail} class="app-rail" data-app-rail aria-label={m.nav_main()}>
-  <!-- The disguised name, same as the tab title and the launcher entry
-       (F24): the rail is the one piece of chrome that says the app's name
-       out loud, so it follows the preference like every other surface that
-       does - through the module all of them read (disguise/identity.ts). -->
+  <!-- The unlocked rail keeps the app name and chosen flag. -->
   <div class="rail-brand lockup">
     <Mark size={32} /><span class="lockup-word" translate="no"
-      >{appWordmark(prefs.disguise, m.app_name(), m.disguise_name())}</span
+      >{m.app_name()}</span
     >
   </div>
   <button
@@ -455,15 +387,12 @@
       ><span>{item.label()}</span>
     </a>
   {/each}
-  <!-- Preferences are chrome, not content (ticket 09; ADR-0076): a fifth
-       row, sunk to the rail's foot by its own margin and set apart from the
-       four doors by a rule, since the rail has room to say "Settings" where
-       the bar does not. Not one of `NAV`'s four, so it carries no
-       `data-rail-item`, but it takes the pill on every /settings route
-       (after-release 17, L04-07): it lit nothing there before, while the
-       rail lit Today, so the one row naming the page was the one row that
-       never said so. Plain text, since "Settings" says nothing about what
-       the app is under disguise either. -->
+  <!-- Preferences are chrome, not content: a fifth row, sunk to the rail's foot by its own
+       margin and set apart from the four doors by a rule, since the rail has room to say
+       "Settings" where the bar does not. Not one of `NAV`'s four, so it carries no
+       `data-rail-item`, but it takes the pill on every /settings route: it lit nothing
+       there before, while the rail lit Today, so the one row naming the page was the one
+       row that never said so. -->
   <a
     bind:this={tabs.rail[RAIL_SETTINGS]}
     class="rail-item rail-settings press"
@@ -483,7 +412,7 @@
 </nav>
 
 <!-- The indicator is on the anchor, not on a wrapper inside it, so it covers
-     the icon and the label as one shape (DIRECTION.md). A pill behind the
+     the icon and the label as one shape. A pill behind the
      icon alone leaves the label sitting outside the lit area, which reads as
      two elements rather than one tab. -->
 {#snippet tab(item: (typeof NAV)[number])}
@@ -496,7 +425,7 @@
     aria-current={activeKey === item.key && !onChrome ? 'page' : undefined}
     inert={ui.chooserOpen}
   >
-    <!-- The arrival swing (redesign ticket 26) rides the icon box rather than
+    <!-- The arrival swing rides the icon box rather than
          the tab, so it does not fight the tab's own press scale, and it is
          cleared on its own animationend so a tab visited twice swings
          twice. -->

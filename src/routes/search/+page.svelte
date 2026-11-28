@@ -1,121 +1,32 @@
 <script lang="ts">
-  /* Search (phase 5 ticket 22), rebuilt on the kit.
+  import { withEntryListReturn } from '$lib/navigation/sourceRecord';
+  /* Search runs two bounded reads (ADR-0004). Entry results use the FTS index
+     and render as day cards without counts. A filtered count could be mistaken
+     for the day's total. Other results use textSearch.ts's area registry and
+     share one newest-first list with area labels. The requested limit grows
+     by 30 so results already on screen keep their positions.
 
-     Three things were wrong with it as a screen, none of them about what it
-     could find.
+     A text query is required for other areas. The date range narrows records
+     that carry a day. All other filters apply to entries. The filter sheet
+     keeps the results in place and the chips show active filters. Turning on
+     Starred also shows the starred photo grid.
 
-     **The filters pushed the results off the phone.** They were a `.card`
-     that opened above the hits and held a whole tag picker, five mood chips,
-     two date fields and two toggles - taller than a 390px screen on its own,
-     so turning a filter on scrolled away the thing it was filtering. They
-     are a sheet now, which is what the app uses for a chooser everywhere
-     else, and the active-filter chips stay on the screen as the visible
-     record of what is on.
-
-     **Thirty hits were the end of the list.** SCREENS.md says paginated
-     thirty at a time and the screen asked for thirty and stopped: a query
-     matching fifty said "50 entries" and showed thirty, with nothing to tap.
-     There is a page size and a control that asks for another page. Not
-     infinite scroll, which SCREENS.md rules out and which a journal is a bad
-     fit for anyway - a person searching their own history is looking for one
-     day, not grazing.
-
-     The limit grows rather than an offset moving, so the hits already read
-     stay where they are and nothing is re-paginated under a finger. It is
-     still one bounded read per render (ADR-0004); it is just a larger bound
-     each time somebody asks.
-
-     **A hit had no date on it.** The results were a flat run of entry cards
-     and the date lived inside each one, so ten hits repeated the same date
-     ten times or changed it silently halfway down. They are day cards now,
-     the same as Home and the same as a day, which puts the date in the bar
-     and the timeline back under it.
-
-     One thing deliberately *not* changed: the day bars carry no count.
-     Everywhere else a bar can say how many entries a day holds; here it
-     could only say how many matched, and "3 that day" over three of five
-     would be the filter describing itself (recentEntries.ts).
-
-     **What it searches (phase 5 deepening ticket 24).** Entries, and every
-     other area of the journal that holds text: letters, milestone names,
-     procedure notes, appointment questions, felt-sense reflections, custom
-     roadmap goals, affirmations, lab notes, fit notes, wear notes, provider
-     names, drug names, reminder titles. Which those are is textSearch.ts's
-     registry, not a list here - this screen names no area, and an area
-     registered there reaches this screen without it being edited.
-
-     Two reads rather than one, and they are different questions. Entries go
-     through the FTS index with the filters and the paging they have always
-     had (entries.ts); everything else is one scan across the registry
-     (textSearch.ts). Keeping them apart is what lets the entries keep their
-     day cards - a hit in a letter is a line of text, and an entry is a day
-     with a mood and tags on it.
-
-     A hit outside entries is a row in one list rather than a section per
-     area: it carries the area's name as its subtitle, and the list keeps the
-     order the read returned, which is newest first across every area. The
-     first build grouped by area and it was wrong - eighteen areas can answer
-     a query, and a display-size heading over a card holding one row makes
-     three hits look like a screen of scaffolding (searchHitRows.ts).
-
-     Three rules the screen holds to, and the sheet says the third out loud
-     because it is the one somebody could otherwise be surprised by:
-
-     *Nothing outside entries is searched without a word.* Those areas have
-     no criteria of their own to be listed by - a date range alone would
-     print every letter in the range, which is the archive's job.
-
-     *The date range narrows everything it can reach.* An area whose records
-     carry a day is narrowed by it; a roadmap goal and an affirmation belong
-     to no day and are not.
-
-     *Tags, moods, has-note and has-photo are entry-only.* They are entry
-     fields, and no other area has them. The filter sheet states it rather
-     than leaving somebody to infer it from a letter that ignored the mood
-     they picked.
-
-     **Ticket 18: one front door, and something before a keystroke.** The
-     starred shelf and the saved-questions list were their own routes,
-     `/search/starred` and `/search/questions`, each reachable from its own
-     icon in this screen's own header - two doors to shelves this screen
-     already had the read for. Starred is a filter now (`EntrySearchFilters`
-     already carried it, "reached from search"), so it is a toggle in the
-     sheet below rather than a screen elsewhere, and the starred photo grid
-     that page also drew moves in beside it, shown whenever the toggle is on.
-     The old starred route redirects here with the filter applied
-     (`?starred=1`) and the old questions route to the bare screen, whose
-     opening state carries the saved questions, so a bookmark still lands
-     somewhere real.
-
-     Saved questions keep their own run (`/search/questions/[id]`, unmoved -
-     rename and delete live there, on the one question being looked at) but
-     lose their list screen: a chip row on this screen's opening state links
-     straight to a run instead, the same discovery a person reaching for
-     "what did I search before" actually wants.
-
-     And that opening state is the other half: before this ticket, an empty
-     box and two sentences was what a 268-entry journal offered before a
-     single character. The tag registry and this device's own recent
-     searches were already there to offer instead - `searchQuery.ts`'s tag
-     matching and `journal.stats.tagShare` for what "most-used" means, and
-     `recentSearches.ts` for what "recent" means, since a search's own
-     history is a device's memory of its own typing, not the journal's. */
+     Before typing, the most-used tag chips come from journal.stats.tagShare.
+     Recent searches come from recentSearches.ts and stay on this device. */
   import { m } from '$lib/paraglide/messages';
-  import { writer } from '$lib/stores/attempt.svelte';
-  import { toast } from '$lib/stores/toasts.svelte';
-  import { afterNavigate, beforeNavigate, goto } from '$app/navigation';
+  import { afterNavigate, beforeNavigate } from '$app/navigation';
   import { EMPTY_SEARCH, holdSearch, takeHandedQuery, takeHeldSearch, type SearchSnapshot } from '$lib/navigation/searchReturn';
+  import { takeLegacyQuery } from '$lib/navigation/journalTextParams';
   import { page } from '$app/state';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import { dateInputValueFromEpochDay, dayRangeEndMin, dayRangeStartMax, epochDayFromDateInputValue, FIRST_EPOCH_DAY } from '$lib/data/epochDay';
   import { fmtDateValue } from '$lib/data/dates';
   import { currentDay } from '$lib/stores/today.svelte';
-  import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
+  import { liveList, liveQuery } from '$lib/data/live/journal.svelte';
   import type { EntrySearchFilters } from '$lib/data/journal/entries';
   import { entryDayGroups } from '$lib/data/recentEntries';
-  import { drawRandomEntry } from '$lib/data/randomDraw';
   import { listRecentSearches, recordRecentSearch } from '$lib/data/recentSearches';
-  import { answerTotal, savedQuestionInputOf, starredPhotosAsked } from '$lib/data/savedQuestionQuery';
+  import { answerTotal, starredPhotosAsked } from '$lib/data/searchAnswer';
   import { tagIdsMatching } from '$lib/data/searchQuery';
   import { moodName } from '$lib/data/vocabulary/labels';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
@@ -123,19 +34,19 @@
   import { roleAt } from '$lib/theme/roles';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import TagPicker from '$lib/components/TagPicker.svelte';
+  import DimensionSlider from '$lib/components/DimensionSlider.svelte';
   import Icon from '$lib/components/Icon.svelte';
-  import SearchActions from '$lib/components/SearchActions.svelte';
   import StarredPhotoGrid from '$lib/components/StarredPhotoGrid.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import EntryDays from '$lib/components/EntryDays.svelte';
-  import Field from '$lib/components/kit/Field.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
   import ListRow from '$lib/components/kit/ListRow.svelte';
   import Notice from '$lib/components/kit/Notice.svelte';
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import { searchHitRows } from '$lib/components/searchHitRows';
-  import { crossfade, disclose } from '$lib/motion/reveal';
+  import { flip } from 'svelte/animate';
+  import { crossfade, disclose, resize } from '$lib/motion/reveal';
   import { whileStaying } from '$lib/motion/whileStaying';
   import { fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
 
@@ -145,7 +56,7 @@
 
   let query = $state('');
   /** How long the search waits after the last keystroke before it asks
-      (phase 8 audit ticket 15) - long enough that typing at speed never
+       - long enough that typing at speed never
       fires a run per key, short enough that a pause reads as instant. */
   const SEARCH_DEBOUNCE_MS = 250;
   let filtersOpen = $state(false);
@@ -155,40 +66,28 @@
   let endDate = $state('');
   let hasNote = $state(false);
   let hasPhoto = $state(false);
-  /* On by default when the address itself asks for it - ticket 18's
-     `/search/starred` redirect stub, so a stale bookmark still lands on
-     the shelf it pointed at rather than on a bare, unfiltered screen. */
+  /* On when the current address asks for the starred filter. */
   let starredOnly = $state(page.url.searchParams.has('starred'));
+  /* The transition fields: mode, body region
+     and one scale's range, entry-only like the filters above them. */
+  let selectedPresentationIds = $state<string[]>([]);
+  let selectedRegions = $state<string[]>([]);
+  let scale = $state<{ key: string; min: number; max: number } | null>(null);
   /* What the address asks for, which is also what a stale held search
      falls back to: `?starred=1` above, and `?q=` from the Transition door's
      "finish this search" row, which linked here with the query and landed
-     on an empty box (ticket 16). */
+     on an empty box. */
   /* More's search hands its query over in memory rather than in the
-     address, so what was typed stays out of the browser's history
-     (after-release ticket 10). `?q=` still works for an address typed or
-     bookmarked by hand. */
-  const handedQuery = takeHandedQuery();
+     address, so what was typed stays out of the browser's history.
+     `?q=` still works for an address typed or
+     bookmarked by hand: it is taken out of the address as it arrives and
+     handed over the same way (journalTextParams.ts). */
+  const handedQuery = takeHandedQuery() ?? takeLegacyQuery();
   const asked = (): SearchSnapshot => ({
     ...EMPTY_SEARCH,
     query: handedQuery ?? page.url.searchParams.get('q') ?? '',
     starredOnly: page.url.searchParams.has('starred')
   });
-  /* Saving a question keeps the query and every filter that is on, never
-     today's results (ticket 06's own acceptance criterion: a saved
-     question is read the same way an ad hoc search is, not frozen). */
-  let savingOpen = $state(false);
-  let savingName = $state('');
-
-  const questionWrite = writer();
-  async function saveQuestion() {
-    const name = savingName.trim();
-    if (!name) return;
-    const input = savedQuestionInputOf(name, query.trim(), filters);
-    if (!(await questionWrite.run(() => journal.savedQuestions.upsertSavedQuestion(input), m.write_failed()))) return;
-    savingOpen = false;
-    savingName = '';
-    toast(m.saved(), { kind: 'record-saved' });
-  }
   /* How many pages have been asked for, one counter per read. Reset by
      anything that changes what is being searched for, because page four of
      one query is not page four of the next one and leaving it where it was
@@ -210,9 +109,36 @@
       ? selectedMoods.filter((m) => m !== value)
       : [...selectedMoods, value];
   };
+  const togglePresentation = (id: string) => {
+    selectedPresentationIds = selectedPresentationIds.includes(id)
+      ? selectedPresentationIds.filter((p) => p !== id)
+      : [...selectedPresentationIds, id];
+  };
+  const toggleRegion = (id: string) => {
+    selectedRegions = selectedRegions.includes(id)
+      ? selectedRegions.filter((r) => r !== id)
+      : [...selectedRegions, id];
+  };
+  /* One scale at a time. Choosing one starts at its whole range, which
+     already narrows to the entries that logged it; the two sliders then
+     close the range in from either end. */
+  const chooseScale = (key: string) => {
+    const dim = vocabulary.metricDimension(key);
+    scale = scale?.key === key || !dim ? null : { key, min: dim.min, max: dim.max };
+  };
+  const setScaleMin = (value: number) => {
+    if (scale) scale = { ...scale, min: Math.min(value, scale.max) };
+  };
+  const setScaleMax = (value: number) => {
+    if (scale) scale = { ...scale, max: Math.max(value, scale.min) };
+  };
+  let scaleDim = $derived(scale ? vocabulary.metricDimension(scale.key) : null);
   const clearAllFilters = () => {
     selectedTagIds = [];
     selectedMoods = [];
+    selectedPresentationIds = [];
+    selectedRegions = [];
+    scale = null;
     startDate = '';
     endDate = '';
     hasNote = false;
@@ -231,6 +157,9 @@
     if (hasNote) out.hasNote = true;
     if (hasPhoto) out.hasPhoto = true;
     if (starredOnly) out.starred = true;
+    if (selectedPresentationIds.length) out.presentationIds = selectedPresentationIds;
+    if (selectedRegions.length) out.bodyRegions = selectedRegions;
+    if (scale) out.scale = scale;
     return out;
   });
   let hasStructuredCriteria = $derived(
@@ -240,18 +169,18 @@
       !!endDate ||
       hasNote ||
       hasPhoto ||
-      starredOnly
+      starredOnly ||
+      selectedPresentationIds.length > 0 ||
+      selectedRegions.length > 0 ||
+      scale !== null
   );
-  /* The typed query, waited out (phase 8 audit ticket 15). The two
-     liveQuery closures below read `debouncedQuery`, never `query` itself:
-     `query` changes once a keystroke, and the reactivity contract
-     (journal.svelte.ts: a closure's dependency is whatever it reads before
-     its first await) means a closure reading it re-runs once a keystroke
-     too - every one of the entry half's seven statements and the elsewhere
-     union's two, per character typed. Clearing the field is the one case
-     that is not waited out: an empty query drops the pending timer and
-     lands on `debouncedQuery` at once, so clearing clears the results
-     without the wait (the ticket's own acceptance criterion). */
+  /* The typed query, waited out. The two liveQuery closures below read `debouncedQuery`,
+     never `query` itself: `query` changes once a keystroke, and the reactivity contract
+     (journal.svelte.ts: a closure's dependency is whatever it reads before its first await)
+     means a closure reading it re-runs once a keystroke too - every one of the entry half's
+     seven statements and the elsewhere union's two, per character typed. Clearing the field
+     is the one case that is not waited out: an empty query drops the pending timer and
+     lands on `debouncedQuery` at once, so clearing clears the results without the wait. */
   let debouncedQuery = $state('');
   $effect(() => {
     const typed = query.trim();
@@ -270,10 +199,14 @@
      the same filters (searchReturn.ts). Arriving any other way, the held
      snapshot was stale and the search starts empty. */
   const current = (): SearchSnapshot => ({
-    query, selectedTagIds, selectedMoods, startDate, endDate, hasNote, hasPhoto, starredOnly
+    query, selectedTagIds, selectedMoods, startDate, endDate, hasNote, hasPhoto, starredOnly,
+    selectedPresentationIds, selectedRegions, scale
   });
   const restore = (s: SearchSnapshot) => {
-    ({ query, selectedTagIds, selectedMoods, startDate, endDate, hasNote, hasPhoto, starredOnly } = s);
+    ({
+      query, selectedTagIds, selectedMoods, startDate, endDate, hasNote, hasPhoto, starredOnly,
+      selectedPresentationIds, selectedRegions, scale
+    } = s);
     debouncedQuery = s.query.trim();
   };
   const held = takeHeldSearch();
@@ -285,11 +218,9 @@
     if (held && !from?.url.pathname.startsWith('/entry/')) restore(asked());
   });
 
-  /* Off the debounced query, not the box: what this gates - the idle/results
-     switch below, and the save-question button - all describe an answer, and
-     the box can hold a character or two nothing has answered for yet
-     (ticket 15). The lag this adds before the save button appears is the
-     debounce interval, not a wait anyone types through. */
+  /* Off the debounced query, not the box: the idle/results switch below
+     describes an answer, and the box can hold a character or two nothing
+     has answered for yet. */
   let hasCriteria = $derived(!!debouncedQuery || hasStructuredCriteria);
 
   /* Back to the first page whenever the question changes. An effect rather
@@ -302,23 +233,7 @@
     criteria;
     pages = 1;
     hitPages = 1;
-    drawnIds = new Set();
   });
-
-  /* Random, scoped to the question currently being asked rather than its own
-     control (phase 8 features ticket 08, spec.md: "Random, scoped"). The
-     small "which ones have come up already" piece of state the ticket calls
-     for and says is not a stored one - reset above whenever the question
-     changes, and by drawRandomEntry itself once every loaded hit has come
-     up. Draws from `hits`, the run currently on screen, not from `total`:
-     the ticket's own "the result set currently on screen". */
-  let drawnIds = $state<Set<number>>(new Set());
-  function drawRandom() {
-    const draw = drawRandomEntry(hits, drawnIds);
-    if (!draw) return;
-    drawnIds = draw.drawnIds;
-    void goto(`/entry/${draw.entry.id}`);
-  }
 
   /* Tag labels are matched here and note text in FTS5, which is ADR-0005's
      split: a built-in tag stores a key, so the words it was shown under only
@@ -335,7 +250,7 @@
      were not from the same read. */
   const NOTHING_ASKED = { key: '', hits: [], total: 0 };
 
-  /* Each answer carries the question it answers (ticket 16). A read keeps
+  /* Each answer carries the question it answers. A read keeps
      its last value while the next run is out, so between a pause in the
      typing and the answer the screen still holds the previous answer - or,
      for the first question after an empty box, nothing at all - and drawing
@@ -381,7 +296,7 @@
      agree on the question (`settled`, below). The two reads land a frame or
      more apart, and drawing each as it landed showed a records-only answer
      for a frame, then opened the entries above it - half an answer moving
-     under the other half (ticket 16). A later page of the same question
+     under the other half. A later page of the same question
      keeps the keys, so "show more" still lands at once. */
   let shown = $state<{ entries: NonNullable<typeof search.value>; elsewhere: NonNullable<typeof elsewhere.value> }>({
     entries: NOTHING_ASKED,
@@ -393,8 +308,7 @@
   let groups = $derived(entryDayGroups(hits));
 
   /* Batched over every entry the page currently shows, the one read
-     marginNotes.ts's own reasoning asks for rather than one per row (phase
-     8 features ticket 07). Reads `hits` before its first await, the same
+     marginNotes.ts's own reasoning asks for rather than one per row. Reads `hits` before its first await, the same
      reactivity contract every liveQuery here follows, so paging in more
      results re-runs it. */
   let entryIds = $derived(hits.map((entry) => entry.id));
@@ -415,13 +329,11 @@
   let hitRows = $derived(searchHitRows(elsewhereResults.hits, debouncedQuery));
   let hitsRemaining = $derived(Math.max(0, elsewhereResults.total - elsewhereResults.hits.length));
 
-  /* The starred shelf's photo half (ticket 18: `/search/starred` folded
-     in). Gated on the toggle rather than always read - a search screen
-     nobody asked the starred question of has no business paying for this
-     query every render. Unbounded, the same as the old shelf's own read:
-     self-limiting by how much a person actually stars, not by how large
-     the journal is (ADR-0004's concern is a per-render bound, not a floor
-     under every read). */
+  /* The starred shelf's photo half. Gated on the toggle rather than always read - a search
+     screen nobody asked the starred question of has no business paying for this query every
+     render. Unbounded, the same as the old shelf's own read: self-limiting by how much a
+     person actually stars, not by how large the journal is (ADR-0004's concern is a
+     per-render bound, not a floor under every read). */
   let starredPhotosQuery = liveList((j) => starredPhotosAsked(j.photoLibrary, { starred: starredOnly }));
   let starredPhotos = $derived(starredPhotosQuery.rows);
 
@@ -449,8 +361,6 @@
     if (!hasCriteria) answered = false;
     else if (settled) answered = true;
   });
-  /* Nothing to save when nothing matched (ticket 16, audit U7). */
-  let canSave = $derived(answered && settled && !foundNothing);
   /* Headings name a list only where there is one above it to tell it
      apart from, the Transition door's call for the same two lists: the
      entries lead, so they are named only under starred photos, and the
@@ -471,8 +381,10 @@
     return isReducedMotion() ? { duration: 0 } : fadeOnly(motionDuration('--dur-fast'));
   };
 
+  const chipTravel = () => (isReducedMotion() ? 0 : motionDuration('--dur-fast'));
+
   /* One area of colour on this screen, and it is the days. Role 0, the only
-     index guaranteed to be a colour on all 8 palettes, since a screen with a
+     index guaranteed to be a colour on every palette, since a screen with a
      single coloured area has no reading order to follow. */
   let role = $derived(roleAt(activeFlag.roles, 0));
   /* Two areas now, so two roles in reading order (the day screen's rule):
@@ -480,8 +392,7 @@
      found. */
   let hitsRole = $derived(roleAt(activeFlag.roles, 1));
 
-  /* The chip says the day the way the field above it does (after-release
-     28, audit L08-10: "From: 2026-09-18"). */
+  /* The chip says the day the way the field above it does ("From: 2026-09-18"). */
   const chipDate = (iso: string) => {
     const day = epochDayFromDateInputValue(iso);
     return day == null ? iso : fmtDateValue(day);
@@ -517,13 +428,34 @@
     if (hasNote) chips.push({ key: 'has-note', label: m.search_filter_has_note(), remove: () => (hasNote = false) });
     if (hasPhoto) chips.push({ key: 'has-photo', label: m.search_filter_has_photo(), remove: () => (hasPhoto = false) });
     if (starredOnly) chips.push({ key: 'starred', label: m.search_filter_starred(), remove: () => (starredOnly = false) });
+    for (const id of selectedPresentationIds) {
+      const name = vocabulary.presentation(id)?.name;
+      if (name) chips.push({ key: `mode-${id}`, label: m.search_filter_mode_chip({ mode: name }), remove: () => togglePresentation(id) });
+    }
+    for (const id of selectedRegions) {
+      const name = vocabulary.bodyRegions.find((r) => r.id === id)?.name;
+      if (name) chips.push({ key: `region-${id}`, label: m.search_filter_region_chip({ region: name }), remove: () => toggleRegion(id) });
+    }
+    if (scale && scaleDim) {
+      chips.push({
+        key: 'scale',
+        label: m.search_filter_scale_chip({ scale: scaleDim.name, min: scale.min, max: scale.max }),
+        remove: () => (scale = null)
+      });
+    }
     return chips;
   });
+  /* Clear all rides in the same keyed run, last, so it slides with the
+     chips instead of jumping when one before it goes. */
+  let chipRow = $derived([
+    ...activeFilterChips.map((chip) => ({ ...chip, clear: false })),
+    { key: 'clear', label: m.search_filters_clear_all(), remove: clearAllFilters, clear: true }
+  ]);
   let todayInput = $derived(dateInputValueFromEpochDay(currentDay()));
 
-  /* What the opening state offers before a character is typed (ticket 18):
-     the eight most-used tags, the saved questions that exist, and this
-     device's own last five searches. All three are read regardless of
+  /* What the opening state offers before a character is typed:
+     the eight most-used tags and this device's own last five searches. Both
+     are read regardless of
      `hasCriteria` - cheap, bounded reads a person is about to want the
      moment they clear the field again. */
   const POPULAR_TAG_COUNT = 8;
@@ -535,13 +467,10 @@
       .slice(0, POPULAR_TAG_COUNT)
   );
 
-  let savedQuestionsQuery = liveList((j) => j.savedQuestions.getSavedQuestions());
-  let savedQuestions = $derived(savedQuestionsQuery.rows);
-
   let recentSearchList = $state<string[]>(listRecentSearches());
   /* Read again when the opening state comes back rather than the moment a
      search is recorded: the opening state is still up then, waiting on the
-     answer, and the new row grew it 96px in one frame (ticket 16). */
+     answer, and the new row grew it 96px in one frame. */
   $effect.pre(() => {
     if (!hasCriteria) recentSearchList = listRecentSearches();
   });
@@ -553,16 +482,7 @@
 </script>
 
 <div class="screen" data-screen>
-  <!-- The actions snippet is always passed, so the header's layout never
-       changes as its buttons come and go (SearchActions.svelte). -->
-  <ScreenHeader title={m.search()} screen="search" back="/calendar">
-    {#snippet actions()}
-      <SearchActions
-        save={canSave ? () => (savingOpen = true) : undefined}
-        draw={answered && hits.length > 0 ? drawRandom : undefined}
-      />
-    {/snippet}
-  </ScreenHeader>
+  <ScreenHeader title={m.search()} screen="search" back="/calendar" />
 
   <div class="search-controls">
     <div class="search-box">
@@ -586,10 +506,9 @@
       aria-expanded={filtersOpen}
       onclick={() => (filtersOpen = true)}
     >
-      <!-- A word and, only once there is one, a count. With an icon and
-           "(0)" this button was 152px and left the field 118px to type in
-           (audit UX-11); the chips under the row already show which
-           filters are on. -->
+      <!-- A word and, only once there is one, a count. With an icon and "(0)" this button
+           was 152px and left the field 118px to type in; the chips under the row already
+           show which filters are on. -->
       <span>{activeFilterChips.length ? m.search_filters_count({ count: activeFilterChips.length }) : m.search_filters()}</span>
     </button>
   </div>
@@ -598,14 +517,24 @@
     <!-- The one thing that has to stay on the screen once the filters left
          it: with the panel in a sheet, these chips are the only place the
          state of the query is visible. -->
-    <div class="search-chips" transition:disclose={whileStaying}>
-      {#each activeFilterChips as chip (chip.key)}
-        <button class="tag-chip is-selected press" data-active-filter-chip onclick={chip.remove}>
-          <Icon name="x" size={14} />
+    <!-- A chip taken off fades where it stood while the rest slide into its place, Clear
+         all with them, and the row travels to its new height when that takes a line away. -->
+    <div class="search-chips" transition:disclose={whileStaying} use:resize>
+      {#each chipRow as chip (chip.key)}
+        <button
+          class="tag-chip press"
+          class:is-selected={!chip.clear}
+          data-active-filter-chip={chip.clear ? undefined : ''}
+          data-filter-clear={chip.clear ? '' : undefined}
+          onclick={chip.remove}
+          animate:flip={{ duration: chipTravel }}
+          in:fadeUp
+          out:crossfade
+        >
+          {#if !chip.clear}<Icon name="x" size={14} />{/if}
           {chip.label}
         </button>
       {/each}
-      <button class="tag-chip press" data-filter-clear onclick={clearAllFilters}>{m.search_filters_clear_all()}</button>
     </div>
   {/if}
 
@@ -632,24 +561,13 @@
     {#if !hasCriteria || (!answered && !loading)}
       <div data-search-idle in:fadeUp out:crossfade>
         <!-- One plain line about what is searched. What each filter covers
-             is said once, in the Filters sheet, where the filters are
-             (ticket 16). -->
+             is said once, in the Filters sheet, where the filters are.
+             -->
         <p class="search-hint">{m.search_hint()}</p>
 
-        {#if savedQuestions.length}
-          <p class="search-filter-label">{m.saved_questions_title()}</p>
-          <div class="tag-row" role="group" aria-label={m.saved_questions_title()}>
-            {#each savedQuestions as question (question.id)}
-              <a class="tag-chip press" data-saved-question-chip={question.id} href="/search/questions/{question.id}">
-                <Icon name="bookmark" size={14} />{question.name}
-              </a>
-            {/each}
-          </div>
-        {/if}
-
         {#if popularTags.length}
-          <p class="search-filter-label">{m.search_filter_tags_label()}</p>
-          <div class="tag-row" role="group" aria-label={m.search_filter_tags_label()}>
+          <p class="search-filter-label">{m.tags_label()}</p>
+          <div class="tag-row" role="group" aria-label={m.tags_label()}>
             {#each popularTags as tag (tag.id)}
               <button class="tag-chip press" data-idle-tag-chip={tag.id} onclick={() => toggleTag(tag.id)}>
                 {tag.label}
@@ -678,7 +596,7 @@
           icon="search"
           key="search-none"
           title={m.no_results()}
-          text={debouncedQuery ? m.no_results_body({ query: debouncedQuery }) : m.search_no_results_filtered()}
+          text={debouncedQuery ? m.no_results_body() : m.search_no_results_filtered()}
         />
       </div>
     {:else}
@@ -686,11 +604,11 @@
            as a refined question adds or drops one. -->
       <div in:fadeUp out:crossfade>
         {#if starredOnly && starredPhotos.length}
-          <!-- Ported from the old /search/starred (ticket 18): the same grid,
+          <!-- Ported from the old /search/starred: the same grid,
                the same unstar affordance, shown now under this screen's own
                Starred toggle instead of behind a second door. -->
           <div transition:disclose={whileStaying}>
-            {#if hits.length || hitRows.length}<SectionHeading text={m.starred_shelf_photos_label()} />{/if}
+            {#if hits.length || hitRows.length}<SectionHeading text={m.photos_label()} />{/if}
             <StarredPhotoGrid photos={starredPhotos} />
           </div>
         {/if}
@@ -725,7 +643,7 @@
                     icon={row.icon}
                     title={row.excerpt}
                     subtitle={row.label}
-                    href={row.href}
+                    href={withEntryListReturn(row.href, page.url)}
                     data-search-hit={row.area}
                   >
                     {#snippet trailing()}
@@ -743,9 +661,7 @@
           </div>
         {/if}
 
-        <!-- One count, the total, in the same words as a saved question's
-             (ticket 16: "Entries: 27" here and "35 results ... Entries 21
-             results" there). Under the results rather than over them: a
+        <!-- One count, the total. Under the results rather than over them: a
              line of its own above the first day put the first entry at
              y 316 of 844, past the first third, where the results are
              meant to start. The screen reader hears it first anyway, from
@@ -768,13 +684,13 @@
       <p class="search-count" data-filter-count>{m.results_count({ count: foundTotal })}</p>
     {/if}
 
-    <!-- What the filters cover, said here and only here (ticket 16): these
+    <!-- What the filters cover, said here and only here: these
          are entry fields, so a letter or a consult question ignores them,
          and the dates are the one filter that reaches further. -->
     <p class="search-hint" data-search-scope>{m.search_filters_entries_only()}</p>
 
-    <p class="search-filter-label">{m.search_filter_tags_label()}</p>
-    <TagPicker groups={vocabulary.tagGroups} selected={selectedTagIds} onToggle={toggleTag} />
+    <p class="search-filter-label">{m.tags_label()}</p>
+    <TagPicker groups={vocabulary.tagGroups} selected={selectedTagIds} onChange={(next) => (selectedTagIds = next)} />
 
     <p class="search-filter-label">{m.mood()}</p>
     <div class="tag-row" role="group" aria-label={m.search_filter_moods_aria()}>
@@ -791,13 +707,76 @@
       {/each}
     </div>
 
+    {#if vocabulary.visiblePresentations.length}
+      <p class="search-filter-label">{m.presentation_label()}</p>
+      <div class="tag-row" role="group" aria-label={m.presentation_label()}>
+        {#each vocabulary.visiblePresentations as mode (mode.id)}
+          <button
+            class="tag-chip press"
+            class:is-selected={selectedPresentationIds.includes(mode.id)}
+            aria-pressed={selectedPresentationIds.includes(mode.id)}
+            data-filter-mode={mode.id}
+            onclick={() => togglePresentation(mode.id)}
+          >
+            {mode.name}
+          </button>
+        {/each}
+      </div>
+    {/if}
+
+    {#if vocabulary.visibleBodyRegions.length}
+      <p class="search-filter-label">{m.body_regions_group()}</p>
+      <div class="tag-row" role="group" aria-label={m.body_regions_group()}>
+        {#each vocabulary.visibleBodyRegions as region (region.id)}
+          <button
+            class="tag-chip press"
+            class:is-selected={selectedRegions.includes(region.id)}
+            aria-pressed={selectedRegions.includes(region.id)}
+            data-filter-region={region.id}
+            onclick={() => toggleRegion(region.id)}
+          >
+            {region.name}
+          </button>
+        {/each}
+      </div>
+    {/if}
+
+    {#if vocabulary.visibleDimensions.length}
+      <p class="search-filter-label">{m.search_filter_scale_label()}</p>
+      <div class="tag-row" role="group" aria-label={m.search_filter_scale_label()}>
+        {#each vocabulary.visibleDimensions as dim (dim.key)}
+          <button
+            class="tag-chip press"
+            class:is-selected={scale?.key === dim.key}
+            aria-pressed={scale?.key === dim.key}
+            data-filter-scale={dim.key}
+            onclick={() => chooseScale(dim.key)}
+          >
+            {dim.name}
+          </button>
+        {/each}
+      </div>
+      {#if scale && scaleDim}
+        <!-- Opens its own height under the chips; switching to another
+             scale fades the pair in place, since both pairs are the same
+             height and nothing below has to move. -->
+        <div class="search-filter-range" data-filter-range transition:disclose={whileStaying}>
+          {#key scale.key}
+            <div class="search-filter-range-pair" in:fadeUp out:crossfade>
+              <DimensionSlider dim={{ ...scaleDim, name: m.range_from_label() }} value={scale.min} onInput={setScaleMin} />
+              <DimensionSlider dim={{ ...scaleDim, name: m.range_to_label() }} value={scale.max} onInput={setScaleMax} />
+            </div>
+          {/key}
+        </div>
+      {/if}
+    {/if}
+
     <div class="search-filter-dates">
       <label for="search-filter-start">{m.search_filter_start_label()}</label>
       <DatePicker id="search-filter-start" max={dayRangeStartMax(endDate)} bind:value={startDate} ariaLabel={m.search_filter_start_label()} data-filter-start />
       <label for="search-filter-end">{m.search_filter_end_label()}</label>
       <DatePicker id="search-filter-end" min={dayRangeEndMin(startDate)} max={todayInput} bind:value={endDate} ariaLabel={m.search_filter_end_label()} data-filter-end />
     </div>
-    <p class="search-hint">{m.search_filters_date_scope()}</p>
 
     <div class="tag-row" role="group" aria-label={m.search_filters()}>
       <button
@@ -818,8 +797,7 @@
       >
         {m.search_filter_has_photo()}
       </button>
-      <!-- The starred shelf's one door now (ticket 18): `/search/starred`
-           redirects here with this already on. Entry-only like the three
+      <!-- The starred shelf's filter. Entry-only like the three
            beside it - a starred photo is the photo library's own read
            (photoLibrary.starred, below), not this filter's. -->
       <button
@@ -834,34 +812,20 @@
     </div>
   </Sheet>
 
-  <Sheet busy={questionWrite.busy} bind:open={savingOpen} title={m.saved_question_save_sheet()} onClose={() => (savingName = '')}>
-    <h3>{m.saved_question_save_sheet()}</h3>
-    <Field label={m.saved_question_name_label()} id="saved-question-name">
-      {#snippet children(id)}
-        <input
-          class="input"
-          {id}
-          name="saved-question-name"
-          placeholder={m.saved_question_name_placeholder()}
-          bind:value={savingName}
-        />
-      {/snippet}
-    </Field>
-    <p class="search-hint">{m.saved_question_save_hint()}</p>
-    <div class="stack-3">
-      <button
-        class="btn btn-primary"
-        data-saved-question-save-confirm
-        disabled={!savingName.trim() || questionWrite.busy}
-        onclick={saveQuestion}
-      >
-        <span>{m.saved_question_save_confirm()}</span>
-      </button>
-    </div>
-  </Sheet>
 </div>
 
 <style>
+  .search-count {
+    font-size: var(--text-sm);
+    color: var(--text-2);
+    margin: var(--space-3) 0 var(--space-3);
+    /* Crossfade lifts outgoing words out of flow over incoming words. */
+    position: relative;
+  }
+
+  /* The page control says how many results come next. */
+  .search-more { width: 100%; margin-top: var(--space-4); }
+
   /* Search's own hint lines; the screen is their one reader, so they live
      here rather than in screens.css (check-screens-classes). */
   .search-hint {
@@ -881,7 +845,7 @@
   }
   /* 8 under the controls rather than the screen's 24, and a tight day card
      (EntryDays), so the first entry row starts inside the first third of a
-     390x844 phone (ticket 16): 316 with a count line over the results,
+     390x844 phone: 316 with a count line over the results,
      289 without one, 277 with both. */
   .search-controls {
     margin-bottom: var(--space-2);
@@ -895,5 +859,15 @@
   }
   .search-controls [data-filter-toggle] {
     flex: 0 0 auto;
+  }
+  /* The crossfade lifts the leaving pair out of flow over the arriving
+     one, so the box it is lifted inside is this one. */
+  .search-filter-range {
+    position: relative;
+  }
+  .search-filter-range-pair {
+    display: grid;
+    gap: var(--space-3);
+    padding-top: var(--space-2);
   }
 </style>

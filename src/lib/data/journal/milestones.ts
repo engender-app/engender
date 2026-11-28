@@ -1,13 +1,9 @@
-/* The milestones area (PRD F6/F26). No kind column and no order: whether
-   a milestone reads as a countdown or an anniversary follows from its
-   date and today (ADR-0010), computed by milestoneStatus() above the seam.
+/* The milestones area (PRD F6/F26). No kind column and no order: whether a milestone reads
+   as a countdown or an anniversary follows from its date and today (ADR-0010), computed by
+   milestoneStatus() above the seam.
 
-   Photos become writable in ticket 11; deleting a milestone already takes
-   its photo rows and files along, mirroring deleteEntry. Phase 5 ticket 24
-   widens feltSense.ts's own table to a second owner arm here, so deleting
-   a milestone takes its felt-sense history along too - read and written
-   through feltSense.ts, not this module, the same division photos.ts
-   keeps for the photo row this file only deletes by owner id. */
+   Photos become writable; deleting a milestone already takes its photo rows and files
+   along, mirroring deleteEntry. */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Milestone } from '../types';
@@ -36,6 +32,11 @@ export interface MilestoneInput {
   roadmapGoalKey?: string | null;
   procedureId?: string | null;
   tryoutId?: string | null;
+  /** Whether Home celebrates it. Omitted
+      keeps what is stored, so a caller that does not know about it, such
+      as a procedure resync, never turns a celebration back on. A new
+      milestone with it omitted is celebrated. */
+  celebrate?: boolean;
   /** The final photo intent for this save. Omitted means preserve, which
       keeps existing callers and non-photo edits from touching photo rows. */
   photo?: MilestonePhotoChange;
@@ -45,7 +46,7 @@ export interface MilestonesArea {
   getMilestones(): Promise<Milestone[]>;
   getNonProcedureDaysInRange(fromEpochDay: number, toEpochDay: number): Promise<number[]>;
   /** The milestones dated to one day, in the same shape and order
-      `getMilestones` reads them (phase 5 ticket 21). Its own query rather
+      `getMilestones` reads them. Its own query rather
       than a filter over that one, so the day view pays for the day it is
       showing and not for every milestone ever recorded. */
   getMilestonesOnDay(epochDay: number): Promise<Milestone[]>;
@@ -53,9 +54,8 @@ export interface MilestonesArea {
   upsertMilestone(input: MilestoneInput): Promise<string>;
   /** Idempotent. Takes the milestone's photo rows and files with it. */
   deleteMilestone(id: string): Promise<void>;
-  /** The day of the most recent milestone at or before `todayEpochDay`, or
-      null if there is none (phase 8 features ticket 03, lastWrite.ts). One
-      bounded `MAX`, not a fetched list reduced in JS. */
+  /** The day of the most recent milestone at or before `todayEpochDay`, or null if there is
+      none (lastWrite.ts). One bounded `MAX`, not a fetched list reduced in JS. */
   lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
 }
 
@@ -67,8 +67,9 @@ type MilestoneRow = {
   description: string;
   template_key: string | null;
   roadmap_goal_key: string | null;
-  procedure_id: string | null;
-  tryout_id: string | null;
+  procedure_uuid: string | null;
+  tryout_uuid: string | null;
+  celebrate: number;
   procedure_name: string | null;
   tryout_label: string | null;
   custom_goal_text: string | null;
@@ -76,17 +77,16 @@ type MilestoneRow = {
 
 /* The three joins resolve a linked procedure's or tryout's own name, and a
    custom roadmap goal's own text, in the same query rather than a lookup
-   per row on every screen a milestone renders on (phase 5 deepening ticket
-   22): the provenance line these feed (provenance.ts) needs a name to show,
+   per row on every screen a milestone renders on: the provenance line these feed (provenance.ts) needs a name to show,
    not just the id the milestone already carried. A built-in roadmap goal's
    title isn't joined - it's a compiled string, resolved by key in code
    instead, so roadmap_goal only ever matches a custom one. */
 const MILESTONE_SELECT = `
-  SELECT ms.id, ms.uuid, ms.name, ms.epoch_day, ms.description, ms.template_key, ms.roadmap_goal_key, ms.procedure_id, ms.tryout_id,
+  SELECT ms.id, ms.uuid, ms.name, ms.epoch_day, ms.description, ms.template_key, ms.roadmap_goal_key, ms.procedure_uuid, ms.tryout_uuid, ms.celebrate,
          p.name AS procedure_name, t.label AS tryout_label, rg.text AS custom_goal_text
     FROM milestone ms
-    LEFT JOIN procedure p ON p.uuid = ms.procedure_id
-    LEFT JOIN tryout t ON t.uuid = ms.tryout_id
+    LEFT JOIN procedure p ON p.uuid = ms.procedure_uuid
+    LEFT JOIN tryout t ON t.uuid = ms.tryout_uuid
     LEFT JOIN roadmap_goal rg ON rg.uuid = ms.roadmap_goal_key
 `;
 
@@ -94,8 +94,7 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
   /* One query for every milestone's photo rather than one per row: both
      readers below render whole lists at once.
 
-     `scoped` is which query that is. Reading a day's milestones (phase 5
-     deepening ticket 21) narrows to the rows in hand, or opening any day
+     `scoped` is which query that is. Reading a day's milestones narrows to the rows in hand, or opening any day
      would pay for every milestone photo in the journal; reading all of them
      does not, because an IN clause naming every rowid is the worse half of
      that trade. */
@@ -108,8 +107,9 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
       description: r.description,
       templateKey: r.template_key,
       roadmapGoalKey: r.roadmap_goal_key,
-      procedureId: r.procedure_id ?? null,
-      tryoutId: r.tryout_id ?? null,
+      procedureId: r.procedure_uuid ?? null,
+      tryoutId: r.tryout_uuid ?? null,
+      celebrate: r.celebrate !== 0,
       procedureName: r.procedure_name ?? null,
       tryoutLabel: r.tryout_label ?? null,
       customRoadmapGoalText: r.custom_goal_text ?? null,
@@ -120,7 +120,7 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
   return {
     async getNonProcedureDaysInRange(fromEpochDay, toEpochDay) {
       const rows = await driver.query<{ epoch_day: number }>(
-        'SELECT DISTINCT epoch_day FROM milestone WHERE procedure_id IS NULL AND epoch_day BETWEEN ? AND ? ORDER BY epoch_day',
+        'SELECT DISTINCT epoch_day FROM milestone WHERE procedure_uuid IS NULL AND epoch_day BETWEEN ? AND ? ORDER BY epoch_day',
         [fromEpochDay, toEpochDay]
       );
       return rows.map((row) => row.epoch_day);
@@ -165,17 +165,20 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
       const hasProc = input.procedureId !== undefined;
       const hasTryout = input.tryoutId !== undefined;
       const hasDescription = input.description !== undefined;
+      const hasCelebrate = input.celebrate !== undefined;
       const extraColumns = [
         ...(hasRoadmap ? ['roadmap_goal_key'] : []),
-        ...(hasProc ? ['procedure_id'] : []),
-        ...(hasTryout ? ['tryout_id'] : []),
-        ...(hasDescription ? ['description'] : [])
+        ...(hasProc ? ['procedure_uuid'] : []),
+        ...(hasTryout ? ['tryout_uuid'] : []),
+        ...(hasDescription ? ['description'] : []),
+        ...(hasCelebrate ? ['celebrate'] : [])
       ];
       const extraValues = [
         ...(hasRoadmap ? [input.roadmapGoalKey ?? null] : []),
         ...(hasProc ? [input.procedureId ?? null] : []),
         ...(hasTryout ? [input.tryoutId ?? null] : []),
-        ...(hasDescription ? [input.description] : [])
+        ...(hasDescription ? [input.description] : []),
+        ...(hasCelebrate ? [input.celebrate ? 1 : 0] : [])
       ];
       const updateSql = `UPDATE milestone SET name = ?, epoch_day = ?, template_key = ?${extraColumns.map((c) => `, ${c} = ?`).join('')}, updated_at = ? WHERE uuid = ?`;
       const updateParams = [input.name, input.epochDay, input.templateKey ?? null, ...extraValues, now(), input.id];
@@ -198,7 +201,7 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
         return input.id;
       }
       const uuid = mintUuid();
-      const insertSql = `INSERT INTO milestone (uuid, name, epoch_day, description, template_key, roadmap_goal_key, procedure_id, tryout_id, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+      const insertSql = `INSERT INTO milestone (uuid, name, epoch_day, description, template_key, roadmap_goal_key, procedure_uuid, tryout_uuid, celebrate, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
       const insertParams = [
         uuid,
         input.name,
@@ -208,6 +211,7 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
         input.roadmapGoalKey ?? null,
         input.procedureId ?? null,
         input.tryoutId ?? null,
+        input.celebrate === false ? 0 : 1,
         now()
       ];
       if (!staged) {
@@ -230,12 +234,9 @@ export function makeMilestonesArea(driver: SqliteDriver, files: PhotoFileStore):
         [id]
       );
       await driver.transaction(async (driver) => {
-        await driver.run('DELETE FROM felt_sense WHERE milestone_id IN (SELECT id FROM milestone WHERE uuid = ?)', [
-          id
-        ]);
         await driver.run('DELETE FROM photo WHERE milestone_id IN (SELECT id FROM milestone WHERE uuid = ?)', [id]);
         // A document's link is a (kind, id) pair rather than a foreign key
-        // (documents.ts), so nothing cascades it either - ticket 56.
+        // (documents.ts), so nothing cascades it either -.
         await driver.run(
           "UPDATE document SET target_kind = NULL, target_id = NULL WHERE target_kind = 'milestone' AND target_id = ?",
           [id]

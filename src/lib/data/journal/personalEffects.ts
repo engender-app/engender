@@ -1,25 +1,9 @@
-/* The personal effects timeline area (phase 4 ticket 07). One row per
-   effect (schema.ts, `effect` UNIQUE), matched exactly the way
-   medication_stock is matched by drug (stock.ts): a person is always
-   answering "when did I first notice this", never logging a series of
-   sightings, so a fresh date replaces the old one in place. No episode
-   reference: what a marker is read against - the earliest regimen
-   episode's start day - is resolved above this seam
-   (regimenEpisode.ts's earliestEpisode), not stored here.
-
-   Phase 5 ticket 41 widens the effect a marker names from a closed
-   eight-key union to `personal_effect_type`, an open reference-data
-   vocabulary - the same move measurements.ts made for `measurement_type`
-   (phase 5 ticket 29), and this file bundles the two concerns the same
-   way that one does: marker values above, the vocabulary the `effect`
-   column is matched against below. Nothing here validates a marker's
-   `effect` against that vocabulary - the same free-text-but-matched-by-key
-   treatment measurement.type gets after v34 - so a marker logged under a
-   type since hidden still round-trips exactly as logged; only the picker
-   stops offering it. */
+/* Keep one first-noticed row per effect. Updating the date replaces it.
+   Resolve the regimen anchor on read. A hidden effect key still round-trips
+   in records. Only the picker removes it from offers. */
 
 import type { SqliteDriver } from '../sqlite/driver';
-import type { PersonalEffect, PersonalEffectCatalogEntry, PersonalEffectType } from '../types';
+import type { EffectDirection, PersonalEffect, PersonalEffectCatalogEntry, PersonalEffectType } from '../types';
 import { assertChanged, bool, mintUuid, now } from './support';
 
 interface PersonalEffectInput {
@@ -31,14 +15,12 @@ export interface PersonalEffectsArea {
   /** Whatever effects have been marked so far, one row per effect. No row
       for an effect means it has not been marked yet. */
   getMarkers(): Promise<PersonalEffect[]>;
-  /** The markers whose "first noticed" day is this one (phase 5 deepening
-      ticket 21). A marker is one row per effect that a fresh date replaces
+  /** The markers whose "first noticed" day is this one. A marker is one row per effect that a fresh date replaces
       in place, so this reads as "what someone said they first noticed
       today", never as a log of sightings. */
   getMarkersFirstNoticedOn(epochDay: number): Promise<PersonalEffect[]>;
-  /** The most recent "first noticed" day across every marked effect, at or
-      before `todayEpochDay`, or null if nothing is marked yet (phase 8
-      features ticket 03, lastWrite.ts). */
+  /** The most recent "first noticed" day across every marked effect, at or before
+      `todayEpochDay`, or null if nothing is marked yet (lastWrite.ts). */
   lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
   /** One row per effect (schema.ts): a second call for an effect
       already marked replaces its date rather than adding a row. Returns
@@ -51,11 +33,10 @@ export interface PersonalEffectsArea {
       included - what the settings screen manages. Built-in first
       (insertion order), then customs in the order they were added. */
   getEffectTypes(): Promise<PersonalEffectCatalogEntry[]>;
-  /** The minted uuid doubles as the key, exactly
-      addCustomMeasurementType's pattern (measurements.ts). `categoryKey`
+  /** The minted uuid doubles as the key. `categoryKey`
       is optional - a custom effect may be left uncategorised. */
   addCustomEffectType(name: string, categoryKey?: string | null): Promise<PersonalEffectCatalogEntry>;
-  /** Built-in and custom alike hide, never delete (CONTEXT: "Hidden") -
+  /** Built-in and custom alike hide, never delete -
       a marker already recorded against a hidden effect survives and
       still shows on the timeline, it is only the picker that stops
       offering the effect. */
@@ -74,7 +55,7 @@ type PersonalEffectTypeRow = {
   name: string;
   is_built_in: number;
   category_key: string | null;
-  direction: 'feminizing' | 'masculinizing' | null;
+  direction: EffectDirection | null;
   hidden: number;
 };
 
@@ -115,7 +96,7 @@ export function makePersonalEffectsArea(driver: SqliteDriver): PersonalEffectsAr
       // effect; this is that validation's replacement, reading the open
       // catalogue instead of a hardcoded union. A hidden effect still
       // validates - hiding removes it from the picker, not from what a
-      // marker may name (CONTEXT: "Hidden").
+      // marker may name.
       const known = await driver.query<{ key: string }>('SELECT key FROM personal_effect_type WHERE key = ?', [
         input.effect
       ]);

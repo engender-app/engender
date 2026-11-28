@@ -10,6 +10,7 @@
    (ADR-0002). */
 
 import { dateInputValueFromEpochDay, epochDayFromDateInputValue, localDateFromEpochDay } from '../epochDay';
+import { DAYLIO_BUDGET, ImportTooLargeError } from './daylioInputBudget';
 import { entryIsEmpty } from '../entryContent';
 import { foldText } from '../fold';
 import { emptyArchiveJournal } from '../journal/archiveSections';
@@ -64,16 +65,21 @@ const MOODS = new Map<string, number>([
   ['świetnie', 5]
 ]);
 
-/** Exported for the source registry (ticket 02): what `detectDaylio` sniffs
+/** Exported for the source registry: what `detectDaylio` sniffs
     for and what `parseRows` below still enforces on the real parse. */
 export const REQUIRED_COLUMNS = ['full_date', 'time', 'mood', 'activities', 'note_title', 'note'] as const;
 
 type DaylioRow = Record<(typeof REQUIRED_COLUMNS)[number], string>;
 
+const tooLarge = (what: 'text' | 'rows' | 'columns' | 'field') =>
+  new ImportTooLargeError(`Daylio CSV ${what} is over the import limit`);
+
 /** RFC 4180 fields, including doubled quotes and line breaks inside a quoted
     note. Strict after a closing quote so damaged input fails here rather
     than being reinterpreted as a different journal entry. */
 function csvRows(csv: string): string[][] {
+  // Total size first, so an oversized text is refused before a field is read.
+  if (csv.length > DAYLIO_BUDGET.csvFileBytes) throw tooLarge('text');
   const rows: string[][] = [];
   let row: string[] = [];
   let field = '';
@@ -81,18 +87,23 @@ function csvRows(csv: string): string[][] {
   let afterQuote = false;
 
   const finishField = () => {
+    if (row.length >= DAYLIO_BUDGET.csvColumns) throw tooLarge('columns');
     row.push(field);
     field = '';
     afterQuote = false;
   };
   const finishRow = () => {
     finishField();
-    if (row.some((value) => value !== '')) rows.push(row);
+    if (row.some((value) => value !== '')) {
+      if (rows.length >= DAYLIO_BUDGET.csvRows) throw tooLarge('rows');
+      rows.push(row);
+    }
     row = [];
   };
 
   for (let i = 0; i < csv.length; i++) {
     const char = csv[i];
+    if (field.length > DAYLIO_BUDGET.fieldChars) throw tooLarge('field');
     if (quoted) {
       if (char !== '"') {
         field += char;
@@ -124,6 +135,7 @@ function csvRows(csv: string): string[][] {
     }
   }
 
+  if (field.length > DAYLIO_BUDGET.fieldChars) throw tooLarge('field');
   if (quoted) throw new DaylioCsvError('has an unclosed quoted field');
   if (field !== '' || row.length > 0) finishRow();
   return rows;
@@ -146,7 +158,7 @@ function parseRows(csv: string): DaylioRow[] {
   });
 }
 
-/** The source registry's own sniff (ticket 02): does the header look like
+/** The source registry's own sniff: does the header look like
     Daylio's, with no commitment to the rest of the file parsing. Reads only
     the first line, not the whole file through `csvRows`, so a file that is
     unmistakably Daylio by its header still detects as Daylio even when a
@@ -211,7 +223,7 @@ const entryUuid = (date: string, time: string, mood: string, note: string): Prom
 
 /** Every label a tag in this journal answers to, folded, so an imported
     activity resolves to a tag that is already here rather than a second one
-    beside it. The Day One and Daylio backup importers use it too. */
+    beside it. The Daylio backup importer uses it too. */
 export function tagMatches(journal: ArchiveJournal, naming: DaylioNaming): Map<string, string> {
   const matches = new Map<string, string>();
   for (const tag of journal.tagGroups.flatMap((group) => group.tags)) {

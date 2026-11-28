@@ -1,25 +1,11 @@
-/* Biometric mode's flows (ticket 55), the sibling of journal-pin.ts and the
-   same shape: the keystore math plus where the metadata lives, so boot and
-   the settings screen share one spelling of setup, unlock and change.
+/* Share biometric setup, unlock and mode changes between boot and
+   Settings. A verified authenticator supplies the WebAuthn PRF secret
+   to the same wrap pipeline as passphrase and PIN (ADR-0041).
+   A user cannot change the PRF output itself. Replacing its credential
+   would require a separate authenticator-change flow.
 
-   The only difference from the other two secret modes is where the string
-   comes from. A passphrase is typed and a PIN is typed and bound; this one
-   is released by a platform authenticator that has just verified who is
-   present (webauthn-prf.ts). From the wrap down, all three are identical -
-   which is the whole point of ADR-0041's one pipeline.
-
-   There is no change-my-secret flow here, and it is an absence rather than
-   an omission: a PRF output is not something a person chooses, so the only
-   thing that could change is which credential produces it. That is a change
-   of authenticator, which would be this app's first recovery-shaped feature
-   and is explicitly out of ticket 55's scope.
-
-   Like journal-pin.ts this takes its ports rather than reaching for OPFS and
-   the browser's WebAuthn directly, so the Node tier can round-trip the mode
-   against a fake authenticator.
-
-   The returned data keys live in memory and nowhere else, exactly as
-   ADR-0018 requires. */
+   Inject storage and authenticator ports for Node tests. Data keys
+   stay in memory (ADR-0018). */
 
 import {
   createKeystore,
@@ -36,13 +22,12 @@ import { browserAuthenticator, randomPrfSalt, type PrfAuthenticator } from './we
 /** Where a biometric keystore's two halves live: the authenticator that
     releases the secret, and the file that records how to ask it. Defaults to
     the real browser bindings; the tests hand in fakes. */
-/* BiometricPorts stays exported only for its own test (AU-09 test-only
-   review). */
+/* BiometricPorts stays exported only for its own test. */
 export interface BiometricPorts {
   journalExists(): Promise<boolean>;
   authenticator: PrfAuthenticator;
   readKeystore(): Promise<KeystoreMetadata | null>;
-  writeKeystore(metadata: KeystoreMetadata): Promise<void>;
+  writeKeystore(metadata: KeystoreMetadata, current?: () => void): Promise<void>;
 }
 
 const browserPorts = (): BiometricPorts => ({
@@ -77,12 +62,16 @@ export async function setupJournalBiometric(ports: BiometricPorts = browserPorts
     The caller owns credential mutation through old-mode cleanup. */
 export async function addJournalBiometric(
   dataKey: Uint8Array<ArrayBuffer>,
-  ports: BiometricPorts = browserPorts()
+  ports: BiometricPorts = browserPorts(),
+  current: () => void = () => {},
+  beforeCredentialWrite: () => void = () => {}
 ): Promise<void> {
   const prfSalt = randomPrfSalt();
   const { credentialId, secret } = await ports.authenticator.enrol(prfSalt);
   const metadata = await wrapDataKeyWithSecret(dataKey, secret, undefined, 'biometric');
-  await ports.writeKeystore({ ...metadata, biometric: { credentialId, prfSalt } });
+  current();
+  beforeCredentialWrite();
+  await ports.writeKeystore({ ...metadata, biometric: { credentialId, prfSalt } }, current);
 }
 
 /** Every later run. Throws BiometricUnavailableError when the authenticator

@@ -1,16 +1,16 @@
-/* Browser-tier check for phase 8 audit ticket 03: the microphone leak a
-   screen that goes mid-open used to leave behind.
+/* Browser-tier check for the microphone leak a screen that goes mid-open used to leave
+   behind.
 
-   `startTake` awaits twice before it has anything to clean up itself -
-   opening the microphone, then reading its capture chain - and a component
-   destroyed in that window used to find `session` still null, so its
-   `onDestroy`'s `void session?.discard()` discarded nothing. The stream, the
-   armed poll interval and the AudioContext were never touched again.
+   `startTake` awaits twice before it has anything to clean up itself - opening the
+   microphone, then reading its capture chain - and a component destroyed in that window
+   used to find `session` still null, so its `onDestroy`'s `void session?.discard()`
+   discarded nothing. The stream, the armed poll interval and the AudioContext were never
+   touched again.
 
-   Reproduced against the real capture path: Chromium's own fake device
-   (browser-tier's `--use-fake-device-for-media-stream`), delayed rather than
-   replaced, so `getUserMedia` genuinely straddles the destroy instead of
-   resolving before this script gets a chance to unmount anything. */
+   Reproduced against the real capture path: Chromium's own fake device (browser-tier's
+   `--use-fake-device-for-media-stream`), delayed rather than replaced, so `getUserMedia`
+   genuinely straddles the destroy instead of resolving before this script gets a chance to
+   unmount anything. */
 
 import { mount, unmount } from 'svelte';
 import VoiceBenchmarkFlow from '../../src/lib/components/VoiceBenchmarkFlow.svelte';
@@ -37,10 +37,9 @@ function installDelayedMicrophone(openDelayMs: number) {
   return { streams, restore: () => { navigator.mediaDevices.getUserMedia = real; } };
 }
 
-/** Mounts the practice screen, taps its record button, then destroys the
-    screen while `startTake` is still awaiting the (deliberately slow)
-    microphone open - the race ticket AU-03 is about - and reports what was
-    left running once the open finally resolves. */
+/** Mounts the practice screen, taps its record button, then destroys the screen while
+    `startTake` is still awaiting the (deliberately slow) microphone open - the race is
+    about - and reports what was left running once the open finally resolves. */
 async function teardownDuringOpen() {
   const { streams, restore } = installDelayedMicrophone(300);
   let intervalsArmed = 0;

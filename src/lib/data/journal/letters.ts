@@ -1,12 +1,8 @@
-/* Time-capsule letters (phase 4 ticket 19, CONTEXT: "Milestone",
-   "Countdown", "Anniversary"): a free-write note sealed until a chosen
-   unlock day. This area owns the text and its unlock day and nothing else
-   - the same "own record type" reasoning doubtJournal.ts gives for a
-   doubt entry - and stores no seal state of its own; letterStatus.ts
-   derives sealed/unlocked from `unlockEpochDay` against today
-   (ADR-0010). No second cryptographic layer: the row is protected
-   exactly as every other journal row already is, by the journal's
-   whole-database encryption (ADR-0020). */
+/* Time-capsule letters: a free-write note sealed until a chosen unlock day. This area owns
+   the text and its unlock day and nothing else, and stores no seal state of its own;
+   letterStatus.ts derives sealed/unlocked from `unlockEpochDay` against today (ADR-0010).
+   No second cryptographic layer: the row is protected exactly as every other journal row
+   already is, by the journal's whole-database encryption (ADR-0020). */
 
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Letter } from '../types';
@@ -34,15 +30,13 @@ export interface LettersArea {
   getLetterSeals(limit: number): Promise<LetterSeal[]>;
   /** One letter by id, or null when there is no such row - the read a
       deep link into a single letter takes, which cannot work from the
-      newest-first page above (phase 5 deepening ticket 13). */
+      newest-first page above. */
   getLetter(id: string): Promise<Letter | null>;
-  /** The distinct days a letter unlocks between `fromEpochDay` and
-      `toEpochDay` inclusive - never an id, and never the text (phase 8
-      features ticket 61, dayAhead.ts). A mark says only that a letter
-      unlocks; this is what makes that true at the source rather than at
-      the caller's discretion, unlike `getLetterSeals`, which carries an id
-      and exists for a different reader (letterStatus.ts) that is allowed
-      to know which letter it is offering. */
+  /** The distinct days a letter unlocks between `fromEpochDay` and `toEpochDay` inclusive -
+      never an id, and never the text (dayAhead.ts). A mark says only that a letter unlocks;
+      this is what makes that true at the source rather than at the caller's discretion,
+      unlike `getLetterSeals`, which carries an id and exists for a different reader
+      (letterStatus.ts) that is allowed to know which letter it is offering. */
   getUnlockDaysInRange(fromEpochDay: number, toEpochDay: number): Promise<number[]>;
   /** Whether any letter is stored. One `EXISTS`, for the surface that only
       asks whether the person has written one (Home's Getting started row)

@@ -5,11 +5,10 @@ import type { SqliteDriver } from '../sqlite/driver';
 
 /* Every row's travelling identity is minted here (ADR-0002).
 
-   crypto.randomUUID arrived in Chrome 92 and the API 26 emulator's WebView
-   is Chrome 69, so on an Android that old the call threw and no write of any
-   kind could complete - found by ticket 11's contract run on a device.
-   getRandomValues is far older than either, so the fallback below is what
-   makes the spec's API 26 floor real rather than nominal. */
+   Crypto.randomUUID arrived in Chrome 92 and the API 26 emulator's WebView is Chrome 69, so
+   on an Android that old the call threw and no write of any kind could complete - found by
+   contract run on a device. getRandomValues is far older than either, so the fallback below
+   is what makes the spec's API 26 floor real rather than nominal. */
 export const mintUuid = (): string =>
   typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : uuidFromRandomBytes();
 
@@ -92,7 +91,7 @@ export function assertChanged(result: { changes: number }, what: string): void {
 }
 
 /** The SQL and params for filtering an already-joined `entry e` by
-    presentation (ADR-0048, phase 5 deepening ticket 18) - three states:
+    presentation (ADR-0048) - three states:
     omitted keeps every entry (the default, unfiltered view), `null` keeps
     only entries that carry none, and a uuid keeps only that presentation's.
     Shared because bodyRegionTrend (stats.ts) and the somatic breakdown
@@ -102,12 +101,12 @@ export function entryPresentationFilter(presentationId: string | null | undefine
   params: string[];
 } {
   if (presentationId === undefined) return { sql: '', params: [] };
-  if (presentationId === null) return { sql: ' AND e.presentation_id IS NULL', params: [] };
-  return { sql: ' AND e.presentation_id = ?', params: [presentationId] };
+  if (presentationId === null) return { sql: ' AND e.presentation_uuid IS NULL', params: [] };
+  return { sql: ' AND e.presentation_uuid = ?', params: [presentationId] };
 }
 
 /* Tag and dimension ids by their travelling key or uuid, for the two areas
-   that write a row's tags and dimension values (entries, entry templates).
+   that write a row's tags and dimension values (entries).
    An unknown one throws, so the write aborts before anything is stored. */
 export const resolveTagIds = async (driver: SqliteDriver, tagDomainIds: string[]): Promise<number[]> => {
   if (tagDomainIds.length === 0) return [];

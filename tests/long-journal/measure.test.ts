@@ -1,4 +1,4 @@
-/* The harness's own tests (phase 2 ticket 20). Node tier, over node:sqlite
+/* The harness's own tests. Node tier, over node:sqlite
    and a fake file store, at four months rather than ten years: what these
    check is that the harness measures what it says it measures and that
    budgets.json covers exactly what it produces. The numbers themselves are
@@ -109,7 +109,7 @@ test("archive-restore's phases account for the whole of it", async () => {
   expect(at('archive-restore-read').ms).toBeLessThanOrEqual(files);
 });
 
-/* --- the screen mounts (phase 8 audit ticket 01) ------------------------
+/* --- the screen mounts ------------------------
 
    Five measurements are budgeted on what crossed the driver seam rather
    than on time. What this tier can check is that the counts arrive, that
@@ -251,4 +251,41 @@ test('the target ceiling catches a regression the 200ms floor alone would miss',
 test('budgetFor leaves a measurement with no recorded target on the floor alone', () => {
   expect(budgetFor(1, null)).toBe(200);
   expect(budgetFor(900, null)).toBe(4500);
+});
+
+
+test('Look back measures its prepared mount after reference setup', async () => {
+  const db = await migratedDb();
+  try {
+    const files = fakeFileStore();
+    const recorder = recordingDriver(db);
+    const journal = openJournal(recorder.driver, files);
+    await journal.reconcileBuiltIns();
+    const summary = await generateLongJournal(journal, { seed: 11, days: 120, makePhoto: bytePatternPhoto });
+    let prepared = false;
+    let mounted = false;
+    const measurements = await measureLongJournal(journal, files, {
+      today: summary.lastEpochDay, summary, recorder,
+      prepareLookBack: async (ownedJournal, today) => {
+        expect(ownedJournal).toBe(journal);
+        expect(today).toBe(summary.lastEpochDay);
+        await ownedJournal.eras.getEras();
+        await recorder.driver.readSnapshot(async () => {});
+        prepared = true;
+        return async () => {
+          expect(prepared).toBe(true);
+          mounted = true;
+          const entries = await ownedJournal.entries.countAll();
+          return { result: entries, detail: 'Prepared mount ownership control' };
+        };
+      }
+    });
+    const mount = measurements.find((measurement) => measurement.name === 'mount-stats')!;
+    expect(mounted).toBe(true);
+    expect(mount.detail).toBe('Prepared mount ownership control');
+    expect(mount.statements).toBe(1);
+    expect(mount.bytes).toBeGreaterThan(0);
+  } finally {
+    await db.close();
+  }
 });

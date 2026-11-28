@@ -1,4 +1,4 @@
-/* The disguise, as one rule over every registered class (phase 6 ticket 04).
+/* The disguise, as one rule over every registered class.
    The registry declares `disguised: true` on all six firing rows;
    registry.test.ts holds that declaration and this holds what it means. */
 

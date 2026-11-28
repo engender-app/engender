@@ -12,12 +12,12 @@ describe('pickArchive', () => {
     vi.resetAllMocks();
   });
 
-  test('asks for the archive extension with a MIME fallback (ticket 66)', async () => {
+  test('asks for the archive extension with a MIME fallback', async () => {
     vi.mocked(chooseFiles).mockResolvedValue([]);
 
     await pickArchive();
 
-    expect(vi.mocked(chooseFiles)).toHaveBeenCalledWith('.ttbackup,application/octet-stream');
+    expect(vi.mocked(chooseFiles)).toHaveBeenCalledWith('.gnd,.ttbackup,application/octet-stream');
   });
 
   test('returns null when nothing was picked', async () => {

@@ -1,13 +1,7 @@
 import { dateInputValueFromEpochDay, epochDayFromDateInputValue } from '../epochDay';
 import { formatNumber } from '../numbers';
-import { normalizeUnit } from './units';
 import { foldText } from '../fold';
-import {
-  canonicalizeLabMeasurement,
-  convertLabValue,
-  preferredUnitForAnalyte,
-  type PreferredLabUnits
-} from './units';
+import { canonicalizeLabMeasurement } from './units';
 
 interface OcrCandidateRow {
   analyteText: string;
@@ -161,25 +155,6 @@ export function buildDuplicateKeys(rows: Array<{ epochDay: number; analyte: stri
     keys.add(`${row.epochDay}|${analyte}|${rounded}|${canonical.unit}`);
   }
   return keys;
-}
-
-export function applyPreferredUnitDefaults(parsed: OcrParsedRow[], preferredUnits: PreferredLabUnits): OcrParsedRow[] {
-  return parsed.map((row) => {
-    const preferred = preferredUnitForAnalyte(row.analyte, preferredUnits);
-    if (!preferred) return row;
-
-    const current = normalizeUnit(row.unit);
-    if (!current || current.toLowerCase() === preferred.toLowerCase()) {
-      return { ...row, unit: current || preferred };
-    }
-
-    const converted = convertLabValue(row.analyte, row.value, current, preferred);
-    if (converted === null) {
-      return { ...row, unit: current, lowConfidence: true };
-    }
-
-    return { ...row, value: converted, unit: preferred };
-  });
 }
 
 export function formatLabReviewValue(value: number, locale: string): string {

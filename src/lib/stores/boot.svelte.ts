@@ -1,26 +1,12 @@
-/* Runs the real SQLite boot sequence once (ticket 04) and exposes its
-   result reactively, so +layout.svelte can show a handled error state
-   instead of a blank screen if opening the database or running migrations
-   fails. This only runs in the browser (ssr = false).
+/* Construct the SQLite journal and publish browser boot state to the
+   layout and gates (ADR-0017). data/live/ is the UI seam. boot-machine.ts
+   owns the sequence and handles platform, first run, unlock, legacy
+   storage and newer schemas. This adapter runs effects and returns events
+   to the reducer so failures can render a handled state.
 
-   It is also the thin app-level module ADR-0017 asks for: the one place that
-   constructs the journal over the driver and hands it to the UI. The driver
-   stops here - screens reach the journal through data/live/, which is the
-   only thing above this file that knows a database is involved at all.
-
-   Since phase 5 audit ticket 14 it decides nothing. boot-machine.ts holds the
-   order - web and Android, first run and unlock, unsupported legacy storage, a refused key, a
-   schema from a newer build - and this is its adapter: an effect arrives, the
-   platform is asked, and what it answered goes back as an event. The reducer's
-   state is mirrored into the rune below and read by the layout and the gates
-   exactly as before.
-
-   Two things arrive in two steps each, matching boot()'s own sequence.
-   Preferences: the mirrored boot set is read synchronously before anything
-   renders, so theme and palette match what the pre-paint script in app.html
-   already stamped on <html>, then SQLite replaces the lot. Reference data:
-   the built-ins are reconciled and the mirror filled at step 3, so the first
-   screen to render already has a vocabulary. */
+   Start with the synchronous preference mirror matching app.html's
+   pre-paint attributes, then attach SQLite preferences. Reconcile built-ins
+   and fill the vocabulary mirror before the first screen reads it. */
 
 import { boot, migrateJournal } from '../data/sqlite/boot';
 import { prewarmJournalWorker, releasePrewarmedJournalWorker } from '../data/sqlite/mc-driver';
@@ -32,11 +18,13 @@ import { deleteAndroidDatabase } from '../data/sqlite/android-driver';
 import { JOURNAL_DATABASE } from '../data/legacy-journal';
 import { isAndroid } from '../platform';
 import { whenIdle } from '../idle';
+import { markJournalBusy } from '../data/journal-busy';
 import type { MigrationFileOps } from '../data/sqlite/migration-runner';
 import { openJournal, type Journal, type PhotoFileStore } from '../data/journal/journal';
 import { purgeExpiredTrash } from '../data/journal/entries';
 import { sweepOrphanPhotos } from '../data/journal/photos';
-import { attachJournal, journalIsClosing, journalIsOpen } from '../data/live/journal.svelte';
+import { shouldSweepOrphans } from '../data/sqlite/orphan-sweep-schedule';
+import { attachJournal, journalIsClosing, journalIsOpen, journalSessionEnded } from '../data/live/journal.svelte';
 import { sessionDriver } from '../data/live/sessionDriver';
 import { bump } from '../data/live/tableVersions.svelte';
 import { observeWrites, tablesWrittenBy } from '../data/live/writes';
@@ -55,7 +43,7 @@ import {
   setupJournalPassphrase,
   unlockJournalPassphrase
 } from '../data/journal-passphrase';
-import { addJournalPin, removeEveryPinBinding, setupJournalPin, unlockJournalPin } from '../data/journal-pin';
+import { addJournalPin, removeEveryPinBinding, setupJournalPin, unlockJournalPin, verifyJournalPin } from '../data/journal-pin';
 import { addJournalBiometric, setupJournalBiometric, unlockJournalBiometric } from '../data/journal-biometric';
 import { BiometricUnavailableError } from '../data/webauthn-prf';
 import {
@@ -66,29 +54,34 @@ import {
   setupDeviceBoundJournal
 } from '../data/device-bound-journal';
 import { initializeJournal, JournalAlreadyExistsError } from '../data/journal-initialization';
-import { changeCredentials } from '../data/credential-ownership';
-import { removeKeystoreFile } from '../data/keystore-file';
-import { openWithRecoveryKey } from '../data/recovery-key';
+import { authenticateCredentials, changeCredentials, currentCredentials, invalidateCredentialApprovals } from '../data/credential-ownership';
+import { protectionChange, verifyCurrentProtection } from '../data/protection-change';
+import { readRecoveryWrapText, PENDING_RECOVERY_KEY_FILE } from '../data/recovery-key-file';
+import { readKeystoreFile, readKeystoreText, removeKeystoreFile } from '../data/keystore-file';
+import { mintRecoveryKeyOwned, openWithRecoveryKeyOwned, verifyRecoveryKey, withoutPendingRecoveryKeyOwned } from '../data/recovery-key';
 import { accessModeHasSecret, type JournalAccessMode } from '../data/journal-access-mode';
 import { setPhotoFiles } from './photoFiles';
 import { localStorageCache, readCachedAccessMode, writeCachedAccessMode } from '../data/prefs/boot-cache';
 import { androidResetTargets, clearBrowserMirrors, wipeLocalData } from '../data/reset';
 import { androidPhotos } from '../data/photos/android-bridge';
 import { androidDeviceReset } from '../data/android-device-reset-bridge';
-import { openPreferences } from '../data/prefs/preferences';
-import { applyCachedBootPreferences, attachPreferences, detachPreferences } from '../data/prefs/store.svelte';
+import { openPreferences, type Preferences } from '../data/prefs/preferences';
+import { migrateLegacyAcknowledgements } from '../data/acknowledgements';
+import { foldLegacyReserves } from '../data/homeReserve';
+import { activateLanguagePreference, applyCachedBootPreferences, attachPreferences, detachPreferences } from '../data/prefs/store.svelte';
 import { beginSessionUnlock, isLocked, markUnlocked } from './lock.svelte';
 import { UnlockCancelledError } from '../lock/unlock-attempt';
 import { openAndroidDataKey, type UnlockRequest } from '../lock/android-key';
 import { androidKeystore } from '../lock/keystore-bridge';
 import { demoPreferences, persona } from '../data/demo/persona';
-import type { PreferenceKey } from '../data/prefs/catalogue';
+import { getLocale } from '$lib/paraglide/runtime';
+import { PREFERENCE_DEFAULTS, type PreferenceKey } from '../data/prefs/catalogue';
 import { bootGate, isReadyState, type BootState } from './boot-state';
 import { journalSession } from './journal-session';
 import { forgetJournalContent } from '../lock/forget-content';
 import { crossBootFailure, openApp } from '../motion/appOpening';
 import { ui } from './ui.svelte';
-import { performPlatformEffect } from './boot-platform';
+import { performPlatformEffect, sweepDeviceBoundAfterSecretUnlock } from './boot-platform';
 import {
   describeError,
   deviceBoundSetupOutcome,
@@ -104,8 +97,8 @@ let machine: BootMachine = initialBoot(readCachedAccessMode());
 
 export const bootState = $state<BootState>({ ...machine.boot });
 
-/** Whether the browser refused to keep this journal's storage, as this
-    boot heard it. Home's storage notice reads it (after-release 17). */
+/** Whether the browser refused to keep this journal's storage, as this boot heard it.
+    Home's storage notice reads it. */
 export const storageRisk = $state({ persistDenied: false });
 
 /** One event in, the reducer's answer mirrored out, and whatever it asked for
@@ -135,9 +128,8 @@ function dispatch(event: BootEvent): void {
      another gate is not it - a refusal is the same screen changing its mind,
      and it moves on the field's own edge without a transition (stepBlind). */
   const opensApp = bootGate(bootState) !== 'none' && bootGate(step.machine.boot) === 'none';
-  /* A boot failing while the route is drawn, or a retry leaving the
-     failure (ux-carpet 213): the layout swaps the route for the notice
-     alone and back, and that swap moves. */
+  /* A boot failing while the route is drawn, or a retry leaving the failure: the layout
+     swaps the route for the notice alone and back, and that swap moves. */
   const crossesFailure =
     (bootState.status === 'booting' && step.machine.boot.status === 'error') ||
     (bootState.status === 'error' && step.machine.boot.status !== 'error');
@@ -212,10 +204,9 @@ let started = false;
    will let go of the file. Nothing else reaches for it: screens go through
    data/live/, and bootState.journal is the handle for everything else. */
 let openDriver: SqliteDriver | null = null;
-/* The open journal's data key and its database, for as long as the journal
-   is open - which on the web, since after-release ticket 10, is until the
-   next lock rather than until the tab closes (journal-session.ts says what
-   a lock does and why). */
+/* The open journal's data key and its database, for as long as the journal is open - which
+   on the web, is until the next lock rather than until the tab closes (journal-session.ts
+   says what a lock does and why). */
 const session = journalSession<Uint8Array<ArrayBuffer>, SqliteDriver>({
   async suspend() {
     /* The handle boot state published goes first: it holds the driver and
@@ -269,7 +260,7 @@ export function journalDataKey(): Promise<Uint8Array<ArrayBuffer>> {
   return session.key.next();
 }
 
-/** The mid-session lock's half on the web (after-release ticket 10). Closes
+/** The mid-session lock's half on the web. Closes
     the database and releases the key in a mode a secret reopens; in any
     other - web device-bound and unlocked, which never lock, and Android,
     whose lock path is its own - and before the journal is open, it does
@@ -285,6 +276,9 @@ export function closeJournalForLock(): Promise<void> {
      locked screen's to keep. */
   forgetJournalContent();
   if (android) return Promise.resolve();
+  /* Before anything waits: a change made from here on was made at the
+     locked screen and is refused, not queued for the next unlock. */
+  journalSessionEnded();
   forgetReference();
   /* Published now as well as when the lock's turn comes: a lock can wait
      behind a reopen still under way, and the boot machine has to treat the
@@ -332,7 +326,8 @@ export function watchBrowserSession(): () => void {
       await session.resumeAfterNavigation(current);
     })().catch((error) => {
       if (mine === generation && !isLocked(bootState.accessMode)) {
-        dispatch({ type: 'boot-failed', message: describeError(error) });
+        if (error instanceof ReopenPreparationError) reportReopenPreparationFailure(error, current);
+        else dispatch({ type: 'boot-failed', message: describeError(error) });
       }
     }).finally(() => {
       if (mine === generation) browserSession.recovering = false;
@@ -352,15 +347,14 @@ function useJournalFiles(files: PhotoFileStore | null): void {
   setPhotoFiles(files);
 }
 
-/** The mid-session unlock's half: the gate has derived the key from the
-    access mode's own secret, the same derivation a cold start makes, and
-    this opens the journal again under it. Does nothing where no lock closed
-    the journal. Rejects if the database will not open - most likely because
-    another tab has it now - and the gate says so.
+/** The mid-session unlock's half: the gate has derived the key from the access mode's own
+    secret, the same derivation a cold start makes, and this opens the journal again under
+    it. Does nothing where no lock closed the journal. Rejects if the database will not open
+    - most likely because another tab has it now - and the gate says so.
 
-    Through the boot machine's `key-obtained`, like every other key, so the
-    guard ticket 29 put there sees this one too: a second key while a reopen
-    is under way starts nothing and waits on the first. */
+    Through the boot machine's `key-obtained`, like every other key, so the guard put there
+    sees this one too: a second key while a reopen is under way starts nothing and waits on
+    the first. */
 export function reopenJournalAfterUnlock(dataKey: Uint8Array<ArrayBuffer>, current: () => void = () => {}): Promise<void> {
   /* The unlock screen only draws over a ready journal, but its derivation
      can outlast that; a key arriving anywhere else would start a boot. */
@@ -379,12 +373,10 @@ let reopening: Promise<void> = Promise.resolve();
 /* Captured by the synchronous reopen effect, before its first wait. */
 let reopeningCurrent: () => void = () => {};
 
-/* A lock's reopen: the boot's own construction without the boot. The
-   journal was open and migrated minutes ago in this same page, so there is
-   nothing to migrate, reconcile or sweep; what is left is a driver over the
-   key, the preferences and the vocabulary read back, and the facade opened
-   on the new handle. The prewarmed worker the lock started is what the
-   driver takes over, so the wait is an `open` and a few reads. */
+/* A private reopen uses the cold boot's compatibility and migration owner
+   before reading preferences or vocabulary. Another page may have upgraded
+   the journal while this page released its connection. Reconciliation and
+   housekeeping remain cold-boot work. */
 async function reopenJournal(
   dataKey: Uint8Array<ArrayBuffer>,
   current: () => void,
@@ -393,6 +385,14 @@ async function reopenJournal(
   const photoFiles = journalPhotoFiles(dataKey);
   const sqlite = createJournalSqlite(dataKey);
   own(sqlite.driver);
+  const migrating = markJournalBusy();
+  try {
+    await migrateJournal(sqlite.driver, sqlite.fileOps);
+  } catch (error) {
+    migrating(false);
+    throw new ReopenPreparationError(error, sqlite.fileOps);
+  } finally { migrating(); }
+  current();
   const preparing = openJournal(sqlite.driver, photoFiles);
   const preferences = await openPreferences(sqlite.driver, bootCache);
   current();
@@ -400,8 +400,10 @@ async function reopenJournal(
      closed until every preparation step has finished under this lock. */
   await hydrateReference(preparing, current);
   current();
+  await moveLegacyAcknowledgements(preferences);
   await attachPreferences(preferences);
   current();
+  activateLanguagePreference();
   const journal = attachJournal(openJournal(journalDriver, photoFiles));
   openDriver = sqlite.driver;
   openFileOps = sqlite.fileOps;
@@ -412,11 +414,55 @@ async function reopenJournal(
   dispatch({ type: 'journal-reopened', journal });
   return sqlite.driver;
 }
+
+/** Carry recovery operations through the session's private-driver disposal.
+    The original migration error still reaches the caller after reporting. */
+class ReopenPreparationError extends Error {
+  readonly fileOps: MigrationFileOps;
+  constructor(cause: unknown, fileOps: MigrationFileOps) {
+    super('the private journal could not be prepared', { cause });
+    this.fileOps = fileOps;
+  }
+}
+
+function reportReopenPreparationFailure(error: ReopenPreparationError, current: () => void): void {
+  current();
+  openFileOps = error.fileOps;
+  dispatch({ type: 'journal-open-failed', error: error.cause });
+}
 /** Kept for the same reason, and for the restore below: putting the
     pre-migration copy back is the one recovery a failed boot can offer, and
-    it needs the file ops of the driver that failed (ticket 04). */
+    it needs the file ops of the driver that failed. */
 let openFileOps: MigrationFileOps | null = null;
 const bootCache = localStorageCache();
+
+/** The tile snoozes, letter ids and entries hint older builds kept in plaintext
+    localStorage move into the encrypted `acknowledgements` preference on the first unlock.
+    Awaits the handle's own write, which rejects on failure, rather than the reactive
+    setter, which logs and carries on - the plaintext keys are deleted only after it lands.
+    Runs before attach so the projection starts from the merged value. */
+async function moveLegacyAcknowledgements(preferences: Preferences): Promise<void> {
+  let storage: Storage | null = null;
+  try {
+    storage = localStorage;
+  } catch {
+    /* No storage, nothing to move. */
+  }
+  await migrateLegacyAcknowledgements(storage, preferences.get('acknowledgements'), (next) =>
+    preferences.set('acknowledgements', next)
+  );
+  /* And the screens' held heights, which named the screens. Same order: the keys go only
+     once the write has landed. */
+  if (!storage) return;
+  try {
+    const { next, keys } = foldLegacyReserves(storage, preferences.get('layoutReserves'));
+    if (keys.length === 0) return;
+    await preferences.set('layoutReserves', next);
+    for (const key of keys) storage.removeItem(key);
+  } catch (error) {
+    console.error('Could not move the screen heights into the journal', error);
+  }
+}
 
 /* Where each kind of reset lands, read by resetApp below. */
 const RESET_DESTINATION = {
@@ -425,22 +471,34 @@ const RESET_DESTINATION = {
   erased: '/onboarding?erased=1'
 } as const;
 
-/** The forgotten-PIN escape hatch (ADR-0014): wipes what this device holds
-    and comes back up at onboarding. Reloads rather than resetting the
-    modules in place - boot() has already run, the journal is attached, and
-    unwinding all of that in the browser is a far bigger surface than
-    starting the page again.
+/** The forgotten-PIN escape hatch: wipes what this device holds and comes back up at
+    onboarding. Reloads rather than resetting the modules in place - boot() has already run,
+    the journal is attached, and unwinding all of that in the browser is a far bigger
+    surface than starting the page again.
 
-    `erased` is the same wipe asked for from Settings rather than from a
-    gate (phase 14 ticket 15): setup's welcome then says what happened,
-    since nobody there forgot anything and the result cannot be undone. */
+    `erased` is the same wipe asked for from Settings rather than from a gate: setup's
+    welcome then says what happened, since nobody there forgot anything and the result
+    cannot be undone. */
 export async function resetApp(next: keyof typeof RESET_DESTINATION = 'welcome'): Promise<void> {
+  invalidateCredentialApprovals();
+  recoveryApproval = null;
   return changeCredentials(() => resetAppOwned(next));
 }
 
+async function stopJournalTransfers(): Promise<void> {
+  if (!isAndroid()) return;
+  const { stopAutoExportScheduler } = await import('../data/archive/auto-export-scheduler');
+  await stopAutoExportScheduler();
+  const { androidAutoExport } = await import('../data/archive/android-auto-export-bridge');
+  const { androidFileDelivery } = await import('../data/archive/android-file-delivery-bridge');
+  await androidAutoExport.abortPendingTransfers();
+  await androidFileDelivery.abortPendingTransfers();
+}
+
 async function resetAppOwned(next: keyof typeof RESET_DESTINATION = 'welcome'): Promise<void> {
-  /* The reads' last answers are journal content held in the page
-     (lastResults.ts, ux-carpet 201); a reset takes them first. */
+  await stopJournalTransfers();
+  /* The reads' last answers are journal content held in the page (lastResults.ts); a reset
+     takes them first. */
   forgetLastResults();
   await wipeLocalData({
     closeDatabase: async () => {
@@ -450,7 +508,7 @@ async function resetAppOwned(next: keyof typeof RESET_DESTINATION = 'welcome'): 
     storageRoot: async () => (await navigator.storage.getDirectory()) as ListableDirectory,
     /* Android keeps the journal and the wrapped data key in app-private
        storage rather than in the WebView's, so emptying the OPFS root - all
-       the web's reset has to do - reaches neither (ticket 13). Erasing only
+       the web's reset has to do - reaches neither. Erasing only
        the key would be worse than doing nothing: the ciphertext would stay,
        unopenable, and the next boot would mint a fresh key and meet a
        database it cannot read. The rest of what the phone holds - the
@@ -465,10 +523,9 @@ async function resetAppOwned(next: keyof typeof RESET_DESTINATION = 'welcome'): 
           wipeDeviceState: () => androidDeviceReset.wipe()
         })
       : {}),
-    /* And the tab's session storage, where Search holds the query and filters
-       it was showing for the way back from an entry: a wiped journal's search
-       turned up in the next journal's Search (after-release ticket 10, audit
-       L09-02). */
+    /* And the tab's session storage, where Search holds the query and filters it was
+       showing for the way back from an entry: a wiped journal's search turned up in the
+       next journal's Search. */
     clearBrowserMirrors: () => {
       clearBrowserMirrors(localStorage);
       clearBrowserMirrors(sessionStorage);
@@ -480,8 +537,8 @@ async function resetAppOwned(next: keyof typeof RESET_DESTINATION = 'welcome'): 
      the authenticator rather than in anything this app can reach. It is
      harmless once the keystore is gone - its PRF output opens nothing - but
      it does stay in the platform's own credential list until somebody
-     removes it there, which is worth knowing rather than assuming away
-     (ticket 55). */
+     removes it there, which is worth knowing rather than assuming away.
+     */
   /* The device-bound wrapping key and PIN mode's binding key
      (data/device-secret.ts) both live here. Not covered by the OPFS sweep
      above - it's IndexedDB - and a key left behind after a reset is key
@@ -493,12 +550,11 @@ async function resetAppOwned(next: keyof typeof RESET_DESTINATION = 'welcome'): 
   await deleteDeviceKeyDatabase().catch((error) => {
     console.warn('could not remove the browser device keys during the reset', error);
   });
-  /* And PIN mode's binding key where the platform holds it somewhere that
-     sweep cannot reach: on Android it is a Keystore alias rather than an
-     IndexedDB row (ticket sec-02-06), so nothing above this line touches it.
-     Overlaps the sweep on the web deliberately - removing a key twice costs
-     nothing, and a reset should not depend on which of the two calls covers
-     which store. */
+  /* And PIN mode's binding key where the platform holds it somewhere that sweep cannot
+     reach: on Android it is a Keystore alias rather than an IndexedDB row, so nothing above
+     this line touches it. Overlaps the sweep on the web deliberately - removing a key twice
+     costs nothing, and a reset should not depend on which of the two calls covers which
+     store. */
   await removeEveryPinBinding().catch((error) => {
     console.warn('could not remove the PIN binding key during the reset', error);
   });
@@ -508,7 +564,7 @@ async function resetAppOwned(next: keyof typeof RESET_DESTINATION = 'welcome'): 
 }
 
 /** Puts the pre-migration copy back as the live Journal and starts the app
-    again on it (ticket 04, ADR-0006).
+    again on it (ADR-0006).
 
     Reached two ways. From the migration-failure screen, when a person decides
     to go back: what comes back is the Journal as it was before the update that
@@ -525,15 +581,14 @@ async function resetAppOwned(next: keyof typeof RESET_DESTINATION = 'welcome'): 
     that has just been replaced (mc-driver.ts), and boot() has already run. */
 export async function restorePreviousJournal(): Promise<void> {
   if (!openFileOps) throw new Error('there is no failed boot to recover from');
+  await stopJournalTransfers();
   await openFileOps.restorePreMigrationCopy();
-  /* Closed before the reload, the way resetApp does it: the restore left the
-     database connection gone but the pool still held, and pauseVfs() is what
-     lets go of its access handles so the next boot's worker can acquire them
-     (ADR-0020's one connection per origin). Caught, because on the web the
-     failed boot has usually closed it already, and a closed driver refuses a
-     second close (ux-carpet 215) - the restore then ran on a worker of its
-     own and let the pool go itself (219). A refusal here is not the restore
-     failing. */
+  /* Closed before the reload, the way resetApp does it: the restore left the database
+     connection gone but the pool still held, and pauseVfs() is what lets go of its access
+     handles so the next boot's worker can acquire them (ADR-0020's one connection per
+     origin). Caught, because on the web the failed boot has usually closed it already, and
+     a closed driver refuses a second close - the restore then ran on a worker of its own
+     and let the pool go itself. A refusal here is not the restore failing. */
   await openDriver?.close().catch(() => {});
   await closeActiveDriver();
   location.reload();
@@ -566,7 +621,7 @@ export function startBoot() {
   if (started) return;
   started = true;
   /* What needs no key starts now, beside the survey and the unlock rather
-     than after them (ux-carpet ticket 209): the web's database worker, its
+     than after them: the web's database worker, its
      wasm, which the Journal's driver takes over once the key
      exists, and - where the unlock will derive one - the argon2id worker
      with hash-wasm compiled. Neither is given a secret here. */
@@ -603,10 +658,10 @@ export async function submitPassphraseUnlock(passphrase: string): Promise<void> 
   const current = beginSessionUnlock();
   const dataKey = await unlockJournalPassphrase(passphrase);
   current();
-  dispatch({ type: 'key-obtained', dataKey, accessMode: 'passphrase', unlocked: true });
+  dispatch({ type: 'key-obtained', dataKey, accessMode: 'passphrase', unlocked: true, secretAuthenticated: true });
 }
 
-/** The setup module's PIN choice (ticket 53). The PIN just chosen also opens
+/** The setup module's PIN choice. The PIN just chosen also opens
     this session, the same way a chosen passphrase does. */
 async function submitPinSetup(pin: string): Promise<void> {
   await finishSetup(() => setupJournalPin(pin), 'pin');
@@ -616,14 +671,15 @@ async function submitPinSetup(pin: string): Promise<void> {
     DeviceBindingUnavailableError when this browser has lost the key the PIN
     was bound to; the gate owns both sentences, and they are different
     sentences because only one of them is worth retyping for. */
-export async function submitPinUnlock(pin: string): Promise<void> {
-  const current = beginSessionUnlock();
-  const dataKey = await unlockJournalPin(pin);
+export async function submitPinUnlock(pin: string, gateCurrent: () => void = () => {}): Promise<void> {
+  const sessionCurrent = beginSessionUnlock();
+  const current = () => { sessionCurrent(); gateCurrent(); };
+  const dataKey = await unlockJournalPin(pin, undefined, current);
   current();
-  dispatch({ type: 'key-obtained', dataKey, accessMode: 'pin', unlocked: true });
+  dispatch({ type: 'key-obtained', dataKey, accessMode: 'pin', unlocked: true, secretAuthenticated: true });
 }
 
-/** The setup module's biometric choice (ticket 55). The prompt the platform
+/** The setup module's biometric choice. The prompt the platform
     draws is the whole of the interaction, and the secret it releases opens
     this session as well as every later one. Throws BiometricUnavailableError
     at the screen when the authenticator will not answer, which is a
@@ -638,51 +694,75 @@ export async function submitBiometricUnlock(): Promise<void> {
   const current = beginSessionUnlock();
   const dataKey = await unlockJournalBiometric();
   current();
-  dispatch({ type: 'key-obtained', dataKey, accessMode: 'biometric', unlocked: true });
+  dispatch({ type: 'key-obtained', dataKey, accessMode: 'biometric', unlocked: true, secretAuthenticated: true });
 }
 
-/** Whether a recovery unlock happened this page-load, and therefore whether
-    the app owes the person a new access mode before it shows them anything
-    (ADR-0054, ticket sec-02).
+/** Whether a recovery unlock happened this page-load, and therefore whether the app owes
+    the person a new access mode before it shows them anything (ADR-0054).
 
-    Deliberately not in `BootState`. The machine holds what a boot found and
-    what it decided, and this is neither: it is one page-load's worth of UI
-    consequence, the way the data key itself is kept out of that state for
-    its own reasons. A reload while it is set is not a hole either - the
-    keystore still names the mode the person could not open, so a reload
-    lands back at the gate and the written key still works. */
+    Deliberately not in `BootState`. The machine holds what a boot found and what it
+    decided, and this is neither: it is one page-load's worth of UI consequence, the way the
+    data key itself is kept out of that state for its own reasons. A reload while it is set
+    is not a hole either - the keystore still names the mode the person could not open, so a
+    reload lands back at the gate and the written key still works. */
 export const recoveryUnlock = $state({ used: false });
+let recoveryApproval: { key: WeakRef<Uint8Array<ArrayBuffer>>; current: () => void; identity: string; adopted: boolean } | null = null;
 
-/** The recovery-key gate's submit (ADR-0054, ticket sec-02). Opens the same
-    data key the access mode would have opened, so nothing about the journal
-    changes and nothing is re-encrypted.
+class RecoveryApprovalRequiredError extends Error {
+  constructor() { super('a fresh recovery-key check is required for this setup attempt'); }
+}
 
-    The mode dispatched is the one the keystore still names, because that is
-    what is true: a recovery key is not an access mode and using it does not
-    make the journal into one. What it does set is `recoveryUnlock`, which is
-    what puts the access-mode module in front of the app until a secret the
-    person actually has is chosen - without that, the forgotten secret would
-    still be the journal's only door and the written key would quietly become
+async function protectionIdentity(): Promise<string> {
+  const [credential, recovery, pending] = await Promise.all([
+    readKeystoreText(), readRecoveryWrapText(), readRecoveryWrapText(PENDING_RECOVERY_KEY_FILE)
+  ]);
+  return JSON.stringify([
+    credential,
+    recovery, pending
+  ]);
+}
+
+/** The recovery-key gate's submit (ADR-0054). Opens the same data key the access mode would
+    have opened, so nothing about the journal changes and nothing is re-encrypted.
+
+    The mode dispatched is the one the keystore still names, because that is what is true: a
+    recovery key is not an access mode and using it does not make the journal into one. What
+    it does set is `recoveryUnlock`, which is what puts the access-mode module in front of
+    the app until a secret the person actually has is chosen - without that, the forgotten
+    secret would still be the journal's only door and the written key would quietly become
     the daily credential.
 
-    Throws RecoveryKeyMistypedError, RecoveryKeyAbsentError and
-    DecryptionFailedError separately, because the gate says three different
-    things (data/recovery-key.ts). */
+    Throws RecoveryKeyMistypedError, RecoveryKeyAbsentError and DecryptionFailedError
+    separately, because the gate says three different things (data/recovery-key.ts). */
 export async function submitRecoveryKeyUnlock(typed: string): Promise<void> {
-  const current = beginSessionUnlock();
-  const dataKey = await openWithRecoveryKey(typed);
+  const sessionCurrent = beginSessionUnlock();
+  const credentialsCurrent = currentCredentials();
+  const current = () => { sessionCurrent(); credentialsCurrent(); };
+  const { dataKey, identity } = await authenticateCredentials(async () => {
+    current();
+    const dataKey = await openWithRecoveryKeyOwned(typed, current);
+    try {
+      current();
+      const identity = await protectionIdentity();
+      current();
+      return { dataKey, identity };
+    } catch (error) {
+      dataKey.fill(0);
+      throw error;
+    }
+  });
   current();
+  recoveryApproval = { key: new WeakRef(dataKey), current, identity, adopted: false };
   recoveryUnlock.used = true;
   dispatch({ type: 'key-obtained', dataKey, accessMode: bootState.accessMode, unlocked: true });
 }
 
-/** The setup module's device-bound choice (ADR-0018, ADR-0041). Whether the
-    platform would mint the key is the screen's answer to render, not a boot
-    transition - a refusal leaves the module exactly where it was.
+/** The setup module's device-bound choice (ADR-0018, ADR-0041). Whether the platform would
+    mint the key is the screen's answer to render, not a boot transition - a refusal leaves
+    the module exactly where it was.
 
-    This was `submitSkipSetup` until ticket 53. Device-bound is one of the
-    module's equal choices now rather than the way past a wall, and the name
-    was the last place the old framing survived. */
+    This was `submitSkipSetup`. Device-bound is one of the module's equal choices now rather
+    than the way past a wall, and the name was the last place the old framing survived. */
 async function submitDeviceBoundSetup(options?: { authRequired?: boolean }): Promise<DeviceBoundSetupResult> {
   if (isAndroid()) {
     const authRequired = options?.authRequired ?? true;
@@ -718,7 +798,7 @@ async function submitDeviceBoundSetup(options?: { authRequired?: boolean }): Pro
 export type AccessModeSetupResult = DeviceBoundSetupResult | 'biometric-unavailable' | 'setup-failed';
 
 /** The setup module's whole submit path, wherever it is offered. JournalGate
-    and onboarding's own lock step (ticket 54) both hand a chosen mode here
+    and onboarding's own lock step both hand a chosen mode here
     rather than each keeping its own copy of which submit call a mode maps
     to and which failure is which - the four submits above stay what an
     *unlock* screen calls directly, since only setup branches on the mode at
@@ -744,21 +824,113 @@ export async function submitAccessModeSetup(
   }
 }
 
-/** Changing access mode with the journal already open (ticket 53's Settings
-    screen). The data key is in memory, so every direction is a rewrap of the
-    same key: the journal is never re-encrypted and the change is instant
-    whatever the journal's size.
+type ProtectionPrompt = Pick<UnlockRequest, 'title' | 'subtitle' | 'cancel'>;
 
-    Write-then-clear, in that order, because the order is the crash safety.
-    A new keystore lands before the old material goes, and
-    chooseJournalAccessMode prefers a secret keystore over leftover
-    device-bound material - so an interruption anywhere in here leaves a
-    journal that still opens, under one mode or the other, never neither. */
-export async function changeAccessMode(target: Exclude<JournalAccessMode, null>, secret: string): Promise<void> {
-  return changeCredentials(() => changeAccessModeOwned(target, secret));
+/** Capture ownership before showing the current-protection prompt. */
+function prepareProtectionChange<T>(
+  prompt: ProtectionPrompt,
+  current: () => void,
+  mutate: (key: Uint8Array<ArrayBuffer>, current: () => void) => Promise<T>
+) {
+  const key = session.key.current;
+  const mode = machine.boot.accessMode;
+  const driver = session.driver;
+  const sessionCurrent = beginSessionUnlock();
+  const owned = () => {
+    current();
+    sessionCurrent();
+    if (key === null || session.key.current !== key || session.driver !== driver || recoveryUnlock.used || machine.boot.accessMode !== mode ||
+        !isReadyState(machine.boot) || isLocked(mode)) throw new UnlockCancelledError();
+  };
+  owned();
+  return protectionChange({
+    current: owned,
+    readCredential: async () => {
+      const metadata = await readKeystoreFile();
+      const secretMode = mode === 'pin' || mode === 'passphrase' || mode === 'biometric';
+      if (secretMode ? metadata?.secretSource !== mode : metadata !== null) throw new UnlockCancelledError();
+      return protectionIdentity();
+    },
+    authenticate: (secret, check) => verifyCurrentProtection(mode, isAndroid(), key!, secret, check, {
+      pin: (pin, check) => verifyJournalPin(pin, check),
+      passphrase: unlockJournalPassphrase,
+      biometric: unlockJournalBiometric,
+      recovery: secret => verifyRecoveryKey(secret, check),
+      androidBiometric: async () => (await androidKeystore.confirm({ ...prompt, deviceCredential: false })).outcome
+    }),
+    mutate: check => mutate(key!, check)
+  });
 }
 
-async function changeAccessModeOwned(target: Exclude<JournalAccessMode, null>, secret: string): Promise<void> {
+export function prepareRecoveryKeyChange(prompt: ProtectionPrompt, current: () => void) {
+  return prepareProtectionChange(prompt, current, (key, check) => mintRecoveryKeyOwned(key, check));
+}
+
+export function prepareAccessModeChange(
+  target: Exclude<JournalAccessMode, null>, secret: string,
+  prompt: ProtectionPrompt, current: () => void
+) {
+  return prepareProtectionChange(prompt, current, (_key, check) => changeAccessModeOwned(target, secret, check));
+}
+
+/** Changing access mode with the journal already open. The data key is in memory, so every
+    direction is a rewrap of the same key: the journal is never re-encrypted and the change
+    is instant whatever the journal's size.
+
+    Write-then-clear, in that order, because the order is the crash safety. A new keystore
+    lands before the old material goes, and chooseJournalAccessMode prefers a secret
+    keystore over leftover device-bound material - so an interruption anywhere in here
+    leaves a journal that still opens, under one mode or the other, never neither. */
+export async function changeAccessModeAfterRecovery(
+  target: Exclude<JournalAccessMode, null>, secret: string,
+  current: () => void, typedRecoveryKey = ''
+): Promise<void> {
+  const key = session.key.current;
+  const proof = recoveryApproval;
+  const driver = session.driver;
+  const sessionCurrent = beginSessionUnlock();
+  const owned = () => {
+    current();
+    sessionCurrent();
+    if (key === null || session.key.current !== key || session.driver !== driver || !recoveryUnlock.used ||
+        !isReadyState(machine.boot) || isLocked(machine.boot.accessMode)) throw new UnlockCancelledError();
+  };
+  owned();
+  return protectionChange({
+    current: owned,
+    readCredential: protectionIdentity,
+    authenticate: async (_secret, check) => {
+      if (typedRecoveryKey !== '') {
+        const opened = await verifyRecoveryKey(typedRecoveryKey, check);
+        try {
+          check();
+          if (!opened.every((byte, index) => byte === key![index]) || opened.length !== key!.length) throw new UnlockCancelledError();
+        } finally { opened.fill(0); }
+      } else {
+        if (proof === null || proof !== recoveryApproval || proof.key.deref() !== key) throw new RecoveryApprovalRequiredError();
+        proof.current();
+        if (proof.identity !== await protectionIdentity()) throw new RecoveryApprovalRequiredError();
+        proof.current();
+      }
+    },
+    mutate: check => {
+      recoveryApproval = null;
+      return changeAccessModeOwned(target, secret, check);
+    }
+  })();
+}
+
+async function changeAccessModeOwned(target: Exclude<JournalAccessMode, null>, secret: string, current: () => void): Promise<void> {
+  current();
+  return withoutPendingRecoveryKeyOwned((doNotRestorePending) =>
+    changeAccessModeWithoutPending(target, secret, current, doNotRestorePending));
+}
+
+async function changeAccessModeWithoutPending(
+  target: Exclude<JournalAccessMode, null>, secret: string,
+  current: () => void, doNotRestorePending: () => void
+): Promise<void> {
+  current();
   const sessionDataKey = session.key.current;
   if (sessionDataKey === null) throw new Error('there is no open journal key to wrap');
 
@@ -768,10 +940,19 @@ async function changeAccessModeOwned(target: Exclude<JournalAccessMode, null>, s
       const hexKey = Array.from(sessionDataKey)
         .map((b) => b.toString(16).padStart(2, '0'))
         .join('');
-      const wrapped = await androidKeystore.wrap({ hexKey, authRequired });
+      current();
+      const wrapped = await androidKeystore.wrap({ hexKey, authRequired }).catch((error) => {
+        // Rejection can follow native publication. Only an explicit
+        // noDeviceCredential outcome guarantees nothing changed.
+        doNotRestorePending();
+        throw error;
+      });
       if (wrapped.outcome === 'noDeviceCredential') {
         throw new Error('device has no lock screen credentials');
       }
+      // Native wrap policy has changed; removal may publish a tombstone
+      // before deleting its legacy OPFS copy, then throw during cleanup.
+      doNotRestorePending();
       await removeKeystoreFile();
       dispatch({ type: 'access-mode-changed', accessMode: target });
       recoveryUnlock.used = false;
@@ -781,13 +962,14 @@ async function changeAccessModeOwned(target: Exclude<JournalAccessMode, null>, s
       return;
     }
 
-    await addDeviceBoundJournal(sessionDataKey);
+    await addDeviceBoundJournal(sessionDataKey, current);
     /* The removal is awaited before the change is reported, and a failure is
        allowed to throw. Reporting first would have said "changed" while the
        keystore was still on disk, and chooseJournalAccessMode prefers a
        keystore - so the next boot would have asked for the old secret again,
        with a toast in the person's memory saying it had moved. Failing here
        leaves the old mode working and the screen able to say so. */
+    doNotRestorePending();
     await removeKeystoreFile();
     dispatch({ type: 'access-mode-changed', accessMode: 'device-bound' });
     recoveryUnlock.used = false;
@@ -797,9 +979,20 @@ async function changeAccessModeOwned(target: Exclude<JournalAccessMode, null>, s
     return;
   }
 
-  if (target === 'pin') await addJournalPin(sessionDataKey, secret);
-  else if (target === 'biometric') await addJournalBiometric(sessionDataKey);
-  else await addJournalPassphrase(sessionDataKey, secret);
+  if (target === 'pin') await addJournalPin(sessionDataKey, secret, undefined, current, doNotRestorePending);
+  else if (target === 'biometric') await addJournalBiometric(sessionDataKey, undefined, current, doNotRestorePending);
+  else await addJournalPassphrase(sessionDataKey, secret, current, doNotRestorePending);
+  doNotRestorePending();
+  // The published secret is already the authority, even if old-binding
+  // cleanup fails. A retry must authenticate that protection, not reuse
+  // the former web device-bound exception. Failure still reports incomplete.
+  try {
+    if (isAndroid()) await androidKeystore.erase();
+    else await removeDeviceBoundJournal();
+  } catch (error) {
+    dispatch({ type: 'access-mode-changed', accessMode: target });
+    throw error;
+  }
   dispatch({ type: 'access-mode-changed', accessMode: target });
   /* Cleared after the wrap landed rather than before it: the module is in
      front of the app precisely until there is a secret the person has, and
@@ -814,20 +1007,11 @@ async function changeAccessModeOwned(target: Exclude<JournalAccessMode, null>, s
       console.warn('could not remove the PIN binding key after changing access mode', error);
     });
   }
-  if (isAndroid()) {
-    await androidKeystore.erase().catch((error) => {
-      console.warn('could not erase the Android keystore keys after changing access mode', error);
-    });
-    return;
-  }
-  await removeDeviceBoundJournal().catch((error) => {
-    console.warn('could not remove the browser device-bound key after changing access mode', error);
-  });
 }
 
 /** The Android gate's submit, and the first run's own call. Asks Keystore for
     the data key and either opens the Journal under it or leaves the gate
-    something to say (ticket 13).
+    something to say.
 
     The prompt copy arrives from the component rather than being read here:
     Android draws the dialog, so its words are UI copy and belong in the
@@ -859,6 +1043,14 @@ async function perform(effect: BootEffect): Promise<void> {
       applyCachedBootPreferences(bootCache.read());
       return;
 
+    case 'discard-erased-journal-mirrors':
+      // No journal credentials or legacy data remain to own these caches.
+      clearBrowserMirrors(localStorage);
+      clearBrowserMirrors(sessionStorage);
+      bootCache.clear();
+      applyCachedBootPreferences(PREFERENCE_DEFAULTS);
+      return;
+
     case 'mark-unlocked':
       markUnlocked();
       return;
@@ -869,14 +1061,20 @@ async function perform(effect: BootEffect): Promise<void> {
     case 'reopen-journal': {
       const current = reopeningCurrent;
       reopeningCurrent = () => {};
-      reopening = session.unlock(effect.dataKey, current);
+      reopening = session.unlock(effect.dataKey, current).catch((error) => {
+        if (error instanceof ReopenPreparationError) {
+          reportReopenPreparationFailure(error, current);
+          throw error.cause;
+        }
+        throw error;
+      });
       await reopening.catch(() => {});
       dispatch({ type: 'journal-reopen-ended' });
       return;
     }
 
     case 'open-journal':
-      await openAndBoot(effect.dataKey);
+      await openAndBoot(effect.dataKey, effect.sweepDeviceBound);
       return;
 
     case 'restore-previous-journal':
@@ -886,17 +1084,21 @@ async function perform(effect: BootEffect): Promise<void> {
     /* Whether the failure screen can offer a way back. Asked of the disk
        rather than assumed from the failure: a copy is there only if this boot
        or an earlier one got as far as taking one, and a driver too broken to
-       answer is a driver that cannot restore either. */
+       answer is a driver that cannot restore either. Said in the log when
+       that happens: on Android this check was refused by a closed session
+       for every failed migration, and the silence hid it. */
     case 'check-pre-migration-copy': {
       const askedFor = machine.boot;
       const usable =
         openFileOps === null
           ? false
-          : await Promise.resolve(openFileOps.preMigrationCopyIsUsable()).catch(() => false);
-      /* Dropped unless the failure that asked is still the one on screen
-         (ux-carpet 222): a "Try opening again" pressed while the check was
-         running has moved the boot on - dispatched then, it was an invalid
-         transition that failed the retry's own boot - or has failed again
+          : await Promise.resolve(openFileOps.preMigrationCopyIsUsable()).catch((error) => {
+              console.warn('could not ask whether the pre-migration copy is usable; not offering the restore', error);
+              return false;
+            });
+      /* Dropped unless the failure that asked is still the one on screen: a "Try opening
+         again" pressed while the check was running has moved the boot on - dispatched then,
+         it was an invalid transition that failed the retry's own boot - or has failed again
          with a check of its own coming, which answers for that failure. */
       if (machine.boot !== askedFor) return;
       dispatch({ type: 'pre-migration-copy-checked', usable });
@@ -904,7 +1106,7 @@ async function perform(effect: BootEffect): Promise<void> {
     }
 
     case 'warn-persist-denied':
-      // Recorded rather than said (after-release 17, U2): this was a toast,
+      // Recorded rather than said: this was a toast,
       // and on a first visit it covered the Welcome screen's two buttons
       // for four seconds. Home reads the flag and draws a notice that asks
       // for the one thing a person can do about it (storageNoticeShows).
@@ -919,11 +1121,19 @@ async function perform(effect: BootEffect): Promise<void> {
 /** Everything both platforms do once they have a data key: the journal is
     constructed over a driver, boot() runs its sequence, and how it ended goes
     back to the reducer as an event. */
-async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>): Promise<void> {
+async function openAndBoot(dataKey: Uint8Array<ArrayBuffer>, sweepDeviceBound = false): Promise<void> {
   // Effects start synchronously at dispatch, before another leave can run.
   const current = !isAndroid() && accessModeHasSecret(machine.boot.accessMode, false)
     ? beginSessionUnlock() : () => {};
   try {
+    if (sweepDeviceBound) {
+      try {
+        await sweepDeviceBoundAfterSecretUnlock(current);
+      } catch (error) {
+        if (error instanceof UnlockCancelledError) throw error;
+        console.warn('could not remove the leftover device-bound key; the next boot will retry', error);
+      }
+    }
     await prepareJournal(dataKey, current);
   } catch (error) {
     if (!(error instanceof UnlockCancelledError)) throw error;
@@ -968,7 +1178,7 @@ async function prepareJournal(dataKey: Uint8Array<ArrayBuffer>, current: () => v
     },
     prepareDatabase: __DEMO__ ? async (driver, fileOps) => {
       if (activeSqlite!.prepareDemoPersona) {
-        personaPrepared = await activeSqlite!.prepareDemoPersona(persona());
+        personaPrepared = await activeSqlite!.prepareDemoPersona(persona(todayEpochDay(), getLocale()));
       } else {
         await migrateJournal(driver, fileOps);
       }
@@ -984,38 +1194,36 @@ async function prepareJournal(dataKey: Uint8Array<ArrayBuffer>, current: () => v
         ? activeSqlite.requestPersistentStorage()
         : Promise.resolve(true),
     // Step 3: built-ins reconcile by key - not seed-if-empty, so a journal
-    // can never end up short of one (ADR-0002; ticket 14's Replace calls the
+    // can never end up short of one (ADR-0002; Replace calls the
     // same operation before an import applies). Skipped when the journal
     // already holds this build's catalogue, which is one header read instead
-    // of a transaction and a module fetch (builtInsStamp.ts, ticket 208).
+    // of a transaction and a module fetch (builtInsStamp.ts).
     // Then the mirror is filled from what that left behind (ADR-0004).
     loadReferenceData: async () => {
       current();
       await journal!.reconcileBuiltIns({ unlessCurrent: true });
       await hydrateReference(journal!, current);
     },
-    /* Step 4: after the database is open and migrated, so the rows it
-       compares against are the current ones (ADR-0008), and behind an idle
-       callback since phase 5 audit ticket 02 - nothing on screen reads what
-       either pass produces, and both grow with the journal.
+    /* Step 4: after the database is open and migrated, so the rows it compares against are
+       the current ones (ADR-0008), and behind an idle callback - nothing on screen reads
+       what either pass produces, and both grow with the journal.
 
-       Which is also why the purge announces itself: it now runs with the
-       screens already live, so a Trash list somebody is looking at would
-       otherwise keep showing entries the purge has taken. It announces
-       deleteEntry's own tables, asked of writes.ts rather than listed again
-       here, because that is the delete this is finishing. The sweep needs no
-       announcement - it only ever removes files no row references. */
+       Which is also why the purge announces itself: it now runs with the screens already
+       live, so a Trash list somebody is looking at would otherwise keep showing entries the
+       purge has taken. It announces deleteEntry's own tables, asked of writes.ts rather
+       than listed again here, because that is the delete this is finishing. The sweep needs
+       no announcement - it only ever removes files no row references. */
     purgeExpiredTrash: async (opened) => {
       const reclaimed = await purgeExpiredTrash(opened, photoFiles);
       if (reclaimed > 0) bump(tablesWrittenBy('entries', 'deleteEntry'));
     },
     sweepOrphanPhotos: (opened) => sweepOrphanPhotos(opened, photoFiles),
-    /* The standing instruction, carried out (phase 11 ticket 11, ADR-0086).
-       Through the journal rather than the driver, unlike the two passes
-       above: this one is an ordinary area operation, so it takes the write
-       guard and the write recorder on the way like every other write does.
-       It announces what it wrote for the same reason the purge does - the
-       dose log and Today are live while this runs. */
+    shouldSweepOrphans,
+    /* The standing instruction, carried out. Through the journal rather than the driver,
+       unlike the two passes above: this one is an ordinary area operation, so it takes the
+       write guard and the write recorder on the way like every other write does. It
+       announces what it wrote for the same reason the purge does - the dose log and Today
+       are live while this runs. */
     autoLogDueDoses: async () => {
       const { ROUTE_OPTIONS } = await import('../data/vocabulary/doseLabels');
       await journal!.doses.autoLogDueDoses(todayEpochDay(), ROUTE_OPTIONS);
@@ -1032,7 +1240,7 @@ async function prepareJournal(dataKey: Uint8Array<ArrayBuffer>, current: () => v
 
   current();
 
-  // Off the path the reads below take (ticket 202): whenever the browser
+  // Off the path the reads below take: whenever the browser
   // answers, a refusal still reaches the toast - it just no longer holds up
   // journal-opened to do it.
   result.persistRequest.then((denied) => {
@@ -1045,25 +1253,31 @@ async function prepareJournal(dataKey: Uint8Array<ArrayBuffer>, current: () => v
      than on onboarding. Gated on the preference table being empty rather
      than on the journal being empty, so the demo bar's "first run" jump -
      which empties the journal on purpose - is not undone by the next
-     reload. Dropped whole from a production build (ticket 05). */
+     reload. Dropped whole from a production build. */
   if (__DEMO__ && preferences.openedEmpty()) {
     /* The worker prepared the persona before reference hydration. Android and
        older web canvases keep clear-first, preferences-last journal writes. */
     if (!personaPrepared) {
       const { clearJournal, seedPersonaJournal } = await import('../data/demo/journal-seed');
       await clearJournal(journal!);
-      await seedPersonaJournal(journal!);
+      await seedPersonaJournal(journal!, todayEpochDay(), getLocale());
     }
     for (const [key, value] of Object.entries(demoPreferences()) as [PreferenceKey, never][]) {
       await preferences.set(key, value);
     }
   }
+  await moveLegacyAcknowledgements(preferences);
   await attachPreferences(preferences);
   current();
+  activateLanguagePreference();
 
   // Publish after the last ownership check, so queued reads and draft
   // writes cannot obtain a session superseded while boot was preparing it.
   journal = attachJournal(openJournal(journalDriver, photoFiles));
+  if (recoveryApproval !== null) {
+    if (recoveryApproval.adopted || recoveryApproval.key.deref() !== dataKey) recoveryApproval = null;
+    else recoveryApproval.adopted = true;
+  }
   session.adopt(dataKey, result.driver);
   setActiveDriver(result.driver);
   useJournalFiles(photoFiles);

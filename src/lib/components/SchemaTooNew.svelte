@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* Older code, newer Journal (ticket 04, ADR-0006).
+  /* Older code, newer Journal (ADR-0006).
 
      Reachable in practice rather than in theory: a stale service worker can
      serve the previous release after a newer one has already migrated the
@@ -21,12 +21,11 @@
   import { collapse } from '$lib/motion/reveal';
 
   let looking = $state(false);
-  /* What the last look found, said in the line under the button. 'reopen'
-     is a newer release that could not take over this page (applyUpdate
-     answered false): the button used to stay on "Looking…" for good then
-     (after-release 06, L05-06). A look that throws says it could not
-     look; a hand-over that throws after a newer release was found is
-     still 'reopen', since the newer release is there. */
+  /* What the last look found, said in the line under the button. 'reopen' is a newer
+     release that could not take over this page (applyUpdate answered false): the button
+     used to stay on "Looking…" for good then. A look that throws says it could not look; a
+     hand-over that throws after a newer release was found is still 'reopen', since the
+     newer release is there. */
   let result = $state<'none' | 'reopen' | 'failed' | null>(null);
 
   async function lookForNewer() {
@@ -49,18 +48,15 @@
   }
 </script>
 
-<GateScreen title={m.boot_schema_too_new_title()}>
-  <p class="gate-body" data-schema-too-new>{m.boot_schema_too_new_body()}</p>
+<GateScreen title={m.boot_schema_too_new_title()} data-schema-too-new>
   <div class="gate-actions">
     <button class="btn btn-primary" data-look-for-newer disabled={looking} onclick={lookForNewer}>
       <span>{looking ? m.boot_schema_too_new_looking() : m.boot_schema_too_new_retry()}</span>
     </button>
-    <!-- SF-004: this result used to appear with no announcement - a
-         silent content swap for anyone not looking at the screen. The
-         status is this element, which is always there, rather than each line:
-         a region inserted already holding its words is often not read
-         (after-release 21, audit L05-07), and a line arriving inside a
-         region that was already there is. -->
+    <!-- SF-004: this result used to appear with no announcement - a silent content swap for
+         anyone not looking at the screen. The status is this element, which is always
+         there, rather than each line: a region inserted already holding its words is often
+         not read, and a line arriving inside a region that was already there is. -->
     <!-- No box of its own (display: contents), so an empty status adds no
          gap under the button in .gate-actions' column. Inline rather than
          a class: a component style block becomes its own stylesheet. -->

@@ -43,11 +43,11 @@ try {
     const procedure = await j.procedures.upsertProcedure({ name: 'Exact procedure' });
     const episodeInput = { drug: 'Exact episode', ester: null, dose: 2, doseUnit: 'mg', route: 'oral', interval: 'daily', startEpochDay: 14000, endEpochDay: 14001, endReason: null };
     const episode = await j.regimen.upsertEpisode(episodeInput);
-    for (let i = 0; i < 75; i++) await j.regimen.upsertEpisode({ ...episodeInput, drug: `Later episode ${i}`, startEpochDay: 16000 + i });
+    for (let i = 0; i < 75; i++) await j.regimen.upsertEpisode({ ...episodeInput, drug: `Later episode ${i}`, startEpochDay: 16000 + i, endEpochDay: 16001 + i });
     await j.milestones.upsertMilestone({ id: milestone, name: 'Exact milestone', epochDay: 15000, photo: { action: 'replace', photo } });
     const entry = await j.entries.upsertEntry({ epochDay: 15001, mood: 4, note: 'Exact entry', attachVideos: [new Uint8Array([1])] });
     await j.photos.attach({ entryId: entry }, photo);
-    await j.hairProgress.addPhoto(15002, photo);
+    await j.progressPhotos.addPhoto(15002, 'hair', photo);
     const session = await j.hairRemoval.upsertSession({ epochDay: 15003, area: 'chin', method: 'laser', painRating: 2 });
     await j.hairRemoval.addPhoto(session, photo);
     const tryout = await j.tryouts.upsertTryout({ kind: 'name', label: 'Exact tryout', startEpochDay: 15004, endEpochDay: null });
@@ -90,9 +90,6 @@ try {
     await page.locator('[data-row-main="document-target"]').waitFor();
   }
   await visit('/media/photos');
-  await page.locator('[data-segment="compare"]').click();
-  await page.locator('[data-photo-cell]').nth(0).click();
-  await page.locator('[data-photo-cell]').nth(1).click();
   for (const photo of fixture.ownerPhotos) {
     console.log(`Checking photo owner ${photo.source}`);
     await page.locator(`[data-photo-view="${photo.id}"]`).click();
@@ -141,7 +138,6 @@ try {
     }
     await page.locator('[data-photo-owner]').waitFor();
     await page.keyboard.press('Escape');
-    assert.equal(await page.locator('[data-photo-cell][aria-pressed="true"]').count(), 2);
   }
   // Provenance links retain the source record identity too.
   for (const kind of ['procedure', 'goal']) {
@@ -188,9 +184,9 @@ try {
   await page.locator('[data-source-return]').click();
   const missing = '00000000-0000-4000-8000-000000000000';
   const missingRoutes = [
-    `/transition/milestones?edit=${missing}`, `/health/surgery?procedure=${missing}`,
+    `/transition/milestones?edit=${missing}`, `/health/surgery/${missing}`,
     `/care/regimen?episode=${missing}`, `/transition/roadmap?goal=${missing}`,
-    `/body/hair-progress?photo=${missing}`, `/body/hair-removal?session=${missing}`,
+    `/transition/progress-photos?photo=${missing}`, `/body/hair-removal?session=${missing}`,
     `/transition/tryouts/${missing}`, '/entry/2147483647'
   ];
   for (const href of missingRoutes) {

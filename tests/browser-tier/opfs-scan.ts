@@ -1,10 +1,9 @@
-/* The closed-app inspection the spec's release gate describes (ticket 09):
-   read every file OPFS holds - SAHPool pool files, the keystore, photos,
-   everything - and report which sentinel byte patterns appear where. If a
-   sentinel planted through the app's own write paths is readable in any
-   persistent file, the encryption claim is false and no passing API read
-   can rescue it. Grown from the ticket 08 prototype's scanner
-   (prototype/encryption/web/opfs-scan.ts on prototype/encryption-mechanism). */
+/* The closed-app inspection the spec's release gate describes: read every file OPFS holds -
+   SAHPool pool files, the keystore, photos, everything - and report which sentinel byte
+   patterns appear where. If a sentinel planted through the app's own write paths is
+   readable in any persistent file, the encryption claim is false and no passing API read
+   can rescue it. Grown from 08 prototype's scanner (prototype/encryption/web/opfs-scan.ts
+   on prototype/encryption-mechanism). */
 
 export interface ScannedFile {
   path: string;

@@ -1,21 +1,19 @@
-/* How an annotation is written (phase 5 deepening ticket 23).
+/* How an annotation is written.
 
-   The selection rule is in $lib/charts/annotations.ts, which stays Node-tier
-   safe and so imports no paraglide (ADR-0016). The words are here, beside the
-   component that draws them, which is the same split day.ts keeps from
-   vocabulary/dayLabels.ts and BarRows.svelte from barRow.ts.
+   The selection rule is in $lib/charts/annotations.ts, which stays Node-tier safe and so
+   imports no paraglide. The words are here, beside the component that draws them, which is
+   the same split day.ts keeps from vocabulary/dayLabels.ts and BarRows.svelte from
+   barRow.ts.
 
-   Descriptive only (PRODUCT.md:109). An annotation names a thing and a date.
-   None of these strings says a reading moved, rose, fell or responded, and
-   none of them puts an event and a value in the same sentence: a label that
-   read "estradiol started, dysphoria down" would be the causal claim the
-   ticket rules out, written by the label rather than by the data. */
+   An annotation names a thing and a date. None of these strings says a reading moved, rose,
+   fell or responded, and none of them puts an event and a value in the same sentence: a
+   label that read "estradiol started, dysphoria down" would be the causal claim the ticket
+   rules out, written by the label rather than by the data. */
 
 import { m } from '$lib/paraglide/messages';
-import { fmtNumber, fmtDay } from '$lib/data/dates';
+import { fmtDay } from '$lib/data/dates';
 import { areaGroupName } from '$lib/data/vocabulary/areaLabels';
-import { episodeEndReasonLabel, injectionSiteLabel } from '$lib/data/vocabulary/doseLabels';
-import { severityName } from '$lib/data/vocabulary/labels';
+import { episodeEndReasonLabel } from '$lib/data/vocabulary/doseLabels';
 import type { ChartAnnotation, ChartAnnotationKind } from '$lib/charts/annotations';
 
 /** What each kind of thing is called, for a record that carries no name of
@@ -30,30 +28,14 @@ const KIND_WORD: Record<ChartAnnotationKind, () => string> = {
   regimen: m.chart_annotation_regimen,
   recovery: m.chart_annotation_recovery,
   dosePause: m.chart_annotation_dose_pause,
-  journalingPause: m.chart_annotation_journaling_pause,
   tryout: m.chart_annotation_tryout,
   era: m.chart_annotation_era,
-  /* Phase 8 features ticket 59, ADR-0066: what a past appointment is called
-     when the person typed no kind of their own. */
+  /* ADR-0066: what a past appointment is called when the person typed no kind of their own. */
   appointment: m.chart_annotation_appointment,
-  /* Ticket 15's six. The four that stand for a day rather than for a record
-     say so in the word itself, because a mark that read "misgendering" would
-     claim there was misgendering that day and nothing else - which is true of
-     most days somebody keeps that counter. What the mark means is that the
-     count was above the person's own recent range, and the word is the only
-     place a reader is told so (data/ownSpread.ts holds the rule). */
-  sideEffect: m.chart_annotation_side_effect,
-  injection: m.chart_annotation_injection,
-  tallyMisgendered: m.chart_annotation_tally_misgendered,
-  tallyCorrectlyGendered: m.chart_annotation_tally_correctly_gendered,
-  bodyRegionDysphoria: m.chart_annotation_region_dysphoria,
-  bodyRegionEuphoria: m.chart_annotation_region_euphoria,
-  /* Phase 8 features ticket 04. "finished", never "completed" or "done" -
-     nothing here is an achievement and a stream that restarts was not
-     completed (CONTEXT: "Finished"). */
+  /* "finished", never "completed" or "done" - nothing here is an achievement and a stream
+     that restarts was not completed. */
   finishedArea: m.chart_annotation_finished_area,
-  /* Phase 8 features ticket 51. "paused", never "done" or "finished" - the
-     whole point of the word this ticket added. */
+  /* "paused", never "done" or "finished" - the whole point of the word this ticket added. */
   suspendedArea: m.chart_annotation_suspended_area
 };
 
@@ -61,30 +43,14 @@ function kindWord(kind: ChartAnnotationKind): string {
   return KIND_WORD[kind]();
 }
 
-/** The short form, for the caption under a plot where two of these have to
-    fit across 390px: what the record calls itself, and the kind of thing it
-    is only where it calls itself nothing.
+/** What the record calls itself, with the one kind whose `name` is a key rather than a name
+    resolved here.
 
-    Recovery is the one kind that cannot go by its name alone. It takes the
-    name of the procedure it follows, and the procedure's own surgery day is
-    an annotation too, so a caption listing both wrote "top surgery, top
-    surgery" and looked like a bug in the query rather than two marks that
-    mean different things. */
-function annotationName(annotation: ChartAnnotation): string {
-  const name = recordName(annotation);
-  if (!name) return kindWord(annotation.kind);
-  return annotation.kind === 'recovery' ? m.chart_annotation_recovery_of({ name }) : name;
-}
-
-/** What the record calls itself, with the one kind whose `name` is a key
-    rather than a name resolved here (phase 8 features ticket 04).
-
-    A finished area's `name` is its group key, because journal/chartAnnotations.ts
-    is Node-tier and cannot reach paraglide (ADR-0016). The hormone curve
-    resolves its body-region keys on the screen instead; that works there
-    because exactly one screen draws those markers, and this kind reaches
-    every chart that opted into annotations at all. Five screens each keeping
-    their own lookup is the second list this file exists not to need. */
+    A finished area's `name` is its group key, because journal/chartAnnotations.ts is
+    Node-tier and cannot reach paraglide. The chart resolves its body-region keys on the
+    screen instead; that works there because exactly one screen draws those markers, and
+    this kind reaches every chart that opted into annotations at all. Five screens each
+    keeping their own lookup is the second list this file exists not to need. */
 function recordName(annotation: ChartAnnotation): string | undefined {
   const name = annotation.name?.trim();
   if (!name) return undefined;
@@ -118,18 +84,13 @@ export function annotationLine(annotation: ChartAnnotation): string {
     from: fmtDay(annotation.fromEpochDay, short),
     to: fmtDay(annotation.toEpochDay, short)
   });
-  // Ticket 43. Gated on endsInRange, not just on endReason being set: the
+  // Gated on endsInRange, not just on endReason being set: the
   // edge this line names might be the chart's own boundary rather than the
   // episode's real end, and a reason attached to the wrong date would be a
   // false claim about when it happened.
   if (annotation.kind !== 'regimen' || !annotation.endReason || !annotation.endsInRange) return span;
   return m.chart_annotation_regimen_end_reason({ span, reason: episodeEndReasonLabel(annotation.endReason) });
 }
-
-/** How many names the caption writes before it stops naming them. Three fits
-    across a card at 390px; a fourth wraps the caption onto a third line and
-    the chart starts being framed by its own footnote. */
-const CAPTION_NAMES = 3;
 
 /** How many the scrub readout writes. Fewer, because the readout is a pill
     over a 132px plot rather than a line under it: a day inside a regimen, a
@@ -138,19 +99,16 @@ const CAPTION_NAMES = 3;
     exactly where that happens. */
 const READOUT_LABELS = 2;
 
-/** The line a tick draws under its own name: what the record behind it
-    actually says, in the record's own words (phase 11 UI/UX ticket 49).
+/** The line a tick draws under its own name: what the record behind it actually says, in
+    the record's own words.
 
-    Undefined rather than an empty string where there is nothing to print.
-    A milestone nobody wrote a description for, an ungraded side effect and
-    every derived mark all reach here, and an added line that is present and
-    blank reads as the app having lost the text rather than as there never
-    having been any.
+    Undefined rather than an empty string where there is nothing to print. A milestone
+    nobody wrote a description for reaches here without an added line, since there was no
+    text to lose.
 
-    An era is the one kind whose line is not something written behind the
-    tick: the tick is the boundary and the boundary is the fact, so the
-    sentence is composed here and (see `readoutEntry`) stands in place of
-    the `{name}, {kind}` pair rather than under it. */
+    An era is the one kind whose line is not something written behind the tick: the tick is
+    the boundary and the boundary is the fact, so the sentence is composed here and (see
+    `readoutEntry`) stands in place of the `{name}, {kind}` pair rather than under it. */
 function annotationNote(annotation: ChartAnnotation): string | undefined {
   if (annotation.kind === 'era') {
     const name = recordName(annotation);
@@ -159,18 +117,7 @@ function annotationNote(annotation: ChartAnnotation): string | undefined {
 
   const detail = annotation.detail;
   if (!detail) return undefined;
-  switch (detail.type) {
-    case 'note':
-      return detail.text;
-    case 'severity':
-      return severityName(detail.severity) ?? undefined;
-    case 'dose': {
-      const amount = fmtNumber(detail.amount);
-      return detail.site
-        ? m.chart_annotation_dose_site({ amount, unit: detail.unit, site: injectionSiteLabel(detail.site) })
-        : m.chart_annotation_dose({ amount, unit: detail.unit });
-    }
-  }
+  return detail.text;
 }
 
 /** One tick as the readout writes it. */
@@ -194,17 +141,12 @@ export interface AnnotationReadoutEntry {
     the readout already names that day, and repeating it on every line would
     be the same date written three times.
 
-    `disguised` drops every line of free text (ADR-0035). The names are
-    already drawn on these charts and that does not change; a paragraph
-    about a surgery is a different exposure from the word "surgery". */
+    Notes remain visible on unlocked charts. */
 interface ReadoutOptions {
   dated?: boolean;
-  disguised?: boolean;
 }
 
 function readoutEntry(annotation: ChartAnnotation, options: ReadoutOptions): AnnotationReadoutEntry {
-  if (options.disguised) return { id: annotation.id, label: annotationLabel(annotation) };
-
   const note = annotationNote(annotation);
   const dated =
     note && options.dated
@@ -234,13 +176,3 @@ export function annotationReadout(
   };
 }
 
-/** The caption under the plot: what is in view, named, with a count for the
-    rest. Empty where there is nothing in view, so a chart with no annotations
-    in its range draws no caption rather than an empty line. */
-export function annotationCaption(annotations: readonly ChartAnnotation[]): string {
-  if (annotations.length === 0) return '';
-  const names = annotations.slice(0, CAPTION_NAMES).map(annotationName);
-  const rest = annotations.length - names.length;
-  const listed = names.join(', ');
-  return rest > 0 ? m.chart_annotations_more({ names: listed, count: String(rest) }) : listed;
-}

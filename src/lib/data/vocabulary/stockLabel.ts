@@ -1,5 +1,4 @@
-/* The wording for a medication stock projection (phase 5 deepening ticket
-   06): one place that turns a StockProjection into what a person reads, so
+/* The wording for a medication stock projection: one place that turns a StockProjection into what a person reads, so
    /settings/stock, /doses and the entry editor's quick-log chip say the same
    thing the same way (ADR-0046). Moved here from /settings/stock, which had
    it first and only. */
@@ -53,9 +52,8 @@ function stockOpenedLabel(openedEpochDay: number | null): string | null {
   return openedEpochDay === null ? null : m.stock_opened_line({ date: fmtWindowDay(openedEpochDay) });
 }
 
-/** The in-use window's own line, plain either side of it (ticket 13: no
-    adjective for a container past its window, unlike stockRunOutLabel's
-    `warn`). Null when nothing was typed to project from. */
+/** The in-use window's own line, plain either side of it. Null when nothing was typed to
+    project from. */
 function stockWindowLabel(window: InUseWindow, asOfEpochDay: number): string | null {
   const end = inUseWindowEndEpochDay(window);
   if (end === null) return null;
@@ -63,25 +61,11 @@ function stockWindowLabel(window: InUseWindow, asOfEpochDay: number): string | n
   return isPastInUseWindow(window, asOfEpochDay) ? m.stock_window_past({ date }) : m.stock_window_until({ date });
 }
 
-/** Home's low-stock notice, title and body together - the one place that
-    decides between three states, so /care's spine mark stays the only other
-    reader of `actionableEpochDay` and neither can drift from what this says
-    (redesign phase 10 ticket 16). Title and body come from the same branch
-    for the same reason the ticket bans a countdown: a title that still read
-    "running low" over a body naming a reorder day weeks out would be the
-    false urgency the ticket rules out, for a row whose count may not be low
-    at all yet. Body is always a date, never a countdown: the reorder-by day
-    when a lead time is set, the projected run-out day when none is, and the
-    plain "already out" statement where the count itself has gone to zero or
-    below - a fact that holds regardless of any lead time, so it is checked
-    first rather than folded into the date branch.
+/** Choose Home's stock notice title and body together. Counts at zero or below are already
+    out, regardless of lead time. Otherwise use the reorder-by date when lead time is set,
+    or projected run-out date when it is absent. Dates avoid a misleading countdown.
 
-    `date` arrives pre-formatted rather than as an epoch day: this module's
-    other date-shaped labels call `fmtDay` themselves, but that reaches
-    `$lib/paraglide/runtime` for the active locale, which dates.ts's own
-    header says has no Node-tier test (ADR-0016) - so the caller formats the
-    day and this function stays a plain string decision, testable without a
-    locale in scope. */
+    The caller formats the date so these branches stay testable in Node without Paraglide. */
 export function stockNotice(
   row: { projection: { remaining: number }; entry: { drug: string; leadTimeDays: number | null } },
   date: string
@@ -90,6 +74,24 @@ export function stockNotice(
   if (row.projection.remaining <= 0) return { title: m.notice_stock_low_title(), body: m.notice_stock_out_body({ drug }) };
   if (leadTimeDays !== null) return { title: m.notice_stock_reorder_title(), body: m.notice_stock_reorder_body({ drug, date }) };
   return { title: m.notice_stock_low_title(), body: m.notice_stock_projected_body({ drug, date }) };
+}
+
+/** The supply's expiry day and the pharmacy note, one row line joined with
+    the same "·". Logged and shown, never
+    advised on: a past date reads "Expired", in the same plain style as the
+    window line, with no warn treatment and no suggestion. Null when neither
+    was typed. */
+export function stockSupplyLine(
+  entry: { expiryEpochDay: number | null; pharmacyNote: string | null },
+  asOfEpochDay: number
+): string | null {
+  const parts: string[] = [];
+  if (entry.expiryEpochDay !== null) {
+    const date = fmtWindowDay(entry.expiryEpochDay);
+    parts.push(entry.expiryEpochDay < asOfEpochDay ? m.stock_expired_line({ date }) : m.stock_expiry_line({ date }));
+  }
+  if (entry.pharmacyNote) parts.push(entry.pharmacyNote);
+  return parts.length ? parts.join(' · ') : null;
 }
 
 /** Opened and its window folded into one row line rather than two - the

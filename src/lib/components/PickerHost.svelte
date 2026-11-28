@@ -1,21 +1,22 @@
 <script lang="ts">
-  /* Where a picker's body is shown (phase 12 pickers, tickets 01 and 02):
-     the app's own bottom Sheet on a phone, and on a desktop a popover
-     hung from the field, which a pointer can reach without the page
-     going away behind it. The date and the time picker share it, each
-     handing over its body as `panel`.
+  /* Where a picker's body is shown: the app's own bottom Sheet on a phone, and on a desktop
+     a popover hung from the field, which a pointer can reach without the page going away
+     behind it. The date and the time picker share it, each handing over its body as
+     `panel`.
 
-     pickerField.svelte.ts mounts this outside the screen (see the note
-     there), so it owns both ends of the popover's motion itself. The popover is a
-     block, and a block does not fade up from nothing (ADR-0078): it
-     unrolls from the field's edge on a clip, travelling the last few
-     pixels with it, and rolls back up into the field on the way out. Under
-     reduced motion it crossfades instead. */
+     PickerField.svelte.ts mounts this outside the screen (see the note there), so it owns
+     both ends of the popover's motion itself. The popover is a block, and a block does not
+     fade up from nothing: it unrolls from the field's edge on a clip, travelling the last
+     few pixels with it, and rolls back up into the field on the way out. Under reduced
+     motion it crossfades instead. */
   import type { Snippet } from 'svelte';
   import type { TransitionConfig } from 'svelte/transition';
-  import { crossfadeDuration, EASE_OUT, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
+  import { cubicOut } from 'svelte/easing';
+  import { crossfadeDuration, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
+  import { playAfterPaint } from '$lib/motion/screenArrival';
   import Sheet from './Sheet.svelte';
   import { registerOverlayRegion } from './overlayLock';
+  import type { PickerKind } from './pickerField.svelte';
 
   let {
     open,
@@ -32,8 +33,9 @@
     anchor: HTMLElement;
     label: string;
     /** Names the surface for tests and the popover's width: seven day
-        targets for a date, two drums for a time. */
-    kind: 'date' | 'time';
+        targets for a date, two drums for a time, one column of choices
+        for a list. */
+    kind: PickerKind;
     panel: Snippet;
     onDismiss: () => void;
   } = $props();
@@ -52,7 +54,10 @@
     above = field.bottom + GAP + h > frame.bottom - GAP && field.top - GAP - h >= frame.top + GAP;
     const top = above ? field.top - GAP - h : Math.min(field.bottom + GAP, frame.bottom - GAP - h);
     node.style.top = `${Math.max(GAP, top - frame.top)}px`;
-    node.style.left = `${Math.max(GAP, Math.min(field.left - frame.left, frame.width - w - GAP))}px`;
+    /* A list hangs by its right edge: it is wider than the small field it
+       belongs to, and from the left it ran past the sheet holding it. */
+    const edge = kind === 'list' ? field.right - w : field.left;
+    node.style.left = `${Math.max(GAP, Math.min(edge - frame.left, frame.width - w - GAP))}px`;
   }
 
   function unroll(node: Element, { closing = false }: { closing?: boolean } = {}): TransitionConfig {
@@ -63,9 +68,13 @@
     if (isReducedMotion()) return fadeOnly(crossfadeDuration());
     const edge = above ? 'top' : 'bottom';
     const dir = above ? 1 : -1;
+    /* Cubic, not the app's quint ease-out, and the close at --dur-med too: quint moves
+       30% of the roll in its first frame and 53% in two (45% and 71% at --dur-fast), so
+       one late frame on a slow device showed the popover half open. Cubic moves 19%, and
+       36% across two. */
     return {
-      duration: motionDuration(closing ? '--dur-fast' : '--dur-med'),
-      easing: EASE_OUT,
+      duration: motionDuration('--dur-med'),
+      easing: cubicOut,
       css: (_t, u) => {
         const shut = Number((u * 100).toFixed(2));
         const inset = edge === 'bottom' ? `0 0 ${shut}% 0` : `${shut}% 0 0 0`;
@@ -89,7 +98,7 @@
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => place(node));
     };
-    /* On the intro's end, Sheet.svelte's reason (ticket 115); the timer is
+    /* On the intro's end, Sheet.svelte's reason; the timer is
        its fallback too, for an intro that is cut short or never fires. */
     const focusCursor = () => {
       clearTimeout(fallback);
@@ -97,10 +106,17 @@
       node.querySelector<HTMLElement>('[data-sheet-focus]')?.focus({ preventScroll: true });
     };
     const fallback = setTimeout(focusCursor, motionDuration('--dur-med') + 200);
+    /* Both rolls start their clock on the popover's first painted frame. Opened or
+       closed in a long task, the clip otherwise starts counting before anything is
+       drawn, and on a slow device the first frame shown is already half unrolled.
+       Svelte creates the animation right after dispatching the start event. */
+    const fromFirstFrame = () => queueMicrotask(() => playAfterPaint(node, node.getAnimations()));
     document.addEventListener('click', outside);
     document.addEventListener('scroll', follow, true);
     window.addEventListener('resize', follow);
     node.addEventListener('introend', focusCursor, { once: true });
+    node.addEventListener('introstart', fromFirstFrame);
+    node.addEventListener('outrostart', fromFirstFrame);
     return () => {
       release();
       cancelAnimationFrame(frame);
@@ -108,6 +124,8 @@
       document.removeEventListener('scroll', follow, true);
       window.removeEventListener('resize', follow);
       node.removeEventListener('introend', focusCursor);
+      node.removeEventListener('introstart', fromFirstFrame);
+      node.removeEventListener('outrostart', fromFirstFrame);
       clearTimeout(fallback);
     };
   }
@@ -118,6 +136,7 @@
     <div
       class="picker-popover"
       class:is-time={kind === 'time'}
+      class:is-list={kind === 'list'}
       role="dialog"
       aria-label={label}
       tabindex="-1"
@@ -153,4 +172,11 @@
     outline: none;
   }
   .picker-popover.is-time { width: min(calc(256px + 2 * var(--space-3) + 2px), calc(100% - 16px)); }
+  /* A column of choices hung from a small field: about as wide as the field's
+     own row, and no taller than a dropdown a pointer can scan. */
+  .picker-popover.is-list {
+    width: min(176px, calc(100% - 16px));
+    max-height: min(320px, calc(100% - 16px));
+    padding: var(--space-1);
+  }
 </style>

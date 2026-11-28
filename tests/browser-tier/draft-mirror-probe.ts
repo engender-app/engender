@@ -1,35 +1,12 @@
-/* Ticket 16 (phase 8 deepening): does a killed-process draft mirror really
-   make a re-save throw, and does clearing it on save fix that?
+/* Check that clearing a saved draft mirror prevents stale deleted photo
+   IDs from being applied on resume. Exercise the real OPFS journal and
+   editor helpers with two independent entries.
 
-   The sequence the ticket asks to establish: remove a stored photo, save
-   (the removal lands in the journal), then process death skips the
-   `onDestroy` that would have cleared the localStorage mirror
-   (entryDraftStore.ts). On resume, `draftMatchesRoute` re-associates the
-   stale mirror with the same entry and `applyPersistedDraft` reapplies its
-   `removedPhotoIds`, still naming the photo the first save already deleted.
-   A re-save then sends that stale id through `entries.ts`'s
-   `photosToRemove`, which throws `unknown photo: ${id}` (ADR-0053: an
-   update on an unknown id throws).
-
-   A real Android process kill cannot be timed from outside the page - by
-   the time `saveEntry`'s `await journal.entries.upsertEntry(...)` resolves,
-   the client-side `goto()` that unmounts the editor and clears the mirror
-   runs within the same microtask chain, with no externally-reachable gap.
-   What a kill actually skips is exactly one call - `draftStore.clear()` -
-   so `runSequence` below skips (or makes) that same call directly rather
-   than racing an unreachable timing window, then drives every other step
-   (the mirror write, the save, the resume's match-and-reapply, the
-   re-save) through the real functions a mounted EntryEditor.svelte calls,
-   against a real driver and real OPFS. This is the only way to observe the
-   precise question the ticket poses - whether `draftMatchesRoute`'s gate
-   filters the sequence out - since that is a matter of the real
-   routing/id identity, not of timing.
-
-   Two runs against two independent entries in the same journal: one
-   without the save-time clear (the shape before ticket 16, documenting the
-   defect and that `entries.ts` still throws on a genuinely unknown id -
-   nothing there changed), one with it (EntryEditor.svelte's fix, saving
-   right after `upsertEntry` resolves - the shape after). */
+   Skip draftStore.clear() to model a process death before unmount cleanup.
+   A resumed stale mirror sends an already-deleted ID, which must throw
+   under ADR-0053. The second run clears after save and must re-save.
+   This tests the missing call directly because save and route teardown
+   can share a microtask chain. */
 
 import { boot } from '../../src/lib/data/sqlite/boot.ts';
 import { createEncryptedWebSqlite } from '../../src/lib/data/sqlite/mc-driver.ts';
@@ -56,10 +33,9 @@ async function sourceJpeg(width: number, height: number): Promise<Uint8Array> {
   return new Uint8Array(await blob.arrayBuffer());
 }
 
-/** One entry, one stored photo, one removal, one save, one resume, one
-    re-save - with `clearMirrorOnSave` toggling whether the save clears the
-    mirror the way EntryEditor.svelte's fix does, or leaves it for `onDestroy`
-    the way it worked before ticket 16. */
+/** One entry, one stored photo, one removal, one save, one resume, one re-save - with
+    `clearMirrorOnSave` toggling whether the save clears the mirror the way
+    EntryEditor.svelte's fix does, or leaves it for `onDestroy` the way it worked. */
 async function runSequence(
   journal: Journal,
   draftStore: EntryDraftStore,

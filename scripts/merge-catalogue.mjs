@@ -1,5 +1,5 @@
-/* Git merge driver for messages/*.json (phase 12 copy-tooling ticket 02).
-   Sorting the catalogues (ticket 01) leaves one common conflict: two branches
+/* Git merge driver for messages/*.json.
+   Sorting the catalogues leaves one common conflict: two branches
    adding different keys under the same prefix, side by side, which a line
    merge calls a conflict. This merges by key instead, and writes through the
    catalogue serializer so the result is always sorted.

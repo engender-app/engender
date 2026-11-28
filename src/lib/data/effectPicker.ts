@@ -1,20 +1,19 @@
-/* What the entry editor's noticed-effects sheet lists (phase 12 ux-carpet
-   ticket 289). Pure, above the journal seam and free of paraglide (ADR-0016):
-   the words arrive as arguments.
+/* What the entry editor's noticed-effects sheet lists. Pure, above the journal seam and
+   free of paraglide: the words arrive as arguments.
 
-   The direction filter is read off the regimen and stored nowhere - types.ts
-   says the app has no gender or direction field and this does not become the
-   first one. A drug that resolves to estradiol leaves feminizing effects on
-   offer, testosterone leaves masculinizing ones, both leave both. Effects a
-   person wrote for themselves carry no direction and are never filtered. When
-   no active drug resolves (a blocker, progesterone, a free-typed name) there
-   is nothing to filter by, so nothing is hidden. */
+   The direction filter is read off the regimen and stored nowhere - types.ts says the app
+   has no gender or direction field and this does not become the first one. A drug that
+   resolves to estradiol leaves feminizing effects on offer, testosterone leaves
+   masculinizing ones, both leave both. Effects a person wrote for themselves carry no
+   direction and are never filtered. When no active drug resolves (a blocker, progesterone,
+   a free-typed name) there is nothing to filter by, so nothing is hidden. */
 
 import { foldText } from './fold';
-import { resolveCurveDrug } from './hormoneDrug';
+import { resolveHormoneDrug } from './hormoneDrug';
 import type { PersonalEffectCatalogEntry } from './types';
+import { RETIRED_PERSONAL_EFFECT_KEYS } from './vocabulary/retiredEffects';
 
-export interface EffectPickerGroup {
+interface EffectPickerGroup {
   /** The category key, `'custom'` for a person's own effects, or null for a
       flat search result, which has no heading. */
   key: string | null;
@@ -41,8 +40,18 @@ interface EffectPickerInput {
   query: string;
 }
 
+/** What a person may mark: the visible catalogue less the retired built-ins
+    (builtins.ts), except one already marked, which keeps its row and its
+    place on the axis. */
+export function offeredEffectTypes(
+  visible: PersonalEffectCatalogEntry[],
+  markedKeys: ReadonlySet<string>
+): PersonalEffectCatalogEntry[] {
+  return visible.filter((e) => !RETIRED_PERSONAL_EFFECT_KEYS.has(e.key) || markedKeys.has(e.key));
+}
+
 export function buildEffectPicker(input: EffectPickerInput): EffectPicker {
-  const hormones = new Set(input.drugs.map(resolveCurveDrug).filter((d) => d !== null));
+  const hormones = new Set(input.drugs.map(resolveHormoneDrug).filter((d) => d !== null));
   const wanted = new Set<string>();
   if (hormones.has('estradiol')) wanted.add('feminizing');
   if (hormones.has('testosterone')) wanted.add('masculinizing');

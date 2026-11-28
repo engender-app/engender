@@ -32,8 +32,8 @@ export async function verifyReadFailures({ gallery = false } = {}) {
         if (fault.mode === 'throw') throw new Error('injected synchronous read failure');
         if (fault.mode === 'fail') return Promise.reject(new Error('injected read failure'));
         if (fault.mode === 'empty') return Promise.resolve([]);
-        /* Ticket 161: rejects only the very first call, then heals - the
-           shape of a route's first touch racing something transient. */
+        /* Rejects only the very first call, then heals - the shape of a route's first touch
+           racing something transient. */
         if (fault.mode === 'reject-once' && fault.calls === 1)
           return Promise.reject(new Error('injected first-touch race'));
         if (fault.mode === 'pending') return new Promise((resolve, reject) => fault.pending.push({ resolve, reject }));
@@ -179,7 +179,7 @@ export async function verifyReadFailures({ gallery = false } = {}) {
     await retry.waitFor({ state: 'detached' });
     await page.getByText('Dependent entry proof', { exact: true }).waitFor();
 
-    // A query's first-ever attempt heals silently rather than flashing failed (ticket 161).
+    // A query's first-ever attempt heals silently rather than flashing failed.
     await page.evaluate(() => {
       window.readFault.mode = 'reject-once';
       window.readFault.calls = 0;

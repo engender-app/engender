@@ -1,9 +1,6 @@
-/* The roadmap area (phase 4 ticket 23, widened phase 5 ticket 20 for a
-   tri-state tick and custom goals; CONTEXT: "Roadmap goal", "Country
-   pack", "Custom"). The area stores ticks, custom goals and nothing else;
-   what the bundled goals are is roadmap.ts's business, and the tests here
-   never import a pack so that the seam stays honest - a stub pack key is
-   as valid here as 'pl'. */
+/* The roadmap area. The area stores ticks, custom goals and nothing else; what the bundled
+   goals are is roadmap.ts's business, and the tests here never import a pack so that the
+   seam stays honest - a stub pack key is as valid here as 'pl'. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
@@ -38,17 +35,17 @@ test('marking a goal not-my-path is a third state, distinct from unchecked and c
 test('setting a status is idempotent, and re-setting the same status keeps one row', async () => {
   const { journal, db } = await journalWithBuiltIns();
 
-  await journal.roadmap.setGoalStatus('pl', 'pl-social-tell-someone', 'checked');
-  await journal.roadmap.setGoalStatus('pl', 'pl-social-tell-someone', 'checked');
-  await journal.roadmap.setGoalStatus('pl', 'pl-social-tell-someone', 'not-my-path');
-  await journal.roadmap.setGoalStatus('pl', 'pl-social-tell-someone', 'unchecked');
-  await journal.roadmap.setGoalStatus('pl', 'pl-social-tell-someone', 'unchecked');
+  await journal.roadmap.setGoalStatus('pl', 'pl-legal-which-court', 'checked');
+  await journal.roadmap.setGoalStatus('pl', 'pl-legal-which-court', 'checked');
+  await journal.roadmap.setGoalStatus('pl', 'pl-legal-which-court', 'not-my-path');
+  await journal.roadmap.setGoalStatus('pl', 'pl-legal-which-court', 'unchecked');
+  await journal.roadmap.setGoalStatus('pl', 'pl-legal-which-court', 'unchecked');
 
   const rows = await db.query<{ n: number }>('SELECT COUNT(*) AS n FROM roadmap_check');
   assert.equal(rows[0].n, 0);
 });
 
-test('goals in each of the four tracks are ticked independently of one another', async () => {
+test('goals are ticked independently of one another, whatever their key', async () => {
   const { journal } = await journalWithBuiltIns();
 
   for (const key of ['pl-social-a', 'pl-legal-b', 'pl-presentational-c', 'pl-medical-d']) {
@@ -63,7 +60,7 @@ test('goals in each of the four tracks are ticked independently of one another',
   });
 });
 
-/* Acceptance box 3 (phase 4 ticket 23): a second country's pack has to be
+/* Acceptance box 3: a second country's pack has to be
    content alone. The stub key here has no bundled pack behind it and no
    migration was run for it, which is the whole assertion. */
 test('a second pack keeps its own statuses, with no schema change behind it', async () => {
@@ -94,17 +91,18 @@ test('a tick writes no entry row - a roadmap goal is not a logged moment', async
 test('a custom goal gets a minted uuid id, starts unchecked, and is never translated', async () => {
   const { journal } = await journalWithBuiltIns();
 
-  const goal = await journal.roadmap.addCustomGoal('social', 'Tell my sister');
+  const goal = await journal.roadmap.addCustomGoal('Tell my sister');
   assert.match(goal.id, UUID_PATTERN);
-  assert.deepEqual(goal, { id: goal.id, track: 'social', text: 'Tell my sister', status: 'unchecked' });
+  // Written as 'legal', the one track left.
+  assert.deepEqual(goal, { id: goal.id, track: 'legal', text: 'Tell my sister', status: 'unchecked' });
 });
 
-test('custom goals come back in the order they were added, appended per track', async () => {
+test('custom goals come back in the order they were added', async () => {
   const { journal } = await journalWithBuiltIns();
 
-  const first = await journal.roadmap.addCustomGoal('legal', 'Ask the court about remote hearings');
-  const second = await journal.roadmap.addCustomGoal('social', 'Come out to my book club');
-  const third = await journal.roadmap.addCustomGoal('legal', 'Find a trans-friendly notary');
+  const first = await journal.roadmap.addCustomGoal('Ask the court about remote hearings');
+  const second = await journal.roadmap.addCustomGoal('Come out to my book club');
+  const third = await journal.roadmap.addCustomGoal('Find a trans-friendly notary');
 
   assert.deepEqual(
     (await journal.roadmap.getCustomGoals()).map((g) => g.id),
@@ -114,7 +112,7 @@ test('custom goals come back in the order they were added, appended per track', 
 
 test('a custom goal ticks through the same tri-state a bundled one does', async () => {
   const { journal } = await journalWithBuiltIns();
-  const goal = await journal.roadmap.addCustomGoal('presentational', 'A haircut I feel like myself in');
+  const goal = await journal.roadmap.addCustomGoal('A haircut I feel like myself in');
 
   await journal.roadmap.setCustomGoalStatus(goal.id, 'checked');
   assert.equal((await journal.roadmap.getCustomGoals())[0].status, 'checked');
@@ -131,20 +129,19 @@ test('setting a custom goal that does not exist fails loudly rather than doing n
   await assert.rejects(() => journal.roadmap.setCustomGoalStatus('not-a-real-uuid', 'checked'));
 });
 
-/* Editing and deleting a custom goal (phase 8 features ticket 69,
-   ADR-0068). A built-in goal has neither and never will: there is no row
+/* Editing and deleting a custom goal (ADR-0068). A built-in goal has neither and never will: there is no row
    to edit and nothing to delete, so everything below is about the kind
    somebody typed themselves. */
 
 test('a custom goal can be reworded, and keeps its id, its track and its tick', async () => {
   const { journal } = await journalWithBuiltIns();
-  const goal = await journal.roadmap.addCustomGoal('social', 'Tell my sster');
+  const goal = await journal.roadmap.addCustomGoal('Tell my sster');
   await journal.roadmap.setCustomGoalStatus(goal.id, 'checked');
 
   await journal.roadmap.updateCustomGoalText(goal.id, 'Tell my sister');
 
   assert.deepEqual(await journal.roadmap.getCustomGoals(), [
-    { id: goal.id, track: 'social', text: 'Tell my sister', status: 'checked' }
+    { id: goal.id, track: 'legal', text: 'Tell my sister', status: 'checked' }
   ]);
 });
 
@@ -155,9 +152,9 @@ test('rewording a custom goal that does not exist fails loudly rather than doing
 
 test('deleting a custom goal removes it and leaves the rest in the order they were added', async () => {
   const { journal } = await journalWithBuiltIns();
-  const first = await journal.roadmap.addCustomGoal('legal', 'Ask the court about remote hearings');
-  const second = await journal.roadmap.addCustomGoal('legal', 'Find a trans-friendly notary');
-  const third = await journal.roadmap.addCustomGoal('social', 'Come out to my book club');
+  const first = await journal.roadmap.addCustomGoal('Ask the court about remote hearings');
+  const second = await journal.roadmap.addCustomGoal('Find a trans-friendly notary');
+  const third = await journal.roadmap.addCustomGoal('Come out to my book club');
 
   await journal.roadmap.deleteCustomGoal(second.id);
 
@@ -169,7 +166,7 @@ test('deleting a custom goal removes it and leaves the rest in the order they we
 
 test('deleting a custom goal is idempotent, and an id that was never there is success (ADR-0053)', async () => {
   const { journal } = await journalWithBuiltIns();
-  const goal = await journal.roadmap.addCustomGoal('medical', 'Ask about a second opinion');
+  const goal = await journal.roadmap.addCustomGoal('Ask about a second opinion');
 
   await journal.roadmap.deleteCustomGoal(goal.id);
   await journal.roadmap.deleteCustomGoal(goal.id);
@@ -184,7 +181,7 @@ test('deleting a custom goal leaves the milestone it minted, link and all', asyn
      simply a second way to reach it. What goes is the joined text, which
      is what makes that line fall back. */
   const { journal } = await journalWithBuiltIns();
-  const goal = await journal.roadmap.addCustomGoal('presentational', 'A haircut I feel like myself in');
+  const goal = await journal.roadmap.addCustomGoal('A haircut I feel like myself in');
   const milestoneId = await journal.milestones.upsertMilestone({
     name: 'A haircut I feel like myself in',
     epochDay: 20500,
@@ -204,7 +201,7 @@ test("rewording a custom goal reaches a minted milestone's provenance, never its
      in at mint time and is what the person confirmed that day; the
      provenance line re-resolves through the join every read. */
   const { journal } = await journalWithBuiltIns();
-  const goal = await journal.roadmap.addCustomGoal('legal', 'Fille the court application');
+  const goal = await journal.roadmap.addCustomGoal('Fille the court application');
   const milestoneId = await journal.milestones.upsertMilestone({
     name: 'Fille the court application',
     epochDay: 20500,
@@ -219,15 +216,14 @@ test("rewording a custom goal reaches a minted milestone's provenance, never its
 });
 
 test('deleting a custom goal unfiles the paper filed against it and keeps the paper', async () => {
-  /* Ticket 56's link is a (kind, id) pair with no foreign key behind it
-     (documents.ts), so nothing cascades and this delete has to clear it
-     itself - the same UPDATE-before-DELETE deleteMilestone and
-     deleteProcedure run. What must not happen is the document going with
-     the goal: the paper is the person's, the filing was a note about where
-     it belonged. */
+  /* Link is a (kind, id) pair with no foreign key behind it (documents.ts), so nothing
+     cascades and this delete has to clear it itself - the same UPDATE-before-DELETE
+     deleteMilestone and deleteProcedure run. What must not happen is the document going
+     with the goal: the paper is the person's, the filing was a note about where it
+     belonged. */
   const { journal } = await journalWithBuiltIns();
-  const goal = await journal.roadmap.addCustomGoal('medical', 'Get the referral reissued');
-  const other = await journal.roadmap.addCustomGoal('medical', 'Book the follow-up');
+  const goal = await journal.roadmap.addCustomGoal('Get the referral reissued');
+  const other = await journal.roadmap.addCustomGoal('Book the follow-up');
   const page = () => ({ full: new Uint8Array([1]), thumb: new Uint8Array([2]) });
   const filed = await journal.documents.addDocument({ epochDay: 20400, title: 'Referral' }, page());
   const elsewhere = await journal.documents.addDocument({ epochDay: 20400, title: 'Second opinion' }, page());
@@ -252,74 +248,19 @@ test('deleting a custom goal leaves a built-in goal that happens to share the de
      already carries), so the two live in one column and the clearing
      UPDATE has to match on the id it was handed rather than on the kind. */
   const { journal } = await journalWithBuiltIns();
-  const goal = await journal.roadmap.addCustomGoal('medical', 'Get the referral reissued');
+  const goal = await journal.roadmap.addCustomGoal('Get the referral reissued');
   const page = () => ({ full: new Uint8Array([1]), thumb: new Uint8Array([2]) });
   const builtin = await journal.documents.addDocument({ epochDay: 20400, title: 'Opinion' }, page());
-  await journal.documents.setDocumentTarget(builtin, { kind: 'goal', id: 'pl-medical-keep-opinions' });
+  await journal.documents.setDocumentTarget(builtin, { kind: 'goal', id: 'pl-legal-final-copy' });
 
   await journal.roadmap.deleteCustomGoal(goal.id);
 
   const kept = (await journal.documents.getDocument(builtin))!;
   assert.equal(kept.targetKind, 'goal');
-  assert.equal(kept.targetId, 'pl-medical-keep-opinions');
+  assert.equal(kept.targetId, 'pl-legal-final-copy');
 });
 
-/* "Not my path" one grain out (phase 8 features ticket 49 item 5). Presence
-   is the whole state here, unlike a goal's tri-state: a track is either
-   somebody's path or it is not, and there is no track-level equivalent of
-   "checked". */
-
-test('no track is dismissed to begin with', async () => {
-  const { journal } = await journalWithBuiltIns();
-  assert.deepEqual(await journal.roadmap.getDismissedTracks(), []);
-});
-
-test('a dismissed track comes back, and undoing it deletes the row rather than storing a value', async () => {
-  const { journal } = await journalWithBuiltIns();
-
-  await journal.roadmap.setTrackDismissed('medical', true);
-  assert.deepEqual(await journal.roadmap.getDismissedTracks(), ['medical']);
-
-  await journal.roadmap.setTrackDismissed('medical', false);
-  assert.deepEqual(await journal.roadmap.getDismissedTracks(), []);
-});
-
-test('dismissing a track twice is idempotent, and undoing one never dismissed is not an error', async () => {
-  const { journal } = await journalWithBuiltIns();
-
-  await journal.roadmap.setTrackDismissed('legal', true);
-  await journal.roadmap.setTrackDismissed('legal', true);
-  assert.deepEqual(await journal.roadmap.getDismissedTracks(), ['legal']);
-
-  await journal.roadmap.setTrackDismissed('social', false);
-  assert.deepEqual(await journal.roadmap.getDismissedTracks(), ['legal']);
-});
-
-test('tracks are dismissed one at a time and come back in a stable order', async () => {
-  const { journal } = await journalWithBuiltIns();
-
-  await journal.roadmap.setTrackDismissed('presentational', true);
-  await journal.roadmap.setTrackDismissed('legal', true);
-
-  assert.deepEqual(await journal.roadmap.getDismissedTracks(), ['legal', 'presentational']);
-});
-
-test('dismissing a track leaves every goal status it holds exactly as it was', async () => {
-  /* The fold is a reading of the stored ticks, never a write over them:
-     somebody who dismisses the medical track and changes their mind gets
-     back what they had ticked, not an emptied list. */
-  const { journal } = await journalWithBuiltIns();
-  await journal.roadmap.setGoalStatus('pl', 'pl-medical-bloodwork', 'checked');
-  const goal = await journal.roadmap.addCustomGoal('medical', 'Ask about a second opinion');
-  await journal.roadmap.setCustomGoalStatus(goal.id, 'checked');
-
-  await journal.roadmap.setTrackDismissed('medical', true);
-
-  assert.deepEqual(await journal.roadmap.getGoalStatuses('pl'), { 'pl-medical-bloodwork': 'checked' });
-  assert.equal((await journal.roadmap.getCustomGoals())[0].status, 'checked');
-});
-
-test('minting a milestone with a roadmapGoalKey links the goal key (ticket 10, ADR-0045)', async () => {
+test('minting a milestone with a roadmapGoalKey links the goal key (ADR-0045)', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.roadmap.setGoalStatus('pl', 'pl-legal-id-card', 'checked');
 
@@ -335,7 +276,7 @@ test('minting a milestone with a roadmapGoalKey links the goal key (ticket 10, A
   assert.equal(found.roadmapGoalKey, 'pl-legal-id-card');
 });
 
-test('deleting a linked milestone leaves the roadmap goal checked (graceful unlink, ticket 10)', async () => {
+test('deleting a linked milestone leaves the roadmap goal checked (graceful unlink)', async () => {
   const { journal } = await journalWithBuiltIns();
   await journal.roadmap.setGoalStatus('pl', 'pl-legal-name-usc', 'checked');
 
@@ -370,7 +311,6 @@ test('hiding one bundled goal preserves statuses, links and other goals', async 
   await journal.roadmap.setGoalHidden('pl', key, true);
   assert.deepEqual(await journal.roadmap.getHiddenGoals('pl'), [key]);
   assert.deepEqual(await journal.roadmap.getHiddenGoals('another-pack'), []);
-  assert.deepEqual(await journal.roadmap.getDismissedTracks(), []);
   assert.deepEqual(await journal.roadmap.getGoalStatuses('pl'), { [key]: 'checked', 'pl-legal-appeal': 'not-my-path' });
   assert.equal((await journal.documents.getDocument(document))?.targetId, key);
   assert.equal((await journal.milestones.getMilestones()).find((one) => one.id === milestone)?.roadmapGoalKey, key);
@@ -392,4 +332,128 @@ test('hidden unchecked goals survive status changes and restore to sparse storag
   await journal.roadmap.setGoalHidden('pl', key, false);
   await journal.roadmap.setGoalHidden('pl', key, false);
   assert.equal((await db.query<{ n: number }>('SELECT COUNT(*) AS n FROM roadmap_check'))[0].n, 0);
+});
+
+/* The person's own categories. A category is a uuid row with a name; a custom goal names
+   the category it sits in through its `track`, which is 'legal' for the Polish legal steps
+   and a category's uuid otherwise. */
+
+test('a category gets a minted uuid, keeps its name, and comes back in the order added', async () => {
+  const { journal } = await journalWithBuiltIns();
+
+  const first = await journal.roadmap.addCategory('Coming out');
+  const second = await journal.roadmap.addCategory('Wardrobe');
+
+  assert.match(first.id, UUID_PATTERN);
+  assert.deepEqual(await journal.roadmap.getCategories(), [
+    { id: first.id, name: 'Coming out' },
+    { id: second.id, name: 'Wardrobe' }
+  ]);
+});
+
+test('a goal added into a category names that category, and the legal steps stay the default', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const category = await journal.roadmap.addCategory('Coming out');
+
+  const own = await journal.roadmap.addCustomGoal('Tell my sister', category.id);
+  const legal = await journal.roadmap.addCustomGoal('Find a notary');
+
+  assert.deepEqual(await journal.roadmap.getCustomGoals(), [
+    { id: own.id, track: category.id, text: 'Tell my sister', status: 'unchecked' },
+    { id: legal.id, track: 'legal', text: 'Find a notary', status: 'unchecked' }
+  ]);
+});
+
+test('a category can be renamed, and renaming one that is not there fails loudly', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const category = await journal.roadmap.addCategory('Comming out');
+
+  await journal.roadmap.renameCategory(category.id, 'Coming out');
+
+  assert.deepEqual(await journal.roadmap.getCategories(), [{ id: category.id, name: 'Coming out' }]);
+  await assert.rejects(() => journal.roadmap.renameCategory('not-a-real-uuid', 'Anything'));
+});
+
+test('removing a category removes its goals, unfiles their paper, and leaves every other goal', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const gone = await journal.roadmap.addCategory('Coming out');
+  const kept = await journal.roadmap.addCategory('Wardrobe');
+  const inGone = await journal.roadmap.addCustomGoal('Tell my sister', gone.id);
+  const inKept = await journal.roadmap.addCustomGoal('Shoes that fit', kept.id);
+  const legal = await journal.roadmap.addCustomGoal('Find a notary');
+  const page = () => ({ full: new Uint8Array([1]), thumb: new Uint8Array([2]) });
+  const filed = await journal.documents.addDocument({ epochDay: 20400, title: 'Letter' }, page());
+  await journal.documents.setDocumentTarget(filed, { kind: 'goal', id: inGone.id });
+
+  await journal.roadmap.deleteCategory(gone.id);
+  await journal.roadmap.deleteCategory(gone.id);
+
+  assert.deepEqual(await journal.roadmap.getCategories(), [{ id: kept.id, name: 'Wardrobe' }]);
+  assert.deepEqual(
+    (await journal.roadmap.getCustomGoals()).map((goal) => goal.id),
+    [inKept.id, legal.id]
+  );
+  const unfiled = (await journal.documents.getDocument(filed))!;
+  assert.equal(unfiled.title, 'Letter');
+  assert.equal(unfiled.targetId, null);
+});
+
+/* Name and document changes per institution.
+   An institution the person adds is a row of its own; a built-in one is
+   only a key, and both collect dated changes. */
+test('an institution the person adds gets a uuid, keeps its name, and can be renamed', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const gym = await journal.roadmap.addInstitution('Gym');
+  const library = await journal.roadmap.addInstitution('Library');
+  assert.match(gym.id, UUID_PATTERN);
+  await journal.roadmap.renameInstitution(gym.id, 'Climbing gym');
+  assert.deepEqual(await journal.roadmap.getInstitutions(), [
+    { id: gym.id, name: 'Climbing gym' },
+    { id: library.id, name: 'Library' }
+  ]);
+  await assert.rejects(journal.roadmap.renameInstitution('nope', 'x'));
+  await assert.rejects(journal.roadmap.addInstitution('   '));
+});
+
+test('changes are dated, read back oldest first, and a status outside the three is refused', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const late = await journal.roadmap.addInstitutionChange({ institution: 'pl-legal-passport', status: 'done', epochDay: 20420, note: null });
+  const early = await journal.roadmap.addInstitutionChange({
+    institution: 'pl-legal-passport',
+    status: 'submitted',
+    epochDay: 20400,
+    note: '  Filed at the voivode office  '
+  });
+  assert.deepEqual(await journal.roadmap.getInstitutionChanges(), [
+    { id: early, institution: 'pl-legal-passport', status: 'submitted', epochDay: 20400, note: 'Filed at the voivode office' },
+    { id: late, institution: 'pl-legal-passport', status: 'done', epochDay: 20420, note: null }
+  ]);
+  await assert.rejects(
+    journal.roadmap.addInstitutionChange({ institution: 'pl-legal-passport', status: 'checked', epochDay: 20400, note: null }),
+    /invalid institution status/
+  );
+  await journal.roadmap.deleteInstitutionChange(early);
+  await journal.roadmap.deleteInstitutionChange(early);
+  assert.deepEqual((await journal.roadmap.getInstitutionChanges()).map((one) => one.id), [late]);
+});
+
+test('removing an institution removes its changes, unfiles its paper, and leaves the rest', async () => {
+  const { journal } = await journalWithBuiltIns();
+  const gone = await journal.roadmap.addInstitution('Gym');
+  const kept = await journal.roadmap.addInstitution('Library');
+  await journal.roadmap.addInstitutionChange({ institution: gone.id, status: 'submitted', epochDay: 20400, note: null });
+  const keptChange = await journal.roadmap.addInstitutionChange({ institution: kept.id, status: 'waiting', epochDay: 20401, note: null });
+  const builtInChange = await journal.roadmap.addInstitutionChange({ institution: 'pl-legal-bank', status: 'done', epochDay: 20402, note: null });
+  const page = () => ({ full: new Uint8Array([1]), thumb: new Uint8Array([2]) });
+  const filed = await journal.documents.addDocument({ epochDay: 20400, title: 'Membership card' }, page());
+  await journal.documents.setDocumentTarget(filed, { kind: 'goal', id: gone.id });
+
+  await journal.roadmap.deleteInstitution(gone.id);
+  await journal.roadmap.deleteInstitution(gone.id);
+
+  assert.deepEqual(await journal.roadmap.getInstitutions(), [{ id: kept.id, name: 'Library' }]);
+  assert.deepEqual((await journal.roadmap.getInstitutionChanges()).map((one) => one.id), [keptChange, builtInChange]);
+  const unfiled = (await journal.documents.getDocument(filed))!;
+  assert.equal(unfiled.title, 'Membership card');
+  assert.equal(unfiled.targetId, null);
 });

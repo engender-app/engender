@@ -1,0 +1,94 @@
+/* Surfaces opt into cross-block spacing by attribute to avoid a second list of component
+   class names. Keep the preceding control side class-based because it has no common owning
+   component. Check stylesheet selectors and surface attributes in source. */
+
+import { readFileSync } from 'node:fs';
+import { describe, expect, it } from 'vitest';
+
+/* Each kit surface and the component that owns its root markup. Every one of
+   these appeared by class name in at least one of the spacing selectors this
+   ticket replaced. */
+const SURFACES: Array<[string, string]> = [
+  ['kit-chart', 'src/lib/components/kit/ChartCard.svelte'],
+  ['kit-list', 'src/lib/components/kit/ListCard.svelte'],
+  ['kit-tiles', 'src/lib/components/kit/TileGrid.svelte'],
+  ['kit-notice', 'src/lib/components/kit/Notice.svelte'],
+  ['kit-strip', 'src/lib/components/kit/BareStrip.svelte'],
+  ['kit-day', 'src/lib/components/kit/DayCard.svelte'],
+  ['kit-moods', 'src/lib/components/kit/MoodChips.svelte'],
+  ['wrapped-figure-list', 'src/lib/components/WrappedCompact.svelte'],
+];
+
+describe('every kit surface stamps data-kit-surface on its own root', () => {
+  for (const [cls, file] of SURFACES) {
+    it(`${cls} (${file.split('/').pop()})`, () => {
+      const src = readFileSync(file, 'utf8');
+      const root = new RegExp(`<[a-z]+[^>]*class="[^"]*\\b${cls}\\b[^"]*"[^>]*>`).exec(src);
+      expect(root, `${file} should render an element with class ${cls}`).not.toBeNull();
+      expect(root![0], `${cls}'s root should carry data-kit-surface`).toContain('data-kit-surface');
+    });
+  }
+});
+
+describe("kit.css's cross-block spacing", () => {
+  const kit = readFileSync('src/lib/styles/kit.css', 'utf8');
+
+  it('gives two adjacent surfaces their gap by attribute, naming no surface class', () => {
+    // The regression: a ninth surface added to one list and forgotten in the
+    // other, which is exactly how .kit-strip ended up with no gap under a
+    // control while having one under another card.
+    expect(kit).toMatch(/\[data-kit-surface\]\s*\+\s*\[data-kit-surface\]\s*\{[^}]*margin-top/);
+  });
+
+  it('gives a surface under a control its gap by attribute too', () => {
+    expect(kit).toMatch(/\+\s*:is\(\[data-kit-surface\], \.skeleton-stack\)\s*\{[^}]*margin-top/);
+  });
+
+  it('gives a chip row or photo strip under a surface its gap by attribute too', () => {
+    expect(kit).toMatch(
+      /\[data-kit-surface\]\s*\+\s*:is\(\.tag-row, \.wrapped-photos, \.otd-photos\)\s*\{[^}]*margin-top/
+    );
+  });
+
+  it('gives a note the two-things gap, not a control gap', () => {
+    // This is the rule screens.css asked for twice and never got, because
+    // kit.css is imported after it and matched at the same specificity. It
+    // lives here now, beside the rule it is an exception to, so the cascade
+    // can't quietly take it back.
+    //
+    // `.stats-note` was the other half of this pair in older versions UX ticket
+    // 03. Its three consumers moved inside the cards they qualify, because
+    // hanging a sentence below a card is where the gap has to be argued for
+    // at all: a note's own margin-top collapses under the card's, and the
+    // sentence ends up nearer the next chart than the one it is about.
+    const note = /\.wrapped-note\s*\+[^{]*\{\s*margin-top: var\(--space-4\)/;
+    expect(kit).toMatch(note);
+  });
+
+  it('keeps notes out of the control rule that would overrule them', () => {
+    const control = /:is\(\.segmented,[^)]*\)\s*\n?\s*\+ :is\(\[data-kit-surface\]/.exec(kit);
+    expect(control).not.toBeNull();
+    expect(control![0]).not.toContain('.wrapped-note');
+  });
+
+  it('no longer enumerates the full surface set anywhere', () => {
+    // Spacing selectors use the shared surface attribute, even when a chip
+    // row or photo strip follows a surface.
+    const fullSet = /\.kit-chart,\s*\.kit-list,\s*\.kit-tiles,\s*\.kit-notice/;
+    expect(kit).not.toMatch(fullSet);
+    const tagRowLead = /\.kit-chart,\s*\.kit-list,\s*\.kit-day,\s*\.wrapped-figure-list/;
+    expect(kit).not.toMatch(tagRowLead);
+  });
+});
+
+describe('.skeleton-stack is a lead but deliberately not a surface', () => {
+  const skeleton = readFileSync('src/lib/components/Skeleton.svelte', 'utf8');
+
+  it('does not carry data-kit-surface', () => {
+    // It stands where a surface will be, so it takes a surface's gap *below*
+    // a control - but a surface followed by a skeleton keeps skeleton's own
+    // --space-5 rule. Stamping it as a surface would hand that pair to the
+    // two-surface rule instead (--space-6), which is a different number.
+    expect(skeleton).not.toContain('data-kit-surface');
+  });
+});

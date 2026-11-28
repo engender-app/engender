@@ -1,6 +1,7 @@
 <script lang="ts">
-  /* Every dose, and how it sits against the schedule, on the surface kit
-     (phase 5 UX ticket 25).
+  import { undoable } from '$lib/stores/deleteUndo';
+  import { journalTextAutocomplete } from '$lib/platform';
+  /* Every dose, and how it sits against the schedule, on the surface kit.
 
      The log row was four lines deep: the dose and its route, when and
      where, which regimen episode it falls under, and - where the dose came
@@ -12,17 +13,15 @@
      The three states the schedule view can be in - several episodes
      running, none, or one with no schedule - were `.notice notice-info`
      paragraphs, which is the old world's notice. They are the kit's. */
-  /* The dose log (phase 4 ticket 02, widened to concurrent episodes by
-     phase 5 ticket 38). Two views: what was logged, and how it sits against
-     what the active episode's schedule expected. The second one is a single
-     question asked of the dose log area (phase 5 audit-deepening ticket 17).
+  /* The dose log. Two views: what was logged, and how it sits against what the active
+     episode's schedule expected. The second one is a single question asked of the dose log
+     area.
 
-     A dose usually stores no drug or regimen episode of its own - every
-     row asks attributeDose with the dose's own timestamp, which is why
-     correcting a date in the editor below moves the dose to a different
-     episode with nothing else to update. `drug` only exists to break a
-     tie when more than one episode is active at once for different drugs
-     (regimenEpisode.ts). */
+     A dose usually stores no drug or regimen episode of its own - every row asks
+     attributeDose with the dose's own timestamp, which is why correcting a date in the
+     editor below moves the dose to a different episode with nothing else to update. `drug`
+     only exists to break a tie when more than one episode is active at once for different
+     drugs (regimenEpisode.ts). */
   import { travelOnChange } from '$lib/motion/reorder.svelte';
   import ReadReserve from '$lib/components/kit/ReadReserve.svelte';
   import { readReserve, rememberReserve } from '$lib/data/homeReserve';
@@ -40,6 +39,7 @@
   import {
     expectedAmountOn,
     isInjectionDose,
+    isPositiveDoseAmount,
     isTopicalDose,
     lastInjectionBefore,
     siteRecency,
@@ -68,7 +68,8 @@
   import InjectionSiteMap from '$lib/components/InjectionSiteMap.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import { hashRowId, scrollToHash } from '$lib/navigation/scroll-region';
-  import { careLaneReturnHref } from '$lib/navigation/sourceRecord';
+  import { careEpisodeId, careLaneReturnHref } from '$lib/navigation/sourceRecord';
+  import { takeLegacyCareDrug } from '$lib/navigation/journalTextParams';
   import Segmented from '$lib/components/Segmented.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
@@ -94,13 +95,13 @@
   const through = $derived(Math.max(today, extendedTo ?? today));
   let from = $derived(today - windowDays);
 
-  /* Deep link handling (phase 8 features ticket 67, phase 11 ticket 18): a
-     dose outside the window widens it to contain the dose, and a missing
-     one shows an explicit notice instead of scrolling to an unrelated row. */
+  /* Deep link handling: a dose outside the window widens it to contain the dose, and a
+     missing one shows an explicit notice instead of scrolling to an unrelated row. */
   let deepLinkedDoseId = $derived(page.url.searchParams.get('dose') ?? hashRowId(page.url.hash));
   let targetSlotDate = $derived(page.url.searchParams.get('date'));
-  /** The schedule view's regimen, picked on this visit (ticket 15); the
-      read weighs it against a Care spine link's `?drug=` and the stored
+  let sourceEpisodeId = $derived(careEpisodeId(page.url));
+  /** The schedule view's regimen, picked on this visit; the
+      read weighs it against a Care spine link's episode UUID and the stored
       pick, so a link can outrank the preference without writing it. */
   let pickedRegimenDrug = $state<string | null>(null);
 
@@ -110,7 +111,7 @@
       fromEpochDay: from,
       toEpochDay: through,
       deepLinkedDoseId,
-      regimenClaims: [pickedRegimenDrug, page.url.searchParams.get('drug'), prefs.adherenceRegimenPick]
+      regimenClaims: [pickedRegimenDrug, sourceEpisodeId ? { episodeId: sourceEpisodeId } : null, prefs.adherenceRegimenPick]
     })
   );
   let {
@@ -160,7 +161,7 @@
     if (v === 'schedule' || v === 'log') view = v;
   });
   /** The old intro, folded under the tab bar rather than printed over every
-      row (ticket 09). Closed by default: the log opens on the log. */
+      row. Closed by default: the log opens on the log. */
   let attributionOpen = $state(false);
 
   /* Null when the row has no site rather than when the route has none: a
@@ -180,10 +181,9 @@
   const fmtDayShort = (epochDay: number) => fmtDay(epochDay, { day: 'numeric', month: 'short' });
   const whenOf = (dose: DoseEvent) => `${fmtDayShort(epochDayFromTimestamp(dose.timestamp))}, ${fmtTime(dose.timestamp)}`;
 
-  /** What an auto-logged dose says about itself on its second line, or null
-      for one the person logged (ticket 11, ADR-0086). A skipped one says
-      both things at once rather than wearing the status chip beside the
-      marker: "skipped" and "was logged from your schedule" are one sentence
+  /** What an auto-logged dose says about itself on its second line, or null for one the
+      person logged. A skipped one says both things at once rather than wearing the status
+      chip beside the marker: "skipped" and "was logged from your schedule" are one sentence
       about the same row. */
   const sourceNoteOf = (dose: DoseEvent): string | null => {
     if (dose.source !== 'schedule') return null;
@@ -224,21 +224,19 @@
     },
     // "Dose saved." above says it, with the handle the walkthrough grips.
     saved: () => null,
-    remove: (id) => journal.doses.deleteDose(id),
+    remove: (id) => undoable((j) => j.doses.deleteDose(id)),
     findById: (id) => allDoses.find((dose) => dose.id === id)
   });
   let editor = $derived(record.editor);
-  /** True only for a *new* dose, while it is genuinely ambiguous which of
-      several active episodes it is for (ticket 40: two schedules tied for
-      nearest, or neither has a schedule to break the tie with) - not for
-      editing an old dose, whose own drug (if any) is shown but never
-      forced, and not merely for having more than one episode active, now
-      that activeEpisode already resolves the common case on its own. */
+  /** True only for a *new* dose, while it is genuinely ambiguous which of several active
+      episodes it is for - not for editing an old dose, whose own drug (if any) is shown but
+      never forced, and not merely for having more than one episode active, now that
+      activeEpisode already resolves the common case on its own. */
   let editorNeedsDrugPick = $derived(
     editor !== null && !editor.id && activeDrugChoices.length > 1 && activeEpisode === null && !editor.drug
   );
 
-  /* Which of the record's three lines is open (phase 5 UX ticket 37).
+  /* Which of the record's three lines is open.
      One at a time, which is `disclose`'s own cap: a second group open
      underneath the first is two heights animating over each other, and the
      line that closed still states its value, so nothing is lost by closing
@@ -248,30 +246,43 @@
   let validationTouched = $state(false);
   const toggleGroup = (group: RecordGroup) => (openGroup = openGroup === group ? null : group);
 
-  /* Quick add's dose option (phase 5 ticket 18, spec 04): the log is the
-     surface that records a dose, and it supports seeding, so arriving from
-     the sheet opens the same editor its own add button opens rather than
-     leaving the person to find it. The param is cleared as it is read, so
-     going back or reloading never reopens the editor over an entry that was
-     just saved - the same shape Home uses for its own one-shot params.
+  /* Quick add's dose option: the log is the surface that records a dose, and it supports
+     seeding, so arriving from the sheet opens the same editor its own add button opens
+     rather than leaving the person to find it. The param is cleared as it is read, so going
+     back or reloading never reopens the editor over an entry that was just saved - the same
+     shape Home uses for its own one-shot params.
 
-     Not a launch route: /doses is not in launch-routes.json (ADR-0028) and
-     this is reached from inside the app only. */
+     Not a launch route: /doses is not in launch-routes.json and this is reached from inside
+     the app only. */
   $effect(() => {
-    if (loading || page.url.searchParams.get('add') !== '1') return;
-    /* Seeded with the drug the caller already knew (phase 11 ticket 10:
-       Care's regimen blocks each carry a Log button, and somebody on three
-       regimens said which one by pressing that block's button rather than
-       the one two blocks down). Handed to openEditor rather than applied
-       after it: this runs inside an effect, and `pickDrug` reads `editor`
-       back, which would make the effect depend on the state it had just
-       written - the loop the comment in openEditor below is about. A drug
-       that is not one of the active ones falls through to the picker, same
-       as arriving with no drug at all. */
-    openEditor(null, page.url.searchParams.get('drug'));
-    // A shallow replacement leaves page.url unchanged and replays this arrival.
+    if (loading) return;
+    const adding = page.url.searchParams.get('add') === '1';
+    /* An address from before Care carried episode ids named the drug
+       instead; it reached here in memory (journalTextParams.ts) and is
+       rewritten to the episode it names, so return links and a reload
+       keep it without the name. */
+    const legacyDrug = sourceEpisodeId ? null : takeLegacyCareDrug();
+    if (!adding && legacyDrug === null) return;
+    const legacyEpisode = legacyDrug === null ? null
+      : activeEpisodes.find((episode) => sameDrug(episode.drug, legacyDrug))
+        ?? episodes.find((episode) => sameDrug(episode.drug, legacyDrug)) ?? null;
     const url = new URL(page.url);
+    if (legacyEpisode) url.searchParams.set('episode', legacyEpisode.id);
+    if (!adding) {
+      if (legacyEpisode) void replaceRoute(url, { noScroll: true, keepFocus: true });
+      return;
+    }
+    /* Seeded with the drug the caller already knew. Handed to openEditor rather than
+       applied after it: this runs inside an effect, and `pickDrug` reads `editor` back,
+       which would make the effect depend on the state it had just written - the loop the
+       comment in openEditor below is about. A drug that is not one of the active ones falls
+       through to the picker, same as arriving with no drug at all. */
+    const episodeId = legacyEpisode?.id ?? sourceEpisodeId;
+    openEditor(null, activeEpisodes.find((episode) => episode.id === episodeId)?.drug ?? null);
+    // A shallow replacement leaves page.url unchanged and replays this arrival.
     url.searchParams.delete('add');
+    url.searchParams.delete('drug');
+    url.searchParams.delete('lane');
     void replaceRoute(url, { noScroll: true, keepFocus: true });
   });
 
@@ -279,7 +290,7 @@
      across a hash, the browser's anchor scroll fires before the log's
      liveQuery answers, and this is the second chance that actually sees the
      row. `deepLinkedDoseIndex` above is what gets the row into the DOM at
-     all once the log batches (ticket 67) - this only has to wait for the
+     all once the log batches - this only has to wait for the
      layout scrollToHash's own settle loop already handles. */
   $effect(() => {
     if (!loading && view === 'log' && !deepLinkedDoseUnavailable && deepLinkedDoseId && deepLinkedDoseIndex < 0) return;
@@ -314,7 +325,7 @@
     /* A line whose fact the app does not know opens as the fields that make
        one. Those are the two cases that also block the save: an amount
        nothing seeded, and several active episodes tied with no drug named
-       yet (ticket 40). Everything else opens stated and closed. */
+       yet. Everything else opens stated and closed. */
     openGroup = seeded.dose === '' || (activeDrugChoices.length > 1 && !seeded.drug) ? 'what' : null;
     record.editor = seeded;
   }
@@ -342,9 +353,11 @@
     return at.length === 1 ? at[0] : null;
   });
 
-  let editorHasAmount = $derived(editor !== null && Number.isFinite(parseFloat(editor.dose)));
+  let editorHasAmount = $derived(editor !== null && (editor.status === 'skipped'
+    ? Number.isFinite(parseFloat(editor.dose))
+    : isPositiveDoseAmount(parseFloat(editor.dose))));
   let editorAmountText = $derived(
-    editor && editorHasAmount ? `${editor.dose} ${editor.doseUnit}`.trim() : m.dose_amount_label()
+    editor && editorHasAmount ? `${editor.dose} ${editor.doseUnit}`.trim() : m.dose_label()
   );
   let editorDrugText = $derived(editor?.drug.trim() || editorEpisode?.drug || '');
   let editorRouteText = $derived.by(() => {
@@ -364,7 +377,7 @@
   let editorIsInjection = $derived(editor !== null && isInjectionDose(editor));
 
   /** The map's two history marks, both read at the moment of the dose being
-      logged rather than one from then and one from today (ticket 13). The
+      logged rather than one from then and one from today. The
       recency shades every dot and the last injection rings one of them, so
       a dose being edited a fortnight back would otherwise carry a fill
       measured from today under a ring measured from then. For a new dose,
@@ -398,7 +411,7 @@
      nobody tapped would store an empty site and quietly break the rotation
      it exists for. Nor can a new dose while several episodes are active
      and none has been picked - that is exactly the ambiguity this ticket
-     exists to stop from being drawn into the wrong drug's curve. */
+     keeps the saved dose attributed to the drug the person chose. */
   let editorCanSave = $derived(
     editor !== null &&
       editorHasAmount &&
@@ -410,7 +423,7 @@
   /* Back to the Care lane the spine mark came from (sourceRecord.ts). */
   let returnHref = $derived(careLaneReturnHref(page.url));
 
-  /* Latched: a reserve must not put its placeholder back (ux-carpet ticket 205). */
+  /* Latched: a reserve must not put its placeholder back. */
   let dosesRevealed = $state(false);
   $effect.pre(() => {
     if (!dosesRevealed && (!loading)) dosesRevealed = true;
@@ -420,14 +433,8 @@
 </script>
 
 <div class="screen">
-  <!-- The one screen of the twenty-six with two real ways in. It is a hub
-       row (SCREENS.md's Health group), so the rule this ticket set - a
-       feature screen goes back to /more, not to /settings - applies to it;
-       it is also opened from inside regimen and from the hormone curve,
-       and throwing someone from there to the hub is the NAV-005 complaint
-       exactly. The header goes back where there is something to go back to
-       and takes the hub where there is not, which is the answer for a
-       screen with two doors rather than a third hardcoded one. -->
+  <!-- Doses opens from both the hub and regimen. Use back history when
+       available and fall back to /more. -->
   <ScreenHeader title={m.doses()} back={returnHref}>
     {#snippet actions()}
       <button class="icon-btn press" data-add aria-label={m.doses_add_aria()} onclick={() => openEditor(null)}>
@@ -448,7 +455,7 @@
   />
 
   <!-- The intro used to be the ScreenHeader's own subtitle, printed above
-       every row whether or not anyone needed it (ticket 09). With the
+       every row whether or not anyone needed it. With the
        stock cards gone too, the log opens on the log now - this stays
        reachable folded, under the tab bar rather than over the rows. -->
   <button
@@ -467,7 +474,7 @@
     </div>
   {/if}
 
-  <!-- Held at last visit's height until the reads answer, then faded in (ux-carpet ticket 205): a page-level skeleton swap cut this in at full opacity. -->
+  <!-- Held at last visit's height until the reads answer, then faded in: a page-level skeleton swap cut this in at full opacity. -->
   <ReadReserve ready={dosesRevealed} estimate={dosesEstimate} onrest={dosesRemember}>
     {#if view === 'log'}
       {#if deepLinkedDoseUnavailable}
@@ -477,7 +484,6 @@
             key="dose-unavailable"
             role={roleAt(activeFlag.roles, SECTION_ROLE.doses)}
             title={m.dose_unavailable_title()}
-            text={m.dose_unavailable_body()}
           />
         </div>
       {/if}
@@ -550,7 +556,7 @@
             role={roleAt(activeFlag.roles, SECTION_ROLE.doses)}
             title={m.doses_empty_title()}
             text={m.doses_empty_body()}
-            action={{ label: m.doses_empty_action(), primary: true, onclick: () => openEditor(null) }}
+            action={{ label: m.log_a_dose(), primary: true, onclick: () => openEditor(null) }}
           />
           {#if hasOlderDoses}
             {@render earlierControl()}
@@ -567,7 +573,7 @@
       {/snippet}
     {:else}
       {#if activeDrugChoices.length > 1}
-        <!-- Only drawn while more than one regimen is active (ticket 15): with
+        <!-- Only drawn while more than one regimen is active: with
              at most one there is nothing to choose between, and the picker
              would be a control with a single, forced answer.
 
@@ -580,7 +586,7 @@
              outright - which is the gap the ticket names. -->
         <div class="screen-part">
           <Segmented
-            name={m.adherence_drug_label()}
+            name={m.drug_label()}
             value={selectedRegimenDrug ?? ''}
             options={activeDrugChoices.map((drug) => ({ value: drug, label: drug }))}
             onChange={(v) => {
@@ -599,7 +605,7 @@
         <Notice icon="info" key="adherence-none" text={m.adherence_no_episode()} />
       {:else if scheduleView.reason === 'multipleEpisodes'}
         <!-- Reachable only when two active episodes share one drug name
-             (ticket 15) - the picker above already resolves the ordinary
+              - the picker above already resolves the ordinary
              concurrent-regimens case to a single one. -->
         <Notice icon="info" key="adherence-multiple" text={m.adherence_multiple_episodes()} />
       {:else if scheduleView.reason === 'noSchedule'}
@@ -657,7 +663,7 @@
                   data-pause={pause.id}
                   title={pause.endEpochDay === null
                     ? m.adherence_paused_open({ from: fmtDayLong(pause.startEpochDay) })
-                    : m.adherence_paused_range({
+                    : m.range_from_to({
                         from: fmtDayLong(pause.startEpochDay),
                         to: fmtDayLong(pause.endEpochDay)
                       })}
@@ -710,31 +716,11 @@
     }}
   />
   {#snippet doseFields(editor: DoseDraft)}
-      <!-- The record, and the whole of this redesign (phase 5 UX ticket 37).
-
-           Alicja, 2026-08-26: "current setting in the popup are too many
-           and too big". Six controls stood here for a dose logged as it was
-           taken - a day, a time, a route, an amount, a unit and a status -
-           and an active regimen already settles four of them. So they are
-           not controls any more. Three lines state what is about to be
-           recorded, each one opening the fields that made it if the
-           statement is wrong, and what is left drawn as a control is the
-           part that genuinely changes from dose to dose: where the needle
-           went.
-
-           There is no heading above them. Every other sheet in the app
-           opens with one, and the argument for dropping it here is that
-           this sheet opens on the thing itself - "4 mg estradiol" in the
-           display face is a better answer to "what did I just tap" than
-           the words "Log a dose" over the same information smaller. The
-           sheet still carries the title as its accessible name (Sheet.svelte
-           passes it to aria-label), so nothing is lost to a screen reader.
-
-           Each line is a button whose name is the value it states, plus
-           aria-expanded, which is what a disclosure owes: the values are
-           the useful half of the name and "collapsed" is already spoken.
-           A row the width of the screen answers a press by filling rather
-           than by scaling (DIRECTION.md, tier 1), so no .press here. -->
+      <!-- The dose summary leads with the amount and drug. Sheet still names
+           the dialog for assistive tech. Each value is a disclosure button with
+           aria-expanded and opens its fields when correction is needed. Keep
+           the site picker visible because the site changes from dose to dose.
+           Use a press wash on full-width rows. -->
       <div class="dose-record">
         <button
           type="button"
@@ -766,12 +752,11 @@
         {#if openGroup === 'what'}
           <div class="disclosed" transition:disclose|local>
             {#if editorNeedsDrugPick}
-              <!-- No visible legend: the line that opened this group already
-                   asks "Which drug was this?", and a legend under it asked
-                   the same question a second time (audit UX-11). The group
-                   keeps the question as its accessible name. Picking one
-                   answers it, so the chips close their own height then
-                   rather than leaving in one frame. -->
+              <!-- No visible legend: the line that opened this group already asks "Which
+                   drug was this?", and a legend under it asked the same question a second
+                   time. The group keeps the question as its accessible name. Picking one
+                   answers it, so the chips close their own height then rather than leaving
+                   in one frame. -->
               <div class="field" transition:disclose|local>
                 <div class="tag-row" role="group" aria-label={m.dose_drug_label()}>
                   {#each activeDrugChoices as drug (drug)}
@@ -791,32 +776,19 @@
               </div>
             {/if}
 
-            <!-- One value, one control. The amount and its unit were two
-                 full-width fields side by side for a figure nobody reads as
-                 two things; the unit sits inside the box now, right after
-                 the number, so the pair reads as "4 mg" rather than as two
-                 answers to two questions.
-
-                 No visible label, which is the one place this sheet drops
-                 one. The line directly above the open group already states
-                 this exact value, and where there is nothing to state it
-                 states the word "Dose" instead - so a label here would be
-                 the third time the same word appeared in four lines. Both
-                 inputs carry it as an accessible name, which is what a
-                 field without a visible label owes.
-
-                 Left hand-written rather than moved onto Field.svelte
-                 (ticket 10): Field is one label naming one control, and
-                 this wrapper holds two, each already named its own way. -->
+            <!-- Show the unit inside the amount box. The line above already names the dose.
+                 Give both inputs accessible names. Field.svelte serves one control, so
+                 this pair has its own wrapper. -->
             <div class="field">
               <div class="dose-amount">
                 <input
                   class="dose-amount-num"
                   type="number"
+                  step="any"
                   id="dose-amount"
                   name="dose-amount"
                   inputmode="decimal"
-                  aria-label={m.dose_amount_label()}
+                  aria-label={m.dose_label()}
                   placeholder={m.dose_amount_placeholder()}
                   aria-invalid={validationTouched && !editorHasAmount}
                   aria-describedby={validationTouched && !editorCanSave ? 'dose-requirements' : undefined}
@@ -824,18 +796,18 @@
                   value={editor.dose}
                   oninput={(event) => { editor.dose = event.currentTarget.value; }}
                 />
-                <input
+                <input autocomplete={journalTextAutocomplete()}
                   class="dose-amount-unit"
                   id="dose-unit"
                   name="dose-unit"
-                  aria-label={m.dose_unit_label()}
+                  aria-label={m.unit_label()}
                   placeholder={m.dose_unit_placeholder()}
                   bind:value={editor.doseUnit}
                 />
               </div>
             </div>
 
-            <Field label={m.dose_route_label()} legend>
+            <Field label={m.route_label()} legend>
               {#snippet children(id)}
                 <div class="tag-row" role="group" aria-labelledby={id}>
                   {#each ROUTE_OPTIONS as option (option.value)}
@@ -895,18 +867,17 @@
         {#if openGroup === 'when'}
           <div class="disclosed" transition:disclose|local>
             <div class="cd-endpoints">
-              <Field label={m.dose_day_label()} id="dose-day">
+              <Field label={m.date_label()} id="dose-day">
                 {#snippet children(id)}
                   <DatePicker name="dose-day" bind:value={editor!.day} {id} />
                 {/snippet}
               </Field>
-              <Field label={m.dose_time_label()} id="dose-time">
+              <Field label={m.time_label()} id="dose-time">
                 {#snippet children(id)}
                   <TimePicker {id} name="dose-time" required bind:value={editor!.time} />
                 {/snippet}
               </Field>
             </div>
-            <p class="muted small">{m.dose_time_hint()}</p>
           </div>
         {/if}
 
@@ -931,10 +902,10 @@
 
         {#if openGroup === 'status'}
           <div class="disclosed" transition:disclose|local>
-            <Field label={m.dose_status_label()} legend>
+            <Field label={m.status_label()} legend>
               {#snippet children()}
                 <Segmented
-                  name={m.dose_status_label()}
+                  name={m.status_label()}
                   value={editor!.status}
                   options={STATUS_OPTIONS}
                   onChange={(v) => editor && (editor.status = v as DoseStatus)}
@@ -1034,16 +1005,15 @@
         </Field>
       {/if}
 
-      <!-- Beside Save whenever Save is refused, from the first frame: an
-           injection opens with no site picked and a dose that several
-           regimens could own opens with no drug, and a greyed button with
-           no reason was the whole of what those sheets said (audit UX-11).
+      <!-- Beside Save whenever Save is refused, from the first frame: an injection opens
+           with no site picked and a dose that several regimens could own opens with no
+           drug, and a greyed button with no reason was the whole of what those sheets said.
            The fields themselves only turn invalid once they have been left. -->
       {#if !editorCanSave}
         <div id="dose-requirements" class="muted small" aria-live="polite" transition:disclose|local>
           <!-- The amount comes with the drug where a regimen sets one, so it
                is not asked for while the drug still is. -->
-          {#if !editorHasAmount && !editorNeedsDrugPick}<p transition:disclose|local>{m.dose_amount_required()}</p>{/if}
+          {#if !editorHasAmount && !editorNeedsDrugPick}<p transition:disclose|local>{editor.status === 'skipped' ? m.dose_amount_required() : m.dose_amount_positive_required()}</p>{/if}
           {#if editorNeedsDrugPick}<p transition:disclose|local>{m.dose_drug_required()}</p>{/if}
           {#if editorIsInjection && !editor.injectionSite}<p transition:disclose|local>{m.dose_injection_site_required()}</p>{/if}
           {#if editorIsTopical && !editor.applicationSite}<p transition:disclose|local>{m.dose_app_site_required()}</p>{/if}
@@ -1058,7 +1028,7 @@
     margin: 0;
   }
 
-  /* The old intro, folded (ticket 09): a quiet row rather than a full-width
+  /* The old intro, folded: a quiet row rather than a full-width
      card, since it is a hint about bookkeeping rather than a reading. */
   .doses-attribution-toggle {
     display: flex;
@@ -1116,7 +1086,7 @@
     font-weight: var(--weight-medium);
   }
 
-  /* The record's three lines (phase 5 UX ticket 37). Uncontained: the sheet
+  /* The record's three lines. Uncontained: the sheet
      is already the app's second surface and a panel drawn inside it would be
      a card inside a card. What divides the lines is the hairline a list row
      uses, so the three read as one object rather than as three blocks. */
@@ -1139,7 +1109,7 @@
   /* Tier 1: a row the width of the screen fills rather than scales, because
      scaling one moves the sheet it sits in. The fill is neutral rather than
      a role wash - the kit's role tokens are keyed to its own surfaces, and
-     an editor spends almost none of the flag (DIRECTION.md, ticket 22). */
+     an editor spends almost none of the flag. */
   .dose-line:active {
     background: var(--surface-2);
   }
@@ -1238,11 +1208,14 @@
   .dose-amount:focus-within {
     border-color: var(--accent);
   }
+  :global(:root[data-input='pointer']) .dose-amount:focus-within {
+    border-color: var(--outline);
+  }
 
   /* The floor stays on the inputs, not only on the box around them. The box
      is a plain div: it labels nothing and focuses nothing, so 48px of it
      with a 20px input centred inside is 28px of dead height that looks
-     tappable and is not. PRODUCT.md's floor is Android's 48dp and this is
+     tappable and is not. Keep a 48dp target for
      the sheet's only text entry. */
   .dose-amount input {
     font: inherit;

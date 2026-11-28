@@ -1,98 +1,12 @@
 <script lang="ts">
-  /* The Look back door's timeline (phase 10 redesign ticket 11): the
-     person's own history as one rail, and two handles that bound the span
-     the retrospectives read.
-
-     What the rail holds is what the journal already knows about time: the
-     eras as bands of the flag's colours, the milestones as marks on the
-     axis, today at the right edge, the earliest authored day at the left
-     (lookBackSpan.ts's `historyStart`). Nothing here is a reading - no
-     count, no average - because the ticket adds no readings; the rail is a
-     map of where the person has been, and the span is a stretch of it they
-     point at.
-
-     Two layers of the same bands. The bottom one is the whole history at
-     10px, always drawn. The top one is the same bands at the rail's full
-     height, clipped to the span, so the selected stretch stands up out of
-     the history and the rest lies low. The clip is what moves when the span
-     does, and it moves as a solid thing (DIRECTION.md rule 10: blocks
-     slide and clip, never fade). The handles are blocks of ink with a grip
-     line, the way a video trimmer's brackets are (Mobbin: YouTube's and
-     X's trim controls), and the span's frame is the two ink rules the top
-     layer wears along its edges - so frame, bands and handles all read as
-     one object being resized.
-
-     Direct manipulation is not animation: while a finger holds a handle the
-     handle follows it exactly, to the day under the finger with no snap
-     and no transition, and the transitions run only on the moves that are
-     not the finger's - a tap on an era, a tap on a milestone, a key press -
-     and on the settle after a release, when the day snaps to its grain or
-     to a magnet and the handle, the clip and the frame travel there on
-     --dur-med (redesign ticket 19; ticket 11 snapped on every move, so the
-     handle stepped under the finger and the release had nothing left to
-     settle). A video trimmer's bracket works the same way (Mobbin: the
-     Shopee and Google Photos trimmers), and it is the movement that tells a
-     person the span they let go of is a whole number of weeks. Reduced
-     motion clamps every one of those to the 1ms base.css already imposes on
-     transitions; nothing here animates by script.
-
-     The span is committed on release, not on every move: the charts under
-     the door re-read on commit, and re-reading six queries per pointer
-     event is not what a drag is for. `onLive` is for the one line that has
-     to follow the finger, the span written under the rail.
-
-     ## What the rail says about itself (phase 11 ticket 06)
-
-     Three things the rail had not been saying, and none of them is a
-     decoration.
-
-     **It draws the stretches it never drew.** Under the eras lie one lane
-     per kind of stretch the journal holds - a regimen episode, a tryout -
-     and a procedure's surgery day is a mark on the axis like a milestone's.
-     Each of those is tap-to-select the way an era already was, so "my moods
-     over the HRT episode" is a stretch somebody can point at rather than
-     one they have to reconstruct with two handles. The lanes sit below the
-     lifted layer rather than behind it: a band drawn behind the span would
-     be covered by it exactly where the person is looking.
-
-     **Colour on this rail means an era, and nothing else.** The first build
-     gave the lanes flag stripes of their own and drew a third lane for the
-     journaling pauses, and the renders were unreadable (Alicja, 2026-09-16:
-     "they're crowded, they use the same colors, it looks bad"): trans,
-     nonbinary and pansexual yield two band colours, so the regimen lane
-     came out the same blue as the first era and the tryout lane the same
-     pink as the second, three lanes deep at 6px each.
-
-     So the eras keep the flag, which is theirs - one colour per era, the
-     way ticket 11 settled - and the two rows are drawn in ink: the regimen
-     solid, the tryout hollow, both in the secondary weight. That is the
-     call the milestone mark on this same rail already made, and its own
-     note says why - a stripe sitting under the eras' colours vanishes into
-     the band of its own hue, and DIRECTION rule 4 gives ink to the smallest
-     things. It cannot collide on any palette or under disguise, because it
-     never asks the flag for anything.
-
-     Three weights, and each says what it is: the flag is an era, full ink
-     is the two things that are now - the span's own frame and the marks -
-     and the secondary ink is the context under them. Drawn at full ink
-     first, and the render put the heaviest object on the rail under the one
-     the rail exists to set.
-
-     And the breaks came off the rail entirely: a break is the absence of a
-     journal rather than a stretch of a life, and the chart's annotation
-     band still draws them where they explain a flat stretch.
-
-     **It says it can be dragged, and what it is showing.** The span, its
-     length and the legend sit directly under the rail against the handles
-     rather than two elements away as a subtitle of the door's title, and on
-     a journal where nobody has dragged it yet a one-time line sits between
-     the handles (Mobbin: Google Photos' trim tooltip, where the bracket
-     shape alone was not enough either). It fades on the first move of a
-     handle and never comes back - one preference, keyed the way the other
-     one-time hints are. The length counts rather than cutting when the span
-     changes by something other than a finger, which is the same rule the
-     rest of this component follows and the same primitive a live tile's
-     value uses. */
+  /* The Look back rail runs from historyStart to today and clips its full-height
+     copy to the selected span. Flag colours mark eras, solid secondary ink
+     marks episodes, and hollow ink marks tryouts. Full ink marks the span
+     and milestones.
+     During a drag, onLive updates the label. Settle to a grain or magnet and
+     commit on release so readings requery once. Taps and keys animate too.
+     The handle, frame and clip share --dur-med, clamped to 1ms for reduced
+     motion. Save dismissal of the first-drag hint. */
   import { untrack } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { useDoorActivity } from '$lib/navigation/doorActivity.svelte';
@@ -119,7 +33,8 @@
   } from '$lib/data/lookBackSpan';
   import { countUp } from '$lib/motion/countUp';
   import { crossfade } from '$lib/motion/reveal';
-  import { EASE_OUT_CSS, motionDuration } from '$lib/motion/tokens';
+  import { EASE_OUT, EASE_OUT_CSS, fadeOnly, isReducedMotion, motionDuration } from '$lib/motion/tokens';
+  import type { TransitionConfig } from 'svelte/transition';
   import type { Era, Milestone } from '$lib/data/types';
   import { eraBandRoles, roleAt, type Role } from '$lib/theme/roles';
   import { roleAttrs } from './kit/role';
@@ -142,8 +57,8 @@
     /** Whether the drag hint has already been answered on this journal. */
     hintSeen = true,
     /** The whole flag as one gradient, for the eras' legend key - the one
-        kind here whose colour is plural. `'none'` under disguise
-        (ADR-0035), where the key falls back to an outline with no fill. */
+        kind here whose colour is plural. Without a flag, the key falls
+        back to an outline with no fill. */
     flagFill = null,
     roles,
     onChange,
@@ -249,16 +164,16 @@
     bandRoles.length ? bandRoles[index % bandRoles.length] : undefined;
 
   const LEGEND_WORD: Record<RailLegendKind, () => string> = {
-    era: () => m.lookback_legend_eras(),
-    regimen: () => m.lookback_legend_regimen(),
+    era: () => m.eras_title(),
+    regimen: () => m.regimen(),
     tryout: () => m.lookback_legend_tryouts(),
     surgery: () => m.lookback_legend_surgery(),
-    milestone: () => m.lookback_legend_milestones(),
+    milestone: () => m.milestones(),
     'milestone-and-surgery': () => m.lookback_legend_milestones_and_surgery()
   };
-  /* The query types a band's name nullable because a journaling pause has
-     none, and neither kind drawn here is that one - so the fallback is the
-     kind's own word rather than a band with no label at all. */
+  /* The query types a band's name nullable because some kinds have none,
+     and neither kind drawn here is one - so the fallback is the kind's own
+     word rather than a band with no label at all. */
   const bandName = (band: RailBand) => band.name ?? LEGEND_WORD[band.kind]();
 
   /* The span as the finger has it, which is the settled span whenever no
@@ -273,15 +188,12 @@
      had switched the transition off. */
   let moving = $state(false);
 
-  /* At rest the rail is low: the span is a band a little taller than the
-     history under it and the handles are two short grips on the axis,
-     suggested rather than offered (Alicja, on the first renders: "the
-     handles are suggested but are not as high/big. they only get bigger
-     when the user taps"). The first touch or focus anywhere on the rail
-     raises it - the lifted bands, the frame, the era names and the full
-     grips clip open upwards on --dur-med - and a touch or focus that leaves
-     the rail lowers it again. The rail's box never changes height, so
-     nothing under it moves either way. */
+  /* At rest the rail is low: the span is a band a little taller than the history under it
+     and the handles are two short grips on the axis, suggested rather than offered. The
+     first touch or focus anywhere on the rail raises it - the lifted bands, the frame, the
+     era names and the full grips clip open upwards on --dur-med - and a touch or focus that
+     leaves the rail lowers it again. The rail's box never changes height, so nothing under
+     it moves either way. */
   let root = $state<HTMLElement | undefined>();
   let active = $state(false);
   const raise = () => { if (doorActive()) active = true; };
@@ -296,8 +208,7 @@
       /* A control that leaves the screen with the span - the way into its
          retrospective - keeps the rail raised, so the stretch the person
          chose is the last thing standing while the door goes rather than
-         a thing folding away under a finger that just used it (redesign
-         ticket 19). The host marks it; the rail knows nothing about
+         a thing folding away under a finger that just used it. The host marks it; the rail knows nothing about
          routes. */
       if (event.target instanceof Element && event.target.closest('[data-span-keep]')) return;
       active = false;
@@ -342,23 +253,11 @@
 
   const x = (day: number) => railPosition(day, railStart, today) * railWidth;
 
-  /* How far a mark's target reaches either side of its own block (phase 11
-     UI/UX ticket 25, first audit U4).
-
-     The marks used to carry a fixed 36x48px hit box, which is a generous
-     target and was taking two things that were not its own: the history
-     lanes underneath it, whose bands are 8px and 6px and sat entirely
-     inside it, and the next mark along, since a rail of years puts two
-     milestones a few pixels apart as readily as a few centimetres. So the
-     reach is asked per mark instead - half the room to its nearest
-     neighbour, capped at the 12px it used to take - and the box no longer
-     reaches up over the lanes or down over the line under the rail.
-
-     Marks drawn closer together than their own 12px blocks cannot be
-     pulled apart by a hit box at all, and neither can two regimen episodes
-     running at once. That is what the list under the rail is for: it holds
-     every one of these facts as a row, with its dates, at the product's
-     own target floor. */
+  /* Extend a milestone's target to half the nearest gap, capped at
+     12px each side. Keep its height clear of the history lanes and
+     line. Marks closer than their 12px blocks can still overlap, as
+     can concurrent regimen episodes. The dated list below supplies
+     a full-size target for every fact. */
   const MARK_WIDTH = 12;
   const MARK_REACH_MAX = 12;
   let markReach = $derived.by(() => {
@@ -510,6 +409,43 @@
      themselves; marks set it to the month behind themselves. */
   const pickMark = (day: number) => commit(defaultSpan(railStart, day));
 
+  /* A mark says what it is when pointed at: its name and day rise over it on hover, and a
+     tap shows them for a few seconds as well as picking the stretch. The marks are hidden
+     from the reader because the list under the rail holds the same facts as rows, so this
+     label is for the eye only. */
+  type MarkTip = { key: string; name: string; day: number; held: boolean };
+  let tip = $state<MarkTip | null>(null);
+  let tipTimer: ReturnType<typeof setTimeout> | undefined;
+  const TIP_HOLD_MS = 3000;
+  function hoverTip(event: PointerEvent, key: string, name: string, day: number) {
+    if (event.pointerType !== 'mouse' || tip?.held) return;
+    tip = { key, name, day, held: false };
+  }
+  function leaveTip(key: string) {
+    if (tip && !tip.held && tip.key === key) tip = null;
+  }
+  function tapTip(key: string, name: string, day: number) {
+    clearTimeout(tipTimer);
+    tip = { key, name, day, held: true };
+    tipTimer = setTimeout(() => {
+      if (tip?.key === key) tip = null;
+    }, TIP_HOLD_MS);
+  }
+  $effect(() => () => clearTimeout(tipTimer));
+  /* Which way the label hangs: centred over the mark, or held to the side
+     of it near either end of the rail so it never runs off the column. */
+  const tipAnchor = (day: number) => {
+    const at = railPosition(day, railStart, today);
+    return at < 0.2 ? 'start' : at > 0.8 ? 'end' : 'middle';
+  };
+  /* Rises 4px into place as it fades in and only fades on the way out.
+     Reduced motion keeps the fade. */
+  function tipFade(_node: Element, _params?: unknown, options?: { direction?: 'in' | 'out' | 'both' }): TransitionConfig {
+    const duration = motionDuration('--dur-fast');
+    if (isReducedMotion() || options?.direction === 'out') return fadeOnly(duration);
+    return { duration, easing: EASE_OUT, css: (t, u) => `opacity: ${t}; translate: 0 ${u * 4}px;` };
+  }
+
   const valueText = (day: number) => fmtDay(day, { day: 'numeric', month: 'long', year: 'numeric' });
   /* The span written under the rail, in the words the range picker uses.
      Years only where they carry information: the start's when it is not
@@ -522,7 +458,7 @@
         : { day: 'numeric', month: 'short', year: 'numeric' }
     );
   let spanDates = $derived(
-    m.wrapped_week_range({
+    m.range_from_to({
       from: dayWithYear(live.start, localDateFromEpochDay(today).getFullYear()),
       to: dayWithYear(live.end, localDateFromEpochDay(today).getFullYear())
     })
@@ -618,8 +554,14 @@
     <!-- The same history at full height, clipped to the span, with the
          frame as this layer's own two edges. Drawing only: the clip would
          hide a control that stood outside the span, so the controls are
-         the layer under this one. -->
-    <div class="span-tl-full" aria-hidden="true">
+         the layer under this one. The clip is two windows moved by
+         translate, each with its drawing moved back by the same amount
+         (the styles say why), so the five wrappers stand at one indent. -->
+    <div class="span-tl-window" aria-hidden="true">
+    <div class="span-tl-window-start">
+    <div class="span-tl-window-in">
+    <div class="span-tl-window-end">
+    <div class="span-tl-full">
       {#if firstEntryDay !== null}
         {@const journal = segment(firstEntryDay, today)}
         <span class="span-tl-band span-tl-journal" style:left="{journal.left}%" style:width="{journal.width}%"></span>
@@ -643,26 +585,28 @@
           {...roleAttrs(bandRole(i))}
         >
           {#if shownTo - shownFrom >= NAME_MIN_PX}
-            <span class="span-tl-era-name" style:left="{shownFrom - left + 8}px" style:max-width="{shownTo - shownFrom - 16}px">{band.name}</span>
+            <span class="span-tl-era-name" style:left="{shownFrom - left + 8}px" style:max-width="{shownTo - shownFrom - 16}px"><span class="span-tl-era-text">{band.name}</span></span>
           {/if}
         </span>
       {/each}
     </div>
+    </div>
+    </div>
+    </div>
+    </div>
 
-    <!-- The eras as targets: one transparent button per era, the rail's
-         full height across the era's stretch, inside the span or out of it.
-         Pointing anywhere in an era's column selects the era whole.
+    <!-- The eras as targets: one transparent button per era, the rail's full height across
+         the era's stretch, inside the span or out of it. Pointing anywhere in an era's
+         column selects the era whole.
 
-         This one and every other target drawn on the rail below - the
-         history bands and the day marks - is for a finger or a pointer
-         only: out of the tab order and hidden from assistive tech (phase 14
-         ticket 29, accessibility audit A04). They cannot all be 48px, and
-         most cannot be 24: a band is 8px or 6px high and two milestones a
-         fortnight apart are three pixels apart. The list under the rail
-         (SpanFacts) holds every one of these facts as a row at the target
-         floor, with its dates written out, and sets the same span; that is
-         the way in for Tab and TalkBack. The rail's own controls for them
-         are the two handles, which are 48px. -->
+         This one and every other target drawn on the rail below - the history bands and the
+         day marks - is for a finger or a pointer only: out of the tab order and hidden from
+         assistive tech. They cannot all be 48px, and most cannot be 24: a band is 8px or
+         6px high and two milestones a fortnight apart are three pixels apart. The list
+         under the rail (SpanFacts) holds every one of these facts as a row at the target
+         floor, with its dates written out, and sets the same span; that is the way in for
+         Tab and TalkBack. The rail's own controls for them are the two handles, which are
+         48px. -->
     <div class="span-tl-targets">
       {#each bands as band (band.id)}
         {@const shape = segment(band.start, band.end)}
@@ -718,7 +662,12 @@
         tabindex="-1"
         aria-hidden="true"
         aria-label={m.lookback_mark_aria({ name: mark.name })}
-        onclick={() => pickMark(mark.epochDay)}
+        onpointerenter={(event) => hoverTip(event, `milestone:${mark.id}`, mark.name, mark.epochDay)}
+        onpointerleave={() => leaveTip(`milestone:${mark.id}`)}
+        onclick={() => {
+          tapTip(`milestone:${mark.id}`, mark.name, mark.epochDay);
+          pickMark(mark.epochDay);
+        }}
       ></button>
     {/each}
 
@@ -736,17 +685,37 @@
         tabindex="-1"
         aria-hidden="true"
         aria-label={m.lookback_mark_aria({ name: mark.name ?? m.lookback_legend_surgery() })}
-        onclick={() => pickMark(mark.epochDay)}
+        onpointerenter={(event) => hoverTip(event, `surgery:${mark.id}`, mark.name ?? m.lookback_legend_surgery(), mark.epochDay)}
+        onpointerleave={() => leaveTip(`surgery:${mark.id}`)}
+        onclick={() => {
+          tapTip(`surgery:${mark.id}`, mark.name ?? m.lookback_legend_surgery(), mark.epochDay);
+          pickMark(mark.epochDay);
+        }}
       ></button>
     {/each}
+
+    {#key tip?.key}
+      {#if tip}
+        <span
+          class="span-tl-tip"
+          data-anchor={tipAnchor(tip.day)}
+          style:left="{railPosition(tip.day, railStart, today) * 100}%"
+          data-span-tip={tip.key}
+          aria-hidden="true"
+          transition:tipFade|global
+        >
+          <span class="span-tl-tip-name">{tip.name}</span>
+          <span class="span-tl-tip-day">{valueText(tip.day)}</span>
+        </span>
+      {/if}
+    {/key}
 
     <!-- Today, in ink: the one mark on the rail that is not the person's. -->
     <span class="span-tl-today" aria-label={m.tl_you_are_here()} role="img"></span>
 
     {#each ['start', 'end'] as const as handle (handle)}
-      <!-- A div with the slider role rather than a button: slider is not a
-           role a button may take, and a button's own role wins in some
-           readers (after-release 21, audit L05-08). -->
+      <!-- A div with the slider role rather than a button: slider is not a role a button
+           may take, and a button's own role wins in some readers. -->
       <div
         tabindex="0"
         class="span-tl-handle"
@@ -768,26 +737,22 @@
         onpointercancel={() => onHandleUp(handle)}
         onkeydown={(e) => onHandleKey(e, handle)}
       >
-        <span class="span-tl-grip" aria-hidden="true"></span>
+        <span class="span-tl-grip" aria-hidden="true"><span class="span-tl-grip-ink"></span></span>
       </div>
     {/each}
   </div>
 
-  <!-- What the rail is showing, against the handles rather than two
-       elements away under the title (DIRECTION.md rule 7's own "say it
-       once, where it is true"). -->
+  <!-- Keep the reading next to the rail handles. -->
   <p class="span-tl-state" data-span-state-line>
     {#key spanDates}<span class="span-tl-reading" out:crossfade use:dateFadeIn>{spanDates}{`, ${m.n_days({ n: shownDays })}`}</span>{/key}
   </p>
 
-  <!-- The one-time hint, gone on the first move of either handle. Under
-       the rail's own reading rather than on the rail (release audit U14:
-       at rest it sat over the lanes it is about). In flow, and it fades
-       where it stands rather than leaving: its line stays for the rest of
-       this visit, so nothing under it moves, and the next visit never
-       draws it. Not a control and not announced: the handles already
-       carry their own names, and a slider that read out "drag the ends"
-       every time it took focus would be worse than silent. -->
+  <!-- The one-time hint, gone on the first move of either handle. Under the rail's own
+       reading rather than on the rail (release: at rest it sat over the lanes it is about).
+       In flow, and it fades where it stands rather than leaving: its line stays for the
+       rest of this visit, so nothing under it moves, and the next visit never draws it. Not
+       a control and not announced: the handles already carry their own names, and a slider
+       that read out "drag the ends" every time it took focus would be worse than silent. -->
   {#if hintDrawn}
     <p class="span-tl-hint" class:is-hidden={!showHint} data-span-hint aria-hidden="true">
       {m.lookback_drag_hint()}
@@ -815,22 +780,9 @@
     --grip: 14px;
     --rail-h: 52px;
     --low-h: 8px;
-    /* One lane per history kind this journal has, stacked off the axis.
-       Zero lanes leaves every measurement below exactly where it was
-       before the history layer existed.
-
-       The gutter is the marks' own room: a milestone or a surgery day is a
-       12px block standing on the axis, so the rows start above where those
-       blocks reach and no row is ever drawn under one. The rule keeps the
-       eras' strip off the rows, so the two registers read as two.
-
-       Two heights rather than one repeated: four bands of the same weight
-       was what made the first build unreadable, and a solid bar and an
-       outlined one do not need the same room to be told apart. Each row's
-       presence is a 0 or a 1 from the component, since CSS cannot make a
-       height conditional on what a journal holds - and with both at 0 every
-       measurement below lands exactly where it did before the rows
-       existed. */
+    /* Stack one lane per present history kind. Leave room for 12px axis marks
+       and keep the era strip separate. Solid and outlined lanes have different
+       heights. Presence flags reserve zero height when a lane is absent. */
     --row-regimen: 8px;
     --row-tryout: 6px;
     --mark-gutter: 7px;
@@ -891,7 +843,7 @@
   /* Both layers stop above the history lanes: a band drawn behind the span
      would be covered by it exactly where somebody is looking. */
   .span-tl-low,
-  .span-tl-full {
+  .span-tl-window {
     position: absolute;
     top: 0;
     left: 0;
@@ -913,24 +865,58 @@
     margin: 0;
     background: var(--role-draw);
     color: var(--role-fill-ink);
-    /* Every block wears an edge, so an era next to an era of a similar
-       stripe, or every era under disguise where all roles are the accent,
-       still reads as its own band. */
+    /* Every block wears an edge, so eras with similar stripes still read
+       as separate bands. */
     border: 1px solid var(--outline);
     border-radius: 0;
     font: inherit;
   }
 
-  /* The lifted layer: the bands at full height, framed top and bottom in
-     ink, revealed only across the span. The clip is the object that moves. */
+  /* Two translated clipping boxes reveal the lifted bands. The outer box
+     moves the start and top edges, and the inner moves the end. Counter-
+     translate each box's contents by the same amount on the same timing
+     to keep the drawing still through reversal or retargeting. A fixed
+     parent clips the result so it cannot widen the page.
+
+     Composited translate keeps the edges moving during readings updates.
+     The old clip-path stalled for 80–110ms at 6x CPU slowdown and
+     caught up by 125px in one frame. */
+  .span-tl-window {
+    overflow: clip;
+  }
+  .span-tl-window-start {
+    position: absolute;
+    inset: 0;
+    overflow: clip;
+    translate: var(--tl-span-start) calc(100% - var(--rest-h));
+    transition: translate var(--dur-med) var(--ease-out);
+  }
+  .span-tl-window-in {
+    position: absolute;
+    inset: 0;
+    translate: calc(-1 * var(--tl-span-start)) calc(var(--rest-h) - 100%);
+    transition: translate var(--dur-med) var(--ease-out);
+  }
+  .is-active .span-tl-window-start {
+    translate: var(--tl-span-start) 0;
+  }
+  .is-active .span-tl-window-in {
+    translate: calc(-1 * var(--tl-span-start)) 0;
+  }
+  .span-tl-window-end {
+    position: absolute;
+    inset: 0;
+    overflow: clip;
+    translate: calc(-1 * var(--tl-clip-right)) 0;
+    transition: translate var(--dur-med) var(--ease-out);
+  }
   .span-tl-full {
+    position: absolute;
+    inset: 0;
     border-top: 3px solid var(--text);
     border-bottom: 3px solid var(--text);
-    clip-path: inset(calc(100% - var(--rest-h)) var(--tl-clip-right) 0 var(--tl-span-start));
-    transition: clip-path var(--dur-med) var(--ease-out);
-  }
-  .is-active .span-tl-full {
-    clip-path: inset(0 var(--tl-clip-right) 0 var(--tl-span-start));
+    translate: var(--tl-clip-right) 0;
+    transition: translate var(--dur-med) var(--ease-out);
   }
 
   .span-tl-full .span-tl-band {
@@ -966,7 +952,10 @@
      the span is shorter than a name is tall, so a resting rail showed the
      bottom five pixels of every era's name. So the name carries a clip of
      its own, opening upward on the same duration and curve the band's does
-     - a wipe rather than a fade, which is rule 10's own answer. */
+     - a wipe rather than a fade, which is rule 10's own answer. Drawn the
+     way the window is, so it opens on the compositor with the band: the
+     name's box slides up from a whole height below and its words slide
+     down by the same, so only the box's top edge travels. */
   .span-tl-era-name {
     position: absolute;
     top: 6px;
@@ -974,14 +963,33 @@
     font-weight: var(--weight-bold);
     letter-spacing: 0.02em;
     line-height: 1.2;
+    overflow: clip;
+    translate: 0 100%;
+    transition: translate var(--dur-med) var(--ease-out);
+  }
+  .span-tl-era-text {
+    display: block;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    clip-path: inset(100% 0 0 0);
-    transition: clip-path var(--dur-med) var(--ease-out);
+    translate: 0 -100%;
+    transition: translate var(--dur-med) var(--ease-out);
   }
-  .is-active .span-tl-era-name {
-    clip-path: inset(0);
+  .is-active .span-tl-era-name,
+  .is-active .span-tl-era-text {
+    translate: 0 0;
+  }
+  /* A name drawn while its band is already open - the part of the band the span shows has
+     just grown past NAME_MIN_PX - had no closed state to travel from, so it was painted
+     whole in one frame (span-offer-appear, 0 to 0.9 between 51 and 68ms). It opens from
+     closed like one that opens with its band. */
+  @starting-style {
+    .is-active .span-tl-era-name {
+      translate: 0 100%;
+    }
+    .is-active .span-tl-era-text {
+      translate: 0 -100%;
+    }
   }
 
   .span-tl-targets {
@@ -1005,20 +1013,11 @@
     z-index: 1;
   }
 
-  /* A history band: a lane's worth of stripe, drawn and tapped by the same
-     element. The 1px edge every block on this rail wears is what keeps two
-     episodes that meet on consecutive days from reading as one. It is the
-     page rather than `--outline` here, because the band is ink: an outline
-     on ink is a darker line on a dark bar, and a gap of page is a gap.
-
-     The target is the band and nothing more (phase 11 UI/UX ticket 25). It
-     used to grow 3px every way, and there is nowhere on this rail for
-     those 3px to come from: the regimen row and the tryout row meet, so
-     the two extensions overlapped by 6px wherever a tryout ran during an
-     episode, and two episodes that meet on consecutive days overlapped
-     along their shared edge. The path that does not depend on aim is the
-     list under the rail, which carries the same fact as a row at the
-     target floor; the band itself takes no tab stop (ticket 29). */
+  /* Use a 1px page-coloured edge to distinguish adjacent ink
+     bands. The band itself is the pointer target. Extending it
+     would overlap consecutive episodes or neighbouring lanes.
+     Keep bands out of the tab order because the dated list
+     provides each fact at the full target size. */
   .span-tl-hband {
     position: absolute;
     box-sizing: border-box;
@@ -1058,12 +1057,9 @@
   .span-tl-hband.is-open-start { border-left: 0; }
   .span-tl-hband.is-open-end { border-right: 0; }
 
-  /* A milestone: a 12px block of ink on the axis, edged in the page so it
-     reads on any band. Ink rather than a stripe, because it sits on the
-     eras' colours and a stripe would vanish into the band of its own hue;
-     the marks and today's line are the rail's time marks, and the colours
-     are the person's eras (DIRECTION.md rule 4: ink for the smallest
-     things). */
+  /* A milestone is a 12px ink block edged in the page colour. Ink stays
+     visible over any era band. The marks and today's line tell time,
+     while the bands carry the person's eras. */
   .span-tl-mark {
     position: absolute;
     bottom: -7px;
@@ -1081,6 +1077,37 @@
     cursor: pointer;
     z-index: 2;
   }
+
+  /* A mark's name and day, over it. Opaque on the page's second
+     surface inside a hairline, as the kit separates anything laid over
+     marks: no shadow. Over everything on the rail, handles included: a
+     tap brings a handle onto the very mark it names. */
+  .span-tl-tip {
+    position: absolute;
+    bottom: 14px;
+    z-index: 4;
+    display: grid;
+    gap: 2px;
+    max-width: min(240px, 70vw);
+    padding: var(--space-2) var(--space-3);
+    background: var(--surface-2);
+    border: 1px solid var(--outline);
+    border-radius: var(--r-block);
+    color: var(--text);
+    font-size: var(--text-sm);
+    line-height: 1.35;
+    white-space: nowrap;
+    pointer-events: none;
+    transform: translateX(-50%);
+  }
+  .span-tl-tip[data-anchor='start'] { transform: translateX(-12px); }
+  .span-tl-tip[data-anchor='end'] { transform: translateX(calc(-100% + 12px)); }
+  .span-tl-tip-name {
+    font-weight: var(--weight-bold);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .span-tl-tip-day { color: var(--text-2); }
 
   /* The target is wider than the mark. */
   /* The target: the block, the 2px of gutter above it before the history
@@ -1108,19 +1135,17 @@
     z-index: 2;
   }
 
-  /* The handles: the grip of ink is drawn in the middle of its day, and
-     the button around it is the 48px target, reaching away from the span -
-     left of the start's grip, right of the end's - so at a short span the
-     two targets meet at the grips rather than lying on top of each other,
-     and a finger on either grip gets the handle it can see. Placed by
+  /* The handles: the grip of ink is drawn in the middle of its day, and the button around
+     it is the 48px target, reaching away from the span - left of the start's grip, right of
+     the end's - so at a short span the two targets meet at the grips rather than lying on
+     top of each other, and a finger on either grip gets the handle it can see. Placed by
      transform alone, so a move is a transform and nothing else.
 
-     The target is the button's own box rather than a pseudo element
-     around a 14px button (phase 14 ticket 29, accessibility audit A04):
-     a hit area drawn by `::before` answers a finger, but the box an
-     accessibility service measures and announces is the element's, and
-     that was 14px wide. Same geometry as before: the handle's width plus
-     the 6px the grip's far side carried, from the same left edge. */
+     The target is the button's own box rather than a pseudo element around a 14px button: a
+     hit area drawn by `::before` answers a finger, but the box an accessibility service
+     measures and announces is the element's, and that was 14px wide. Same geometry as
+     before: the handle's width plus the 6px the grip's far side carried, from the same left
+     edge. */
   .span-tl-handle {
     position: absolute;
     top: -6px;
@@ -1144,24 +1169,37 @@
     transform: translateX(var(--tl-end));
   }
 
+  /* The grip rises with the window, on the compositor the same way: its
+     rounded box slides up from where only the resting 26px show, and the
+     ink inside slides down by the same, so the grip and the band it
+     frames keep rising together through a busy main thread. */
   .span-tl-grip {
     position: absolute;
     top: 0;
     bottom: 0;
     width: var(--grip);
+    border-radius: var(--r-block);
+    overflow: clip;
+    translate: 0 calc(100% - var(--rest-grip));
+    transition:
+      translate var(--dur-med) var(--ease-out),
+      scale var(--dur-fast) var(--ease-out);
+  }
+  .span-tl-grip-ink {
+    position: absolute;
+    inset: 0;
     background: var(--text);
     border-radius: var(--r-block);
-    clip-path: inset(calc(100% - var(--rest-grip)) 0 0 0 round var(--r-block));
-    transition:
-      clip-path var(--dur-med) var(--ease-out),
-      transform var(--dur-fast) var(--ease-out);
+    translate: 0 calc(var(--rest-grip) - 100%);
+    transition: translate var(--dur-med) var(--ease-out);
   }
   .is-start .span-tl-grip { left: calc(var(--handle) - var(--grip)); }
   .is-end .span-tl-grip { left: 6px; }
-  .is-active .span-tl-grip {
-    clip-path: inset(0 round var(--r-block));
+  .is-active .span-tl-grip,
+  .is-active .span-tl-grip-ink {
+    translate: 0 0;
   }
-  .span-tl-grip::after {
+  .span-tl-grip-ink::after {
     content: '';
     position: absolute;
     top: 14px;
@@ -1175,19 +1213,42 @@
      handle, and the clip follows the same way. A held grip grows, which is
      the tier-1 response a control that cannot scale gives. */
   .is-dragging .span-tl-handle.is-held,
+  .is-dragging .span-tl-window-start,
+  .is-dragging .span-tl-window-in,
+  .is-dragging .span-tl-window-end,
   .is-dragging .span-tl-full {
     transition: none;
   }
   .span-tl-handle.is-held .span-tl-grip {
-    transform: scaleX(1.25);
+    scale: 1.25 1;
   }
 
+  /* The keyboard's ring goes round the grip, as a box of its own over the grip's place at
+     full height: drawn on the grip, it sat inside the grip's clip and was never painted,
+     and the grip's box travels with the rise, so a ring on it would rise from below the
+     rail. Focus raises the rail, so the grip fills this box a moment later. Instant, like
+     every other control's ring in the kit. The 2px between grip and ring is filled with the
+     page's ground rather than left open: in dark the ring is a light pink, and across the
+     light blue of an era band it measured 1.09:1, so the ground keeps it at least 6:1
+     against what touches it on one side wherever it runs. */
   .span-tl-handle:focus-visible {
     outline: none;
   }
-  .span-tl-handle:focus-visible .span-tl-grip {
-    outline: 2px solid var(--focus-ring);
-    outline-offset: 2px;
+  .span-tl-handle::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    bottom: -2px;
+    box-sizing: border-box;
+    width: calc(var(--grip) + 4px);
+    border-radius: calc(var(--r-block) + 2px);
+    pointer-events: none;
+  }
+  .span-tl-handle.is-start::after { left: calc(var(--handle) - var(--grip) - 2px); }
+  .span-tl-handle.is-end::after { left: 4px; }
+  .span-tl-handle:focus-visible::after {
+    border: 2px solid var(--bg);
+    outline: var(--focus-ring-width) solid var(--focus-ring);
   }
 
   /* The one-time hint, a line of small type under the reading. */
@@ -1239,12 +1300,11 @@
     width: 14px;
     border: 1px solid var(--text-2);
   }
-  /* The eras are the one kind whose colour is plural - they run the flag,
-     one colour per era - so their key is the flag itself rather than any
-     one stripe, which is also what keeps it clear of everything else here.
-     Under disguise roles.ts hands out no gradient at all (ADR-0035), the
-     variable is unset, and the key falls back to the outline over nothing,
-     which is what "no colour" looks like on that theme. */
+  /* The eras are the one kind whose colour is plural - they run the flag, one colour per
+     era - so their key is the flag itself rather than any one stripe, which is also what
+     keeps it clear of everything else here. The unlocked app always uses the flag, disguise
+     or not, so the variable is set here; the outline alone is the fallback for a flag with
+     no colour of its own. */
   .span-tl-chip[data-span-chip='era'] {
     height: var(--low-h);
     background: var(--tl-flag, transparent);

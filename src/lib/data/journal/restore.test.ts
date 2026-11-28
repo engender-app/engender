@@ -1,4 +1,4 @@
-/* Replace and merge (ticket 14), the most destructive path in the app.
+/* Replace and merge, the most destructive path in the app.
 
    Every test here restores between two journals over real SQLite, and the
    archive it restores is a real snapshot rather than a hand-written payload:
@@ -7,7 +7,7 @@
    about a restore. */
 
 import assert from 'node:assert/strict';
-import { test } from 'vitest';
+import { test, vi } from 'vitest';
 import { thumbFileName } from '../photos/names.ts';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import type { SqliteDriver } from '../sqlite/driver.ts';
@@ -15,7 +15,7 @@ import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import { BUILT_IN_DIMENSIONS } from '../vocabulary/builtins.ts';
 import { attributeDose } from '../regimenEpisode.ts';
 import { epochDayFromTimestamp } from '../epochDay.ts';
-import { collect } from '../archive/container.ts';
+import { CorruptArchiveError, collect } from '../archive/container.ts';
 import { packArchive } from '../archive/pack.ts';
 import { portablePreferences } from '../archive/payload.ts';
 import { PREFERENCE_DEFAULTS } from '../prefs/catalogue.ts';
@@ -23,6 +23,7 @@ import { discardStatements, emptyArchiveJournal } from './archiveSections.ts';
 import { builtInsOnlyDevice, countsOf, everySection, everySectionDevice } from './golden-archive-fixture.ts';
 import { openJournal, type Journal } from './journal.ts';
 import { countingDriver } from './test-support.ts';
+import { orphanSweepRequestVersion } from '../sqlite/orphan-sweep-schedule.ts';
 import { restoreArchive, verifyArchive, type RestoreContents, type RestoreProgress } from './restore.ts';
 
 const bytes = (text: string) => new Uint8Array([...text].map((c) => c.charCodeAt(0)));
@@ -43,6 +44,15 @@ async function device() {
   const journal = openJournal(db, files);
   await journal.reconcileBuiltIns();
   return { db, files, journal };
+}
+
+function refuseCommit(driver: SqliteDriver) {
+  const transaction = driver.transaction.bind(driver);
+  return vi.spyOn(driver, 'transaction').mockImplementation((work) =>
+    transaction(async (inside) => {
+      await work(inside);
+      throw new Error('injected failure before commit');
+    }));
 }
 
 /** A device with something on it worth losing: a custom dimension in a
@@ -70,8 +80,6 @@ async function populated() {
   await journal.tags.renameTag('a-therapy', 'therapy session');
   await journal.tags.setGroupEnabled('activities', false);
   await journal.dimensions.setDimensionHidden('masculinity', true);
-  const measurementType = await journal.measurements.addCustomMeasurementType('Shoulders');
-  await journal.measurements.setMeasurementTypeHidden('underbust', true);
 
   const entry = await journal.entries.upsertEntry({
     epochDay: 20000,
@@ -95,14 +103,11 @@ async function populated() {
   });
   const milestonePhoto = await journal.photos.attach({ milestoneId: milestone }, { full: bytes('m'), thumb: bytes('mt') });
 
-  await journal.measurements.upsertMeasurement({ type: 'waist', epochDay: 20000, value: 79, unit: 'cm' });
-  await journal.tally.log({ epochDay: 20000, kind: 'misgendered' });
-  await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000 });
+  await journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000, resolvedEpochDay: null });
   await journal.cycleEvents.upsertCycleEvent({ kind: 'spotting', epochDay: 20000 });
   await journal.personalEffects.upsertMarker({ effect: 'breast_development', firstNoticedEpochDay: 19180 });
   await journal.reminders.upsertReminder({
     title: 'injection',
-    type: 'injection',
     time: '08:00',
     recurrence: 'EVERY_N_DAYS',
     interval: 7,
@@ -133,7 +138,7 @@ async function populated() {
   /* Saved after the injection above, so it carries a frozen day-of-interval
      the importing device could not work out for itself: the result travels
      without any promise that the dose log it was measured against travels
-     with it, or ever existed there (ticket 03). */
+     with it, or ever existed there. */
   await journal.labs.upsertResult({
     epochDay: epochDayFromTimestamp(1_700_000_000_000) + 4,
     analyte: 'estradiol',
@@ -151,12 +156,8 @@ async function populated() {
     reason: 'planned'
   });
 
-  const counterevidenceSnapshot = await journal.doubtJournal.saveSnapshot(20000, [
-    { epochDay: 19500, mood: 5, note: 'euphoric at the appointment' }
-  ]);
-
   await journal.roadmap.setGoalStatus('pl', 'pl-legal-court-file', 'checked');
-  await journal.roadmap.addCustomGoal('social', 'Tell my sister');
+  await journal.roadmap.addCustomGoal('Tell my sister');
 
   const tryout = await journal.tryouts.upsertTryout({
     kind: 'name',
@@ -176,7 +177,6 @@ async function populated() {
     group,
     tag,
     sharedGroupTag,
-    measurementType,
     photo,
     recording,
     milestone,
@@ -185,7 +185,6 @@ async function populated() {
     dose,
     schedule,
     dosePause,
-    counterevidenceSnapshot,
     tryout,
     feltSense
   };
@@ -208,17 +207,15 @@ async function exported(journal: Journal): Promise<RestoreContents> {
 const rowCount = async (db: SqliteDriver, sql: string): Promise<number> =>
   (await db.query<{ n: number }>(`SELECT COUNT(*) AS n FROM ${sql}`))[0].n;
 
-test('archives omit revisits and margin notes owned by trashed entries', async () => {
+// Trash travels, and its margin notes with it.
+test('archives carry margin notes owned by trashed entries, with the entries', async () => {
   const { driver, journal } = await everySectionDevice();
   assert.equal(await rowCount(driver, 'entry WHERE trashed_at IS NOT NULL'), 1);
-  assert.equal(await rowCount(driver, 'revisit'), 2);
   assert.equal(await rowCount(driver, 'margin_note'), 2);
   const snapshot = await journal.archive.snapshot();
-  assert.equal(snapshot.journal.revisits.length, 1);
-  assert.equal(snapshot.journal.marginNotes.length, 1);
+  assert.equal(snapshot.journal.marginNotes.length, 2);
   const entryUuids = new Set(snapshot.journal.entries.map((entry) => entry.uuid));
-  assert.ok(entryUuids.has(snapshot.journal.revisits[0].entryId));
-  assert.ok(entryUuids.has(snapshot.journal.marginNotes[0].entryId));
+  assert.ok(snapshot.journal.marginNotes.every((note) => entryUuids.has(note.entryId)));
 });
 
 test.each([
@@ -226,27 +223,22 @@ test.each([
   ['merge', 'same device'],
   ['replace', 'fresh device'],
   ['merge', 'fresh device']
-] as const)('%s restores an older archive with trash children on %s with foreign keys enforced', async (mode, location) => {
+] as const)('%s restores an older archive with trash margin notes on %s with foreign keys enforced', async (mode, location) => {
   const source = await everySectionDevice();
   const target = location === 'same device' ? { db: source.driver, journal: source.journal } : await device();
   const contents = await exported(source.journal);
   const trash = (await source.driver.query<{ id: number; uuid: string }>('SELECT id, uuid FROM entry WHERE trashed_at IS NOT NULL'))[0];
-  const revisit = (await source.journal.revisits.getRevisitForEntry(trash.id))!;
   const margin = (await source.journal.marginNotes.forEntries([trash.id])).get(trash.id)![0];
-  contents.journal.revisits = contents.journal.revisits.filter((row) => row.entryId !== trash.uuid);
+  // An archive written left the trashed entry out.
+  contents.journal.entries = contents.journal.entries.filter((row) => row.uuid !== trash.uuid);
   contents.journal.marginNotes = contents.journal.marginNotes.filter((row) => row.entryId !== trash.uuid);
-  contents.journal.revisits.push({
-    id: revisit.id, entryId: trash.uuid, entryEpochDay: 20001,
-    createdEpochDay: 20001, targetEpochDay: 20101
-  });
   contents.journal.marginNotes.push({
     id: margin.id, entryId: trash.uuid, epochDay: 20051, text: margin.text
   });
   assert.equal((await target.db.query('PRAGMA foreign_keys'))[0].foreign_keys, 1);
   await target.journal.archive[mode](contents);
   const restored = (await target.journal.archive.snapshot()).journal;
-  assert.equal(restored.revisits.length, 1);
-  assert.equal(restored.marginNotes.length, 1);
+  assert.equal(restored.marginNotes.filter((note) => note.entryId !== trash.uuid).length, 1);
   assert.deepEqual(await target.db.query('PRAGMA foreign_key_check'), []);
 });
 
@@ -314,10 +306,8 @@ test('merge adds what this device does not have and leaves what it has alone', a
   assert.equal(restoredMilestones.length, 1);
   assert.equal(restoredMilestones[0].description, 'the pharmacist barely looked up');
   assert.deepEqual(await target.journal.labs.getUsedAnalytes(), ['estradiol']);
-  assert.equal((await target.journal.measurements.getMeasurements('waist')).length, 1);
-  assert.equal((await target.journal.tally.getEvents('misgendered')).length, 1);
   /* The dosing context comes across as it was recorded, not re-derived
-     against this device's dose log (ticket 03). */
+     against this device's dose log. */
   const [restoredLab] = await target.journal.labs.getResults('estradiol');
   assert.equal(restoredLab.drawTime, '07:40');
   assert.equal(restoredLab.provider, 'Diagnostyka');
@@ -329,8 +319,6 @@ test('merge adds what this device does not have and leaves what it has alone', a
   const episodes = await target.journal.regimen.getEpisodes();
   assert.equal(episodes.length, 1);
   assert.equal(episodes[0].drug, 'estradiol valerate');
-  const snapshots = await target.journal.doubtJournal.getSnapshots(10);
-  assert.deepEqual(snapshots[0].items, [{ epochDay: 19500, mood: 5, note: 'euphoric at the appointment' }]);
   const tryouts = await target.journal.tryouts.getTryouts();
   assert.equal(tryouts.length, 1);
   assert.equal(tryouts[0].label, 'Alex');
@@ -352,14 +340,14 @@ test('merge adds what this device does not have and leaves what it has alone', a
 test('a target own roadmap tick and custom goal survive a merge that has never heard of them', async () => {
   const source = await populated();
   const target = await device();
-  await target.journal.roadmap.setGoalStatus('pl', 'pl-social-tell-someone', 'checked');
-  await target.journal.roadmap.addCustomGoal('legal', 'Ask about remote hearings');
+  await target.journal.roadmap.setGoalStatus('pl', 'pl-legal-which-court', 'checked');
+  await target.journal.roadmap.addCustomGoal('Ask about remote hearings');
 
   await target.journal.archive.merge(await exported(source.journal));
 
   assert.deepEqual(await target.journal.roadmap.getGoalStatuses('pl'), {
     'pl-legal-court-file': 'checked',
-    'pl-social-tell-someone': 'checked'
+    'pl-legal-which-court': 'checked'
   });
   assert.deepEqual(
     (await target.journal.roadmap.getCustomGoals()).map((g) => g.text).sort(),
@@ -367,17 +355,15 @@ test('a target own roadmap tick and custom goal survive a merge that has never h
   );
 });
 
-/* Phase 8 features ticket 69: a custom goal's text stopped being write-once
-   and its row stopped being permanent, and `roadmapGoals` carries both
-   columns as they stand rather than a history of them. What a replace owes
-   is that the journal on the other side holds exactly what this one does -
-   the new wording and not the old one, and nothing at all for the goal that
-   was deleted. */
+/* A custom goal's text stopped being write-once and its row stopped being permanent, and
+   `roadmapGoals` carries both columns as they stand rather than a history of them. What a
+   replace owes is that the journal on the other side holds exactly what this one does - the
+   new wording and not the old one, and nothing at all for the goal that was deleted. */
 test('a reworded custom goal travels as it now reads, and a deleted one does not travel at all', async () => {
   const source = await device();
-  const kept = await source.journal.roadmap.addCustomGoal('legal', 'Ask about remote hearings');
-  const reworded = await source.journal.roadmap.addCustomGoal('social', 'Tell my sster');
-  const removed = await source.journal.roadmap.addCustomGoal('medical', 'Ask for a second opinion');
+  const kept = await source.journal.roadmap.addCustomGoal('Ask about remote hearings');
+  const reworded = await source.journal.roadmap.addCustomGoal('Tell my sster');
+  const removed = await source.journal.roadmap.addCustomGoal('Ask for a second opinion');
   await source.journal.roadmap.setCustomGoalStatus(reworded.id, 'checked');
   await source.journal.roadmap.updateCustomGoalText(reworded.id, 'Tell my sister');
   await source.journal.roadmap.deleteCustomGoal(removed.id);
@@ -387,8 +373,32 @@ test('a reworded custom goal travels as it now reads, and a deleted one does not
 
   assert.deepEqual(await target.journal.roadmap.getCustomGoals(), [
     { id: kept.id, track: 'legal', text: 'Ask about remote hearings', status: 'unchecked' },
-    { id: reworded.id, track: 'social', text: 'Tell my sister', status: 'checked' }
+    { id: reworded.id, track: 'legal', text: 'Tell my sister', status: 'checked' }
   ]);
+});
+
+/* The person's categories travel with the goals in them, and a merge keeps a category this
+   device made that the archive has never heard of. */
+test("a category travels with its goals, and a merge keeps this device's own", async () => {
+  const source = await device();
+  const category = await source.journal.roadmap.addCategory('Coming out');
+  const goal = await source.journal.roadmap.addCustomGoal('Tell my sister', category.id);
+
+  const replaced = await device();
+  await replaced.journal.archive.replace(await exported(source.journal));
+  assert.deepEqual(await replaced.journal.roadmap.getCategories(), [{ id: category.id, name: 'Coming out' }]);
+  assert.deepEqual(await replaced.journal.roadmap.getCustomGoals(), [
+    { id: goal.id, track: category.id, text: 'Tell my sister', status: 'unchecked' }
+  ]);
+
+  const merged = await device();
+  const own = await merged.journal.roadmap.addCategory('Wardrobe');
+  await merged.journal.archive.merge(await exported(source.journal));
+  assert.deepEqual(
+    (await merged.journal.roadmap.getCategories()).map((one) => one.name).sort(),
+    ['Coming out', 'Wardrobe']
+  );
+  assert.ok((await merged.journal.roadmap.getCategories()).some((one) => one.id === own.id));
 });
 
 test('a dose log travels with its schedule and pauses, still hung off the right episode', async () => {
@@ -448,7 +458,7 @@ test('a weekday schedule and its dose amounts survive an export/import round tri
 
 test('a side effect left blank survives an export/import round trip as null, not zero or three', async () => {
   const source = await device();
-  await source.journal.sideEffects.upsertSideEffect({ name: 'brain fog', severity: null, epochDay: 19000 });
+  await source.journal.sideEffects.upsertSideEffect({ name: 'brain fog', severity: null, epochDay: 19000, resolvedEpochDay: null });
 
   const target = await device();
   await target.journal.archive.merge(await exported(source.journal));
@@ -471,7 +481,7 @@ test('a restored dose resolves its episode from its own timestamp, having carrie
   // A corrective episode added on the importing device moves the attribution
   // with no stored link to have got stale in transit. Its own end (day
   // before 19500, matching what the original single-episode timeline
-  // implied) is set explicitly, since ticket 38 no longer derives one.
+  // implied) is set explicitly no longer derives one.
   const originalEpisode = episodes.find((e) => e.id === source.episode)!;
   await target.journal.regimen.upsertEpisode({
     id: originalEpisode.id,
@@ -528,9 +538,10 @@ test('merge leaves a matched entry alone, even when the archive holds an older c
   const target = await device();
   await target.journal.archive.merge(await exported(source.journal));
 
-  // The same rows on both sides now. Editing one here and merging again is
-  // the two-device case: skip-existing means this device's fix stays, where
-  // last-write-wins would silently drop it.
+  // The same rows on both sides now. Editing one here and merging the same,
+  // older archive again is the two-device case: the archive's copies carry
+  // stamps older than this device's fix, so the fix stays
+  // (archiveMerge.ts).
   const [restored] = await target.journal.entries.entriesForDay(20000);
   await target.journal.entries.upsertEntry({ id: restored.id, note: 'fixed on this device' });
   await target.journal.tags.renameTag(source.tag.id, 'endocrinologist');
@@ -557,8 +568,6 @@ test("replace installs the archive's journal and discards this device's", async 
     max: 5
   });
   const myMilestone = await target.journal.milestones.upsertMilestone({ name: 'mine', epochDay: 19500 });
-  const myMeasurementType = await target.journal.measurements.addCustomMeasurementType('Mine');
-  await target.journal.tally.log({ epochDay: 19500, kind: 'correctly_gendered' });
   const myTryout = await target.journal.tryouts.upsertTryout({
     kind: 'pronouns',
     label: 'they/them',
@@ -572,9 +581,6 @@ test("replace installs the archive's journal and discards this device's", async 
   assert.deepEqual(await target.journal.entries.searchEntries('mine', []), []);
   assert.deepEqual((await target.journal.entries.searchEntries('zazolc', [])).map((e) => e.epochDay), [20000]);
   assert.equal((await target.journal.milestones.getMilestones()).map((m) => m.name).includes('mine'), false);
-  assert.equal((await target.journal.tally.getEvents('correctly_gendered')).length, 0, "this device's tally event is gone");
-  assert.equal((await target.journal.tally.getEvents('misgendered')).length, 1, "the archive's tally event is here");
-  assert.equal((await target.journal.doubtJournal.getSnapshots(10)).length, 1);
   const tryouts = await target.journal.tryouts.getTryouts();
   assert.equal(tryouts.some((t) => t.id === myTryout), false, "this device's tryout is gone");
   assert.ok(tryouts.some((t) => t.label === 'Alex'), "the archive's tryout is here");
@@ -584,14 +590,6 @@ test("replace installs the archive's journal and discards this device's", async 
   const dimensions = await target.journal.dimensions.getDimensions();
   assert.equal(dimensions.some((d) => d.key === myDimension.key), false, 'a custom dimension this device had is gone');
   assert.ok(dimensions.some((d) => d.key === source.voice.key), "the archive's custom dimension is here");
-  const measurementTypes = await target.journal.measurements.getMeasurementTypes();
-  assert.equal(
-    measurementTypes.some((t) => t.key === myMeasurementType.key),
-    false,
-    "a custom measurement type this device had is gone"
-  );
-  assert.ok(measurementTypes.some((t) => t.key === source.measurementType.key), "the archive's custom measurement type is here");
-  assert.equal(measurementTypes.find((t) => t.key === 'underbust')?.hidden, true, "the archive's hidden built-in stays hidden");
   assert.equal((await target.journal.entries.entriesForDay(20000)).length, 1);
   assert.equal((await target.journal.milestones.getMilestones()).length, 1);
 });
@@ -608,14 +606,12 @@ test('replace keeps built-in rows by key rather than deleting them, and never du
   const groups = await target.journal.tags.getTagGroups();
   assert.equal(groups.filter((g) => g.key === 'activities').length, 1);
   assert.equal(groups.flatMap((g) => g.tags).filter((t) => t.id === 'e-happy').length, 1);
-  /* No built-in preset is asserted here any more: nothing seeds one since
-     ticket 35 left them legacy-only, so neither journal has one to keep. The
-     custom preset still has to survive, which is the uuid half of this
-     test's claim. */
+  /* No built-in preset is asserted here any more: nothing seeds one left them legacy-only,
+     so neither journal has one to keep. The custom preset still has to survive, which is
+     the uuid half of this test's claim. */
   const presets = await target.journal.dimensions.getPresets();
   assert.deepEqual(presets.find((p) => p.id === source.preset.id)?.dims, [source.voice.key, 'femininity']);
-  const measurementTypes = await target.journal.measurements.getMeasurementTypes();
-  assert.equal(measurementTypes.filter((t) => t.key === 'waist').length, 1);
+
 });
 
 /* Not a repeat-merge test - one merge only. archive-golden-merge.test.ts's
@@ -632,7 +628,6 @@ test('merge does not duplicate built-ins either, however they arrived', async ()
   assert.equal(await rowCount(target.db, "gender_dimension WHERE key = 'femininity'"), 1);
   assert.equal(await rowCount(target.db, "tag WHERE key = 'e-happy'"), 1);
   assert.equal(await rowCount(target.db, "tag_group WHERE key = 'activities'"), 1);
-  assert.equal(await rowCount(target.db, "measurement_type WHERE key = 'waist'"), 1);
   // The source journal's one custom preset and its two scales, and nothing
   // else: no built-in preset is seeded on either side.
   assert.equal(await rowCount(target.db, 'preset_dimension'), 2);
@@ -652,7 +647,10 @@ test('a tag merged into a group this device already has lands after the tags in 
   assert.deepEqual(emotions.tags.slice(-2).map((t) => t.label), ['restless', 'wired']);
 });
 
-test('replace applies the state the archive put on built-in rows; merge leaves it alone', async () => {
+/* Merge takes the newer of the two copies of a built-in row: the source's group and tag settings, made after the
+   target seeded its own, and the target's own rename, made after the
+   source's. */
+test('replace applies the state the archive put on built-in rows; merge takes the newer copy of each', async () => {
   const source = await populated();
   const replaced = await device();
   const merged = await device();
@@ -668,31 +666,106 @@ test('replace applies the state the archive put on built-in rows; merge leaves i
   assert.equal((await replaced.journal.dimensions.getDimensions()).find((d) => d.key === 'masculinity')?.hidden, true);
 
   const mergedActivities = (await merged.journal.tags.getTagGroups()).find((g) => g.key === 'activities')!;
-  assert.equal(mergedActivities.enabled, true, "a matched group keeps this device's setting");
-  assert.equal(mergedActivities.tags.find((t) => t.id === 'a-work')?.hidden, false);
-  assert.equal(mergedActivities.tags.find((t) => t.id === 'a-therapy')?.label, 'my own wording');
+  assert.equal(mergedActivities.enabled, false, "the source's setting is newer than the target's seeded group");
+  assert.equal(mergedActivities.tags.find((t) => t.id === 'a-work')?.hidden, true);
+  assert.equal(mergedActivities.tags.find((t) => t.id === 'a-therapy')?.label, 'my own wording', "the target's rename is the newer");
+});
+
+test('a renamed, hidden custom scale travels as it now reads, by replace and by merge', async () => {
+  const source = await device();
+  const voice = await source.journal.dimensions.addCustomDimension({ name: 'Vocie', low: 'off', high: 'mine', min: 0, max: 10 });
+  await source.journal.dimensions.renameCustomDimension(voice.key, { name: 'Voice', low: 'strained', high: 'at ease' });
+  await source.journal.dimensions.setDimensionHidden(voice.key, true);
+  const expected = { key: voice.key, name: 'Voice', low: 'strained', high: 'at ease', min: 0, max: 10, builtIn: false, hidden: true };
+
+  const replaced = await device();
+  await replaced.journal.archive.replace(await exported(source.journal));
+  assert.deepEqual((await replaced.journal.dimensions.getDimensions()).find((d) => d.key === voice.key), expected);
+
+  const merged = await device();
+  await merged.journal.archive.merge(await exported(source.journal));
+  assert.deepEqual((await merged.journal.dimensions.getDimensions()).find((d) => d.key === voice.key), expected);
+});
+
+test('an archive from a journal that shows the duplicate built-ins restores them shown', async () => {
+  const source = await device();
+  // A journal seeded before holds all three visible.
+  await source.journal.tags.setTagHidden('g-body-dys', false);
+  await source.journal.tags.setTagHidden('g-soc-dys', false);
+  await source.journal.bodyRegions.setRegionHidden('whole_body', false);
+
+  const target = await device();
+  await target.journal.archive.replace(await exported(source.journal));
+
+  const gender = (await target.journal.tags.getTagGroups()).find((g) => g.key === 'gender')!;
+  assert.equal(gender.tags.find((t) => t.id === 'g-body-dys')?.hidden, false);
+  assert.equal(gender.tags.find((t) => t.id === 'g-soc-dys')?.hidden, false);
+  assert.equal((await target.journal.bodyRegions.getBodyRegions()).find((r) => r.id === 'whole_body')?.hidden, false);
 });
 
 test('replace keeps archived feature visibility choices', async () => {
   const source = await device();
-  await source.journal.areaStates.setAreasHidden(['measurements', 'sizeRecords'], false);
-  await source.journal.effectCategories.setCategoryEnabled('genital_sexual', true);
+  await source.journal.areaStates.setAreasHidden(['personalEffects', 'sideEffects'], false);
+  await source.journal.effectCategories.setCategoryEnabled('sexual', true);
   const target = await device();
-  await target.journal.areaStates.setAreasHidden(['measurements', 'sizeRecords'], true);
+  await target.journal.areaStates.setAreasHidden(['personalEffects', 'sideEffects'], true);
 
   await target.journal.archive.replace(await exported(source.journal));
 
   const states = await target.journal.areaStates.getAreaStates();
-  assert.equal(states.measurements?.hidden ?? false, false);
-  assert.equal(states.sizeRecords?.hidden ?? false, false);
-  assert.equal((await target.journal.effectCategories.getEffectCategories()).find((c) => c.key === 'genital_sexual')?.enabled, true);
+  assert.equal(states.personalEffects?.hidden ?? false, false);
+  assert.equal(states.sideEffects?.hidden ?? false, false);
+  const categories = await target.journal.effectCategories.getEffectCategories();
+  assert.equal(categories.find((c) => c.key === 'sexual')?.enabled, true);
+  assert.equal(categories.find((c) => c.key === 'genital')?.enabled, false);
 });
+
+/** What a build before the effect-category split (version 121) exported:
+    one 'genital_sexual' category, in the state given, holding every effect
+    the split now files under genital or sexual. Made from a real snapshot,
+    the way procedure-kind-restore.test.ts makes its legacy payload. */
+async function writtenBeforeTheSplit(journal: Journal, enabled: boolean): Promise<RestoreContents> {
+  const contents = await exported(journal);
+  const old = (key: string | null) => (key === 'genital' || key === 'sexual' ? 'genital_sexual' : key);
+  const categories = contents.journal.effectCategories.filter((c) => c.key !== 'genital' && c.key !== 'sexual');
+  contents.journal = {
+    ...contents.journal,
+    effectCategories: [...categories, { key: 'genital_sexual', name: '', enabled, updatedAt: 777 }],
+    personalEffectTypes: contents.journal.personalEffectTypes.map((t) => ({ ...t, categoryKey: old(t.categoryKey) }))
+  };
+  return contents;
+}
+
+for (const mode of ['replace', 'merge'] as const) {
+  test(`an archive written before the split ${mode}s into genital and sexual`, async () => {
+    const source = await device();
+    const custom = await source.journal.personalEffects.addCustomEffectType('bottom growth', 'genital');
+    const legacy = await writtenBeforeTheSplit(source.journal, true);
+    // The premise: the old shape really does name the old category.
+    assert.ok(legacy.journal.personalEffectTypes.some((t) => t.categoryKey === 'genital_sexual'));
+
+    const target = await device();
+    await target.journal.archive[mode](legacy);
+
+    const categories = await target.journal.effectCategories.getEffectCategories();
+    assert.deepEqual(
+      categories.filter((c) => /genital|sexual/.test(c.key)).map((c) => [c.key, c.enabled]),
+      [['genital', true], ['sexual', true]]
+    );
+    const types = new Map((await target.journal.personalEffects.getEffectTypes()).map((t) => [t.key, t.categoryKey]));
+    assert.equal(types.get('orgasm_change_feminizing'), 'sexual');
+    assert.equal(types.get('vaginal_atrophy_masculinizing'), 'genital');
+    assert.equal(types.get('cycle_cessation'), 'genital');
+    assert.equal(types.get(custom.key), 'genital');
+    assert.equal([...types.values()].includes('genital_sexual'), false);
+  });
+}
 
 test('replace leaves the PIN, the app-lock flags and the disguise settings alone', async () => {
   const source = await populated();
   const target = await device();
   // Written as rows rather than through preferences.ts: what this asserts is
-  // that a restore does not touch the pref table at all, whoever wrote it.
+  // that row-only restore leaves device-local settings untouched.
   for (const [key, value] of [
     ['pinHash', '"argon2-hash"'],
     ['appLock', 'true'],
@@ -716,7 +789,7 @@ test('replace leaves the PIN, the app-lock flags and the disguise settings alone
   );
 });
 
-test('the archive\'s photo files land, and the ones a replace orphaned are still on disk', async () => {
+test('the archive\'s photo files land, and replace sweeps the files it orphaned', async () => {
   const source = await populated();
   const target = await device();
   const mineId = await target.journal.entries.upsertEntry({ epochDay: 20500, mood: 5 });
@@ -727,11 +800,31 @@ test('the archive\'s photo files land, and the ones a replace orphaned are still
   assert.deepEqual(await target.files.read(`${source.photo}.jpg`), bytes('full-photo'));
   assert.deepEqual(await target.files.read(thumbFileName(`${source.photo}.jpg`)), bytes('thumb'));
   assert.deepEqual(await target.files.read(`${source.milestonePhoto}.jpg`), bytes('m'));
-  // Never deleted (ADR-0011): the row is gone, the file waits for the next
-  // boot's orphan sweep. Deleting up front is how a failed restore leaves a
-  // device with neither its old photos nor the new ones.
-  assert.deepEqual(await target.files.read(`${myPhoto}.jpg`), bytes('old'));
+  // Old bytes stay until the row transaction commits; the following sweep
+  // removes them only after the imported rows own their new files.
+  assert.equal(await target.files.read(`${myPhoto}.jpg`), null);
   assert.equal(await rowCount(target.db, 'photo'), 2);
+});
+
+test('a restore marks the orphan sweep due before it writes its first file, so a killed process still gets swept', async () => {
+  const source = await populated();
+
+  for (const mode of ['replace', 'merge'] as const) {
+    const target = await device();
+    const contents = await exported(source.journal);
+    const write = target.files.write.bind(target.files);
+    const markedAtFirstWrite: number[] = [];
+    const before = orphanSweepRequestVersion().local;
+    vi.spyOn(target.files, 'write').mockImplementation(async (name, data) => {
+      markedAtFirstWrite.push(orphanSweepRequestVersion().local - before);
+      return write(name, data);
+    });
+
+    await target.journal.archive[mode](contents);
+
+    assert.ok(markedAtFirstWrite.length > 0, `${mode} wrote no files`);
+    assert.equal(markedAtFirstWrite[0] >= 1, true, `${mode} wrote a file before the sweep was marked due`);
+  }
 });
 
 test('a failure after the files are written and before the commit leaves the journal exactly as it was', async () => {
@@ -739,38 +832,78 @@ test('a failure after the files are written and before the commit leaves the jou
   const target = await populated();
   const before = await target.journal.archive.snapshot();
 
-  /* The injected failure is a row the schema refuses, reached after every
-     photo file has been written: the last thing a restore does is insert
-     rows, so this is the window ADR-0011 exists for. */
   const contents = await exported(source.journal);
-  contents.journal.reminders = [
-    ...contents.journal.reminders,
-    { ...contents.journal.reminders[0], id: 'a-reminder-of-no-known-type', type: 'nonsense' }
-  ];
+  const transaction = refuseCommit(target.db);
 
-  await assert.rejects(target.journal.archive.replace(contents));
+  await assert.rejects(target.journal.archive.replace(contents), /injected failure before commit/);
+  assert.equal(transaction.mock.calls.length, 1);
+  transaction.mockRestore();
 
   const after = await target.journal.archive.snapshot();
   assert.deepEqual(after.journal, before.journal);
   assert.deepEqual(after.files, before.files);
-  // The archive's files did land, and stay as orphans for the boot sweep -
-  // which is the whole cost of ordering it this way.
-  assert.deepEqual(await target.files.read(`${source.photo}.jpg`), bytes('full-photo'));
+  // The archive's files landed before the refused transaction. Cleanup now
+  // removes them while preserving every file the original rows still own.
+  await vi.waitFor(async () => assert.equal(await target.files.read(`${source.photo}.jpg`), null));
 });
 
-test('a schema-refused row rolls the whole restore back in both replace and merge', async () => {
+test('a restore whose COMMIT or ROLLBACK reply was lost or refused settles without waiting on a sweep behind the open transaction, and leaves the sweep due', async () => {
+  const source = await populated();
+
+  for (const lost of ['COMMIT', 'ROLLBACK', 'REFUSED ROLLBACK'] as const) for (const mode of ['replace', 'merge'] as const) {
+    const target = await populated();
+    const contents = await exported(source.journal);
+    // The worker still holds the transaction: the call fails only when the
+    // lock disposes it, and any query sent in between queues behind it.
+    let disposed = false;
+    const query = target.db.query.bind(target.db);
+    vi.spyOn(target.db, 'query').mockImplementation(((sql: string, params?: unknown[]) =>
+      disposed ? new Promise(() => {}) : query(sql, params)) as typeof target.db.query);
+    const transaction = target.db.transaction.bind(target.db);
+    vi.spyOn(target.db, 'transaction').mockImplementation((work) =>
+      transaction(async (inside) => {
+        if (lost !== 'COMMIT') {
+          // The rows fail, so the real transaction rolls back and answers; the
+          // catch below swaps that answer for the dispose a lost reply ends in.
+          const failing = { ...inside, run: async () => { throw new Error('rows failed'); }, exec: async () => { throw new Error('rows failed'); } };
+          return work(failing as typeof inside);
+        }
+        await work(inside);
+        disposed = true;
+        throw new Error('the database was disposed');
+      }).catch((error: Error) => {
+        // A rollback whose reply is lost ends in the dispose, not in the rows' own error.
+        if (lost === 'COMMIT') throw error;
+        disposed = true;
+        // A refused ROLLBACK reaches the caller wrapped, with the rows' error as the cause.
+        if (lost === 'REFUSED ROLLBACK') throw new AggregateError([error, new Error('rollback refused')], error.message, { cause: error });
+        throw new Error('the database was disposed');
+      }));
+    const before = orphanSweepRequestVersion().local;
+
+    const outcome = await Promise.race([
+      target.journal.archive[mode](contents).then(() => 'resolved', (error: Error) => error.message),
+      new Promise((resolve) => setTimeout(() => resolve('still pending'), 1000))
+    ]);
+
+    assert.equal(outcome, lost === 'REFUSED ROLLBACK' ? 'rows failed' : 'the database was disposed', `${mode} hung behind its own lost ${lost}`);
+    assert.ok(orphanSweepRequestVersion().local > before, `${mode} left no sweep due`);
+    vi.restoreAllMocks();
+  }
+});
+
+test('a refused commit rolls the whole restore back in both replace and merge', async () => {
   const source = await populated();
 
   for (const mode of ['replace', 'merge'] as const) {
     const target = await populated();
     const before = await target.journal.archive.snapshot();
     const contents = await exported(source.journal);
-    contents.journal.reminders = [
-      ...contents.journal.reminders,
-      { ...contents.journal.reminders[0], id: `a-reminder-of-no-known-type-${mode}`, type: 'nonsense' }
-    ];
+    const transaction = refuseCommit(target.db);
 
-    await assert.rejects(target.journal.archive[mode](contents));
+    await assert.rejects(target.journal.archive[mode](contents), /injected failure before commit/);
+    assert.equal(transaction.mock.calls.length, 1);
+    transaction.mockRestore();
     const after = await target.journal.archive.snapshot();
     assert.deepEqual(after.journal, before.journal, `${mode} applied part of a refused restore`);
   }
@@ -781,7 +914,7 @@ test('a failed replacement keeps the original entries searchable', async () => {
   const target = await device();
   const mine = await target.journal.entries.upsertEntry({ epochDay: 20500, mood: 5, note: 'original searchable note' });
   const contents = await exported(source.journal);
-  contents.journal.reminders = [{ ...contents.journal.reminders[0], type: 'nonsense' }];
+  contents.journal.reminders = [{ ...contents.journal.reminders[0], recurrence: 'WEEKLY', interval: null, anchorEpochDay: null, epochDay: null }];
 
   await assert.rejects(target.journal.archive.replace(contents));
 
@@ -795,9 +928,11 @@ test('a failed import into a journal that has never been seeded leaves it empty,
   const target = openJournal(db, fakeFileStore());
 
   const contents = await exported(source.journal);
-  contents.journal.reminders = [{ ...contents.journal.reminders[0], type: 'nonsense' }];
+  const transaction = refuseCommit(db);
 
-  await assert.rejects(target.archive.replace(contents));
+  await assert.rejects(target.archive.replace(contents), /injected failure before commit/);
+  assert.equal(transaction.mock.calls.length, 1);
+  transaction.mockRestore();
 
   // Seeding is inside the same transaction as the swap, so a rollback takes
   // the built-ins with it: "exactly as it was" and not "as the next boot
@@ -819,17 +954,17 @@ test('an entry naming a gender dimension the archive does not carry fails the wh
 
   // Loudly, rather than quietly dropping the value: a restore that silently
   // loses part of an entry is worse than one that refuses to run.
-  await assert.rejects(target.journal.archive.merge(contents), /unknown dimension/);
+  await assert.rejects(target.journal.archive.merge(contents), CorruptArchiveError);
   assert.deepEqual((await target.journal.archive.snapshot()).journal, before.journal);
 });
 
-test('a payload that is not a journal is refused before anything is written', async () => {
+test('an array instead of a journal is refused before anything is written', async () => {
   const target = await populated();
   const before = await target.journal.archive.snapshot();
 
   await assert.rejects(
     target.journal.archive.replace({
-      journal: { entries: [] } as never,
+      journal: [] as never,
       files: (async function* () {})()
     }),
     /not readable/
@@ -838,10 +973,9 @@ test('a payload that is not a journal is refused before anything is written', as
   assert.deepEqual((await target.journal.archive.snapshot()).journal, before.journal);
 });
 
-/* A lab row written before ticket 03 has no draw time, no provider and no
-   timing columns. The payload type says otherwise, but it is a cast over
-   JSON.parse output, so the importer has to survive the fields being absent
-   rather than binding undefined at the driver. */
+/* An older lab row lacks draw time, no provider and no timing columns. The payload type
+   says otherwise, but it is a cast over JSON.parse output, so the importer has to survive
+   the fields being absent rather than binding undefined at the driver. */
 test('a lab result from an archive written before the dosing context existed still imports', async () => {
   const source = await populated();
   const contents = await exported(source.journal);
@@ -859,10 +993,9 @@ test('a lab result from an archive written before the dosing context existed sti
   assert.equal(restored.timing, null);
 });
 
-/* A milestone row written before ticket 15 has no description column. The
-   payload type says otherwise, but it is a cast over JSON.parse output, so
-   the importer has to survive the field being absent rather than binding
-   undefined at the driver. */
+/* Older milestone rows omit the description. The payload type says otherwise, but
+   it is a cast over JSON.parse output, so the importer has to survive the field being
+   absent rather than binding undefined at the driver. */
 test('a milestone from an archive written before descriptions existed still imports', async () => {
   const source = await populated();
   const contents = await exported(source.journal);
@@ -878,25 +1011,30 @@ test('a milestone from an archive written before descriptions existed still impo
   assert.equal(restored.description, '');
 });
 
-/* An archive packed before ticket 16 (ADR-0037) still names a `doubtEntries`
-   section on the wire - this build's registry has no entry for it any more
-   (archiveSections.ts). The payload type says otherwise, but it is a cast
-   over JSON.parse output, so the importer sees the same extra key a real
-   pre-ticket archive would carry: absent from `ARCHIVE_SECTION_NAMES`, and
-   therefore never read, never applied, and never the reason a restore
-   fails. */
-test('an archive naming the retired doubtEntries section restores without erroring, and simply drops it', async () => {
+/* An archive packed (ADR-0037) still names a `doubtEntries` section on the wire, and one
+   packed a `counterevidenceSnapshots` section - this build's registry has no entry for
+   either any more (archiveSections.ts). The payload type says otherwise, but it is a cast
+   over JSON.parse output, so the importer sees the same extra keys a real older archive
+   would carry: on the dropped list, and therefore never read, never applied, and never the
+   reason a restore fails. */
+test('an archive naming the retired doubtEntries and counterevidenceSnapshots sections restores, and drops them', async () => {
   const source = await populated();
   const contents = await exported(source.journal);
-  const withRetiredSection = {
+  const withRetiredSections = {
     ...contents.journal,
-    doubtEntries: [{ id: 'a-pre-ticket-16-doubt-entry', epochDay: 20000, timestamp: 1_700_000_000_000, text: 'am I even trans enough for this' }]
+    doubtEntries: [{ id: 'a-pre-ticket-16-doubt-entry', epochDay: 20000, timestamp: 1_700_000_000_000, text: 'am I even trans enough for this' }],
+    counterevidenceSnapshots: [
+      { id: 'a-pre-fa-09-snapshot', epochDay: 20000, timestamp: 1_700_000_000_000, items: [{ epochDay: 19500, mood: 5, note: 'euphoric at the appointment' }] }
+    ]
   };
 
   const target = await device();
-  await assert.doesNotReject(target.journal.archive.replace({ ...contents, journal: withRetiredSection }));
+  await assert.doesNotReject(target.journal.archive.replace({ ...contents, journal: withRetiredSections }));
 
-  assert.equal((await target.journal.doubtJournal.getSnapshots(10)).length, 1);
+  assert.equal((await target.journal.cycleEvents.getCycleEventsInRange(20000, 20000)).length, 1, "the archive's other rows are here");
+  const snapshot = await target.journal.archive.snapshot();
+  assert.equal('counterevidenceSnapshots' in snapshot.journal, false);
+  assert.equal(JSON.stringify(snapshot.journal).includes('euphoric at the appointment'), false);
 });
 
 test('importing into a journal that has never been through a boot works', async () => {
@@ -973,11 +1111,15 @@ test('restore overlaps photo file writes rather than waiting on each one', async
   await journal.reconcileBuiltIns();
   const empty = await (await device()).journal.archive.snapshot();
 
+  // Owned files only: a file no row names is skipped, not written.
+  const owned = { ...empty.journal, progressPhotos: Array.from({ length: 6 }, (_, i) => ({
+    id: `progress-${i}`, epochDay: 20_000 + i, pose: 'front', fileName: `owned-${i}.jpg`
+  })) };
   await journal.archive.replace({
-    journal: empty.journal,
+    journal: owned,
     files: (async function* () {
       for (let i = 0; i < 6; i += 1) {
-        yield { name: `orphan-${i}.jpg`, bytes: bytes(`image-${i}`) };
+        yield { name: `owned-${i}.jpg`, bytes: bytes(`image-${i}`) };
       }
     })()
   });
@@ -1084,28 +1226,7 @@ test.each(['replace', 'merge'] as const)('%s waits for successful delayed attach
   assert.equal(seen.findIndex((progress) => progress.stage === 'rows'), contents.fileCount);
 });
 
-/* The one hand-written payload in this file, and it earns the exception the
-   header makes: no snapshot this build can take produces an archive without
-   a `scale`, because every row has had one since phase 5 ticket 33. This is
-   what a backup written by an older build actually looks like, and the only
-   way to check it still restores is to write one. */
-test('a staging from an archive written before there were two scales restores as Norwood-Hamilton', async () => {
-  const target = await device();
-
-  await target.journal.archive.replace({
-    journal: {
-      ...emptyArchiveJournal(),
-      hairStages: [{ id: 'legacy-staging', epochDay: 19200, stage: '3a' }]
-    },
-    files: (async function* () {})()
-  });
-
-  assert.deepEqual(await target.journal.hairProgress.getStages(), [
-    { id: 'legacy-staging', epochDay: 19200, scale: 'norwood_hamilton', stage: '3a', description: '' }
-  ]);
-});
-
-/* Emptying the journal (phase 5 audit ticket 13). One operation, not a list
+/* Emptying the journal. One operation, not a list
    each caller walks: a Replace runs it before it installs an archive's rows,
    and the demo bar's state jumps run it on its own. Its order comes from the
    section registry, reversed - what used to be 51 statements hand-ordered in
@@ -1121,10 +1242,9 @@ test('emptying the journal leaves every section at what a device with only its b
   const baseline = countsOf((await (await builtInsOnlyDevice()).journal.archive.snapshot()).journal);
   assert.deepEqual(emptied, baseline, 'a section holding more than the built-ins put there kept rows it should have lost');
 
-  /* The comparison above is only worth something if the journal it ran
-     against actually had rows to lose. `everySection` puts something in all
-     36 - which ticket 12 pinned counts for - so every section either shrank
-     or is one whose rows are all built-in reference data. */
+  /* The comparison above is only worth something if the journal it ran against actually had
+     rows to lose. `everySection` puts something in all 36 - which pinned counts for - so
+     every section either shrank or is one whose rows are all built-in reference data. */
   const shrank = Object.keys(populated).filter((section) => populated[section] > baseline[section]);
   assert.ok(shrank.length >= 25, `only ${shrank.length} sections had anything to lose, so this proves less than it looks`);
 });
@@ -1167,10 +1287,10 @@ test('emptying the journal leaves nothing behind in any table, cascades or no ca
   assert.deepEqual(await tableCounts(driver), await tableCounts((await builtInsOnlyDevice()).driver));
 });
 
-/* The demo's own clear path, which had an answer of its own until ticket 13
-   and reached seven of the thirty-six sections with it. Asserted through the
-   journal rather than through the demo bar: what matters is that the two
-   paths cannot disagree, and they cannot when there is one of them. */
+/* The demo's own clear path, which had an answer of its own and reached seven of the
+   thirty-six sections with it. Asserted through the journal rather than through the demo
+   bar: what matters is that the two paths cannot disagree, and they cannot when there is
+   one of them. */
 test("the demo's clear leaves the journal where emptying it does", async () => {
   const journal = await everySection();
   const { clearJournal } = await import('../demo/journal-seed.ts');
@@ -1185,11 +1305,10 @@ test("the demo's clear leaves the journal where emptying it does", async () => {
   assert.deepEqual(snapshot.files, [], 'the entry and milestone photo files went with their rows');
 });
 
-/* Phase 9 audit ticket 11. The two halves of a restore are separately long
-   and separately countable - photos come off the stream one at a time, and
-   the rows go in section by section inside one transaction - so the screen
-   is told which half it is in rather than being handed one number that
-   means two different things. */
+/* The two halves of a restore are separately long and separately countable - photos come
+   off the stream one at a time, and the rows go in section by section inside one
+   transaction - so the screen is told which half it is in rather than being handed one
+   number that means two different things. */
 test('a restore reports its photo files and then its sections', async () => {
   const source = await populated();
   const target = await device();
@@ -1260,11 +1379,11 @@ test('verifyArchive reports every file it drains', async () => {
 });
 
 test('an archive from before auto-logging reads its doses as the person\'s own, and its schedules as off', async () => {
-  /* A real snapshot with the two ticket-11 fields deleted from it - which is
-     exactly the shape an archive written by an earlier build has, and the
-     one case worth its own test rather than leaving to the golden fixture:
-     a restore that guessed `autoLogFromEpochDay` wrong would start writing
-     doses on somebody's behalf on a device where they never asked for it. */
+  /* A real snapshot with the two newer fields deleted from it - which is exactly the shape
+     an archive written by an earlier build has, and the one case worth its own test rather
+     than leaving to the golden fixture: a restore that guessed `autoLogFromEpochDay` wrong
+     would start writing doses on somebody's behalf on a device where they never asked for
+     it. */
   const source = await populated();
   const target = await device();
 
@@ -1285,11 +1404,11 @@ test('an archive from before auto-logging reads its doses as the person\'s own, 
 
 test.each(['replace', 'merge'] as const)('hidden goal visibility and linked records survive archive %s', async (mode) => {
   const source = await device();
-  const keys = ['pl-legal-id-card', 'pl-legal-appeal', 'pl-legal-passport'];
+  const keys = ['pl-legal-name-usc', 'pl-legal-appeal', 'pl-legal-final-copy'];
   await source.journal.roadmap.setGoalStatus('pl', keys[0], 'checked');
   await source.journal.roadmap.setGoalStatus('pl', keys[1], 'not-my-path');
   for (const key of keys) await source.journal.roadmap.setGoalHidden('pl', key, true);
-  const milestone = await source.journal.milestones.upsertMilestone({ name: 'ID card', epochDay: 20500, roadmapGoalKey: keys[0] });
+  const milestone = await source.journal.milestones.upsertMilestone({ name: 'Name decision', epochDay: 20500, roadmapGoalKey: keys[0] });
   const document = await source.journal.documents.addDocument({ title: 'Receipt', epochDay: 20500 }, { full: bytes('receipt'), thumb: bytes('thumb') });
   await source.journal.documents.setDocumentTarget(document, { kind: 'goal', id: keys[0] });
   const target = await device();
@@ -1304,14 +1423,82 @@ test.each(['replace', 'merge'] as const)('hidden goal visibility and linked reco
   assert.deepEqual(await target.journal.roadmap.getGoalStatuses('pl'), { [keys[0]]: 'checked', [keys[1]]: 'not-my-path' });
 });
 
+test.each(['replace', 'merge'] as const)('social-group ticks and hidden steps survive archive %s', async (mode) => {
+  const source = await device();
+  await source.journal.roadmap.setGoalStatus('social', 'social-family', 'checked');
+  await source.journal.roadmap.setGoalStatus('social', 'social-voice', 'not-my-path');
+  await source.journal.roadmap.setGoalHidden('social', 'social-hair-makeup', true);
+  const target = await device();
+  await target.journal.archive[mode](await exported(source.journal));
+
+  assert.deepEqual(await target.journal.roadmap.getGoalStatuses('social'), { 'social-family': 'checked', 'social-voice': 'not-my-path' });
+  assert.deepEqual(await target.journal.roadmap.getHiddenGoals('social'), ['social-hair-makeup']);
+  assert.deepEqual(await target.journal.roadmap.getGoalStatuses('pl'), {});
+});
+
+test.each(['checked', 'not-my-path'] as const)('merging a status into a locally hidden unchecked goal keeps %s after unhiding', async (status) => {
+  const source = await device();
+  await source.journal.roadmap.setGoalStatus('pl', 'pl-legal-appeal', status);
+  const target = await device();
+  await target.journal.roadmap.setGoalHidden('pl', 'pl-legal-appeal', true);
+  await target.journal.roadmap.setGoalHidden('pl', 'pl-legal-final-copy', true);
+  const contents = await exported(source.journal);
+  await target.journal.archive.merge(contents);
+  assert.deepEqual(await target.journal.roadmap.getGoalStatuses('pl'), { 'pl-legal-appeal': status });
+  assert.deepEqual(await target.journal.roadmap.getHiddenGoals('pl'), ['pl-legal-appeal', 'pl-legal-final-copy']);
+  await target.journal.archive.merge(await exported(source.journal));
+  await target.journal.roadmap.setGoalHidden('pl', 'pl-legal-appeal', false);
+  assert.deepEqual(await target.journal.roadmap.getGoalStatuses('pl'), { 'pl-legal-appeal': status });
+  assert.deepEqual(await target.journal.roadmap.getHiddenGoals('pl'), ['pl-legal-final-copy']);
+  const reopened = await device();
+  await reopened.journal.archive.replace(await exported(target.journal));
+  assert.deepEqual(await reopened.journal.roadmap.getGoalStatuses('pl'), { 'pl-legal-appeal': status });
+});
+
 test('merging hidden goals preserves local visibility and status while legacy checks restore visible', async () => {
   const source = await device();
   await source.journal.roadmap.setGoalHidden('pl', 'pl-legal-appeal', true);
   await source.journal.roadmap.setGoalStatus('pl', 'pl-legal-appeal', 'not-my-path');
-  await source.journal.roadmap.setGoalStatus('pl', 'pl-legal-passport', 'checked');
+  await source.journal.roadmap.setGoalStatus('pl', 'pl-legal-final-copy', 'checked');
   const target = await device();
   await target.journal.roadmap.setGoalStatus('pl', 'pl-legal-appeal', 'checked');
   await target.journal.archive.merge(await exported(source.journal));
   assert.deepEqual(await target.journal.roadmap.getHiddenGoals('pl'), []);
-  assert.deepEqual(await target.journal.roadmap.getGoalStatuses('pl'), { 'pl-legal-appeal': 'checked', 'pl-legal-passport': 'checked' });
+  assert.deepEqual(await target.journal.roadmap.getGoalStatuses('pl'), { 'pl-legal-appeal': 'checked', 'pl-legal-final-copy': 'checked' });
+});
+
+/* An archive written before the institution list carries ticks on steps that became
+   institutions. They arrive the way migration 114 left the journal: a tick goes, a hidden
+   flag stays, and the retired "bank, insurers, clinic" step goes entirely. The institutions
+   and their dated changes travel both ways. */
+test.each(['replace', 'merge'] as const)('an older archive\'s ticks on steps that became institutions keep only their hidden flag on %s', async (mode) => {
+  const older = await device();
+  await older.journal.roadmap.setGoalStatus('pl', 'pl-legal-final-copy', 'checked');
+  const contents = await exported(older.journal);
+  contents.journal.roadmapChecks.push(
+    { packKey: 'pl', goalKey: 'pl-legal-passport', status: 'checked', hidden: false },
+    { packKey: 'pl', goalKey: 'pl-legal-driving-licence', status: 'checked', hidden: true },
+    { packKey: 'pl', goalKey: 'pl-legal-institutions', status: 'checked', hidden: false }
+  );
+  const target = await device();
+  await target.journal.archive[mode](contents);
+  assert.deepEqual(await target.journal.roadmap.getGoalStatuses('pl'), { 'pl-legal-final-copy': 'checked' });
+  assert.deepEqual(await target.journal.roadmap.getHiddenGoals('pl'), ['pl-legal-driving-licence']);
+});
+
+test.each(['replace', 'merge'] as const)('institutions and their dated changes travel on %s', async (mode) => {
+  const source = await device();
+  const gym = await source.journal.roadmap.addInstitution('Gym');
+  await source.journal.roadmap.addInstitutionChange({ institution: 'pl-legal-bank', status: 'waiting', epochDay: 20400, note: 'Branch asked for the ruling' });
+  await source.journal.roadmap.addInstitutionChange({ institution: gym.id, status: 'done', epochDay: 20401, note: null });
+  const target = await device();
+  await target.journal.archive[mode](await exported(source.journal));
+  assert.deepEqual(await target.journal.roadmap.getInstitutions(), [gym]);
+  assert.deepEqual(
+    (await target.journal.roadmap.getInstitutionChanges()).map(({ id: _id, ...rest }) => rest),
+    [
+      { institution: 'pl-legal-bank', status: 'waiting', epochDay: 20400, note: 'Branch asked for the ruling' },
+      { institution: gym.id, status: 'done', epochDay: 20401, note: null }
+    ]
+  );
 });

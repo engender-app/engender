@@ -1,48 +1,15 @@
-/* The JS side of the fast pick path (phase 9 audit ticket 06): the same
-   `WebViewCompat.addWebMessageListener` mechanism android-write-channel.ts
-   uses for writes, run in the other direction so a picked file's bytes
-   arrive as a structured-clone ArrayBuffer instead of a base64 string
-   (PhotoPickChannel.java has the other half and the full protocol).
+/* Transfer picked bytes as a structured-clone ArrayBuffer through
+   WebViewCompat.addWebMessageListener. PhotoPickChannel.java owns the
+   native half. This avoids keeping the base64, decoded string and
+   byte array together. In a 25 MB desktop measurement, main-thread
+   blocking dropped from 1,054ms to 4ms.
 
-   Why it matters here and not for a photo: a document is stored exactly as
-   it arrived - there is no normalisation path for a PDF (ADR-0065) - so the
-   25 MB ceiling is a size scans really reach. Over 25 MB the base64 round
-   trip cost 1054ms of blocked main thread on a desktop against 4ms for a
-   typed decode, and held the base64 string, atob's intermediate binary
-   string and the final array live at once.
-
-   **The other shape, and why not.** The alternative was to have native put
-   the picked file into the app-private directory and hand JavaScript a file
-   name, so the bytes never enter the JS heap at all - fetched afterwards
-   over Capacitor's local server, the way android-file-store.ts already
-   reads photos. It loses on two counts. Files at rest here are encrypted
-   per-file in JavaScript (encrypted-file-store.ts, ADR-0018/ADR-0020), so a
-   name would mean writing a picked file to disk in plaintext and deleting
-   it after - a scan of medical paperwork readable on disk for as long as
-   the encrypt takes, and past a crash. And the callers need the bytes
-   regardless: `acceptDocumentFile` sniffs the PDF signature and
-   `normalizePhoto` re-encodes, so a name would be read straight back into
-   the heap anyway, for two disk trips instead of none. Its one real
-   advantage - working at the WebView floor, where this channel does not -
-   is the cost recorded below.
-
-   **What that cost is.** `WEB_MESSAGE_ARRAY_BUFFER` arrives in WebView 105
-   and the app's floor is 87 (ADR-0023), so between the two the base64
-   fallback is the real path.
-
-   That range used to be where a pick at the ceiling failed outright: the
-   whole encoding was one Java String, 34 MB for a 25 MB scan, and the
-   allocation is refused on a heap that size. Phase 9 audit ticket 14 took
-   the third of the routes it weighed and bounded the fallback's peak
-   instead of moving the floor: `PhotosPlugin.readPickedChunk` hands the
-   file back a piece per bridge call and `picker.ts` loops on it, so the gap
-   is now slow rather than impassable - the cost the other shape would have
-   avoided is time on the main thread, on a path that was already the slow
-   one. Its own javadoc has why not the other two routes.
-
-   `globalThis` rather than `window`, for the reason android-write-channel.ts
-   gives: they are the same object in a WebView, and this keeps the module
-   reachable from a plain Node test with `vi.stubGlobal`. */
+   Callers inspect PDF signatures and normalize photos in JavaScript.
+   Writing a temporary plaintext file would expose it through a crash
+   and still bring its bytes into JS for checking (ADR-0018, ADR-0020).
+   WebViews without ArrayBuffer support use the chunked base64 fallback
+   in picker.ts to bound allocations. globalThis lets Node tests stub
+   the same bridge. */
 
 import { PhotoChannelTimeoutError, PHOTO_CHANNEL_TIMEOUT_MS } from './channel-timeout';
 

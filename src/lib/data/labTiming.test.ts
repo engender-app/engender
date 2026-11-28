@@ -10,6 +10,7 @@ import {
 } from './labTiming';
 import { startOfDayTimestamp, timestampAtLocalTime } from './epochDay';
 import type { LabResult, LabTiming, RegimenEpisode } from './types';
+import { NO_COST } from './cost.ts';
 
 const DAY = 20000;
 
@@ -101,6 +102,7 @@ test('a draw with no dose before it has no timing context at all', () => {
 const episode = (over: Partial<RegimenEpisode> = {}): RegimenEpisode => ({
   id: 'e',
   drug: 'estradiol',
+  drugClass: 'hrt',
   ester: null,
   dose: 2,
   doseUnit: 'mg',
@@ -191,6 +193,7 @@ const result = (over: Partial<LabResult> = {}): LabResult => ({
   drawTime: null,
   provider: '',
   timing: null,
+  cost: NO_COST,
   ...over
 });
 

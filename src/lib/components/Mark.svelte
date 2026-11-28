@@ -1,37 +1,13 @@
 <script lang="ts">
-  /* The app's mark on a screen or on a printed page (ticket 50).
+  /* mark.ts supplies the same drawing that render-mark.mjs uses for
+     shipped icons. Read activeFlag on unlocked screens. Reading CSS
+     stripes on mount could race SQLite and use the previous flag.
 
-     The drawing is mark.ts's and nothing is redrawn here, for the reason
-     Icon.svelte gives about icons.ts: the same string is what
-     scripts/render-mark.mjs writes into every shipped icon file, so the
-     favicon, the launcher tile and this are provably one drawing rather
-     than three that agree today.
-
-     Three things this component decides, and they are the only three.
-
-     The flag. On screen the mark takes the active flag, from the same
-     source as everything else - $lib/theme/activeFlag, published by the
-     shell in the effect that stamps the palette. Reading `--motif-stripes`
-     here instead would race the palette arriving from SQLite on a cold
-     start and silently draw the previous flag (activeFlag.svelte.ts says
-     why at length).
-
-     The disguise. Every surface that carries the mark falls back to type
-     when disguise is on (ADR-0014, ticket 38's own constraint), so the
-     component draws nothing at all rather than drawing something neutral.
-     Read off the preference, the same belt-and-braces check Home makes on
-     the sun.
-
-     The crop. `tile` is the app's mark; `launcher-round` previews the
-     Android round choice in Settings. Both keep a black edge. `mono`
-     draws in one ink for paper.
-
-     It does not move, on any surface. There is no entrance, no hover and no
-     view-transition name here, and mark.test.ts reads this file to keep it
-     that way. */
+     tile and launcher-round keep a black edge. mono draws in a single
+     print ink. The print caller controls inclusion. Keep the mark
+     still, as mark.test.ts requires. */
   import { markSvg, type MarkCrop } from './mark';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
-  import { prefs } from '$lib/data/prefs/store.svelte';
 
   let {
     size = 48,
@@ -57,7 +33,7 @@
   );
 </script>
 
-{#if !prefs.disguise && (mono || activeFlag.stripes.length > 0)}
+{#if mono || activeFlag.stripes.length > 0}
   <span class="mark" style={`--mark-size: ${size}px`}>{@html svg}</span>
 {/if}
 

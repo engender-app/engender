@@ -1,25 +1,10 @@
 <script lang="ts">
-  /* A document's own page, small, at the head of its row on the documents
-     index (audit item 9).
+  /* Show the document's own preview on the index (ADR-0065). Keep
+     an unreadable PDF's kind mark as fallback. A photo grid's
+     lazy colour placeholder adds no value here.
 
-     ADR-0065 used to say the list never draws a page at all, which the
-     audit reversed: a screen of identical paper glyphs made a person open
-     rows to find out which document they were holding, and that is the
-     tap the rule existed to save. The ADR's own note carries the change
-     and why the disguise argument did not survive it.
-
-     Not `PhotoThumb`: that one lazy-loads behind an IntersectionObserver
-     for grids of hundreds and paints a coloured gradient while it waits,
-     which is right for photographs and wrong for a handful of rows of
-     paper - a hue-per-id tile would be colour carrying no value
-     (DIRECTION.md rule 3). What stands in here instead is the kind mark
-     the row drew before this existed, so a PDF the renderer could not read
-     (journal/documents.ts) still says what it is.
-
-     The read is the document's own, under the name the area derives:
-     `readThumbnail` rewrites a `.jpg` suffix and would hand a PDF its own
-     bytes back typed as a JPEG - the document's screen says the same
-     thing at more length. */
+     Read the area's thumbnail name. readThumbnail can return
+     the underlying PDF bytes as JPEG after rewriting the suffix. */
   import { fade } from 'svelte/transition';
   import Icon from './Icon.svelte';
   import { documentThumbName, isPdfDocument } from '$lib/data/journal/documents';

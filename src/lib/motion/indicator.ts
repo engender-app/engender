@@ -1,40 +1,11 @@
-/* The travelling indicator: one lit shape that crosses a set of peers
-   instead of appearing on one and disappearing from another (phase 5
-   ticket 31).
+/* Move one highlight between tabs or segments. The leading edge
+   starts first and decelerates at the destination. The trailing
+   edge holds, then accelerates to close the shape. Its widest span
+   is the actual gap between targets.
 
-   The navigation had the second kind. Every tab carried its own background
-   and the lit one was whichever had the class, so moving between tabs was
-   two instant swaps that happened to be simultaneous - which says "this one
-   is on now" and nothing at all about where you came from. A single shape
-   that travels says both, and on a bar of five cells where two of the four
-   tabs sit on the far side of the add button, where you came from is most of
-   what a person needs to read.
-
-   Redesign ticket 26 changed what the shape does on the way. It used to
-   deform symmetrically - both edges moving at once, out from the centre,
-   growing by a tuned percentage of its own length. That reads as one object
-   being pulled from both ends. What it does now is asymmetric: the edge
-   nearer the destination leaves first and decelerates into place, and the
-   edge left behind holds, then accelerates after it and closes the shape up
-   again. The width in between is not a tuned percentage of anything - it is
-   the actual gap between the two tabs, because the two edges really are on
-   the two tabs while it runs.
-
-   This module is the mechanic: the arithmetic, plus the two schedules the
-   edges run on. The measuring and the state live in the components, because
-   they need `$state` and a DOM, and neither survives the node test tier.
-   What is here is the part worth holding still: when two measurements count
-   as the same place, the four numbers CSS positions the shape with, which of
-   an axis's two edges leads, and what each edge's clock is.
-
-   Both travelling indicators in the app now use it. Segmented.svelte had its
-   own copy of the older symmetric idea, shipped in ticket 30 with a fixed
-   stretch; the note that used to sit here said that if a third one ever
-   turned up, that would be the moment the two became one. What actually
-   happened is that the two converged instead - Alicja asked for the
-   switcher to move the way the navigation does (2026-09-08) - so the moment
-   arrived from the other direction and the schedules below are shared rather
-   than transcribed. A third one would now have nothing left to duplicate. */
+   Components own DOM measurements and reactive state. This module
+   converts positions to CSS and shares edge order and timing between
+   navigation and Segmented.svelte. */
 
 export type Box = { x: number; y: number; w: number; h: number };
 
@@ -54,9 +25,8 @@ export type Insets = { left: number; right: number; top: number; bottom: number 
 /** Under this, two measurements are the same place. Layout arithmetic on a
     fractional device pixel ratio lands a third of a pixel either side of
     where it landed last time, and a resize that reports the same position
-    as a new one would replay the stretch on every observer tick - which
-    would turn a moment into a loop, the one thing DIRECTION.md's motion
-    system spends nowhere but the flag sun. */
+    as a new one would replay the stretch on every observer tick. Only the
+    flag sun and mood faces use ambient loops. */
 const SAME = 0.5;
 
 export function boxesMatch(a: Box, b: Box): boolean {
@@ -82,12 +52,9 @@ export function insets(box: Box, host: Host): Insets {
   };
 }
 
-/** Which way the pill is going along its own axis, or 0 if it is not going
-    anywhere along it. The sign is what the destination icon's swing leans
-    with, so it is a direction rather than a distance: DIRECTION.md's motion
-    is the same whether a tab is next door or across the bar, and the
-    difference in how far the shape opens is already carried by the gap it
-    opens across. */
+/** Direction of the pill along its axis, or zero when still. The icon
+    leans that way regardless of how many tabs the pill passes. The pill
+    stretches across the actual gap. */
 export function travel(from: Box, to: Box, axis: Axis): -1 | 0 | 1 {
   const moved = axis === 'x' ? to.x - from.x : to.y - from.y;
   if (Math.abs(moved) < SAME) return 0;
@@ -134,7 +101,7 @@ export const TRAIL: Schedule = {
     and the placement that shows it sets its insets in the same update. On
     LEAD those insets transitioned, so the pill faded in across the whole
     track and then shrank onto its segment: on a cold load at 4x CPU it sat
-    full-width for about 280ms and then closed in two frames (ticket 166).
+    full-width for about 280ms and then closed in two frames.
     Here the edges land where they belong in the frame the fade starts, and
     only the fade is seen. */
 export const PLACE: Schedule = { dur: '0ms', ease: 'linear', delay: '0ms' };
@@ -150,11 +117,10 @@ export function schedules(direction: -1 | 0 | 1): { near: Schedule; far: Schedul
   };
 }
 
-/** The clocks for a pill crossing a grid rather than a row (ticket 281's
-    month picker): each axis is a row of its own, so each pair of insets
-    takes `schedules` for the way the pill went along that axis. A move
-    straight down keeps left and right together, and a diagonal leads with
-    the two edges facing the destination. */
+/** The clocks for a pill crossing a grid rather than a row: each axis is a row of its own,
+    so each pair of insets takes `schedules` for the way the pill went along that axis. A
+    move straight down keeps left and right together, and a diagonal leads with the two
+    edges facing the destination. */
 export function gridSchedules(
   from: Box,
   to: Box

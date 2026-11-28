@@ -27,10 +27,9 @@
         that acts on it should only do so for a close it asked for. */
     onClosed?: () => void;
     children: Snippet;
-    /** A write the sheet is waiting on (after-release 06). The scrim, a drag,
-        Escape and Back leave it up until the write lands, so a sheet never
-        closes over a write that may yet fail and need what is in it, and its
-        contents are inert meanwhile. */
+    /** A write the sheet is waiting on. The scrim, a drag, Escape and Back leave it up
+        until the write lands, so a sheet never closes over a write that may yet fail and
+        need what is in it, and its contents are inert meanwhile. */
     busy?: boolean;
   } = $props();
 
@@ -52,8 +51,8 @@
     onClose?.();
   }
 
-  /* Dismissal follows the drag rather than replaying the entrance backwards
-     (DIRECTION.md, tier 2). The drag offset lives on a wrapper and the
+  /* Dismissal follows the drag rather than replaying the entrance backwards.
+     The drag offset lives on a wrapper and the
      entrance/exit transition on the sheet inside it, because a Svelte
      transition writes `transform` on the element it is applied to and would
      overwrite an inline one; on two elements the two compose, and letting go
@@ -150,22 +149,10 @@
     return el.matches('[contenteditable="true"]');
   }
 
-  /* Focus the field a sheet exists to fill; otherwise the sheet itself,
-     which is where a dialog's focus belongs anyway - the label is read out
-     and Tab walks in from the top. Never the first button: on the sheets
-     that ask something irreversible that button is "yes", and a sheet that
-     opens with "yes" under the cursor is one stray Enter from doing the
-     thing it opened to warn about (ticket 15, F22).
-
-     A sheet whose body is a composite control names the one element that
-     holds its cursor with `data-sheet-focus` - the date picker's chosen
-     day - and that wins over the first control in document order.
-
-     Ticket 115: calling .focus() synchronously upon DOM attachment forces
-     layout flushes on Android Chromium before CSS transition keyframes attach,
-     teleporting the sheet from translateY(0) to translateY(travel). Defer
-     initial focus until the entrance transition settles (`introend`), with
-     preventScroll: true. */
+  /* Focus an explicitly marked data-sheet-focus target, then the field the
+     sheet opens to fill, then the dialog itself. An irreversible action must
+     never receive initial focus. Wait for introend and use preventScroll so
+     Android Chromium does not force layout before the entrance attaches. */
   function focusInitial(node: HTMLElement) {
     sheetEl = node;
     let fallback: ReturnType<typeof setTimeout> | undefined;
@@ -215,10 +202,10 @@
     return registerOverlay(node, { dismiss: close });
   }
 
-  /* While a write runs (`busy`), everything in the sheet but its handle is
-     inert, so nothing can be typed or picked that the write already sent
-     without (after-release 06). Per child rather than one wrapper, because
-     `.sheet > * + *` spaces the children. Reruns when `busy` changes. */
+  /* While a write runs (`busy`), everything in the sheet but its handle is inert, so
+     nothing can be typed or picked that the write already sent without. Per child rather
+     than one wrapper, because `.sheet > * + *` spaces the children. Reruns when `busy`
+     changes. */
   function freezeWhileBusy(node: HTMLElement) {
     if (!busy) return;
     const frozen = [...node.children].filter((child): child is HTMLElement => child instanceof HTMLElement && !child.classList.contains('sheet-handle'));
@@ -229,25 +216,14 @@
   }
 
   /* SF-001's background lock and focus trap live in overlayLock.ts now: the
-     letter arrival (redesign ticket 45) is the app's second surface that
+     letter arrival is the app's second surface that
      covers the whole shell, and it owes the screen behind it exactly what a
      sheet does. Their reasoning travelled with them. */
 
-  /* The scrim and the withdrawal blur it carries settle with the sheet, on
-     the sheet's own clock rather than on a duration of their own: with the
-     travel now the sheet's whole height (redesign ticket 38) a scrim that
-     finished first left the sheet still visibly moving over a page that had
-     already gone dark. Under reduced motion the sheet substitutes a
-     crossfade, so the scrim takes the same one - motionDuration() answers 0
-     there, and a scrim that cuts while the sheet fades is the same mismatch
-     the other way round.
-
-     The entrance and the exit are two curves now rather than one, so the
-     sheet is `in:`/`out:` rather than a bidirectional `transition:`. What
-     that costs is the reversal: a sheet closed while it is still rising
-     lands before it leaves instead of turning round where it got to. The
-     directions had to differ - only the way up runs past its mark - and a
-     sheet closed inside 380ms is a rarer thing to see than every close. */
+  /* Time the scrim and its fixed blur with the sheet, including
+     the reduced-motion crossfade when motionDuration() returns 0.
+     Separate in and out curves allow overshoot only on arrival.
+     Closing during that 380ms arrival lets it finish before exit. */
 
 </script>
 
@@ -306,18 +282,11 @@
 {/if}
 
 <style>
-  /* The tint and the withdrawal ride a layer of the scrim's own rather than
-     the scrim itself, and that is redesign ticket 38 rather than tidiness:
-     an element's opacity applies to everything inside it, and the sheet is
-     inside the scrim. Fading the scrim faded the sheet with it, so a sheet
-     that had stopped fading in its own transition still arrived translucent
-     - measured on the flipbook, the list behind it legible through it
-     halfway up its travel. The fan's scrim (QuickAdd) has no such problem
-     because the fan is its sibling; a sheet's is its child.
+  /* Tint and blur use their own layer. Applying opacity to the scrim fades
+     its child sheet as well. QuickAdd avoids that because its scrim and fan
+     are siblings.
 
-     `pointer-events: none` keeps the layer out of the way of the tap that
-     dismisses: the scrim closes on a click whose target is the scrim
-     itself, and a layer over it would be that target instead. */
+     pointer-events: none lets the scrim itself receive dismissal clicks. */
   .sheet-scrim-tint {
     position: absolute;
     inset: 0;

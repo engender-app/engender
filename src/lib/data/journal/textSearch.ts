@@ -1,80 +1,8 @@
-/* Which areas search reaches, and what text each of them holds (phase 5
-   deepening ticket 24, ADR-0005, ADR-0027, CONTEXT: "Search").
-
-   `/search` searched entries. That was right when the entry note was most of
-   the text in the app, and it is not any more: the journal now holds letters
-   to a future self, milestone names, procedure notes, appointment questions,
-   felt-sense reflections, roadmap goals, affirmations, size fit notes and a
-   dozen other things somebody wrote in their own words. None of it was
-   findable. Somebody who remembers writing something and not where they
-   wrote it had nowhere to type it.
-
-   A registry rather than a screen that names eighteen areas, for the reason
-   the two registries before it are (ADR-0027, ADR-0031): the alternative is
-   a list a new area is silently missing from, with no test able to notice.
-   An area declares what text it holds and how to reach it; adding one later
-   is a registration.
-
-   What one entry declares:
-
-     key      the hit's own kind, which is what the screen groups by and
-              what searchHitRows.ts gives words and an icon to
-     covers    which archive sections this one accounts for, which is what
-              makes "every area holding text is searchable" checkable rather
-              than remembered - see SEARCH_OPT_OUTS below
-     tables    the tables the read touches, so the live layer's dependency
-              list is derived from the registry rather than maintained beside
-              it (writes.ts, the same single-sourcing DAY_TABLES gets)
-     from      the table, or the join, the text lives in
-     uuid      the travelling id (ADR-0002), which is what a hit navigates by
-     date      the row's own day, and in what form - see SearchDate
-     columns   the text columns, in the order a hit prefers them when more
-              than one matched
-     context   one more column the presentation needs and cannot derive: a
-              checklist's owner kind, a felt sense's tryout. Nothing else.
-     where     a restriction the area itself imposes, with its parameters.
-              One area has one: a sealed letter is not searchable.
-
-   **How the matching happens, and why it is not FTS5.** The entry note has a
-   contentless FTS index behind it because a decade of notes is the one text
-   in this app that is genuinely large (entries.ts). None of these areas is:
-   a person has tens of letters, hundreds of side effects, one or two
-   procedures. So they are matched by scanning, with the fold applied to the
-   column inside SQL (fold.ts's foldedSql) and LIKE over the folded query.
-   Two consequences worth stating rather than discovering:
-
-     - matching here is substring, not whole-token prefix. "erapy" finds
-       "therapy" in a letter and does not find it in a note. That is the
-       index's narrowing showing through, the same asymmetry tag labels have
-       always had (searchQuery.ts), and ADR-0005's folding is still the whole
-       matching rule - no stemming, no ranking, no score.
-     - nothing is indexed, so nothing has to be reindexed. There is no
-       second write path to keep in step, and no plaintext leaves the
-       encrypted database (ADR-0020): the scan happens inside SQLite, which
-       is also why the fold has a SQL spelling at all.
-
-   **The cost, and the strategy chosen for it.** One statement, not forty.
-   Every declared column of every area is a branch of one UNION ALL with a
-   uniform projection, the fold is applied once to that union's text
-   column, and the page and the count come out of the same pass - the
-   count as a window evaluated before the LIMIT, since a screen that says
-   how many results a query found cannot take that number off a page of
-   thirty. That matters most where a statement is a bridge call rather than
-   a function call (ADR-0020's Android driver): until ux-carpet ticket 220
-   this was two statements of 123 KB each, the fold spelled out once per
-   column per area, and preparing them cost more than the scan. Measured
-   against the ten-year fixture as `search-everywhere` in tests/long-journal,
-   which budgets.json carries the number for; entries stay on their own FTS
-   queries beside it, as the screen has always run them.
-
-   It is a pure read. Searching writes nothing - no recent-searches history,
-   no index, no counter - and textSearch.test.ts holds that against the
-   driver rather than leaving it to be noticed.
-
-   Wording is not here. A hit's area label, icon and destination live in
-   components/searchHitRows.ts, the same split day.ts keeps from dayRows.ts
-   and for the same reason: this file stays Node-tier safe by importing no
-   paraglide (ADR-0016). */
+/* Register searchable text beyond entry notes (ADR-0005, ADR-0027). Each source declares
+   its archive sections, read dependencies, columns, UUID, date and owner context. Exclude
+   sealed letters. Fold text inside SQLite and match substrings with LIKE, without any
+   stored search history (ADR-0020). One UNION ALL and a count before LIMIT keep results and
+   totals in one query. searchHitRows.ts adds localized copy and routes. */
 
 import { epochDayFromTimestamp, startOfDayTimestamp } from '../epochDay';
 import { foldedSql } from '../fold';
@@ -95,7 +23,7 @@ import type { ArchiveSectionName } from './archiveSections';
     converted to a day on the way out.
 
     `null` is for an area whose text belongs to no day at all: a roadmap
-    goal, an affirmation, a checklist nobody dated. Those are never narrowed
+    goal, a checklist nobody dated. Those are never narrowed
     by a range and sort after everything that has a date. */
 type SearchDate =
   | { kind: 'epochDay'; column: string }
@@ -207,8 +135,8 @@ const AREAS = [
     date: { kind: 'epochDay', column: 'surgery_epoch_day' },
     columns: ['name', 'notes']
   }),
-  /* What the appointment was, where it was and what was noted afterwards
-     (ticket 57). The kind is a word this person chose, so it is matchable
+  /* What the appointment was, where it was and what was noted afterwards.
+     The kind is a word this person chose, so it is matchable
      the same way a tryout's name is; nothing here ships, so nothing here
      matches a query in a language nobody wrote in. */
   area({
@@ -220,19 +148,18 @@ const AREAS = [
     date: { kind: 'epochDay', column: 'epoch_day' },
     columns: ['kind', 'place', 'note']
   }),
-  /* Every question anybody wrote for an appointment, and every line of a
-     procedure's recovery checklist - one table, and the owner is what says
-     which screen the hit belongs to (checklists.ts).
+  /* Every question anybody wrote for an appointment, and every line of a procedure's
+     recovery checklist - one table, and the owner is what says which screen the hit belongs
+     to (checklists.ts). `context` is the owner's travelling id: only a procedure owns a
+     checklist, so a hit with one opens that procedure and a hit without one is an
+     appointment question.
 
-     `date: null`, for both kinds of item. A procedure's recovery checklist
-     was never dated - it has no `appointment_epoch_day` of its own
-     (checklists.ts). The standing appointment prep list used to borrow that
-     same column's manually-set value; ticket 58 (ADR-0066) retires writing
-     to it, since the list itself is standing and unowned by any one
-     appointment. Referencing the now-frozen column here would silently
-     date every future question by whichever appointment happened to be on
-     record before that ticket, or leave it null forever for a journal
-     started after - neither is a date this hit can honestly claim. */
+     `date: null`, for both kinds of item. A procedure's recovery checklist was never dated
+     - it has no day of its own (checklists.ts). The standing appointment prep list used to
+     borrow a manually-set `appointment_epoch_day` on its checklist row; (ADR-0066) retired
+     writing it, since the list itself is standing and unowned by any one appointment, and
+     schema v119 dropped the column. Nothing here could honestly date a question by an
+     appointment it does not belong to. */
   area({
     key: 'checklistItems',
     covers: ['checklists'],
@@ -241,7 +168,7 @@ const AREAS = [
     uuid: 'ci.uuid',
     date: null,
     columns: ['ci.content'],
-    context: 'c.owner_kind'
+    context: 'c.owner_uuid'
   }),
   area({
     key: 'sideEffects',
@@ -252,14 +179,13 @@ const AREAS = [
     date: { kind: 'epochDay', column: 'epoch_day' },
     columns: ['name']
   }),
-  /* A felt sense hangs off a tryout or off a milestone (feltSense.ts), and
-     the hit has to go back to whichever one - so the tryout's travelling id
-     is the context, and a null one means the owner is a milestone. */
+  /* A felt sense hangs off a tryout (feltSense.ts), and the hit goes back
+     to it, so the tryout's travelling id is the context. */
   area({
     key: 'feltSense',
     covers: ['feltSenseEntries'],
     tables: ['feltSense', 'tryout'],
-    from: 'felt_sense fs LEFT JOIN tryout t ON t.id = fs.tryout_id',
+    from: 'felt_sense fs JOIN tryout t ON t.id = fs.tryout_id',
     uuid: 'fs.uuid',
     date: { kind: 'epochDay', column: 'fs.epoch_day' },
     columns: ['fs.note'],
@@ -301,7 +227,7 @@ const AREAS = [
     columns: ['name']
   }),
   /* An era's name is typed by the person too, the same reason presentations
-     is covered rather than opted out (phase 6 ticket 01) - nothing ships
+     is covered rather than opted out - nothing ships
      seeded, so there is no built-in wording living above this seam.
 
      `date: null` even though an era has two: a hit is the name of a span,
@@ -319,19 +245,6 @@ const AREAS = [
     date: null,
     columns: ['name']
   }),
-  /* The lines somebody wrote themselves. A built-in's row holds an empty
-     `text` and its wording comes from the message catalogue (reconcile.ts),
-     so what is matched here is the custom pool - the same division of labour
-     tag labels have. */
-  area({
-    key: 'affirmations',
-    covers: ['affirmations'],
-    tables: ['affirmation'],
-    from: 'affirmation',
-    uuid: 'uuid',
-    date: null,
-    columns: ['text']
-  }),
   /* The analyte in the person's own words, their own note and who drew it
      (ADR-0026). No value and no unit: a number is not text somebody wrote,
      and searching for "4.2" finding a lab result is not what this feature
@@ -345,16 +258,7 @@ const AREAS = [
     date: { kind: 'epochDay', column: 'epoch_day' },
     columns: ['note', 'analyte', 'provider']
   }),
-  area({
-    key: 'sizeRecords',
-    covers: ['sizeRecords'],
-    tables: ['sizeRecord'],
-    from: 'size_record',
-    uuid: 'uuid',
-    date: { kind: 'epochDay', column: 'epoch_day' },
-    columns: ['fit_note', 'brand', 'size']
-  }),
-  /* A dilation session's own note (ticket 12). The schedule that expects it
+  /* A dilation session's own note. The schedule that expects it
      carries no text of its own - opted out below, the same reason
      doseSchedules is. */
   area({
@@ -387,23 +291,9 @@ const AREAS = [
     date: { kind: 'epochDay', column: 'epoch_day' },
     columns: ['note']
   }),
-  /* Only the free-written description, which is what the 'other' scale
-     records. A graded stage is a published scale's own grade and its wording
-     comes from the message catalogue above this seam, like a built-in tag's
-     label (ADR-0016). */
-  area({
-    key: 'hairStages',
-    covers: ['hairStages'],
-    tables: ['hairProgress'],
-    from: 'hair_stage',
-    uuid: 'uuid',
-    date: { kind: 'epochDay', column: 'epoch_day' },
-    columns: ['description']
-  }),
-  /* Both free-text fields, and `cost` is one of them: the column is TEXT
-     because somebody types "800" or "covered by insurance" into it, unlike a
-     lab result's `value`, which is a REAL and is left out above. What the
-     rule turns on is the column, not whether digits show up in it. */
+  /* The provider is the one free-text field left: the cost became an amount
+     and a currency (a REAL and a code, like a lab result's `value` above),
+     and what was typed into the old text column moved into the note. */
   area({
     key: 'hairRemovalSessions',
     covers: ['hairRemovalSessions'],
@@ -411,12 +301,11 @@ const AREAS = [
     from: 'hair_removal_session',
     uuid: 'uuid',
     date: { kind: 'epochDay', column: 'epoch_day' },
-    columns: ['provider', 'cost']
+    columns: ['provider']
   }),
-  /* The drug and the ester somebody typed for an episode (regimen.ts's own
-     text fields), dated by the day the episode started. The dose, the unit
-     and the route are picked from closed vocabularies and are not text. An
-     episode that was put away is not found (after-release 07). */
+  /* The drug and the ester somebody typed for an episode (regimen.ts's own text fields),
+     dated by the day the episode started. The dose, the unit and the route are picked from
+     closed vocabularies and are not text. An episode that was put away is not found. */
   area({
     key: 'regimenEpisodes',
     covers: ['regimenEpisodes'],
@@ -441,9 +330,8 @@ const AREAS = [
      reminder is a one-off: a recurring rule has no day of its own, which is
      the same reason it holds a null `epoch_day` in the schema.
 
-     The screen it leads to is Android-only and says so on the web, which is
-     where reminders exist at all - so the hit is honest on both platforms
-     rather than absent on one. */
+     The screen it leads to exists on Android only, so searchPlatform.ts
+     keeps the hit off the web. */
   area({
     key: 'reminders',
     covers: ['reminders'],
@@ -453,20 +341,16 @@ const AREAS = [
     date: { kind: 'epochDay', column: 'epoch_day' },
     columns: ['title']
   }),
-  /* A margin note (phase 8 features ticket 07, CONTEXT: "Margin note").
-     Dated by the entry it annotates rather than by the day the note itself
-     was written: an entry has no name a person would recognise it by
-     besides its own day, and "a hit needs to say which entry it belongs
-     to" (the ticket's own condition) is what the visible date on a hit row
-     already draws for every other area - so this is the one place that
-     date names the owner rather than the row. `context` carries the
-     entry's own id (its rowid, the same identity `/entry/[id]` already
-     opens by) for the href, the way `feltSense`'s `context` carries its
-     owning tryout's id - `CAST` to TEXT because `context` is a string
-     column in every other area (each of them a uuid) and an entry's id is
-     the one integer identity this registry ever hands back through it.
-     Excludes a trashed entry's notes, the same reason `photos.ts`'s own
-     reads do. */
+  /* A margin note. Dated by the entry it annotates rather than by the day the note itself
+     was written: an entry has no name a person would recognise it by besides its own day,
+     and "a hit needs to say which entry it belongs to"  is what the visible date on a hit
+     row already draws for every other area - so this is the one place that date names the
+     owner rather than the row. `context` carries the entry's own id (its rowid, the same
+     identity `/entry/[id]` already opens by) for the href, the way `feltSense`'s `context`
+     carries its owning tryout's id - `CAST` to TEXT because `context` is a string column in
+     every other area (each of them a uuid) and an entry's id is the one integer identity
+     this registry ever hands back through it. Excludes a trashed entry's notes, the same
+     reason `photos.ts`'s own reads do. */
   area({
     key: 'marginNotes',
     covers: ['marginNotes'],
@@ -478,8 +362,7 @@ const AREAS = [
     context: 'CAST(e.id AS TEXT)',
     where: { sql: 'e.trashed_at IS NULL', params: () => [] }
   }),
-  /* The title, and nothing else there is (phase 8 features ticket 52,
-     ADR-0065). The app never reads a document's contents - no OCR, no text
+  /* The title, and nothing else there is (ADR-0065). The app never reads a document's contents - no OCR, no text
      extraction - so `columns` here is not a shortened list but the whole of
      the text this area holds. Indexing what a diagnosis says would put its
      words behind a search box somebody might be looked at over. */
@@ -499,34 +382,14 @@ export type SearchAreaKey = (typeof AREAS)[number]['key'];
 /** Which archive sections the registry above accounts for. */
 type Covered = (typeof AREAS)[number]['covers'][number];
 
-/** Every area that holds no searchable text, and why.
-
-    This is the ticket's "registered nowhere" check, and it is a full
-    `Record` over whatever the registry does not cover: an area added to the
-    archive registry - which is what makes an area exist at all (ADR-0027) -
-    is a compile error here until somebody either registers it above or
-    writes down why it holds nothing to search. Nobody has to remember the
-    check; the only way past it is to state an answer.
-
-    The reasons, and each one is a rule rather than a case:
-
-    *Searched already.* Entries, whose note is the one text with an index
-    behind it, matched through it by the screen's own read (ADR-0005).
-
-    *Reference data whose words live above this seam.* A built-in tag,
-    dimension, body region, measurement type or effect type stores a key,
-    and the words it was shown under only exist in the message catalogue
-    (ADR-0016) - which is exactly why tag labels have always been matched in
-    memory over the mirrored vocabulary rather than in SQL (searchQuery.ts).
-    Searching those is that mechanism's job, not this one's.
-
-    *No text of its own.* A row of numbers, days or picked vocabulary. A
-    measurement is a value and a unit; a cycle event is one of three kinds;
-    a dose event's site and vehicle come from closed lists.
-
-    *Its own reason*, for the two that need one. */
-/* SEARCH_OPT_OUTS stays exported only for its own test (AU-09 test-only
-   review). */
+/**
+ * Require each Archive section to have a search entry or an explicit opt-out
+ * (ADR-0027). Entry notes use their existing FTS index. Translated vocabulary
+ * labels match in memory because SQL stores only their keys (ADR-0005). Rows
+ * containing only values, dates or closed vocabulary have no free text to
+ * search.
+ */
+/* SEARCH_OPT_OUTS stays exported only for its own test. */
 export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, string> = {
   entries: 'searched through the entry FTS index, by the screen’s own read (ADR-0005)',
 
@@ -534,7 +397,6 @@ export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, strin
   presets: 'reference data: a built-in stores a key, and its words live above this seam',
   tagGroups: 'reference data: tag labels are matched in memory over the mirrored vocabulary',
   bodyRegions: 'reference data: a built-in stores a key, and its words live above this seam',
-  measurementTypes: 'reference data: a built-in stores a key, and its words live above this seam',
   effectCategories: 'reference data: a built-in stores a key, and its words live above this seam',
   personalEffectTypes: 'reference data: a built-in stores a key, and its words live above this seam',
   // The marker itself carries the effect's key rather than its name
@@ -542,74 +404,61 @@ export const SEARCH_OPT_OUTS: Record<Exclude<ArchiveSectionName, Covered>, strin
   // vocabulary's wording, one line above.
   personalEffects: 'no text of its own: the marker is a day and an effect key',
 
-  measurements: 'no text of its own: a type, a value and a unit',
-  // Phase 8 features ticket 10: a min, a max, a median and a felt-sense
+  // A min, a max, a median and a felt-sense
   // rating on the app's own mood scale, none of it text.
   voicePracticeTakes: 'no text of its own: three pitch figures and a felt-sense rating',
   cycleEvents: 'no text of its own: one of three kinds on a day',
-  // `tally_event.context` is a column with no reader and no writer left
-  // (tally.ts: register finding 32.4 dropped its entry point, and a
-  // forward-only migration cannot un-write it from journals that hold it).
-  // Registering it would offer a search over text nothing can put there.
-  tallyEvents: 'no text of its own: a kind on a day, and a context column nothing writes',
   dosePauses: 'no text of its own: a start day, an end day and a reason from a closed pair',
-  journalingPauses: 'no text of its own: a start day and an end day',
   // The row is a uuid pointing at an era, whose own name is what `eras`
   // above already searches - and a mute is presence, not a value.
   eraMutes: 'no text of its own: a uuid naming a muted era',
+  // A judgement of a named doctor, read where
+  // the person keeps it (the appointments screen lists every provider)
+  // rather than surfaced by a search somebody else could be looking over.
+  providers: 'private notes on a named person, read on the appointments screen',
   roadmapChecks: 'no text of its own: a tick against a bundled pack’s goal',
-  roadmapTracks: 'no text of its own: the name of one of the app’s four tracks',
-  hairPhotos: 'no text of its own: a dated photograph',
+  roadmapCategories: 'a heading over goals, whose own text `roadmapGoals` above already searches',
+  // The name of an office and short lines on
+  // where a request stands there, read on the roadmap's own list.
+  roadmapInstitutions: 'the name of an office on the roadmap list, read there',
+  roadmapInstitutionChanges: 'a status and a short line about one office, read on the roadmap',
+  progressPhotos: 'no text of its own: a dated photograph and its pose',
+  progressPoses: 'a pose name, read on the Progress photos screen that files photographs under it',
   doseSchedules: 'no text of its own: a recurrence, weekdays and dose amounts',
   taper: 'no text of its own: a surgery day, a start day and a stage sequence (ticket 12)',
   doseEvents: 'no text of its own: a drug, a dose and sites picked from closed lists',
 
-  // ADR-0037 and ADR-0040. A snapshot holds copies of entry notes, so its
-  // text is already searchable where it was written; matching it here would
-  // show the same words twice and file a bad hour into an ordinary search.
-  counterevidenceSnapshots: 'a Safe Space artefact, and its text is the entries’ own',
-
   // A template's name and note scaffold are the person's own words for an
   // authored one, but they name a creation aid rather than journal
   // content - nobody searching their journal is looking for the templates
-  // they write entries from (phase 6 ticket 07).
-  entryTemplates: 'a creation aid, not journal content - what it seeds is what search finds',
+  // they write entries from.
 
   // The same Safe Space artefact class as the row above, for a different
-  // reason: a comfort item's text is not duplicated anywhere, but ticket 14
-  // (phase 6) built this list to be reached behind Safe Space's own single
+  // reason: a comfort item's text is not duplicated anywhere, but
+  // built this list to be reached behind Safe Space's own single
   // tap and nowhere else. An ordinary search result is exactly the kind of
   // unasked-for door the ticket rules out.
   comfortItems: 'a Safe Space artefact, kept behind its own single-tap door',
 
   // The source is a fixed registry key, not a word someone typed - the
   // settings screen that lists these is where "where did this come from"
-  // is answered, not an ordinary search result (phase 7 ticket 03).
+  // is answered, not an ordinary search result.
   importLog: 'no text of its own: a source key, a date and counts by kind',
+  deletions: 'no text of its own: a table name, an identity and a time',
 
   // Deliberately not searchable rather than incidentally: a hidden or
   // finished area's own records stay searchable, because search finding
   // everything is what makes it trustworthy, and the row itself is an area
-  // key and a day (phase 8 deepening ticket 13).
-  areaStates: 'no text of its own: an area key, a flag and a day',
-  // Its own reason: a saved question's name and query are words about a
-  // search, and search returning a hit on the search itself would be the
-  // feature answering its own reflection rather than the journal.
-  savedQuestions: 'a name for a search, not a record for search to hand back as a hit',
-  revisits: 'no text of its own: an entry link and two days',
-  // The word itself is already searchable where it was actually written -
-  // the entry's own note, matched through the FTS index (ADR-0005) - so
-  // matching it here too would show the same word twice.
-  wordIgnore: 'a word already searchable in the note it came from, not new text of its own'
+  // key and a day.
+  areaStates: 'no text of its own: an area key, a flag and a day'
 };
 
-/* SEARCH_AREAS stays exported only for its own test (AU-09 test-only review). */
+/* SEARCH_AREAS stays exported only for its own test. */
 export const SEARCH_AREAS: readonly SearchArea[] = AREAS;
 
 /** Every area's key, in the order they are declared - which is the order
     hits are grouped in on the screen, so it never names an area itself. */
-/* SEARCH_AREA_KEYS stays exported for its own test, and cross-checked in
-   measure.ts (AU-09 test-only review). */
+/* SEARCH_AREA_KEYS stays exported for its own test, and cross-checked in measure.ts. */
 export const SEARCH_AREA_KEYS: readonly SearchAreaKey[] = AREAS.map((a) => a.key);
 
 /** Every table any area reads, de-duplicated: what `textSearch.search`
@@ -626,7 +475,7 @@ interface Branch {
     same columns in the same order whatever the area's own table looks like,
     with the column's text as `text` and its declaration order as `col`.
 
-    One branch per column rather than per area (ux-carpet ticket 220): the
+    One branch per column rather than per area: the
     fold is then applied once, to `text`, outside the union, instead of once
     per column per area and again inside a CASE for the value. Spelled per
     column the statement was 123 KB of nested REPLACE() text, sent twice per
@@ -707,7 +556,7 @@ interface SearchResults {
 
 export interface TextSearchArea {
   /** Every registered area's text matched against one query, newest first.
-      Reads only (phase 5 deepening ticket 24) - searching writes nothing. */
+      Reads only - searching writes nothing. */
   search(request: SearchRequest): Promise<SearchResults>;
 }
 
@@ -725,19 +574,17 @@ export function makeTextSearchArea(driver: SqliteDriver): TextSearchArea {
       const union = branches.map((b) => b.sql).join('\nUNION ALL\n');
       const params = branches.flatMap((b) => b.params);
 
-      /* One statement for the page and the count. The inner select is every
-         column that matched, numbered per record in declaration order, and
-         only each record's first is kept, so a row that matched on two
-         columns shows the one its area prefers and is counted once - one
-         pass over the union rather than a join back to it. The count is a window over
-         the whole answer, which SQLite evaluates before the LIMIT, so it is
-         every match and not the page's length. The outer select is ordered
-         rather than the compound directly: a compound's own ORDER BY may
-         only name an output column, and the rule here is an expression over
-         one - undated hits last, then newest first, then by area, then by
-         record id. The id is new with ticket 220: before it, two hits of one
-         area on one day came back in whatever order the scan produced them,
-         and a page of thirty could cut between them either way. */
+      /* One statement for the page and the count. The inner select is every column that
+         matched, numbered per record in declaration order, and only each record's first is
+         kept, so a row that matched on two columns shows the one its area prefers and is
+         counted once - one pass over the union rather than a join back to it. The count is
+         a window over the whole answer, which SQLite evaluates before the LIMIT, so it is
+         every match and not the page's length. The outer select is ordered rather than the
+         compound directly: a compound's own ORDER BY may only name an output column, and
+         the rule here is an expression over one - undated hits last, then newest first,
+         then by area, then by record id. The id is new with before it, two hits of one area
+         on one day came back in whatever order the scan produced them, and a page of thirty
+         could cut between them either way. */
       const rows = await driver.query<HitRow>(
         `SELECT area, id, epoch_day, timestamp, text AS value, context, COUNT(*) OVER () AS total
            FROM (

@@ -1,4 +1,4 @@
-/* The arithmetic behind PhotoWipe.svelte (phase 10 redesign ticket 55):
+/* The arithmetic behind PhotoWipe.svelte:
    where a pointer lands across the frame, where a key moves the divider to,
    and whether the two photographs are different enough shapes that the frame
    has to say how it reconciled them.

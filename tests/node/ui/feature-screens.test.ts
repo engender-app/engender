@@ -1,0 +1,440 @@
+/* Check feature screens use current surface kit classes. Read hub routes
+   from hubRows.ts so additions join the assertions automatically. List
+   routes reachable only from another screen explicitly so missing
+   files fail. These are source-level absence checks. Archive failure,
+   chart padding and personal-effect source rules have their own tests. */
+
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { describe, expect, it } from 'vitest';
+import { HUB_ROWS, rowScreen, type HubRow, type HubRowKey } from '../../../src/lib/data/hubRows.ts';
+
+const root = fileURLToPath(new URL('../../..', import.meta.url));
+const read = (path: string) => readFileSync(root + path, 'utf8');
+
+/** Hub-row exemptions use HubRowKey so a removed row cannot leave a stale
+    exemption. Read the route list from the hub itself. */
+const NOT_A_FEATURE_SCREEN: Partial<Record<HubRowKey, string>> = {
+  /* A header over one component: its markup is VoiceRecordings.svelte, which was the voice
+     screen's fourth tab and is held to the kit there, through voice/+page.svelte's own
+     assertions. */
+  recordings: 'the memo list is VoiceRecordings.svelte, mounted whole'
+};
+
+/** Every screen reached only from inside another one, or from the shell -
+    the part of this list the hub cannot supply. */
+const REACHED_FROM_INSIDE = [
+  /* Three screens stopped being hub rows - labs, regimen and doses sit behind the `/care`
+     row now, and (ADR-0084) moved their own addresses under `/care/*` too - and they are
+     still feature screens, still built on the kit, so they stay on this list. */
+  'care/labs',
+  'care/regimen',
+  'care/doses',
+  'transition/tryouts/[id]',
+  /* One procedure, reached from a card on /health/surgery and from anything filed against
+     it; the hub row is the list. */
+  'health/surgery/[id]',
+  /* One appointment, reached from a row on /health/appointments,
+     from a day's context list, from Today and from a search hit. */
+  'health/appointments/[id]',
+  /* The metric reference held this place folded it into a sheet over the voice screen
+     itself - its markup is `VoiceMetricSection.svelte` and `voice/+page.svelte` now, both
+     already reached the ordinary way, and `practice/voice/metrics` is a redirect stub with
+     nothing on it to hold to the kit. */
+  /* Two views over the unprompted registry. The
+     notifications view joins the list because its own milestone spec says so
+     ("feature-screens.test.ts covers /transition/eras and the notifications
+     view"); its sibling /settings/live-tiles predates that line and is not
+     on it. */
+  'settings/notifications',
+  /* Reached from the shell rather than from a hub row, and deliberately
+     linked from nowhere: the return
+     surface opens itself once per gap and is a moment rather than a place.
+     Still a feature screen in every way this file asks about, and on the
+     list for the reason the note above the list gives - a screen that is
+     not here escapes every assertion in it. */
+  'coming-back',
+  'media/photos/export',
+  /* One document. Reached from a row on
+     /media/documents, from a day's context list and from a search hit,
+     never from the hub - the hub row is the list. */
+  'media/documents/[id]',
+  /* The prep list read one question at a time. Chromeless, reached from the visit screen's
+     own verb row and nowhere else, never from the hub. On this list for the reason the note
+     above it gives: chromeless is about the shell around a screen, and says nothing about
+     whether the screen itself is built on the kit. */
+  'health/appointments/in-the-room',
+  /* Everything the app can ask this device for, listed in one place. Reached from a row beside security in Settings,
+     and from setup's permissions step, which draws the same component. On
+     this list for the reason the note above it gives: it is a feature screen
+     in every way this file asks about, and a screen that is not here escapes
+     every assertion in it. */
+  'settings/permissions',
+  /* The ways down from Safe space that are still screens of their own. `/doubt` opens on
+     the breathing exercise and nothing else; everything that screen used to hold below it
+     lives one tap from a row and nowhere in the hub. On this list for the reason the note
+     above it gives - the sections moved wholesale, so a screen left off would take a third
+     of Safe space out from under every assertion here at once.
+
+     `doubt/moments` and `doubt/readings` were on this list folded them into
+     `/transition/letters` and the Look back door. Both addresses are redirect stubs now,
+     and the screens that absorbed them are already held here (the letters screen through
+     the hub's own `letters` row) - so this is two screens fewer, not two screens unwatched. */
+  'doubt/comfort',
+  'doubt/evidence',
+  /* The summary is an export rather than an area, so it left `hubRows.ts` entirely rather
+     than moving to a hosted row - reached from a plain row on Care and from appointment
+     prep, never from the hub. Still built on the kit, so it stays on this list for the
+     reason the note above it gives. */
+  'health/clinician-summary',
+  /* One reading of the Look back door on a screen of its own: four readings share the route, each reached from its
+     tile on /stats and from nowhere in the hub. Built on the kit and holds
+     a loading state on the recap it reads for the floor, so it stays on
+     this list for the reason the note above it gives. */
+  'stats/[reading]',
+  /* The licence notices, reached from a link in the About sheet and nowhere in the hub.
+     Built on the kit, so it is held here for the reason the note above the list gives. */
+  'settings/licences'
+];
+
+/** A hub row's route: the screen behind it, without the leading slash, since
+    what this file reads is that screen's source. */
+const routeOf = (row: HubRow) => rowScreen(row).slice(1);
+
+const HUB_ROUTES = HUB_ROWS.filter((row) => !(row.key in NOT_A_FEATURE_SCREEN)).map(routeOf);
+
+const ROUTES = [...HUB_ROUTES, ...REACHED_FROM_INSIDE];
+
+/** A screen whose whole body is one shared component, and the file that
+    carries the kit on its behalf.
+
+    The grep below follows the hop rather than exempting the screen.
+    `/settings/permissions` is a ScreenHeader and `<PermissionList />`, and
+    that is the point of it: setup's permissions step draws the same
+    component, so "you can grant this later" leads to the same list rather
+    than to a second one written to look like it. A screen built that way is still on the kit; it is on the kit one
+    file along. */
+const KIT_VIA_COMPONENT: Record<string, string> = {
+  'settings/permissions': 'PermissionList'
+};
+
+const sourceOf = new Map(ROUTES.map((route) => [route, read(`src/routes/${route}/+page.svelte`)]));
+const markupOf = new Map(
+  ROUTES.map((route) => [
+    route,
+    sourceOf
+      .get(route)!
+      .replace(/<script[\s\S]*?<\/script>/g, '')
+      .replace(/<style[\s\S]*?<\/style>/g, '')
+      .replace(/<!--[\s\S]*?-->/g, '')
+  ])
+);
+
+describe('every feature screen', () => {
+  it('is the hub, plus the screens reached only from inside another', () => {
+    /* Pin the count of explicitly listed non-hub screens so removing a path
+       also changes an assertion. Hub routes are discovered from hubRows.ts
+       and sourceOf fails if their files are missing. */
+    expect(REACHED_FROM_INSIDE.length).toBe(17);
+    expect(new Set(ROUTES).size, 'a route is on the list twice').toBe(ROUTES.length);
+  });
+
+  it('drops the old world: no .card, no .list-group, no .list-row, no SectionTitle', () => {
+    /* kit.css's own header comment calls these the old world and says the
+       screen tickets replace them one screen at a time. This is the ticket
+       that finishes the job for the feature screens. */
+    for (const route of ROUTES) {
+      const markup = markupOf.get(route)!;
+      expect(markup, `${route}: .card`).not.toMatch(/class="[^"]*\bcard\b/);
+      expect(markup, `${route}: .list-group`).not.toMatch(/class="[^"]*\blist-group\b/);
+      expect(markup, `${route}: .list-row`).not.toMatch(/class="[^"]*\blist-row\b/);
+      expect(sourceOf.get(route), `${route}: SectionTitle`).not.toContain('SectionTitle.svelte');
+    }
+  });
+
+  it('names its areas with the kit heading rather than a grey label', () => {
+    // Use the title display face with no icon. A
+    // screen with only one area needs no heading at all, so this only
+    // holds the screens that had a SectionTitle to replace.
+    for (const route of ['transition/letters', 'transition/tryouts/[id]', 'support/resources']) {
+      expect(sourceOf.get(route), route).toContain("from '$lib/components/kit/SectionHeading.svelte'");
+    }
+  });
+
+  it('builds every one of them out of the kit', () => {
+    for (const route of ROUTES) {
+      const component = KIT_VIA_COMPONENT[route];
+      if (!component) {
+        expect(sourceOf.get(route), route).toMatch(/from '\$lib\/components\/kit\//);
+        continue;
+      }
+      /* Both halves, so the hop cannot become an exemption by accident: the
+         screen still has to be the component, and the component still has
+         to be the kit. */
+      expect(sourceOf.get(route), route).toContain(`$lib/components/${component}.svelte`);
+      expect(read(`src/lib/components/${component}.svelte`), component).toMatch(
+        /from '\$lib\/components\/kit\//
+      );
+    }
+  });
+
+  it('reads its section colours from the shell, never from the document', () => {
+    /* The app sets <html> data-palette after SQLite preferences load, so anything
+       stamped after the preferences arrive from SQLite, so anything
+       reading the flag for itself at mount draws the previous one. */
+    for (const route of ROUTES) {
+      const source = sourceOf.get(route)!;
+      if (!source.includes('roleAt(')) continue;
+      expect(source, route).toContain("from '$lib/theme/activeFlag.svelte'");
+      expect(source, route).not.toContain('readFlagRoles(');
+    }
+  });
+});
+
+describe('what a first-run journal sees', () => {
+  /** Every one of these ships an empty state today and must keep one - the
+      ticket's own line. Milestones is reference data with a seeded
+      catalogue and resources is a bundled directory, so neither can be
+      empty; the clinician summary states its emptiness per section rather
+      than per screen. */
+  const WITH_EMPTY_STATE = ROUTES.filter(
+    (route) =>
+      ![
+        'transition/milestones',
+        'support/resources',
+        'health/clinician-summary',
+        /* The return step puts its empty message below the field title. It has
+           no separate Notice. */
+        'coming-back',
+        /* The permissions list is the same length on a first run as on a
+           thousandth: it describes what the app can reach, not what anybody
+           has written. There is no state in which it is empty. */
+        'settings/permissions',
+        /* Safe space itself. What it draws is a breathing exercise and five ways down, and
+           neither depends on anything having been written: on a journal with nothing in it
+           the screen is identical, which is the point of it - the screen a person reaches
+           on their worst day is the same screen every time. Its four ways down each carry
+           their own empty state, and all four are on this list. */
+        'doubt',
+        /* The licence notices are written by the build from what it
+           bundled, so there is no journal and no state in which the list is
+           empty. */
+        'settings/licences'
+      ].includes(route)
+  );
+
+  it('draws the empty state as a surface, not as a fallback string', () => {
+    for (const route of WITH_EMPTY_STATE) {
+      expect(sourceOf.get(route), route).toContain("from '$lib/components/kit/Notice.svelte'");
+    }
+  });
+
+  it('has retired the old bloom-and-heading empty state', () => {
+    // Route-level empty states use Notice; EmptyState remains for the
+    // trash screen and the body-region inspector sheet.
+    for (const route of ROUTES) {
+      expect(sourceOf.get(route), route).not.toContain('EmptyState.svelte');
+    }
+  });
+
+  it('gives every notice a handle to grip', () => {
+    for (const route of WITH_EMPTY_STATE) {
+      const notices = markupOf.get(route)!.match(/<Notice\b[\s\S]*?\/>/g) ?? [];
+      expect(notices.length, `${route} renders no Notice`).toBeGreaterThan(0);
+      for (const notice of notices) expect(notice, route).toMatch(/\bkey=/);
+    }
+  });
+});
+
+describe('what the worker is still fetching', () => {
+  /** Reference data is held in memory and read synchronously, so a screen reading only that
+      owes no loading state. Three here: milestones reads the milestone catalogue, resources
+      reads a directory compiled into the bundle, and the notifications view reads nothing
+      but the preference store. Presentations read the same mirrored vocabulary
+      (reference.svelte.ts) rather than a live query, but left this list with along with
+      their route. */
+  const ENTRY_DATA = ROUTES.filter(
+    (route) =>
+      ![
+        'transition/milestones',
+        'support/resources',
+        'settings/notifications',
+        /* Reads the OS rather than the journal: what the four grantable rows
+           show comes from two Capacitor plugins and, on the web, from
+           navigator.permissions. There is no query to wait on, and a
+           skeleton over a list whose rows are all known in advance would be
+           a placeholder for nothing. */
+        'settings/permissions',
+        /* Safe space's breath and fixed rows never wait on a journal read.
+           Its optional Good moments row stays absent until the bounded
+           visibility read finds an entry. */
+        'doubt',
+        /* Reads nothing at all: the notices arrive in the screen's own
+           chunk, generated by the build. */
+        'settings/licences'
+      ].includes(route)
+  );
+
+  it('keeps a loading state on every screen that reads the journal', () => {
+    /* Two ways to hold one, since a screen either hands its read to ReadGate, which owns
+       the placeholder and the branch around it, or it draws a Skeleton against a `.loading`
+       of its own where what it is waiting on is not a list. What must not happen is
+       neither. A ReadGroup is a gate over several reads at once and owns its placeholder
+       the same way, and so does a ReadReserve, which holds the body's room at its last
+       height. */
+    for (const route of ENTRY_DATA) {
+      const source = sourceOf.get(route)!;
+      const gated =
+        source.includes('ReadGate.svelte') || source.includes('ReadGroup.svelte') || source.includes('ReadReserve.svelte');
+      expect(gated || source.includes('Skeleton.svelte'), `${route} waits for nothing`).toBe(true);
+      if (!gated) expect(source, route).toMatch(/\.loading/);
+    }
+  });
+
+  it('crossfades the skeleton into the content rather than popping it', () => {
+    /* The skeleton crossfades over --dur-fast,
+       and the substitute under reduced motion is an instant cut, which the
+       primitive's own duration read handles - the token is clamped to 1ms by
+       the theme.
+
+       What this holds is that no screen was left off the crossfade, not that
+       each one declares it: the first pass wrote the same arrow function
+       into twenty-four routes and this assertion was what pinned it there.
+       It grips the shared primitive's import instead.
+
+       And it holds the asymmetry, because that is the part that was wrong.
+       The skeleton fades out; the content it uncovers gets no entrance of
+       its own. A screen arriving is tier 2's - the shell already runs a
+       view transition over the whole of it - so a second fade on the
+       content a moment later is that content arriving twice. */
+    /* A route that hands its read to ReadGate gets the fade from the gate,
+       asserted once below - which is what took the same arrow function back
+       out of the routes the first pass had written it into. */
+    for (const route of ENTRY_DATA) {
+      const source = sourceOf.get(route)!;
+      if (!source.includes('ReadGate.svelte') && !source.includes('ReadGroup.svelte') && !source.includes('ReadReserve.svelte')) {
+        expect(source, route).toMatch(/import \{[^}]*\bcrossfade\b[^}]*\} from '\$lib\/motion\/reveal'/);
+        expect(markupOf.get(route), route).toMatch(/out:crossfade/);
+      }
+      // Gives document detail an entrance after its cold-load skeleton.
+      if (route === 'media/documents/[id]') {
+        expect(markupOf.get(route), route).toMatch(/in:crossfade/);
+      } else {
+        expect(markupOf.get(route), `${route} fades its content in on top of the navigation`).not.toMatch(
+          /in:crossfade/
+        );
+      }
+    }
+  });
+
+  it('fades the gate\'s own placeholder out, on the one file that draws it', () => {
+    for (const file of ['ReadGate.svelte', 'ReadGroup.svelte']) {
+      const gate = readFileSync(root + `src/lib/components/kit/${file}`, 'utf8');
+      expect(gate, file).toMatch(/import \{[^}]*\bcrossfade\b[^}]*\} from '\$lib\/motion\/reveal'/);
+      expect(gate, file).toMatch(/out:crossfade/);
+      expect(gate, file).not.toMatch(/in:crossfade/);
+    }
+  });
+});
+
+describe('the two print surfaces', () => {
+  it('keeps the clinician summary printable', () => {
+    const source = sourceOf.get('health/clinician-summary')!;
+    // Its own print rule: the disclaimer that only appears on paper.
+    expect(source).toMatch(/@media print/);
+    /* And what print hides is the app around the page, not the page. The
+       header and the settings row that opens the range picker carry
+       `no-print` themselves; the range picker now lives in the controls
+       sheet, screen-only under the sheet's own `no-print`
+       wrap rather than its own - print-parity.test.ts holds that one.
+       The print heading that replaces the header carries the range in
+       words. */
+    expect(source).toMatch(/<ScreenHeader[^>]*class="no-print"/);
+    expect(source).toMatch(/class="no-print settings-row-wrap"/);
+    expect(source).toMatch(/class="kit-filter cd-endpoints"/);
+    expect(source).toContain('print-heading');
+  });
+
+  it('spends no flag colour on the page somebody else reads', () => {
+    /* The one screen in the app whose output leaves it, on paper. A stripe
+       behind an icon disc is neither what a clinician needs nor what the
+       person handing the page over chose to disclose, so every list card
+       here is handed no role. */
+    const source = sourceOf.get('health/clinician-summary')!;
+    expect(source).not.toContain('roleAt(');
+    expect(markupOf.get('health/clinician-summary')).not.toMatch(/<ListCard\b[^>]*role=/);
+  });
+
+  it('shares its seam with the journal book rather than forking it', () => {
+    const book = read('src/routes/settings/journal-book/+page.svelte');
+    expect(book).toMatch(/@media print/);
+  });
+
+  it('prevents hydration layout snap on cold mount of journal book', () => {
+    const book = read('src/routes/settings/journal-book/+page.svelte');
+    expect(book).toMatch(/<div out:crossfade><Skeleton/);
+    expect(book).toMatch(/visibleEntries/);
+    expect(book).toMatch(/beforeprint/);
+  });
+
+  it('keeps the journal book print action in a scoped foot, not the header', () => {
+    const book = read('src/routes/settings/journal-book/+page.svelte');
+    /* The preview runs for many entries; an action only the header held is off-screen for
+       all of them. The foot the frame hosts is the one print action now, and the scope it
+       prints is stated beside it, so the header carries no second one. */
+    expect(book).not.toMatch(/aria-label=\{m\.print\(\)\}/);
+    const footStart = book.indexOf('<SaveBar');
+    const print = book.indexOf('data-book-print');
+    const footEnd = book.indexOf('</SaveBar>');
+    expect(footStart).toBeGreaterThan(-1);
+    expect(print).toBeGreaterThan(footStart);
+    expect(print).toBeLessThan(footEnd);
+    const foot = book.slice(footStart, footEnd);
+    expect(foot).toMatch(/class="small muted book-scope no-print"/);
+    expect(foot).toMatch(/class="btn btn-primary no-print"/);
+    /* The scope names chosen bounds and included part names, not defaults. */
+    expect(book).toContain('m.journal_book_scope(');
+    expect(book).toContain('includedParts.map(journalBookPartName).join');
+    expect(book).toContain('disabled={!inclusion.entries && ENTRY_DEPENDENT_PARTS.has(key)}');
+  });
+});
+
+describe('no medical framing and no interpreted values', () => {
+  it('gives no chart card a place to say what a reading means', () => {
+    /* ChartCard has no prop for a finding, which is enforced in
+       kit-surfaces.test.ts. What this holds is the other half: a screen
+       cannot smuggle one in as a child of the card, because the card's
+       children are the marks. A paragraph belongs outside it. */
+    for (const route of ROUTES) {
+      const markup = markupOf.get(route)!;
+      for (const card of markup.match(/<ChartCard\b[^>]*>/g) ?? []) {
+        expect(card, route).not.toMatch(/\b(finding|verdict|summary|meaning)=/);
+      }
+    }
+  });
+});
+
+describe('transient frame render flashes and bloat prevention', () => {
+  it('guarantees intrinsic minimum geometry on screen headers', () => {
+    const componentsCss = read('src/lib/styles/components.css');
+    expect(componentsCss).toMatch(/\.screen-header\s*\{[^}]*min-height:\s*calc\(var\(--space-8\)\s*\+\s*var\(--touch-target\)\s*\+\s*var\(--space-4\)\)/);
+    /* The inset used to be a term here, because the field bled up through it and its
+       intrinsic height had to cover the part above the window's safe area too. retired that
+       bleed on every field, so the reserve is the same one the header above it keeps. What
+       this test is about is unchanged: a field with an intrinsic minimum cannot render at
+       no height for a frame while its contents resolve. */
+    expect(componentsCss).toMatch(/\.screen > \.screen-header > \.screen-field\s*\{[^}]*min-height:\s*calc\(var\(--space-8\)\s*\+\s*var\(--touch-target\)\s*\+\s*var\(--space-4\)\)/);
+    expect(componentsCss).toMatch(/\.screen-header\.is-collapsed,\s*\.screen > \.screen-header\.is-collapsed\s*\{[^}]*min-height:\s*0/);
+  });
+
+  it('stabilizes container query roots and screen column dimensions against render bloat', () => {
+    const appCss = read('src/lib/styles/app.css');
+    expect(appCss).toMatch(/\.app-viewport\s*\{[^}]*max-width:\s*100%/);
+    expect(appCss).toMatch(/\.screen\s*\{[^}]*max-width:\s*100%;[^}]*min-width:\s*0/);
+  });
+
+  it('keeps skeleton placeholders free of delayed entrance animations', () => {
+    const skeleton = read('src/lib/components/Skeleton.svelte');
+    expect(skeleton).not.toContain('stagger-in');
+  });
+});

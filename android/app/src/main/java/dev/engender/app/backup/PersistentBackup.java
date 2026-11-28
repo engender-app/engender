@@ -8,7 +8,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
-import java.io.OutputStream;
 import org.json.JSONObject;
 
 /** Durable encrypted bytes plus non-secret attempt metadata. All calls hold OWNER. */
@@ -33,7 +32,8 @@ final class PersistentBackup {
         if (raw != null) {
             try {
                 JSONObject metadata = new JSONObject(raw);
-                if (metadata.has("target") && !isVerified(preferences, metadata.getString("target"))) {
+                if (metadata.has("target") && !isVerified(preferences, metadata.getString("target"))
+                    && DestinationGuard.mayDelete(preferences, metadata.getString("target"))) {
                     DocumentFile partial = DocumentFile.fromSingleUri(context, Uri.parse(metadata.getString("target")));
                     if (partial != null) partial.delete();
                 }
@@ -74,7 +74,8 @@ final class PersistentBackup {
         if (previous != null) {
             JSONObject old = new JSONObject(previous);
             new File(directory(context), old.getString("file")).delete();
-            if (old.has("target") && !isVerified(preferences, old.getString("target"))) {
+            if (old.has("target") && !isVerified(preferences, old.getString("target"))
+                && DestinationGuard.mayDelete(preferences, old.getString("target"))) {
                 try {
                     DocumentFile partial = DocumentFile.fromSingleUri(context, Uri.parse(old.getString("target")));
                     if (partial != null) partial.delete();
@@ -111,14 +112,17 @@ final class PersistentBackup {
         long size = stage.getLong("length");
         String digest = stage.getString("sha256");
         try (InputStream input = new FileInputStream(file)) { StagedBackup.verify(input, size, digest); }
-        String destination = preferences.getString("destinationUri", null);
-        if (destination == null) throw new IllegalStateException("destination-unavailable");
-        DocumentFile folder = DocumentFile.fromTreeUri(context, Uri.parse(destination));
+        if (preferences.getString("destinationUri", null) == null) throw new IllegalStateException("destination-unavailable");
+        Uri destination = DestinationGuard.storedTree(context, preferences);
+        if (destination == null) throw new IllegalStateException(DestinationGuard.INVALID);
+        DocumentFile folder = DocumentFile.fromTreeUri(context, destination);
         if (folder == null || !folder.canWrite()) throw new IllegalStateException("destination-unavailable");
-        DocumentFile target = stage.has("target") ? DocumentFile.fromSingleUri(context, Uri.parse(stage.getString("target"))) : null;
+        String owned = DestinationGuard.ownedTarget(preferences, stage, destination);
+        DocumentFile target = owned != null ? DocumentFile.fromSingleUri(context, Uri.parse(owned)) : null;
         if (target == null || !target.exists()) {
-            target = folder.createFile("application/octet-stream", "auto-backup-" + stage.getLong("snapshotAt") + ".ttbackup");
+            target = folder.createFile("application/octet-stream", "auto-backup-" + stage.getLong("snapshotAt") + FolderArchives.EXTENSION);
             if (target == null) throw new IllegalStateException("destination-unavailable");
+            DestinationGuard.requireChild(destination, target);
             stage.put("target", target.getUri().toString());
             if (!preferences.edit().putString(STAGE, stage.toString()).commit()) {
                 preferences.edit().putString(STAGE, raw).commit();
@@ -126,18 +130,8 @@ final class PersistentBackup {
                 throw new IllegalStateException("staging-unavailable");
             }
         }
-        // Reuse the recorded target after interruption, never create duplicate attempts.
-        try (InputStream input = new FileInputStream(file); OutputStream output = context.getContentResolver().openOutputStream(target.getUri(), "wt")) {
-            if (output == null) throw new IllegalStateException("destination-unavailable");
-            byte[] buffer = new byte[8192];
-            int count;
-            while ((count = input.read(buffer)) != -1) output.write(buffer, 0, count);
-            output.flush();
-        }
-        try (InputStream input = context.getContentResolver().openInputStream(target.getUri())) {
-            if (input == null) throw new IllegalStateException("destination-unavailable");
-            StagedBackup.verify(input, size, digest);
-        }
+        // An interrupted attempt can reuse its unverified target; a failed copy removes it.
+        DeliveredBackup.writeAndVerify(context, folder, target, file, size, digest, AutoExportPlugin.storedPassword(context));
         AutoExportPlugin.completeVerifiedBackup(context, folder, target, stage.getLong("snapshotAt"), System.currentTimeMillis());
         file.delete();
         return true;

@@ -1,15 +1,13 @@
-/* The mirror outside SQLite (ADR-0009). Web only for now: Android gets a
-   Capacitor Preferences adapter behind the same PreferenceCache interface
-   when the shell lands, which is the whole reason the interface exists
-   rather than openPreferences() calling localStorage itself.
+/* The mirror outside SQLite. Web only for now: Android gets a Capacitor Preferences adapter
+   behind the same PreferenceCache interface when the shell lands, which is the whole reason
+   the interface exists rather than openPreferences() calling localStorage itself.
 
-   The key and the JSON shape are also read by the pre-paint script inlined
-   in src/app.html, which runs before any module is parsed and so cannot
-   import this file. Changing either means changing both, and that is
-   asserted rather than only written down here: tests/app-html-chrome.test.ts
-   runs that script over BOOT_CACHE_KEY and the fixture's preference shapes,
-   so a key or a field name that drifts on one side leaves the script
-   finding no mirror and painting defaults, which the fixture fails on. */
+   The key and the JSON shape are also read by the pre-paint script inlined in src/app.html,
+   which runs before any module is parsed and so cannot import this file. Changing either
+   means changing both, and that is asserted rather than only written down here:
+   tests/node/ui/app-html-chrome.test.ts runs that script over BOOT_CACHE_KEY and the
+   fixture's preference shapes, so a key or a field name that drifts on one side leaves the
+   script finding no mirror and painting defaults, which the fixture fails on. */
 
 import type { BootPreferences, PreferenceCache } from './preferences.ts';
 
@@ -47,17 +45,37 @@ export function writeCachedAccessMode(mode: CachedAccessMode | null): void {
   }
 }
 
+/** The disguise the Android shell reports for this very start, or null off
+    Android. The shell's alias is written before the disguise flip kills the
+    process, while the localStorage mirror below is flushed to disk after a
+    delay and is lost to that kill, so on the first start after a flip the
+    mirror still holds the old answer. Same read as src/app.html. */
+export function nativeDisguise(): boolean | null {
+  try {
+    const bridge = (globalThis as { androidDisguiseState?: { isDisguised(): boolean } }).androidDisguiseState;
+    return bridge ? bridge.isDisguised() === true : null;
+  } catch {
+    return null;
+  }
+}
+
 export function localStorageCache(): PreferenceCache {
   return {
     read() {
+      let boot: Partial<BootPreferences> = {};
       try {
         const raw = localStorage.getItem(BOOT_CACHE_KEY);
-        return raw ? (JSON.parse(raw) as Partial<BootPreferences>) : {};
+        const parsed: unknown = raw ? JSON.parse(raw) : {};
+        if (parsed && typeof parsed === 'object') boot = parsed as Partial<BootPreferences>;
       } catch {
         // A damaged mirror is not worth failing a boot over: SQLite holds
         // the real values and is a few hundred milliseconds away.
-        return {};
       }
+      // Outside the try: the shell's answer must survive a mirror that
+      // cannot be read, or the lock screen would show the real name over a
+      // disguised alias.
+      const disguise = nativeDisguise();
+      return disguise === null ? boot : { ...boot, disguise };
     },
     write(boot) {
       try {

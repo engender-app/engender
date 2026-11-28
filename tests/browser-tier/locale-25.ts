@@ -59,8 +59,8 @@ publishFixture('locale-25', async () => {
     return rows[0].value === '12345,6' && parseLabNumeric(rows[0].value) === 12345.6;
   });
   await check('Polish period and reading joins have translated grammar', () => {
-    const range = m.compare_period_range({ from: '1 wrz', to: '30 wrz 2026' });
-    return range === '1 wrz do 30 wrz 2026' && !range.includes(' to ') && m.reading_highest_value({ value: '3,5', metric: 'Nastrój' }) === 'Nastrój: 3,5';
+    const range = m.range_from_to({ from: '1 wrz', to: '30 wrz 2026' });
+    return range === '1 wrz do 30 wrz 2026' && !range.includes(' to ');
   });
   console.log('locale probe: calendar');
   const calendar = await mountScreen('/calendar', source);
@@ -73,8 +73,8 @@ publishFixture('locale-25', async () => {
   const home = await mountScreen('/', source);
   await until(() => home.target.querySelector('[data-home-hello]'), 'Home hello');
   await check('Home greeting renders Polish name and date', () => home.target.querySelector('[data-home-hello]')!.textContent!.startsWith('Cześć Alicja · '));
-  await check('Home patch schedule renders a decimal comma in its dose', async () => {
-    const tile = await until(() => home.target.querySelector('[data-patch-schedule-tile]'), 'patch schedule');
+  await check('Home dose panel renders a decimal comma in a patch due today', async () => {
+    const tile = await until(() => home.target.querySelector('[data-dose-panel-tile]'), 'dose panel');
     return tile.textContent!.includes('0,5 mg');
   });
   await home.remove();

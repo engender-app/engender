@@ -7,44 +7,36 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
+import java.util.Map;
 
 /**
- * Which launcher activity-alias (AndroidManifest.xml) is the one Android
- * shows in the launcher and the recents list. Exactly one is ever enabled.
+ * Keep exactly one launcher alias enabled. Disguise overrides the chosen
+ * palette and shape, which the caller supplies again on every sync.
  *
- * <p>There are current and round aliases per flag, plus the disguised one.
- * The icon follows the palette and shape the person picked.
- * The disguised alias outranks every flag: someone who has turned disguise
- * on has said the app must not announce itself, and a flag is exactly an
- * announcement. So a palette change while disguised is recorded nowhere
- * here and simply waits - the preference is the record, and the shell hands
- * this class all three values on every sync, so the right flag lands the moment
- * disguise comes off.
+ * <p>Discover aliases from the manifest via {@link #IDENTITY} metadata
+ * (palette, palette with {@code -round}, or {@code disguised}). Neutral
+ * names such as {@code Launch01} are visible to other apps and must stay
+ * stable. {@link #DEFAULT} is enabled on a fresh install.
  *
- * <p>The aliases are enumerated off the manifest rather than listed here, so
- * a ninth palette is a generator run and a manifest entry and nothing in
- * this file. What is computed here is only the name: {@code Launcher} plus
- * the palette, capitalised, with Round appended for round artwork. The default answers to
- * {@code LauncherDefault} - it has no alias of its own, so an install that
- * never changes its flag never flips an alias at all.
- *
- * <p>Always {@code DONT_KILL_APP} here, even though the disguise switch is
- * supposed to restart the app: that restart is a deliberate, separate step
- * ({@link DisguisePlugin#setLauncherIdentity}), not a side effect of this
- * method. Folding it in here would make the alias flip untestable without
- * also killing the process running the test - and a flag change must not
- * restart the app at all, which is only possible while the two are apart.
+ * <p>Use {@code DONT_KILL_APP}. {@link DisguisePlugin#setLauncherIdentity}
+ * restarts only when disguise changes, so flag changes keep the app alive
+ * and alias selection can be tested in-process.
  */
 public final class DisguiseAlias {
 
-    private static final String PREFIX = "dev.engender.app.disguise.Launcher";
+    /** The meta-data key each launcher alias carries in the manifest. */
+    static final String IDENTITY = "dev.engender.app.LAUNCHER_IDENTITY";
+    private static final String DISGUISED_IDENTITY = "disguised";
 
-    public static final String DEFAULT = PREFIX + "Default";
-    public static final String DISGUISED = PREFIX + "Disguised";
+    /** Pinned rather than looked up: before anything is toggled this is the
+        alias the manifest itself enables, and it is the fallback when a
+        lookup finds nothing. */
+    public static final String DEFAULT = "dev.engender.app.Launch01";
+    public static final String DISGUISED = "dev.engender.app.Launch03";
 
-    /** The palette LauncherDefault draws, and the one the app ships with. */
+    /** The palette DEFAULT draws, and the one the app ships with. */
     public static final String DEFAULT_PALETTE = "trans";
 
     private DisguiseAlias() {}
@@ -53,11 +45,12 @@ public final class DisguiseAlias {
         default rather than to nothing: a name no alias answers to would
         leave every alias disabled and the app absent from the launcher. */
     public static String aliasFor(Context context, boolean disguised, String palette, String shape) {
-        if (disguised) return DISGUISED;
-        String suffix = "round".equals(shape) ? "Round" : "";
-        if (palette == null || palette.isEmpty() || palette.equals(DEFAULT_PALETTE)) return DEFAULT + suffix;
-        String wanted = PREFIX + palette.substring(0, 1).toUpperCase(Locale.ROOT) + palette.substring(1) + suffix;
-        return aliases(context).contains(wanted) ? wanted : DEFAULT + suffix;
+        Map<String, String> byIdentity = identities(context);
+        if (disguised) return byIdentity.getOrDefault(DISGUISED_IDENTITY, DISGUISED);
+        String suffix = "round".equals(shape) ? "-round" : "";
+        String wanted = byIdentity.get((palette == null ? "" : palette) + suffix);
+        if (wanted != null) return wanted;
+        return byIdentity.getOrDefault(DEFAULT_PALETTE + suffix, DEFAULT);
     }
 
     /**
@@ -85,21 +78,28 @@ public final class DisguiseAlias {
     /** Every launcher alias the manifest declares, disabled ones included.
         The manifest is the list; nothing here repeats it. */
     static List<String> aliases(Context context) {
-        List<String> out = new ArrayList<>();
+        return new ArrayList<>(identities(context).values());
+    }
+
+    /** Each launcher alias keyed by what it draws, in manifest order: the
+        palette, the palette with {@code -round}, or {@code disguised}. */
+    static Map<String, String> identities(Context context) {
+        Map<String, String> out = new LinkedHashMap<>();
         try {
             PackageInfo info = context.getPackageManager().getPackageInfo(
                 context.getPackageName(),
-                PackageManager.GET_ACTIVITIES | PackageManager.MATCH_DISABLED_COMPONENTS
+                PackageManager.GET_ACTIVITIES | PackageManager.GET_META_DATA | PackageManager.MATCH_DISABLED_COMPONENTS
             );
             if (info.activities != null) {
                 for (ActivityInfo activity : info.activities) {
-                    if (activity.name != null && activity.name.startsWith(PREFIX)) out.add(activity.name);
+                    String identity = activity.metaData == null ? null : activity.metaData.getString(IDENTITY);
+                    if (activity.name != null && identity != null) out.put(identity, activity.name);
                 }
             }
         } catch (PackageManager.NameNotFoundException impossible) {
             /* The package asking about itself. */
         }
-        if (out.isEmpty()) out.add(DEFAULT);
+        if (out.isEmpty()) out.put(DEFAULT_PALETTE, DEFAULT);
         return out;
     }
 
@@ -112,7 +112,7 @@ public final class DisguiseAlias {
                 == PackageManager.COMPONENT_ENABLED_STATE_ENABLED) return alias;
         }
         /* Nothing has been toggled yet, so the answer is the manifest's own
-           android:enabled, and LauncherDefault is the only one carrying it. */
+           android:enabled, and DEFAULT is the only one carrying it. */
         return DEFAULT;
     }
 

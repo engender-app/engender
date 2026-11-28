@@ -6,8 +6,6 @@ app-nav
 body-region-feeling
 cal-num
 can-scroll
-can-scroll-end
-can-scroll-start
 dim-head
 dim-name
 dim-readout
@@ -39,7 +37,6 @@ is-ghost
 is-here
 is-lids
 is-major
-is-pair
 is-refused
 is-refusing
 is-starred

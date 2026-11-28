@@ -1,46 +1,24 @@
 <script lang="ts">
-  /* One voice screen, three tabs (phase 8 features ticket 09).
+  /* Voice groups benchmarking, practice, comparison and recordings on
+     one route. VoiceBenchmarkFlow owns the benchmark capture. Recordings
+     are entry content. The comparison uses benchmarks and their fixed
+     conditions.
 
-     Recording a benchmark and reading benchmarks back were two routes and
-     two hub rows carrying the same icon, which is one feature described as
-     two. They are one screen now: record a benchmark, practise with the
-     live graph, compare benchmarks. The route stays where it was - the move
-     that would have relocated it was rejected in the deepening audit - and
-     the flow that used to be `/settings/voice/record` is a component
-     (VoiceBenchmarkFlow.svelte) rather than a page.
+     The compare view shows pitch history and, for a selected pair, the
+     measured changes. benchmarkDelta.ts checks passage compatibility
+     and reports Hz and semitones without assigning a direction.
 
-     **Comparing is benchmarks only.** This screen used to compare voice
-     memos as well, on a segmented control that switched which list the
-     picker showed. A memo is entry content, browsed and compared the way a
-     photo is, and it gets its own screen next to photos in ticket 11; a
-     benchmark is a standardized take whose whole point is that its
-     conditions were fixed. Until ticket 11 lands, a memo is reachable
-     through the entry it belongs to and not from here.
-
-     What the compare tab shows: a trend of every benchmark's pitch over
-     time, and, once two are picked, both takes drawn and a plain
-     description of what changed between them (audio/benchmarkDelta.ts owns
-     that arithmetic and the same-passage gate). Neither reads a direction
-     into the numbers - the delta states Hz and semitones and stops.
-
-     The tab is local state, read once from `?tab=` so a search hit or a
-     Home tile can open the screen on the half it means. Switching tabs does
-     not write to history: three views of one feature are not three places a
-     back gesture should walk through.
-
-     The picking list is still written out rather than built from ListRow's
-     own checkbox semantics: a row here is one of two anchors being chosen,
-     so it carries `aria-pressed` and a tick rather than a chevron. It also
-     owns a delete action, which is why it is hand-rolled rather than passed
-     through ListRow's `action` prop - that prop moves `aria-pressed` off
-     the actual pressable button and onto a wrapping div
-     (appointment-prep's own note on the same conflict), which would break
-     the exact contract this picker needs. */
+     A tab opens from ?tab= and updates the current address so Back from
+     a linked record restores it without adding a step. Keep aria-pressed
+     on the actual selection button. Each benchmark row has a separate
+     delete button. */
+  import { offerUndo, undoable } from '$lib/stores/deleteUndo';
+  import type { UndoableDelete } from '$lib/data/journal/undoableDelete';
+  import { replaceRoute } from '$lib/navigation/smart-back';
   import { onDestroy, tick } from 'svelte';
   import { EASE_OUT_CSS, isReducedMotion, motionDuration, scrollBehavior } from '$lib/motion/tokens';
   import { navigating, page } from '$app/state';
   import { m } from '$lib/paraglide/messages';
-  import { toast } from '$lib/stores/toasts.svelte';
   import { deleter } from '$lib/stores/attempt.svelte';
   import { getLocale } from '$lib/paraglide/runtime';
   import { annotationSpan, narrowAnnotations } from '$lib/charts/annotations';
@@ -48,15 +26,14 @@
   import { currentDay } from '$lib/stores/today.svelte';
   import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { presentationRole } from '$lib/data/vocabulary/entryPresentation';
-  import { fmtDay, fmtDuration, fmtRangeEnds } from '$lib/data/dates';
-  import { calendarDuration } from '$lib/data/epochDay';
+  import { fmtApart, fmtDay, fmtRangeEnds } from '$lib/data/dates';
   import {
     orderAnchorsByJourney,
     stepCompareAnchor,
     toComparePair,
     toggleCompareAnchor
   } from '$lib/data/voice/compare-state';
-  import { bandsFor, comfortBand, pitchAxis } from '$lib/audio/bands';
+  import { comfortBand, pitchAxis } from '$lib/audio/bands';
   import { decodePitchTrack } from '$lib/audio/track';
   import { pitchDensity } from '$lib/audio/density';
   import { epochDayFromDateInputValue } from '$lib/data/epochDay';
@@ -67,7 +44,6 @@
   import { paddedSeries } from '$lib/charts/geometry';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import Icon from '$lib/components/Icon.svelte';
-  import PitchBandsCaption from '$lib/components/PitchBandsCaption.svelte';
   import PresentationChipRow from '$lib/components/PresentationChipRow.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Segmented from '$lib/components/Segmented.svelte';
@@ -79,7 +55,6 @@
   import VoicePlayer from '$lib/components/VoicePlayer.svelte';
   import VoicePractice from '$lib/components/VoicePractice.svelte';
   import VoicePracticeTakes from '$lib/components/VoicePracticeTakes.svelte';
-  import VoiceRecordings from '$lib/components/VoiceRecordings.svelte';
   import PitchFigure from '$lib/components/PitchFigure.svelte';
   import { hzLabel } from '$lib/components/pitchBandCopy';
   import AreaFinish from '$lib/components/AreaFinish.svelte';
@@ -93,17 +68,19 @@
   import SectionHeading from '$lib/components/kit/SectionHeading.svelte';
   import SaveBar from '$lib/components/SaveBar.svelte';
   import { roleAttrs } from '$lib/components/kit/role';
-  import { disclose } from '$lib/motion/reveal';
+  import { collapse, disclose } from '$lib/motion/reveal';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
 
-  type Tab = 'record' | 'practise' | 'compare' | 'recordings';
-  const TABS: Tab[] = ['record', 'practise', 'compare', 'recordings'];
+  /* Three tasks. Recordings left for a Media row of their own; an old `?tab=recordings`
+     link opens on Benchmark. */
+  type Tab = 'record' | 'practise' | 'compare';
+  const TABS: Tab[] = ['record', 'practise', 'compare'];
 
   /* The trend takes role 0, the picker's stripe after it - the same split
      the labs screen makes between its chart and its results.
 
-     The own-series card (ticket 29) shares the trend's stripe rather than
+     The own-series card shares the trend's stripe rather than
      taking one of its own: it is the same question about the same
      benchmarks, one figure at a time, and giving it role 1 would have
      recoloured the picking list under it for no reason anybody reading the
@@ -131,18 +108,16 @@
     panelMotion?.cancel();
   });
 
-  /* The metric reference, as a sheet over whichever tab is open rather than
-     a screen of its own (phase 11 ticket 17, ADR-0060).
+  /* The metric reference, as a sheet over whichever tab is open rather than a screen of its
+     own.
 
-     Kept in sync with `?metric=` rather than read once the way `tab` is:
-     a figure's own link (`metricHref`) is a real navigation to this same
-     route with a new query, which is what actually changes `page.url` -
-     shallow routing would not (`replaceState` writes the address bar and
-     `page.state`, never `page.url`, see the memo on that trap). Closing
-     the sheet only clears the local flag and never writes the query back,
-     the same asymmetry a sheet opened from a query is supposed to have:
-     it is state the query can open but the back gesture and this close
-     both just forget locally. */
+     Kept in sync with `?metric=` rather than read once the way `tab` is: a figure's own
+     link (`metricHref`) is a real navigation to this same route with a new query, which is
+     what actually changes `page.url` - shallow routing would not (`replaceState` writes the
+     address bar and `page.state`, never `page.url`, see the memo on that trap). Closing the
+     sheet only clears the local flag and never writes the query back, the same asymmetry a
+     sheet opened from a query is supposed to have: it is state the query can open but the
+     back gesture and this close both just forget locally. */
   let metricSheetKey = $state<VoiceMetricKey | null>(null);
   $effect(() => {
     const requested = page.url.searchParams.get('metric');
@@ -184,7 +159,7 @@
   let benchmarksQuery = liveList((j) => j.voiceBenchmarks.getBenchmarks());
   let anchors = $derived(benchmarksQuery.rows);
 
-  /* What was happening between the takes (phase 6 ticket 23). Benchmarks are
+  /* What was happening between the takes. Benchmarks are
      months apart and a regimen episode is the thing they are read against,
      so the trend's range is however long there have been benchmarks. */
   let span = $derived(annotationSpan(anchors.map((b) => b.epochDay), currentDay()));
@@ -202,8 +177,7 @@
 
   let gapLabel = $derived.by(() => {
     if (!pair) return '';
-    const duration = calendarDuration(anchors[pair.left].epochDay, anchors[pair.right].epochDay);
-    return `${fmtDuration(duration)} ${m.apart_suffix()}`;
+    return fmtApart(anchors[pair.left].epochDay, anchors[pair.right].epochDay);
   });
 
   /* Two benchmarks read against each other. Comparing across different
@@ -211,20 +185,11 @@
      benchmarkDelta.ts itself rather than here. */
   let delta = $derived(pair ? acousticDelta(anchors[pair.left], anchors[pair.right]) : undefined);
 
-  /* The pair's shared caption takes its language from the left take. Safe
-     because a pair is only comparable at all when both were read from the
-     same passage, which is benchmarkDelta.ts's own gate - and where they
-     were not, the caption still names whose figures the bands are, which is
-     what ADR-0059 asks of it. The no-pair arm is never displayed (the
-     caption renders inside `{#if comparing && pair}`) but is still
-     evaluated, so it has to be something rather than an index into null. */
-  let pairBands = $derived(bandsFor(pair ? anchors[pair.left].passageKey : '', getLocale()));
-
-  /* The pair as one picture (redesign ticket 42). Two stacked time plots is
+  /* The pair as one picture. Two stacked time plots is
      what this view was, and two forty-second scribbles is not what somebody
      comparing two months of work is reading: the question is where the
      voice sat, which is one axis with both takes' shapes on it, back to
-     back, inside the same cited bands.
+     back on the same hertz axis.
 
      One axis over both takes rather than one each. Two shapes placed
      against private axes would read as comparable while putting the same
@@ -269,7 +234,7 @@
     )
   );
 
-  /* The presentation chip (phase 8 features ticket 17, ADR-0048):
+  /* The presentation chip (ADR-0048):
      highlights which benchmarks were taken under the chosen mode. A
      benchmark carries no presentation of its own - only an entry does - so
      this reads whichever days in the trend's own span an entry logged it,
@@ -297,8 +262,7 @@
     selected = stepCompareAnchor(selected, which, direction, anchors);
   }
 
-  /* The benchmark flow owns its unsaved take, so a switch away from its tab
-     asks it first (ticket 04, audit L05-02). */
+  /* The benchmark flow owns its unsaved take, so a switch away from its tab asks it first. */
   let benchmarkFlow = $state<ReturnType<typeof VoiceBenchmarkFlow> | undefined>();
 
   function changeTab(next: string) {
@@ -309,6 +273,9 @@
   async function showTab(next: string) {
     if (next === tab) return;
     tab = next as Tab;
+    const target = new URL(page.url);
+    target.searchParams.set('tab', tab);
+    void replaceRoute(target, { noScroll: true, keepFocus: true });
     if (switching) return;
     switching = true;
     while (!destroyed && displayedTab !== tab) {
@@ -348,9 +315,10 @@
   async function confirmDeleteBenchmark() {
     const target = deleteTarget;
     if (!target) return;
-    if (!(await removing.run(() => journal.voiceBenchmarks.deleteBenchmark(target)))) return;
+    let deletion: UndoableDelete | undefined;
+    if (!(await removing.run(async () => { deletion = await undoable((j) => j.voiceBenchmarks.deleteBenchmark(target)); }))) return;
     deleteTarget = null;
-    toast(m.record_deleted(), { kind: 'record-deleted' });
+    offerUndo(deletion!, m.record_deleted());
   }
 
   /** A delta figure as the screen states it: signed, so +35 and -35 are told
@@ -366,10 +334,10 @@
 
 <div class="screen">
   {#if comparing && pair}
-    <ScreenHeader title={m.vc_compare()} back={() => (comparing = false)} />
+    <ScreenHeader title={m.compare()} back={() => (comparing = false)} />
     <p class="compare-gap">{gapLabel}</p>
 
-    <!-- Where each read sat, on one axis, inside the same bands. The
+    <!-- Where each read sat, on one axis. The
          earlier take reads leftward from the spine and the later one
          rightward; which is which is said in words under it, because
          nothing on this screen may read as a direction of travel
@@ -381,9 +349,6 @@
           trace={[]}
           pair={{ earlier: pairFigure.earlier, later: pairFigure.later }}
           tickLabel={hzLabel}
-          language={pairBands.language}
-          languageGuessed={pairBands.guessed}
-          captionShared
           role={roleAt(activeFlag.roles, SECTION_ROLE.trend)}
         />
         <p class="vc-sides">
@@ -414,19 +379,12 @@
       {/each}
     </div>
 
-    <!-- One caption for the pair. Two of them, each in half the width, is
-         the same three paragraphs twice over the two charts they are about
-         (PitchBandsCaption.svelte's own note). -->
-    <div class="screen-part" {...roleAttrs(roleAt(activeFlag.roles, SECTION_ROLE.trend))}>
-      <PitchBandsCaption language={pairBands.language} languageGuessed={pairBands.guessed} />
-    </div>
-
     <div class="screen-part vc-delta" data-benchmark-delta>
       <h3>{m.vc_delta_title()}</h3>
       {#if delta}
         <dl class="vc-delta-figures">
           <!-- Each figure's name is the way into its own section of the
-               metric reference (ticket 27). A sentence per figure belongs
+               metric reference. A sentence per figure belongs
                on the take, where somebody is reading their own numbers for
                the first time; two deltas do not need teaching under them,
                they need a way to ask what the figure is. -->
@@ -465,8 +423,7 @@
         options={[
           { value: 'record', label: m.vb_tab_record() },
           { value: 'practise', label: m.vb_tab_practise() },
-          { value: 'compare', label: m.vb_tab_compare() },
-          { value: 'recordings', label: m.vb_tab_recordings() }
+          { value: 'compare', label: m.compare() }
         ]}
         value={tab}
         onChange={changeTab}
@@ -474,44 +431,13 @@
         key="voice-tab"
       />
 
-      <!-- Which of the two audio tasks is which (phase 11 pre-production
-           ticket 44). The names collided before it: "Record" made a
-           benchmark and "Recordings" held the memos an entry owns, one word
-           apart with nothing on the chooser saying that one of them produces
-           figures to set beside each other and the other keeps audio. The
-           names carry most of that now, and this line says the rest of it
-           until the first benchmark exists - at which point the screen has
-           the answer on it, and a sentence explaining what a benchmark is to
-           somebody who has made six is the kind of standing lecture the copy
-           rules keep off an everyday surface.
+      <!-- Explain Benchmark beside Recordings until the first benchmark exists.
+           Memos do not answer that question, so they do not dismiss the line.
 
-           Only the record tab was renamed, and the ticket's own suggestion
-           of "My recordings" for the other one is not what shipped. The
-           qualifier would fit - the compact rule this ticket changed in
-           components.css lets any label keep its own width, and the track
-           scrolls for whatever is left over - so this is a choice about
-           scrolling rather than about fitting, and it is worth saying which.
-           The four labels now come to exactly the track's 340px at 390px
-           with "Recordings" on the end; "My recordings" is 96.4px against
-           that label's 76.2px, and "Moje nagrania" 96.6px against
-           "Nagrania"'s 62px, so either puts the strip 20px past its track on
-           the reference phone and the fourth task behind the scroll fade.
-           All four visible at once is the thing this screen is being asked
-           for, so the shorter label wins over the more explicit one.
-           "Record" beside "Recordings" was the collision anyway;
-           "Benchmark" beside it is not one, and the line below carries what
-           the qualifier would have added.
-
-           No benchmarks rather than no benchmarks and no memos: a person
-           with memos and no benchmark has still never used the task this
-           distinguishes, and the memo half already says what it holds in its
-           own empty notice. `disclose` because the read answers after the
-           tab strip is drawn, and a paragraph arriving at full height would
-           shove the tab under it down a line (hair-progress's wipe pair is
-           the same case). `skip` while the app is navigating away, because
-           Svelte runs an out-transition for a block the *page* unmounts too,
-           and a line collapsing its own height on the way off the screen is
-           the More hub's own note here. -->
+           At 390px, the four tabs occupy the 340px track. Longer recording labels
+           would add at least 20px and put the last tab behind the scroll fade.
+           disclose opens the space when the read settles. skip keeps the line
+           from collapsing over a page exit. -->
       {#if benchmarksQuery.empty}
         <p class="muted small voice-tasks-lead" data-voice-tasks-lead transition:disclose={{ skip: leaving }}>
           {m.vb_tasks_lead()}
@@ -522,9 +448,9 @@
     <div class="voice-panel" bind:this={panel}>
     {#if displayedTab === 'record'}
       <VoiceBenchmarkFlow bind:this={benchmarkFlow} onSaved={() => showTab('compare')} />
-      <!-- Saying you are done with this area (phase 8 features ticket 04),
-           at the Record tab's own foot now rather than at screen level
-           (phase 11 ticket 17): the passage and the Record control open the
+      <!-- Saying you are done with this area,
+           at the Record tab's own foot now rather than at screen level:
+           the passage and the Record control open the
            tab, and "Mark this as finished"/"Pause this for now" are the
            last thing on it - a decision about the whole practice belongs
            after the thing the tab is for, not ahead of it. -->
@@ -538,13 +464,11 @@
              it is set. -->
         <VoiceComfortBand role={roleAt(activeFlag.roles, SECTION_ROLE.list)} />
       </div>
-      <!-- Sealed takes, read back (phase 8 features ticket 10). Below the
+      <!-- Sealed takes, read back. Below the
            comfort band: recording is the reason someone opened this tab,
            the comfort band is what a live figure is read against, and a
            past take's own record is what happened once already. -->
       <VoicePracticeTakes role={roleAt(activeFlag.roles, SECTION_ROLE.list)} />
-    {:else if displayedTab === 'recordings'}
-      <VoiceRecordings />
     {:else}
       <ReadGate read={benchmarksQuery} variant="line" count={4}>
         {#snippet rows()}
@@ -568,12 +492,10 @@
               <ChartEmpty>{m.vc_trend_too_little()}</ChartEmpty>
             {/if}
           </ChartCard>
-          <!-- The five figures that carry no band, each against the
-               person's own earlier takes (ticket 29, ADR-0060). Under
-               the pitch trend, which is the one figure with a published
-               range to read against, and above the picking list, because
-               both cards answer "what has my own history been" while the
-               list is where a pair gets chosen. -->
+          <!-- Own-series figures, each against the person's own earlier takes. Under the
+               pitch trend, which is the one figure with a published range to read against,
+               and above the picking list, because both cards answer "what has my own
+               history been" while the list is where a pair gets chosen. -->
           <VoiceOwnSeries
             benchmarks={anchors}
             marked={pair ? [pair.left, pair.right] : []}
@@ -592,13 +514,14 @@
           </p>
           <ListCard role={roleAt(activeFlag.roles, SECTION_ROLE.list)}>
             {#each anchors as b (b.id)}
-              <div class="kit-row is-split" data-voice-cell={b.id}>
+              <div transition:collapse class="kit-row is-split" data-voice-cell={b.id}>
                 <button
                   type="button"
                   class="kit-row-main"
                   aria-pressed={orderedSelected.includes(b.id)}
                   aria-label={m.vc_benchmark_cell_aria({
-                    date: fmtDay(b.epochDay, { day: 'numeric', month: 'long', year: 'numeric' })
+                    pitch: m.vb_hz({ value: String(Math.round(b.f0MedianHz)) }),
+                    date: fmtDay(b.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })
                   })}
                   onclick={() => toggle(b.id)}
                 >
@@ -636,19 +559,19 @@
           {#if pair}
             <SaveBar>
               <button class="btn btn-primary press" data-compare onclick={() => (comparing = true)}>
-                <Icon name="columns" size={20} /><span>{m.vc_compare()}</span>
+                <Icon name="columns" size={20} /><span>{m.compare()}</span>
               </button>
             </SaveBar>
           {/if}
         {/snippet}
         {#snippet empty()}
           <Notice
-            icon="mic"
+            icon="waveform"
             key="voice-benchmark-empty"
             role={roleAt(activeFlag.roles, SECTION_ROLE.list)}
             title={m.vc_benchmarks_empty_title()}
             text={m.vc_benchmarks_empty_body()}
-            action={{ label: m.vb_record(), onclick: () => showTab('record') }}
+            action={{ label: m.record(), onclick: () => showTab('record') }}
           />
         {/snippet}
       </ReadGate>
@@ -656,12 +579,10 @@
     </div>
   {/if}
 
-  <!-- The metric reference (phase 8 features ticket 27, ADR-0060; a sheet
-       rather than its own screen since ticket 17). Reference data like
-       `/support/resources`: the table is compiled in, so there is nothing
-       to wait for and nothing that can be empty - only the figure each
-       section opens with reads the journal, through `anchors`, already
-       fetched for the compare tab above. -->
+  <!-- The metric reference. Reference data like `/support/resources`: the table is compiled
+       in, so there is nothing to wait for and nothing that can be empty - only the figure
+       each section opens with reads the journal, through `anchors`, already fetched for the
+       compare tab above. -->
   <Sheet
     open={metricSheetKey !== null}
     title={m.vm_title()}
@@ -701,7 +622,7 @@
   }
   /* The strip keeps no margin of its own, so the whole gap above the line
      is the line's, and arrives with it: disclose opens the line's top
-     margin along with its height (ticket 166). With the strip's own 20
+     margin along with its height. With the strip's own 20
      under it, the two margins would collapse and the line's 32 would only
      start to move anything once it passed 20. At rest the gap is the 32px
      it always was. */
@@ -720,27 +641,20 @@
     scroll-margin-top: var(--space-5);
   }
 
-  /* The two takes stack rather than sitting side by side (Alicja,
-     2026-09-04: "in the compare module, it shouldn't be side-by-side - not
-     enough space for that"). Two pitch figures in half of 390px is 160px
-     of plot each, and the gutter numbers alone are 40 of it.
+  /* The two takes stack rather than sitting side by side. Two pitch figures in half of
+     390px is 160px of plot each, and the gutter numbers alone are 40 of it.
 
-     Its own class rather than a change to `.compare-wrap`, which is the
-     two-up grid the progress-photo comparison uses: two photographs side by
-     side is what that layout is for and it is not this ticket's to move
-     (screens.css's own note on the same conflict). */
+     Its own class rather than a change to `.compare-wrap`, which is the two-up grid the
+     progress-photo comparison uses: two photographs side by side is what that layout is for
+     and it is not this ticket's to move (screens.css's own note on the same conflict). */
   .vc-stack {
     display: flex;
     flex-direction: column;
     gap: var(--space-5);
   }
 
-  /* The earlier/later row under a take. It lived in screens.css while the
-     progress-photo comparison read it too; redesign ticket 55 put that
-     comparison on one draggable divider (PhotoWipe.svelte), which left this
-     screen as the only consumer and check-screens-classes.mjs asking for
-     the rule here. Its buttons were sized 36px until SH-106 and take
-     `.icon-btn`'s own 44px since; the rule carries no size of its own. */
+  /* The take navigation uses the 44px target from `.icon-btn`.
+     Progress photos use the divider in PhotoWipe.svelte. */
   .compare-nav {
     display: flex;
     align-items: center;
@@ -773,7 +687,7 @@
   }
 
   /* Which side is which, under the figure rather than on it: a label
-     inside the box would sit on the bands, and the two dates are the only
+     inside the box would crowd the marks, and the two dates are the only
      thing that says which shape is the earlier read. */
   .vc-sides {
     display: flex;
@@ -797,7 +711,7 @@
     width: 100%;
   }
 
-  /* Voice benchmark delta (phase 5 deepening ticket 16). Same dt/dd-row
+  /* Voice benchmark delta. Same dt/dd-row
      shape as VoiceBenchmarkFlow.svelte's own .vb-figures, which is scoped to
      that component and out of reach here - two surfaces wanting the same
      small layout is not yet a third one worth lifting into a shared class. */

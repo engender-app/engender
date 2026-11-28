@@ -1,40 +1,18 @@
 <script lang="ts">
-  /* Making a voice benchmark (phase 5 deepening ticket 15, CONTEXT: "Voice
-     benchmark"), as one tab of the voice screen (phase 8 features
-     ticket 09).
+  import { journalTextAutocomplete } from '$lib/platform';
+  /* The voice tab reports a finished benchmark to its host. Record a
+     passage and then ah, ee and oo. Retry a failed vowel on its own so a
+     brief interruption never invalidates the passage or other vowels.
 
-     It was its own route until ticket 09 merged the two halves of this
-     feature into one screen with three tabs. Nothing about the flow itself
-     changed in that move: it is a component rather than a page, it reports
-     a finished benchmark to whoever embedded it instead of navigating, and
-     the screen's own header is the screen's.
-
-     Two takes in one sitting: the passage read out, then three notes held -
-     "ah", "ee" and "oo" (phase 8 features ticket 30), each its own step
-     because they fail separately - a vowel spoiled by a door slamming is one
-     tap to redo, and re-reading four hundred words to fix three seconds is
-     the thing this flow exists to avoid. So a failed vowel comes back to the
-     vowel, and the passage stays where it is.
-
-     The three vowels feed audio/vowelScale.ts's own factor, fitted across
-     whichever came back with a usable pair - the reason for three rather
-     than one is in that module's header. "ah" is still the vowel the row's
-     own resonance/room figures come from (ticket 15's storage seam, kept
-     unchanged); "ee" and "oo" pass through the same analysis only to feed
-     the factor and are never themselves stored.
-
-     Nothing on this screen reads anything into a voice (PRODUCT.md:109).
-     The figures are stated in their own units and the advice is always about
-     the recording - the room, the distance, the length - never about how
-     somebody sounds.
-
-     The analysis is pure and lives in $lib/audio; the microphone and the
-     decode live in stores/voiceBenchmark.ts. What is here is the flow. */
+     vowelScale.ts fits the factor across vowels with usable pairs. Only ah
+     supplies the stored resonance and room figures. Advice concerns
+     recording conditions and length. Figures retain their units and imply
+     no judgment about the voice. */
   import { onDestroy } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { getLocale } from '$lib/paraglide/runtime';
   import { analysePassage, analyseVowel } from '$lib/audio/benchmark';
-  import { bandsFor, comfortBand } from '$lib/audio/bands';
+  import { comfortBand, passageLanguage } from '$lib/audio/bands';
   import type { PitchFrame } from '$lib/audio/pitch';
   import {
     VOWEL_GATE,
@@ -80,11 +58,9 @@
       microphone left open, and the vowel step ends itself once it has what
       it needs anyway. */
   const VOWEL_CEILING_SECONDS = 10;
-  /** A passage is read once through; a person's own passage is a free
-      textarea with no length cap, so nothing bounds how long that read runs
-      without this (phase 8 audit issue 04). Two minutes stays comfortably
-      inside the poll's own period even before ticket 05 makes that poll
-      itself cheap. */
+  /** A passage is read once through; a person's own passage is a free textarea with no
+      length cap, so nothing bounds how long that read runs without this. Two minutes stays
+      comfortably inside the poll's own period even makes that poll itself cheap. */
   const PASSAGE_CEILING_SECONDS = 120;
   const READING_MS = 100;
   /** Two seconds of trace on screen, at the tracker's 10 ms frame. */
@@ -94,8 +70,8 @@
   type Phase = 'idle' | 'recording' | 'analysing' | 'retry';
 
   /** The three held vowels, in the order the flow asks for them. "ah" is
-      first because it is the one whose take the row still stores whole
-      (ticket 15); "ee" and "oo" only ever feed the scaling factor. */
+      first because it is the one whose take the row still stores whole;
+      "ee" and "oo" only ever feed the scaling factor. */
   const VOWEL_ORDER: readonly VowelLabel[] = ['a', 'i', 'u'];
   const VOWEL_HINTS: Record<VowelLabel, () => string> = {
     a: m.vb_vowel_hint,
@@ -117,9 +93,8 @@
   let saving = $state(false);
 
   let session: TakeSession | null = null;
-  /** Live only across the microphone-opening await, so `onDestroy` can abort
-      it if the screen goes before `start()` returns (voiceBenchmark.ts's
-      `startTake`, ticket AU-03). */
+  /** Live only across the microphone-opening await, so `onDestroy` can abort it if the
+      screen goes before `start()` returns (voiceBenchmark.ts's `startTake`). */
   let opening = $state<AbortController | null>(null);
   let reading = $state<QualityReport | null>(null);
   let frames = $state<readonly PitchFrame[]>([]);
@@ -129,7 +104,7 @@
     bytes: Uint8Array;
     figures: ReturnType<typeof analysePassage>['figures'];
     pitchTrack: string | null;
-    /* The chain the passage was recorded through (ticket 28, ADR-0061).
+    /* The chain the passage was recorded through (ADR-0061).
        Kept per take rather than once for the flow because the two steps
        open the microphone separately, and the row stores the chain the
        gated figures came from - see the save. */
@@ -149,13 +124,17 @@
   let note = $state('');
   let takeSaved = $state(false);
 
-  /* A recorded take lives only here until Save, so leaving the screen or
-     switching to another tab used to drop it without a word (audit
-     L05-02). Leaving asks first while a take is unsaved (leaveGuard.ts);
-     the page routes its tab switch through `leave`. */
+  /* A recorded take lives only here until Save, so leaving the screen or switching to
+     another tab used to drop it without a word. Leaving asks first while a take is
+     unsaved (leaveGuard.ts); the page routes its tab switch through `leave`. */
   const guard = leaveGuard({
     holding: () => passageTake !== null && !takeSaved,
-    busy: () => saving
+    busy: () => saving,
+    /* A figure's "what these numbers mean" link is a navigation to this
+       same screen with ?metric=, which opens the reference sheet over the
+       take and leaves it in place. */
+    staysOnScreen: (departure) =>
+      departure.to?.url.pathname === location.pathname && departure.to.url.searchParams.has('metric')
   });
 
   /** Run `after` now if no take would be lost, otherwise once the person
@@ -164,9 +143,9 @@
     guard.request(after);
   }
 
-  /** The corner-vowel scaling factor, fitted across whichever of the three
-      held vowels came back with a usable pair (audio/vowelScale.ts, ticket
-      30). Null the same way the function itself is: fewer than two. */
+  /** The corner-vowel scaling factor, fitted across whichever of the three held vowels came
+      back with a usable pair (audio/vowelScale.ts). Null the same way the function itself
+      is: fewer than two. */
   let resonanceScale = $derived.by(() => {
     const readings: VowelFormants[] = [];
     if (vowelTake?.formants) readings.push({ vowel: 'a', formants: vowelTake.formants });
@@ -176,7 +155,7 @@
   });
 
   /* The passage: whatever the person reads from, and the key their series is
-     filed under (CONTEXT: "Benchmark passage"). */
+     filed under. */
   let ownPassage = $derived(prefs.voiceBenchmarkPassage.trim());
   let passageText = $derived(ownPassage || m.vb_passage());
   let passageKey = $derived(ownPassage ? customPassageKey(ownPassage) : builtInPassageKey(getLocale()));
@@ -201,12 +180,7 @@
     if (liveAdvice.length > 0) return liveAdvice;
     return frames.some((frame) => frame.hz !== null) ? [] : [m.vb_hearing_silent()];
   });
-  /* Whose typical ranges belong on the figure: the language of the passage
-     being read, not the app's (ADR-0059). A passage of somebody's own words
-     carries no language, so the app's is a guess and the caption says so. */
-  let bands = $derived(bandsFor(passageKey, getLocale()));
-
-  /* What this take's figures are read against (redesign ticket 42). Six of
+  /* What this take's figures are read against. Six of
      the seven mean nothing except against the same person's earlier takes,
      so the summary needs the history behind them - and it needs it before
      the save, because the summary is where somebody reads their numbers for
@@ -243,8 +217,9 @@
   /** The gate this step's take is judged by, and the same one the live
       readout is running - quality.ts's contract is that those cannot
       disagree, and passing one value to both is how that is kept. */
-  let passageFloorSeconds = $derived(readingFloorSeconds(wordCountOf(passageText), bands.language));
-  let gate = $derived(step === 'vowel' ? VOWEL_GATE : passageGate(wordCountOf(passageText), bands.language));
+  let language = $derived(passageLanguage(passageKey) ?? (getLocale() === 'pl' ? 'pl' : 'en'));
+  let passageFloorSeconds = $derived(readingFloorSeconds(wordCountOf(passageText), language));
+  let gate = $derived(step === 'vowel' ? VOWEL_GATE : passageGate(wordCountOf(passageText), language));
 
   /** How much of the reading the take has carried, against the floor it has
       to clear. It only ever fills: `voicedSeconds` is a running total and
@@ -269,7 +244,7 @@
         case 'tooShort':
           return m.vb_fail_short();
         // One length failure on the passage, so this keeps its wording and
-        // becomes true: after ticket 41 it fires only when somebody really
+        // becomes true: it fires only when somebody really
         // did read too little of it.
         case 'underRead':
           return m.vb_fail_short_passage();
@@ -356,8 +331,8 @@
     stopPolling();
     phase = 'analysing';
 
-    /* A finish that throws (the recorder, the decoder) used to leave the
-       flow on "Reading the take" for good (after-release 06, L05-06). */
+    /* A finish that throws (the recorder, the decoder) used to leave the flow on "Reading
+       the take" for good. */
     let take: Awaited<ReturnType<typeof active.finish>>;
     try {
       take = await active.finish();
@@ -377,7 +352,7 @@
         take.samples,
         ANALYSIS_SAMPLE_RATE,
         wordCountOf(passageText),
-        bands.language
+        language
       );
       if (!analysed.quality.passed || !analysed.figures) {
         failed = analysed.quality.failed;
@@ -450,20 +425,18 @@
         snrDb: vowelTake?.snrDb ?? null,
         note: note.trim() || null,
         pitchTrack: passageTake.pitchTrack,
-        /* The vowel's chain where there is a vowel, and the passage's
-           otherwise. One column, and every figure it gates is the vowel
-           take's: the resonances and the room reading come from the held
-           note, while pitch, its spread and the rate are device-proof and
-           compare across everything (ADR-0060, ADR-0061). The two steps
-           are seconds apart on one phone in every ordinary case; where
-           somebody plugged a headset in between them, this is the chain
-           that makes the resonance refuse rather than the one that would
-           let it through. */
+        /* The vowel's chain where there is a vowel, and the passage's otherwise. One
+           column, and every figure it gates is the vowel take's: the resonances and the
+           room reading come from the held note, while pitch, its spread and the rate are
+           device-proof and compare across everything (ADR-0061). The two steps are seconds
+           apart on one phone in every ordinary case; where somebody plugged a headset in
+           between them, this is the chain that makes the resonance refuse rather than the
+           one that would let it through. */
         captureChain: vowelTake?.captureChain ?? passageTake.captureChain,
         resonanceScale
       });
       takeSaved = true;
-      toast(m.vb_saved());
+      toast(m.saved());
       onSaved();
     } catch (error) {
       // The takes stay where they are, so Save can be tapped again.
@@ -493,7 +466,7 @@
     stopPolling();
     // Leaving mid-take closes the microphone rather than leaving it open
     // behind a screen nobody is on - and leaving mid-open, before `session`
-    // is even assigned, is the same thing one await earlier (ticket AU-03).
+    // is even assigned, is the same thing one await earlier.
     opening?.abort();
     void session?.discard();
     session = null;
@@ -503,10 +476,9 @@
 <div class="vbf">
   {#if refusal}
     <div class="screen-part">
-      <!-- The ask is a real button rather than a sentence about settings
-           (Alicja, 2026-08-31): a first refusal is usually the OS dialog
-           being dismissed, and asking again brings it straight back. Only
-           'denied' gets it - there is nothing to ask a device with no
+      <!-- The ask is a real button rather than a sentence about settings: a first refusal
+           is usually the OS dialog being dismissed, and asking again brings it straight
+           back. Only 'denied' gets it - there is nothing to ask a device with no
            microphone, or a browser that cannot record at all. -->
       <Notice
         icon="mic"
@@ -528,7 +500,7 @@
     <div class="screen-part vb-body">
       <SectionHeading text={m.vb_measured()} />
       <!-- Seven figures, each with the sentence that says what it is and
-           links into its own reference section (ticket 27). The list was
+           links into its own reference section. The list was
            markup here until then; what the flow keeps is the take. -->
       <VoiceFigures
         {role}
@@ -539,7 +511,7 @@
         {resonanceScale}
       />
 
-      <!-- The picture the numbers came from (ticket 09). It sits under the
+      <!-- The picture the numbers came from. It sits under the
            figures rather than over them: the numbers are what a person came
            to save, and the drawing is what makes them mean something. -->
       <div class="vb-take">
@@ -548,8 +520,6 @@
           data-vb-take
           {role}
           {comfort}
-          language={bands.language}
-          languageGuessed={bands.guessed}
           pitchTrack={passageTake.pitchTrack}
           medianHz={figures.f0MedianHz}
           p10Hz={figures.f0P10Hz}
@@ -558,8 +528,8 @@
       </div>
 
       <label class="field vb-note">
-        <span class="field-label">{m.vb_note_label()}</span>
-        <textarea class="input" rows="2" bind:value={note} placeholder={m.vb_note_placeholder()}></textarea>
+        <span class="field-label">{m.note_label()}</span>
+        <textarea autocomplete={journalTextAutocomplete()} class="input" rows="2" bind:value={note}></textarea>
       </label>
     </div>
 
@@ -574,82 +544,21 @@
       {#if step === 'vowel'}
         <!-- Which of the three this is, said once in words rather than left
              to be inferred from a step that repeats itself with a different
-             sound each time (ticket 30). -->
+             sound each time. -->
         <p class="muted small vb-hint">
           {m.vb_vowel_progress({ index: vowelIndex + 1, total: VOWEL_ORDER.length })}
         </p>
       {/if}
 
-      <!-- Mouth-to-microphone distance is the largest thing a person
-           controls in the whole of this measurement, and no API can read
-           it back, so it ships as an instruction rather than as a stored
-           number a benchmark could not verify (ticket 28, ADR-0061). Both
-           steps get it, because the vowel is a take too, and it goes after
-           each step's own words rather than in front of them: what this
-           screen is comes first, how to hold the phone second. It leaves
-           while a take is running, like the hints it follows, because the
-           gauge needs the room. -->
-      {#snippet distance()}
-        <p class="muted small vb-hint">{m.vb_distance_hint()}</p>
-      {/snippet}
-
-      <!-- The graph goes from the reading step and stays on the held note
-           (Alicja, 2026-09-04, in three passes: no live graph while reading
-           a passage; a benchmark's own picture is enough right after
-           finishing it; and steadiness "should still be there to guide the
-           user that their voice during the vowel recordings should be
-           stable").
-
-           Which is the distinction. Reading a passage has no shape to hit -
-           pitch moves by design, the numbers come afterwards, and watching
-           a curve while reading aloud is what the practise tab is for.
-           Holding a note has exactly one: flat. So the vowel step keeps a
-           figure and it is the one that measures the thing being asked for,
-           semitones around the note itself, with no bands on it because
-           where the note sits is not the question.
-
-           The reading step keeps what the figure's words carried: how long
-           the voice has been going, and anything to do differently about
-           the room or the level. -->
+      <!-- Reading shows live pitch on a fixed hertz axis. The vowel step
+           shows steadiness around its own note. -->
       {#if step === 'passage' && (phase === 'recording' || phase === 'retry')}
-        <!-- The pitch graph is back on the reading step (Alicja, 2026-09-14:
-             "reading the passage should display a graph with live pitch"),
-             which reverses her own call of 2026-09-04 that took it off. What
-             stood in for it there was a 6px voicing ribbon, invented for
-             "the one step that cannot show a graph"; the step can show one
-             again, so the stand-in has gone rather than sitting under a
-             trace that says the same thing with more in it - a break in the
-             line is a frame that was not voiced.
-
-             `pitch` rather than `steadiness`: reading has no note to hold,
-             so the question is where the voice is, on the absolute Hz axis
-             with the passage language's own reference bands behind it
-             (ADR-0059). The vowel step keeps `steadiness` for the opposite
-             reason - one shape to hit, and a flat line is the whole answer.
-
-             No run bar under it (`targetSeconds` null). That mark is the
-             hold task's and this task has no hold in it, which is the whole
-             of ticket 41; the coverage cue below is what a read is measured
-             by.
-
-             **No bands, and that is a measurement rather than a
-             preference.** ADR-0059's rule is that bands never appear
-             without their citation, and the citation is three paragraphs:
-             drawn here it came to 300px and pushed the passage itself off a
-             390x844 screen, so the words somebody was told to read aloud
-             were not on the screen while they read them. The bands and
-             their source are on the take's own figure a moment later, which
-             is where somebody can actually read them - ADR-0059 already
-             says that is the point of putting them there. What the live
-             figure keeps is the absolute Hz axis and the person's own
-             comfort bracket, which is line work rather than a citation. -->
         <div class="vb-live" data-vb-live in:wipe|global out:wipe|global>
           <VoiceGauge
             data-vb-gauge
             {role}
             {comfort}
             reading="pitch"
-            language={null}
             {frames}
             report={reading}
             targetSeconds={null}
@@ -658,7 +567,7 @@
           />
 
           <!-- How much of the reading has arrived, against the floor the
-               gate is actually applying (ticket 41). It replaced the held
+               gate is actually applying. It replaced the held
                run, which was the hold task's meter on a task that has no
                hold in it: it emptied at every word boundary and the person
                who tried to satisfy it by not breathing was being trained
@@ -692,8 +601,6 @@
              way of a take in progress. It goes when the flow starts. -->
         {#if phase === 'idle'}
           <p class="muted small vb-hint">{m.vb_lead()}</p>
-          <p class="muted small vb-hint">{m.vb_passage_ceiling_hint()}</p>
-          {@render distance()}
         {/if}
         <p class="vb-passage kit-panel" data-vb-passage>{passageText}</p>
         <!-- Swapping the passage mid-take is not a thing to do, and the row
@@ -710,7 +617,6 @@
              saying it, and the instruction is taking up the room the gauge
              needs. Which sound follows the step this is (VOWEL_HINTS). -->
         <p class="muted small vb-hint">{VOWEL_HINTS[vowelKey]()}</p>
-        {@render distance()}
       {/if}
 
       {#if step === 'vowel' && (phase === 'recording' || phase === 'retry')}
@@ -719,8 +625,6 @@
           {role}
           {comfort}
           reading="steadiness"
-          language={bands.language}
-          languageGuessed={bands.guessed}
           {frames}
           report={reading}
           targetSeconds={VOWEL_SECONDS}
@@ -737,7 +641,7 @@
     <SaveBar arrange="stack">
       {#if phase === 'recording'}
         <button class="btn btn-primary" data-vb-stop onclick={stop}>
-          <Icon name="pause" size={20} /><span>{m.vb_stop()}</span>
+          <Icon name="pause" size={20} /><span>{m.stop_recording()}</span>
         </button>
       {:else if phase === 'analysing'}
         <button class="btn btn-soft" disabled>
@@ -751,7 +655,7 @@
         >
           <Icon name="mic" size={20} />
           <span>
-            {phase === 'retry' ? m.vb_again() : step === 'vowel' ? m.vb_vowel_start() : m.vb_record()}
+            {phase === 'retry' ? m.vb_again() : step === 'vowel' ? m.vb_vowel_start() : m.record()}
           </span>
         </button>
       {/if}
@@ -771,7 +675,7 @@
   <p class="muted small">{m.vb_passage_own_hint()}</p>
   <label class="field">
     <span class="field-label">{m.vb_passage_own_title()}</span>
-    <textarea class="input" rows="6" bind:value={passageDraft} placeholder={m.vb_passage_own_placeholder()}
+    <textarea autocomplete={journalTextAutocomplete()} class="input" rows="6" bind:value={passageDraft}
     ></textarea>
   </label>
   <div class="vb-sheet-actions">
@@ -787,22 +691,22 @@
 </Sheet>
 
 <style>
-  /* The action bar is sticky, so it floats over whatever is beneath it at
-     rest. Everything on this screen under it is load-bearing - the advice
-     the gauge is giving, the note field - so the body reserves the bar's
-     own height rather than leaving it to a scroll somebody mid-take cannot
-     make. */
+  /* The screen's own 20 under the panel, which sits a level too deep for the .screen floor
+     to reach. It held 96px here, a reserve for a foot that floated over the content; the
+     foot is the column's flex sibling now and covers nothing. */
   .vb-body {
-    padding-bottom: calc(var(--touch-target) * 2);
+    padding-bottom: var(--space-5);
   }
 
+  /* The column's full width, justified, so the text and the hairlines above and below it
+     end where everything else on the screen does. Hyphenated in the page's language, so
+     justified Polish does not open rivers. */
   .vb-passage {
     margin: 0;
     font-size: var(--text-lg);
     line-height: 1.6;
-    /* A passage is read off the screen at arm's length, so it gets the
-       reading measure rather than the app's usual dense body block. */
-    max-width: 60ch;
+    text-align: justify;
+    hyphens: auto;
   }
 
   .vb-passage-own {

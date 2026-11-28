@@ -17,39 +17,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * Whether the Capacitor shell enforces the document's Content Security Policy
- * (audit finding F-06).
+/** Checks enforcement of the document's Content Security Policy in Capacitor,
+ * where the bundle loads without nginx headers. An off-origin fetch must
+ * produce a connect-src violation without relying on emulator connectivity.
  *
- * <p>The policy used to be split: nginx sent everything except the script
- * hashes, and the build wrote the hashes into the document because only a build
- * knows them. The Capacitor shell serves its own origin out of the APK and
- * never sees an nginx header, so on Android the enforced policy was the script
- * half and nothing else - no connect-src, which is what turns a successful
- * script injection into something that cannot send the journal's data key
- * anywhere. The key crosses the bridge as hex and lives in JS memory for the
- * session, and Android is the platform holding real journals.
+ * <p>Blob sources must remain allowed for photos, recordings, timelapses and
+ * OCR workers. The image decodes and the worker replies. Synthetic media
+ * bytes check source admission. Browser walkthroughs check playback.
  *
- * <p>The whole set now travels in the document. That fixes nothing unless this
- * WebView actually applies a meta policy, and a policy it ignored would be
- * worse than the old state because it would read as coverage. So this asserts
- * enforcement rather than presence: an off-origin fetch has to raise a
- * connect-src violation, which only a live policy can produce - no network is
- * involved and the emulator's connectivity does not enter into it.
- *
- * <p>The other half is that the policy is not too narrow. blob: URLs are how
- * three things in this app work - a photo thumbnail decrypted into memory, a
- * voice note or timelapse fed to its player, and the OCR worker tesseract.js
- * constructs - and each is loaded here through the real policy. What this can
- * and cannot say about them is worth being exact about: the image really
- * decodes, and the worker really posts a message back, but the media elements
- * are handed bytes that are not media, so they end in a decode error either
- * way. For those two the claim is only that the policy did not refuse the
- * source. Playback itself is the walkthrough suite's, against the same
- * document in a real browser.
- *
- * <p>evaluateJavascript is the probe vehicle. It runs outside the page's
- * script-src, which is why it can install the listener at all.
+ * <p>The instrumentation uses {@code evaluateJavascript} to observe the policy.
  */
 @RunWith(AndroidJUnit4.class)
 public class WebViewCspEnforcementTest {
@@ -60,7 +36,7 @@ public class WebViewCspEnforcementTest {
      * Every directive the document has to carry. frame-ancestors is absent on
      * purpose: a browser parses it in a meta policy and ignores it, so the
      * nginx header stays its only home and nothing frames this WebView.
-     * tests/csp.test.ts pins the sources; this pins that they arrive here.
+     * tests/node/security/csp.test.ts pins the sources; this pins that they arrive here.
      */
     private static final List<String> REQUIRED_DIRECTIVES = Arrays.asList(
         "default-src", "base-uri", "object-src", "frame-src", "form-action",

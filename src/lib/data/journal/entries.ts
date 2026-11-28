@@ -1,24 +1,12 @@
-/* The entries area (PRD F1). Two rules carry this module:
+/* Apply the entry content check here so every write path agrees.
+   Patch dimension values individually, preserving values outside the
+   selected preset. Replace tags and body regions from the full set
+   the picker supplied.
 
-   An entry holds at least one of mood, a dimension value, a tag, a
-   non-blank note, a photo, a body-region intensity - or it does not exist
-   (CONTEXT: "Entry"). Enforced here so no path bypasses it.
-
-   Dimension values write per dimension, never as a whole object: a value
-   belongs to the entry, not to the preset that happened to be active when
-   it was logged, so editing under a narrower preset must leave the other
-   dimensions' rows alone. Tags and body regions (ticket 09), by contrast,
-   arrive as the whole set the editor showed, and replace - each picker
-   shows every option every time, so an id or region key missing from a
-   save is the user deselecting it.
-
-   Photos become writable in ticket 11; their rows travel with the entry
-   into trash and back (phase 5 ticket 19) rather than being cleaned up on
-   delete - purgeExpiredTrash is what eventually takes them and their files
-   with it, via the injected store. */
+   Keep photo rows when moving an entry to or from trash.
+   purgeExpiredTrash removes both rows and files through the injected store. */
 
 import { BODY_REGION_MIDPOINT } from '../bodyMap';
-import type { WordFrequencySource } from '../wordFrequency';
 import {
   BAD_MOMENT_MOOD_CEILING,
   BAD_MOMENT_REGION_DYSPHORIA_FLOOR,
@@ -28,6 +16,7 @@ import {
 import { EMPTY_ENTRY_ERROR, entryIsEmpty, type EntryContent } from '../entryContent';
 import { foldText } from '../fold';
 import { ftsMatchExpression } from '../searchQuery';
+import { assertOneOf, CYCLE_EVENT_KINDS } from '../rowValues';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { Entry, Photo, VideoNote, VoiceRecording } from '../types';
 import type { PhotoFileStore } from '../photos/photo-file-store';
@@ -73,9 +62,8 @@ import { startOfDayTimestamp } from '../epochDay';
 import type { CycleEventKind, DoseRoute, DoseStatus, InjectionVehicle, PersonalEffectType } from '../types';
 import type { ApplicationSiteKey, InjectionSiteKey } from '../doseSchedule';
 
-/** How long a trashed entry survives before purgeExpiredTrash reclaims it
-    (phase 5 ticket 19). Fixed, like the hair-photo schedule's 28 days
-    (hairPhotoSchedule.ts) - no per-user setting. */
+/** How long a trashed entry survives before purgeExpiredTrash reclaims it.
+    Fixed - no per-user setting. */
 export const TRASH_WINDOW_DAYS = 30;
 const TRASH_WINDOW_MS = TRASH_WINDOW_DAYS * 24 * 60 * 60 * 1000;
 
@@ -141,10 +129,9 @@ export interface EntryInput {
   /** Stored photos removed in this edit. They travel with the rest of the
       entry save so its fields and photos commit as one action. */
   removePhotoIds?: string[];
-  /** Recordings made in this edit, ready to store as-is (ticket 24: no
-      client-side audio effects, so nothing normalizes them the way a photo
-      is). Additive, the same reason attachPhotos is: the editor has the
-      entry's existing recording rows but not their bytes. */
+  /** Recordings made in this edit, ready to store as-is. Additive, the same reason
+      attachPhotos is: the editor has the entry's existing recording rows but not their
+      bytes. */
   attachRecordings?: Uint8Array[];
   /** Stored recordings removed in this edit, committed with the rest of the
       entry save the same way removePhotoIds is. */
@@ -157,23 +144,21 @@ export interface EntryInput {
   /** Stored video notes removed in this edit, committed with the rest of the
       save. */
   removeVideoIds?: string[];
-  /** Contextual tryout felt-sense reflection (ADR-0044). */
+  /** Contextual tryout felt-sense reflection. */
   tryoutFeltSense?: EntryTryoutFeltSenseInput;
-  /** Contextual scheduled dose quick-log (ADR-0044). */
+  /** Contextual scheduled dose quick-log. */
   doseLog?: EntryDoseLogInput;
-  /** Contextual post-op procedure recovery note and wound photo (ADR-0044). */
+  /** Contextual post-op procedure recovery note and wound photo. */
   procedureRecovery?: EntryProcedureRecoveryInput;
-  /** Contextual HRT physical effects noticed (ADR-0044), several per entry
-      since phase 12 ux-carpet ticket 289. */
+  /** Contextual HRT physical effects noticed, several per entry. */
   effectMarkers?: EntryEffectMarkerInput[];
-  /** Contextual cycle event (ADR-0044). */
+  /** Contextual cycle event. */
   cycleEvent?: EntryCycleEventInput;
-  /** The presentation this entry is filed under (phase 5 deepening ticket
-      17, ADR-0048), a domain id or null to clear it. Undefined leaves the
-      entry's current presentation alone, the same `undefined` vs. explicit
-      `null` rule `mood` and `note` already answer to - a save that never
-      touched the chip must not silently unset it. Commits with the rest of
-      the entry in this one transaction (ADR-0044). */
+  /** The presentation this entry is filed under (ADR-0048), a domain id or null to clear
+      it. Undefined leaves the entry's current presentation alone, the same `undefined` vs.
+      explicit `null` rule `mood` and `note` already answer to - a save that never touched
+      the chip must not silently unset it. Commits with the rest of the entry in this one
+      transaction. */
   presentationId?: string | null;
 }
 
@@ -184,9 +169,18 @@ export interface EntrySearchFilters {
   endEpochDay?: number | null;
   hasNote?: boolean;
   hasPhoto?: boolean;
-  /** Starred entries only (CONTEXT: "Starred") - the starred shelf's own
+  /** Starred entries only - the starred shelf's own
       query, reached from search. */
   starred?: boolean;
+  /** Entries logged under any of these modes,
+      by presentation id. */
+  presentationIds?: string[];
+  /** Entries with a reading on any of these body regions, by domain id. */
+  bodyRegions?: string[];
+  /** Entries whose value on one scale, by its key, lies from `min` to
+      `max`, both included. An entry that never logged the scale is outside
+      every range. */
+  scale?: { key: string; min: number; max: number } | null;
 }
 
 export interface EntriesArea {
@@ -206,41 +200,28 @@ export interface EntriesArea {
       insight sheet, is standing behind a row computed over a range
       (`stats.tagInsights`) - an unranged read opened whatever the twenty
       most recent carriers of the tag were across the whole journal, which
-      is not what the row's count described (carpet ticket 19). */
+      is not what the row's count described. */
   entriesWithTag(tagId: string, fromEpochDay: number, toEpochDay: number, limit: number): Promise<Entry[]>;
-  /** Entries carrying any of `tagIds` or starred (CONTEXT: "Starred"),
-      newest first, at most `limit` of them - the doubt journal's
-      counterevidence pool (ticket 14 widened this from a tag-only query so
-      a person can curate their own "proof" rather than relying solely on
-      whatever happened to get the tag; ticket 32 widened `tagId` to
-      `tagIds` so the caller can pass all three euphoria tags rather than
-      just the general one). Not folded into entriesWithTag itself: that
-      one is also the stats screen's tag-insight query, for an arbitrary
-      tag, and starred entries have no business surfacing there. */
-  counterevidencePool(
-    tagIds: readonly string[],
-    limit: number,
-    /** Both ends inclusive. Look back's affirming-themes reading asks
-        over the door's span (phase 11 ticket 07); Safe space's own
-        surfaces still ask over the whole journal and pass nothing. */
-    span?: { from: number; to: number }
-  ): Promise<Entry[]>;
+  /** Entries carrying any of `tagIds` or starred, newest first, at most `limit` of them -
+      the doubt journal's counterevidence pool. Not folded into entriesWithTag itself: that
+      one is also the stats screen's tag-insight query, for an arbitrary tag, and starred
+      entries have no business surfacing there. */
+  counterevidencePool(tagIds: readonly string[], limit: number): Promise<Entry[]>;
   /** The most recent entry qualifying as a bad moment (lowest mood, dysphoria tag,
-      or body-region dysphoria intensity >= 50), newest first
-      (ticket 50, ADR-0040). Returns undefined when no such entry exists. */
+      or body-region dysphoria intensity >= 50), newest first.
+      Returns undefined when no such entry exists. */
   latestBadMomentEntry(dysphoriaTagIds?: readonly string[]): Promise<Entry | undefined>;
   /** The same entry's id alone, `undefined` when there is none. Its own read
       rather than a field off the one above, because hydrating an entry costs
       six more statements pulling dimension values, tag links, photos,
       recordings, video notes and body regions - and a surface offering to
-      revisit a bad moment needs the id it would link to and nothing else
-      (phase 8 audit ticket 13). */
+      return to a bad moment needs the id it would link to and nothing else.
+      */
   latestBadMomentEntryId(dysphoriaTagIds?: readonly string[]): Promise<number | undefined>;
-  /** The day of the most recent untrashed entry at or before `todayEpochDay`,
-      or null if there is none (phase 8 features ticket 03, lastWrite.ts). One
-      bounded `MAX`, not a fetched list reduced in JS. A row dated after today
-      is excluded rather than trusted - the last-write registry never lets a
-      clock-skewed row stand in for the truth. */
+  /** The day of the most recent untrashed entry at or before `todayEpochDay`, or null if
+      there is none (lastWrite.ts). One bounded `MAX`, not a fetched list reduced in JS. A
+      row dated after today is excluded rather than trusted - the last-write registry never
+      lets a clock-skewed row stand in for the truth. */
   lastWriteEpochDay(todayEpochDay: number): Promise<number | null>;
   /** Notes matching the query, unioned with the entries carrying any of
       `matchingTagIds`, newest first (ADR-0005, PRD F19).
@@ -260,8 +241,8 @@ export interface EntriesArea {
       query with fifty. An aggregate, so it transfers one row however many
       match. */
   countSearchMatches(query: string, matchingTagIds: string[], filters?: EntrySearchFilters): Promise<number>;
-  /** How many untrashed entries the journal holds, over all of its history
-      (phase 8 UX ticket 01). Home's count line, and Safe Space's body of
+  /** How many untrashed entries the journal holds, over all of its history.
+      Home's count line, and Safe Space's body of
       work.
 
       Its own narrow read rather than a field on the recap: a recap pays for
@@ -270,7 +251,7 @@ export interface EntriesArea {
       days they fall on - a day carrying three of them is three. */
   countAll(): Promise<number>;
   /** How many distinct days hold an untrashed entry, over all of the
-      journal's history (ticket 18). What `recentDays` grows against: the
+      journal's history. What `recentDays` grows against: the
       door reads that a `recentDays(limit)` returned fewer days than asked
       for, and this is the exact count that a "N more days" control needs
       instead - the difference between the two is never a guess. */
@@ -278,8 +259,7 @@ export interface EntriesArea {
   /** Returns the entry's id. Inserting needs an epochDay; updating an
       unknown id throws. */
   upsertEntry(input: EntryInput): Promise<number>;
-  /** Idempotent. Moves the entry to trash for TRASH_WINDOW_DAYS (phase 5
-      ticket 19): its dimension values, tag links and body regions stay as
+  /** Idempotent. Moves the entry to trash for TRASH_WINDOW_DAYS: its dimension values, tag links and body regions stay as
       they are, its photos and recordings are left untouched, and it drops
       out of every other read this area offers until it is restored or
       purgeExpiredTrash reclaims it for good. */
@@ -287,21 +267,20 @@ export interface EntriesArea {
   /** Brings a trashed entry back, photos and recordings included. A no-op
       on an unknown id or one that is not trashed. */
   restoreEntry(id: number): Promise<void>;
+  /** Delete forever: purges a trashed entry
+      now instead of after TRASH_WINDOW_DAYS, every row and file of it, the
+      way purgeExpiredTrash does. A no-op on an entry that is not in Trash,
+      checked inside the purge's own transaction so a restore that lands
+      first wins. */
+  purgeEntry(id: number): Promise<void>;
   /** Every trashed entry, most recently trashed first - the dedicated trash
       view's only read (out of scope: any other screen surfacing them). */
   trashedEntries(): Promise<TrashedEntry[]>;
-  /** Starred sits outside upsertEntry's input (CONTEXT: "Starred"): it is
+  /** Starred sits outside upsertEntry's input: it is
       curation metadata, not one of the seven content fields, so it gets
       its own toggle the way setTagHidden does rather than folding into a
       content save. Throws on an unknown id. */
   setEntryStarred(id: number, starred: boolean): Promise<void>;
-  /** Every untrashed entry carrying a non-empty note, in no particular
-      order - what a text fold needs (phase 8 features ticket 14's
-      word-frequency fold) and nothing `hydrate()` also fetches: no dims,
-      tags, photos, recordings or body regions, none of which a fold over
-      note text reads. A blank note contributes no words, so it is excluded
-      at the query rather than filtered by every caller. */
-  noteEntries(): Promise<WordFrequencySource[]>;
 }
 
 interface TrashedEntry extends Entry {
@@ -317,12 +296,31 @@ type EntryRow = {
   mood: number | null;
   note: string | null;
   starred: number;
-  presentation_id: string | null;
+  presentation_uuid: string | null;
 };
 
 type RemovedPhotoRow = { uuid: string; entry_id: number | null; file_path: string };
 type RemovedRecordingRow = { uuid: string; entry_id: number; file_path: string };
 type RemovedVideoRow = { uuid: string; entry_id: number; file_path: string };
+
+/* Whether `?debriefFor=` still names the appointment a debrief offer could be making on
+   `epochDay`. The id arrives in an address, and an address is something anyone can send:
+   the save links the entry only to the most recent appointment before that day (the offer
+   on Home and the appointment screens, appointments.ts's `mostRecentPastAppointment`) or to
+   one on that day itself (In the room's way out), and only while it has no debrief on file.
+   A missing, stale or already-answered id saves the entry and links nothing. */
+async function debriefStillOffered(driver: SqliteDriver, appointmentId: string, epochDay: number): Promise<boolean> {
+  const rows = await driver.query<{ offered: number }>(
+    `SELECT 1 AS offered FROM appointment a
+      WHERE a.uuid = ?
+        AND (a.epoch_day = ? OR a.uuid = (SELECT uuid FROM appointment WHERE epoch_day < ?
+                                          ORDER BY epoch_day DESC, id DESC LIMIT 1))
+        AND NOT EXISTS (SELECT 1 FROM appointment_debrief d
+                         WHERE d.appointment_uuid = a.uuid AND d.entry_id IS NOT NULL)`,
+    [appointmentId, epochDay, epochDay]
+  );
+  return rows.length > 0;
+}
 
 export function makeEntriesArea(
   driver: SqliteDriver,
@@ -354,7 +352,7 @@ export function makeEntriesArea(
     await driver.run(`INSERT INTO entry_tag (entry_id, tag_id) VALUES ${values}`, params);
   };
 
-  // A region is a reference-data row since ticket 30, addressed by its
+  // A region is a reference-data row, addressed by its
   // domain id (key for a built-in, uuid for a custom) - checked against the
   // body_region table the same way resolveTagIds checks tag ids, rather
   // than the closed BODY_REGION_KEYS list this used to hold in code.
@@ -572,7 +570,7 @@ export function makeEntriesArea(
       videos: videos.get(row.id) ?? [],
       bodyRegions: bodyRegions.get(row.id) ?? {},
       starred: bool(row.starred),
-      presentationId: row.presentation_id
+      presentationId: row.presentation_uuid
     }));
   };
 
@@ -580,35 +578,21 @@ export function makeEntriesArea(
     if (entryIsEmpty(e)) throw new Error(EMPTY_ENTRY_ERROR);
   }
 
-  /* The index is contentless, so it holds folded text against the entry's
-     rowid and nothing else (ADR-0005). Every write goes through here, which
-     is what keeps the fold on the index and the fold on the query the same
-     function rather than the same intention.
+  /* The index is contentless, so it holds folded text against the entry's rowid and nothing
+     else (ADR-0005). Every write goes through here, which is what keeps the fold on the
+     index and the fold on the query the same function rather than the same intention.
 
-     Clearing first makes this the same two statements for a new entry and
-     for an edit. On an insert the delete matches nothing, which costs one
-     statement inside a transaction and means neither caller has to know
-     which case it is in.
+     Clearing first makes this the same two statements for a new entry and for an edit. On
+     an insert the delete matches nothing, which costs one statement inside a transaction
+     and means neither caller has to know which case it is in.
 
-     Deletes are not here: migration v3's trigger drops the index row with
-     the entry row, so paths that delete entries without knowing about the
-     index - ticket 14's Replace import - stay correct. */
-  /* Which entries a search matches, as one WHERE clause plus its parameters -
-     shared by the page of hits and the count of all of them, so the two can
-     never disagree about what matched.
-
-     One clause rather than two lookups unioned in JS, so ordering and
-     de-duplication are the database's job: an entry whose note and tag both
-     match has to appear once.
-
-     Either half can be absent - a query of pure punctuation yields no match
-     expression, a query matching no label yields no tag ids - so the halves
-     are assembled rather than parameterised away, and null means "do not go
-     to the database at all". An unused half cannot be left in the SQL and
-     disarmed with a parameter: an empty FTS5 expression is a syntax error,
-     not an empty result, and whether SQLite evaluates a guard before the
-     MATCH beside it is not something to depend on across three different
-     SQLite builds. */
+     Deletes are not here: migration v3's trigger drops the index row with the entry row, so
+     paths that delete entries without knowing about the index - Replace import - stay
+     correct. */
+  /* Share one SQL filter between entries and their result count. Let SQLite
+     order and deduplicate note and tag matches. Omit empty branches because
+     FTS5 rejects an empty MATCH expression. Return null when neither branch
+     can match. */
   const searchMatches = (
     query: string,
     matchingTagIds: string[],
@@ -674,6 +658,24 @@ export function makeEntriesArea(
     if (filters.starred) {
       clauses.push('e.starred = 1');
     }
+    if ((filters.presentationIds ?? []).length > 0) {
+      clauses.push(`e.presentation_uuid IN (${filters.presentationIds!.map(() => '?').join(', ')})`);
+      params.push(...filters.presentationIds!);
+    }
+    if ((filters.bodyRegions ?? []).length > 0) {
+      clauses.push(
+        `EXISTS (SELECT 1 FROM entry_body_region ebr
+                 WHERE ebr.entry_id = e.id AND ebr.region IN (${filters.bodyRegions!.map(() => '?').join(', ')}))`
+      );
+      params.push(...filters.bodyRegions!);
+    }
+    if (filters.scale) {
+      clauses.push(
+        `EXISTS (SELECT 1 FROM entry_dimension_value edv JOIN gender_dimension gd ON gd.id = edv.dimension_id
+                 WHERE edv.entry_id = e.id AND gd.key = ? AND edv.value BETWEEN ? AND ?)`
+      );
+      params.push(filters.scale.key, filters.scale.min, filters.scale.max);
+    }
 
     return clauses.length === 0 ? null : { where: clauses.join(' AND '), params };
   };
@@ -691,6 +693,15 @@ export function makeEntriesArea(
     await driver.run('INSERT INTO entry_fts (rowid, folded_text) VALUES (?, ?)', [entryId, foldText(note)]);
   };
 
+  /* Contextual cards (tryout felt-sense, dose log, procedure recovery note, HRT effect
+     markers, cycle event) each add a second write beside the entry. The entry and that row
+     describe one moment, so they commit together or not at all: a crash or a thrown error
+     between two commits would leave a felt-sense row with no entry, or an entry claiming a
+     dose that never reached the dose log. resolveContextual does every check that needs a
+     read, and stages files, before the transaction, so a bad card blocks the save with
+     nothing written. commitContextual only writes, inside the same driver.transaction as
+     the entry insert or update, and anything it throws rolls the entry back too. A new
+     contextual card follows the same two steps. */
   const resolveContextual = async (input: EntryInput) => {
     let tryoutRowId: number | null = null;
     if (input.tryoutFeltSense) {
@@ -731,7 +742,7 @@ export function makeEntriesArea(
   ) => {
     if (input.tryoutFeltSense && resolved.tryoutRowId != null) {
       await driver.run(
-        'INSERT INTO felt_sense (uuid, tryout_id, milestone_id, epoch_day, mood, note, updated_at) VALUES (?, ?, NULL, ?, ?, ?, ?)',
+        'INSERT INTO felt_sense (uuid, tryout_id, epoch_day, mood, note, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
         [
           mintUuid(),
           resolved.tryoutRowId,
@@ -800,6 +811,7 @@ export function makeEntriesArea(
 
     if (input.cycleEvent) {
       const cycle = input.cycleEvent;
+      assertOneOf(CYCLE_EVENT_KINDS, 'cycle event kind', cycle.kind);
       const cycleDay = cycle.epochDay ?? epochDay;
       await driver.run('INSERT INTO cycle_event (uuid, kind, epoch_day, updated_at) VALUES (?, ?, ?, ?)', [
         mintUuid(),
@@ -812,7 +824,7 @@ export function makeEntriesArea(
 
   /* The newest bad moment, at whatever width the caller needs it: the two
      reads below differ only in their SELECT list, and the rule for what
-     counts as a bad moment (ticket 50, ADR-0040) has no business being
+     counts as a bad moment has no business being
      written twice. */
   const latestBadMomentRow = <Row extends Record<string, unknown> = EntryRow,>(
     columns: string,
@@ -846,7 +858,7 @@ export function makeEntriesArea(
   return {
     async getEntry(id) {
       const rows = await driver.query<EntryRow>(
-        'SELECT id, epoch_day, timestamp, mood, note, starred, presentation_id FROM entry WHERE id = ? AND trashed_at IS NULL',
+        'SELECT id, epoch_day, timestamp, mood, note, starred, presentation_uuid FROM entry WHERE id = ? AND trashed_at IS NULL',
         [id]
       );
       return rows[0] && (await hydrate(rows))[0];
@@ -854,7 +866,7 @@ export function makeEntriesArea(
 
     async entriesForDay(epochDay) {
       const rows = await driver.query<EntryRow>(
-        `SELECT id, epoch_day, timestamp, mood, note, starred, presentation_id FROM entry
+        `SELECT id, epoch_day, timestamp, mood, note, starred, presentation_uuid FROM entry
          WHERE epoch_day = ? AND trashed_at IS NULL ORDER BY timestamp, id`,
         [epochDay]
       );
@@ -868,7 +880,7 @@ export function makeEntriesArea(
          excluded from both: a day whose only entry is trashed must not
          count towards the days this picks. */
       const rows = await driver.query<EntryRow>(
-        `SELECT id, epoch_day, timestamp, mood, note, starred, presentation_id FROM entry
+        `SELECT id, epoch_day, timestamp, mood, note, starred, presentation_uuid FROM entry
          WHERE trashed_at IS NULL
            AND epoch_day IN (
              SELECT DISTINCT epoch_day FROM entry WHERE trashed_at IS NULL ORDER BY epoch_day DESC LIMIT ?
@@ -884,7 +896,7 @@ export function makeEntriesArea(
       // matching COALESCE(key, uuid) = ? inline left the planner no usable
       // index on tag, so it reversed the join and scanned entry through
       // idx_entry_trashed_at instead - visiting every untrashed entry on
-      // the stats screen's tag-insight query (phase 8 audit ticket 18).
+      // the stats screen's tag-insight query.
       // Not rowidWhere (support.ts): an unknown tag has to mean "no
       // entries" here, not a thrown error - this is a read.
       const tagRows = await driver.query<{ id: number }>('SELECT id FROM tag WHERE key = ? OR uuid = ?', [
@@ -895,7 +907,7 @@ export function makeEntriesArea(
       if (tagPk == null) return [];
 
       const rows = await driver.query<EntryRow>(
-        `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred, e.presentation_id FROM entry e
+        `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred, e.presentation_uuid FROM entry e
          JOIN entry_tag et ON et.entry_id = e.id
          WHERE et.tag_id = ? AND e.epoch_day BETWEEN ? AND ? AND e.trashed_at IS NULL
          ORDER BY e.epoch_day DESC, e.timestamp DESC, e.id DESC
@@ -905,38 +917,20 @@ export function makeEntriesArea(
       return hydrate(rows);
     },
 
-    async counterevidencePool(tagIds, limit, span) {
-      // EXISTS rather than a JOIN: a starred entry carrying several other
-      // tags would otherwise arrive once per tag row, since the tag match
-      // itself has to live in the WHERE clause (an entry need not carry
-      // any of `tagIds` at all to qualify here) rather than the JOIN
-      // condition. Trashed entries are excluded the same way every other
-      // read here is (phase 5 ticket 19) - a trashed entry is not
-      // counterevidence for anything until it is restored.
+    async counterevidencePool(tagIds, limit) {
+      // EXISTS keeps starred entries with multiple tags from appearing once
+      // per tag. The tag match belongs in WHERE because an untagged entry can
+      // qualify. Exclude trashed entries.
       //
-      // The body-region clause (phase 5 ticket 44) needs no day-level
-      // aggregation the way isGoodDay's does: this is already a per-entry
-      // check, so any one of an entry's logged regions clearing the floor
-      // is enough, the same inclusive floor and the same constant isGoodDay
-      // reads.
-      //
-      // Phase 11 ticket 15 makes that arm the weakest of the three rather
-      // than an equal of them. A region is a magnitude somebody can mark on
-      // a day that went badly in every other way, and on the demo journal
-      // one high chest reading was admitting "Tired. Work ran long and I
-      // skipped voice practice again." as evidence the bad day was not the
-      // whole story - which is the one thing this screen must never do. So
-      // a region admits an entry only when nothing else on the entry
-      // contradicts it: no dysphoria tag, and no second region marked below
-      // the midpoint. The other two arms are untouched. Starring is a
-      // person choosing the day themselves, and a good tag is them naming
-      // it, so both still qualify whatever else the entry carries.
+      // A logged region at or above isGoodDay's floor can qualify per entry,
+      // without day aggregation. The region arm requires no dysphoria tag and
+      // no other region below the midpoint. Starring and a good tag still
+      // qualify regardless of other fields.
       const placeholders = tagIds.map(() => '?').join(', ');
       const dysphoriaPlaceholders = DYSPHORIA_TAG_KEYS.map(() => '?').join(', ');
       const rows = await driver.query<EntryRow>(
-        `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred, e.presentation_id FROM entry e
+        `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred, e.presentation_uuid FROM entry e
          WHERE e.trashed_at IS NULL
-           ${span ? 'AND e.epoch_day BETWEEN ? AND ?' : ''}
            AND (
              e.starred = 1
              OR EXISTS (
@@ -961,7 +955,6 @@ export function makeEntriesArea(
          ORDER BY e.epoch_day DESC, e.timestamp DESC, e.id DESC
          LIMIT ?`,
         [
-          ...(span ? [span.from, span.to] : []),
           ...tagIds,
           GOOD_DAY_REGION_EUPHORIA_FLOOR,
           ...DYSPHORIA_TAG_KEYS,
@@ -974,7 +967,7 @@ export function makeEntriesArea(
 
     async latestBadMomentEntry(dysphoriaTagIds = DYSPHORIA_TAG_KEYS) {
       const rows = await latestBadMomentRow(
-        'e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred, e.presentation_id',
+        'e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred, e.presentation_uuid',
         dysphoriaTagIds
       );
       if (rows.length === 0) return undefined;
@@ -993,7 +986,7 @@ export function makeEntriesArea(
       if (!matches) return [];
 
       const rows = await driver.query<EntryRow>(
-        `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred, e.presentation_id FROM entry e
+        `SELECT e.id, e.epoch_day, e.timestamp, e.mood, e.note, e.starred, e.presentation_uuid FROM entry e
          WHERE e.trashed_at IS NULL AND ${matches.where}
          ORDER BY e.epoch_day DESC, e.timestamp DESC, e.id DESC
          ${args.limit == null ? '' : 'LIMIT ?'}`,
@@ -1014,7 +1007,7 @@ export function makeEntriesArea(
 
     async trashedEntries() {
       const rows = await driver.query<EntryRow & { trashed_at: number }>(
-        `SELECT id, epoch_day, timestamp, mood, note, starred, presentation_id, trashed_at FROM entry
+        `SELECT id, epoch_day, timestamp, mood, note, starred, presentation_uuid, trashed_at FROM entry
          WHERE trashed_at IS NOT NULL ORDER BY trashed_at DESC`
       );
       const trashedAtById = new Map(rows.map((row) => [row.id, row.trashed_at]));
@@ -1026,7 +1019,7 @@ export function makeEntriesArea(
       if (input.id != null) {
         const current = (
           await driver.query<EntryRow>(
-            'SELECT id, epoch_day, timestamp, mood, note, presentation_id FROM entry WHERE id = ? AND trashed_at IS NULL',
+            'SELECT id, epoch_day, timestamp, mood, note, presentation_uuid FROM entry WHERE id = ? AND trashed_at IS NULL',
             [input.id]
           )
         )[0];
@@ -1063,7 +1056,7 @@ export function makeEntriesArea(
         // undefined leaves the entry's current presentation alone; an
         // explicit null clears it, and only a non-null value is checked
         // against the table.
-        const presentationId = input.presentationId !== undefined ? input.presentationId : current.presentation_id;
+        const presentationId = input.presentationId !== undefined ? input.presentationId : current.presentation_uuid;
         if (presentationId !== null) await assertKnownPresentation(presentationId);
         const contextual = await resolveContextual(input);
         // The note that will be stored, whether this edit supplied one or
@@ -1080,7 +1073,7 @@ export function makeEntriesArea(
         const targetEpochDay = input.epochDay ?? current.epoch_day;
         await driver.transaction(async (driver) => {
           await driver.run(
-            'UPDATE entry SET epoch_day = ?, timestamp = ?, mood = ?, note = ?, presentation_id = ?, updated_at = ? WHERE id = ?',
+            'UPDATE entry SET epoch_day = ?, timestamp = ?, mood = ?, note = ?, presentation_uuid = ?, updated_at = ? WHERE id = ?',
             [
               targetEpochDay,
               input.timestamp ?? current.timestamp,
@@ -1173,7 +1166,7 @@ export function makeEntriesArea(
       const uuid = mintUuid();
       return driver.transaction(async (driver) => {
         await driver.run(
-          'INSERT INTO entry (uuid, epoch_day, timestamp, mood, note, presentation_id, starred, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          'INSERT INTO entry (uuid, epoch_day, timestamp, mood, note, presentation_uuid, starred, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
           [uuid, input.epochDay, input.timestamp ?? now(), mood, input.note ?? '', presentationId, input.starred ? 1 : 0, now()]
         );
         const entryId = await rowidByUuid(driver, 'entry', uuid);
@@ -1191,7 +1184,8 @@ export function makeEntriesArea(
           await insertStagedVideo(driver, entryId, video);
         }
         await commitContextual(driver, input, contextual, input.epochDay!);
-        if (input.debriefForAppointment != null && checklistsFor) {
+        if (input.debriefForAppointment != null && checklistsFor
+          && await debriefStillOffered(driver, input.debriefForAppointment, input.epochDay!)) {
           await checklistsFor(driver).recordDebriefEntry(entryId, input.debriefForAppointment);
         }
         return entryId;
@@ -1199,13 +1193,16 @@ export function makeEntriesArea(
     },
 
     async deleteEntry(id) {
-      // Marks the row rather than removing it (phase 5 ticket 19): the
+      // Marks the row rather than removing it: the
       // dimension values, tag links, body regions, photo rows and
       // recording rows all stay exactly as they are, so restoreEntry has
       // them to bring back. Only the search index drops the entry now -
       // trashed_at IS NULL on every other read is what hides the rest.
+      // A move to Trash and a restore from it are edits (
+      // they bump `updated_at`, so an archive Merge carries them.
       await driver.transaction(async (driver) => {
-        await driver.run('UPDATE entry SET trashed_at = ? WHERE id = ? AND trashed_at IS NULL', [now(), id]);
+        const at = now();
+        await driver.run('UPDATE entry SET trashed_at = ?, updated_at = ? WHERE id = ? AND trashed_at IS NULL', [at, at, id]);
         await driver.run('DELETE FROM entry_fts WHERE rowid = ?', [id]);
       });
     },
@@ -1217,9 +1214,23 @@ export function makeEntriesArea(
       ))[0];
       if (!current) return;
       await driver.transaction(async (driver) => {
-        await driver.run('UPDATE entry SET trashed_at = NULL WHERE id = ?', [id]);
+        await driver.run('UPDATE entry SET trashed_at = NULL, updated_at = ? WHERE id = ?', [now(), id]);
         await indexEntry(driver, id, current.note ?? '');
       });
+    },
+
+    async purgeEntry(id) {
+      const owned = await driver.transaction(async (driver) => {
+        const trashed = await driver.query<{ id: number }>(
+          'SELECT id FROM entry WHERE id = ? AND trashed_at IS NOT NULL',
+          [id]
+        );
+        if (trashed.length === 0) return null;
+        const owned = await filesOfEntries(driver, [id]);
+        await deleteEntryRows(driver, [id]);
+        return owned;
+      });
+      if (owned) await removeFilesOfEntries(driver, files, owned);
     },
 
     async setEntryStarred(id, starred) {
@@ -1251,18 +1262,6 @@ export function makeEntriesArea(
         [todayEpochDay]
       );
       return rows[0]?.day ?? null;
-    },
-
-    async noteEntries() {
-      const rows = await driver.query<{ epoch_day: number; note: string; presentation_id: string | null }>(
-        `SELECT epoch_day, note, presentation_id FROM entry
-         WHERE trashed_at IS NULL AND note IS NOT NULL AND note != ''`
-      );
-      return rows.map((row) => ({
-        epochDay: row.epoch_day,
-        note: row.note,
-        presentationId: row.presentation_id
-      }));
     }
   };
 }
@@ -1273,7 +1272,7 @@ export function makeEntriesArea(
     after migrations (boot.ts), mirroring sweepOrphanPhotos's shape.
 
     Returns how many entries it took. The caller announces the write when that
-    is not zero (phase 5 audit ticket 02): this runs after the screens are live
+    is not zero: this runs after the screens are live
     now, so a Trash list already on screen would otherwise keep showing rows
     that are gone. */
 export async function purgeExpiredTrash(driver: SqliteDriver, files: PhotoFileStore): Promise<number> {
@@ -1305,39 +1304,47 @@ async function purgeTrashedBefore(
   );
   if (expired.length === 0) return 0;
   const ids = expired.map((row) => row.id);
-  const placeholders = ids.map(() => '?').join(', ');
-
-  const photos = await driver.query<{ file_path: string }>(
-    `SELECT file_path FROM photo WHERE entry_id IN (${placeholders})`,
-    ids
-  );
-  const recordings = await driver.query<{ file_path: string }>(
-    `SELECT file_path FROM voice_recording WHERE entry_id IN (${placeholders})`,
-    ids
-  );
-  const videos = await driver.query<{ file_path: string }>(
-    `SELECT file_path FROM video_note WHERE entry_id IN (${placeholders})`,
-    ids
-  );
+  const owned = await filesOfEntries(driver, ids);
 
   // The last moment before this is irreversible.
   if (sawWrite()) return 0;
-  await driver.transaction(async (driver) => {
-    await driver.run(`DELETE FROM photo WHERE entry_id IN (${placeholders})`, ids);
-    await driver.run(`DELETE FROM voice_recording WHERE entry_id IN (${placeholders})`, ids);
-    await driver.run(`DELETE FROM video_note WHERE entry_id IN (${placeholders})`, ids);
-    await driver.run(`DELETE FROM margin_note WHERE entry_id IN (${placeholders})`, ids);
-    await driver.run(`DELETE FROM revisit WHERE entry_id IN (SELECT uuid FROM entry WHERE id IN (${placeholders}))`, ids);
-    await driver.run(`DELETE FROM entry_dimension_value WHERE entry_id IN (${placeholders})`, ids);
-    await driver.run(`DELETE FROM entry_tag WHERE entry_id IN (${placeholders})`, ids);
-    await driver.run(`DELETE FROM entry_body_region WHERE entry_id IN (${placeholders})`, ids);
-    await driver.run(`DELETE FROM entry WHERE id IN (${placeholders})`, ids);
-  });
-  // After the commit, the same reasoning deleteEntry's old hard delete gave:
-  // a failed file removal must not resurrect rows, and an orphaned file is
-  // what the boot orphan sweep (sweepOrphanPhotos) reclaims next.
-  await removeFilesOf(driver, files, photos);
-  await removeRecordingFilesOf(driver, files, recordings);
-  await removeVideoFilesOf(driver, files, videos);
+  await driver.transaction((driver) => deleteEntryRows(driver, ids));
+  await removeFilesOfEntries(driver, files, owned);
   return ids.length;
+}
+
+type EntryFiles = Record<'photos' | 'recordings' | 'videos', { file_path: string }[]>;
+
+async function filesOfEntries(driver: SqliteDriver, ids: number[]): Promise<EntryFiles> {
+  const placeholders = ids.map(() => '?').join(', ');
+  const of = (table: string) =>
+    driver.query<{ file_path: string }>(`SELECT file_path FROM ${table} WHERE entry_id IN (${placeholders})`, ids);
+  return { photos: await of('photo'), recordings: await of('voice_recording'), videos: await of('video_note') };
+}
+
+/** Every row of the given entries, children first so it holds with foreign
+    keys off too. The search index goes through its own delete trigger. */
+async function deleteEntryRows(driver: SqliteDriver, ids: number[]): Promise<void> {
+  const placeholders = ids.map(() => '?').join(', ');
+  for (const table of [
+    'photo',
+    'voice_recording',
+    'video_note',
+    'margin_note',
+    'entry_dimension_value',
+    'entry_tag',
+    'entry_body_region'
+  ]) {
+    await driver.run(`DELETE FROM ${table} WHERE entry_id IN (${placeholders})`, ids);
+  }
+  await driver.run(`DELETE FROM entry WHERE id IN (${placeholders})`, ids);
+}
+
+/* After the commit, the same reasoning deleteEntry's old hard delete gave:
+   a failed file removal must not resurrect rows, and an orphaned file is
+   what the orphan sweep (sweepOrphanPhotos) reclaims next. */
+async function removeFilesOfEntries(driver: SqliteDriver, files: PhotoFileStore, owned: EntryFiles): Promise<void> {
+  await removeFilesOf(driver, files, owned.photos);
+  await removeRecordingFilesOf(driver, files, owned.recordings);
+  await removeVideoFilesOf(driver, files, owned.videos);
 }

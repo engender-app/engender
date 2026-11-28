@@ -1,101 +1,9 @@
-/* The sweep: every classified write driven against real SQL through the
-   recording driver (ticket 01), checked against the coarse-name-to-table
-   declaration (sqlTables.ts, ticket 02) rather than trusting the comments
-   next to TABLE_NAMES that used to be the only account of it.
-
-   Two checks, not one, because a coarse name commonly covers several real
-   tables that no single operation touches at once - 'dose' covers a dose
-   event, a schedule and a pause, and upsertDose's own SQL only ever reaches
-   dose_event. Treating "the announcement's tables" and "what this one
-   statement touched" as sets that must be equal would fail every multi-table
-   coarse name on sight, which is not the bug this ticket is about.
-
-   1. Per operation, what its SQL touched must be a *subset* of its declared
-      tables, mapped through SQL_TABLES. This is the safety-critical
-      direction ticket 01's own header names: a write reaching a table
-      nobody declared is exactly the class of bug that shows up as a Svelte
-      screen quietly holding stale data.
-   2. Per coarse name, the union - across every operation that declares it -
-      of what its SQL actually touched, intersected with that name's
-      declared tables, must equal the declared tables exactly. A table
-      SQL_TABLES lists that no operation declaring that name ever writes
-      fails here, which is the other direction: a mapping entry nothing
-      backs is a claim about the schema this suite cannot verify any other
-      way.
-
-   Together they reproduce both halves of the ticket's own acceptance
-   criterion: removing a table from a declaration a write's SQL genuinely
-   reaches fails check 1, and adding one nothing writes fails check 2 - both
-   demonstrated directly, at the bottom, against a small fixture rather than
-   by mutating the real declaration.
-
-   What check 2 still cannot catch: an operation that spuriously declares a
-   coarse name it never touches, where some *other* legitimate operation
-   also declares that name and genuinely writes it. The union only asks
-   whether every declared table is hit by *someone* - it never asks whether
-   *this* operation was the one that needed to declare it. `archive.replace`
-   and `discardEverything` are the extreme case of the same gap: driven for
-   real, their SQL wipes nearly every content table, so either one alone
-   would "satisfy" check 2 for almost any coarse name regardless of whether
-   its own mapping is right. WIPES_THE_JOURNAL excludes both from check 2's
-   owners for exactly that reason - a proof that touches everything proves
-   nothing about one thing - while they still count fully for check 1 and
-   for write coverage. Closing that broader gap would mean equality per
-   operation, which is exactly the check this file
-   deliberately does not make, for the coarse-name reason above. It is a
-   real, narrower blind spot than "exactly", left open on purpose rather
-   than left unmentioned.
-
-   Reads are driven the same way and must write nothing, and then get the
-   same two checks in the read direction (final audit ticket 26). Per read,
-   the tables its SQL read must be a subset of its declared tables mapped
-   through SQL_TABLES - the direction writes.ts's header calls the worst
-   one, since a read missing a table it joins never re-runs when that table
-   is written and shows stale data that looks like a Svelte bug. Per coarse
-   name, the union of what every read declaring it actually read must cover
-   that name's tables. READS_THE_JOURNAL is WIPES_THE_JOURNAL's twin: the
-   archive snapshot and the three import previews that start from one read
-   every table there is, so they stay out of the union. Reads sit under
-   READ_OPT_OUTS the same way writes do, and a coverage check below holds
-   the read half to the same standard the write half's coverage check does.
-
-   The read half's own blind spots, named rather than closed. First, the
-   same one check 2 has: a read declaring a coarse name its SQL never
-   touches passes as long as some other read declaring that name does touch
-   it. For a read that over-declaration costs a needless re-query, not stale
-   data, which is why it is the half left open. Second, a read only proves
-   what this fixture makes it run: getSchedules reads dose_schedule_weekday
-   only for a weekday schedule and getSnapshots reads doubt_snapshot_entry
-   only when a snapshot exists, so the scenario above leaves one of each
-   standing, and a branch no fixture row reaches is not checked. Third, a
-   composing read's narrowing (test-support/composing-reads.ts) is let
-   through: chartAnnotations and dayAhead read photos and linked names
-   through getMilestones and never hand them on, so a photo write has no
-   reason to re-run them, and writes.test.ts holds each narrowing to being
-   true. Fourth, the recording driver's own: triggers and a view's
-   underlying tables are invisible to it.
-
-   Not every classified write is driven. `reconcile.ts`'s own comment says
-   reconciling "usually finds nothing to do, and announcing these tables for
-   a no-op is cheaper than asking it to report what it actually changed" -
-   so reconcileBuiltIns is driven on a database nothing has reconciled yet,
-   the one state where its SQL does touch everything it declares, rather
-   than opted out. `archive.replace`, `archive.merge`, `discardEverything`
-   and three of the six `commit*Import` operations (Daylio CSV, Track &
-   Graph, Pixels) are driven the same way `writes.test.ts` already drives
-   them - an in-memory snapshot, or an inline CSV/JSON payload, no external
-   file required - even though their own declaration is the same "every
-   table, by design" ceiling `archive`'s own comment states ("a Replace
-   touches everything by definition"). Declaring a ceiling is not a reason
-   to skip driving an operation that costs nothing to drive; it only matters
-   for what check 1 can prove about it, and check 1's subset test is
-   automatically satisfied by a maximal declaration regardless - the value
-   in driving these for real is what they contribute to check 2's per-table
-   union, `commitDaylioImport` being the cheapest real writer of
-   'importLog' among them. Only the three formats that parse an actual
-   archive container - a `.daylio` backup zip, a `.ttbackup` zip, a Day One
-   export zip - are named in WRITE_OPT_OUTS, because this sweep has no
-   fixture for one. */
+/* Record SQL for declared operations. Each operation may touch only tables
+   covered by its declaration. Each coarse mapping must also cover the union
+   of observed tables for that name. Exclude whole-journal reads and wipes from
+   the union and check their own operation limits separately. Reads write nothing.
+   Fixtures cover exercised branches only. The driver sees neither trigger bodies
+   nor the tables behind views. See writes.test.ts for composition checks. */
 
 import assert from 'node:assert/strict';
 import { beforeAll, describe, test } from 'vitest';
@@ -111,28 +19,18 @@ import { COMPOSING_READS } from './test-support/composing-reads.ts';
 const bytes = (text: string): Uint8Array => new Uint8Array([...text].map((c) => c.charCodeAt(0)));
 const photo = (seed: string) => ({ full: bytes(`full ${seed}`), thumb: bytes(`thumb ${seed}`) });
 
-/** Every write this sweep does not drive, with the reason - see the header.
-    Keyed `area.operation`. Only the three import formats that parse a real
-    archive container (a `.daylio` backup, a `.ttbackup` zip, a Day One
-    export zip) are here: `archive.replace`, `archive.merge`,
-    `commitDaylioImport`, `commitTrackAndGraphImport`, `commitPixelsImport`
-    and `discardEverything` all declare every table by design too, but
-    `writes.test.ts` already drives every one of those with nothing more
-    than an in-memory snapshot or an inline CSV/JSON payload, so this file
-    does the same below rather than opting out of what is genuinely
-    drivable. */
+/** The Daylio backup parser needs a real zip fixture, so this SQL sweep
+    leaves that operation to its dedicated import test. */
 const WRITE_OPT_OUTS: Record<string, string> = {
   'archive.commitDaylioBackupImport': 'parses a real .daylio backup zip, which this sweep has no fixture for',
-  'archive.commitTransTracksImport': 'parses a real .ttbackup zip, which this sweep has no fixture for',
-  'archive.commitDayOneImport': 'parses a real Day One export zip, which this sweep has no fixture for'
+  undoable:
+    'has no tables of its own: it runs one of the deletes driven above through the same wrapper, ' +
+    'and undoable-delete.test.ts holds its rows table by table'
 };
 
-/** The read half's own opt-outs, same reason and same shape: the three
-    preview reads for the archive containers WRITE_OPT_OUTS names above. */
+/** The Daylio backup preview has the same zip fixture requirement. */
 const READ_OPT_OUTS: Record<string, string> = {
-  'archive.previewDaylioBackupImport': 'parses a real .daylio backup zip, which this sweep has no fixture for',
-  'archive.previewTransTracksImport': 'parses a real .ttbackup zip, which this sweep has no fixture for',
-  'archive.previewDayOneImport': 'parses a real Day One export zip, which this sweep has no fixture for'
+  'archive.previewDaylioBackupImport': 'parses a real .daylio backup zip, which this sweep has no fixture for'
 };
 
 /** The two driven operations whose SQL wipes the journal for real - see
@@ -140,14 +38,17 @@ const READ_OPT_OUTS: Record<string, string> = {
 const WIPES_THE_JOURNAL = new Set(['archive.replace', 'discardEverything']);
 
 /** The read half's WIPES_THE_JOURNAL: the snapshot reads every table there
-    is, and each import preview takes one to match against, so any of the
-    four would satisfy the per-coarse-name read union on its own. */
+    is, and the Daylio preview takes one to match against, so either would satisfy the per-coarse-name read union on its own. */
 const READS_THE_JOURNAL = new Set([
   'archive.snapshot',
-  'archive.previewDaylioImport',
-  'archive.previewTrackAndGraphImport',
-  'archive.previewPixelsImport'
+  'archive.previewDaylioImport'
 ]);
+
+/** Coarse names whose tables only a whole-journal read reads, and why no
+    narrower read could. */
+const READ_BY_THE_ARCHIVE_ALONE: Partial<Record<TableName, string>> = {
+  deletion: 'the deletion log exists for the archive to carry (functional audit ticket 48); no screen shows it'
+};
 
 const declaredRead = (key: string): readonly TableName[] => {
   const [area, operation] = key.split('.', 2);
@@ -160,6 +61,13 @@ const declaredRead = (key: string): readonly TableName[] => {
 const NARROWED = new Map(
   COMPOSING_READS.map(({ read, narrows }) => [read.join('.'), Object.keys(narrows ?? {}) as TableName[]])
 );
+
+/** The recorder sees the view name rather than its underlying tables. The
+    library's source_rank filter excludes non-library arms; writes.ts names
+    the owner tables that can change the resulting rows. */
+const VIEW_READS = new Set([
+  'photoLibrary.inJournal', 'photoLibrary.starred', 'photoLibrary.hasAny'
+]);
 
 /** The tables a read's SQL read that its declaration, mapped through
     `tables`, does not cover. */
@@ -274,6 +182,7 @@ beforeAll(async () => {
   };
   await drive('tags', 'renameTag', () => journal.tags.renameTag(tag.id, 'endocrinology'));
   await drive('tags', 'setTagHidden', () => journal.tags.setTagHidden(tag.id, true));
+  await drive('tags', 'editOwnTag', () => journal.tags.editOwnTag(tag.id, { icon: 'bike' }));
   await drive('tags', 'reorder', () => journal.tags.reorder(group.key, [tag2.id, tag.id, tag3.id]));
 
   // --- presentations ----------------------------------------------------
@@ -289,14 +198,6 @@ beforeAll(async () => {
   await drive('presentations', 'setPresentationHidden', () =>
     journal.presentations.setPresentationHidden(femme.id, true)
   );
-
-  // --- affirmations -------------------------------------------------------
-  const line = (await drive('affirmations', 'addLine', () =>
-    journal.affirmations.addLine('en', 'You get to take up space, today too.')
-  )) as { id: string };
-  await drive('affirmations', 'editLine', () => journal.affirmations.editLine(line.id, 'You get to take up space.'));
-  await drive('affirmations', 'setHidden', () => journal.affirmations.setHidden(line.id, true));
-  await drive('affirmations', 'deleteLine', () => journal.affirmations.deleteLine(line.id));
 
   // --- bodyRegions --------------------------------------------------------
   const region = (await drive('bodyRegions', 'addCustomRegion', () =>
@@ -316,6 +217,9 @@ beforeAll(async () => {
     journal.dimensions.addPreset({ name: 'Mine', dims: [voice.key, 'femininity'] })
   );
   await drive('dimensions', 'setDimensionHidden', () => journal.dimensions.setDimensionHidden('masculinity', true));
+  await drive('dimensions', 'renameCustomDimension', () =>
+    journal.dimensions.renameCustomDimension(voice.key, { name: 'Voice', low: 'off', high: 'mine' })
+  );
 
   // --- entries --------------------------------------------------------
   // One call touching every table 'entry' covers at once: dims, tags,
@@ -351,29 +255,11 @@ beforeAll(async () => {
   )) as number;
   await drive('entries', 'deleteEntry', () => journal.entries.deleteEntry(secondEntryId));
   await drive('entries', 'restoreEntry', () => journal.entries.restoreEntry(secondEntryId));
-
-  // --- entryTemplates -------------------------------------------------
-  const template = (await drive('entryTemplates', 'addEntryTemplate', () =>
-    journal.entryTemplates.addEntryTemplate({
-      name: 'After a hard day',
-      tags: [tag2.id],
-      dims: { [voice.key]: 3 },
-      noteScaffold: 'What made today hard?',
-      presentationId: femme.id
-    })
-  )) as { id: string };
-  await drive('entryTemplates', 'updateEntryTemplate', () =>
-    journal.entryTemplates.updateEntryTemplate(template.id, {
-      name: 'After a hard day, revised',
-      tags: [tag2.id],
-      dims: { [voice.key]: 4 },
-      noteScaffold: 'What made today hard, really?',
-      presentationId: femme.id
-    })
-  );
-  await drive('entryTemplates', 'setEntryTemplateHidden', () =>
-    journal.entryTemplates.setEntryTemplateHidden(template.id, true)
-  );
+  const purgedEntryId = (await drive('entries', 'upsertEntry', () =>
+    journal.entries.upsertEntry({ epochDay: 20002, mood: 2, attachPhotos: [photo('purged entry')] })
+  )) as number;
+  await drive('entries', 'deleteEntry', () => journal.entries.deleteEntry(purgedEntryId));
+  await drive('entries', 'purgeEntry', () => journal.entries.purgeEntry(purgedEntryId));
 
   // --- milestones -------------------------------------------------------
   const milestoneId = (await drive('milestones', 'upsertMilestone', () =>
@@ -465,35 +351,10 @@ beforeAll(async () => {
   )) as string;
   await drive('labs', 'deleteResult', () => journal.labs.deleteResult(secondLabId));
 
-  // --- measurements -------------------------------------------------------
-  const shoulders = (await drive('measurements', 'addCustomMeasurementType', () =>
-    journal.measurements.addCustomMeasurementType('Shoulders')
-  )) as { key: string };
-  await drive('measurements', 'setMeasurementTypeHidden', () =>
-    journal.measurements.setMeasurementTypeHidden('underbust', true)
-  );
-  const measurementId = (await drive('measurements', 'upsertMeasurement', () =>
-    journal.measurements.upsertMeasurement({ type: shoulders.key, epochDay: 20000, value: 41, unit: 'cm' })
-  )) as string;
-  const secondMeasurementId = (await drive('measurements', 'upsertMeasurement', () =>
-    journal.measurements.upsertMeasurement({ type: shoulders.key, epochDay: 20001, value: 42, unit: 'cm' })
-  )) as string;
-  await drive('measurements', 'deleteMeasurement', () => journal.measurements.deleteMeasurement(secondMeasurementId));
-
-  // --- sizeRecords ----------------------------------------------------
-  const sizeRecordId = (await drive('sizeRecords', 'upsertRecord', () =>
-    journal.sizeRecords.upsertRecord({ epochDay: 20000, category: 'pants', size: '32', brand: "Levi's", fitNote: '' })
-  )) as string;
-  const secondSizeRecordId = (await drive('sizeRecords', 'upsertRecord', () =>
-    journal.sizeRecords.upsertRecord({ epochDay: 20001, category: 'shirts', size: 'M', brand: '', fitNote: '' })
-  )) as string;
-  await drive('sizeRecords', 'deleteRecord', () => journal.sizeRecords.deleteRecord(secondSizeRecordId));
-
   // --- reminders ------------------------------------------------------
   const reminderId = (await drive('reminders', 'upsertReminder', () =>
     journal.reminders.upsertReminder({
       title: 'injection',
-      type: 'injection',
       time: '08:00',
       recurrence: 'EVERY_N_DAYS',
       interval: 7,
@@ -506,7 +367,6 @@ beforeAll(async () => {
   const secondReminderId = (await drive('reminders', 'upsertReminder', () =>
     journal.reminders.upsertReminder({
       title: 'a second reminder',
-      type: 'injection',
       time: '09:00',
       recurrence: 'EVERY_N_DAYS',
       interval: 7,
@@ -516,15 +376,6 @@ beforeAll(async () => {
     })
   )) as string;
   await drive('reminders', 'deleteReminder', () => journal.reminders.deleteReminder(secondReminderId));
-
-  // --- tally --------------------------------------------------------------
-  const tallyId = (await drive('tally', 'log', () =>
-    journal.tally.log({ epochDay: 20000, kind: 'misgendered' })
-  )) as string;
-  const secondTallyId = (await drive('tally', 'log', () =>
-    journal.tally.log({ epochDay: 20001, kind: 'correctly_gendered' })
-  )) as string;
-  await drive('tally', 'deleteEvent', () => journal.tally.deleteEvent(secondTallyId));
 
   // --- regimen / doses ----------------------------------------------------
   const episodeId = (await drive('regimen', 'upsertEpisode', () =>
@@ -582,7 +433,7 @@ beforeAll(async () => {
     journal.doses.upsertPause({ episodeId, startEpochDay: 19100, endEpochDay: null, reason: 'planned' })
   )) as string;
   await drive('doses', 'deletePause', () => journal.doses.deletePause(dosePauseId));
-  /* Auto-logging on, then the pass itself (ticket 11): the schedule is every
+  /* Auto-logging on, then the pass itself: the schedule is every
      14 days on an episode anchored at 19000 and the route is `im`, so
      asking on 19015 leaves exactly one passed slot to write. */
   await drive('doses', 'upsertSchedule', () =>
@@ -610,6 +461,31 @@ beforeAll(async () => {
       autoLogFromEpochDay: null
     })
   );
+  /* A schedule's reminders, on an episode whose
+     end day lies far ahead, so the boot pass has one to remove once asked
+     on that day. */
+  const endingEpisodeId = await journal.regimen.upsertEpisode({
+    drug: 'progesterone',
+    ester: null,
+    dose: 100,
+    doseUnit: 'mg',
+    route: 'oral',
+    interval: 'daily',
+    startEpochDay: 19000,
+    endEpochDay: 50000,
+    endReason: null
+  });
+  await drive('doses', 'upsertSchedule', () =>
+    journal.doses.upsertSchedule({
+      episodeId: endingEpisodeId,
+      recurrence: { kind: 'everyNDays', everyNDays: 1 },
+      dosesPerDay: 1,
+      doseAmounts: null,
+      autoLogFromEpochDay: null,
+      reminderTimes: ['22:00']
+    })
+  );
+  await drive('doses', 'reconcileDoseReminders', () => journal.doses.reconcileDoseReminders(50000));
 
   // --- stock --------------------------------------------------------------
   const stockId = (await drive('stock', 'upsertEntry', () =>
@@ -623,16 +499,16 @@ beforeAll(async () => {
 
   // --- sideEffects --------------------------------------------------------
   const sideEffectId = (await drive('sideEffects', 'upsertSideEffect', () =>
-    journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000 })
+    journal.sideEffects.upsertSideEffect({ name: 'hot flashes', severity: 3, epochDay: 20000, resolvedEpochDay: null })
   )) as string;
   const secondSideEffectId = (await drive('sideEffects', 'upsertSideEffect', () =>
-    journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2, epochDay: 20001 })
+    journal.sideEffects.upsertSideEffect({ name: 'nausea', severity: 2, epochDay: 20001, resolvedEpochDay: null })
   )) as string;
   await drive('sideEffects', 'deleteSideEffect', () => journal.sideEffects.deleteSideEffect(secondSideEffectId));
 
   // --- personalEffects --------------------------------------------------
   await drive('effectCategories', 'setCategoryEnabled', () =>
-    journal.effectCategories.setCategoryEnabled('genital_sexual', true)
+    journal.effectCategories.setCategoryEnabled('genital', true)
   );
   const customEffect = (await drive('personalEffects', 'addCustomEffectType', () =>
     journal.personalEffects.addCustomEffectType('a feeling only I have a word for', 'body_shape')
@@ -654,57 +530,6 @@ beforeAll(async () => {
   )) as string;
   await drive('cycleEvents', 'deleteCycleEvent', () => journal.cycleEvents.deleteCycleEvent(secondCycleEventId));
 
-  // --- journalingPauses ---------------------------------------------------
-  const journalingPauseId = (await drive('journalingPauses', 'upsertPause', () =>
-    journal.journalingPauses.upsertPause({ startEpochDay: 19700, endEpochDay: null })
-  )) as string;
-  const secondJournalingPauseId = (await drive('journalingPauses', 'upsertPause', () =>
-    journal.journalingPauses.upsertPause({ startEpochDay: 19600, endEpochDay: 19610 })
-  )) as string;
-  await drive('journalingPauses', 'deletePause', () =>
-    journal.journalingPauses.deletePause(secondJournalingPauseId)
-  );
-
-  // --- savedQuestions -----------------------------------------------------
-  const savedQuestionId = (await drive('savedQuestions', 'upsertSavedQuestion', () =>
-    journal.savedQuestions.upsertSavedQuestion({
-      name: 'Therapy check-ins',
-      queryText: 'therapy',
-      tagIds: [],
-      moods: [],
-      startEpochDay: null,
-      endEpochDay: null,
-      hasNote: true,
-      hasPhoto: false,
-      starred: false
-    })
-  )) as string;
-  const secondSavedQuestionId = (await drive('savedQuestions', 'upsertSavedQuestion', () =>
-    journal.savedQuestions.upsertSavedQuestion({
-      name: 'A second saved question',
-      queryText: 'gauze',
-      tagIds: [],
-      moods: [],
-      startEpochDay: null,
-      endEpochDay: null,
-      hasNote: false,
-      hasPhoto: false,
-      starred: false
-    })
-  )) as string;
-  await drive('savedQuestions', 'deleteSavedQuestion', () =>
-    journal.savedQuestions.deleteSavedQuestion(secondSavedQuestionId)
-  );
-
-  // --- revisits -----------------------------------------------------------
-  await drive('revisits', 'setRevisit', () =>
-    journal.revisits.setRevisit({ entryId, createdEpochDay: 20000, targetEpochDay: 20100 })
-  );
-  const revisitForEntry = await driveRead('revisits', 'getRevisitForEntry', () =>
-    journal.revisits.getRevisitForEntry(entryId)
-  );
-  await drive('revisits', 'deleteRevisit', () => journal.revisits.deleteRevisit(revisitForEntry!.id));
-
   // --- marginNotes ------------------------------------------------------
   const marginNoteId = (await drive('marginNotes', 'add', () =>
     journal.marginNotes.add({ entryId, epochDay: 20050, text: 'reading this back' })
@@ -724,9 +549,6 @@ beforeAll(async () => {
   )) as string;
   await drive('eraMutes', 'setEraMuted', () => journal.eraMutes.setEraMuted(beforeIKnew, true));
   await drive('eras', 'deleteEra', () => journal.eras.deleteEra(firstYear));
-
-  // --- wordIgnore -----------------------------------------------------------
-  await drive('wordIgnore', 'setWordIgnored', () => journal.wordIgnore.setWordIgnored('marta', true));
 
   // --- documents ------------------------------------------------------------
   const documentId = (await drive('documents', 'addDocument', () =>
@@ -772,20 +594,17 @@ beforeAll(async () => {
   )) as string;
   await drive('wearSessions', 'deleteSession', () => journal.wearSessions.deleteSession(secondWearSessionId));
 
-  // --- hairProgress -------------------------------------------------------
-  const hairStageId = (await drive('hairProgress', 'upsertStage', () =>
-    journal.hairProgress.upsertStage({ epochDay: 19200, scale: 'norwood_hamilton', stage: '2a' })
+  // --- progressPhotos ------------------------------------------------
+  const progressPhotoId = (await drive('progressPhotos', 'addPhoto', () =>
+    journal.progressPhotos.addPhoto(19210, 'side', photo('posed'))
   )) as string;
-  const secondHairStageId = (await drive('hairProgress', 'upsertStage', () =>
-    journal.hairProgress.upsertStage({ epochDay: 19230, scale: 'sinclair', stage: '2' })
-  )) as string;
-  await drive('hairProgress', 'deleteStage', () => journal.hairProgress.deleteStage(secondHairStageId));
-  const hairPhotoId = (await drive('hairProgress', 'addPhoto', () =>
-    journal.hairProgress.addPhoto(19200, photo('hairline'))
-  )) as string;
-  await drive('hairProgress', 'deletePhoto', () => journal.hairProgress.deletePhoto(hairPhotoId));
-  // Redone so a photo row survives into the read sweep below.
-  await drive('hairProgress', 'addPhoto', () => journal.hairProgress.addPhoto(19200, photo('hairline again')));
+  await drive('progressPhotos', 'deletePhoto', () => journal.progressPhotos.deletePhoto(progressPhotoId));
+  await journal.progressPhotos.addPhoto(19211, 'front', photo('posed again'));
+  const progressPose = (await drive('progressPhotos', 'addPose', () => journal.progressPhotos.addPose('Flexing'))) as string;
+  await drive('progressPhotos', 'renamePose', () => journal.progressPhotos.renamePose(progressPose, 'Arms up'));
+  await drive('progressPhotos', 'setPoseHidden', () => journal.progressPhotos.setPoseHidden('side', true));
+  await journal.progressPhotos.addPhoto(19212, progressPose, photo('posed in a pose of my own'));
+  await drive('progressPhotos', 'deletePose', () => journal.progressPhotos.deletePose(progressPose));
 
   // --- hairRemoval ---------------------------------------------------
   const hairRemovalId = (await drive('hairRemoval', 'upsertSession', () =>
@@ -794,7 +613,7 @@ beforeAll(async () => {
       area: 'upper_lip',
       method: 'laser',
       painRating: 2,
-      cost: '250 PLN',
+      cost: { amount: 250, currency: 'PLN', refunded: false },
       provider: 'Klinika Laserowa'
     })
   )) as string;
@@ -808,7 +627,6 @@ beforeAll(async () => {
       area: 'chin',
       method: 'electrolysis',
       painRating: 3,
-      cost: '',
       provider: ''
     })
   )) as string;
@@ -886,6 +704,28 @@ beforeAll(async () => {
     journal.appointments.upsertAppointment({ epochDay: 20042, procedureId: null, kind: null, place: null, note: null })
   )) as string;
   await drive('appointments', 'deleteAppointment', () => journal.appointments.deleteAppointment(secondAppointmentId));
+  // A wait and its updates: one kept, one deleted.
+  const waitingId = (await drive('appointments', 'upsertAppointment', () =>
+    journal.appointments.upsertAppointment({ epochDay: null, referredEpochDay: 19900, procedureId: null, kind: 'Gender clinic', place: null, note: null })
+  )) as string;
+  await drive('appointments', 'addStatusUpdate', () =>
+    journal.appointments.addStatusUpdate({ appointmentId: waitingId, epochDay: 19950, status: 'Letter came' })
+  );
+  const droppedStatusId = (await drive('appointments', 'addStatusUpdate', () =>
+    journal.appointments.addStatusUpdate({ appointmentId: waitingId, epochDay: 19960, status: 'typo' })
+  )) as string;
+  await drive('appointments', 'deleteStatusUpdate', () => journal.appointments.deleteStatusUpdate(droppedStatusId));
+  // A provider: one kept and named on a visit, one deleted.
+  const providerId = (await drive('appointments', 'upsertProvider', () =>
+    journal.appointments.upsertProvider({ name: 'Dr Nowak', contact: null, competence: 'good', impressions: null })
+  )) as string;
+  await drive('appointments', 'upsertAppointment', () =>
+    journal.appointments.upsertAppointment({ epochDay: 20043, time: '09:30', providerId, procedureId: null, kind: null, place: null, note: null })
+  );
+  const droppedProviderId = (await drive('appointments', 'upsertProvider', () =>
+    journal.appointments.upsertProvider({ name: 'typo', contact: null, competence: null, impressions: null })
+  )) as string;
+  await drive('appointments', 'deleteProvider', () => journal.appointments.deleteProvider(droppedProviderId));
   const secondProcedureId = (await drive('procedures', 'upsertProcedure', () =>
     journal.procedures.upsertProcedure({ name: 'a second procedure', surgeryEpochDay: 20100, notes: '' })
   )) as string;
@@ -919,19 +759,8 @@ beforeAll(async () => {
   );
   await drive('checklists', 'deleteChecklist', () => journal.checklists.deleteChecklist(ownedChecklist!.id));
 
-  // --- doubtJournal -----------------------------------------------------
-  const snapshotId = (await drive('doubtJournal', 'saveSnapshot', () =>
-    journal.doubtJournal.saveSnapshot(20000, [{ epochDay: 19500, mood: 5, note: 'euphoric at the appointment' }])
-  )) as string;
-  await drive('doubtJournal', 'deleteSnapshot', () => journal.doubtJournal.deleteSnapshot(snapshotId));
-  // One left standing, because getSnapshots only reads its entries when
-  // there is a snapshot to read them for.
-  await drive('doubtJournal', 'saveSnapshot', () =>
-    journal.doubtJournal.saveSnapshot(20000, [{ epochDay: 19600, mood: 4, note: 'a good week' }])
-  );
-
   // --- areaStates ---------------------------------------------------------
-  await drive('areaStates', 'setAreasHidden', () => journal.areaStates.setAreasHidden(['sizeRecords'], true));
+  await drive('areaStates', 'setAreasHidden', () => journal.areaStates.setAreasHidden(['personalEffects'], true));
   await drive('areaStates', 'setAreasFinished', () =>
     journal.areaStates.setAreasFinished(['hairRemovalSessions'], 19250)
   );
@@ -968,10 +797,10 @@ beforeAll(async () => {
   await drive('tryouts', 'deletePhoto', () => journal.tryouts.deletePhoto(tryoutPhotoId));
   await drive('tryouts', 'addPhoto', () => journal.tryouts.addPhoto(tryoutId, 19906, photo('presenting again')));
   await drive('feltSense', 'add', () => journal.feltSense.add({ tryoutId }, { epochDay: 19910, mood: 4, note: 'felt right' }));
-  const milestoneFeltSense = (await drive('feltSense', 'add', () =>
-    journal.feltSense.add({ milestoneId }, { epochDay: 19911, mood: 5, note: 'a year on' })
+  const secondFeltSense = (await drive('feltSense', 'add', () =>
+    journal.feltSense.add({ tryoutId }, { epochDay: 19911, mood: 5, note: 'still right' })
   )) as string;
-  await drive('feltSense', 'remove', () => journal.feltSense.remove(milestoneFeltSense));
+  await drive('feltSense', 'remove', () => journal.feltSense.remove(secondFeltSense));
   await drive('tryouts', 'adoptTryout', () =>
     journal.tryouts.adoptTryout(tryoutId, { createMilestone: true, milestoneTitle: 'adopted: layered look' })
   );
@@ -979,6 +808,29 @@ beforeAll(async () => {
     journal.tryouts.upsertTryout({ kind: 'name', label: 'Alex', startEpochDay: 19800, endEpochDay: null })
   )) as string;
   await drive('tryouts', 'deleteTryout', () => journal.tryouts.deleteTryout(secondTryoutId));
+
+  // --- entries with contextual cards ------------------------------------
+  // The editor's contextual cards commit beside the entry in one
+  // transaction (entries.ts, commitContextual), on both the insert and the
+  // update path, so an entry save reaches felt_sense, dose_event,
+  // procedure, procedure_photo, personal_effect and cycle_event too.
+  const contextual = {
+    tryoutFeltSense: { tryoutId, mood: 4, note: 'felt like me' },
+    doseLog: { dose: 2, doseUnit: 'mg', route: 'sublingual' as const },
+    procedureRecovery: { procedureId, notes: 'less swelling', photo: photo('recovery from the editor') },
+    cycleEvent: { kind: 'spotting' as const }
+  };
+  const contextualEntryId = (await drive('entries', 'upsertEntry', () =>
+    journal.entries.upsertEntry({
+      epochDay: 20070,
+      mood: 4,
+      ...contextual,
+      effectMarkers: [{ effect: customEffect.key }]
+    })
+  )) as number;
+  await drive('entries', 'upsertEntry', () =>
+    journal.entries.upsertEntry({ id: contextualEntryId, epochDay: 20070, mood: 3, ...contextual })
+  );
 
   // --- letters --------------------------------------------------------
   const letterId = (await drive('letters', 'addLetter', () =>
@@ -993,19 +845,30 @@ beforeAll(async () => {
   await drive('roadmap', 'setGoalHidden', () => journal.roadmap.setGoalHidden('pl', 'pl-legal-court-file', true));
   await drive('roadmap', 'setGoalStatus', () => journal.roadmap.setGoalStatus('pl', 'pl-legal-court-file', 'checked'));
   const customGoal = (await drive('roadmap', 'addCustomGoal', () =>
-    journal.roadmap.addCustomGoal('social', 'Tell my sister')
+    journal.roadmap.addCustomGoal('Tell my sister')
   )) as { id: string };
   await drive('roadmap', 'setCustomGoalStatus', () => journal.roadmap.setCustomGoalStatus(customGoal.id, 'checked'));
   await drive('roadmap', 'updateCustomGoalText', () =>
     journal.roadmap.updateCustomGoalText(customGoal.id, 'Tell my sister about the appointment')
   );
   await drive('roadmap', 'deleteCustomGoal', () => journal.roadmap.deleteCustomGoal(customGoal.id));
-  await drive('roadmap', 'setTrackDismissed', () => journal.roadmap.setTrackDismissed('medical', true));
+  const category = (await drive('roadmap', 'addCategory', () => journal.roadmap.addCategory('Coming out'))) as { id: string };
+  await drive('roadmap', 'renameCategory', () => journal.roadmap.renameCategory(category.id, 'Coming out at work'));
+  await journal.roadmap.addCustomGoal('Tell my manager', category.id);
+  await drive('roadmap', 'deleteCategory', () => journal.roadmap.deleteCategory(category.id));
+  const institution = (await drive('roadmap', 'addInstitution', () => journal.roadmap.addInstitution('Gym'))) as { id: string };
+  await drive('roadmap', 'renameInstitution', () => journal.roadmap.renameInstitution(institution.id, 'Climbing gym'));
+  const institutionChange = (await drive('roadmap', 'addInstitutionChange', () =>
+    journal.roadmap.addInstitutionChange({ institution: institution.id, status: 'submitted', epochDay: 100, note: null })
+  )) as string;
+  await drive('roadmap', 'deleteInstitutionChange', () => journal.roadmap.deleteInstitutionChange(institutionChange));
+  await journal.roadmap.addInstitutionChange({ institution: institution.id, status: 'done', epochDay: 101, note: null });
+  await drive('roadmap', 'deleteInstitution', () => journal.roadmap.deleteInstitution(institution.id));
 
   // These ids are never read back below; kept only because they exist -
   // suppresses "declared but never read" without pretending they matter.
-  void [labId, measurementId, sizeRecordId, taperSessionId, tallyId, doseId, stockId, sideEffectId, cycleEventId,
-    journalingPauseId, savedQuestionId, wearSessionId, hairStageId, benchmarkId, takeId];
+  void [labId, taperSessionId, doseId, stockId, sideEffectId, cycleEventId,
+    wearSessionId, benchmarkId, takeId];
 
   // --- reads --------------------------------------------------------------
   // Every classified read this file can drive with no more setup than the
@@ -1023,11 +886,8 @@ beforeAll(async () => {
   await driveRead('entries', 'lastWriteEpochDay', () => journal.entries.lastWriteEpochDay(20000));
   await driveRead('entries', 'countAll', () => journal.entries.countAll());
   await driveRead('entries', 'countDistinctDays', () => journal.entries.countDistinctDays());
-  await driveRead('entries', 'noteEntries', () => journal.entries.noteEntries());
   await driveRead('tags', 'getTagGroups', () => journal.tags.getTagGroups());
   await driveRead('presentations', 'getPresentations', () => journal.presentations.getPresentations());
-  await driveRead('entryTemplates', 'getEntryTemplates', () => journal.entryTemplates.getEntryTemplates());
-  await driveRead('affirmations', 'getAffirmations', () => journal.affirmations.getAffirmations());
   await driveRead('bodyRegions', 'getBodyRegions', () => journal.bodyRegions.getBodyRegions());
   await driveRead('dimensions', 'getDimensions', () => journal.dimensions.getDimensions());
   await driveRead('dimensions', 'getPresets', () => journal.dimensions.getPresets());
@@ -1036,7 +896,6 @@ beforeAll(async () => {
   await driveRead('milestones', 'getMilestonesOnDay', () => journal.milestones.getMilestonesOnDay(19000));
   await driveRead('milestones', 'lastWriteEpochDay', () => journal.milestones.lastWriteEpochDay(20000));
   await driveRead('photos', 'inJournal', () => journal.photos.inJournal());
-  await driveRead('photos', 'starredPhotos', () => journal.photos.starredPhotos());
   await driveRead('photoLibrary', 'inJournal', () => journal.photoLibrary.inJournal());
   await driveRead('photoLibrary', 'starred', () => journal.photoLibrary.starred());
   await driveRead('photoLibrary', 'hasAny', () => journal.photoLibrary.hasAny());
@@ -1059,33 +918,18 @@ beforeAll(async () => {
   await driveRead('labs', 'getResultById', () => journal.labs.getResultById('11111111-1111-4111-8111-111111111111'));
   await driveRead('labs', 'getSeries', () => journal.labs.getSeries('estradiol'));
   await driveRead('labs', 'lastWriteEpochDay', () => journal.labs.lastWriteEpochDay(20004));
-  await driveRead('measurements', 'getMeasurements', () => journal.measurements.getMeasurements(shoulders.key));
-  await driveRead('measurements', 'getSeries', () => journal.measurements.getSeries(shoulders.key));
-  await driveRead('measurements', 'getMeasurementsInRange', () =>
-    journal.measurements.getMeasurementsInRange(19000, 21000)
-  );
-  await driveRead('measurements', 'getMeasurementTypes', () => journal.measurements.getMeasurementTypes());
-  await driveRead('measurements', 'lastWriteEpochDay', () => journal.measurements.lastWriteEpochDay(20000));
-  await driveRead('measurements', 'latestMeasurement', () => journal.measurements.latestMeasurement(20000));
-  await driveRead('measurements', 'countAll', () => journal.measurements.countAll());
-  await driveRead('sizeRecords', 'getRecords', () => journal.sizeRecords.getRecords());
-  await driveRead('sizeRecords', 'getRecordsByCategory', () => journal.sizeRecords.getRecordsByCategory('pants'));
-  await driveRead('sizeRecords', 'getRecordsOnDay', () => journal.sizeRecords.getRecordsOnDay(20000));
-  await driveRead('sizeRecords', 'lastWriteEpochDay', () => journal.sizeRecords.lastWriteEpochDay(20000));
   await driveRead('taper', 'getTaper', () => journal.taper.getTaper());
   await driveRead('taper', 'getSessions', () => journal.taper.getSessions());
   await driveRead('taper', 'getSessionsOnDay', () => journal.taper.getSessionsOnDay(19955));
+  await driveRead('taper', 'getDaySessions', () => journal.taper.getDaySessions(19955));
   await driveRead('taper', 'lastWriteEpochDay', () => journal.taper.lastWriteEpochDay(19955));
   await driveRead('reminders', 'getReminders', () => journal.reminders.getReminders());
-  await driveRead('tally', 'getEvents', () => journal.tally.getEvents('misgendered'));
-  await driveRead('tally', 'getEventsOnDay', () => journal.tally.getEventsOnDay(20000));
-  await driveRead('tally', 'lastWriteEpochDay', () => journal.tally.lastWriteEpochDay(20000));
-  await driveRead('tally', 'latestEvent', () => journal.tally.latestEvent('misgendered', 20000));
-  await driveRead('tally', 'firstEpochDay', () => journal.tally.firstEpochDay());
   await driveRead('regimen', 'getEpisodes', () => journal.regimen.getEpisodes());
   await driveRead('regimen', 'getHiddenEpisodes', () => journal.regimen.getHiddenEpisodes());
   await driveRead('regimen', 'hasAny', () => journal.regimen.hasAny());
   await driveRead('doses', 'getDoses', () => journal.doses.getDoses(0, 30000));
+  await driveRead('doses', 'getDosesForSlots', () => journal.doses.getDosesForSlots(19900, 20000));
+  await driveRead('doses', 'getNextUncoveredSlot', () => journal.doses.getNextUncoveredSlot(20000, 20120));
   await driveRead('doses', 'getDoseById', () => journal.doses.getDoseById('00000000-0000-0000-0000-000000000000'));
   await driveRead('doses', 'hasDosesBefore', () => journal.doses.hasDosesBefore(20000));
   await driveRead('doses', 'getSchedules', () => journal.doses.getSchedules());
@@ -1101,26 +945,16 @@ beforeAll(async () => {
   await driveRead('stock', 'getEntries', () => journal.stock.getEntries());
   await driveRead('stock', 'getProjections', () => journal.stock.getProjections(20000));
   await driveRead('exposure', 'getCounters', () => journal.exposure.getCounters(0, 30000));
-  await driveRead('hormoneCurve', 'getCurves', () =>
-    journal.hormoneCurve.getCurves({ fromEpochDay: 0, toEpochDay: 30000, fitToOwnLabs: false })
-  );
-  await driveRead('hormoneCurve', 'getCurveDirection', () =>
-    journal.hormoneCurve.getCurveDirection({ drug: 'estradiol', epochDay: 20000 })
-  );
   await driveRead('sideEffects', 'getSideEffects', () => journal.sideEffects.getSideEffects());
   await driveRead('sideEffects', 'getSideEffectsInRange', () => journal.sideEffects.getSideEffectsInRange(0, 30000));
   await driveRead('sideEffects', 'lastWriteEpochDay', () => journal.sideEffects.lastWriteEpochDay(20000));
   await driveRead('cycleEvents', 'getCycleEvents', () => journal.cycleEvents.getCycleEvents());
   await driveRead('cycleEvents', 'getCycleEventsInRange', () => journal.cycleEvents.getCycleEventsInRange(0, 30000));
   await driveRead('cycleEvents', 'lastWriteEpochDay', () => journal.cycleEvents.lastWriteEpochDay(20000));
-  await driveRead('journalingPauses', 'getPauses', () => journal.journalingPauses.getPauses());
-  await driveRead('savedQuestions', 'getSavedQuestions', () => journal.savedQuestions.getSavedQuestions());
-  await driveRead('revisits', 'getDueRevisits', () => journal.revisits.getDueRevisits(20200));
   await driveRead('marginNotes', 'forEntries', () => journal.marginNotes.forEntries([entryId]));
   await driveRead('eras', 'getEras', () => journal.eras.getEras());
   await driveRead('eras', 'getJournalBounds', () => journal.eras.getJournalBounds());
   await driveRead('eraMutes', 'getMutedEraUuids', () => journal.eraMutes.getMutedEraUuids());
-  await driveRead('wordIgnore', 'getIgnoredWords', () => journal.wordIgnore.getIgnoredWords());
   await driveRead('documents', 'getDocuments', () => journal.documents.getDocuments());
   await driveRead('documents', 'getDocument', () => journal.documents.getDocument(documentId));
   await driveRead('documents', 'getDocumentsOnDay', () => journal.documents.getDocumentsOnDay(19999));
@@ -1131,9 +965,6 @@ beforeAll(async () => {
   await driveRead('chartAnnotations', 'getAnnotations', () =>
     journal.chartAnnotations.getAnnotations(0, 30000, 20000)
   );
-  await driveRead('chartAnnotations', 'getCurveMarkers', () =>
-    journal.chartAnnotations.getCurveMarkers(0, 30000, 20000)
-  );
   await driveRead('wearSessions', 'getSessions', () => journal.wearSessions.getSessions(0, 30000));
   await driveRead('wearSessions', 'getRunningSession', () => journal.wearSessions.getRunningSession());
   await driveRead('wearSessions', 'latestKind', () => journal.wearSessions.latestKind());
@@ -1143,6 +974,7 @@ beforeAll(async () => {
   await driveRead('lastWrite', 'getLastWrites', () => journal.lastWrite.getLastWrites(20000));
   await driveRead('lastWrite', 'getWritingDays', () => journal.lastWrite.getWritingDays(20000));
   await driveRead('dayAhead', 'getDayAhead', () => journal.dayAhead.getDayAhead(0, 30000, 20000));
+  await driveRead('costs', 'getCosts', () => journal.costs.getCosts());
   await driveRead('textSearch', 'search', () =>
     journal.textSearch.search({ query: 'good', today: 20000, limit: 10 })
   );
@@ -1164,16 +996,12 @@ beforeAll(async () => {
   await driveRead('personalEffects', 'lastWriteEpochDay', () => journal.personalEffects.lastWriteEpochDay(19190));
   await driveRead('personalEffects', 'getEffectTypes', () => journal.personalEffects.getEffectTypes());
   await driveRead('effectCategories', 'getEffectCategories', () => journal.effectCategories.getEffectCategories());
-  await driveRead('hairProgress', 'getStages', () => journal.hairProgress.getStages());
-  await driveRead('hairProgress', 'getStagesOnDay', () => journal.hairProgress.getStagesOnDay(19200));
-  await driveRead('hairProgress', 'lastStageWriteEpochDay', () => journal.hairProgress.lastStageWriteEpochDay(19200));
-  await driveRead('hairProgress', 'getPhotos', () => journal.hairProgress.getPhotos());
-  await driveRead('hairProgress', 'getPhotosOnDay', () => journal.hairProgress.getPhotosOnDay(19200));
-  await driveRead('hairProgress', 'lastPhotoWriteEpochDay', () => journal.hairProgress.lastPhotoWriteEpochDay(19200));
+  await driveRead('progressPhotos', 'getPhotos', () => journal.progressPhotos.getPhotos());
+  await driveRead('progressPhotos', 'getPoses', () => journal.progressPhotos.getPoses());
+  await driveRead('progressPhotos', 'lastWriteEpochDay', () => journal.progressPhotos.lastWriteEpochDay(19300));
   await driveRead('hairRemoval', 'getSessions', () => journal.hairRemoval.getSessions());
   await driveRead('hairRemoval', 'getSessionsOnDay', () => journal.hairRemoval.getSessionsOnDay(20000));
   await driveRead('hairRemoval', 'lastWriteEpochDay', () => journal.hairRemoval.lastWriteEpochDay(20000));
-  await driveRead('hairRemoval', 'latestSession', () => journal.hairRemoval.latestSession(20000));
   await driveRead('hairRemoval', 'getPhotos', () => journal.hairRemoval.getPhotos(hairRemovalId));
   await driveRead('procedures', 'getProcedures', () => journal.procedures.getProcedures());
   await driveRead('procedures', 'getSurgeryDaysInRange', () => journal.procedures.getSurgeryDaysInRange(19000, 20000));
@@ -1185,6 +1013,9 @@ beforeAll(async () => {
   await driveRead('procedures', 'getMilestone', () => journal.procedures.getMilestone(procedureId));
   await driveRead('appointments', 'getAppointments', () => journal.appointments.getAppointments());
   await driveRead('appointments', 'getAppointment', () => journal.appointments.getAppointment(appointmentId));
+  await driveRead('appointments', 'getWaiting', () => journal.appointments.getWaiting());
+  await driveRead('appointments', 'getStatusUpdates', () => journal.appointments.getStatusUpdates());
+  await driveRead('appointments', 'getProviders', () => journal.appointments.getProviders());
   await driveRead('appointments', 'getKinds', () => journal.appointments.getKinds());
   await driveRead('appointments', 'getDayRecords', () => journal.appointments.getDayRecords(20041));
   await driveRead('appointments', 'lastWriteEpochDay', () => journal.appointments.lastWriteEpochDay(20050));
@@ -1194,7 +1025,6 @@ beforeAll(async () => {
   await driveRead('checklists', 'getStandaloneChecklist', () => journal.checklists.getStandaloneChecklist());
   await driveRead('checklists', 'getDebriefState', () => journal.checklists.getDebriefState('appt-1'));
   await driveRead('checklists', 'getDebriefEntryId', () => journal.checklists.getDebriefEntryId('appt-1'));
-  await driveRead('doubtJournal', 'getSnapshots', () => journal.doubtJournal.getSnapshots(10));
   await driveRead('areaStates', 'getAreaStates', () => journal.areaStates.getAreaStates());
   await driveRead('comfortItems', 'getItems', () => journal.comfortItems.getItems());
   await driveRead('tryouts', 'getTryouts', () => journal.tryouts.getTryouts());
@@ -1202,11 +1032,9 @@ beforeAll(async () => {
   await driveRead('tryouts', 'getPhotosOnDay', () => journal.tryouts.getPhotosOnDay(19906));
   await driveRead('tryouts', 'lastWriteEpochDay', () => journal.tryouts.lastWriteEpochDay(19906));
   await driveRead('feltSense', 'forTryout', () => journal.feltSense.forTryout(tryoutId));
-  await driveRead('feltSense', 'forMilestone', () => journal.feltSense.forMilestone(milestoneId));
   await driveRead('feltSense', 'onDay', () => journal.feltSense.onDay(19910));
   await driveRead('feltSense', 'lastWriteEpochDay', () => journal.feltSense.lastWriteEpochDay(19910));
   // With an id, since the empty case short-circuits before any SQL runs.
-  await driveRead('feltSense', 'latestDaysForTryouts', () => journal.feltSense.latestDaysForTryouts([tryoutId]));
   await driveRead('feltSense', 'byTryout', () => journal.feltSense.byTryout());
   await driveRead('letters', 'getLetters', () => journal.letters.getLetters(10));
   await driveRead('letters', 'getLetterSeals', () => journal.letters.getLetterSeals(10));
@@ -1215,34 +1043,30 @@ beforeAll(async () => {
   await driveRead('letters', 'getUnlockDaysInRange', () => journal.letters.getUnlockDaysInRange(20000, 30000));
   await driveRead('roadmap', 'getHiddenGoals', () => journal.roadmap.getHiddenGoals('pl'));
   await driveRead('roadmap', 'getGoalStatuses', () => journal.roadmap.getGoalStatuses('pl'));
-  await driveRead('roadmap', 'getDismissedTracks', () => journal.roadmap.getDismissedTracks());
   await driveRead('roadmap', 'getCustomGoals', () => journal.roadmap.getCustomGoals());
+  await driveRead('roadmap', 'getCategories', () => journal.roadmap.getCategories());
+  await driveRead('roadmap', 'getInstitutions', () => journal.roadmap.getInstitutions());
+  await driveRead('roadmap', 'getInstitutionChanges', () => journal.roadmap.getInstitutionChanges());
   await driveRead('stats', 'dayAverages', () => journal.stats.dayAverages('mood', 19000, 21000));
   await driveRead('stats', 'daySpread', () => journal.stats.daySpread('mood', 19000, 21000));
   await driveRead('stats', 'constellationReadings', () =>
     journal.stats.constellationReadings(voice.key, 'femininity', 19000, 21000)
   );
+  await driveRead('stats', 'constellationPairs', () => journal.stats.constellationPairs(19000, 21000));
   await driveRead('stats', 'bodyRegionTrend', () =>
     journal.stats.bodyRegionTrend('chest', 'dysphoria', 19000, 21000)
   );
   await driveRead('stats', 'bodyRegionBreakdown', () => journal.stats.bodyRegionBreakdown('chest'));
-  await driveRead('stats', 'wearTimeTrend', () => journal.stats.wearTimeTrend(0, 30000));
-  await driveRead('stats', 'tallyTrend', () => journal.stats.tallyTrend('misgendered', 0, 30000));
-  await driveRead('stats', 'bodyRegionReadings', () => journal.stats.bodyRegionReadings('dysphoria', 19000, 21000));
+  await driveRead('stats', 'weeklyWearHours', () => journal.stats.weeklyWearHours(0, 30000, Date.now()));
   await driveRead('stats', 'bodyRegionMap', () => journal.stats.bodyRegionMap(19000, 21000));
   await driveRead('stats', 'entryCountsByDay', () => journal.stats.entryCountsByDay(19000, 21000));
   await driveRead('stats', 'presentationDays', () => journal.stats.presentationDays(femme.id, 19000, 21000));
   await driveRead('stats', 'tagInsights', () => journal.stats.tagInsights('mood', 19000, 21000));
   await driveRead('stats', 'tagShare', () => journal.stats.tagShare(19000, 21000));
+  await driveRead('stats', 'tagShare', () => journal.stats.tagShare(19000, 21000, { goodDays: true }));
   await driveRead('stats', 'recap', () => journal.stats.recap(19000, 21000));
   await driveRead('stats', 'isGoodDay', () => journal.stats.isGoodDay(20000));
   await driveRead('correlationCards', 'getCards', () => journal.correlationCards.getCards(19000, 21000));
-  await driveRead('intervalMoodPattern', 'dayOfInterval', () =>
-    journal.intervalMoodPattern.dayOfInterval(19000, 21000)
-  );
-  await driveRead('intervalMoodPattern', 'byCustomInterval', () =>
-    journal.intervalMoodPattern.byCustomInterval(28, 19000, 21000)
-  );
   await driveRead('archive', 'snapshot', () => journal.archive.snapshot());
   await driveRead('archive', 'importLog', () => journal.archive.importLog());
 
@@ -1262,24 +1086,6 @@ beforeAll(async () => {
     )
   );
   await drive('archive', 'commitDaylioImport', () => journal.archive.commitDaylioImport(daylioPreview));
-
-  const trackAndGraphPreview = await driveRead('archive', 'previewTrackAndGraphImport', () =>
-    journal.archive.previewTrackAndGraphImport(
-      ['FeatureName,Timestamp,Value', 'Weight,2022-09-14T21:30:41.432+01:00,72.5'].join('\r\n')
-    )
-  );
-  await drive('archive', 'commitTrackAndGraphImport', () =>
-    journal.archive.commitTrackAndGraphImport(trackAndGraphPreview)
-  );
-
-  const pixelsPreview = await driveRead('archive', 'previewPixelsImport', () =>
-    journal.archive.previewPixelsImport(
-      new TextEncoder().encode(
-        JSON.stringify([{ date: '2026-9-1', type: 'MOOD', scores: [3], notes: 'from Pixels', tags: [] }])
-      )
-    )
-  );
-  await drive('archive', 'commitPixelsImport', () => journal.archive.commitPixelsImport(pixelsPreview));
 
   const replaceSnapshot = await journal.archive.snapshot();
   await drive('archive', 'replace', () =>
@@ -1355,7 +1161,8 @@ describe('every classified read declares the tables its SQL read', () => {
     const stale = drivenReads
       .map(({ key, read }) => ({
         key,
-        extra: readOutside(read, [...declaredRead(key), ...(NARROWED.get(key) ?? [])], SQL_TABLES)
+        extra: readOutside(read.filter((table) => table !== 'media_file' || !VIEW_READS.has(key)),
+          [...declaredRead(key), ...(NARROWED.get(key) ?? [])], SQL_TABLES)
       }))
       .filter(({ extra }) => extra.length > 0)
       .map(({ key, extra }) => `journal.${key} read ${JSON.stringify(extra)} outside its declared ${JSON.stringify(declaredRead(key))}`);
@@ -1364,6 +1171,7 @@ describe('every classified read declares the tables its SQL read', () => {
 
   test('every table a coarse name declares is actually read by some read that declares it', () => {
     const unread = TABLE_NAMES.flatMap((name) => {
+      if (name in READ_BY_THE_ARCHIVE_ALONE) return [];
       const declaringKeys = [...declaredReadsBy].filter((key) => declaredRead(key).includes(name));
       if (declaringKeys.every((key) => key in READ_OPT_OUTS)) return [];
       const owners = drivenReads.filter((d) => declaredRead(d.key).includes(name) && !READS_THE_JOURNAL.has(d.key));
@@ -1390,10 +1198,10 @@ describe('the two checks above can actually fail', () => {
   });
 
   test('a table nothing writes, added to a declaration, fails the per-coarse-name union check', () => {
-    const padded: Record<TableName, readonly string[]> = { ...SQL_TABLES, tally: [...SQL_TABLES.tally, 'photo'] };
-    const owners = driven.filter((d) => d.coarse.includes('tally') && !WIPES_THE_JOURNAL.has(d.key));
-    const hit = new Set(owners.flatMap((d) => d.wrote).filter((table) => padded.tally.includes(table)));
-    assert.notDeepEqual([...hit].sort(), [...padded.tally].sort());
+    const padded: Record<TableName, readonly string[]> = { ...SQL_TABLES, sideEffect: [...SQL_TABLES.sideEffect, 'photo'] };
+    const owners = driven.filter((d) => d.coarse.includes('sideEffect') && !WIPES_THE_JOURNAL.has(d.key));
+    const hit = new Set(owners.flatMap((d) => d.wrote).filter((table) => padded.sideEffect.includes(table)));
+    assert.notDeepEqual([...hit].sort(), [...padded.sideEffect].sort());
   });
 
   /* getTaper's own declaration before this check existed: it joins
@@ -1404,8 +1212,8 @@ describe('the two checks above can actually fail', () => {
   });
 
   test('a table no read touches, added to a declaration, fails the per-coarse-name read union', () => {
-    const padded: Record<TableName, readonly string[]> = { ...SQL_TABLES, tally: [...SQL_TABLES.tally, 'era_mute'] };
-    const owners = drivenReads.filter((d) => declaredRead(d.key).includes('tally') && !READS_THE_JOURNAL.has(d.key));
-    assert.deepEqual(readHit('tally', owners, padded), ['tally_event']);
+    const padded: Record<TableName, readonly string[]> = { ...SQL_TABLES, sideEffect: [...SQL_TABLES.sideEffect, 'era_mute'] };
+    const owners = drivenReads.filter((d) => declaredRead(d.key).includes('sideEffect') && !READS_THE_JOURNAL.has(d.key));
+    assert.deepEqual(readHit('sideEffect', owners, padded), ['side_effect']);
   });
 });

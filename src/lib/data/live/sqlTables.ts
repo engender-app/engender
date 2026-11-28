@@ -1,16 +1,14 @@
-/* The coarse-name-to-SQL-table mapping (phase 8 audit ticket 02).
+/* The coarse-name-to-SQL-table mapping.
 
-   writes.ts's TABLE_NAMES are invalidation names, coarser than the schema on
-   purpose - 'entry' alone covers the entry row, its dimension values, its
-   tag links, its body-region values and its search index, because nothing
-   reads one without the others (writes.ts's own header says so). Until this
-   ticket that mapping lived only in comments; writes.sql.test.ts drives real
-   SQL through the recording driver (ticket 01) and needs it as data.
+   Writes.ts's TABLE_NAMES are invalidation names, coarser than the schema on purpose -
+   'entry' alone covers the entry row, its dimension values, its tag links, its body-region
+   values and its search index, because nothing reads one without the others (writes.ts's
+   own header says so). Until this ticket that mapping lived only in comments;
+   writes.sql.test.ts drives real SQL through the recording driver and needs it as data.
 
-   Two things a real table name can never be: a coarse name is what a screen
-   declares and a driver never sees, so nothing here collides with the other,
-   and TABLE_NAMES itself is untouched (ticket 02's own scope line - this is
-   an added declaration, not a renaming). */
+   Two things a real table name can never be: a coarse name is what a screen declares and a
+   driver never sees, so nothing here collides with the other, and TABLE_NAMES itself is
+   untouched. */
 
 import type { TableName } from './writes.ts';
 
@@ -20,8 +18,7 @@ import type { TableName } from './writes.ts';
     per-coarse-name union check - both directions matter, the same reason
     tablesWrittenBy/tablesReadBy above refuse an unclassified name instead of
     guessing. */
-/* SQL_TABLES stays exported for its own test, and cross-checked in
-   writes.sql.test.ts (AU-09 test-only review). */
+/* SQL_TABLES stays exported for its own test, and cross-checked in writes.sql.test.ts. */
 export const SQL_TABLES: Record<TableName, readonly string[]> = {
   /* entry_fts is a virtual table (FTS5) that entries.ts writes to
      explicitly on every path that changes a note (indexEntry, called from
@@ -35,25 +32,20 @@ export const SQL_TABLES: Record<TableName, readonly string[]> = {
   milestone: ['milestone'],
   photo: ['photo'],
   lab: ['lab_result'],
-  measurement: ['measurement'],
-  sizeRecord: ['size_record'],
   taper: ['taper', 'taper_session'],
   reminder: ['reminder'],
-  tally: ['tally_event'],
   regimen: ['regimen_episode'],
   dose: ['dose_event', 'dose_schedule', 'dose_schedule_weekday', 'dose_schedule_dose_amount', 'dose_pause'],
   stock: ['medication_stock'],
   sideEffect: ['side_effect'],
   personalEffect: ['personal_effect'],
   cycleEvent: ['cycle_event'],
-  journalingPause: ['journaling_pause'],
   era: ['era'],
   eraMute: ['era_mute'],
-  hairProgress: ['hair_stage', 'hair_photo'],
   hairRemoval: ['hair_removal_session', 'hair_removal_photo'],
+  progressPhoto: ['progress_photo', 'progress_pose'],
   procedure: ['procedure', 'procedure_photo'],
-  appointment: ['appointment'],
-  doubtJournal: ['doubt_snapshot', 'doubt_snapshot_entry'],
+  appointment: ['appointment', 'appointment_status', 'provider'],
   comfortItem: ['comfort_item'],
   tryout: ['tryout', 'tryout_photo'],
   feltSense: ['felt_sense'],
@@ -62,26 +54,25 @@ export const SQL_TABLES: Record<TableName, readonly string[]> = {
   voiceBenchmark: ['voice_benchmark'],
   voicePracticeTake: ['voice_practice_take'],
   videoNote: ['video_note'],
-  roadmapCheck: ['roadmap_check', 'roadmap_track'],
+  roadmapCheck: ['roadmap_check'],
   roadmapGoal: ['roadmap_goal'],
+  roadmapCategory: ['roadmap_category'],
+  roadmapInstitution: ['roadmap_institution', 'roadmap_institution_change'],
   // The recovery checklist is an ordinary checklist row (writes.ts's own
   // comment on `procedures`), so it lives here and not under 'procedure'.
-  checklist: ['checklist', 'checklist_item'],
+  // The debrief link and dismissal sit beside it (appointment_debrief), the
+  // way the columns they left sat on the checklist row.
+  checklist: ['checklist', 'checklist_item', 'appointment_debrief'],
   wearSession: ['wear_session'],
-  affirmation: ['affirmation'],
   bodyRegion: ['body_region'],
-  measurementType: ['measurement_type'],
   effectCategory: ['effect_category'],
   personalEffectType: ['personal_effect_type'],
   presentation: ['presentation'],
-  entryTemplate: ['entry_template', 'entry_template_tag', 'entry_template_dimension_value'],
   importLog: ['import_log'],
   areaState: ['area_state'],
-  savedQuestion: ['saved_question'],
-  revisit: ['revisit'],
   marginNote: ['margin_note'],
-  wordIgnore: ['word_frequency_ignore'],
-  document: ['document']
+  document: ['document'],
+  deletion: ['deletion']
 };
 
 /** Tables `SELECT name FROM sqlite_master` returns that no coarse name
@@ -91,10 +82,9 @@ export const SQL_TABLES: Record<TableName, readonly string[]> = {
     rather than nowhere. */
 const FTS5_SHADOW_TABLE_REASON = "an FTS5 shadow table SQLite manages itself; app SQL never names it, so 'entry' cannot cover it";
 
-/* UNMAPPED_TABLES stays exported only for its own test (AU-09 test-only
-   review). */
+/* UNMAPPED_TABLES stays exported only for its own test. */
 export const UNMAPPED_TABLES: Record<string, string> = {
-  // Preferences (ADR-0009): its own store, outside the journal's write
+  // Preferences use their own store, outside the journal's write
   // registry - nothing in writes.ts classifies a pref write or read.
   pref: 'preferences live outside the journal (ADR-0009); writes.ts never classifies a pref read or write',
   // SQLite's own autoincrement bookkeeping table, never named in app SQL.

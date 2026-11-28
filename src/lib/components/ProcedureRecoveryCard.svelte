@@ -1,42 +1,13 @@
 <script lang="ts">
-  /* One procedure on the surgery index (phase 5 ticket 12, rebuilt by phase
-     10 redesign ticket 52).
+  /* The surgery index shows one card per procedure. The active card
+     gives the time until the operation or the current recovery day
+     on a role-coloured block. ProcedurePhaseRail places consults
+     and recovery around surgery day. recoveryDay.ts gives the
+     elapsed time. The rail sets no recovery target.
 
-     It used to be a list row: a title, a phase pill, the date and the day
-     count run together in secondary grey, and a row of count badges. The
-     thing in the app with the most phases had the fewest pixels - a real
-     journey with two consults, a date, a recovery and a photo taken during
-     it came out as one 60px row, and none of those four facts surfaced
-     until the row was opened.
-
-     So the card says what is true now (DIRECTION.md rule 16) in the two
-     ways the rule's worked examples do. The live reading - day N of
-     healing, or the days until the operation - is the number on the card,
-     on a block of the area's stripe at display size, which is rule 2's "a
-     number on a block" and the shape LetterCard already uses for a wait.
-     And the journey itself is a line: consults behind, the date as the
-     pivot, the stretch to today ahead of it (ProcedurePhaseRail).
-
-     Nothing on it is a score. Day N is a fact about time, not a position in
-     a recovery anybody is meant to be at - `recoveryDay.ts`'s own rule,
-     which is where that lives rather than in the ADR ticket 52 cites for it
-     (procedureRail.ts has the note) - and the rail draws no horizon to be
-     short of.
-
-     **Open and collapsed.** A procedure still running draws all of it. One
-     past the recovery cutoff drops the block and the strip: its phases are
-     still on the rail, but the number belongs to a reading that is still
-     live, and an operation four hundred days ago has none. What it keeps
-     instead is the date and the day count. That density difference is what lets
-     several running procedures fit at once, which the screen's own intro
-     promises.
-
-     Measured on one journal at 390px, the same two procedures either side
-     of the change: the archived card is 155px against the 100px row it
-     replaces, and the running one 263px against 121px. So collapsed is
-     three fifths of open rather than back to a row - the rail and the
-     consult count are what it spends the extra 55px on, and both are facts
-     the row did not carry. */
+     Only the person's archive switch collapses the card. The
+     archived card retains the phase rail, consult count, date and
+     day count while omitting the live number block and strip. */
   import { m } from '$lib/paraglide/messages';
   import { collapse } from '$lib/motion/reveal';
   import Icon from './Icon.svelte';
@@ -46,22 +17,19 @@
   import { currentDay } from '$lib/stores/today.svelte';
   import { procedurePhase, recoveryDay, type ProcedurePhase } from '$lib/data/recoveryDay';
   import { gapTo } from '$lib/data/vocabulary/hubLabels';
+  import { costLine } from '$lib/data/vocabulary/costLabel';
   import type { ProcedurePhoto } from '$lib/data/journal/procedures';
   import type { Milestone, Procedure } from '$lib/data/types';
 
   let {
     procedure,
-    selected = false,
     today = currentDay(),
     linkedMilestone = null,
     photos = [],
     checklistCount = 0,
-    onclick,
-    onedit,
     ...rest
   }: {
     procedure: Procedure;
-    selected?: boolean;
     today?: number;
     linkedMilestone?: Milestone | null;
     /** This procedure's recovery photos, oldest first. The strip is drawn
@@ -69,13 +37,12 @@
         rather than reporting how much of it was photographed. */
     photos?: readonly ProcedurePhoto[];
     checklistCount?: number;
-    onclick?: () => void;
-    onedit?: () => void;
     [key: string]: unknown;
   } = $props();
 
-  let phase = $derived<ProcedurePhase>(procedurePhase(procedure.surgeryEpochDay, today));
+  let phase = $derived<ProcedurePhase>(procedurePhase(procedure.surgeryEpochDay, today, procedure.archived));
   let recDay = $derived(recoveryDay(procedure.surgeryEpochDay, today));
+  let cost = $derived(costLine(procedure.cost));
 
   /** Everything but the archived phase, which is the one with no live
       reading left to draw. */
@@ -88,7 +55,7 @@
       case 'pre_op':
         return m.surgery_phase_pre_op();
       case 'surgery_day':
-        return m.surgery_phase_surgery_day();
+        return m.surgery_day();
       case 'recovery':
         return m.surgery_phase_recovery();
       case 'archived':
@@ -108,7 +75,7 @@
        and a card that writes one fact twice in two type sizes is the
        duplication this ticket is named for. */
     if (recDay.type === 'surgeryDay') return { n: null, unit: m.today() };
-    return { n: null, unit: m.surgery_reading_no_date() };
+    return { n: null, unit: m.no_date_yet() };
   });
 
   const dayLabel = (epochDay: number) =>
@@ -129,17 +96,9 @@
     return formatted;
   });
 
-  /* What is next for this procedure, which the card had nowhere to say
-     (audit item 13): the screen ended at 520px with the journey's own
-     forward fact locked inside the open card's consult list. The nearest
-     consult from today on, in ticket 12's grammar - `gapTo` and the same
-     two strings a hub row uses for a consult, so a row saying "Consult in
-     12 days" and this card cannot come to disagree about either the
-     arithmetic or the words.
-
-     Only a card still running: an archived procedure keeps no forward
-     reading (`open`'s own rule above), and a consult dated after one is a
-     record of something else. */
+  /* Show the nearest upcoming consult for an active procedure. Use `gapTo` and
+     the hub's consult strings so the card and hub agree. Archived procedures
+     show no upcoming consult. */
   let nextConsult = $derived(
     open
       ? [...procedure.consults]
@@ -181,33 +140,28 @@
   data-procedure={procedure.id}
   data-phase={phase}
   class:is-open={open}
-  class:is-active-card={selected}
   {...rest}
 >
   <div class="proc-top">
     <!-- A row the width of the card answers a press with a wash rather than
          a scale: 0.94 on a 330px card walks its edges 10px inward while the
-         list holds still, which reads as a yank (DIRECTION.md tier 1). -->
-    <!-- No aria-label. One used to read `Open {name}`, which replaced the
-         button's own content for a screen reader - so the name, the phase,
-         the number and the date it counts from, all of which are inside
-         this button, were announced as the single word `Open`. The content
-         is the name now, and `aria-expanded` is what says the button
-         toggles. -->
-    <button
-      type="button"
+         list holds still, which reads as a yank. -->
+    <!-- A link to the procedure's own screen, the way a tryout's card links to its own
+         (TryoutCard). It used to be a button that slid the procedure's log open under the
+         list. No aria-label: the name, the phase, the number and the date are all inside
+         the link, and a label would replace them for a screen reader. -->
+    <a
       class="proc-face"
+      href="/health/surgery/{procedure.id}"
       data-no-press
-      aria-expanded={selected}
-      aria-controls="procedure-log-{procedure.id}"
-      {onclick}
+      data-open-procedure={procedure.id}
     >
       <span class="proc-head">
         <span class="proc-name">{procedure.name}</span>
         <!-- An archived card only ever sits under the "Archived procedures"
-             heading, so its pill would say the heading again. A card the
-             person archived by hand keeps its pill: Recovery under that
-             heading still says something the heading does not. -->
+             heading, so its pill would say the heading again. One archived
+             before its operation keeps its pill: Pre-op under that heading
+             still says something the heading does not. -->
         {#if phase !== 'archived'}
           <span class="kit-pill proc-phase-pill" data-phase-pill={phase}>{phaseLabel}</span>
         {/if}
@@ -226,24 +180,12 @@
       {:else}
         <span class="proc-when">{dateDetail}</span>
       {/if}
-    </button>
-    {#if onedit}
-      <button
-        type="button"
-        class="proc-act"
-        data-edit-procedure={procedure.id}
-        aria-label={m.surgery_edit_sheet()}
-        onclick={onedit}
-      >
-        <Icon name="pencil" size={18} />
-      </button>
-    {/if}
+    </a>
   </div>
 
-  <!-- Between the reading and the rail: the block says how far off the
-       operation is, this says what happens before it, and the rail draws
-       both without words (audit item 13). `aria-hidden` on the rail is why
-       the consult has to be written as well as drawn - the same reason the
+  <!-- Between the reading and the rail: the block says how far off the operation is, this
+       says what happens before it, and the rail draws both without words. `aria-hidden` on
+       the rail is why the consult has to be written as well as drawn - the same reason the
        consult count below it is kept. -->
   {#if nextConsultLine}
     <p class="proc-next" data-procedure-next={procedure.id}>{nextConsultLine}</p>
@@ -270,26 +212,24 @@
     </div>
   {/if}
 
-  <!-- The consult count stays written down even though the rail draws each
-       consult as its own mark, because the rail is `aria-hidden` and a
-       drawing nobody can hear is not where a fact may live. Each number
-       says what it counts in hidden words, since the glyph beside it is
-       hidden too and "2 3" is not a fact (after-release 21). The photo count
-       is here only on a collapsed card, which has no strip to count from.
-       `collapse` because selecting a procedure is what brings the milestone
-       and the checklist count in, and a row that cuts in is the yank the
-       standing clause forbids. -->
-  {#if linkedMilestone || checklistCount > 0 || procedure.consults.length > 0 || (!open && photos.length > 0)}
+  <!-- The consult count stays written down even though the rail draws each consult as its
+       own mark, because the rail is `aria-hidden` and a drawing nobody can hear is not
+       where a fact may live. Each number says what it counts in hidden words, since the
+       glyph beside it is hidden too and "2 3" is not a fact. The photo count is here only
+       on a collapsed card, which has no strip to count from. `collapse` because selecting a
+       procedure is what brings the milestone and the checklist count in, and a row that
+       cuts in is the yank the standing clause forbids. -->
+  {#if linkedMilestone || checklistCount > 0 || procedure.consults.length > 0 || (!open && photos.length > 0) || cost}
     <span class="proc-badges" transition:collapse|global>
       {#if linkedMilestone}
         <span class="proc-badge-tag" data-linked-milestone>
-          <Icon name="flag" size={13} />
+          <Icon name="summit" size={13} />
           <span>{m.surgery_milestone_linked_badge()}</span>
         </span>
       {/if}
       {#if procedure.consults.length > 0}
         <span class="proc-badge-tag">
-          <Icon name="calendar" size={13} />
+          <Icon name="appointment" size={13} />
           <span aria-hidden="true">{procedure.consults.length}</span>
           <span class="visually-hidden">{m.surgery_badge_consults({ n: procedure.consults.length })}</span>
         </span>
@@ -298,7 +238,7 @@
         <span class="proc-badge-tag">
           <Icon name="image" size={13} />
           <span aria-hidden="true">{photos.length}</span>
-          <span class="visually-hidden">{m.surgery_badge_photos({ n: photos.length })}</span>
+          <span class="visually-hidden">{m.n_photos({ n: photos.length })}</span>
         </span>
       {/if}
       {#if checklistCount > 0}
@@ -307,6 +247,11 @@
           <span aria-hidden="true">{checklistCount}</span>
           <span class="visually-hidden">{m.surgery_badge_checklist({ n: checklistCount })}</span>
         </span>
+      {/if}
+      <!-- What it cost, as words: no glyph in
+           the set says money, and the amount is its own label. -->
+      {#if cost}
+        <span class="proc-badge-tag" data-procedure-cost>{cost}</span>
       {/if}
     </span>
   {/if}
@@ -341,9 +286,9 @@
      and the badges are the card's own reading and there is nothing on any
      of them to reach - a 44px wound photo that answers no touch at all is
      the worst of the three, because every convention says a thumbnail
-     opens. So the button's own box stays where its content is, for layout
+     opens. So the link's own box stays where its content is, for layout
      and for the accessible name, and its hit area is stretched over the
-     card by a pseudo-element. The pencil lifts above it. */
+     card by a pseudo-element. */
   .proc-face::after {
     content: '';
     position: absolute;
@@ -367,6 +312,7 @@
     color: inherit;
     font: inherit;
     text-align: start;
+    text-decoration: none;
     cursor: pointer;
   }
 
@@ -385,10 +331,7 @@
     overflow-wrap: anywhere;
   }
 
-  /* No uppercase, no tracking. DIRECTION.md's own census names an
-     uppercase tracked label as the craft floor's tell and declines it; the
-     row this card replaced carried one, and rebuilding the card around it
-     would have kept it for another ticket. */
+  /* Keep labels in normal case with default letter spacing. */
   .proc-phase-pill {
     font-size: var(--text-xs);
     font-weight: var(--weight-medium);
@@ -437,7 +380,7 @@
      written on the stripe itself. It is not large text by WCAG's measure -
      that needs 18.66px at weight 700 - so it owes 4.5:1 and gets it:
      `--role-fill-ink` is the heat ramp's deepest step, held to 4.5:1
-     against its own fill by tests/kit-roles.test.ts. */
+     against its own fill by tests/node/ui/kit-roles.test.ts. */
   .proc-unit {
     font-size: var(--text-block);
     font-weight: var(--weight-medium);
@@ -459,23 +402,6 @@
     font-size: var(--text-sm);
     font-weight: var(--weight-medium);
     color: var(--text-2);
-  }
-
-  /* The kit's own row action size (--touch-target, Android's 48px floor),
-     and above the face's stretched hit area rather than under it. */
-  .proc-act {
-    position: relative;
-    z-index: 2;
-    flex: 0 0 auto;
-    display: grid;
-    place-items: center;
-    width: var(--touch-target);
-    height: var(--touch-target);
-    background: none;
-    border: 0;
-    border-radius: var(--r-block);
-    color: var(--text-2);
-    cursor: pointer;
   }
 
   .proc-strip {
@@ -527,14 +453,11 @@
     color: var(--text-2);
   }
 
-  /* The wash a full-width row answers a press with, and the one the card
-     wears while its log is showing below. Both are the control's own ground
-     rather than a container's, which is the distinction carpet 30 settled -
-     and it holds here because the face's hit area is the card, so the card
-     is the control rather than a box around one. The wash fades rather than
-     cutting in: selecting a procedure is a state change like any other. */
-  .proc-card:has(.proc-face:active),
-  .is-active-card {
+  /* The wash a full-width row answers a press with. It is the control's own ground rather
+     than a container's, which is the distinction settled - and it holds here because the
+     face's hit area is the card, so the card is the control rather than a box around one.
+     The wash fades rather than cutting in. */
+  .proc-card:has(.proc-face:active) {
     background: var(--role-wash);
   }
 

@@ -19,7 +19,14 @@ public final class OwnSystemUi {
     private boolean open;
 
     public synchronized void opened(int requestCode) {
-        if (requestCode >= 0) open = true;
+        opened(requestCode, true);
+    }
+
+    /** {@code verified}: the handler is a system component (HandlerTrust).
+        A handler that is not gets no window, so leaving to it is an
+        ordinary leave. */
+    public synchronized void opened(int requestCode, boolean verified) {
+        if (requestCode >= 0 && verified) open = true;
     }
 
     public synchronized void closed() {

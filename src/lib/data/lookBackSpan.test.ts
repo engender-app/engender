@@ -21,7 +21,6 @@ import {
   yearTicks
 } from './lookBackSpan';
 import { annotationsInRange, type ChartAnnotationSource } from '../charts/annotations';
-import { parseWrappedRangeParams } from './wrappedRange';
 
 const TODAY = 20700;
 
@@ -60,14 +59,6 @@ describe('historyStart: the earliest day the person authored anything dated', ()
       TODAY
     );
     expect(start).toBe(20000);
-  });
-
-  /* After-release 17 review: a journal holding only tally taps had no rail
-     and so no way to the counters' tile. */
-  it('reaches back to the first tally tap, and starts at one on its own', () => {
-    expect(historyStart({ bounds: { firstEpochDay: 20000, lastEpochDay: TODAY }, milestones: [], eras: [], firstTallyDay: 19500 }, TODAY)).toBe(19500);
-    expect(historyStart({ bounds: null, milestones: [], eras: [], firstTallyDay: 20650 }, TODAY)).toBe(20650);
-    expect(historyStart({ bounds: null, milestones: [], eras: [], firstTallyDay: null }, TODAY)).toBeNull();
   });
 
   it('is null when nothing dated exists yet', () => {
@@ -206,13 +197,10 @@ describe('the rail draws every dated history, not only the eras', () => {
     { id: 'e2', kind: 'regimen', name: 'Estradiol valerate', startEpochDay: 19001, endEpochDay: null },
     { id: 't1', kind: 'tryout', name: 'Alex', startEpochDay: 20000, endEpochDay: 20100 },
     { id: 's1', kind: 'surgery', name: 'Orchiectomy', startEpochDay: 20300, endEpochDay: null },
-    /* Four kinds the same query returns and the rail does not draw: a
-       milestone and an era already have their own marks and bands here, a
-       recovery window is a reading of a procedure rather than a stretch the
-       person lived through as its own thing, and a journaling pause came
-       off the rail on the sign-off renders - it is the absence of a journal
-       rather than a stretch of a life, and the charts still band it. */
-    { id: 'p1', kind: 'journalingPause', name: null, startEpochDay: 20200, endEpochDay: 20230 },
+    /* Three kinds the same query returns and the rail does not draw: a
+       milestone and an era already have their own marks and bands here,
+       and a recovery window is a reading of a procedure rather than a
+       stretch the person lived through as its own thing. */
     { id: 'm1', kind: 'milestone', name: 'Came out', startEpochDay: 20400, endEpochDay: null },
     { id: 'era1', kind: 'era', name: 'First year', startEpochDay: 19500, endEpochDay: null },
     { id: 'r1', kind: 'recovery', name: 'Orchiectomy', startEpochDay: 20301, endEpochDay: 20390 }
@@ -253,10 +241,9 @@ describe('the rail draws every dated history, not only the eras', () => {
     expect(railLegendKinds([], [], surgeryMarks(annotations), false)).toEqual(['surgery']);
   });
 
-  /* A milestone and a surgery day draw the same mark, so the legend gives
-     them one key and names what that key covers (after-release 27, audit
-     L05-12): it used to call every mark "Surgery" when both were there, and
-     name nothing when there were only milestones. */
+  /* A milestone and a surgery day draw the same mark, so the legend gives them one key and
+     names what that key covers: it used to call every mark "Surgery" when both were there,
+     and name nothing when there were only milestones. */
   it('names the marks by what they are: milestones, surgeries, or both under one key', () => {
     const milestone = [{ id: 'm1', name: 'HRT start', epochDay: 20200 }];
     expect(railLegendKinds([], milestone, [], false)).toEqual(['milestone']);
@@ -272,15 +259,9 @@ describe('the rail draws every dated history, not only the eras', () => {
   });
 });
 
-describe('spanRangeQuery: a picked span is read at the same URL the picker writes', () => {
-  it('round-trips through the wrapped range parser to the same two days', () => {
-    const span = { start: 20655, end: 20690 };
-    const query = spanRangeQuery(span);
-    expect(query.startsWith('?named=custom')).toBe(true);
-    const params = new URLSearchParams(query);
-    const parsed = parseWrappedRangeParams(params.get('named'), params.get('from'), params.get('to'), TODAY);
-    expect(parsed.choice).toBe('custom');
-    expect(parsed.range).toEqual(span);
+describe('spanRangeQuery', () => {
+  it('passes span dates to readings', () => {
+    expect(spanRangeQuery({ start: 20655, end: 20690 })).toBe('?from=2026-07-21&to=2026-08-25');
   });
 });
 
@@ -388,5 +369,20 @@ describe('factSpan: the list selects what the rail selects', () => {
 
   it('never runs a day fact off the start of the rail', () => {
     expect(factSpan({ id: 'c', kind: 'surgery', name: null, start: 20405, end: 20405, isDay: true }, 20400).start).toBe(20400);
+  });
+});
+
+describe('yearTicks: extreme rails stay bounded', () => {
+  it('thins a rail that reaches the minimum JS date instead of building a mark per year', () => {
+    const started = Date.now();
+    const ticks = yearTicks(-99_000_000, 20500);
+    expect(Date.now() - started).toBeLessThan(500);
+    expect(ticks.length).toBeLessThanOrEqual(200);
+    expect(ticks.length).toBeGreaterThan(0);
+  });
+
+  it('copes with a start day that is not a date at all', () => {
+    expect(yearTicks(-1e300, 20500)).toEqual([]);
+    expect(yearTicks(Number.NaN, 20500)).toEqual([]);
   });
 });

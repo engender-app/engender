@@ -1,18 +1,7 @@
-/* Where a slider's stops are, which is the same question as where its tick
-   marks go (phase 5 ticket 30).
-
-   A slider with no marked stops asks for a precision it cannot deliver. The
-   0-100 scale is the case that makes it obvious: 101 values across 330px of
-   phone is 3.3px per value, so a fingertip picks a number it did not aim at,
-   and the readout implies the difference between 62 and 63 meant something.
-   So the stops are spaced far enough apart to be hit on purpose, every stop
-   is marked, and the thumb lands on one.
-
-   The spacing rule is one line: take the finest step that divides the span
-   exactly and still leaves at most MAX_STOPS marks. On 0-10 that is 1 - all
-   eleven values stay reachable, because eleven of them already were - and on
-   0-100 it is 5, which is 21 marks about 16px apart. Nothing is lost on the
-   scale that was already usable, and the one that was not becomes usable. */
+/* Choose the finest step that divides the span and leaves at most
+   MAX_STOPS marked stops. The thumb snaps to one. 0–10 retains
+   all eleven values. 0–100 uses steps of five, giving 21 marks
+   about 16px apart on a 330px track. */
 
 /** Marks any closer together than about 16px at 390px width stop reading as
     separate stops and stop being separately hittable, and 21 across the
@@ -72,8 +61,8 @@ export function snapToStop(value: number, min: number, max: number, step: number
 /** What the thumb shows when the value is null.
 
     A slider's thumb has to rest somewhere, and an unset scale has no value to
-    rest on, so it rests in the middle and the control is dimmed instead
-    (ticket 31). Its own function because two things ask it: the control
+    rest on, so it rests in the middle and the control is dimmed instead.
+    Its own function because two things ask it: the control
     positions its thumb by it, and the readout above it travels by it. */
 export function displayValue(value: number | null, min: number, max: number): number {
   return value ?? Math.round((min + max) / 2);

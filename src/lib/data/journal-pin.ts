@@ -1,31 +1,15 @@
-/* PIN mode's flows (ticket 53), the sibling of journal-passphrase.ts and the
-   same shape: the keystore math plus where the metadata lives, so boot and
-   the settings screen share one spelling of setup, unlock and change.
+/* PIN setup, unlock and change share keystore operations. Every PIN is
+   bound to a device key. Inject keystore and device-secret ports so Node
+   tests can cover both parts.
 
-   The one difference from a passphrase is where the secret comes from. A
-   passphrase is what the person typed; a PIN is what they typed bound to a
-   key that cannot leave this browser (device-secret.ts). That binding is
-   what makes four digits defensible, so it is not optional and not a
-   fallback - every function here goes through it.
+   Use the browser key on web and Android Keystore on Android. Read the
+   binding from pinBinding; earlier Android journals still use the WebView
+   key until successful PIN entry rewraps them. Platform inference would
+   reject a valid PIN on those journals. Data keys stay in memory
+   (ADR-0018). */
 
-   Unlike journal-passphrase.ts this module takes its ports rather than
-   reaching for OPFS and IndexedDB directly. Two moving parts whose
-   interaction *is* the security claim - a keystore file and a device key -
-   is worth being able to test on the Node tier against both of them.
-
-   Since ticket sec-02-06 there are two key stores a PIN can be bound to and
-   the ports say which: the browser's own on the web, and Android Keystore on
-   a phone, where the key is then not in the app's directory for a copy of it
-   to take. Which one wrapped a given keystore is recorded in the keystore
-   (`pinBinding`), not inferred from the platform, because an Android journal
-   made before that ticket is bound to the WebView's store until the first
-   correct PIN rewraps it - and inferring would derive the secret from a key
-   that never wrapped the file and report a correct PIN as wrong.
-
-   The returned data keys live in memory and nowhere else, exactly as
-   ADR-0018 requires. */
-
-import { changeCredentials } from './credential-ownership';
+import { authenticateCredentials, changeCredentials } from './credential-ownership';
+import { withoutPendingRecoveryKeyOwned } from './recovery-key';
 import {
   createKeystore,
   rewrapKeystore,
@@ -49,10 +33,11 @@ import {
   type DeviceBinding
 } from './device-secret';
 import { androidPinBinding } from './pin-binding-bridge';
+import { androidPinAttempts } from '../lock/lock-timing-bridge';
 
 /** Where a PIN keystore's two halves live. Defaults to this platform's own;
     the tests hand in memory. */
-/* PinPorts stays exported only for its own test (AU-09 test-only review). */
+/* PinPorts stays exported only for its own test. */
 export interface PinPorts {
   journalExists(): Promise<boolean>;
   /** The key store a wrap written now binds to. */
@@ -66,10 +51,23 @@ export interface PinPorts {
       nothing to move its key to. */
   legacyBinding?: DeviceBinding;
   readKeystore(): Promise<KeystoreMetadata | null>;
-  writeKeystore(metadata: KeystoreMetadata): Promise<void>;
+  writeKeystore(metadata: KeystoreMetadata, current?: () => void): Promise<void>;
+  /** Runs the write of a changed PIN with any recovery key nobody confirmed taken away.
+      Optional so the tests' in-memory ports need not carry a recovery store. */
+  withoutPendingRecoveryKey?<T>(work: (doNotRestorePending: () => void) => Promise<T>): Promise<T>;
+  /** Android admits durably before derivation; web counts at its gate. */
+  attempts?: {
+    begin(): Promise<string>;
+    finish(token: string, successful: boolean): Promise<void>;
+  };
 }
 
-const keystoreFile = { journalExists: journalAccessExists, readKeystore: readKeystoreFile, writeKeystore: writeKeystoreFile };
+const keystoreFile = {
+  journalExists: journalAccessExists,
+  readKeystore: readKeystoreFile,
+  writeKeystore: writeKeystoreFile,
+  withoutPendingRecoveryKey: <T,>(work: (doNotRestorePending: () => void) => Promise<T>) => withoutPendingRecoveryKeyOwned(work)
+};
 
 const platformPorts = (): PinPorts =>
   isAndroid()
@@ -77,6 +75,7 @@ const platformPorts = (): PinPorts =>
         binding: keystoreDeviceBinding(androidPinBinding),
         bindingKind: 'keystore',
         legacyBinding: browserDeviceBinding(browserKeySlot(PIN_BINDING_SLOT)),
+        attempts: androidPinAttempts,
         ...keystoreFile
       }
     : {
@@ -88,7 +87,7 @@ const platformPorts = (): PinPorts =>
 /** Exactly four digits (crypto/params.ts states why four). A floor and a
     ceiling both, because the pad collects a fixed count and submits itself on
     the last one. */
-/* isValidPin stays exported only for its own test (AU-09 test-only review). */
+/* isValidPin stays exported only for its own test. */
 export function isValidPin(pin: string): boolean {
   return new RegExp(`^[0-9]{${PIN_LENGTH}}$`).test(pin);
 }
@@ -122,9 +121,10 @@ export async function setupJournalPin(pin: string, ports: PinPorts = platformPor
     where the data key is in memory. Mints a fresh binding key, so the
     previous mode's leftovers cannot open what this writes.
 
-    Refuses a journal already in PIN mode, and the refusal is the point rather
-    than tidiness. Minting replaces the binding key before the new keystore is
-    written, and for every other starting mode that is safe: the keystore on
+    A retry of the same PIN and data key keeps the published wrap unchanged.
+    Any other PIN journal refuses. Minting replaces the binding key before
+    the new keystore is written, and for every other starting mode that is
+    safe: the keystore on
     disk does not use the binding key, so it keeps opening if this is
     interrupted. From PIN mode it is not safe - the key being replaced is the
     only one that opens the keystore still on disk, so an interruption between
@@ -134,64 +134,103 @@ export async function setupJournalPin(pin: string, ports: PinPorts = platformPor
 export async function addJournalPin(
   dataKey: Uint8Array<ArrayBuffer>,
   pin: string,
-  ports: PinPorts = platformPorts()
+  ports: PinPorts = platformPorts(),
+  current: () => void = () => {},
+  beforeCredentialWrite: () => void = () => {}
 ): Promise<void> {
+  current();
   requireValidPin(pin);
-  if ((await ports.readKeystore())?.secretSource === 'pin') {
-    throw new KeystoreUnreadableError('this journal is already in PIN mode - use changeJournalPin to change the PIN');
+  const existing = await ports.readKeystore();
+  if (existing?.secretSource === 'pin') {
+    const binding = (existing.pinBinding ?? 'browser') === ports.bindingKind
+      ? ports.binding : requireLegacyBinding(existing, ports);
+    const opened = await unlockKeystore(existing, combinePinWithDevice(pin, await binding.read()));
+    try {
+      if (opened.length !== dataKey.length || !opened.every((byte, index) => byte === dataKey[index])) {
+        throw new KeystoreUnreadableError('the published PIN wrap belongs to a different journal key');
+      }
+      return;
+    } finally { opened.fill(0); }
   }
+  current();
   const secret = combinePinWithDevice(pin, await ports.binding.create());
-  await ports.writeKeystore(bindingNamed(await wrapDataKeyWithSecret(dataKey, secret, undefined, 'pin'), ports));
+  const metadata = bindingNamed(await wrapDataKeyWithSecret(dataKey, secret, undefined, 'pin'), ports);
+  current();
+  beforeCredentialWrite();
+  await ports.writeKeystore(metadata, current);
 }
 
 /** Every later run. Throws DecryptionFailedError on a wrong PIN and
     DeviceBindingUnavailableError when this browser no longer holds the key -
     two different sentences on the gate, because only one of them is worth
     retyping for. */
-export async function unlockJournalPin(pin: string, ports: PinPorts = platformPorts()): Promise<Uint8Array<ArrayBuffer>> {
-  return ports.legacyBinding
-    ? changeCredentials(() => unlockPin(pin, ports))
-    : unlockPin(pin, ports);
+export async function unlockJournalPin(
+  pin: string,
+  ports: PinPorts = platformPorts(),
+  current: () => void = () => {}
+): Promise<Uint8Array<ArrayBuffer>> {
+  return authenticateCredentials(async () => {
+    current();
+    return unlockPin(pin, ports, current);
+  });
 }
 
-async function unlockPin(pin: string, ports: PinPorts): Promise<Uint8Array<ArrayBuffer>> {
+/** A fresh Settings check uses the same attempt accounting without migrating
+    a binding or changing any credential as a side effect of authentication. */
+export async function verifyJournalPin(
+  pin: string,
+  current: () => void,
+  ports: PinPorts = platformPorts()
+): Promise<Uint8Array<ArrayBuffer>> {
+  return authenticateCredentials(() => { current(); return unlockPin(pin, ports, current, false); });
+}
+
+async function unlockPin(pin: string, ports: PinPorts, current: () => void, migrate = true): Promise<Uint8Array<ArrayBuffer>> {
   const metadata = await requirePinKeystore(ports);
   const wrappedUnder = metadata.pinBinding ?? 'browser';
-  if (wrappedUnder !== ports.bindingKind) return rebindOnUnlock(metadata, pin, ports);
-
-  const dataKey = await unlockKeystore(metadata, combinePinWithDevice(pin, await ports.binding.read()));
-  /* A migration that wrote its keystore and then lost the process before
-     clearing the old key leaves one behind, and on a phone the whole point
-     of this ticket is that no PIN key sits in the WebView's store. It opens
-     nothing now, so this is tidying rather than repair - but tidying that
-     nothing else would ever do. */
-  await forgetLegacyBinding(ports);
-  return dataKey;
+  const rebinding = wrappedUnder !== ports.bindingKind;
+  const binding = rebinding ? requireLegacyBinding(metadata, ports) : ports.binding;
+  const secret = combinePinWithDevice(requireValidPin(pin), await binding.read());
+  current(); // Metadata, binding and cancellation refusals do not admit a guess.
+  const token = await ports.attempts?.begin();
+  let dataKey: Uint8Array<ArrayBuffer> | undefined;
+  let settled = false;
+  try {
+    dataKey = await unlockKeystore(metadata, secret);
+    current();
+    if (migrate && rebinding) await rebindOnUnlock(dataKey, pin, ports);
+    if (migrate) await forgetLegacyBinding(ports);
+    current();
+    if (token !== undefined) {
+      settled = true;
+      await ports.attempts!.finish(token, true);
+    }
+    current();
+    return dataKey;
+  } catch (error) {
+    dataKey?.fill(0);
+    // An interrupted or cancelled derivation remains accounted for. A failed
+    // durable settlement must not escape as an acknowledged wrong PIN.
+    if (token !== undefined && !settled) await ports.attempts!.finish(token, false);
+    throw error;
+  }
 }
 
-/** An Android PIN journal from before ticket sec-02-06, rewrapped under the
-    phone's Keystore the first time the right PIN opens it.
+/** An Android PIN journal from, rewrapped under the phone's Keystore the first time the
+    right PIN opens it.
 
-    Write then clear, which is the order every other rewrap in the app uses
-    and here is the crash safety. Minting the new key touches nothing that
-    opens the keystore on disk - that is the old key, and it is untouched
-    until the write lands - so an interruption before the write leaves a
-    journal that opens under the old binding, and one after it leaves a
+    Write then clear, which is the order every other rewrap in the app uses and here is the
+    crash safety. Minting the new key touches nothing that opens the keystore on disk - that
+    is the old key, and it is untouched until the write lands - so an interruption before
+    the write leaves a journal that opens under the old binding, and one after it leaves a
     journal that opens under the new one. Never neither. */
 async function rebindOnUnlock(
-  metadata: KeystoreMetadata,
+  dataKey: Uint8Array<ArrayBuffer>,
   pin: string,
   ports: PinPorts
-): Promise<Uint8Array<ArrayBuffer>> {
-  /* Unwrapped under the old binding first, so a wrong PIN throws with the
-     keystore on disk exactly as it was and the old key still the one that
-     opens it. */
-  const legacySecret = combinePinWithDevice(pin, await requireLegacyBinding(metadata, ports).read());
-  const dataKey = await unlockKeystore(metadata, legacySecret);
+): Promise<void> {
   const secret = combinePinWithDevice(pin, await ports.binding.create());
   await ports.writeKeystore(bindingNamed(await wrapDataKeyWithSecret(dataKey, secret, undefined, 'pin'), ports));
-  await forgetLegacyBinding(ports);
-  return dataKey;
 }
 
 /** Rewraps the same data key under a new PIN (the journal is never
@@ -220,18 +259,23 @@ export async function changeJournalPin(
        deriving the same wrap twice. */
     const nextDevice = rebinding ? await ports.binding.create() : currentDevice;
 
-    await ports.writeKeystore(
-      bindingNamed(
-        await rewrapKeystore(
-          metadata,
-          combinePinWithDevice(current, currentDevice),
-          combinePinWithDevice(next, nextDevice),
-          undefined,
-          'pin'
-        ),
-        ports
-      )
+    const rewrapped = bindingNamed(
+      await rewrapKeystore(
+        metadata,
+        combinePinWithDevice(current, currentDevice),
+        combinePinWithDevice(next, nextDevice),
+        undefined,
+        'pin'
+      ),
+      ports
     );
+    /* After the current PIN is proven: a wrong PIN touches nothing, and a recovery key
+       nobody confirmed does not outlive the PIN it was made under. */
+    const write = (doNotRestorePending: () => void = () => {}) => {
+      doNotRestorePending();
+      return ports.writeKeystore(rewrapped);
+    };
+    await (ports.withoutPendingRecoveryKey ? ports.withoutPendingRecoveryKey(write) : write());
     if (rebinding) await forgetLegacyBinding(ports);
   });
 }

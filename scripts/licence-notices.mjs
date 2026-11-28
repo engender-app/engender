@@ -1,26 +1,11 @@
-/* The licence notices the app carries for what it ships (phase 15
-   release-blockers ticket 10).
+/* Generate notices for code actually shipped. Vite supplies client and
+   worker module IDs; the lockfile supplies package names, versions and
+   licences. Fail the build if a bundled package cannot be matched or
+   its required licence text is missing.
 
-   engender is GPL-3.0-only, and most of what it bundles is MIT, ISC, BSD or
-   Apache-2.0. Each of those asks for the same small thing when its code is
-   passed on: the copyright line and the licence text travel with it. Until
-   this ticket the app carried none of them - About said "Source code is
-   public" and stopped there - so every APK and every hosted copy fell short
-   of terms that cost nothing to keep.
-
-   What counts as shipped is read off the build, not off package.json. The
-   Vite plugin in vite.config.ts collects every module the client bundle and
-   its workers pulled in and hands their ids here; a package is in the
-   notices because its code is in the bundle. The lockfile is then what
-   check-licences.mjs already reads, for the name, version and licence of
-   each. A bundled package that cannot be matched to the lockfile, or that
-   ships no licence text when its licence asks for one, fails the build: that
-   is the check that every shipped package appears in the notices.
-
-   Three things reach the app without passing through the bundler, and are
-   named here by hand: the OCR engine and language data prepare-vendor-assets
-   copies into static/, the fonts, and the Android libraries the APK carries
-   around the WebView. */
+   The app is GPL-3.0-only. Carry each dependency's applicable copyright
+   and licence notice. The OCR assets, fonts and Android libraries bypass
+   bundling, so list them explicitly. */
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { lockfilePackages, READ_BY_HAND } from './check-licences.mjs';
@@ -40,7 +25,7 @@ const LICENCE_FILE = /^(licen[cs]e|copying|notice)([.-].*)?$/i;
     check-licences.mjs, with what was read written down.
 
     @type {Record<string, { file: string, read: string }>} */
-export const LICENCE_TEXT_BY_HAND = {
+const LICENCE_TEXT_BY_HAND = {
   '@fix-webm-duration/fix': {
     file: 'scripts/licence-texts/fix-webm-duration.txt',
     read: 'The 1.0.1 tarball omits LICENSE. Copied the repository licence from github.com/yusitnikov/fix-webm-duration/blob/v1.0.1/LICENSE.'
@@ -75,7 +60,7 @@ export const VENDORED_PACKAGES = [
 ];
 
 /** The npm packages whose native halves are compiled into the APK. */
-export const ANDROID_PACKAGES = ['node_modules/@capacitor/android', 'node_modules/@capacitor/app'];
+const ANDROID_PACKAGES = ['node_modules/@capacitor/android', 'node_modules/@capacitor/app'];
 
 /** The Android libraries around the WebView, by Maven group. Gradle's
     release runtime graph is the authority on what ships, and
@@ -144,9 +129,13 @@ export const ANDROID_LIBRARIES = [
   }
 ];
 
+/** Code copied into the app rather than installed: the tag icons'
+    path data from Lucide 1.48.0 lives in src/lib/components/tagIcons.ts. */
+const COPIED = [{ name: 'Lucide', licence: 'ISC', files: ['scripts/licence-texts/lucide.txt'] }];
+
 /** The type the app draws with, and the faces pdf.js substitutes for the
     standard PDF fonts. */
-export const FONTS = [
+const FONTS = [
   { name: 'Nunito', licence: 'OFL-1.1', files: ['static/fonts/OFL-nunito.txt'] },
   { name: 'Outfit', licence: 'OFL-1.1', files: ['static/fonts/OFL-outfit.txt'] },
   { name: 'Liberation Sans', licence: 'OFL-1.1', files: ['static/pdf-fonts/LICENSE_LIBERATION'] },
@@ -203,11 +192,12 @@ export function packagePathOf(id) {
  *   files: (dir: string) => string[],
  *   read: (path: string) => string,
  *   androidLibraries?: typeof ANDROID_LIBRARIES,
- *   fonts?: typeof FONTS
+ *   fonts?: typeof FONTS,
+ *   copied?: typeof COPIED
  * }} input
  * @returns {{ notices: Notices, problems: string[] }}
  */
-export function buildNotices({ app, android = [], lock, files, read, androidLibraries = [], fonts = [] }) {
+export function buildNotices({ app, android = [], lock, files, read, androidLibraries = [], fonts = [], copied = [] }) {
   const byPath = new Map(lock.map((entry) => [entry.path, entry]));
   /** @type {string[]} */
   const texts = [];
@@ -263,7 +253,7 @@ export function buildNotices({ app, android = [], lock, files, read, androidLibr
     items.map(({ name, licence, files: paths }) => ({ name, version: '', licence, texts: paths.map((path) => keep(read(path))) }));
 
   const sections = /** @type {NoticeSection[]} */ ([
-    { id: 'app', entries: packageEntries(app) },
+    { id: 'app', entries: [...packageEntries(app), ...fixedEntries(copied)].sort((a, b) => a.name.localeCompare(b.name)) },
     {
       id: 'android',
       entries: [...packageEntries(android), ...fixedEntries(androidLibraries)].sort((a, b) => a.name.localeCompare(b.name))
@@ -284,7 +274,8 @@ export function noticesFromDisk(root, shipped) {
     files: (dir) => (existsSync(join(root, dir)) ? readdirSync(join(root, dir)) : []),
     read: (path) => readFileSync(join(root, path), 'utf8'),
     androidLibraries: ANDROID_LIBRARIES,
-    fonts: FONTS
+    fonts: FONTS,
+    copied: COPIED
   });
 }
 

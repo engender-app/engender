@@ -1,25 +1,7 @@
 <script lang="ts" generics="TRecord extends { id: string }, TDraft extends { id?: string }">
-  /* Adding or editing a record - a wear session, a size record, a cycle
-     event, a procedure - happens here, on every screen that logs one
-     (phase 5 audit ticket 09).
-
-     recordEditor.svelte.ts already owned the state machine, and sixteen
-     screens still hand-wrote everything past it: the sheet element with its
-     new-or-edit title, the same ternary again in a heading immediately
-     below it (nine screens wrote it twice), the save-and-delete button pair
-     with its handles spelled out by hand, the delete-confirm sheet's eight
-     props, and two lines re-deriving the editor and the delete target off
-     the record. A screen supplies its fields and its wording now.
-
-     The handles come from recordHandles.ts rather than from the call site,
-     so ADR-0029's vocabulary has an owner. The confirm sheet underneath is
-     unchanged - it is the kit's shallowest module and this is what stops it
-     being called from a screen.
-
-     A record that is only ever deleted - a photo, a tag, a checklist item -
-     passes `confirm` and nothing else: no `fields` means no editor sheet,
-     which is the same shape recordEditor takes when it is handed no
-     `blank`. */
+  /* RecordSheet combines recordEditor state, edit controls and a delete confirmation.
+     Callers provide fields and wording. recordHandles.ts owns test handles. A delete-only
+     caller supplies confirm without fields to skip the editor. */
   import type { Snippet } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import Sheet from '$lib/components/Sheet.svelte';

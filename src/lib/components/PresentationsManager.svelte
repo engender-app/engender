@@ -1,23 +1,10 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   import { rovingRadio } from '$lib/components/rovingRadio';
-  /* The fluidity engine's presentations, managed (phase 5 deepening ticket
-     17, ADR-0048): list, add, rename, recolour and hide - there is no
-     delete (CONTEXT: "Hidden"), so no delete handler is supplied. Under Settings, not the Transition door (redesign ticket 51,
-     ADR-0084): a mode is a reference area, spent on the entry editor's
-     chips and never read here for its own sake - the same reason body
-     regions and affirmations already sit on this screen.
-
-     A sheet's own body rather than a screen (audit item 6): even hosted on
-     Settings, this was still two rows and hundreds of pixels of black for
-     anyone with one or two modes - a vocabulary manager wearing an area
-     screen's clothes. See VocabularyManagerSheets.svelte for where this
-     mounts and why.
-
-     Read through the mirrored vocabulary rather than a live query: a
-     presentation is reference data the same way a tag is (reference.svelte.ts),
-     and `vocabulary.presentations` already comes back most-recently-used
-     first (presentations.ts) - a mode used yesterday wants to be nearer the
-     top of its own list here too, not just the entry editor's chip. */
+  /* Manage modes in the Settings vocabulary sheet (ADR-0084).
+     Allow add, rename, colour and hide. Existing records can still
+     refer to hidden modes, so provide no Delete (ADR-0048).
+     Read vocabulary.presentations for the shared recent-use order. */
   import { m } from '$lib/paraglide/messages';
   import { attempt } from '$lib/stores/attempt.svelte';
   import { journal } from '$lib/data/live/journal.svelte';
@@ -79,7 +66,6 @@
     <Icon name="plus" size={22} />
   </button>
 </div>
-<p class="ob-text">{m.presentations_intro()}</p>
 
 <div use:resize>
   {#if presentations.length > 0}
@@ -96,8 +82,8 @@
           action={{
             icon: p.hidden ? 'eye' : 'eyeOff',
             label: p.hidden
-              ? m.presentation_show_aria({ name: p.name })
-              : m.presentation_hide_aria({ name: p.name }),
+              ? m.show_named_aria({ name: p.name })
+              : m.hide_named_aria({ name: p.name }),
             onclick: () => toggleHidden(p)
           }}
         >
@@ -128,9 +114,9 @@
   canSave={(draft) => draft.name.trim().length > 0}
 >
   {#snippet fields(editor)}
-    <Field label={m.presentation_name_label()} id="presentation-name">
+    <Field label={m.name_label()} id="presentation-name">
       {#snippet children(id)}
-        <input
+        <input autocomplete={journalTextAutocomplete()}
           class="input"
           {id}
           name="presentation-name"

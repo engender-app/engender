@@ -1,16 +1,15 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   import { page } from '$app/state';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   import { listReturnTo, sourceReturnTo } from '$lib/navigation/sourceRecord';
   import { replaceRoute, smartBackSettled } from '$lib/navigation/smart-back';
   import { rovingRadio } from '$lib/components/rovingRadio';
-  import { onDestroy, tick, untrack } from 'svelte';
-  import { goto } from '$app/navigation';
+  import { flushSync, onDestroy, onMount, tick, untrack } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { attempt, writer } from '$lib/stores/attempt.svelte';
   import {
     todayEpochDay,
-    epochDayMonthsAgo,
     epochDayFromDateInputValue,
     dateInputValueFromEpochDay
   } from '$lib/data/epochDay';
@@ -19,7 +18,8 @@
   import { journal, liveQuery, onFirstResult } from '$lib/data/live/journal.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import { entrySession } from '$lib/components/entrySession.svelte';
-  import { ENTRY_SECTIONS, sectionState, type EntrySection } from '$lib/data/entrySections';
+  import { ATTACHMENT_SECTIONS, ENTRY_SECTIONS, sectionState, type EntrySection } from '$lib/data/entrySections';
+  import { arrivalStep, ENTRY_STEPS, nextStep, previousStep, stepsShown, type EntryStep, type StepContent } from '$lib/data/entrySteps';
   import { debriefListItems } from '$lib/data/journal/debriefNote';
   import { roomAnswersFor } from '$lib/stores/inTheRoom';
   import { localStorageEntryDraft } from '$lib/data/entryDraftStore';
@@ -33,14 +33,15 @@
   import { cycleTrackingVisible } from '$lib/data/cycleTracking';
   import { areaQuiet } from '$lib/data/areaState';
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
-  import { pickPhotos, type ReferencePhoto } from '$lib/stores/photoPicking';
+  import { claimPendingPhotos, pickPhotos, type ReferencePhoto } from '$lib/stores/photoPicking';
   import { photoReview } from '$lib/stores/photoReview.svelte';
   import { pickRecording, startRecording, type ActiveRecording } from '$lib/stores/voiceRecording';
   import { pickVideo, startVideoRecording, type ActiveVideoRecording } from '$lib/stores/videoRecording';
   import { VIDEO_MAX_DURATION_MS } from '$lib/data/videoNotes/limits';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { toast } from '$lib/stores/toasts.svelte';
-  import type { EntryTemplate, GenderDimension } from '$lib/data/types';
+  import { spaceShortage } from '$lib/data/spaceShortage';
+  import type { GenderDimension } from '$lib/data/types';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { roleAttrs } from '$lib/components/kit/role';
@@ -66,11 +67,20 @@
   import Sheet from '$lib/components/Sheet.svelte';
   import DiscardSheet from '$lib/components/kit/DiscardSheet.svelte';
   import EffectPickerSheet from '$lib/components/EffectPickerSheet.svelte';
+  import { offeredEffectTypes } from '$lib/data/effectPicker';
   import DatePicker from '$lib/components/DatePicker.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import SaveBar from '$lib/components/SaveBar.svelte';
-  import { collapse, crossfade, disclose, discloseWidth } from '$lib/motion/reveal';
-  import { scrollBehavior } from '$lib/motion/tokens';
+  import EntryFirstStep from '$lib/components/EntryFirstStep.svelte';
+  import StepProgress from '$lib/components/StepProgress.svelte';
+  import { scrollCues } from '$lib/components/scrollCues';
+  import { moodToApply } from '$lib/components/seedMoodArrival';
+  import { cssPart, footContinue, stepScrub, stepTravel } from '$lib/motion/entryStep';
+  import type { ScrubPart, StepScrub } from '$lib/motion/entryStep';
+  import { armStepPreview, registerStepBack } from '$lib/navigation/stepBack';
+  import { focusNamedTarget } from '$lib/navigation/arrivalFocus';
+  import { collapse, crossfade, disclose, discloseWidth, resize } from '$lib/motion/reveal';
+  import { EASE_OUT, motionDuration, scrollBehavior } from '$lib/motion/tokens';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 
   let {
@@ -83,13 +93,11 @@
     epochDay?: number;
     entryId?: number;
     seedMood?: number | null;
-    /** The appointment this new entry debriefs, by id (phase 6 ticket 08,
-        rekeyed from a date by ticket 58), arriving as a query param the
-        same way `seedMood` does. Applies the hidden `appointment_debrief`
-        template once on mount and links the saved entry back to the
-        appointment in the same transaction - never on an edit
-        of an existing entry, the same "creation aid, not an editing one"
-        rule the prompt and the template sheet already follow. */
+    /** The appointment this new entry debriefs, by id, arriving as a query param the same
+        way `seedMood` does. Opens the entry under the debrief scaffold once on mount and
+        links the saved entry back to the appointment in the same transaction - never on an
+        edit of an existing entry, the same "creation aid, not an editing one" rule the
+        prompt already follows. */
     debriefForAppointment?: string;
     /** A chip section a new entry opens with, from the address (`?open=`).
         A resumed draft keeps its own open section. */
@@ -98,9 +106,8 @@
 
   /* The editor is a writing surface rather than a set of areas to look at,
      so it spends almost none of the flag: what colour it does take goes on
-     the two things that are not fields - the guided prompt, and the template
-     list inside its sheet. Role 0, the only index guaranteed to be a colour
-     on all 8 palettes, since there is no reading order to follow with one
+     the two things that are not fields - the guided prompt. Role 0, the only index guaranteed to be a colour
+     on every palette, since there is no reading order to follow with one
      role in play. The attachments surface below is deliberately uncoloured;
      everything inside it is a photograph or a waveform bringing its own. */
   let role = $derived(roleAt(activeFlag.roles, 0));
@@ -117,10 +124,29 @@
   let existing = $derived(loaded.value);
   let day = $derived(existing?.epochDay ?? epochDay ?? untrack(currentDay));
 
-  // A mood-only quick log offers the dimension follow-up instead of Home.
-  function offersDims(moodOnly: boolean) {
-    return seedMood != null && moodOnly && vocabulary.activeDimensions.length > 0;
-  }
+  /* New entries share one draft across entrySteps. The first step
+     is enough to save. Existing entries keep one page. ?open=
+     starts a new entry at the requested section's step.
+
+     Steps stay out of browser history. Header Back, Android gestures
+     and the browser's leave guard all return through the same steps. */
+  // svelte-ignore state_referenced_locally
+  const stepped = entryId == null;
+  /* The marks step holds mode and tags, so it is there while either has
+     something to pick. */
+  const hasTags = () => vocabulary.visibleTagGroups.some((group) => group.tags.length > 0);
+  const hasMarks = () => vocabulary.visiblePresentations.length > 0 || hasTags();
+  // svelte-ignore state_referenced_locally
+  let step = $state<EntryStep>(
+    stepped ? arrivalStep(openSection, stepsShown({ marks: hasMarks(), body: vocabulary.visibleBodyRegions.length > 0 })) : 'writing'
+  );
+  /** Which way the last change went, so a step back runs the film backwards. */
+  let steppingBack = $state(false);
+  /** A back gesture is drawing the step back: the first step is drawn under the second, and
+      the way on under the finish control. */
+  let previewing = $state(false);
+  /** The swap after a drawn step back, which has nothing left to move. */
+  let instantStep = $state(false);
 
   // Route keys mount a new session for each entry or day.
   // epochDay is todayEpochDay() at mount on purpose, so a draft keeps its date across midnight; other day reads follow currentDay.
@@ -131,18 +157,28 @@
     draftStore: localStorageEntryDraft(journalDataKey),
     preparing: () => loaded.loading || mediaPreparing,
     creation: () => ({ debriefForAppointment }),
-    destination: (moodOnly) => {
-      const target = listReturnTo(page.url) ?? sourceReturnTo(page.url);
-      const offerDims = offersDims(moodOnly);
-      return (id) => target ?? (offerDims ? `/?quickLogDims=${id}` : '/');
-    },
+    destination: () => () => listReturnTo(page.url) ?? sourceReturnTo(page.url) ?? '/',
     navigate: async (destination) => {
       const target = listReturnTo(page.url) ?? sourceReturnTo(page.url);
       if (target) await smartBackSettled(target);
       else await replaceRoute(destination);
+    },
+    ownsDeparture: (departure) => {
+      if (departure.type !== 'popstate' || (departure.delta ?? 0) >= 0 || !canStepBack()) return false;
+      if (stepBehind) void goToStep(stepBehind);
+      return true;
     }
   });
   let entryDraft = $derived(session.draft);
+  /* A new seedMood arriving on a new entry that is already open (a second
+     face touched on the check-in notification) puts that face on the draft. */
+  // svelte-ignore state_referenced_locally
+  let lastSeed = seedMood;
+  $effect(() => {
+    const arrived = moodToApply(lastSeed, seedMood);
+    lastSeed = seedMood;
+    if (arrived != null && entryId == null) untrack(() => entryDraft.setMood(arrived));
+  });
   let saving = $derived(session.saving);
   const guard = session.guard;
   const prepareDraft = session.prepare;
@@ -161,11 +197,11 @@
   // svelte-ignore state_referenced_locally
   let revealFromAddress = entryId == null && openSection ? openSection : null;
   $effect(() => {
-    if (!revealFromAddress || !chipRowEl || entryDraft.openSection !== revealFromAddress) return;
-    const section = chipRowEl.parentElement?.querySelector<HTMLElement>(`[data-editor-section="${revealFromAddress}"]`);
+    if (!revealFromAddress || !stepScreen || entryDraft.openSection !== revealFromAddress) return;
+    const section = stepScreen.querySelector<HTMLElement>(`[data-editor-section="${revealFromAddress}"]`);
     if (!section) return;
     revealFromAddress = null;
-    const region = chipRowEl.closest<HTMLElement>('[data-app-scroll-region]');
+    const region = stepScreen.closest<HTMLElement>('[data-app-scroll-region]');
     if (!region) return;
     /* The section's foot to the region's, the edge followReveal brings it
        to, so the chip row directly above it stays in view. Measured once the
@@ -187,16 +223,14 @@
   });
   onFirstResult(loaded, (entry) => { if (entryId != null) void session.resume(entry); });
 
-  /* Curation metadata (CONTEXT: "Starred"), read once like the rest of
-     `existing` and kept in its own local state rather than `entryDraft`:
-     starring an existing entry is its own mutation (setEntryStarred), and
-     `loaded`'s deliberately empty table list (see
-     above) means it will not refresh itself from elsewhere either.
+  /* Curation metadata, read once like the rest of `existing` and kept in its own local
+     state rather than `entryDraft`: starring an existing entry is its own mutation
+     (setEntryStarred), and `loaded`'s deliberately empty table list (see above) means it
+     will not refresh itself from elsewhere either.
 
-     A new entry has no id to write `setEntryStarred` against yet, so
-     toggling one before the first save only flips this local flag - ticket
-     18's "starred before it is saved". The journal includes that flag in
-     the creation transaction. An existing entry keeps writing
+     A new entry has no id to write `setEntryStarred` against yet, so toggling one before
+     the first save only flips this local flag - "starred before it is saved". The journal
+     includes that flag in the creation transaction. An existing entry keeps writing
      immediately, the same as it always has. */
   let starred = $derived(session.starred);
 
@@ -212,67 +246,6 @@
     const id = existing.id;
     // The star goes back if the write does not land, with a toast saying so.
     if (!(await starWrite.run(() => journal.entries.setEntryStarred(id, next), m.write_failed()))) session.starred = !next;
-  }
-
-  /* A day chosen to see this entry again (phase 8 features ticket 08,
-     ADR-0045). Its own live query rather than folded into `loaded`: a
-     revisit is a separate record, and reading it only while the sheet is
-     open would show a stale "not set" state the moment somebody reopens it
-     after setting one on another device. */
-  let revisitOpen = $state(false);
-  let revisitQuery = liveQuery((j) =>
-    entryId != null ? j.revisits.getRevisitForEntry(entryId) : Promise.resolve(null)
-  );
-  let revisit = $derived(revisitQuery.value);
-  let revisitDateInput = $state('');
-
-  const revisitPresetDay = (preset: 'week' | 'month' | 'threeMonths' | 'year'): number => {
-    const today = todayEpochDay();
-    switch (preset) {
-      case 'week':
-        return today + 7;
-      /* epochDayMonthsAgo's own clamping (31 Oct minus a month lands on 30
-         Sep, not a 1 Nov rollover) is exactly what a revisit's own presets
-         need going forward too, and negating `months` gives it that
-         direction: the function subtracts `months` from the total month
-         count, so a negative count adds. Every other caller only ever
-         passes a positive count looking backward - this is the one call
-         site that runs it the other way on purpose. */
-      case 'month':
-        return epochDayMonthsAgo(today, -1);
-      case 'threeMonths':
-        return epochDayMonthsAgo(today, -3);
-      case 'year':
-        return epochDayMonthsAgo(today, -12);
-    }
-  };
-
-  const revisitWrite = writer();
-  async function setRevisit(targetEpochDay: number) {
-    const id = entryId;
-    if (id == null) return;
-    const set = await revisitWrite.run(
-      () => journal.revisits.setRevisit({ entryId: id, createdEpochDay: todayEpochDay(), targetEpochDay }),
-      m.write_failed()
-    );
-    if (!set) return;
-    revisitDateInput = '';
-    revisitOpen = false;
-    toast(m.revisit_set_toast({ date: fmtDay(targetEpochDay, { day: 'numeric', month: 'long', year: 'numeric' }) }), { kind: 'record-saved' });
-  }
-
-  async function setRevisitFromInput() {
-    const targetEpochDay = epochDayFromDateInputValue(revisitDateInput);
-    if (targetEpochDay == null) return;
-    await setRevisit(targetEpochDay);
-  }
-
-  async function cancelRevisit() {
-    const target = revisit;
-    if (!target) return;
-    if (!(await revisitWrite.run(() => journal.revisits.deleteRevisit(target.id), m.write_failed()))) return;
-    revisitOpen = false;
-    toast(m.revisit_cancelled_toast(), { kind: 'record-deleted' });
   }
 
   /* Same reasoning as toggleStarred above, but for one stored photo: the
@@ -291,90 +264,36 @@
   onDestroy(() => session.dispose(isLockedNow(bootState.accessMode)));
 
   let deleteOpen = $state(false);
-  let templateSheetOpen = $state(false);
   let promptDismissed = $state(false);
-  /* Guided prompts and templates are entry-creation aids (ticket 17), not
-     something to surface while editing an already-saved entry - `entryId`
-     is undefined only for a new one. Read once, like `seedMood` above: the
-     route wraps this component in {#key}, so a fresh editor always means a
-     fresh prompt, never a stale one left over from a previous mount. A
-     prompt is a template whose only content is a note scaffold (ticket 07);
-     `randomPrompt()` can now come back null once every one has been
-     hidden. */
+  /* Guided prompts are an entry-creation aid, not something to
+     surface while editing an already-saved entry - `entryId` is undefined
+     only for a new one. Read once, like `seedMood` above: the route wraps
+     this component in {#key}, so a fresh editor always means a fresh
+     prompt, never a stale one left over from a previous mount. */
   // svelte-ignore state_referenced_locally
-  let prompt = $state<EntryTemplate | null>(
+  let prompt = $state<string | null>(
     entryId == null && prefs.guidedPromptsEnabled ? vocabulary.randomPrompt() : null
   );
 
-  /* A template only ever pre-fills what this install currently shows -
-     a hidden dimension, tag or presentation stays out of the draft even if
-     the template names it, because the picker that would let someone edit
-     it back off is exactly what `hidden` took out of the editor (CONTEXT:
-     "Hidden"). Applying the same template twice cannot double up:
-     applyTemplate() unions the tags and overwrites the dims by key. */
-  function applyTemplate(tpl: EntryTemplate) {
-    const visibleTagIds = new Set(vocabulary.visibleTagGroups.flatMap((g) => g.tags.map((t) => t.id)));
-    const visibleDimKeys = new Set(vocabulary.visibleDimensions.map((d) => d.key));
-    const visiblePresentationIds = new Set(vocabulary.visiblePresentations.map((p) => p.id));
-    entryDraft.applyTemplate({
-      ...tpl,
-      tags: tpl.tags.filter((id) => visibleTagIds.has(id)),
-      dims: Object.fromEntries(Object.entries(tpl.dims).filter(([key]) => visibleDimKeys.has(key))),
-      presentationId: tpl.presentationId && visiblePresentationIds.has(tpl.presentationId) ? tpl.presentationId : null
-    });
-    templateSheetOpen = false;
-  }
-
-  /* The debrief offer's deep link (phase 6 ticket 08): applied once, the
+  /* The debrief offer's deep link: applied once, the
      same "read once at mount" rule `prompt` above follows, and only for a
-     new entry - taking the offer never reaches an existing one. Looked up
-     against the full list rather than `visibleEntryTemplates`, because the
-     template seeds hidden by design (builtins.ts) and the offer is the one
-     path that reaches it regardless. Silently does nothing if the built-in
-     has gone missing somehow (deleted from the archive by hand, say) -
-     the entry still opens as a blank one rather than failing to load. */
+     new entry - taking the offer never reaches an existing one. It opens
+     under the "How did it go?" scaffold. */
   // svelte-ignore state_referenced_locally
   if (entryId == null && debriefForAppointment != null) {
-    const debriefTemplate = vocabulary.entryTemplates.find((t) => t.id === 'appointment_debrief');
-    if (debriefTemplate) applyTemplate(debriefTemplate);
+    if (entryDraft.note === '') entryDraft.setNote(m.prompt_appointment_debrief());
     void prepareDraft(() => fillDebriefPrefill(debriefForAppointment));
   }
 
-  /* What the debrief opens pre-filled with, under its "How did it go?"
-     scaffold: what the person jotted in the room, then the descriptive list
-     of labs and side effects since the visit.
+  /* Prefill the debrief with answers from the room, paired with their questions, then dated
+     labs and side effects since the visit. Read the in-room state without consuming it so a
+     discarded draft can be started again. Resolve the visit date from its ID. If it is
+     missing, keep the answers and omit the dated list. debriefNote.ts merges the list
+     without locale dependencies.
 
-     THE ROOM'S ANSWERS FIRST (phase 8 features ticket 60), because they are
-     the person's own words and the list under them is context. Each one is
-     printed under the question it was typed against - that pairing is the
-     whole reason the room asks per question rather than offering one free
-     note (answeredQuestions, debriefNote.ts). They arrive from module state
-     (stores/inTheRoom.ts) rather than from the journal, since ticket 60
-     adds no record: read here, non-destructively, so discarding this entry
-     and taking the offer again pre-fills the same words a second time.
-
-     THE LIST (ticket 19, What to Build #2): the same range and the same two
-     reads the appointment prep screen's own "since last time" cards already
-     use (readLabResultsInRange, sideEffects's own getSideEffectsInRange) -
-     not a new read, the range that ticket added asked of the pair that
-     already answers it. debriefListItems merges and sorts them Node-tier,
-     free of paraglide; the date on each line and the join are here, the
-     same split every other wording split in this app follows (ADR-0016).
-
-     Both sections go on in one write, past one guard: the note is appended
-     to only while it still reads exactly as applyTemplate left it. A
-     restored process-death draft, or the person having already started
-     typing, both mean there is something here that is not this function's
-     to overwrite - the offer "does not write" (ticket 19's own line), read
-     as "does not clobber" too. With nothing on either side there is nothing
-     to append; a blank line under a one-line prompt is not a list.
-
-     Takes the appointment's id (ticket 58) and resolves its own day first,
-     since the range the list wants starts there, not at some day the caller
-     already knew. An id the journal no longer holds costs the list, not the
-     answers: the room's own words are held against that id and are still
-     the person's, which is the "offer a blank entry rather than a broken
-     one" rule read the generous way round. */
+     Append both sections in one write only while the note still matches the scaffold.
+     Preserve typing and restored drafts. With no answers or dated items, leave the scaffold
+     alone. */
   async function fillDebriefPrefill(appointmentId: string) {
     // Awaited first, deterministically: a restored process-death draft is
     // the person's own unsaved work and always wins the race against this
@@ -426,15 +345,19 @@
      existing entry's day is a read away; until it lands the line holds its
      height blank rather than naming today, which is the wrong day for
      almost every entry anyone reopens. */
+  /* On a step the line shares its width with the step's progress, so the
+     day is named in short: the long form wrapped to two lines
+     at 360px. */
   let dateLine = $derived(
-    entryId != null && !existing ? '\u00a0' : `${isToday ? `${m.today()} · ` : ''}${fmtDay(day, { weekday: 'long', day: 'numeric', month: 'long' })}${existing ? ` · ${fmtTime(existing.timestamp)}` : ''}`
+    entryId != null && !existing
+      ? '\u00a0'
+      : `${isToday ? `${m.today()} · ` : ''}${fmtDay(day, stepped ? { weekday: 'short', day: 'numeric', month: 'short' } : { weekday: 'long', day: 'numeric', month: 'long' })}${existing ? ` · ${fmtTime(existing.timestamp)}` : ''}`
   );
 
-  /* The chip row and the section it opens (phase 11 ticket 19). Nothing
+  /* The chip row and the section it opens. Nothing
      takes the focus on arrival, a new entry included: a focused note put
      the keyboard over half the editor before anyone asked to type
-     (tests/no-auto-keyboard.mjs). */
-  let chipRowEl = $state<HTMLElement | undefined>();
+     (tests/guards/no-auto-keyboard.mjs). */
   let moodsEl = $state<HTMLElement | undefined>();
 
   function sectionName(section: EntrySection): string {
@@ -442,7 +365,7 @@
       case 'tags':
         return m.tags_label();
       case 'body':
-        return m.body_map_label();
+        return m.body_map_title();
       case 'photos':
         return m.photos_label();
       case 'voice':
@@ -455,6 +378,30 @@
   /* A second tap on the open chip closes it; a tap on another chip swaps
      the section. The open chip is draft state (entryDraft.ts), so the
      process-death mirror carries it. */
+  const MEDIA_SECTIONS: readonly EntrySection[] = ['photos', 'voice', 'video'];
+  /* The leaving kind's tiles fade where they stood, out of the flow: the
+     surface holds one kind at a time, so where they stood is its top,
+     whichever of the three is arriving before or after them in the
+     markup. */
+  function mediaOut(node: Element) {
+    const el = node as HTMLElement;
+    const width = el.offsetWidth;
+    Object.assign(el.style, { position: 'absolute', top: '0', left: '0', width: `${width}px`, pointerEvents: 'none' });
+    return { duration: motionDuration('--dur-fast'), easing: EASE_OUT, css: (t: number) => `opacity: ${t}` };
+  }
+
+  /* The arriving kind's tiles hold back for the first 25% of --dur-med, so
+     they come up after the leaving ones (mediaOut, --dur-fast)
+     have gone rather than over them. Held in the curve, not by a delay,
+     so the first frame already has them at nil. */
+  function mediaIn(_node: Element) {
+    return {
+      duration: motionDuration('--dur-med'),
+      easing: EASE_OUT,
+      css: (t: number) => `opacity: ${Number(Math.max(0, (t - 0.25) / 0.75).toFixed(3))}`
+    };
+  }
+
   async function toggleSection(section: EntrySection) {
     const opening = entryDraft.openSection !== section;
     entryDraft.setOpenSection(opening ? section : null);
@@ -470,13 +417,14 @@
      tapped, and a section that scrolled its own chip away would be a
      section with no visible way to close it. */
   function revealSection(section: EntrySection) {
-    const sectionEl = chipRowEl?.parentElement?.querySelector<HTMLElement>(`[data-editor-section="${section}"]`);
-    const region = chipRowEl?.closest<HTMLElement>('[data-app-scroll-region]');
-    if (!sectionEl || !region || !chipRowEl) return;
-    followReveal(sectionEl, region, chipRowEl);
+    const sectionEl = stepScreen?.querySelector<HTMLElement>(`[data-editor-section="${section}"]`);
+    const chipRow = stepScreen?.querySelector<HTMLElement>(`[data-section-chip="${section}"]`)?.parentElement;
+    const region = stepScreen?.closest<HTMLElement>('[data-app-scroll-region]');
+    if (!sectionEl || !region || !chipRow) return;
+    followReveal(sectionEl, region, chipRow);
   }
 
-  /* Contextual Inline Cards (ticket 04, ADR-0044) */
+  /* Contextual Inline Cards */
   let tryoutsQuery = liveQuery((j) => j.tryouts.getTryouts());
   let activeTryout = $derived(
     (tryoutsQuery.value ?? []).find((t) => t.endEpochDay == null && (t.kind === 'name' || t.kind === 'pronouns'))
@@ -504,7 +452,7 @@
 
   let scheduleDose = $derived(dueScheduledDoses[0] ?? null);
 
-  /** Stock as of this entry's own day (phase 5 deepening ticket 06), not
+  /** Stock as of this entry's own day, not
       today's - an entry backdated to a day before a re-count would otherwise
       state a remaining figure the count hadn't reached yet. Read here only
       to say what a quick-logged dose leaves; nothing writes to it
@@ -527,38 +475,24 @@
 
   let isHrtActive = $derived(activeEpisodes.length > 0);
 
-  /* ADR-0043's gate, asked rather than re-derived (phase 8 features ticket
-     04). This screen read `prefs.cycleTrackingEnabled` directly, which is the
-     one surface of three that did - so somebody on a testosterone regimen who
-     never flipped the switch got the More row and the side-effects section
-     and not this, which is the reader the automatic half of the rule exists
-     for.
+  /* The gate, asked rather than re-derived. This screen read the cycle preference directly,
+     which was the one surface of three that did - so somebody on a testosterone regimen who
+     never flipped the switch got the More row and the side-effects section and not this,
+     which is the reader the automatic half of the rule exists for.
 
-     `Date.now()` and not this entry's own day, which is what the other two
-     surfaces pass: the question is whether cycle tracking is surfaced for
-     this person, not whether it was surfaced on a day they are backdating
-     to. A regimen that has since ended does not take the chips off an entry
-     written last spring. */
+     `Date.now()` and not this entry's own day, which is what the other two surfaces pass:
+     the question is whether cycle tracking is surfaced for this person, not whether it was
+     surfaced on a day they are backdating to. A regimen that has since ended does not take
+     the chips off an entry written last spring. */
   let cycleTrackingActive = $derived(
-    cycleTrackingVisible(episodesQuery.value ?? [], Date.now(), prefs.cycleTrackingEnabled, prefs.cycleTrackingChoice)
+    cycleTrackingVisible(episodesQuery.value ?? [], Date.now(), prefs.cycleTrackingChoice)
   );
 
-  /* The cascade (phase 8 features ticket 04, ADR-0052). The effects chip is
-     the one prompt on this screen that belongs to a finishable area, so it is
-     the one that goes quiet when that area does. Read against today rather
-     than against `day`: an area somebody is done with is done with now, and a
-     backdated entry is not a way back into a prompt they switched off.
-
-     `areaQuiet` by hand rather than `unpromptedQuiet`, which is the seam the
-     tiles and the notifications go through. This screen's four contextual
-     cards are not in `unprompted/registry.ts` at all - they are their own
-     `entry*Enabled` preferences, and a registry whose two views draw live
-     tiles and notifications has no row shape for a chip inside the editor.
-     So the gate is named here, and `EntryEditor.gates.test.ts` pins that this
-     is the only card on this screen belonging to an area that can be
-     finished, which is what keeps the hand-wiring honest. Folding the
-     editor's cards into that registry would give the next one the cascade for
-     free and is worth its own ticket. */
+  /* Check areaQuiet against today so a backdated entry cannot
+     restore the effects prompt after its area is finished
+     (ADR-0052). The editor prompts have their own preferences.
+     EntryEditor.gates.test.ts verifies effects is the only one
+     attached to a finishable area. */
   let areaStatesQuery = liveQuery((j) => j.areaStates.getAreaStates());
   let effectsQuiet = $derived(areaQuiet('personalEffects', areaStatesQuery.value ?? {}, currentDay()));
 
@@ -570,6 +504,52 @@
      alone: a save never moves the day an effect was first noticed. */
   let markersQuery = liveQuery((j) => j.personalEffects.getMarkers());
   let recordedEffects = $derived(new Map((markersQuery.value ?? []).map((marker) => [marker.effect, marker.firstNoticedEpochDay])));
+
+  /* The walk this person sees. The body step is there for the
+     body map or for any card the day offers; a card that arrives with its
+     read after the editor opened adds the step, and its segment opens in
+     the progress. */
+  let cardsOffered = $derived(
+    !!activeTryout ||
+      (!!scheduleDose && !episodesQuery.loading && !todayDosesQuery.loading) ||
+      !!recoveringProcedure ||
+      (isHrtActive && !effectsQuiet) ||
+      cycleTrackingActive
+  );
+  let stepContent = $derived<StepContent>({
+    marks: hasMarks(),
+    body: vocabulary.visibleBodyRegions.length > 0 || cardsOffered
+  });
+  let shown = $derived(stepsShown(stepContent, step));
+  let stepAhead = $derived(nextStep(shown, step));
+  let stepBehind = $derived(previousStep(shown, step));
+
+  function stepTitle(which: EntryStep): string {
+    switch (which) {
+      case 'today':
+        return m.home_log_heading();
+      case 'marks':
+        return m.entry_step_marks();
+      case 'body':
+        return m.entry_step_body();
+      case 'writing':
+        return m.entry_step_writing();
+    }
+  }
+
+  /** The way on names what the next step holds, in a word. */
+  function wayOnLabel(which: EntryStep): string {
+    switch (which) {
+      case 'today':
+        return m.home_log_heading();
+      case 'marks':
+        return hasTags() ? m.tags_label() : m.presentation_label();
+      case 'body':
+        return m.body_map_title();
+      case 'writing':
+        return m.note_label();
+    }
+  }
 
   $effect(() => {
     if (entryDraft.tryoutFeltSense?.note !== undefined && entryDraft.tryoutFeltSense?.note !== null) {
@@ -586,7 +566,7 @@
 
   function updateProcedureRecovery() {
     if (!recoveringProcedure) return;
-    const notes = procRecoveryNote.trim() || entryDraft.procedureRecovery?.notes;
+    const notes = procRecoveryNote;
     if (!notes && !procRecoveryPhoto) {
       entryDraft.setProcedureRecovery(null);
     } else {
@@ -598,14 +578,12 @@
     }
   }
 
-  /* The day-prompt queue (ticket 47, ADR-0008/0015): every picked or
-     captured photo is normalized before it reaches the draft, and
-     normalizing always strips whatever date the file carried, so each one
-     gets asked for a day before it lands. A queue rather than a single
-     pending photo because pickPhotos() can bring back several at once
-     (photoPicking.ts) - each is asked in turn, oldest first, so none is
-     silently dropped by the next one overwriting `dayPromptQueue[0]`
-     before it resolves. */
+  /* The day-prompt queue (ADR-0008/0015): every picked or captured photo is normalized
+     before it reaches the draft, and normalizing always strips whatever date the file
+     carried, so each one gets asked for a day before it lands. A queue rather than a single
+     pending photo because pickPhotos() can bring back several at once (photoPicking.ts) -
+     each is asked in turn, oldest first, so none is silently dropped by the next one
+     overwriting `dayPromptQueue[0]` before it resolves. */
   let dayPromptQueue = $state<NormalizedPhoto[]>([]);
   let dayPromptValue = $state('');
 
@@ -628,8 +606,19 @@
   // An entry holds several photos, so one trip through the picker can bring
   // back several (photoPicking.ts).
   async function addPhoto() {
-    queueForDayPrompt(await pickPhotos());
+    queueForDayPrompt(await pickPhotos(undefined, 'entry'));
   }
+
+  /* A photo that came back while the app was locked (non-system handler under
+     Lock immediately) was kept by token and is asked for a day like any other
+     (photoPicking.ts claimPendingPhotos). */
+  let editorMounted = true;
+  onDestroy(() => { editorMounted = false; });
+  onMount(() => {
+    void claimPendingPhotos('entry', () => editorMounted).then((photos) => {
+      if (editorMounted) queueForDayPrompt(photos);
+    });
+  });
 
   // The context is this entry: the last photo already in its own draft,
   // stored or just picked, not the journal's last photo overall.
@@ -640,66 +629,97 @@
     return last.photo.fileName ? { fileName: last.photo.fileName } : null;
   }
 
-  /* A photo taken with the camera just now was taken today, so on today's
-     entry there is nothing to ask (audit UX-05: Save and Skip did the same
-     thing). A picked file has had its date stripped and could be from any
-     day, so it is still asked; so is a capture on a backdated entry. */
+  /* A photo taken with the camera just now was taken today, so on today's entry there is
+     nothing to ask (Save and Skip did the same thing). A picked file has had its date
+     stripped and could be from any day, so it is still asked; so is a capture on a
+     backdated entry. */
   const entryPhotoReview = photoReview(lastDraftPhotoReference, (photo) => {
     if (entryDraft.epochDay === todayEpochDay()) entryDraft.addPhoto({ ...photo, epochDayOverride: null });
     else queueForDayPrompt([photo]);
-  });
+  }, 'entry');
 
-  // The photo tapped to open the viewer (ticket CARPET-06); null keeps it
+  // The photo tapped to open the viewer; null keeps it
   // closed.
   let viewedPhoto = $state<{ fileName: string | null; bytes?: Uint8Array } | null>(null);
 
   // Unset while nothing is being recorded; the record/stop button reads
-  // this to know which state it is showing (ticket 24).
+  // this to know which state it is showing.
   let activeRecording = $state<ActiveRecording | null>(null);
+  // Owns opening, recording and collection, so a second tap cannot open a
+  // competing stream and teardown can cancel before permission returns.
+  let recordingOwner = $state<AbortController | null>(null);
+  let recordingPending = $derived(recordingOwner !== null && activeRecording === null);
 
   async function toggleRecording() {
-    if (activeRecording) {
-      const bytes = await activeRecording.stop();
+    if (recordingOwner) {
+      if (!activeRecording) return;
+      const owner = recordingOwner;
+      const active = activeRecording;
       activeRecording = null;
-      if (bytes) entryDraft.addRecording(bytes);
+      try {
+        const bytes = await active.stop();
+        if (!owner.signal.aborted && bytes) entryDraft.addRecording(bytes);
+      } catch (error) {
+        console.error('the voice recording could not be finished', error);
+        if (!owner.signal.aborted) toast(m.recording_failed());
+      } finally {
+        if (recordingOwner === owner) recordingOwner = null;
+      }
       return;
     }
-    activeRecording = await startRecording();
+    const owner = new AbortController();
+    recordingOwner = owner;
+    try {
+      const started = await startRecording(owner.signal);
+      if (owner.signal.aborted) {
+        await started?.stop();
+        return;
+      }
+      activeRecording = started;
+    } catch (error) {
+      console.error('the voice recording could not be started', error);
+      if (!owner.signal.aborted) toast(m.recording_failed());
+    } finally {
+      if (!activeRecording && recordingOwner === owner) recordingOwner = null;
+    }
   }
 
-  /* Picking one that already exists, rather than making one here. Photos
-     offered a gallery from the start and these two did not, which is what
-     Alicja asked for on 2026-08-25 against the built screen: a recording of
-     her own voice from a year ago is the same kind of thing as a photo from
-     a year ago, and the editor could take one and not the other.
+  /* Picking one that already exists, rather than making one here. Photos offered a gallery
+     from the start and these two did not, a recording of her own voice from a year ago is
+     the same kind of thing as a photo from a year ago, and the editor could take one and
+     not the other.
 
-     The store owns whether the file is admissible - the wrong kind, too
-     long, too large to store - and reports its own refusals, so there is
-     nothing to branch on here beyond "did anything come back". */
+     The store owns whether the file is admissible - the wrong kind, too long, too large to
+     store - and reports its own refusals, so there is nothing to branch on here beyond "did
+     anything come back". */
   async function addRecordingFile() {
     const bytes = await pickRecording();
     if (bytes) entryDraft.addRecording(bytes);
   }
 
-  /* Video notes (ticket 22). Three pieces of state where a voice recording
-     needs one: the live capture for the preview, the countdown, and a flag
-     for the wait while an oversized capture is compressed - that step runs in
-     real time (videoNotes/reencode.ts), so a 30-second note takes another 30
-     seconds and a silent editor would look broken. */
+  /* The live video capture supplies the preview and countdown. Compressing
+     an oversized note can take another 30 seconds (videoNotes/reencode.ts),
+     so its own flag keeps that wait visible. */
   let activeVideo = $state<ActiveVideoRecording | null>(null);
+  let videoOwner = $state<AbortController | null>(null);
+  let videoPending = $derived(videoOwner !== null && activeVideo === null);
   let videoSecondsLeft = $state(0);
   let compressingVideo = $state(false);
 
   const VIDEO_MAX_SECONDS = Math.round(VIDEO_MAX_DURATION_MS / 1000);
 
-  async function finishVideo(active: ActiveVideoRecording) {
+  async function finishVideo(active: ActiveVideoRecording, owner: AbortController) {
     activeVideo = null;
     compressingVideo = true;
     try {
       const bytes = await active.stop();
-      if (bytes) entryDraft.addVideo(bytes);
+      if (!owner.signal.aborted && bytes) entryDraft.addVideo(bytes);
+    } catch (error) {
+      console.error('the video note could not be finished', error);
+      if (!owner.signal.aborted) toast(m.video_recording_failed());
     } finally {
       compressingVideo = false;
+      if (videoOwner === owner) videoOwner = null;
     }
   }
 
@@ -718,20 +738,33 @@
   }
 
   async function toggleVideo() {
-    if (activeVideo) {
-      await finishVideo(activeVideo);
+    if (videoOwner) {
+      if (activeVideo) await finishVideo(activeVideo, videoOwner);
       return;
     }
-    const started = await startVideoRecording();
-    if (!started) return;
-    activeVideo = started;
-    videoSecondsLeft = VIDEO_MAX_SECONDS;
-    /* The cap is enforced in the store, not here (videoRecording.ts): this
-       only mirrors it, so a note that hits 30 seconds is collected the same
-       way a tapped Stop collects one. */
-    started.capped.then(() => {
-      if (activeVideo === started) void finishVideo(started);
-    });
+    if (compressingVideo) return;
+    const owner = new AbortController();
+    videoOwner = owner;
+    try {
+      const started = await startVideoRecording(owner.signal);
+      if (!started) return;
+      if (owner.signal.aborted) {
+        await started.stop();
+        return;
+      }
+      activeVideo = started;
+      videoSecondsLeft = VIDEO_MAX_SECONDS;
+      /* The store enforces the cap; the editor collects it through the same
+         owner as a tapped Stop. */
+      started.capped.then(() => {
+        if (activeVideo === started) void finishVideo(started, owner);
+      });
+    } catch (error) {
+      console.error('the video note could not be started', error);
+      if (!owner.signal.aborted) toast(m.video_recording_failed());
+    } finally {
+      if (!activeVideo && videoOwner === owner) videoOwner = null;
+    }
   }
 
   /* The countdown, which exists only while something is recording - an
@@ -760,12 +793,16 @@
   // mid-recording) must not leave the microphone or the camera open behind
   // the screen.
   onDestroy(() => {
-    activeRecording?.stop();
-    activeVideo?.stop();
+    recordingOwner?.abort();
+    videoOwner?.abort();
+    void activeRecording?.stop().catch((error) => console.error('the voice recording could not be stopped', error));
+    void activeVideo?.stop().catch((error) => console.error('the video note could not be stopped', error));
+    activeRecording = null;
+    activeVideo = null;
   });
 
   let mediaPreparing = $derived(
-    activeRecording !== null || activeVideo !== null || compressingVideo ||
+    recordingOwner !== null || videoOwner !== null || compressingVideo ||
     dayPromptQueue.length > 0 || entryPhotoReview.photo !== null
   );
   let draftPreparing = $derived(session.preparing);
@@ -776,15 +813,18 @@
   async function saveEntry() {
     if (saving || draftPreparing) return;
     if (entryDraft.savedId === undefined && moodMissing) {
+      /* The faces live on the first step: from a later one, finishing without
+         one takes the person back to them rather than saving a moodless entry. */
+      if (stepped && step !== 'today') await goToStep('today');
       moodsEl?.querySelector<HTMLElement>('[data-mood]')?.focus();
       return;
     }
-    const offerDims = offersDims(entryDraft.hasMoodOnlyContent);
     let result;
     try { result = await session.save(); }
     catch (error) {
       console.error('could not save the entry', error);
-      toast(m.entry_save_failed());
+      // The draft stays either way, so Save is the retry once space is free.
+      toast(spaceShortage(error) ? m.storage_full_save() : m.entry_save_failed());
       return;
     }
     if (session.navigationFailed) {
@@ -792,13 +832,169 @@
       document.querySelector<HTMLAnchorElement>('[data-entry-saved] a')?.focus();
     }
     if (!result?.navigated) return;
-    const { id, moodOnly } = result;
-    if (!offerDims && prefs.entryNudges && moodOnly) {
-      toast(m.saved(), { actionLabel: m.add_details(), onAction: () => goto(`/entry/${id}`), kind: 'saved' });
-    } else toast(m.saved(), { kind: 'saved' });
+    toast(m.saved(), { kind: 'saved' });
   }
 
-  async function confirmDelete() {
+  /* The mood comes first: the way on from the first step waits for a face, so a later step
+     never lacks one. Pressed without one, it stays and takes the person to the faces,
+     saying why. An address that opens on a later step (`?open=`) can still arrive without
+     one, which is what saveEntry's walk back to the faces is left for. */
+  let wayOnNotice = $state('');
+  function goOn() {
+    if (!stepAhead) return;
+    if (step === 'today' && moodMissing) {
+      wayOnNotice = m.entry_mood_first();
+      moodsEl?.querySelector<HTMLElement>('[data-mood]')?.focus();
+      return;
+    }
+    wayOnNotice = '';
+    void goToStep(stepAhead);
+  }
+
+  /** Past the first step, with nothing saving and nothing saved: the only
+      time Back is a step rather than a way out. */
+  function canStepBack(): boolean {
+    return stepped && stepBehind !== null && !session.saving && session.draft.savedId === undefined;
+  }
+
+  let stepScreen = $state<HTMLElement | undefined>();
+  /* The window a step scrolls in where it cannot fit (sixteen scales, a
+     big vocabulary): the foot says when more of the step is below it. */
+  let stepRegion = $derived(stepScreen?.closest<HTMLElement>('[data-app-scroll-region]') ?? null);
+
+  /* Brings the step change in at the top of the page. A long step scrolled
+     down would otherwise swap under the window and leave the new step's
+     heading somewhere above it, so the page travels up first - a scroll the
+     person watches rather than a jump - and the step changes once it is
+     there. Bounded, so a scroll that never reports its end cannot hold the
+     step back. */
+  async function toTop() {
+    const region = stepScreen?.closest<HTMLElement>('[data-app-scroll-region]');
+    if (!region || region.scrollTop <= 0) return;
+    region.scrollTo({ top: 0, behavior: scrollBehavior() });
+    const started = performance.now();
+    await new Promise<void>((done) => {
+      const watch = () => {
+        if (region.scrollTop <= 0 || performance.now() - started > motionDuration('--dur-slow') * 2) done();
+        else requestAnimationFrame(watch);
+      };
+      requestAnimationFrame(watch);
+    });
+  }
+
+  let stepping = false;
+  async function goToStep(next: EntryStep) {
+    if (!stepped || step === next || stepping || saving) return;
+    stepping = true;
+    try {
+      await toTop();
+      steppingBack = ENTRY_STEPS.indexOf(next) < ENTRY_STEPS.indexOf(step);
+      step = next;
+      await tick();
+      /* The step's heading takes the focus, as a screen's does on arrival,
+         so a screen reader says where the person now is. */
+      focusNamedTarget(stepScreen?.querySelector<HTMLElement>('[data-screen-title]'));
+    } finally {
+      stepping = false;
+    }
+  }
+
+  /* The step back drawn under Android's back gesture. While the gesture runs, the first
+     step is drawn beneath the second (`previewing`), inert, from the same draft, and each
+     part of the step change - the step, the heading on the field, the way on under the
+     finish control and the scroll to the top - follows the gesture's progress through the
+     motion a tap on Back plays ($lib/motion/entryStep). Releasing settles it forward from
+     there and then swaps the real steps with nothing left to move; cancelling settles it
+     back and takes the drawing away. The real second step stays the real one until the
+     swap, so a cancel leaves it exactly as it was. */
+  let scrub: StepScrub | undefined;
+  let previewStep = $state<HTMLElement | undefined>();
+  let leavingStepEl: HTMLElement | undefined;
+  /** The step drawn under the gesture: the one Back leads to. */
+  let previewTarget = $state<EntryStep>('today');
+
+  function beginPreview(): boolean {
+    if (!canStepBack() || stepping || previewing || saving) return false;
+    stepping = true;
+    previewTarget = stepBehind!;
+    /* The way on opens under the gesture only when the step being left is
+       the last, which has none; every other step has one already. */
+    const wayOnArrives = nextStep(shown, step) === null;
+    previewing = true;
+    // The drawing goes in and is placed at its start before anything paints.
+    flushSync();
+    const leavingStep = stepScreen?.querySelector<HTMLElement>(`[data-entry-step="${step}"]`);
+    leavingStepEl = leavingStep ?? undefined;
+    const leavingHeading = document.querySelector<HTMLElement>('[data-step-heading]:not([data-step-heading-preview])');
+    const arrivingHeading = document.querySelector<HTMLElement>('[data-step-heading-preview]');
+    // The way on lives in the save bar, which is moved out of the step screen.
+    const wayOn = document.querySelector<HTMLElement>('.entry-continue');
+    const region = stepScreen?.closest<HTMLElement>('[data-app-scroll-region]');
+    const back = { back: true };
+    const parts: ScrubPart[] = [];
+    if (leavingStep) parts.push(cssPart(leavingStep, stepTravel(leavingStep, back, { direction: 'out' }), false));
+    if (previewStep) parts.push(cssPart(previewStep, stepTravel(previewStep, back, { direction: 'in' }), true));
+    if (leavingHeading) parts.push(cssPart(leavingHeading, stepTravel(leavingHeading, back, { direction: 'out' }), false));
+    if (arrivingHeading) parts.push(cssPart(arrivingHeading, stepTravel(arrivingHeading, back, { direction: 'in' }), true));
+    if (wayOn && wayOnArrives) parts.push(cssPart(wayOn, footContinue(wayOn), true));
+    const from = region?.scrollTop ?? 0;
+    if (region && from > 0) {
+      parts.push({
+        arriving: true,
+        duration: motionDuration('--dur-med'),
+        easing: EASE_OUT,
+        draw: (t) => region.scrollTo({ top: from * (1 - t), behavior: 'instant' })
+      });
+    }
+    scrub = stepScrub(parts);
+    return true;
+  }
+
+  async function settlePreview(to: 0 | 1) {
+    const drawn = scrub;
+    if (!previewing || !drawn) return;
+    await drawn.settle(to);
+    if (scrub !== drawn) return;
+    scrub = undefined;
+    instantStep = true;
+    if (to === 1) {
+      steppingBack = true;
+      step = previewTarget;
+    }
+    previewing = false;
+    // The swap and the styles coming off land in one frame: every part is
+    // at rest where the real element now stands.
+    flushSync();
+    // The leaving step stays in the page until its outro ends, and by now
+    // its own keyed block draws the step Back led to in it. The scrub kept
+    // it invisible; taking the scrub's styles off must not show it again.
+    if (to === 1 && leavingStepEl?.isConnected) leavingStepEl.style.display = 'none';
+    leavingStepEl = undefined;
+    drawn.clear();
+    instantStep = false;
+    stepping = false;
+    if (to === 1) focusNamedTarget(stepScreen?.querySelector<HTMLElement>('[data-screen-title]'));
+  }
+
+  const stepBackOwner = () => {
+    if (previewing) {
+      void settlePreview(1);
+      return true;
+    }
+    if (!canStepBack()) return false;
+    if (stepBehind) void goToStep(stepBehind);
+    return true;
+  };
+
+  onMount(() => registerStepBack(stepBackOwner, {
+    begin: beginPreview,
+    progress: (p) => scrub?.progress(p),
+    cancel: () => void settlePreview(0)
+  }));
+
+  $effect(() => armStepPreview(stepBackOwner, canStepBack()));
+
+  async function confirmDelete(forever = false) {
     deleteOpen = false;
     if (!existing) {
       // Deleting answered the question leaving would have asked.
@@ -809,6 +1005,8 @@
     const id = existing.id;
     try {
       await journal.entries.deleteEntry(id);
+      // Trash first, so a purge that fails leaves the entry in Trash.
+      if (forever) await journal.entries.purgeEntry(id);
     } catch (error) {
       console.error('could not delete the entry', error);
       toast(m.entry_delete_failed());
@@ -819,6 +1017,10 @@
       await leave();
     } catch (error) {
       console.error('could not leave the editor after deleting the entry', error);
+    }
+    if (forever) {
+      toast(m.record_deleted(), { kind: 'record-deleted' });
+      return;
     }
     toast(m.entry_trashed_toast(), {
       kind: 'trashed',
@@ -836,66 +1038,53 @@
   }
 </script>
 
-<!-- The destination half of the app's one container transform (DIRECTION.md
-     tier 2, deferred to this ticket by ticket 18): the tapped entry row is
-     the box this screen grows out of. Named off the `entryId` prop rather
-     than off the loaded entry, and that is the whole trick - the browser
-     photographs the new screen as soon as the navigation settles, and the
-     entry itself is a worker round trip behind that, so a name waiting on
-     `existing` would arrive after the picture was taken. The route knows
-     which entry this is without asking anybody.
+<!-- Derive the destination's transition name from entryId. The
+     browser takes its snapshot before the worker may resolve the
+     record.
 
-     The name itself lives on `.editor-bg`, not on this element - see
-     DayEntry.svelte's comment, the other half of the same fix: a view
-     transition scales its named element's whole rasterised image between
-     the card's rect and this screen's, and this screen's own heading and
-     fields rode inside that image too, at whatever size the small card
-     was, before growing into a screen (Alicja, 2026-08-27: "the ridiculous
-     huge text transition"). The plain fill grows now; the real content
-     sits outside the named element and crossfades in place through the
-     screen's own transition instead. -->
-<!-- The fieldset is the screen rather than a wrapper inside it. Its
-     `disabled` is what stops native fields taking edits during a save on a
-     WebView that predates `inert`, and as a `display: contents` wrapper it
-     hid every block from `.screen > *` and the header from the field's bleed
-     rule: the field drew 20px inset with no 20px between the blocks under
-     it (audit UI-01). As the screen, its children are the screen's again. -->
-<fieldset class="screen editor" inert={saving} disabled={saving}>
+     Put the name on .editor-bg so only the fill grows from the tapped
+     row. Keep text and fields outside that raster and crossfade them
+     through the screen transition. -->
+<!-- The fieldset is the screen rather than a wrapper inside it. Its `disabled` is what
+     stops native fields taking edits during a save on a WebView that predates `inert`, and
+     as a `display: contents` wrapper it hid every block from `.screen > *` and the header
+     from the field's bleed rule: the field drew 20px inset with no 20px between the blocks
+     under it. As the screen, its children are the screen's again. -->
+<fieldset class="screen editor" inert={saving} disabled={saving} bind:this={stepScreen}>
   <div class="editor-bg" style:view-transition-name={entryContainerName(entryId != null ? String(entryId) : null)}></div>
-  <!-- Back goes wherever you opened it from, not to the entry's own day. An
-       entry is drawn on Home, on a day, in search, on the timeline, inside a
-       tryout and in the counterevidence journal, and every one of those sent
-       you to /day/... on the way back - a screen you may never have been on
-       (Alicja, 2026-08-26, from the counterevidence journal). The day stays
-       as the href the header falls back to on a deep link or a reload
-       (NAV-005, CARPET-05). -->
+  <!-- Back goes wherever you opened it from, not to the entry's own day. An entry is drawn
+       on Home, on a day, in search, on the timeline, inside a tryout and in the
+       counterevidence journal, and every one of those sent you to /day/... on the way back
+       - a screen you may never have been on. The day stays as the href the header falls
+       back to on a deep link or a reload. -->
   <ScreenHeader
-    title={entryId != null ? m.entry() : m.new_entry()}
+    title={entryId != null ? m.entry() : stepped ? stepTitle(step) : m.new_entry()}
     subtitle={dateLine}
     screen="entry"
-    back={existing ? `/day/${day}` : '/'}
+    back={stepped && stepBehind ? () => stepBehind && void goToStep(stepBehind) : existing ? `/day/${day}` : '/'}
+    heading={stepped ? stepHeading : undefined}
+    compact={stepped}
+    aside={stepped ? stepPlace : undefined}
   >
     {#snippet actions()}
-      {#if existing && entryDraft.savedId === undefined}
-        <!-- The star left this header for the save bar (ticket 18): a new
-             entry can be starred before it exists, which this header
-             cannot offer since it is only drawn `{#if existing}`. -->
+      {#if stepped}
+        <!-- The star on the field, in the same place on every step, so a new entry can be
+             starred wherever the person is. -->
         <button
           class="icon-btn press"
-          aria-label={m.revisit_open_aria()}
-          aria-pressed={!!revisit}
-          data-revisit-open
-          onclick={() => (revisitOpen = true)}
+          aria-label={starred ? m.unstar_entry() : m.star_entry()}
+          aria-pressed={starred}
+          data-save-star
+          disabled={saving || entryDraft.savedId !== undefined}
+          onclick={toggleStarred}
         >
-          <!-- Recoloured rather than filled: components.css's `is-starred`
-               fills the whole shape, which reads fine for a star's single
-               closed path but turns a clock's circle-plus-hand into an
-               unreadable solid disc, the hand's stroke lost against its
-               own fill. `.revisit-set` below is `.photo-star.is-starred`'s
-               own recolour-not-fill answer to the same problem, applied to
-               this icon instead of a wrapping button. -->
-          <Icon name="clock" size={20} cls={revisit ? 'revisit-set' : ''} />
+          <Icon name="star" size={20} cls={starred ? 'is-starred' : ''} />
         </button>
+      {/if}
+      {#if existing && entryDraft.savedId === undefined}
+        <!-- The star left this header for the save bar: a new
+             entry can be starred before it exists, which this header
+             cannot offer since it is only drawn `{#if existing}`. -->
         <button class="icon-btn press" aria-label={m.delete_entry()} onclick={() => (deleteOpen = true)}>
           <Icon name="trash" size={20} />
         </button>
@@ -915,23 +1104,6 @@
       aria-live="polite"
     />
   {:else}
-  {#if prompt && !promptDismissed}
-    <Notice
-      icon="sparkle"
-      key="entry-prompt"
-      {role}
-      text={prompt.noteScaffold}
-      dismiss={{ label: m.dismiss(), onclick: () => (promptDismissed = true) }}
-      aria-live="polite"
-    />
-  {/if}
-
-  {#if entryId == null}
-    <button class="btn btn-ghost" data-use-template onclick={() => (templateSheetOpen = true)}>
-      <Icon name="sparkle" size={18} /><span>{m.use_template()}</span>
-    </button>
-  {/if}
-
   <!-- Wait for the existing entry before showing its draft. -->
   {#if loaded.failed}
     <Notice key="entry-read" title={m.read_failed()} action={{ label: m.read_retry(), onclick: () => loaded.retry() }} />
@@ -939,14 +1111,35 @@
   {#if loaded.loading}
     <div out:crossfade><Skeleton variant="block" count={3} /></div>
   {:else if entryId == null || existing}
-  <!-- The page first (phase 11 ticket 19). The note used to sit under mood,
+  <!-- The sections of the entry, written once. The single page (an entry
+       that exists) and a new entry's later steps draw the same pieces and
+       differ only in which they take and in what order, so the two cannot
+       drift apart. -->
+  {#snippet guidedPrompt()}
+  <!-- The guided prompt and a debrief's scaffold both belong
+       to the note, so on a new entry they sit with it on the last step. -->
+  {#if prompt && !promptDismissed}
+    <Notice
+      icon="sparkle"
+      key="entry-prompt"
+      {role}
+      text={prompt}
+      dismiss={{ label: m.dismiss(), onclick: () => (promptDismissed = true) }}
+      aria-live="polite"
+    />
+  {/if}
+
+  {/snippet}
+
+  {#snippet noteField()}
+  <!-- The page first. The note used to sit under mood,
        mode, two sliders and thirty tag chips - about 1900px down on the
        audit's render - and the save was gated on the mood picker three
        viewports above the Save button. What a journal is for comes first
        now, grown to its text; every structured question is one tap away
        in the chip row under it; mood is asked where the saving happens.
-       Nothing about what an entry records changed (CONTEXT: "Entry"). -->
-  <textarea
+       Nothing about what an entry records changed. -->
+  <textarea autocomplete={journalTextAutocomplete()}
     class="input editor-note"
     id="ed-note"
     name="note"
@@ -955,43 +1148,70 @@
     bind:value={entryDraft.note}
   ></textarea>
 
-  <!-- Mode and Gender stay open on the page (Alicja, on the spike,
-       17 September 2026: "some of the sections should be always-on, for
-       example gender and mode"). They keep the headings and the "manage"
-       and "change" links redesign ticket 51 gave them. -->
+  {/snippet}
+
+  {#snippet manageModes()}
+    <!-- In place: raises the same sheet Settings' own Tracking row opens, rather than
+         navigating there and back. -->
+    <button
+      type="button"
+      class="kit-heading-action"
+      data-manage-presentations
+      onclick={() => (ui.raisedManager = 'modes')}
+    >
+      {m.manage()}
+    </button>
+  {/snippet}
+
+  {#snippet modeBlock(onStep = false)}
+  <!-- Mode and Gender stay open on the page. They keep the headings and the "manage" and
+       "change" gave them. -->
   {#if vocabulary.visiblePresentations.length > 0}
-    <SectionHeading text={m.presentation_label()}>
-      {#snippet action()}
-        <!-- In place (audit item 6): raises the same sheet Settings' own
-             Tracking row opens, rather than navigating there and back. -->
-        <button
-          type="button"
-          class="kit-heading-action"
-          data-manage-presentations
-          onclick={() => (ui.raisedManager = 'modes')}
-        >
-          {m.presentations_manage()}
-        </button>
-      {/snippet}
-    </SectionHeading>
-    <div class="contextual-chips" role="radiogroup" use:rovingRadio aria-label={m.presentation_label()}>
-      {#each vocabulary.visiblePresentations as p (p.id)}
-        {@const role = roleAt(activeFlag.roles, p.roleIndex)}
-        <button
-          type="button"
-          class="contextual-chip presentation-chip hit-floor press"
-          class:is-active={entryDraft.presentationId === p.id}
-          {...roleAttrs(role)}
-          role="radio"
-          aria-checked={entryDraft.presentationId === p.id}
-          onclick={() => entryDraft.setPresentation(entryDraft.presentationId === p.id ? null : p.id)}
-        >
-          {p.name}
-        </button>
-      {/each}
-    </div>
+    {#if onStep}
+      <!-- On a step the question is the one heading,
+           so the part under it is named in the small label the tag groups
+           use, not a heading, and its link ends the row of chips. -->
+      <div class="step-part">
+        <span class="step-part-name">{m.presentation_label()}</span>
+      </div>
+    {:else}
+      <SectionHeading text={m.presentation_label()}>
+        {#snippet action()}
+          {@render manageModes()}
+        {/snippet}
+      </SectionHeading>
+    {/if}
+    {#snippet modeChips()}
+      <div class="contextual-chips" role="radiogroup" use:rovingRadio aria-label={m.presentation_label()}>
+        {#each vocabulary.visiblePresentations as p (p.id)}
+          {@const role = roleAt(activeFlag.roles, p.roleIndex)}
+          <button
+            type="button"
+            class="contextual-chip presentation-chip hit-floor press"
+            class:is-active={entryDraft.presentationId === p.id}
+            {...roleAttrs(role)}
+            role="radio"
+            aria-checked={entryDraft.presentationId === p.id}
+            onclick={() => entryDraft.setPresentation(entryDraft.presentationId === p.id ? null : p.id)}
+          >
+            {p.name}
+          </button>
+        {/each}
+      </div>
+    {/snippet}
+    {#if onStep}
+      <div class="step-mode-row">
+        {@render modeChips()}
+        {@render manageModes()}
+      </div>
+    {:else}
+      {@render modeChips()}
+    {/if}
   {/if}
 
+  {/snippet}
+
+  {#snippet scalesBlock()}
   <SectionHeading text={m.gender_label()}>
     {#snippet action()}
       <a class="kit-heading-action" href="/settings">{m.scales_change()}</a>
@@ -1007,13 +1227,16 @@
     {/if}
   {/each}
 
-  <!-- One chip per folded section, each a key (DIRECTION.md rule 13): its
+  {/snippet}
+
+  {#snippet chipRow(sections: readonly EntrySection[])}
+  <!-- One chip per folded section, each a key: its
        name, and under it what the section holds once it holds something -
        so a saved entry reads as a summary line under its note. A chip opens
        its section directly under the row and closes it on a second tap; one
        section at a time. -->
-  <div class="editor-chips" data-editor-chips role="group" bind:this={chipRowEl}>
-    {#each ENTRY_SECTIONS as section (section)}
+  <div class="editor-chips" data-editor-chips role="group">
+    {#each sections as section (section)}
       {@const state = sectionState(section, entryDraft)}
       {@const open = entryDraft.openSection === section}
       <button
@@ -1033,173 +1256,201 @@
     {/each}
   </div>
 
-  <!-- ADR-0078 holds: a section discloses by moving under the note, and a
+  {/snippet}
+
+  {#snippet panels(sections: readonly EntrySection[])}
+  <!-- A section opens beneath the note. On a chip switch, the old section closes and the
        switch from one chip to another is the old section closing while the
        new one opens - two heights travelling, never a cut. A transition is
        local and does not play on first render, so a draft restored with a
        chip open draws it without a movement the person did not make. -->
-  {#if entryDraft.openSection === 'tags'}
+  {#if sections.includes('tags') && entryDraft.openSection === 'tags'}
     <div class="editor-section" id="editor-section-tags" data-editor-section="tags" transition:disclose>
-      <TagPicker
-        groups={vocabulary.visibleTagGroups}
-        selected={entryDraft.tags}
-        onToggle={(id) => entryDraft.toggleTag(id)}
-      />
+      {@render tagPicker()}
     </div>
   {/if}
 
-  {#if entryDraft.openSection === 'body'}
+  {#if sections.includes('body') && entryDraft.openSection === 'body'}
     <div class="editor-section" id="editor-section-body" data-editor-section="body" transition:disclose>
-      <p class="editor-hint">{m.body_map_hint()}</p>
-      <BodyRegionPicker
-        regions={vocabulary.visibleBodyRegions}
-        values={entryDraft.bodyRegions}
-        onToggle={(key) => entryDraft.toggleBodyRegion(key)}
-        onFeeling={(key, feeling) => { if (!saving) entryDraft.setBodyRegionFeeling(key, feeling); }}
-      />
+      {@render bodyPicker()}
     </div>
   {/if}
 
-  <!-- Attachments, split by kind (ticket 19): a person adding a photo does
+  <!-- Attachments, split by kind: a person adding a photo does
        not want the recorder. Each kind keeps its own two controls, pick and
        make, since "Record" on two buttons side by side did not say which one
-       was which (phase 5 ticket 22) and the chip now says it instead. -->
-  {#if entryDraft.openSection === 'photos'}
-    <div class="editor-section" id="editor-section-photos" data-editor-section="photos" data-editor-media transition:disclose>
-      <div class="photo-row">
-        {#each entryDraft.photos as p, i (p)}
-          <div class="photo-wrap">
-            {#if p.kind === 'stored'}
-              <button class="photo-view" aria-label={m.photo_view_label()} onclick={() => (viewedPhoto = { fileName: p.photo.fileName })}>
-                <PhotoThumb photo={p.photo} size={72} />
-              </button>
-              <button
-                class="photo-star"
-                class:is-starred={p.photo.starred}
-                aria-label={p.photo.starred ? m.unstar_photo() : m.star_photo()}
-                aria-pressed={p.photo.starred}
-                onclick={() => prepareDraft(() => togglePhotoStarred(i))}
-              >
-                <Icon name="star" size={14} cls={p.photo.starred ? 'is-starred' : ''} />
-              </button>
-            {:else}
-              <button class="photo-view" aria-label={m.photo_view_label()} onclick={() => (viewedPhoto = { fileName: null, bytes: p.photo.full })}>
-                <PhotoThumb photo={{ fileName: null }} bytes={p.photo.thumb} size={72} />
-              </button>
-            {/if}
-            <button class="photo-remove" aria-label={m.photo_remove()} onclick={() => entryDraft.removePhoto(i)}>
-              <Icon name="x" size={14} />
+       was which and the chip now says it instead. -->
+  <!-- One surface for the three media kinds. Each kind was a section of its own, so
+       switching chips closed one under the other while the next opened: two blocks
+       travelling, the extent dipping and rising again, and its 20px margin gone in one
+       frame at each end. The surface opens and closes with the chips as any section does,
+       and between kinds it only changes height (`resize`) while the tiles cross: the old
+       ones leave the flow as they fade, the new ones come up once they have gone. -->
+  {#if MEDIA_SECTIONS.some((kind) => sections.includes(kind) && entryDraft.openSection === kind)}
+    <div class="editor-section" data-editor-media-surface transition:disclose>
+      <!-- `resize` on a box of its own: on the section it fought
+           `disclose` over the same height when the surface opened or
+           closed (Notice.svelte's note on the same pair). -->
+      <div class="editor-media" use:resize>
+      {#if entryDraft.openSection === 'photos'}
+        <div class="editor-media-kind" id="editor-section-photos" data-editor-section="photos" data-editor-media in:mediaIn out:mediaOut>
+          <div class="photo-row">
+            {#each entryDraft.photos as p, i (p)}
+              <div class="photo-wrap">
+                {#if p.kind === 'stored'}
+                  <button class="photo-view" aria-label={m.photo_view_label()} onclick={() => (viewedPhoto = { fileName: p.photo.fileName })}>
+                    <PhotoThumb photo={p.photo} size={72} />
+                  </button>
+                  <button
+                    class="photo-star"
+                    class:is-starred={p.photo.starred}
+                    aria-label={p.photo.starred ? m.unstar_photo() : m.star_photo()}
+                    aria-pressed={p.photo.starred}
+                    onclick={() => prepareDraft(() => togglePhotoStarred(i))}
+                  >
+                    <Icon name="star" size={14} cls={p.photo.starred ? 'is-starred' : ''} />
+                  </button>
+                {:else}
+                  <button class="photo-view" aria-label={m.photo_view_label()} onclick={() => (viewedPhoto = { fileName: null, bytes: p.photo.full })}>
+                    <PhotoThumb photo={{ fileName: null }} bytes={p.photo.thumb} size={72} />
+                  </button>
+                {/if}
+                <button class="photo-remove" aria-label={m.photo_remove()} onclick={() => entryDraft.removePhoto(i)}>
+                  <Icon name="x" size={14} />
+                </button>
+              </div>
+            {/each}
+            <button class="photo-add press" data-add-photo aria-label={m.add()} onclick={() => prepareDraft(addPhoto)}>
+              <Icon name="image" size={22} /><span>{m.add()}</span>
+            </button>
+            <button class="photo-add press" aria-label={m.add_photo_camera()} onclick={() => prepareDraft(entryPhotoReview.capture)}>
+              <Icon name="camera" size={22} /><span>{m.add_photo_camera()}</span>
             </button>
           </div>
-        {/each}
-        <button class="photo-add press" data-add-photo aria-label={m.add_photo()} onclick={() => prepareDraft(addPhoto)}>
-          <Icon name="image" size={22} /><span>{m.add_photo()}</span>
-        </button>
-        <button class="photo-add press" aria-label={m.add_photo_camera()} onclick={() => prepareDraft(entryPhotoReview.capture)}>
-          <Icon name="camera" size={22} /><span>{m.add_photo_camera()}</span>
-        </button>
-      </div>
-    </div>
-  {/if}
+        </div>
+      {/if}
 
-  {#if entryDraft.openSection === 'voice'}
-    <div class="editor-section" id="editor-section-voice" data-editor-section="voice" transition:disclose>
-      {#if entryDraft.recordings.length > 0}
-        <div class="recording-list">
-          {#each entryDraft.recordings as r, i (r)}
-            <!-- A row arrives and leaves by collapsing (DIRECTION rule 10),
-                 so adding or removing one moves the rows under it rather
-                 than jumping them. -->
-            <div class="recording-row" transition:collapse|global>
-              {#if r.kind === 'stored'}
-                <VoicePlayer fileName={r.recording.fileName} />
-              {:else}
-                <VoicePlayer bytes={r.bytes} />
-              {/if}
-              <button class="recording-remove press" aria-label={m.recording_remove()} onclick={() => entryDraft.removeRecording(i)}>
-                <Icon name="x" size={16} />
-              </button>
+      {#if entryDraft.openSection === 'voice'}
+        <div class="editor-media-kind" id="editor-section-voice" data-editor-section="voice" in:mediaIn out:mediaOut>
+          {#if entryDraft.recordings.length > 0}
+            <div class="recording-list">
+              {#each entryDraft.recordings as r, i (r)}
+                <!-- A row opens or closes its own height,
+                     so adding or removing one moves the rows under it rather
+                     than jumping them. -->
+                <div class="recording-row" transition:collapse|global>
+                  {#if r.kind === 'stored'}
+                    <VoicePlayer fileName={r.recording.fileName} />
+                  {:else}
+                    <VoicePlayer bytes={r.bytes} />
+                  {/if}
+                  <button class="recording-remove press" aria-label={m.recording_remove()} onclick={() => entryDraft.removeRecording(i)}>
+                    <Icon name="x" size={16} />
+                  </button>
+                </div>
+              {/each}
             </div>
-          {/each}
+          {/if}
+          <div class="photo-row">
+            <button class="photo-add press" aria-disabled={recordingPending} aria-busy={recordingPending} aria-label={activeRecording ? m.stop_recording() : m.record()} onclick={() => prepareDraft(toggleRecording)}>
+              <Icon name={activeRecording ? 'stop' : 'mic'} size={22} />
+              <span>{activeRecording ? m.stop_recording() : m.record()}</span>
+            </button>
+            <button class="photo-add press" data-add-recording-file aria-label={m.add()} onclick={() => prepareDraft(addRecordingFile)}>
+              <Icon name="upload" size={22} /><span>{m.add()}</span>
+            </button>
+          </div>
         </div>
       {/if}
-      <div class="photo-row">
-        <button class="photo-add press" aria-label={activeRecording ? m.stop_recording() : m.add_recording()} onclick={() => prepareDraft(toggleRecording)}>
-          <Icon name={activeRecording ? 'stop' : 'mic'} size={22} />
-          <span>{activeRecording ? m.stop_recording() : m.add_recording()}</span>
-        </button>
-        <button class="photo-add press" data-add-recording-file aria-label={m.add_recording_file()} onclick={() => prepareDraft(addRecordingFile)}>
-          <Icon name="image" size={22} /><span>{m.add_recording_file()}</span>
-        </button>
-      </div>
-    </div>
-  {/if}
 
-  {#if entryDraft.openSection === 'video'}
-    <div class="editor-section" id="editor-section-video" data-editor-section="video" transition:disclose>
-      {#if entryDraft.videos.length > 0}
-        <div class="recording-list">
-          {#each entryDraft.videos as v, i (v)}
-            <div class="video-row" transition:collapse|global>
-              {#if v.kind === 'stored'}
-                <VideoNotePlayer fileName={v.video.fileName} />
-              {:else}
-                <VideoNotePlayer bytes={v.bytes} />
-              {/if}
-              <button class="recording-remove press" aria-label={m.video_remove()} onclick={() => entryDraft.removeVideo(i)}>
-                <Icon name="x" size={16} />
-              </button>
+      {#if entryDraft.openSection === 'video'}
+        <div class="editor-media-kind" id="editor-section-video" data-editor-section="video" in:mediaIn out:mediaOut>
+          {#if entryDraft.videos.length > 0}
+            <div class="recording-list">
+              {#each entryDraft.videos as v, i (v)}
+                <div class="video-row" transition:collapse|global>
+                  {#if v.kind === 'stored'}
+                    <VideoNotePlayer fileName={v.video.fileName} />
+                  {:else}
+                    <VideoNotePlayer bytes={v.bytes} />
+                  {/if}
+                  <button class="recording-remove press" aria-label={m.video_remove()} onclick={() => entryDraft.removeVideo(i)}>
+                    <Icon name="x" size={16} />
+                  </button>
+                </div>
+              {/each}
             </div>
-          {/each}
+          {/if}
+          {#if activeVideo}
+            <div class="video-preview">
+              <!-- Muted: routing the microphone back to the speaker would howl. -->
+              <!-- svelte-ignore a11y_media_has_caption -->
+              <video use:previewStream={activeVideo.stream} muted autoplay playsinline></video>
+              <span class="video-countdown">0:{videoSecondsLeft.toString().padStart(2, '0')}</span>
+            </div>
+          {:else if compressingVideo}
+            <p class="video-hint">{m.video_compressing()}</p>
+          {:else}
+            <p class="video-hint">{m.video_recording_hint()}</p>
+          {/if}
+          <div class="photo-row">
+            <button
+              class="photo-add press"
+              disabled={compressingVideo}
+              aria-disabled={videoPending || compressingVideo}
+              aria-busy={videoPending}
+              aria-label={activeVideo ? m.stop_recording() : m.record()}
+              onclick={() => prepareDraft(toggleVideo)}
+            >
+              <Icon name={activeVideo ? 'stop' : 'video'} size={22} />
+              <span>{activeVideo ? m.stop_recording() : m.record()}</span>
+            </button>
+            <button
+              class="photo-add press"
+              data-add-video-file
+              disabled={compressingVideo || videoOwner !== null}
+              aria-label={m.add()}
+              onclick={() => prepareDraft(addVideoFile)}
+            >
+              <Icon name="upload" size={22} /><span>{m.add()}</span>
+            </button>
+          </div>
         </div>
       {/if}
-      {#if activeVideo}
-        <div class="video-preview">
-          <!-- Muted: routing the microphone back to the speaker would howl. -->
-          <!-- svelte-ignore a11y_media_has_caption -->
-          <video use:previewStream={activeVideo.stream} muted autoplay playsinline></video>
-          <span class="video-countdown">0:{videoSecondsLeft.toString().padStart(2, '0')}</span>
-        </div>
-      {:else if compressingVideo}
-        <p class="video-hint">{m.video_compressing()}</p>
-      {:else}
-        <p class="video-hint">{m.video_recording_hint()}</p>
-      {/if}
-      <div class="photo-row">
-        <button
-          class="photo-add press"
-          disabled={compressingVideo}
-          aria-label={activeVideo ? m.stop_video() : m.add_video()}
-          onclick={() => prepareDraft(toggleVideo)}
-        >
-          <Icon name={activeVideo ? 'stop' : 'video'} size={22} />
-          <span>{activeVideo ? m.stop_video() : m.add_video()}</span>
-        </button>
-        <button
-          class="photo-add press"
-          data-add-video-file
-          disabled={compressingVideo || !!activeVideo}
-          aria-label={m.add_video_file()}
-          onclick={() => prepareDraft(addVideoFile)}
-        >
-          <Icon name="image" size={22} /><span>{m.add_video_file()}</span>
-        </button>
       </div>
     </div>
   {/if}
 
-  <!-- Contextual Inline Cards (ticket 04, ADR-0044). Offers rather than
-       questions, so they stay where they were - after what the person
-       chose to open, before the foot - and take no chip. -->
-  {#if prefs.entryTryoutPromptEnabled && activeTryout}
-    <!-- All three contextual cards open their own height rather than
-         appearing at full size in one frame (ticket 99 item 18, "tryout
-         felt sense comes out without an animation"). None of them is on
-         screen when the editor mounts - each waits on a read the journal
-         has not answered yet - so they arrive into a screen the person is
-         already looking at, which is what tier 3 is for. A Svelte
-         transition is local and does not play on first render, so this
-         stays out of the way of the screen's own arrival. -->
+  {/snippet}
+
+  {#snippet tagPicker()}
+    <TagPicker
+      emotionFamilies
+      groups={vocabulary.visibleTagGroups}
+      selected={entryDraft.tags}
+      onChange={(next) => entryDraft.setTags(next)}
+    />
+  {/snippet}
+
+  {#snippet bodyPicker()}
+    <BodyRegionPicker
+      regions={vocabulary.visibleBodyRegions}
+      values={entryDraft.bodyRegions}
+      onToggle={(key) => entryDraft.toggleBodyRegion(key)}
+      onFeeling={(key, feeling) => { if (!saving) entryDraft.setBodyRegionFeeling(key, feeling); }}
+    />
+  {/snippet}
+
+  {#snippet cards()}
+  <!-- Contextual Inline Cards. Offers rather than questions, so they stay where they were -
+       after what the person chose to open, before the foot - and take no chip. -->
+  {#if activeTryout}
+    <!-- All three contextual cards open their own height rather than appearing at full size
+         in one frame. None of them is on screen when the editor mounts - each waits on a
+         read the journal has not answered yet - so they arrive into a screen the person is
+         already looking at, which is what tier 3 is for. A Svelte transition is local and
+         does not play on first render, so this stays out of the way of the screen's own
+         arrival. -->
     <div class="contextual-panel" data-contextual="tryout-felt-sense" transition:disclose>
       <div class="contextual-header">
         <span class="contextual-title">{m.entry_tryout_felt_sense_title({ name: activeTryout.label })}</span>
@@ -1225,7 +1476,7 @@
                 entryDraft.setTryoutFeltSense({
                   tryoutId: activeTryout.id,
                   mood: opt.step,
-                  note: tryoutReflection.trim() || null,
+                  note: tryoutReflection,
                   epochDay: day
                 });
               }
@@ -1236,16 +1487,16 @@
         {/each}
       </div>
       {#if entryDraft.tryoutFeltSense?.tryoutId === activeTryout.id}
-        <input
+        <input autocomplete={journalTextAutocomplete()}
           type="text"
           class="input contextual-input"
           placeholder={m.entry_tryout_reflection_placeholder()}
           bind:value={tryoutReflection}
-          oninput={() => {
+          oninput={(event) => {
             if (entryDraft.tryoutFeltSense) {
               entryDraft.setTryoutFeltSense({
                 ...entryDraft.tryoutFeltSense,
-                note: tryoutReflection.trim() || null
+                note: event.currentTarget.value
               });
             }
           }}
@@ -1254,7 +1505,7 @@
     </div>
   {/if}
 
-  {#if prefs.entryDoseQuickLogEnabled && scheduleDose && !episodesQuery.loading && !todayDosesQuery.loading}
+  {#if scheduleDose && !episodesQuery.loading && !todayDosesQuery.loading}
     <!-- Off the two reads as well as off the schedule: the logged doses are
          `[]` until today's doses answer, so a chip for a dose already logged
          once stood on screen for the length of the round trip and then had
@@ -1287,7 +1538,7 @@
           <!-- Two lines rather than one run-on sentence: a fully-rounded
                pill's ends stop reading as a pill once its text wraps, so a
                chip carrying a second fact gets a plainer rounded rect
-               instead (phase 5 deepening ticket 06). -->
+               instead. -->
           <span class="dose-chip-text">
             <span class="dose-chip-main">
               {m.entry_dose_quick_log({ dose: doseItem.dose, unit: doseItem.doseUnit, drug: doseItem.drug })}
@@ -1303,19 +1554,22 @@
     </div>
   {/if}
 
-  {#if prefs.entryProcedureRecoveryEnabled && recoveringProcedure}
+  {#if recoveringProcedure}
     <div class="contextual-panel" data-contextual="procedure-recovery" transition:disclose>
       <div class="contextual-header">
         <span class="contextual-title">
           {m.entry_procedure_recovery_title({ day: recoveringProcedure.postOpDays, name: recoveringProcedure.proc.name })}
         </span>
       </div>
-      <textarea
+      <textarea autocomplete={journalTextAutocomplete()}
         class="input contextual-textarea"
         rows="2"
         placeholder={m.entry_procedure_recovery_notes_placeholder()}
         bind:value={procRecoveryNote}
-        oninput={updateProcedureRecovery}
+        oninput={(event) => {
+          procRecoveryNote = event.currentTarget.value;
+          updateProcedureRecovery();
+        }}
       ></textarea>
       <div class="procedure-photo-row">
         {#if procRecoveryPhoto}
@@ -1355,10 +1609,10 @@
     </div>
   {/if}
 
-  {#if prefs.entryHrtEffectsEnabled && isHrtActive && !effectsQuiet}
+  {#if isHrtActive && !effectsQuiet}
     <div class="contextual-row" data-contextual="hrt-effects">
       {#each entryDraft.effectMarkers as marker (marker.effect)}
-        <div class="contextual-chip effect-chip is-active" transition:discloseWidth|global>
+        <div class="contextual-chip effect-chip is-active" transition:discloseWidth|global={{ instant: instantStep }}>
           <span>{vocabulary.personalEffectTypeName(marker.effect)}</span>
           <button
             type="button"
@@ -1384,7 +1638,7 @@
   {#if cycleTrackingActive}
     <div class="contextual-panel" data-contextual="cycle-event" transition:disclose>
       <div class="contextual-header">
-        <span class="contextual-title">{m.entry_cycle_event_title()}</span>
+        <span class="contextual-title">{m.cycle_tracking_toggle_title()}</span>
       </div>
       <div class="contextual-chips">
         {#each [
@@ -1411,8 +1665,147 @@
       </div>
     </div>
   {/if}
+  {/snippet}
+
+  {#snippet theRest()}
+  {@render guidedPrompt()}
+  {@render noteField()}
+  {@render modeBlock()}
+  {@render scalesBlock()}
+  {@render chipRow(ENTRY_SECTIONS)}
+  {@render panels(ENTRY_SECTIONS)}
+  {@render cards()}
+  {/snippet}
+
+  <!-- A new entry's later steps, in display order: what is marked comes before what is
+       written. Mode and the tags, wrapped chips per group; then the body map and the cards
+       the day offers, open on their own step; then the note, and the photos, video and
+       voice last. The step's title names the step, so the tags and the body carry no
+       heading of their own. -->
+  {#snippet marksStep()}
+  {@render modeBlock(true)}
+  {#if hasTags()}
+    <div class="editor-section" id="editor-section-tags" data-editor-section="tags">
+      {@render tagPicker()}
+    </div>
+  {/if}
+  {/snippet}
+
+  {#snippet bodyStep()}
+  {#if vocabulary.visibleBodyRegions.length > 0}
+    <div class="editor-section" id="editor-section-body" data-editor-section="body">
+      {@render bodyPicker()}
+    </div>
+  {/if}
+  {@render cards()}
+  {/snippet}
+
+  {#snippet writingStep()}
+  {@render guidedPrompt()}
+  {@render noteField()}
+  {@render chipRow(ATTACHMENT_SECTIONS)}
+  {@render panels(ATTACHMENT_SECTIONS)}
+  {/snippet}
+
+  {#snippet laterStep(which: EntryStep)}
+  {#if which === 'marks'}
+    {@render marksStep()}
+  {:else if which === 'body'}
+    {@render bodyStep()}
+  {:else}
+    {@render writingStep()}
+  {/if}
+  {/snippet}
+
+  {#if stepped}
+    <!-- One cell for every step, so the one leaving and the one arriving
+         share it for the length of the change and nothing under them moves
+         ($lib/motion/entryStep). -->
+    <div class="entry-stage">
+      {#if previewing}
+        <div class="entry-step" data-entry-step-preview inert aria-hidden="true" bind:this={previewStep}>
+          {#if previewTarget === 'today'}
+            <EntryFirstStep
+              mood={entryDraft.mood}
+              {dims}
+              values={entryDraft.dims}
+              saving={false}
+              onMood={() => {}}
+              onDim={() => {}}
+            />
+          {:else}
+            {@render laterStep(previewTarget)}
+          {/if}
+        </div>
+      {/if}
+      {#key step}
+        <div
+          class="entry-step"
+          data-entry-step={step}
+          in:stepTravel={{ back: steppingBack, instant: instantStep }}
+          out:stepTravel={{ back: steppingBack, instant: instantStep }}
+        >
+          {#if step === 'today'}
+            <EntryFirstStep
+              mood={entryDraft.mood}
+              {dims}
+              values={entryDraft.dims}
+              {saving}
+              onMood={(v) => entryDraft.setMood(v)}
+              onDim={(key, v) => entryDraft.setDim(key, v)}
+              bind:faces={moodsEl}
+            />
+          {:else}
+            {@render laterStep(step)}
+          {/if}
+        </div>
+      {/key}
+    </div>
+  {:else}
+    {@render theRest()}
+  {/if}
 
   <SaveBar>
+    {#if stepped}
+      <!-- Finishing is the same control on every step, in the same place: it is one
+           element, so it neither moves nor fades when the step changes, and only the way on
+           beside it opens and closes. Finishing saves what is set and closes, so it is the
+           ink button and says what it does; going on is the soft block after it, on the
+           right where a next step reads, naming the next step in a word. One row since
+           stacked the two took 125px of the step's window, in a row 69. -->
+      <div class="entry-foot" use:scrollCues={{ axis: 'y', scroller: stepRegion }}>
+        <button
+          class="btn press"
+          class:btn-primary={!moodMissing}
+          class:btn-soft={moodMissing}
+          data-save
+          data-entry-finish
+          data-entry-saving={saving || undefined}
+          data-save-unmet={moodMissing ? 'mood' : undefined}
+          disabled={saving || draftPreparing || entryDraft.savedId !== undefined}
+          onclick={saveEntry}
+        >
+          <span>{saving ? m.entry_saving() : moodMissing ? m.entry_pick_mood_to_save() : m.save_entry()}</span>
+        </button>
+        {#if stepAhead || previewing}
+          <div class="entry-continue" transition:footContinue={{ instant: instantStep || previewing }}>
+            <button
+              class="btn btn-soft press"
+              data-entry-continue
+              disabled={saving || entryDraft.savedId !== undefined}
+              data-save-unmet={step === 'today' && moodMissing ? 'mood' : undefined}
+              onclick={goOn}
+            >
+              <!-- The next step's name swaps as the person walks, crossfading
+                   in place in the button that stays. -->
+              <span class="way-on-words">{#key stepAhead ?? step}<span transition:crossfade>{wayOnLabel(stepAhead ?? step)}</span>{/key}</span>
+              <Icon name="chevronRight" size={18} />
+            </button>
+          </div>
+        {/if}
+        <span class="visually-hidden" role="status" data-save-status>{saving ? m.entry_saving() : moodMissing ? wayOnNotice : ''}</span>
+      </div>
+    {:else}
     <!-- Mood stays beside saving, with its own row of full-size targets. -->
     <div class="editor-save-row">
       <fieldset class="editor-save-moods" data-save-moods disabled={saving} inert={saving} bind:this={moodsEl}>
@@ -1445,90 +1838,29 @@
            saving announcement lives here. -->
       <span class="visually-hidden" role="status" data-save-status>{saving ? m.entry_saving() : ''}</span>
     </div>
+    {/if}
   </SaveBar>
   {/if}
   {/if}
-
-  <Sheet bind:open={templateSheetOpen} title={m.use_template()}>
-    <SectionHeading text={m.use_template()}>
-      {#snippet action()}
-        <!-- In place (audit item 6): closes this picker and raises the
-             manager sheet directly, rather than navigating there and back. -->
-        <button
-          type="button"
-          class="kit-heading-action"
-          data-manage-entry-templates
-          onclick={() => {
-            templateSheetOpen = false;
-            ui.raisedManager = 'templates';
-          }}
-        >
-          {m.entry_templates_manage()}
-        </button>
-      {/snippet}
-    </SectionHeading>
-    <ListCard {role}>
-      {#each vocabulary.visibleEntryTemplates as tpl (tpl.id)}
-        <ListRow key={tpl.id} title={tpl.name} chevron={false} onclick={() => applyTemplate(tpl)} />
-      {/each}
-    </ListCard>
-  </Sheet>
 
   <Sheet bind:open={deleteOpen} title={m.delete_entry_q()}>
     <SectionHeading text={m.delete_entry_q()} />
     <p class="editor-hint">{m.delete_entry_hint()}</p>
     <div class="stack-3">
-      <button class="btn btn-danger" onclick={confirmDelete}><span>{m.delete_entry()}</span></button>
+      <button class="btn btn-danger" onclick={() => confirmDelete()}><span>{m.delete_entry()}</span></button>
+      <button class="btn btn-danger btn-danger-deep" data-delete-forever onclick={() => confirmDelete(true)}>
+        <span>{m.trash_delete_forever()}</span>
+      </button>
       <button class="btn btn-ghost" onclick={() => (deleteOpen = false)}><span>{m.keep_it()}</span></button>
     </div>
   </Sheet>
 
   <DiscardSheet {guard} />
 
-  <Sheet busy={revisitWrite.busy} bind:open={revisitOpen} title={m.revisit_sheet_title()}>
-    <SectionHeading text={m.revisit_sheet_title()} />
-    {#if revisit}
-      <p class="editor-hint">
-        {m.revisit_current_label({ date: fmtDay(revisit.targetEpochDay, { day: 'numeric', month: 'long', year: 'numeric' }) })}
-      </p>
-      <SectionHeading text={m.revisit_change()} />
-    {:else}
-      <p class="editor-hint">{m.revisit_sheet_hint()}</p>
-    {/if}
-    <ListCard {role}>
-      <ListRow key="week" title={m.revisit_preset_week()} chevron={false} onclick={() => setRevisit(revisitPresetDay('week'))} />
-      <ListRow key="month" title={m.revisit_preset_month()} chevron={false} onclick={() => setRevisit(revisitPresetDay('month'))} />
-      <ListRow
-        key="three-months"
-        title={m.revisit_preset_3_months()}
-        chevron={false}
-        onclick={() => setRevisit(revisitPresetDay('threeMonths'))}
-      />
-      <ListRow key="year" title={m.revisit_preset_year()} chevron={false} onclick={() => setRevisit(revisitPresetDay('year'))} />
-    </ListCard>
-    <p class="revisit-or-label">{m.revisit_pick_date_label()}</p>
-    <div class="revisit-date-row">
-      <DatePicker
-        id="revisit-date"
-        name="revisit-date"
-        min={dateInputValueFromEpochDay(currentDay() + 1)}
-        ariaLabel={m.revisit_pick_date_label()}
-        bind:value={revisitDateInput}
-        data-revisit-date
-      />
-      <button class="btn btn-soft" disabled={!revisitDateInput || revisitWrite.busy} data-revisit-set onclick={setRevisitFromInput}>
-        <span>{m.revisit_set_confirm()}</span>
-      </button>
-    </div>
-    {#if revisit}
-      <button class="btn btn-ghost" data-revisit-cancel disabled={revisitWrite.busy} onclick={cancelRevisit}><span>{m.revisit_cancel()}</span></button>
-    {/if}
-  </Sheet>
-
   <EffectPickerSheet
     bind:open={effectSheetOpen}
     {role}
-    effects={vocabulary.visiblePersonalEffectTypes}
+    effects={offeredEffectTypes(vocabulary.visiblePersonalEffectTypes, new Set(recordedEffects.keys()))}
     categoryOrder={vocabulary.effectCategories.map((category) => category.key)}
     drugs={activeEpisodes.map((episode) => episode.drug)}
     chosen={entryDraft.effectMarkers.map((marker) => marker.effect)}
@@ -1555,9 +1887,30 @@
   />
 
   <PhotoViewer photo={viewedPhoto} onClose={() => (viewedPhoto = null)} />
+
+  {#snippet stepHeading()}
+    {#if previewing}
+      <span class="step-heading" data-step-heading data-step-heading-preview aria-hidden="true">{stepTitle(previewTarget)}</span>
+    {/if}
+    {#key step}
+      <span
+        class="step-heading"
+        data-step-heading
+        in:stepTravel={{ back: steppingBack, instant: instantStep }}
+        out:stepTravel={{ back: steppingBack, instant: instantStep }}
+      >{stepTitle(step)}</span>
+    {/key}
+  {/snippet}
+
+  {#snippet stepPlace()}
+    <StepProgress steps={shown} at={step} />
+  {/snippet}
+
 </fieldset>
 
 <style>
+  /* Beside a reversible delete, the irreversible one reads a deeper red. */
+  :global(.btn-danger-deep) { color: var(--danger-deep); }
   /* The container transform's own layer - a plain fill behind the real
      screen, carrying no text, the same fix as .entry-card-bg/.kit-entry-bg
      in components.css/kit.css. Those two sit inside a grid container, where
@@ -1583,16 +1936,116 @@
     background: var(--bg);
   }
 
-  .editor-save-row {
+
+  /* A new entry's steps. Both sides of a
+     change share one grid cell while it runs, so the step under the date
+     line is never two steps tall and nothing below it jumps. The stage
+     takes no trailing margin of its own: the last block in a step already
+     carries the screen's 20, and a grid item keeps it rather than letting
+     it collapse into the stage's. */
+  .entry-stage {
+    display: grid;
+    margin-bottom: 0;
+  }
+  .entry-step {
+    grid-area: 1 / 1;
+    min-width: 0;
+  }
+  /* The screen's floor between blocks (app.css, `.screen > *`), one level
+     further down because a step wraps its blocks. Written unscoped at the
+     same specificity as the rule it copies, so the editor's own block
+     rules still win where they set a margin. */
+  :global(.entry-step > *) { margin-bottom: var(--space-5); }
+  /* EntryFirstStep draws .step-part too, so this stays global. */
+  :global(.entry-step > .step-part) { margin-bottom: var(--space-1); }
+  :global(.entry-step > .kit-heading) { margin-bottom: var(--space-3); }
+  /* The foot marks its own edge, so the last block needs only a breath
+     above it rather than the screen's 20. */
+  :global(.entry-step > :last-child) { margin-bottom: var(--space-2); }
+  /* The heading on the field, stacked the same way for the length of a
+     swap, so the field holds one line's height throughout. */
+  :global(h1:has(> .step-heading)) { display: grid; }
+  .step-heading { grid-area: 1 / 1; }
+
+  /* The foot: the finish control, and under it the way on while there is
+     one. The way on carries its own gap (a leading edge of --space-2) so the
+     gap opens and closes with it. Side by side where there is room, at the
+     one-row height the editor's own foot takes at this width. */
+  .entry-foot {
+    position: relative;
+    width: 100%;
+    display: flex;
+    gap: var(--space-2);
+  }
+  /* More of the step below the foot: the page's colour rises
+     over the last of the step at the foot's top edge, and fades away once
+     the step is scrolled to its end. Above the foot's own top padding,
+     across the column's whole width. */
+  .entry-foot::before {
+    content: '';
+    position: absolute;
+    left: calc(-1 * var(--screen-inset));
+    right: calc(-1 * var(--screen-inset));
+    bottom: calc(100% + var(--space-3));
+    height: var(--space-8);
+    background: linear-gradient(to bottom, transparent, var(--bg));
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--dur-fast) var(--ease-out);
+  }
+  .entry-foot:global([data-more-end])::before { opacity: 1; }
+  .entry-foot .btn { width: 100%; }
+  /* Two equal halves, so the finish control keeps its box while the way
+     on's word changes from step to step: sized to its word, the way on
+     moved Save entry 40px in one frame on a step change. It widens only on
+     the last step, as the way on closes beside it (footContinue). */
+  .entry-foot .btn { padding-inline: var(--space-3); white-space: nowrap; }
+  /* Half each and shrinking alike, rather than a zero basis: from a zero
+     basis the finish button's own padding came off before the halves were
+     shared, so it stood 26px wider than the way on. */
+  .entry-foot > .btn { flex: 1 1 50%; min-width: 0; }
+  .entry-continue { flex: 1 1 50%; min-width: 0; }
+  /* Where the two words do not fit one row - text at 130% and up, or a
+     window under 352px - the way on stands under the finish control. 22em
+     follows the text size, so 360 and 390px windows at 100% keep the row.
+     The way on carries the gap as its own padding, so the gap closes with
+     it (footContinue opens and closes its height in a column). */
+  @container app (max-width: 22em) {
+    .entry-foot { flex-direction: column; gap: 0; }
+    .entry-continue { padding-top: var(--space-2); }
+    .entry-foot > .btn { flex: none; }
+  }
+  /* The words stacked in one cell, so the leaving name fades over the
+     arriving one without the button changing size. */
+  .way-on-words { display: inline-grid; min-width: 0; }
+  .way-on-words > :global(*) { grid-area: 1 / 1; }
+
+  /* The mode's chips with its "manage" link at the row's end, a peer of
+     the tag groups under it. */
+  .step-mode-row {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-2);
   }
-  .editor-save-row [data-entry-saving] { opacity: 1; }
+  :global(.entry-step > .step-mode-row) { margin-bottom: var(--space-2); }
+
+  .editor-save-row {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .editor-save-row [data-entry-saving],
+  .entry-foot [data-entry-saving] { opacity: 1; }
   .editor-save-moods { flex: 1 0 100%; min-width: 0; margin: 0; padding: 0; border: 0; }
   .editor-save-row .icon-btn { flex: none; }
   .editor-save-row .btn { flex: 1; min-width: 0; padding-inline: var(--space-2); }
+
+  @container app (min-width: 640px) {
+    .editor-save-moods { flex: 1 1 0; }
+  }
 
   /* The line under a heading that needs one. A hint is the area's own second
      sentence rather than a caption on a field, so it sits at the page's
@@ -1610,16 +2063,8 @@
   /* The free-choice date, under the presets rather than a fifth row among
      them - "sensible offered options and a free choice behind them", the
      ticket's own phrase. */
-  .revisit-or-label {
-    color: var(--text-2);
-    font-size: var(--text-sm);
-    margin: var(--space-3) 0 var(--space-2);
-  }
-  .revisit-date-row { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); }
-  .revisit-date-row :global(input) { flex: 1; }
-  :global(.icon.revisit-set) { color: var(--accent); }
 
-  /* Grown to the height of its text (ticket 19): the browser owns the
+  /* Grown to the height of its text: the browser owns the
      measurement (`field-sizing`), and where it does not yet, `rows` holds
      the four-line floor it always had. No drag handle: a field that sizes
      itself has nothing for one to do, and the corner grip was the one
@@ -1632,7 +2077,7 @@
     font-family: var(--font-body);
   }
 
-  /* The chip row: one key per folded section (DIRECTION.md rule 13).
+  /* The chip row: one key per folded section.
      Blocks with a 1px outline edge and the app's one corner, wrapping at
      390px rather than scrolling - a row you have to scroll hides the
      question you came for, and "one tap away" has to mean visible. The
@@ -1685,8 +2130,18 @@
   .editor-section {
     margin: var(--space-5) 0;
   }
+  /* The leaving media kind is pinned to the surface's top (mediaOut). */
+  .editor-media { position: relative; }
+  /* On a step a section is a part in its own right, not something opened
+     under a chip row, so it takes the step's own spacing. */
+  .entry-step > .editor-section { margin-top: 0; }
+  .entry-step > .editor-section:last-child { margin-bottom: 0; }
+  /* Except one opened from the chip row on the same step: the chip is its
+     heading again, so it keeps rule 1's 20 under the row. At 0 the record
+     and add tiles sat flush on the chips. */
+  .entry-step > .editor-chips + .editor-section { margin-top: var(--space-5); }
 
-  /* Contextual Inline Cards (ticket 04, ADR-0044) */
+  /* Contextual Inline Cards */
   .contextual-panel {
     background: var(--surface);
     border: 1px solid var(--outline);
@@ -1709,8 +2164,8 @@
     align-items: center;
     justify-content: space-between;
   }
-  /* The field label's type, sentence case (after-release 28): "Tryout:
-     she/her" read as TRYOUT: SHE/HER and changed the name it quotes. */
+  /* The field label's type, sentence case: "Tryout: she/her" read as TRYOUT: SHE/HER and
+     changed the name it quotes. */
   .contextual-title {
     font-size: var(--text-sm);
     font-weight: var(--weight-bold);
@@ -1739,13 +2194,11 @@
     cursor: pointer;
     transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
   }
-  /* The 48px target is the shared .hit-floor box (components.css), and only
-     on the chips that are themselves a <button> (ticket 99 item 19, "when i
-     select an effect, i cannot deselect it even though i am clicking on the
-     'x'"). The one chip that is a <div> wrapping its own dismiss button
-     must not carry it: an overlay with no handler, painted after its
-     sibling button because a positioned pseudo-element with auto z-index
-     paints in tree order, swallowed every press on the x. */
+  /* The 48px target is the shared .hit-floor box (components.css), and only on the chips
+     that are themselves a <button>. The one chip that is a <div> wrapping its own dismiss
+     button must not carry it: an overlay with no handler, painted after its sibling button
+     because a positioned pseudo-element with auto z-index paints in tree order, swallowed
+     every press on the x. */
   .contextual-chip:hover {
     border-color: var(--accent-border, var(--outline));
   }
@@ -1819,9 +2272,9 @@
     gap: var(--space-2);
   }
 
-  /* Wraps the thumb only, not the star/remove badges beside it (ticket
-     CARPET-06) - a plain block the same size as the tile it holds, so it
-     adds a tap target without shifting either badge's absolute position. */
+  /* Wraps the thumb only, not the star/remove badges beside it - a plain block the same
+     size as the tile it holds, so it adds a tap target without shifting either badge's
+     absolute position. */
   .photo-view {
     display: block; border: none; background: none; padding: 0; cursor: pointer;
     border-radius: var(--r-block);
@@ -1845,11 +2298,10 @@
   .photo-star :global(.icon) { position: relative; }
   .photo-star.is-starred { color: var(--accent); }
 
-  /* A player is a row of its own rather than photo-row/photo-wrap's fixed
-     72px square (screens.css): it is a transport across the width, not a
-     tile. Both media are laid out here since ticket 46 gave them one
-     transport - a recording is that row, a video note is a frame with the
-     same row under it. */
+  /* A player is a row of its own rather than photo-row/photo-wrap's fixed 72px square
+     (screens.css): it is a transport across the width, not a tile. Both media are laid out
+     here gave them one transport - a recording is that row, a video note is a frame with
+     the same row under it. */
   .recording-list { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-3); }
   .recording-row { display: flex; align-items: center; gap: var(--space-2); }
   .recording-remove {
@@ -1860,13 +2312,10 @@
     display: flex; align-items: center; justify-content: center;
   }
 
-  /* A video note is its picture plus the transport under it, so it is taller
-     than a recording's row and its remove button sits at the top rather than
-     centred against the player (ticket 22, remeasured on ticket 46 - the
-     "36px strip" that comment named was the native <audio> element's box and
-     is gone). The list wrapper is .recording-list either way - the gap and
-     the column are the same, and a second class with the same rules would
-     only drift. */
+  /* A video note is its picture plus the transport under it, so it is taller than a
+     recording's row and its remove button sits at the top rather than centred against the
+     player. The list wrapper is .recording-list either way - the gap and the column are the
+     same, and a second class with the same rules would only drift. */
   .video-row { display: flex; align-items: flex-start; gap: var(--space-2); }
   .video-hint { margin: 0 0 var(--space-3); color: var(--text-2); font-size: 0.85rem; }
   .video-preview { position: relative; margin-bottom: var(--space-3); }

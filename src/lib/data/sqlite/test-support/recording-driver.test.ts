@@ -1,4 +1,4 @@
-/* The recording adapter's own tests (phase 8 audit ticket 01).
+/* The recording adapter's own tests.
 
    Two claims, and the second is the one the budgets rest on: the tables a
    statement names come back exactly, and what crossed the seam is counted

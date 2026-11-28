@@ -1,5 +1,4 @@
-/* PhotoWipe.svelte is the surface; everything it decides is here (phase 10
-   redesign ticket 55). The component itself holds one number and draws it,
+/* PhotoWipe.svelte is the surface; everything it decides is here. The component itself holds one number and draws it,
    which is what is left once the pointer arithmetic, the keyboard map and
    the crop rule are lifted out. */
 

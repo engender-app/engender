@@ -1,4 +1,4 @@
-/* The lock step's own two screens (ticket 30, ADR-0041).
+/* The lock step's own two screens (ADR-0041).
 
    AccessModeSetup used to run choosing a mode and typing its secret together:
    the list, then a consequence paragraph, a device-tie warning, an

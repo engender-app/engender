@@ -1,30 +1,13 @@
-/* Narrowing a grid by a chip: the tiles that stay travel, the tiles that go
-   leave the flow where they stood (phase 11 ticket 14, ADR-0078).
+/* When a photo filter changes, pin outgoing tiles out of flow before their
+   outros. A keyed each block otherwise keeps their boxes until the fade
+   ends, then reflows in one frame. Once the grid settles, travelCells
+   uses regroup.ts's FLIP to bring survivors from their old positions.
 
-   Two grids ask for this - the photo library's and the journey export's -
-   and they ask for the same three frames. Tapping "Hair" over a grid of
-   twenty-one photographs is a state change, so it moves: the hair
-   photographs that were scattered through the grid walk to the front of
-   it, and the rest fade out of where they were standing rather than
-   blinking away underneath them.
-
-   THE ORDER MATTERS, and it is the reason this is a module rather than two
-   lines in each screen. A tile removed from a keyed `{#each}` keeps its
-   box for the length of its own outro, so the grid does not rewrap until
-   the fade is over - and then it rewraps in one frame, which is the yank
-   the animation was supposed to prevent. So the leaving tile is pinned out
-   of the flow in the frame it leaves (`pinnedOut`, the same trick
-   reveal.ts's `dissolveAt` plays for a dismissed panel), the grid reaches
-   its final layout immediately, and the survivors are walked back to where
-   they stood and released (`travelCells`, the FLIP arithmetic
-   regroup.ts already holds).
-
-   Transform and opacity only, per materials.css: a grid of a hundred
-   thumbnails cannot afford a layout property per frame on a mid-range
-   phone. */
+   Use transform and opacity only so large grids avoid layout work each
+   frame. See materials.css. */
 
 import type { TransitionConfig } from 'svelte/transition';
-import { EASE_OUT_CSS, isReducedMotion, motionDuration } from './tokens';
+import { crossfadeDuration, EASE_OUT_CSS, isReducedMotion, motionDuration } from './tokens';
 import { regroupSteps, type CellBox } from './regroup';
 
 /** Where each cell of a grid stands, keyed by the attribute that names it.
@@ -77,6 +60,40 @@ export function travelCells(before: CellBox[], root: HTMLElement | undefined, at
   }
 }
 
+/** What stands under a narrowing grid: the "more" button and the links after it. The grid
+    reaches its new height in the frame the chip is pressed, so without this they sit at
+    their new place in that frame (Starred brought "Make a collage or timelapse" up from
+    below the fold over the leaving tiles in one frame). Measured with the cells, before the
+    list changes. */
+export function measureFollowers(scope: HTMLElement | undefined): Map<HTMLElement, number> {
+  const tops = new Map<HTMLElement, number>();
+  for (const node of scope?.querySelectorAll<HTMLElement>('[data-narrow-follow]') ?? []) {
+    tops.set(node, node.getBoundingClientRect().top);
+  }
+  return tops;
+}
+
+/** Walks each follower from where it stood to where it stands now, in the
+    same frame and over the same duration as `travelCells`. One that stood
+    below the screen starts at the screen's bottom edge rather than its old
+    place, so it travels only what the viewport shows; one that is below the
+    screen both before and after does not move at all. */
+export function travelFollowers(before: Map<HTMLElement, number>): void {
+  if (isReducedMotion() || typeof innerHeight !== 'number') return;
+  const duration = motionDuration('--dur-med');
+  for (const [node, top] of before) {
+    if (!node.isConnected) continue;
+    const now = node.getBoundingClientRect().top;
+    if (top >= innerHeight && now >= innerHeight) continue;
+    const dy = Math.min(top, innerHeight) - now;
+    if (Math.abs(dy) < 1) continue;
+    node.animate([{ transform: `translateY(${dy}px)` }, { transform: 'translateY(0)' }], {
+      duration,
+      easing: EASE_OUT_CSS
+    });
+  }
+}
+
 /** A tile that a chip has narrowed away: it leaves the flow in the frame it
     is dropped and fades where it stood.
 
@@ -88,14 +105,14 @@ export function travelCells(before: CellBox[], root: HTMLElement | undefined, at
 
     Read before the pin, since `offsetTop` of a node that is already out of
     the flow is measured against a layout that no longer holds it. */
-export function pinnedOut(node: Element): TransitionConfig {
+export function pinnedOut(node: Element, { opacityOnly = false } = {}): TransitionConfig {
   const cell = node as HTMLElement;
   const top = cell.offsetTop;
   const left = cell.offsetLeft;
   const width = cell.offsetWidth;
   const height = cell.offsetHeight;
   return {
-    duration: motionDuration('--dur-fast'),
+    duration: opacityOnly ? crossfadeDuration() : motionDuration('--dur-fast'),
     css: (t) =>
       `position: absolute;` +
       `top: ${top}px;` +
@@ -105,7 +122,7 @@ export function pinnedOut(node: Element): TransitionConfig {
       `margin: 0;` +
       `pointer-events: none;` +
       `opacity: ${t};` +
-      `transform: scale(${0.94 + 0.06 * t});`
+      (opacityOnly ? '' : `transform: scale(${0.94 + 0.06 * t});`)
   };
 }
 
@@ -115,7 +132,7 @@ export function pinnedOut(node: Element): TransitionConfig {
     Gated on `when`, and the gate is the point. A screen's content gets no
     entrance of its own on the way in: the skeleton fades out over it and a
     second fade a moment later is the content arriving twice
-    (tests/feature-screens.test.ts, DIRECTION.md tier 3). So a caller passes
+    (tests/node/ui/feature-screens.test.ts). Pass
     false for the tiles that come with the grid and true for every tile
     after that, which it knows from whether its own grid has been painted
     yet.

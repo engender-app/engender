@@ -1,0 +1,16 @@
+# Who may cut a release. One line per key, in git's SSH allowed-signers format:
+#
+#   <principal> <key type> <public key>
+#
+# scripts/app-version.mjs and the release workflow's `resolve` job treat a tag
+# as signed only when `git verify-tag` accepts it against this file. A tag
+# signed by any other key is refused, however valid the signature is.
+#
+# Until a line is added below, no tag verifies and no release can run. To add
+# the key you sign tags with (replace the email with your own):
+#
+#   echo "you@example.com $(cat "$(git config user.signingkey)")" >> .github/release-signers
+#
+# If user.signingkey holds the key text rather than a path, append that text
+# instead of running cat. A reviewed commit is the only way this list changes.
+barankiewicz@protonmail.ch ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIL0mdBc5MoZYKWXa9v/cFrnzq84t3iGYaOo6FLXHia9v

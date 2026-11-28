@@ -8,25 +8,10 @@
   import Icon from './Icon.svelte';
   import MediaTransport from './MediaTransport.svelte';
 
-  /* Plays a video note directly from the entry view/editor - no separate
-     screen (ticket 22). The transport is MediaTransport.svelte, the same one
-     a recording wears (ticket 46): the same play control, the same scrub,
-     the same materials, under the frame rather than floating over it - a
-     translucent bar across the picture is the one material DIRECTION rule 10
-     refuses.
-
-     What the frame adds over a recording's row is the picture itself, a
-     centre control over it (the gesture everyone has for a video), and full
-     screen, which takes the whole player and not just the picture so the
-     transport is still there to scrub with.
-
-     `preload="metadata"` rather than a stored poster frame: the first frame
-     the browser decodes is the still it shows, and a poster would be derived
-     state the schema does not keep (ADR-0010).
-
-     The object-URL lifecycle mirrors VoicePlayer's: load once per
-     `fileName`/`bytes` change, revoke on cleanup so a long list does not
-     leak one blob per row. */
+  /* Play the video inline with MediaTransport below the picture. Full screen
+     keeps the controls available. Use the first decoded frame as its still
+     (ADR-0010). Create an object URL per fileName/bytes change and revoke it
+     on cleanup. */
   let {
     fileName,
     bytes,
@@ -38,12 +23,11 @@
     /** Bytes to play instead of reading any: what the editor passes for a
         note just made, which has nothing stored yet. */
     bytes?: Uint8Array;
-    /** A URL the caller already holds and already revokes - the photo
-        journey's timelapse preview, which is a video this app just rendered
-        rather than a note anybody recorded. It is the third caller and the
-        reason this component is the app's one video player rather than the
-        video note's: a second player drawn for one preview screen is exactly
-        the thing ticket 46 exists to stop. */
+    /** A URL the caller already holds and already revokes - the photo journey's timelapse
+        preview, which is a video this app just rendered rather than a note anybody
+        recorded. It is the third caller and the reason this component is the app's one
+        video player rather than the video note's: a second player drawn for one preview
+        screen is exactly the thing exists to stop. */
     src?: string | null;
   } = $props();
 
@@ -52,9 +36,8 @@
   let playing = $state(false);
   let player = $state<HTMLDivElement>();
   let full = $state(false);
-  /* A file that cannot be read says so inside the frame, PhotoViewer's
-     `failed`; it used to leave the black frame up for good (after-release
-     06, L05-06). */
+  /* A file that cannot be read says so inside the frame, PhotoViewer's `failed`; it used to
+     leave the black frame up for good. */
   let failed = $state(false);
 
   $effect(() => {
@@ -121,7 +104,7 @@
     {#if failed}
       <p class="video-note-failed" role="status" in:fade|global={{ duration: motionDuration('--dur-med') }}>{m.video_unreadable()}</p>
     {:else if url}
-      <!-- Uncovered from its own edge (DIRECTION rule 10), `|global` because
+      <!-- Uncover the picture from its own edge. Use `|global` because
            the {#if} is the thing that flips. -->
       <div class="video-note-picture" in:wipe|global>
         <!-- No caption track: a video note is the person's own recording of

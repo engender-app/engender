@@ -1,37 +1,30 @@
-/* One case per archiveApply.ts export, driven alone against a small fixture
-   through the Restoring driver it already takes (audit finding A5) - so a
-   wrong merge fails by naming its own section rather than as "the golden
-   archive differs" (archive-golden.test.ts's whole-journal round trip).
+/* One case per archiveApply.ts export, driven alone against a small fixture through the
+   Restoring driver it already takes - so a wrong merge fails by naming its own section
+   rather than as "the golden archive differs" (archive-golden.test.ts's whole-journal round
+   trip).
 
-   Two of the file's 31 exports are not here: `applyFlatTable` already has
-   its own tests in archiveTable.test.ts, and `aliasLegacyConsults` in
-   archive-legacy-consults.test.ts. A third, the `Restoring` type itself, is
-   not a runtime export a test can drive at all - every function below is
-   checked against it by the type checker on every call, which is the whole
-   of what testing a type means. */
+   `applyFlatTable` has its own tests in archiveTable.test.ts. The `Restoring` type is not a
+   runtime export a test can drive - every function below is checked against it by the type
+   checker on every call, which is the whole of what testing a type means. */
 
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 import type {
-  ArchiveAffirmation,
   ArchiveAppointment,
   ArchiveBodyRegion,
   ArchiveChecklist,
-  ArchiveCounterevidenceSnapshot,
   ArchiveDimension,
   ArchiveDoseSchedule,
   ArchiveDosePause,
   ArchiveEffectCategory,
   ArchiveEntry,
-  ArchiveEntryTemplate,
   ArchiveFeltSenseEntry,
-  ArchiveHairPhoto,
   ArchiveHairRemovalSession,
   ArchiveImportLogRecord,
   ArchiveJournal,
   ArchiveMarginNote,
-  ArchiveMeasurementType,
   ArchiveMilestone,
+  ArchiveProgressPhoto,
   ArchivePersonalEffectType,
   ArchivePreset,
   ArchiveProcedure,
@@ -44,27 +37,24 @@ import { foldText } from '../fold.ts';
 import type { SqliteDriver } from '../sqlite/driver.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import {
-  applyAffirmations,
   applyAppointments,
   applyBodyRegions,
   applyChecklists,
-  applyCounterevidenceSnapshots,
   applyDimensions,
   applyDosePauses,
   applyDoseSchedules,
   applyEffectCategories,
   applyEntries,
-  applyEntryTemplates,
   applyFeltSenseEntries,
-  applyHairPhotos,
   applyHairRemovalSessions,
   applyImportLog,
   applyMarginNotes,
-  applyMeasurementTypes,
   applyMilestones,
+  applyProgressPhotos,
   applyPersonalEffectTypes,
   applyPresets,
   applyProcedures,
+  adoptLegacyRoadmapTracks,
   applyRoadmapChecks,
   applyTagGroups,
   applyTaper,
@@ -196,71 +186,6 @@ test('applyPresets merge keeps a matched preset\'s own links, replace swaps them
   assert.deepEqual(await presetDimensionKeys(driver), ['b']);
 });
 
-// applyEntryTemplates ----------------------------------------------------------
-
-test('applyEntryTemplates inserts a template with its tags and dimension values', async () => {
-  const driver = await migratedDb();
-  await seedTwoDimensions(driver);
-  await driver.run(`INSERT INTO tag_group (key, name, updated_at) VALUES ('grp', 'Group', 0)`);
-  await driver.run(
-    `INSERT INTO tag (key, group_id, label, updated_at) VALUES ('t1', (SELECT id FROM tag_group WHERE key = 'grp'), 'Tag', 0)`
-  );
-  const template: ArchiveEntryTemplate = {
-    id: 'started_hrt',
-    name: 'Started HRT',
-    tags: ['t1'],
-    dims: { a: 40 },
-    noteScaffold: 'Today I...',
-    presentationId: null,
-    builtIn: true,
-    hidden: false
-  };
-
-  await applyEntryTemplates(restoring(driver, { entryTemplates: [template] }, 'merge', 4));
-
-  const rows = await select(driver, 'SELECT key, name, note_scaffold, updated_at FROM entry_template');
-  assert.deepEqual(rows, [{ key: 'started_hrt', name: 'Started HRT', note_scaffold: 'Today I...', updated_at: 4 }]);
-  const tagLinks = await select<{ label: string }>(driver,
-    'SELECT t.label FROM entry_template_tag ett JOIN tag t ON t.id = ett.tag_id'
-  );
-  assert.deepEqual(tagLinks, [{ label: 'Tag' }]);
-  const dimLinks = await select<{ value: number }>(driver, 'SELECT value FROM entry_template_dimension_value');
-  assert.deepEqual(dimLinks, [{ value: 40 }]);
-});
-
-test('applyEntryTemplates merge leaves a matched template alone, replace re-links its children', async () => {
-  const driver = await migratedDb();
-  await seedTwoDimensions(driver);
-  await driver.run(`INSERT INTO tag_group (key, name, updated_at) VALUES ('grp', 'Group', 0)`);
-  await driver.run(
-    `INSERT INTO tag (key, group_id, label, updated_at) VALUES ('t1', (SELECT id FROM tag_group WHERE key = 'grp'), 'Tag', 0)`
-  );
-  const template: ArchiveEntryTemplate = {
-    id: 'started_hrt',
-    name: 'Started HRT',
-    tags: ['t1'],
-    dims: { a: 40 },
-    noteScaffold: 'Today I...',
-    presentationId: null,
-    builtIn: true,
-    hidden: false
-  };
-  await applyEntryTemplates(restoring(driver, { entryTemplates: [template] }, 'merge', 4));
-
-  await applyEntryTemplates(
-    restoring(driver, { entryTemplates: [{ ...template, name: 'Renamed', dims: { b: 10 } }] }, 'merge', 9)
-  );
-  assert.deepEqual((await select<{ name: string }>(driver, 'SELECT name FROM entry_template'))[0].name, 'Started HRT');
-  assert.deepEqual(await select(driver, 'SELECT value FROM entry_template_dimension_value'), [{ value: 40 }]);
-
-  await applyEntryTemplates(
-    restoring(driver, { entryTemplates: [{ ...template, name: 'Renamed', tags: [], dims: { b: 10 } }] }, 'replace', 9)
-  );
-  assert.deepEqual((await select<{ name: string }>(driver, 'SELECT name FROM entry_template'))[0].name, 'Renamed');
-  assert.deepEqual(await select(driver, 'SELECT value FROM entry_template_dimension_value'), [{ value: 10 }]);
-  assert.deepEqual(await select(driver, 'SELECT * FROM entry_template_tag'), []);
-});
-
 // applyTagGroups ----------------------------------------------------------------
 
 test('applyTagGroups inserts a group and its tags, in order', async () => {
@@ -335,24 +260,6 @@ test('applyTagGroups walks tags of an existing group in both modes, but only rep
   assert.deepEqual(await select(driver, 'SELECT label FROM tag WHERE key = ?', ['t1']), [{ label: 'Relabeled' }]);
 });
 
-// applyAffirmations ---------------------------------------------------------
-
-test('applyAffirmations inserts and merge leaves a matched id alone, replace updates it', async () => {
-  const driver = await migratedDb();
-  const a: ArchiveAffirmation = { id: 'calm', language: null, text: 'I am calm.', builtIn: true, hidden: false };
-
-  await applyAffirmations(restoring(driver, { affirmations: [a] }, 'merge', 2));
-  assert.deepEqual(await select(driver, 'SELECT key, text, updated_at FROM affirmation'), [
-    { key: 'calm', text: 'I am calm.', updated_at: 2 }
-  ]);
-
-  await applyAffirmations(restoring(driver, { affirmations: [{ ...a, text: 'Renamed' }] }, 'merge', 5));
-  assert.deepEqual((await select<{ text: string }>(driver, 'SELECT text FROM affirmation'))[0].text, 'I am calm.');
-
-  await applyAffirmations(restoring(driver, { affirmations: [{ ...a, text: 'Renamed' }] }, 'replace', 5));
-  assert.deepEqual((await select<{ text: string }>(driver, 'SELECT text FROM affirmation'))[0].text, 'Renamed');
-});
-
 // applyBodyRegions -----------------------------------------------------------
 
 test('applyBodyRegions inserts and merge leaves a matched id alone, replace updates it', async () => {
@@ -399,7 +306,7 @@ test('applyEntries inserts an entry with its dims, tags, body regions and files'
   await applyEntries(restoring(driver, { entries: [entry] }, 'merge', 7));
 
   assert.deepEqual(
-    await select(driver, 'SELECT uuid, epoch_day, timestamp, mood, note, starred, presentation_id, updated_at FROM entry'),
+    await select(driver, 'SELECT uuid, epoch_day, timestamp, mood, note, starred, presentation_uuid, updated_at FROM entry'),
     [
       {
         uuid: 'e1',
@@ -408,7 +315,7 @@ test('applyEntries inserts an entry with its dims, tags, body regions and files'
         mood: 3,
         note: 'first entry',
         starred: 0,
-        presentation_id: null,
+        presentation_uuid: null,
         updated_at: 7
       }
     ]
@@ -495,48 +402,6 @@ test('applyMilestones inserts a milestone with its photo, and leaves a matched u
   assert.deepEqual((await select<{ name: string }>(driver, 'SELECT name FROM milestone'))[0].name, 'Started HRT');
 });
 
-// applyMeasurementTypes -------------------------------------------------------
-
-test('applyMeasurementTypes inserts and merge leaves a matched key alone, replace updates it', async () => {
-  const driver = await migratedDb();
-  const t: ArchiveMeasurementType = { key: 'waist', name: 'Waist', builtIn: true, hidden: false };
-
-  await applyMeasurementTypes(restoring(driver, { measurementTypes: [t] }, 'merge', 2));
-  assert.deepEqual(await select(driver, 'SELECT key, name FROM measurement_type'), [{ key: 'waist', name: 'Waist' }]);
-
-  await applyMeasurementTypes(restoring(driver, { measurementTypes: [{ ...t, name: 'Renamed' }] }, 'merge', 5));
-  assert.deepEqual((await select<{ name: string }>(driver, 'SELECT name FROM measurement_type'))[0].name, 'Waist');
-
-  await applyMeasurementTypes(restoring(driver, { measurementTypes: [{ ...t, name: 'Renamed' }] }, 'replace', 5));
-  assert.deepEqual((await select<{ name: string }>(driver, 'SELECT name FROM measurement_type'))[0].name, 'Renamed');
-});
-
-// applyCounterevidenceSnapshots ------------------------------------------------
-
-test('applyCounterevidenceSnapshots inserts a snapshot with its items, and leaves a matched uuid alone', async () => {
-  const driver = await migratedDb();
-  const snapshot: ArchiveCounterevidenceSnapshot = {
-    id: 's1',
-    epochDay: 20000,
-    timestamp: 20000 * 86400000,
-    items: [{ epochDay: 19990, mood: 4, note: 'felt good' }]
-  };
-
-  await applyCounterevidenceSnapshots(restoring(driver, { counterevidenceSnapshots: [snapshot] }, 'merge', 3));
-
-  assert.deepEqual(await select(driver, 'SELECT uuid, epoch_day, timestamp, updated_at FROM doubt_snapshot'), [
-    { uuid: 's1', epoch_day: 20000, timestamp: snapshot.timestamp, updated_at: 3 }
-  ]);
-  assert.deepEqual(await select(driver, 'SELECT order_index, epoch_day, mood, note FROM doubt_snapshot_entry'), [
-    { order_index: 0, epoch_day: 19990, mood: 4, note: 'felt good' }
-  ]);
-
-  await applyCounterevidenceSnapshots(
-    restoring(driver, { counterevidenceSnapshots: [{ ...snapshot, items: [] }] }, 'merge', 9)
-  );
-  assert.equal((await select(driver, 'SELECT * FROM doubt_snapshot')).length, 1);
-  assert.equal((await select(driver, 'SELECT * FROM doubt_snapshot_entry')).length, 1);
-});
 
 // applyRoadmapChecks ------------------------------------------------------------
 
@@ -553,6 +418,55 @@ test('applyRoadmapChecks inserts a check and leaves a matched pack/goal pair alo
   assert.deepEqual((await select<{ status: string }>(driver, 'SELECT status FROM roadmap_check'))[0].status, 'checked');
 });
 
+/* Pre-release human the social group's ticks are named 'social-', not 'pl-social-', so the
+   rule that drops the old cut track leaves them. */
+test('applyRoadmapChecks keeps a social-group tick beside a cut-track one', async () => {
+  const driver = await migratedDb();
+  const checks: ArchiveRoadmapCheck[] = [
+    { packKey: 'pl', goalKey: 'pl-social-tell-one-person', status: 'checked' },
+    { packKey: 'social', goalKey: 'social-family', status: 'checked' }
+  ];
+
+  await applyRoadmapChecks(restoring(driver, { roadmapChecks: checks }, 'replace', 2));
+  assert.deepEqual(await select(driver, 'SELECT pack_key, goal_key FROM roadmap_check'), [{ pack_key: 'social', goal_key: 'social-family' }]);
+});
+
+/* An archive written before the trim still carries ticks against the three cut tracks. They
+   are skipped, the way migration 111 deleted them, and a legal tick beside them still
+   lands. */
+test('applyRoadmapChecks skips ticks against the cut social, presentational and medical tracks', async () => {
+  const driver = await migratedDb();
+  const checks: ArchiveRoadmapCheck[] = [
+    { packKey: 'pl', goalKey: 'pl-social-tell-one-person', status: 'checked' },
+    { packKey: 'pl', goalKey: 'pl-presentational-voice', status: 'checked' },
+    { packKey: 'pl', goalKey: 'pl-medical-bloodwork', status: 'not-my-path' },
+    { packKey: 'pl', goalKey: 'pl-legal-court-fee', status: 'checked' }
+  ];
+
+  await applyRoadmapChecks(restoring(driver, { roadmapChecks: checks }, 'replace', 2));
+  assert.deepEqual(await select(driver, 'SELECT goal_key FROM roadmap_check'), [{ goal_key: 'pl-legal-court-fee' }]);
+});
+
+/* Round two of an archive from before the person's categories carries custom goals under
+   the cut social, presentational and medical tracks and no roadmapCategories section. Each
+   such track gets a nameless category named by its key, the one migration 111 made, so
+   those goals still show; a category already here (renamed on this device) is left as it
+   is, and legal goals need none. */
+test('adoptLegacyRoadmapTracks gives each cut track a goal still names a category of its own', async () => {
+  const driver = await migratedDb();
+  await driver.run("INSERT INTO roadmap_category (uuid, name, updated_at) VALUES ('social', 'Friends and family', 1)");
+  await driver.run(`INSERT INTO roadmap_goal (uuid, track, text, status, updated_at) VALUES
+    ('g1', 'medical', 'Ask about a second opinion', 'unchecked', 1), ('g2', 'social', 'Tell my sister', 'checked', 1),
+    ('g3', 'legal', 'Find a notary', 'unchecked', 1), ('g4', 'medical', 'Bloods', 'unchecked', 1)`);
+
+  await adoptLegacyRoadmapTracks(restoring(driver, {}, 'merge'));
+
+  assert.deepEqual(await select(driver, 'SELECT uuid, name, updated_at FROM roadmap_category ORDER BY id'), [
+    { uuid: 'social', name: 'Friends and family', updated_at: 1 },
+    { uuid: 'medical', name: '', updated_at: 7 }
+  ]);
+});
+
 // applyChecklists ---------------------------------------------------------------
 
 test('applyChecklists inserts a checklist with its items', async () => {
@@ -567,9 +481,7 @@ test('applyChecklists inserts a checklist with its items', async () => {
 
   await applyChecklists(restoring(driver, { checklists: [checklist] }, 'merge', 4));
 
-  assert.deepEqual(await select(driver, 'SELECT uuid, appointment_epoch_day FROM checklist'), [
-    { uuid: 'prep', appointment_epoch_day: 20000 }
-  ]);
+  assert.deepEqual(await select(driver, 'SELECT uuid, owner_kind FROM checklist'), [{ uuid: 'prep', owner_kind: null }]);
   assert.deepEqual(await select(driver, 'SELECT uuid, content, order_index FROM checklist_item'), [
     { uuid: 'item-1', content: 'Bring ID', order_index: 0 }
   ]);
@@ -680,7 +592,6 @@ test('applyFeltSenseEntries resolves its tryout owner, and drops an entry whose 
   const entry: ArchiveFeltSenseEntry = {
     id: 'fs1',
     tryoutId: 't1',
-    milestoneId: null,
     epochDay: 20000,
     mood: 3,
     note: 'felt right'
@@ -860,17 +771,19 @@ test('applyPersonalEffectTypes inserts and merge leaves a matched key alone, rep
   assert.deepEqual((await select<{ name: string }>(driver, 'SELECT name FROM personal_effect_type'))[0].name, 'Renamed');
 });
 
-// applyHairPhotos -----------------------------------------------------------
+// applyProgressPhotos -------------------------------------------------------
 
-test('applyHairPhotos inserts and leaves a matched uuid alone', async () => {
+test('applyProgressPhotos inserts and leaves a matched uuid alone', async () => {
   const driver = await migratedDb();
-  const p: ArchiveHairPhoto = { id: 'hp1', epochDay: 20000, fileName: 'hp1.jpg' };
+  const p: ArchiveProgressPhoto = { id: 'hp1', epochDay: 20000, pose: 'hair', fileName: 'hp1.jpg' };
 
-  await applyHairPhotos(restoring(driver, { hairPhotos: [p] }, 'merge', 2));
-  assert.deepEqual(await select(driver, 'SELECT uuid, file_path FROM hair_photo'), [{ uuid: 'hp1', file_path: 'hp1.jpg' }]);
+  await applyProgressPhotos(restoring(driver, { progressPhotos: [p] }, 'merge', 2));
+  assert.deepEqual(await select(driver, 'SELECT uuid, pose, file_path FROM progress_photo'), [
+    { uuid: 'hp1', pose: 'hair', file_path: 'hp1.jpg' }
+  ]);
 
-  await applyHairPhotos(restoring(driver, { hairPhotos: [{ ...p, fileName: 'other.jpg' }] }, 'merge', 5));
-  assert.equal((await select(driver, 'SELECT * FROM hair_photo')).length, 1);
+  await applyProgressPhotos(restoring(driver, { progressPhotos: [{ ...p, fileName: 'other.jpg' }] }, 'merge', 5));
+  assert.equal((await select(driver, 'SELECT * FROM progress_photo')).length, 1);
 });
 
 // applyHairRemovalSessions ----------------------------------------------------
@@ -966,6 +879,48 @@ test('applyTaper resolves its procedure link, drops a taper whose procedure is n
 
   await applyTaper(restoring(driver, { taper: [{ ...taper, stagesJson: '["x"]' }] }, 'merge', 9));
   assert.deepEqual((await select<{ stages: string }>(driver, 'SELECT stages FROM taper'))[0].stages, '[]');
+});
+
+/* One taper per procedure. A merge bringing a second schedule for a procedure that already
+   has one keeps the one here, and so does an archive that itself carries two. */
+test('merging a second taper for a procedure that has one keeps one', async () => {
+  const driver = await migratedDb();
+  await seedProcedure(driver, 'proc1');
+  await seedProcedure(driver, 'proc2');
+  const here: ArchiveTaper = { id: 'here', procedureId: 'proc1', startEpochDay: 20100, stagesJson: '[]' };
+  await applyTaper(restoring(driver, { taper: [here] }, 'merge', 4));
+
+  await applyTaper(restoring(driver, {
+    taper: [
+      { ...here, id: 'incoming', stagesJson: '[{"everyNDays":1,"timesPerDay":3,"days":14}]' },
+      { ...here, id: 'other1', procedureId: 'proc2' },
+      { ...here, id: 'other2', procedureId: 'proc2' }
+    ]
+  }, 'merge', 9));
+
+  assert.deepEqual(
+    await select(driver, 'SELECT t.uuid AS uuid, p.uuid AS procedure, t.stages AS stages FROM taper t JOIN procedure p ON p.id = t.procedure_id ORDER BY p.uuid'),
+    [
+      { uuid: 'here', procedure: 'proc1', stages: '[]' },
+      { uuid: 'other2', procedure: 'proc2', stages: '[]' }
+    ]
+  );
+});
+
+/* An archive written before schema v112 can carry two tapers for one
+   procedure. The export lists them in row order and carries no updated_at,
+   so the later one stands for the newer, and a restore keeps it: the same
+   survivor the v112 migration picks on a journal it upgrades. */
+test('restoring an archive with two tapers for one procedure keeps the later one', async () => {
+  const driver = await migratedDb();
+  await seedProcedure(driver, 'proc1');
+  const taper = (id: string, startEpochDay: number): ArchiveTaper => ({ id, procedureId: 'proc1', startEpochDay, stagesJson: '[]' });
+
+  await applyTaper(restoring(driver, { taper: [taper('older', 20100), taper('newer', 20200)] }, 'replace', 9));
+
+  assert.deepEqual(await select(driver, 'SELECT uuid, start_epoch_day FROM taper'), [
+    { uuid: 'newer', start_epoch_day: 20200 }
+  ]);
 });
 
 // applyAppointments -------------------------------------------------------------
@@ -1080,5 +1035,5 @@ test('merged standalone prep questions reach both checklist reads and clinician 
   await journal.checklists.addItem(checklist.id, 'Local question');
   await applyChecklists(restoring(driver, { checklists: [{ id: 'other-device', ownerKind: null, ownerId: null, appointmentEpochDay: null, items: [{id: 'remote', content: 'Remote question', checked: false, carriedForward: false}]}] }, 'merge'));
   assert.deepEqual((await journal.checklists.getStandaloneChecklist())!.items.map(item => item.content), ['Local question', 'Remote question']);
-  assert.deepEqual((await journal.clinicianSummary.getSummary(19000, 20000)).appointmentPrepItems.map(item => item.content), ['Local question', 'Remote question']);
+  assert.deepEqual((await journal.clinicianSummary.getSummary(19000, 20000)).sections.appointmentPrep!.map(item => item.content), ['Local question', 'Remote question']);
 });

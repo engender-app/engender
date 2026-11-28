@@ -1,28 +1,13 @@
-/* ============================================================
-   Colour tokens — 16 flag palettes × light/dark.
-   Selected via [data-palette] + [data-theme] on <html>.
+/* Each flag palette defines base surfaces, ink, accents and motif stripes
+   for light and dark. Derive chart, container and focus colours from those
+   tokens. Heat maps use one hue for intensity. Mood uses its own five-step
+   ramp selected by data-mood-preset. */
 
-   Model (binding for the app):
-   - Each palette×theme block sets the SEMANTIC tokens:
-     bg, surface, surface-2, text, text-2, accent,
-     accent-2, and the flag's motif stripes.
-   - Everything else (containers, heat-map ramp, charts, focus ring) is
-     DERIVED from those via color-mix, so switching palette recolours the
-     whole app for free.
-   - Colour never judges: the heat-map uses a single-hue intensity ramp of
-     the palette accent, never red→green. Mood (ADR-0025) is the one
-     exception to "derived from the palette": it keeps its own fixed
-     5-step intensity ramp, selected independently via [data-mood-preset]
-     at the bottom of this file, so a mood dot is never the same colour
-     system as a gender heat cell.
-   ============================================================ */
-
-/* ---------- Transgender (default) ----------
-   Ticket 17: the accent was #0F7DAE, a cold clinical blue, which was doing
-   most of the work of making the default palette read as a medical
-   instrument. --accent and --accent-2 swap so the flag's rose leads. The
-   rose then had to darken from #C25B79 to #B85272, because --accent is also
-   heat-4 and white on it measured 4.14:1 against the 4.5:1 floor. */
+/* ---------- Transgender (default) ---------- the accent was #0F7DAE, a cold clinical blue,
+   which was doing most of the work of making the default palette read as a medical
+   instrument. --accent and --accent-2 swap so the flag's rose leads. The rose then had to
+   darken from #C25B79 to #B85272, because --accent is also heat-4 and white on it measured
+   4.14:1 against the 4.5:1 floor. */
 [data-palette="trans"] {
   --motif-stripes: #5BCEFA, #F5A9B8, #FFFFFF, #F5A9B8, #5BCEFA;
 }
@@ -45,7 +30,7 @@
   --bg: #F8F6FB; --surface: #FFFFFF; --surface-2: #EFEAF6;
   --text: #241B2F; --text-2: #635C70;
   --accent: #7A3EB1; --accent-2: #8A7500;
-  --on-heat-3: #000000; /* ADR-0025: --text computes to 4.4985:1 here - inside rounding distance of 4.5:1, not comfortably clear of it */
+  --on-heat-3: #000000; /* --text reaches 4.4985:1, below the 4.5:1 floor. */
 }
 [data-palette="nonbinary"][data-theme="dark"] {
   --bg: #131019; --surface: #1C1725; --surface-2: #251F30;
@@ -66,7 +51,7 @@
   --bg: #171019; --surface: #211826; --surface-2: #2B2032;
   --text: #F5EBF4; --text-2: #B5A3B4;
   --accent: #E289F2; --accent-2: #93A0F2;
-  --on-heat-3: #000000; /* ADR-0025: neither --text (3.47:1) nor --on-accent (4.44:1) clears 4.5:1 here */
+  --on-heat-3: #000000; /* --text and --on-accent reach 3.47:1 and 4.44:1, below 4.5:1. */
 }
 
 /* ---------- Bisexual ---------- */
@@ -77,18 +62,18 @@
   --bg: #FAF6F9; --surface: #FFFFFF; --surface-2: #F2E9F0;
   --text: #291B27; --text-2: #6C5B69;
   --accent: #B7025F; --accent-2: #2447B0;
-  --on-heat-3: #000000; /* ADR-0025: neither --text (4.46:1) nor --on-accent (3.68:1) clears 4.5:1 here */
+  --on-heat-3: #000000; /* --text and --on-accent reach 4.46:1 and 3.68:1, below 4.5:1. */
 }
 [data-palette="bisexual"][data-theme="dark"] {
   --bg: #160F17; --surface: #201723; --surface-2: #2A1F2E;
   --text: #F4EAF2; --text-2: #B3A2B1;
   --accent: #F272AE; --accent-2: #8FA4F0;
-  --on-heat-3: #000000; /* ADR-0025: neither --text (3.89:1) nor --on-accent (3.92:1) clears 4.5:1 here */
+  --on-heat-3: #000000; /* --text and --on-accent reach 3.89:1 and 3.92:1, below 4.5:1. */
 }
 
 /* ---------- Lesbian ---------- */
 [data-palette="lesbian"] {
-  --motif-stripes: #D52D00, #FF9A56, #FFFFFF, #D362A4, #A30262;
+  --motif-stripes: #D52D00, #EF7627, #FF9A56, #FFFFFF, #D162A4, #B55690, #A30262;
 }
 [data-palette="lesbian"][data-theme="light"] {
   --bg: #FBF7F4; --surface: #FFFFFF; --surface-2: #F4EBE4;
@@ -114,7 +99,7 @@
   --bg: #170F14; --surface: #21171D; --surface-2: #2B1F27;
   --text: #F4EAF0; --text-2: #B4A2AD;
   --accent: #FF74B8; --accent-2: #67C6FF;
-  --on-heat-3: #000000; /* ADR-0025: neither --text (3.64:1) nor --on-accent (4.19:1) clears 4.5:1 here */
+  --on-heat-3: #000000; /* --text and --on-accent reach 3.64:1 and 4.19:1, below 4.5:1. */
 }
 
 /* ---------- Rainbow ---------- */
@@ -125,13 +110,13 @@
   --bg: #F8F7FB; --surface: #FFFFFF; --surface-2: #EEEDF6;
   --text: #211E30; --text-2: #605C72;
   --accent: #63348F; --accent-2: #0A7A3C;
-  --on-heat-3: #000000; /* ADR-0025: neither --text (3.71:1) nor --on-accent (4.37:1) clears 4.5:1 here */
+  --on-heat-3: #000000; /* --text and --on-accent reach 3.71:1 and 4.37:1, below 4.5:1. */
 }
 [data-palette="rainbow"][data-theme="dark"] {
   --bg: #121017; --surface: #1B1822; --surface-2: #24202D;
   --text: #EDEBF5; --text-2: #A9A4BA;
   --accent: #C09EE8; --accent-2: #74D99B;
-  --on-heat-3: #000000; /* ADR-0025: neither --text (3.38:1) nor --on-accent (4.49:1) clears 4.5:1 here */
+  --on-heat-3: #000000; /* --text and --on-accent reach 3.38:1 and 4.49:1, below 4.5:1. */
 }
 
 /* ---------- Agender ---------- */
@@ -147,7 +132,7 @@
   --bg: #11150E; --surface: #1A1F17; --surface-2: #232920;
   --text: #EDF3E8; --text-2: #A7B3A0;
   --accent: #AEEB76; --accent-2: #A6B1BC;
-  /* ADR-0025: the generic --on-heat-2 default (--text) computes to 4.28:1
+  /* The default --on-heat-2 (--text) reaches 4.28:1
      here - agender's own accent is unusually light for a dark theme, which
      pulls heat-2 lighter than the other seven palettes' heat-2 too. */
   --on-heat-2: #FFFFFF;
@@ -281,6 +266,26 @@
   --on-heat-3: #FFFFFF;
 }
 
+/* ---------- Notes: the disguised journal before it unlocks ---------- Not a flag, and not
+   offered in Settings. While disguise is on, the boot mirror, the splash and every gate
+   wear this rather than the person's flag, so a locked "Notes" app shows no identity colour
+   and the plaintext mirror names none. The slate is the disguised launcher and tab icon's
+   own (#8A94A6, favicon-notes.svg). The real palette comes back with the journal, inside
+   the unlock's own transition (+layout.svelte). */
+[data-palette="notes"] {
+  --motif-stripes: #8A94A6, #FFFFFF, #8A94A6;
+}
+[data-palette="notes"][data-theme="light"] {
+  --bg: #F3F4F6; --surface: #FFFFFF; --surface-2: #E8EAEE;
+  --text: #1F2329; --text-2: #5B6370;
+  --accent: #4B5563; --accent-2: #6B7280;
+}
+[data-palette="notes"][data-theme="dark"] {
+  --bg: #121417; --surface: #1A1D21; --surface-2: #23272C;
+  --text: #E8EAED; --text-2: #A0A7B1;
+  --accent: #B8C0CC; --accent-2: #8A94A6;
+}
+
 /* ============================================================
    Derived tokens — identical formulas for every palette.
    ============================================================ */
@@ -294,10 +299,11 @@
   --accent-border: color-mix(in oklab, var(--accent) 30%, var(--outline));
   --scrim: rgb(15 20 26 / 0.45);
   --danger: #A8503C;         /* muted terracotta: destructive ACTIONS only, never data */
+  --danger-deep: #8E2B1C;    /* the one action that cannot be undone */
   --danger-soft: #F6E7E2;
   --warn-soft: #F7EEDA;
   --on-warn-soft: #6B542A;
-  /* ADR-0025: heat-3 (70% accent) sits in a contrast dead zone for some
+  /* At 70% accent, heat-3 sits in a contrast gap for some
      palettes - neither --text nor --on-accent clears 4.5:1 against it - so
      the generic default is overridden in each palette block that needs it
      (eleven palettes today, some in one theme only). */
@@ -312,10 +318,11 @@
   --accent-border: color-mix(in oklab, var(--accent) 32%, var(--outline));
   --scrim: rgb(0 0 0 / 0.6);
   --danger: #DE9583;
+  --danger-deep: #EE7A66;
   --danger-soft: #3A2521;
   --warn-soft: #38301D;
   --on-warn-soft: #E4C98A;
-  /* The dark theme's half of the retired ramp (redesign ticket 20); see
+  /* The dark theme's half of the retired ramp; see
      theme/base.css for why it is gone rather than unused. */
   --shadow-float: 0 4px 16px -6px rgb(0 0 0 / 0.55), 0 1px 3px rgb(0 0 0 / 0.22);
   --shadow-float-pressed: 0 1px 5px -3px rgb(0 0 0 / 0.6), 0 1px 2px rgb(0 0 0 / 0.26);
@@ -361,53 +368,36 @@
      text on a page background in some palettes - 4.10:1 on trans light. This
      is the same hue pulled 28% toward --text until it clears the floor on
      bg, surface and surface-2 in all 16 palettes x 2 themes, guarded in
-     tests/palette-contrast.test.ts. The heat ramp keeps raw --accent. */
+     tests/node/ui/palette-contrast.test.ts. The heat ramp keeps raw --accent. */
   --accent-ink: color-mix(in oklab, var(--accent) 72%, var(--text));
 
-  /* Lines. The app separates with a line and never with a shadow, and the
-     phase 10 direction (rule 4) leaves it two strengths: --hairline for
-     every separator and list edge, --outline for the edge drawn inside a
-     block and the sun's seams. --border (a per-palette hex at about 24%)
-     and --outline-strong (30%) retired with the cards they edged. Both are
-     --text at low alpha rather than mixes toward --surface, so one value
-     works over a card and over the page tint underneath it. */
+  /* Lines. The app separates with a line and never with a shadow, and the direction (rule
+     4) leaves it two strengths: --hairline for every separator and list edge, --outline for
+     the edge drawn inside a block and the sun's seams. --border (a per-palette hex at about
+     24%) and --outline-strong (30%) retired with the cards they edged. Both are --text at
+     low alpha rather than mixes toward --surface, so one value works over a card and over
+     the page tint underneath it. */
   --outline: color-mix(in oklab, var(--text) 19%, transparent);
   --hairline: color-mix(in oklab, var(--text) 14%, transparent);
-  /* The edge of a text field, and nothing else. A field's fill is the card
-     on a page barely lighter than it, so its edge is the only thing that
-     says where it is, and at --outline's 19% that was 1.44:1. 53% is the
-     least that clears 3:1 (WCAG 1.4.11) on bg, surface and surface-2 in
-     all 16 palettes x 2 themes; demiboy light is the tightest at 3.1:1.
-     Alicja approved an input-only token rather than a stronger rule 4
-     (pre-release-human 03 item 18, after-release 21); guarded in
-     tests/palette-contrast.test.ts. */
+  /* The edge of a text field, and nothing else. A field's fill is the card on a page barely
+     lighter than it, so its edge is the only thing that says where it is, and at
+     --outline's 19% that was 1.44:1. 53% is the least that clears 3:1 (WCAG 1.4.11) on bg,
+     surface and surface-2 in all 16 palettes x 2 themes; demiboy light is the tightest at
+     3.1:1. Use an input-only token rather than a stronger rule 4; guarded in
+     tests/node/ui/palette-contrast.test.ts. */
   --input-edge: color-mix(in oklab, var(--text) 53%, transparent);
 }
 
-/* ============================================================
-   Mood presets (ADR-0077, superseding ADR-0025's single-hue clause;
-   COL-001) — mood's own fixed 5-step scale, selected via
-   [data-mood-preset] and completely independent of [data-palette]. Each
-   preset runs between two deliberately chosen hues, step 1 to step 5,
-   getting more saturated the whole way: amber from orchid to gold, teal
-   from periwinkle to cyan, plum from sky to magenta, moss from sand to
-   green. Never red→green, per this file's header rule and ADR-0012, so
-   mood keeps reading as "how much" rather than "good or bad" - and it
-   still borrows nothing from the active flag, so a mood dot and a heat
-   cell never collide into one system by sharing a scale.
+/* Mood presets are independent of the flag and use five literal fills
+   between two hues. Saturation increases with intensity.
+   Avoid red to green so mood carries no positive or negative judgment
+   (ADR-0012).
 
-   Every step is a literal colour, not a color-mix() formula, and so is
-   the ink its face is drawn in (ADR-0091, amending ADR-0077's ink clause).
-   Each step carries --mood-N-ink beside its fill, picked by roles.ts's
-   heat-cell rule: the palette's own --text wherever it clears 4.5:1 on
-   that fill in all 16 palettes, otherwise whichever of black and white
-   contrasts more. With the ink free to change, the light ramp deepens as
-   the mood rises (OKLab lightness 0.89 to 0.51, amber 0.90 to 0.66 since a
-   gold has no chroma left lower down) and the dark ramp brightens (0.50 to
-   0.84, plum to 0.78), each step a clear move from the last. See
-   docs/adr/0091-each-mood-step-picks-its-own-ink.md for the numbers and
-   docs/adr/0077-moods-ramp-runs-between-two-hues.md for the hue pairs, the
-   hue-clash review against all 16 palettes, and the residual-risk pairs. */
+   Each fill has its own --mood-N-ink. Use palette --text when
+   it clears 4.5:1 across all 16 combinations. Otherwise choose whichever
+   of black and white contrasts more. Light-theme OKLab lightness falls
+   from 0.89 to 0.51 (amber 0.90 to 0.66). Dark-theme lightness rises from
+   0.50 to 0.84 (plum to 0.78). palette-contrast.test.ts holds the floors. */
 [data-mood-preset="amber"][data-theme="light"] {
   --mood-1: #F1D2F7; --mood-2: #F6B4D5; --mood-3: #F898A0; --mood-4: #EE835A; --mood-5: #C8801D;
   --mood-1-ink: var(--text); --mood-2-ink: var(--text); --mood-3-ink: var(--text); --mood-4-ink: var(--text); --mood-5-ink: #000000;

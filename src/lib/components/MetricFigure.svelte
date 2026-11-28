@@ -1,33 +1,15 @@
 <script lang="ts">
-  /* The metric reference sheet's own small figure: an axis, its labelled
-     ends, and the person's last take marked on it (phase 11 ticket 17).
-
-     Linear rather than log2, unlike PitchFigure's own field: five of the
-     six figures this draws have nothing published to draw at a perceptual
-     scale, and their trend is already linear everywhere else it is drawn
-     (kit/AreaChart.svelte, via VoiceOwnSeries). Pitch draws linear here
-     too, for the same reason a second convention on one small glyph would
-     buy nothing - the difference a log axis would make across a person's
-     own comfortable range is a few pixels this figure is too small to
-     spend on it.
-
-     No comfort bracket, no gate frame, no time trace: those belong to a
-     live take or a stored one, and this is neither - an explanation
-     (ADR-0060), not a reading. What it shares with PitchFigure is only the
-     vocabulary a reader has already met there: a gutter of ticks, a band
-     as a wash, a take as a line. */
+  /* One metric's axis and the person's last take, marked as a line. */
   let {
     low,
     high,
     value,
-    tickLabel,
-    bands = []
+    tickLabel
   }: {
     low: number;
     high: number;
     value: number | null;
     tickLabel: (n: number) => string;
-    bands?: readonly { low: number; high: number }[];
   } = $props();
 
   const HEIGHT = 56;
@@ -50,9 +32,6 @@
   </div>
   <div class="mf-field">
     <svg class="mf-svg" viewBox="0 0 100 {HEIGHT}" preserveAspectRatio="none" aria-hidden="true">
-      {#each bands as band (`${band.low}-${band.high}`)}
-        <rect class="mf-band" x="0" y={y(band.high)} width="100" height={y(band.low) - y(band.high)} />
-      {/each}
       {#if value !== null}
         <line
           class="mf-marker"
@@ -117,13 +96,6 @@
     display: block;
     width: 100%;
     height: 100%;
-  }
-
-  /* Over transparency, the same reason PitchFigure's own band is: the
-     overlap between two ranges then falls out of the arithmetic rather
-     than being a colour someone picked. */
-  .mf-band {
-    fill: color-mix(in oklab, var(--role-c) 18%, transparent);
   }
 
   .mf-marker {

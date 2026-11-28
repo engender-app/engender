@@ -1,42 +1,21 @@
-/* What the More hub's rows and groups are called, and how a row's second line
-   reads (phase 8 UX ticket 02).
+/* Localize hub titles, group headings and row descriptions here. hubRows.ts stays
+   independent of Paraglide for Node tests. Exhaustive Records require wording for every row
+   and group.
 
-   Here rather than in `hubRows.ts` for the reason `areaLabels.ts` gives next
-   door: the wording speaks paraglide and nothing the Node tier touches may
-   import that (ADR-0016). `hubRows.ts` holds the rows, what sits behind them
-   and which of them read; this is where they get their words.
-
-   Three `Record`s, each total over every key it is about: a title per row, a
-   heading per group, and a line per row saying what is behind it. So a row
-   added without either is a typecheck failure rather than a blank line on the
-   app's largest navigation surface.
-
-   Every row has that line, which is the spec's user story 13 - "each row to
-   tell me what is behind it, so that navigating is also reading" - and a
-   reading replaces it wherever the row has one. Ten rows never get a
-   reading at all; the other fifteen show their line until something is
-   written in them.
-
-   The reading copy is three frames and no more, which is what keeps it
-   translatable: a Polish noun dropped into a frame needs a case the English
-   never asks for (docs/ui-copy.md), so none of them interpolates one, and the
-   duration that does travel through them stays nominative in both languages.
-   The row's title is directly above and supplies the noun already - "Body
-   measurements" over "Last logged 3 days ago" says what was logged without
-   the line repeating it. */
+   A reading replaces a row's description once there is data. Ten rows always use their
+   description. The three reading templates interpolate no noun because Polish case would
+   depend on the frame. The interpolated duration stays nominative in both languages, and
+   the title supplies the noun. */
 
 import { m } from '$lib/paraglide/messages';
 import { fmtDay, fmtDuration } from '$lib/data/dates';
 import { calendarDuration } from '$lib/data/epochDay';
 import { hoursMinutesOf } from '$lib/data/journal/wearSessions';
-import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 import { wearRunningCardTitle } from '$lib/data/vocabulary/wearLabels';
 import type { HubGroupKey, HubLine, HubRowKey } from '$lib/data/hubRows';
-import type { NextWhat, RowValue, RunningWhat } from '$lib/data/rowForward';
+import type { NextWhat, RunningWhat } from '$lib/data/rowForward';
 
 const ROW_TITLE: Record<HubRowKey, () => string> = {
-  measurements: m.measurements_and_sizes,
-  'hair-progress': m.hair_progress,
   'hair-removal': m.hair_removal,
   care: m.care_title,
   'cycle-events': m.cycle_events,
@@ -44,36 +23,34 @@ const ROW_TITLE: Record<HubRowKey, () => string> = {
   dilation: m.dilation,
   appointments: m.appointments_title,
   milestones: m.milestones,
+  'progress-photos': m.pph_title,
   roadmap: m.roadmap_title,
   letters: m.letters_title,
   tryouts: m.tryout_title,
   doubt: m.safe_space_title,
-  /* `vb_screen_title` ("Voice") rather than `vb_title` ("Voice benchmark"):
-     ticket 17 folded the memos row's screen into this one as a fourth tab,
-     so the row and the screen it opens say the same name now. `vb_title`
-     stays what it was for the two callers still specifically about the
-     benchmark - the search hit and the area label. */
+  /* `vb_screen_title` ("Voice") rather than `vb_title` ("Voice benchmark"): folded the
+     memos row's screen into this one as a fourth tab, so the row and the screen it opens
+     say the same name now. `vb_title` stays what it was for the two callers still
+     specifically about the benchmark - the search hit and the area label. */
   'voice-benchmark': m.vb_screen_title,
   wear: m.wear_log,
   effects: m.effects_timeline,
   resources: m.resources_title,
-  photos: m.progress_photos,
+  photos: m.photos_label,
+  recordings: m.vb_tab_recordings,
   documents: m.documents_title
 };
 
-/** What every row says about what is behind it: the whole of a row that never
-    reads, and the standing line of one that does until it has a reading.
+/** What every row says about what is behind it: the whole of a row that never reads, and
+    the standing line of one that does until it has a reading.
 
-    Total over the row keys, so a row added here without one does not compile.
-    Each is earned by a title that does not say what the screen is
-    (DIRECTION.md 3b) - "Eras", "Care", "Safe space" name
-    something the app invented - and, on the reading rows, by a fresh journal
-    otherwise leaving thirteen rows mute. Each is a short form of that
-    screen's own intro rather than new copy, so the row and the screen behind
-    it say the same thing (ADR-0024). */
-const ROW_LINE: Record<HubRowKey, () => string> = {
-  measurements: m.hub_sub_measurements,
-  'hair-progress': m.hub_sub_hair_progress,
+    Total over the row keys, so a row added here without one does not compile. A row whose
+    title already says what is behind it holds null and draws no line. Each is earned by a
+    title that does not say what the screen is on its own. "Eras", "Care" and "Safe space"
+    name something the app invented - and, on the reading rows, by a fresh journal otherwise
+    leaving thirteen rows mute. Each is a short form of that screen's own intro rather than
+    new copy, so the row and the screen behind it say the same thing. */
+const ROW_LINE: Record<HubRowKey, (() => string) | null> = {
   'hair-removal': m.hub_sub_hair_removal,
   care: m.hub_sub_care,
   'cycle-events': m.hub_sub_cycle_events,
@@ -81,6 +58,7 @@ const ROW_LINE: Record<HubRowKey, () => string> = {
   dilation: m.hub_sub_dilation,
   appointments: m.hub_sub_appointments,
   milestones: m.hub_sub_milestones,
+  'progress-photos': m.hub_sub_progress_photos,
   roadmap: m.hub_sub_roadmap,
   letters: m.hub_sub_letters,
   tryouts: m.hub_sub_tryouts,
@@ -88,13 +66,15 @@ const ROW_LINE: Record<HubRowKey, () => string> = {
   'voice-benchmark': m.hub_sub_voice_benchmark,
   wear: m.hub_sub_wear,
   effects: m.hub_sub_effects,
-  resources: m.hub_sub_resources,
+  resources: null,
   photos: m.hub_sub_photos,
+  recordings: m.hub_sub_recordings,
   documents: m.hub_sub_documents
 };
 
 const GROUP_HEADING: Record<HubGroupKey | 'finished', () => string> = {
   health: m.hub_group_health,
+  body: m.hub_group_body,
   transition: m.hub_group_transition,
   support: m.hub_group_support,
   media: m.hub_group_media,
@@ -106,6 +86,10 @@ export function hubRowTitle(key: HubRowKey): string {
   return ROW_TITLE[key]();
 }
 
+export function hubRowDescription(key: HubRowKey): string {
+  return ROW_LINE[key]?.() ?? '';
+}
+
 /** What a group's heading says. */
 export function hubGroupHeading(key: HubGroupKey | 'finished'): string {
   return GROUP_HEADING[key]();
@@ -113,17 +97,15 @@ export function hubGroupHeading(key: HubGroupKey | 'finished'): string {
 
 /** How long until a dated day, in the hub's own grammar.
 
-    `fmtDuration` rather than a bare day count, which is the grammar the two
-    backwards lines on this same row already use ("Last logged 1 year 4
-    months ago"). A forward line in a different unit beside them would read
-    as a different kind of measurement, and it degrades better: a letter
-    sealed for three years says "1 year 4 months", not "487 days".
+    `fmtDuration` rather than a bare day count, which is the grammar the two backwards lines
+    on this same row already use ("Last logged 1 year 4 months ago"). A forward line in a
+    different unit beside them would read as a different kind of measurement, and it
+    degrades better: a letter sealed for three years says "1 year 4 months", not "487 days".
 
-    Exported because a gap is no longer only a row's to state: ADR-0067's
-    amendment (phase 11 all-four-doors ticket 12) lets an area's own screen
-    say one too, and the visit screen saying "in 12 days" under a hub row
-    saying "Endocrinologist in 12 days" has to be the same arithmetic in the
-    same words. One function rather than two that agree today. */
+    Exported because a gap is no longer only a row's to state: ADR-0067's amendment lets an
+    area's own screen say one too, and the visit screen saying "in 12 days" under a hub row
+    saying "Endocrinologist in 12 days" has to be the same arithmetic in the same words. One
+    function rather than two that agree today. */
 export function gapTo(epochDay: number, todayEpochDay: number): string {
   return fmtDuration(calendarDuration(todayEpochDay, epochDay));
 }
@@ -201,47 +183,22 @@ function nextLine(what: NextWhat, epochDay: number, todayEpochDay: number): stri
   }
 }
 
-/** The last value, and how long ago it was taken.
-
-    The type's name comes off the vocabulary mirror rather than the label
-    table, so a measurement type somebody made themselves reads as the name
-    they gave it rather than as its uuid - the same join `dayRows.ts` makes
-    for the same three fields. */
-function valueLine(line: RowValue, todayEpochDay: number): string {
-  const what = `${vocabulary.measurementTypeName(line.type)} ${line.value} ${line.unit}`;
-  return line.epochDay === todayEpochDay
-    ? m.hub_line_value_today({ what })
-    : m.hub_line_value({ what, gap: gapTo(line.epochDay, todayEpochDay) });
-}
-
-/** The row's second line. Never null: every row says something.
-
-    Seven shapes. Three are phase 11 all-four-doors ticket 02's and come
-    first on any row that has one - what is running, what is next, and the
-    one row that states a value instead. Which of them a row carries is
-    `rowForward.ts`'s decision and that it beats the four below is
-    `rowLine`'s; the three helpers above only put them into words.
-
-    Then the four this file started with. The line about what is behind the row, which is what a row
-    with no reading to give shows - whether it will never have one or simply
-    does not yet. A reading of when something was last written, in the
-    `{gap} ago` form the injection-site map and the hair-removal screen
-    already use. The same reading once a whole quiet window has passed, worded
-    as an observation rather than as a prompt, since somebody who had a hard
-    spring is not being asked about it here. And the day an area ended, in the
-    words its own screen uses to say it (`area_finish_done_title`), so the two
-    surfaces agree. */
+/**
+ * Every hub row gets a second line. Running, next and value facts from
+ * rowForward.ts take priority. Otherwise show the default description,
+ * time since the last write, an observation after the quiet window, or
+ * the area's finish date. Use area_finish_done_title for the last case
+ * so the row and its screen agree.
+ */
 export function hubRowLine(key: HubRowKey, line: HubLine, todayEpochDay: number, nowMs: number): string {
   switch (line.kind) {
     case 'running':
       return runningLine(line.what, nowMs);
     case 'next':
       return nextLine(line.what, line.epochDay, todayEpochDay);
-    case 'value':
-      return valueLine(line, todayEpochDay);
     case 'no-stream':
     case 'not-yet':
-      return ROW_LINE[key]();
+      return hubRowDescription(key);
     case 'last':
       return line.daysAgo === 0
         ? m.hub_line_today()

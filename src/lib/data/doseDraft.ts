@@ -1,11 +1,11 @@
-/* The dose log's editor draft, and the dose it saves as (final-audit ticket
-   31). The sheet binds its fields to a plain record of strings; this is what
+/* The dose log's editor draft, and the dose it saves as. The sheet binds its fields to a plain record of strings; this is what
    seeds that record, what naming a drug does to it, and what it becomes on
    save. Rune-free and paraglide-free, so the Node tier can hold it: the app's
    own route words come in from doseLabels.ts at the call site. */
 
 import {
   isInjectionDose,
+  isPositiveDoseAmount,
   isTopicalDose,
   lastInjectionBefore,
   matchDoseRoute,
@@ -45,7 +45,7 @@ export type DoseDraft = {
   scheduledDose: string;
   scheduledRoute: DoseRoute;
   scheduledTime: string;
-  /** Which drug this is, when it needs saying (phase 5 ticket 38). `''`
+  /** Which drug this is, when it needs saying. `''`
       on every dose logged while at most one episode was active - the
       common case, and the one this field must not add friction to. */
   drug: string;
@@ -61,8 +61,8 @@ function timeInputValue(timestamp: number): string {
 
 /** The moment a dose typed as a day and a wall-clock time happened at. Set
     on the day's own local date rather than added to midnight, so 10:00 on
-    the day the clocks change saves 10:00 and not 09:00 or 11:00
-    (after-release ticket 01). A blank or half-typed time counts its missing
+    the day the clocks change saves 10:00 and not 09:00 or 11:00.
+    A blank or half-typed time counts its missing
     parts as zero, as it always has. */
 export function draftTimestamp(dayValue: string, timeValue: string): number {
   const epochDay = epochDayFromDateInputValueOrToday(dayValue);
@@ -70,27 +70,14 @@ export function draftTimestamp(dayValue: string, timeValue: string): number {
   return timestampAtLocalTime(epochDay, `${hours || 0}:${minutes || 0}`);
 }
 
-/** A new dose, seeded from the active episode: someone logging today's dose
-    is almost always logging the regimen they are on, and retyping the amount
-    and unit every time is the tax that stops people logging. With more than
-    one episode active and none resolved, there is no single episode to seed
-    from - the drug picker fills the amount and unit in once a drug is chosen.
+/** Seed a new dose from the active episode. When multiple episodes are
+    active and none is resolved, wait for the drug picker to fill the
+    amount and unit.
 
-    Three more seeds than that (phase 5 UX ticket 37), because the sheet's
-    job is to state what the app already knows rather than to ask again:
-
-    The route comes off the episode's own words. It is free text there and
-    one of six keys here, so it needs reading rather than copying
-    (matchDoseRoute), and where the words name no route or two the answer is
-    oral - the same default as before, now only for the cases nothing better
-    is available.
-    The amount prefers what the schedule is still expecting today over the
-    episode's single figure, which is the alternating 2mg/1mg regimen: seeding
-    from the episode fills in the wrong number every other day.
-    The vehicle comes off the last injection logged, whatever drug it was
-    for. It is not on the episode at all, and asking on every injection for
-    something that changes about once a prescription is the definition of
-    asking twice. */
+    Match the episode's free-text route to one of six keys. Fall back to
+    oral for an absent or ambiguous match. Prefer today's outstanding
+    scheduled amount so alternating doses seed correctly. Use the last
+    injection's vehicle across drugs because episodes do not store it. */
 export function newDoseDraft(known: {
   today: number;
   now: number;
@@ -170,6 +157,7 @@ export function draftWithDrug(
     site to record. */
 export function doseInputOfDraft(draft: DoseDraft): DoseEventInput | null {
   const dose = parseFloat(draft.dose);
+  if (draft.status !== 'skipped' && !isPositiveDoseAmount(dose)) return null;
   const common = {
     id: draft.id,
     timestamp: draftTimestamp(draft.day, draft.time),
@@ -196,7 +184,10 @@ export function doseInputOfDraft(draft: DoseDraft): DoseEventInput | null {
   }
   /* Spelled out rather than left as a bare fallthrough: the draft is a plain
      record, not the union, so nothing subtracts the other four routes from
-     it here. The three branches cover all six between them. */
-  if (draft.route === 'oral' || draft.route === 'sublingual') return { ...common, route: draft.route };
+     it here. The three branches cover all eight between them; rectal and
+     an implant carry no site, like oral. */
+  if (draft.route === 'oral' || draft.route === 'sublingual' || draft.route === 'rectal' || draft.route === 'implant') {
+    return { ...common, route: draft.route };
+  }
   return null;
 }

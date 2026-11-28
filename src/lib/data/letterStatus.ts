@@ -1,88 +1,43 @@
-/* Whether a time-capsule letter is sealed or unlocked (phase 4 ticket 19,
-   phase 5 ticket 01).
-
-   Nothing here is stored in SQLite (ADR-0010) - the schema has no `sealed`
-   column, and whether a letter is readable is a question about today, which
-   changes overnight. It sits above the journal for the same reason
-   milestoneStatus.ts does: "today" is a local calendar day (ADR-0001) and
-   the data layer has no business deciding which one it is, so today
-   arrives as an argument.
-
-   Once `unlockEpochDay` is on or before today the letter stays unlocked
-   for good - there is no re-sealing - which is why this is a single
-   comparison rather than a three-way status like milestoneStatus()'s.
-
-   Live tile state (read resolution and 24h snooze) lives in localStorage
-   outside SQLite (ADR-0039). */
+/* A letter unlocks when the supplied local day reaches unlockEpochDay (ADR-0001). Resolve
+   that state on read (ADR-0010). Read and write tile acknowledgements and 24h snoozes
+   through the encrypted AcknowledgementStore. */
 
 import { isSealedUntil } from './sealedUntil';
 import { isTileSnoozed, snoozeTile, clearSnooze } from './liveTilesSnooze';
+import { withLetterGreeted, withLetterRead, type AcknowledgementStore } from './acknowledgements';
 import type { LetterSeal } from './journal/letters';
 import type { Letter } from './types';
-
-const READ_LETTERS_STORAGE_KEY = 'engender-read-letter-ids';
-const GREETED_LETTERS_STORAGE_KEY = 'engender-greeted-letter-ids';
-
-function resolveStorage(storage?: Storage): Storage | null {
-  if (storage) return storage;
-  if (typeof localStorage !== 'undefined') return localStorage;
-  return null;
-}
-
-/* Two sets of letter ids are kept out here now - the ones whose text has
-   been shown, and the ones whose arrival has been met (ticket 45) - and they
-   are the same shape, so the reading and the writing are written once. */
-function readIdSet(key: string, storage?: Storage): Set<string> {
-  const s = resolveStorage(storage);
-  if (!s) return new Set();
-  try {
-    const raw = s.getItem(key);
-    if (!raw) return new Set();
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? new Set(parsed.map(String)) : new Set();
-  } catch {
-    return new Set();
-  }
-}
-
-function addToIdSet(key: string, id: string, storage?: Storage): void {
-  const s = resolveStorage(storage);
-  if (!s) return;
-  const current = readIdSet(key, s);
-  current.add(id);
-  try {
-    s.setItem(key, JSON.stringify(Array.from(current)));
-  } catch {
-    // Storage quota or disabled storage is ignored gracefully.
-  }
-}
 
 export function isLetterSealed(letter: Pick<Letter, 'unlockEpochDay'>, todayEpochDay: number): boolean {
   return isSealedUntil(letter.unlockEpochDay, todayEpochDay);
 }
 
 /* getReadLetterIds stays exported for its own test, and cross-checked in
-   ready-letter-tile.test.ts (AU-09 test-only review). */
-export function getReadLetterIds(storage?: Storage): Set<string> {
-  return readIdSet(READ_LETTERS_STORAGE_KEY, storage);
+   ready-letter-tile.test.ts. */
+export function getReadLetterIds(store: AcknowledgementStore): Set<string> {
+  return new Set(store.read().readLetterIds);
 }
 
-export function markLetterRead(letterId: string, storage?: Storage): void {
-  addToIdSet(READ_LETTERS_STORAGE_KEY, letterId, storage);
+export function markLetterRead(letterId: string, store: AcknowledgementStore): void {
+  const current = store.read();
+  const next = withLetterRead(current, letterId);
+  if (next !== current) store.write(next);
 }
 
-/** The letters whose arrival has already been met (ticket 45).
+/** The letters whose arrival has already been met.
 
     A separate set from the read one, because the two facts differ: a person
     can be shown a letter's arrival and choose to leave it closed, and that
     letter is met but unread - the live tile on Today still has something to
     say about it, and the arrival does not. */
-export function getGreetedLetterIds(storage?: Storage): Set<string> {
-  return readIdSet(GREETED_LETTERS_STORAGE_KEY, storage);
+export function getGreetedLetterIds(store: AcknowledgementStore): Set<string> {
+  return new Set(store.read().greetedLetterIds);
 }
 
-export function markLetterGreeted(letterId: string, storage?: Storage): void {
-  addToIdSet(GREETED_LETTERS_STORAGE_KEY, letterId, storage);
+export function markLetterGreeted(letterId: string, store: AcknowledgementStore): void {
+  const current = store.read();
+  const next = withLetterGreeted(current, letterId);
+  if (next !== current) store.write(next);
 }
 
 /** The letter whose arrival is owed right now, or null.
@@ -106,16 +61,16 @@ export function letterToGreet<T extends LetterSeal>(
   return due[0] ?? null;
 }
 
-export function isLetterSnoozed(nowMs: number = Date.now(), storage?: Storage): boolean {
-  return isTileSnoozed('ready-letter', nowMs, storage);
+export function isLetterSnoozed(store: AcknowledgementStore, nowMs: number = Date.now()): boolean {
+  return isTileSnoozed('ready-letter', store, nowMs);
 }
 
-export function snoozeLetterTile(nowMs: number = Date.now(), storage?: Storage): void {
-  snoozeTile('ready-letter', undefined, nowMs, storage);
+export function snoozeLetterTile(store: AcknowledgementStore, nowMs: number = Date.now()): void {
+  snoozeTile('ready-letter', store, undefined, nowMs);
 }
 
-export function clearLetterSnooze(storage?: Storage): void {
-  clearSnooze('ready-letter', storage);
+export function clearLetterSnooze(store: AcknowledgementStore): void {
+  clearSnooze('ready-letter', store);
 }
 
 /** Generic over the letter shape rather than taking `Letter`: the two days
@@ -125,14 +80,9 @@ export function clearLetterSnooze(storage?: Storage): void {
 export function unreadUnlockedLetters<T extends LetterSeal>(
   letters: readonly T[],
   todayEpochDay: number,
-  readLetterIds?: Set<string> | readonly string[]
+  readLetterIds: Set<string> | readonly string[]
 ): T[] {
-  const readSet =
-    readLetterIds instanceof Set
-      ? readLetterIds
-      : Array.isArray(readLetterIds)
-        ? new Set(readLetterIds)
-        : getReadLetterIds();
+  const readSet = readLetterIds instanceof Set ? readLetterIds : new Set(readLetterIds);
 
   return letters
     .filter((letter) => !isLetterSealed(letter, todayEpochDay) && !readSet.has(letter.id))

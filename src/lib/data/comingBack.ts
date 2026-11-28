@@ -1,64 +1,11 @@
-/* What is waiting when somebody opens the app after a long time away
-   (phase 8 features ticket 05, ADR-0062, ADR-0039, ADR-0045, ADR-0010).
+/* Select what is waiting after time away (ADR-0045). Keep gaps in the journal and report
+   available items without counting missed doses, absent entries or elapsed days. A letter
+   or milestone appears before housekeeping. Ask about only the latest dose slot. The layout
+   reads this once per return, so logging it cannot promote another missed slot.
 
-   Every living tracker treats a stopped stream as a lapse. For a transition
-   that is false in a specific way: a five-week gap is usually a hard month
-   and sometimes a good one, and in neither case is it a debt. So this
-   module answers one question - given the last write in every area and a
-   set of things the journal already holds, what is *waiting* - and it is
-   written so that the answer can never be a count of what did not happen.
-
-   ## The tension this resolves, because it was live before it was built
-
-   An earlier product pass argued that gaps mean something and should stay
-   visible as gaps, which points the opposite way from smoothing a return.
-   Both hold, and the line between them is drawn here rather than in the
-   copy: the record keeps its holes - nothing below writes anything, no
-   chart is filled in, and a backfilled dose fills exactly the one slot it
-   was logged against - while this surface reports what is *waiting* and
-   never what is missing.
-
-   Three shapes fall out of that line, and they are the whole design:
-
-   - **Nothing here is a total.** No field counts unlogged slots, elapsed
-     days or absent entries. There is no number to render because there is
-     no number.
-   - **One dose slot, not the twelve that passed.** The most recent one, and
-     answering it does not promote the next: `whatIsWaiting` is asked once
-     per return (see ADR-0062 on the return moment), so logging one dose
-     cannot queue a question about the other eleven. That criterion is the
-     ticket's, and this is where it is kept.
-   - **What arrived comes before what can be tidied.** A letter that
-     unlocked and a milestone date that came are things the journal was
-     holding *for* the person; a running timer and an unlogged slot are
-     housekeeping. Reading the housekeeping first would make the screen a
-     to-do list, which is the failure mode the whole ticket is against.
-
-   ## Nothing new is stored
-
-   Every fact below is read off a row that already exists (ADR-0010): a
-   letter's unlock day, a milestone's day, an era with no end, a wear
-   session with no duration, and the schedule's own slots through
-   `doses.getComparison`. The gap itself comes from `journal/lastWrite.ts`,
-   which is the seam ticket 03 built for exactly this. No column, no flag,
-   no "last seen" row anywhere in SQLite.
-
-   What *is* stored is one preference: the return this person has already
-   met (`comingBackSeenSince`), which is what makes the surface a moment
-   rather than a place. That is a record of what the app has shown, not a
-   derived fact about the journal, and it lives beside
-   `areaFinishOfferDeclined` for the same reason.
-
-   ## Pure, and today is an argument
-
-   No clock read, no journal handle, no paraglide: the selection is the part
-   with the thresholds in it and it is tested with no driver, the shape
-   `liveTiles.ts`'s `shouldShow*` predicates and `areaGroups.ts`'s
-   `shouldOfferFinish` already have. Relative imports for the same reason
-   they use them - the Node tier has no `$lib` alias.
-
-   The reads that feed it live in `comingBackReads.ts`, so this file can be
-   read on the Node tier while that one names the journal. */
+   Read existing rows and the last-write registry through comingBackReads.ts. Only
+   comingBackSeenSince records that the return was shown. This selection receives today and
+   uses no clock, journal handle or localized copy, so it runs on the Node tier. */
 
 import { mostRecentPassedSlot } from './doseSchedule';
 import { epochDayFromTimestamp } from './epochDay';
@@ -66,28 +13,16 @@ import type { DoseScheduleComparison } from './journal/doses';
 import { eraCoversDay } from './eras';
 import type { Era, Letter, Milestone, WearKind, WearSession } from './types';
 
-/** How long a gap has to be before returning is treated as a return.
-
-    Three weeks. The number is a judgement, like
-    `FINISH_SUGGESTION_QUIET_DAYS`, and what it is judged against is what
-    the app's own everyday surfaces can still show: Home's week strip
-    covers seven days and the calendar's heat map one month, so a gap under
-    three weeks is still a stretch the person can scroll to and read for
-    themselves. Past three weeks the gap spans more than one month grid and
-    a letter that unlocked inside it has been sitting unopened for a
-    fortnight.
-
-    Two weeks would fire on a holiday. A month would be long enough that
-    the arithmetic stops being the point: by then the person has been gone
-    long enough that they know it.
-
-    What keeps a wrong number from mattering much is structural rather than
-    numeric, the same way it is for the finish suggestion. This surface is
-    reached once per gap (ADR-0062), it is never a notification, and every
-    row on it can be left alone. Wrong by a few days means one screen shown
-    a little early or a little late, once. */
+/**
+ * Treat a gap of three weeks as a return. Shorter stretches fit the
+ * ordinary week and month views, and a two-week threshold would fire
+ * during many holidays.
+ *
+ * Show the return at most once per gap. It stays in the
+ * app and every row can be left alone.
+ */
 /* RETURN_GAP_DAYS stays exported for its own test, and cross-checked in
-   comingBackReads.test.ts (AU-09 test-only review). */
+   comingBackReads.test.ts. */
 export const RETURN_GAP_DAYS = 21;
 
 /** How many rows one kind may contribute.
@@ -101,8 +36,7 @@ export const RETURN_GAP_DAYS = 21;
     Deliberately no "and four more": that is a count, and a count of what
     was waiting is one editing pass away from a count of what was
     missed. */
-/* WAITING_PER_KIND stays exported only for its own test (AU-09 test-only
-   review). */
+/* WAITING_PER_KIND stays exported only for its own test. */
 export const WAITING_PER_KIND = 3;
 
 /** One thing the journal is holding. Each arm carries only what its own
@@ -123,7 +57,7 @@ export type WaitingItem =
           re-derived at the screen: a day converted back to a timestamp
           would move the start of a session the person never touched. */
       startTimestamp: number;
-      /** Which practice it was (ticket 50), for the same reason the
+      /** Which practice it was, for the same reason the
           timestamp is carried: closing the session rewrites the whole row,
           and the sheet's own wording says which kind it is closing. */
       wearKind: WearKind;
@@ -151,14 +85,8 @@ export type WaitingItem =
       doseUnit: string;
     };
 
-/** One item's own identity, stable across a re-read.
-
-    Two callers need it and neither could mint it: the screen, to remember
-    which rows the person has said no to for as long as the screen is up
-    (ADR-0062 - a no on a moment is not stored), and the walkthrough, whose
-    handles are keys and never copy (ADR-0029). Built from the kind plus the
-    row's own id, so the dose - the one kind with no row of its own yet -
-    is named by the slot it is about. */
+/** Stable item key for dismissals during this visit and for walkthrough handles. Combine
+    the kind with its row ID. A dose uses its slot ID because it has no row yet. */
 export function waitingItemKey(item: WaitingItem): string {
   switch (item.kind) {
     case 'letter':
@@ -215,7 +143,7 @@ export interface ComingBack {
     so the gap is the newest write anywhere and not any one area's. An area
     that answers null - nothing ever written there, or a deliberate opt-out
     from the registry - does not drag the gap backwards. */
-/* lastWriteDay stays exported only for its own test (AU-09 test-only review). */
+/* lastWriteDay stays exported only for its own test. */
 export function lastWriteDay(lastWrites: Partial<Record<string, number | null>>): number | null {
   let newest: number | null = null;
   for (const day of Object.values(lastWrites)) {
@@ -232,40 +160,22 @@ function newestFew<T>(items: T[], dayOf: (item: T) => number): T[] {
   return [...items].sort((a, b) => dayOf(b) - dayOf(a)).slice(0, WAITING_PER_KIND);
 }
 
-/** The registered areas whose day is a plan rather than a record, and so the
-    ones the gap is not measured over.
-
-    Every other area in the last-write registry answers "when did something
-    last happen": an entry, a dose, a measurement, a wear session. These
-    answer "what day is on the calendar", and the app supports putting one
-    there in advance - `milestoneStatus` has a whole `countdown` arm for a
-    milestone that has not happened yet, and an appointment is by definition
-    something somebody books ahead of. `procedures` is here because its own
-    last write is its consults, which are those appointments seen from the
-    surgery journey (ADR-0066).
-
-    Left in, they close the gap they are inside of. Somebody who wrote
-    "name change hearing, 12 September" in July, stopped journalling in
-    August and opened the app in late September has a last write of
-    12 September as far as the registry is concerned, a gap of eight days,
-    and no return surface - on the one occasion the app had something real to
-    show them. Worse, the same row is what the surface would have reported.
-
-    Found by the demo seed, which dated a milestone inside its own gap and
-    made the whole screen disappear. Not a fault in `lastWrite.ts`: the
-    registry answers the question it says it answers, and this is the one
-    consumer for which "the newest dated record" and "the last time somebody
-    wrote something" are different questions. */
-/* PLANNED_AREAS stays exported only for its own test (AU-09 test-only review). */
+/**
+ * Exclude calendar plans from the gap calculation. Milestone dates,
+ * appointments and the consults that procedures read can be set in
+ * advance (ADR-0066). A planned date inside an absence would make the
+ * last-write registry report a recent day and hide the return moment.
+ * The registry still answers correctly for its other callers.
+ */
+/* PLANNED_AREAS stays exported only for its own test. */
 export const PLANNED_AREAS = ['milestones', 'procedures', 'appointments'] as const;
 
-/** How far back the median looks for a write to count (phase 8 features
-    ticket 45). "Roughly the last year": long enough to see a person's own
+/** How far back the median looks for a write to count. "Roughly the last year": long enough to see a person's own
     rhythm rather than one recent cluster, short enough that an area touched
     once, long ago, and never since does not sit in the sample forever. */
 const MEDIAN_GAP_WINDOW_DAYS = 365;
 
-/** The fewest distinct write-days the median trusts (ticket 45). Below this
+/** The fewest distinct write-days the median trusts. Below this
     a "typical gap" is a guess dressed as a number - two data points are one
     gap, and one gap is not a rhythm. Chosen to still leave the floor as the
     only word for a journal in its first weeks, the same as before this
@@ -290,23 +200,9 @@ export function medianWriteGap(
   return gaps.length % 2 === 0 ? (gaps[mid - 1] + gaps[mid]) / 2 : gaps[mid];
 }
 
-/** How far the threshold scales past a journal's own median gap (ticket 45).
-
-    Not 1: a gap right at the person's own median is, by definition, roughly
-    as long as half their own gaps already are, so a threshold that low would
-    fire on close to every other ordinary return - the exact "screen you
-    learn to dismiss" outcome this ticket exists to avoid, arrived at with a
-    number instead of a constant. 1.5 clears that: for a fairly regular
-    rhythm, most ordinary gaps land under it, and it takes a gap the person's
-    own history would call long, not merely average, to cross it.
-
-    Checked against two shapes rather than picked in the abstract: a
-    daily-ish journal's median lands under a week, so `1.5 * median` stays
-    far under `RETURN_GAP_DAYS` and the floor governs, unchanged from before
-    this ticket. A sparse, event-shaped journal (thirty long entries a year,
-    a dose every few weeks - Persona 4, "Tomek") with an eight-week median
-    gets a threshold of twelve weeks: past the three-week floor, and still
-    "roughly" the person's own rhythm rather than a number unrelated to it. */
+/**
+ * Scale the threshold to 1.5 times the journal's median gap. A multiplier of 1 would treat roughly half of ordinary gaps as long enough. Daily journals still use the three-week `RETURN_GAP_DAYS` floor. A sparse journal with an eight-week median gets twelve weeks.
+ */
 const MEDIAN_GAP_MULTIPLE = 1.5;
 
 /** Whether coming back now is a return, and which gap it is.
@@ -318,7 +214,7 @@ const MEDIAN_GAP_MULTIPLE = 1.5;
     `whatIsWaiting` is then asked about.
 
     The threshold itself is `RETURN_GAP_DAYS` or `MEDIAN_GAP_MULTIPLE` times
-    the journal's own median write gap, whichever is greater (ticket 45): the
+    the journal's own median write gap, whichever is greater: the
     floor never loosens, so a journal too young to have a median behaves
     exactly as it did before this ticket, and a journal with an established,
     wider rhythm is measured against its own pace rather than everyone's. */

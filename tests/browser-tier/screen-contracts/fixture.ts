@@ -96,3 +96,27 @@ export function heldReads(
   });
   return { fixture: { ...source, journal }, release };
 }
+
+/** Counts every call an area operation receives, by `area.method`, so a contract can say a
+    screen never asked a question at all. */
+export function countedReads(source: ScreenFixture) {
+  const calls = new Map<string, number>();
+  const journal = new Proxy(source.journal, {
+    get(target, key, receiver) {
+      const area = Reflect.get(target, key, receiver);
+      if (area === null || typeof area !== 'object') return area;
+      return new Proxy(area, {
+        get(operations, method) {
+          const operation = Reflect.get(operations, method);
+          if (typeof operation !== 'function') return operation;
+          return (...args: unknown[]) => {
+            const name = `${String(key)}.${String(method)}`;
+            calls.set(name, (calls.get(name) ?? 0) + 1);
+            return operation.apply(operations, args);
+          };
+        }
+      });
+    }
+  });
+  return { fixture: { ...source, journal }, calls };
+}

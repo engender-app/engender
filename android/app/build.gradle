@@ -28,12 +28,16 @@ android {
     sourceSets {
         test {
             resources.srcDirs += ['../../src/lib/android/fixtures']
+            // The golden archive, so the backup read-back opens a file the
+            // TypeScript packer wrote rather than one Java framed itself.
+            resources.srcDirs += ['../../src/lib/data/journal/fixtures']
             // Plain-Java helpers the instrumented tests use, so the JVM tier
-            // can test them without a device (ux-carpet 218).
+            // can test them without a device.
             java.srcDirs += ['src/sharedTest/java']
         }
         androidTest {
             java.srcDirs += ['src/sharedTest/java']
+            assets.srcDirs += ['../../src/lib/android/fixtures']
         }
     }
     defaultConfig {
@@ -62,10 +66,11 @@ android {
     buildTypes {
         release {
             if (hasReleaseSigning) signingConfig signingConfigs.release
-            // Deliberate: the source is public, so obfuscation buys
-            // nothing, and R8 is a moving part between a signed tag and
-            // an F-Droid rebuild. No proguardFiles here on purpose.
-            minifyEnabled false
+            // R8 runs for every release, including F-Droid (13 October 2026).
+            // Play requires DEX optimization; the signed-tag rebuild must
+            // still be byte-identical with the pinned AGP/R8 toolchain.
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro', 'native-test-api.pro', 'native-test-runtime-api.pro'
         }
     }
 }

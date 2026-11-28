@@ -1,25 +1,22 @@
 <script lang="ts">
+  import { goto } from '$app/navigation';
   import { rovingRadio } from '$lib/components/rovingRadio';
-  /* Settings, on the surface kit (phase 5 ticket 24), in five open areas
-     since ticket 277.
+  /* Settings, on the surface kit, in five open areas.
 
-     The rows that carry a Switch or a Segmented instead of a chevron stay
-     hand-written in the kit's own row classes (ticket 16: `.kit-row.is-static`
-     also drops the row's cursor and its :active wash). */
-  import { page } from '$app/state';
+     The rows that carry a Switch or a Segmented instead of a chevron stay hand-written in
+     the kit's own row classes. */
   import { m } from '$lib/paraglide/messages';
-  import { setLocale, getLocale } from '$lib/paraglide/runtime';
+  import { getLocale } from '$lib/paraglide/runtime';
   import { backupAgeDays } from '$lib/data/backupHealth';
   import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
-  import { areasHidden } from '$lib/data/areaState';
   import { cycleTrackingVisible } from '$lib/data/cycleTracking';
-  import { AREA_GROUPS } from '$lib/data/areaGroups';
-  import { prefs, selectMetric } from '$lib/data/prefs/store.svelte';
-  import { replaceRoute } from '$lib/navigation/smart-back';
+  import { featureAreas, rowHidden, type HubRow } from '$lib/data/hubRows';
+  import { activateLanguagePreference, prefs, setPreferenceDurably } from '$lib/data/prefs/store.svelte';
   import { ui } from '$lib/stores/ui.svelte';
   import Icon from '$lib/components/Icon.svelte';
   import Mark from '$lib/components/Mark.svelte';
-  import DisguisePreview from '$lib/components/DisguisePreview.svelte';
+  import DisguiseSetting from '$lib/components/DisguiseSetting.svelte';
+  import LauncherIconPreview from '$lib/components/LauncherIconPreview.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import FlagSun from '$lib/components/FlagSun.svelte';
   import ListCard from '$lib/components/kit/ListCard.svelte';
@@ -28,11 +25,14 @@
   import Segmented from '$lib/components/Segmented.svelte';
   import Switch from '$lib/components/Switch.svelte';
   import ScaleChecklist from '$lib/components/ScaleChecklist.svelte';
+  import FeatureVisibilityList from '$lib/components/FeatureVisibilityList.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import { isAndroid } from '$lib/platform';
+  import { notificationsTitle } from '$lib/notificationsTitle';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
   import { changePalette, changeTheme, isAppearancePending } from '$lib/motion/paletteChange';
   import { paletteRing } from '$lib/motion/paletteRing';
+  import { paletteNameFit } from '$lib/components/paletteNameFit';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { crossfadeDuration, fadeOnly } from '$lib/motion/tokens';
   import { collapse, resize } from '$lib/motion/reveal';
@@ -43,8 +43,7 @@
 
   import { PALETTES } from '$lib/theme/paletteChoices';
 
-  /* COL-001: mood's own fixed 5-step scale, picked independently of the
-     gender palette above - see ADR-0025. */
+  /* Mood has its own fixed five-step scale, independent of the flag palette. */
   const MOOD_PRESETS: [string, () => string][] = [
     ['amber', m.mood_preset_amber], ['teal', m.mood_preset_teal],
     ['plum', m.mood_preset_plum], ['moss', m.mood_preset_moss],
@@ -56,7 +55,6 @@
      beat; with the preset gone the names are all there is to say, and they
      are also the only way to see the set without opening the sheet. */
   let tickedNames = $derived(vocabulary.activeDimensions.map((d) => d.name).join(', '));
-  let metricName = $derived(vocabulary.metricName);
   let backupAge = $derived(backupAgeDays(prefs.lastBackupAt));
   /* The Export row's reading, which the erase sheet's backup row repeats. */
   let backupLine = $derived(
@@ -67,14 +65,26 @@
      count of the enabled ones - which only the Android build displays at all. */
   let reminders = liveList((j) => j.reminders.getReminders());
   let activeReminders = $derived((reminders.rows).filter((r) => r.enabled).length);
-  let measurementStates = liveQuery((j) => j.areaStates.getAreaStates());
   let cycleEpisodes = liveQuery((j) => j.regimen.getEpisodes());
-  let cycleShown = $derived(cycleTrackingVisible(cycleEpisodes.value ?? [], Date.now(), prefs.cycleTrackingEnabled, prefs.cycleTrackingChoice));
-  let measurementsOn = $derived(
-    measurementStates.value !== undefined && !areasHidden(AREA_GROUPS.measurements, measurementStates.value)
-  );
+  let featureStates = liveQuery((j) => j.areaStates.getAreaStates());
+  let featureError = $state('');
+  function moduleEnabled(row: HubRow): boolean {
+    return !rowHidden(row, featureStates.value ?? {});
+  }
+  async function changeModule(row: HubRow, enabled: boolean) {
+    featureError = '';
+    try {
+      await journal.areaStates.setAreasHidden(featureAreas(row), !enabled);
+    } catch {
+      featureError = m.write_failed();
+    }
+  }
+  let cycleShown = $derived(cycleTrackingVisible(cycleEpisodes.value ?? [], Date.now(), prefs.cycleTrackingChoice));
   let genitalEffectsOn = $derived(
-    vocabulary.effectCategories.find((category) => category.key === 'genital_sexual')?.enabled ?? false
+    vocabulary.effectCategories.find((category) => category.key === 'genital')?.enabled ?? false
+  );
+  let sexualEffectsOn = $derived(
+    vocabulary.effectCategories.find((category) => category.key === 'sexual')?.enabled ?? false
   );
 
   /* The lock row's reading, the same line the Security screen's mode row
@@ -99,13 +109,27 @@
       ? prefs.activeScales.filter((k) => k !== key)
       : [...prefs.activeScales, key];
   }
-  let metricSheet = $state(false);
-  let disguiseSheet = $state(false);
   let aboutSheet = $state(false);
   let moodSheet = $state(false);
-  let languageSheet = $state(false);
   let a11ySheet = $state(false);
   let tagGroupsSheet = $state(false);
+  /* Manage tags is a screen behind the Tag groups sheet. Going there with
+     the sheet still up ran two exits at once: the scrim vanished in one
+     frame and the sheet's group list faded over the new screen's identical
+     list. The sheet closes first, the way it always
+     closes, and the screen changes once its exit is over. */
+  let afterTagGroups: string | null = null;
+  function leaveTagGroupsFor(event: MouseEvent, href: string) {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    afterTagGroups = href;
+    tagGroupsSheet = false;
+  }
+  function tagGroupsClosed() {
+    const href = afterTagGroups;
+    afterTagGroups = null;
+    if (href) void goto(href);
+  }
   let eraseSheet = $state(false);
   let erasing = $state(false);
   let eraseError = $state('');
@@ -113,11 +137,10 @@
      and new share one grid cell and crossfade, so neither is cut. */
   const swapFade = (_node: Element) => fadeOnly(crossfadeDuration());
 
-  /* The gates' reset (ADR-0014), reached from here too (phase 14 ticket
-     15): a journal in a mode with no gate - device-bound on the web,
-     Unlocked on Android - had no way to be erased inside the app at all.
-     resetApp reloads into setup, which states the result; it only returns
-     here if the wipe failed. */
+  /* The gates' reset, reached from here too: a journal in a mode with no gate -
+     device-bound on the web, Unlocked on Android - had no way to be erased inside the app
+     at all. resetApp reloads into setup, which states the result; it only returns here if
+     the wipe failed. */
   async function confirmErase() {
     erasing = true;
     eraseError = '';
@@ -130,12 +153,9 @@
     }
   }
 
-  /* The readings on the rows that open a sheet (ticket 277): what each is
+  /* The readings on the rows that open a sheet: what each is
      set to, so the hub says it without the sheet being opened. */
   let moodName = $derived(MOOD_PRESETS.find(([key]) => key === prefs.moodPreset)?.[1]());
-  let languageName = $derived(
-    prefs.language === 'en' ? 'English' : prefs.language === 'pl' ? 'Polski' : m.theme_system()
-  );
   let a11yOn = $derived(
     [
       prefs.a11yTextSizeBoost && m.a11y_text_size_boost(),
@@ -152,10 +172,9 @@
       .join(', ')
   );
 
-  function setLanguage(v: string) {
-    prefs.language = v as typeof prefs.language;
-    const target = v === 'system' ? ((navigator.language || 'en').startsWith('pl') ? 'pl' : 'en') : (v as 'en' | 'pl');
-    if (target !== getLocale()) setLocale(target); // reloads; all state is persisted
+  async function setLanguage(v: string) {
+    await setPreferenceDurably('language', v as typeof prefs.language);
+    activateLanguagePreference();
   }
 
   function pickPalette(key: string) {
@@ -167,50 +186,32 @@
   }
 
 
-  const SITE_URL = 'https://engender.barankiewicz.dev/';
+  const SITE_URL = 'https://engender.app/';
   let guideUrl = $derived(`${SITE_URL}${getLocale()}/guide/`);
   // The landing site publishes the repository's canonical policy in both languages.
   const SOURCE_URL = 'https://github.com/engender-app/engender';
   let privacyUrl = $derived(`${SITE_URL}${getLocale() === 'pl' ? 'pl' : 'en'}/privacy/`);
 
-  /* The modes/entry-templates sheets raise from here (audit item 6):
-     `?raise=` is what their old standalone-screen addresses' redirects
-     hand off (settings/presentations, settings/entry-templates), since
-     only a mounted screen can reach ui.svelte.ts - a +page.ts load()
-     cannot. Read once and stripped straight back off, so the sheet's own
-     open state, not the URL, is what a later close answers to; a plain
-     visit to /settings carries no such param and this is a no-op. */
-  $effect(() => {
-    const raise = page.url.searchParams.get('raise');
-    if (raise === 'modes' || raise === 'templates') {
-      ui.raisedManager = raise;
-      void replaceRoute('/settings');
-    }
-  });
 </script>
 
 <div class="screen">
-  <!-- Rule 7's third case, chrome (carpet 25). The title was hidden here
-       from ticket 24 until the field existed: a visible "Settings" sitting
-       on the page directly above "Appearance" was two headers stacked
-       (Alicja, 2026-08-25), which a title on a block of the flag's colour
-       is not - it is the shape every deep screen in the app already draws,
-       and this screen was the one arriving with no top at all.
+  <!-- Rule 7's third case, chrome. The title was hidden here until the field existed: a
+       visible "Settings" sitting on the page directly above "Appearance" was two headers
+       stacked, which a title on a block of the flag's colour is not - it is the shape every
+       deep screen in the app already draws, and this screen was the one arriving with no
+       top at all.
 
-       Back to Today, since the phone's gear is in Today's foot (ADR-0076),
-       and through smartBack for the rail and for every deep link that
-       reaches here. On the 1024px shell the control is dropped by
-       components.css: from a fifth row at the rail's foot there is nothing
+       Back to Today, since the phone's gear is in Today's foot, and through smartBack for
+       the rail and for every deep link that reaches here. On the 1024px shell the control
+       is dropped by components.css: from a fifth row at the rail's foot there is nothing
        for it to point at. -->
   <ScreenHeader title={m.nav_settings()} back="/" chrome class="settings-sun-header">
     {#snippet blindContent()}
-      {#if !prefs.disguise}
-        {#key activeFlag.dark}<FlagSun />{/key}
-      {/if}
+      {#key activeFlag.dark}<FlagSun />{/key}
     {/snippet}
   </ScreenHeader>
 
-  <!-- Five named areas, every one open (ticket 277). They were three
+  <!-- Five named areas, every one open. They were three
        accordions, which hid most of the screen behind a tap and still ran
        to 3735px open at 390. Rows now carry a second line only where it is
        a reading - a value, a count, a state - and anything that is more
@@ -221,7 +222,7 @@
        it: a flag is a block of its own (rule 13), the grid is the one setup
        draws (screens.css), and the card's padding left each flag too narrow
        for its name. The frame travels between flags (paletteRing). -->
-  <div class="palette-grid" role="radiogroup" use:rovingRadio use:paletteRing aria-label={m.colour_palette()}>
+  <div class="palette-grid" role="radiogroup" use:rovingRadio use:paletteRing use:paletteNameFit aria-label={m.colour_palette()}>
     <span class="palette-selection-ring" aria-hidden="true"></span>
     {#each PALETTES as [key, label] (key)}
       <button
@@ -263,11 +264,7 @@
     {#if isAndroid()}
       <div class="kit-row settings-unit-row" data-launcher-icon-shape>
         <span class="kit-row-ico settings-icon-preview">
-          {#if prefs.disguise}
-            <img src="/icons/icon-notes.svg" alt="" width="32" height="32" />
-          {:else}
-            <Mark size={32} crop={prefs.launcherIconShape === 'round' ? 'launcher-round' : 'tile'} />
-          {/if}
+          <LauncherIconPreview />
         </span>
         <span class="kit-row-text"><span class="kit-row-title">{m.settings_app_icon()}</span></span>
         <span class="kit-row-trail">
@@ -285,13 +282,33 @@
         </span>
       </div>
     {/if}
-    <ListRow key="mood-colours" icon="sparkle" title={m.mood_colours()} subtitle={moodName} chevron={false} onclick={() => (moodSheet = true)}>
+    <ListRow key="mood-colours" icon="mood" title={m.mood_colours()} subtitle={moodName} chevron={false} onclick={() => (moodSheet = true)}>
       {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
     </ListRow>
-    <ListRow key="language" icon="globe" title={m.language()} subtitle={languageName} chevron={false} onclick={() => (languageSheet = true)}>
-      {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
-    </ListRow>
-    <ListRow key="accessibility" icon="eye" title={m.settings_accessibility_pack()} subtitle={a11yOn || m.settings_row_off()} chevron={false} onclick={() => (a11ySheet = true)}>
+    <!-- On the row, like the theme above it, rather than a row that opens a sheet holding
+         the same three choices. -->
+    <div class="kit-row settings-unit-row" style="cursor:default">
+      <span class="kit-row-ico"><Icon name="globe" size={22} /></span>
+      <span class="kit-row-text">
+        <span class="kit-row-title">{m.language()}</span>
+      </span>
+      <span class="kit-row-trail">
+        <Segmented
+          name={m.language()}
+          key="language"
+          compact
+          options={[
+            { value: 'system', label: m.theme_system() },
+            { value: 'en', label: 'English' },
+            { value: 'pl', label: 'Polski' },
+          ]}
+          value={prefs.language}
+          selectOnArrow={false}
+          onChange={setLanguage}
+        />
+      </span>
+    </div>
+    <ListRow key="accessibility" icon="access" title={m.settings_accessibility_pack()} subtitle={a11yOn || m.settings_row_off()} chevron={false} onclick={() => (a11ySheet = true)}>
       {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
     </ListRow>
   </ListCard>
@@ -303,7 +320,7 @@
     <ListCard>
       <ListRow
         key="scales"
-        icon="heart"
+        icon="scales"
         title={m.gender_scales()}
         subtitle={tickedNames || m.scales_none_ticked()}
         chevron={false}
@@ -314,16 +331,6 @@
              identical to the href rows around it. -->
         {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
       </ListRow>
-      <ListRow
-        key="metric"
-        icon="palette"
-        title={m.home_cal_colour()}
-        subtitle={m.settings_coloured_by({ metric: metricName })}
-        chevron={false}
-        onclick={() => (metricSheet = true)}
-      >
-        {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
-      </ListRow>
       <ListRow key="tag-groups" icon="tag" title={m.tag_groups()} subtitle={enabledTagGroups || m.settings_row_off()} chevron={false} onclick={() => (tagGroupsSheet = true)}>
         {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
       </ListRow>
@@ -331,98 +338,60 @@
         {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
       </ListRow>
     </ListCard>
-    {#if measurementsOn}
-      <ListCard>
-        <div class="kit-row settings-unit-row" data-measurement-unit style="cursor:default">
-          <span class="kit-row-ico"><Icon name="ruler" size={22} /></span>
-          <span class="kit-row-text">
-            <span class="kit-row-title">{m.settings_measurement_unit_title()}</span>
-          </span>
-          <span class="kit-row-trail">
-            <Segmented
-              name={m.settings_measurement_unit_title()}
-              key="measurement-unit"
-              compact
-              options={[
-                { value: 'cm', label: m.measurement_unit_cm() },
-                { value: 'in', label: m.measurement_unit_in() }
-              ]}
-              value={prefs.measurementUnit}
-              onChange={(v) => (prefs.measurementUnit = v as typeof prefs.measurementUnit)}
-            />
-          </span>
-        </div>
-      </ListCard>
-    {/if}
   </div>
 
   <SectionHeading text={m.settings_reminders()} />
   <!-- The app speaking up, and the words it uses when it does. -->
   <ListCard>
-    <ListRow
-      key="reminders"
-      icon="bell"
-      title={m.reminders()}
-      subtitle={isWeb
-        ? m.reminders_web_sub()
-        : m.settings_reminders_sub({ count: String(activeReminders), state: prefs.checkInEnabled ? m.on() : m.off() })}
-      href="/settings/reminders"
-      chevron={false}
-    >
-      {#snippet trailing()}<Icon name={isWeb ? 'info' : 'chevronRight'} size={isWeb ? 18 : 20} />{/snippet}
-    </ListRow>
-    <!-- One screen over the unprompted registry (deepening ticket 09): what
-         may show on Today and what may buzz the phone are two questions
-         about the same list. `zap` rather than a second bell beside the
-         reminders row. -->
-    <ListRow key="notifications" icon="zap" title={m.notif_title()} href="/settings/notifications" />
-    <ListRow key="journaling-pause" icon="moon" title={m.journaling_pause_title()} href="/settings/journaling-pause" />
-    <ListRow key="affirmations" icon="sparkle" title={m.affirmations_row_title()} href="/settings/affirmations" />
+    {#if !isWeb}
+      <ListRow
+        key="reminders"
+        icon="bell"
+        title={m.reminders()}
+        subtitle={m.settings_reminders_sub({ count: String(activeReminders), state: prefs.checkInEnabled ? m.on() : m.off() })}
+        href="/settings/reminders"
+        chevron={false}
+      >
+        {#snippet trailing()}<Icon name="chevronRight" size={20} />{/snippet}
+      </ListRow>
+    {/if}
+    <!-- One screen over the unprompted registry: what may show on Today and what may buzz
+         the phone are two questions about the same list. `badge` rather than a second bell
+         beside the reminders row, and not `zap`, which is battery optimisation in
+         Permissions. -->
+    <ListRow key="notifications" icon="badge" title={notificationsTitle()} href="/settings/notifications" />
   </ListCard>
 
   <SectionHeading text={m.settings_lists()} />
   <!-- The reference areas (ADR-0084): each is spent on other screens - the
-       entry editor's chips, the body map, Look back's reading, the bands
-       behind the milestone rail - and created only here. Modes and entry
-       templates raise as sheets without navigating away from this list. -->
+       entry editor's chips, the body map, the bands behind the milestone
+       rail - and created only here. Modes raise as a
+       sheet without navigating away from this list. -->
   <ListCard>
     <ListRow key="presentations" icon="palette" title={m.presentations_title()} chevron={false} onclick={() => (ui.raisedManager = 'modes')}>
       {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
     </ListRow>
-    <ListRow key="entry-templates" icon="grid" title={m.entry_templates_title()} chevron={false} onclick={() => (ui.raisedManager = 'templates')}>
-      {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
-    </ListRow>
-    <ListRow key="body-regions" icon="heart" title={m.body_regions_row_title()} href="/settings/body-regions" />
-    <ListRow key="words" icon="note" title={m.words_ignored_title()} href="/settings/words" />
-    <ListRow key="eras" icon="columns" title={m.eras_title()} href="/settings/eras" />
+    <ListRow key="body-regions" icon="figure" title={m.body_regions_group()} href="/settings/body-regions" />
+    <ListRow key="eras" icon="era" title={m.eras_title()} href="/settings/eras" />
   </ListCard>
 
   <SectionHeading text={m.settings_privacy()} />
   <ListCard>
     <ListRow key="security" icon="lock" title={m.settings_lock_row()} subtitle={lockLine} href="/settings/security" />
-    <ListRow
-      key="disguise"
-      icon="eyeOff"
-      title={m.disguise_row()}
-      subtitle={prefs.disguise ? m.settings_disguise_on() : m.settings_row_off()}
-      chevron={false}
-      onclick={() => (disguiseSheet = true)}
-    >
-      {#snippet trailing()}<Icon name="chevronDown" size={20} />{/snippet}
-    </ListRow>
+    <DisguiseSetting />
     <ListRow
       key="export"
       icon="download"
-      title={m.export_import()}
+      title={m.exp_title()}
       subtitle={backupLine}
       href="/settings/export"
     />
-    <ListRow key="journal-book" icon="book" title={m.journal_book_row()} href="/settings/journal-book" />
-    <!-- Beside the lock (phase 10 redesign ticket 31): the list is the
+    <!-- Beside the lock: the list is the
          no-network claim made concrete, and setup's step promises this row
          is here. -->
-    <ListRow key="permissions" icon="key" title={m.settings_permissions_row()} href="/settings/permissions" />
+    <ListRow key="permissions" icon="toggle" title={m.perms_screen_title()} href="/settings/permissions" />
     <ListRow key="trash" icon="trash" title={m.trash_title()} href="/settings/trash" />
+    <ListRow key="journal-book" icon="book" title={m.journal_book_title()} href="/settings/journal-book" />
     <ListRow
       key="erase"
       icon="alert"
@@ -461,36 +430,50 @@
     <h3 id="settings-features-title">{m.features_to_show()}</h3>
     <p class="muted small">{m.features_to_show_sub()}</p>
     <div data-feature-visibility role="group" aria-labelledby="settings-features-title">
+      {#if featureStates.value !== undefined}
+        <FeatureVisibilityList {moduleEnabled} onModuleChange={changeModule} />
+      {/if}
+      <h4>{m.feature_filters_title()}</h4>
+      <!-- Labels rather than divs, so a tap anywhere on a row reaches its
+           switch, the way the first run's checkbox rows take one. A label
+           is not a control itself: the switch stays the one thing focused
+           and announced, under its own aria-label. -->
       <ListCard>
-        <div class="kit-row" data-measurements-toggle>
-          <span class="kit-row-ico"><Icon name="ruler" size={22} /></span>
-          <span class="kit-row-text"><span class="kit-row-title">{m.measurements_and_sizes()}</span></span>
-          <span class="kit-row-trail">
-            <Switch
-              checked={measurementsOn}
-              disabled={measurementStates.value === undefined}
-              label={m.measurements_and_sizes()}
-              onChange={(on) => void journal.areaStates.setAreasHidden(AREA_GROUPS.measurements, !on)}
-            />
+        <label class="kit-row" data-genital-effects-toggle>
+          <span class="kit-row-ico"><Icon name="sprout" size={22} /></span>
+          <span class="kit-row-text">
+            <span class="kit-row-title">{m.feature_genital_effects()}</span>
+            <span class="kit-row-sub">{m.feature_genital_effects_sub()}</span>
           </span>
-        </div>
-        <div class="kit-row" data-genital-effects-toggle>
-          <span class="kit-row-ico"><Icon name="sparkle" size={22} /></span>
-          <span class="kit-row-text"><span class="kit-row-title">{m.feature_genital_effects()}</span></span>
           <span class="kit-row-trail">
             <Switch
               checked={genitalEffectsOn}
               label={m.feature_genital_effects()}
-              onChange={(on) => void journal.effectCategories.setCategoryEnabled('genital_sexual', on)}
+              onChange={(on) => void journal.effectCategories.setCategoryEnabled('genital', on)}
             />
           </span>
-        </div>
-        <div class="kit-row" data-cycle-tracking-toggle>
-          <span class="kit-row-ico"><Icon name="curve" size={22} /></span>
+        </label>
+        <label class="kit-row" data-sexual-effects-toggle>
+          <span class="kit-row-ico"><Icon name="heart" size={22} /></span>
+          <span class="kit-row-text">
+            <span class="kit-row-title">{m.feature_sexual_effects()}</span>
+            <span class="kit-row-sub">{m.feature_sexual_effects_sub()}</span>
+          </span>
+          <span class="kit-row-trail">
+            <Switch
+              checked={sexualEffectsOn}
+              label={m.feature_sexual_effects()}
+              onChange={(on) => void journal.effectCategories.setCategoryEnabled('sexual', on)}
+            />
+          </span>
+        </label>
+        <label class="kit-row" data-cycle-tracking-toggle>
+          <span class="kit-row-ico"><Icon name="calendar" size={22} /></span>
           <span class="kit-row-text">
             <span class="kit-row-title">{m.cycle_tracking_toggle_title()}</span>
+            <span class="kit-row-sub">{m.feature_cycle_tracking_sub()}</span>
             {#if prefs.cycleTrackingChoice === null}
-              <span class="kit-row-sub" transition:collapse>{m.cycle_tracking_toggle_sub()}</span>
+              <span class="kit-row-sub" data-cycle-explanation transition:collapse>{m.cycle_tracking_toggle_sub()}</span>
             {/if}
           </span>
           <span class="kit-row-trail">
@@ -503,63 +486,11 @@
               }}
             />
           </span>
-        </div>
+        </label>
       </ListCard>
     </div>
+    {#if featureError}<p role="alert">{featureError}</p>{/if}
     <button class="btn btn-ghost" data-features-close onclick={() => (featuresSheet = false)}>{m.close()}</button>
-  </Sheet>
-
-  <Sheet bind:open={metricSheet} title={m.home_cal_colour()}>
-    <h3>{m.home_cal_colour()}</h3>
-    <!-- Hand-written rather than a ListRow (ticket 18): this is a
-         mutually-exclusive pick, and ListRow's `checked` draws
-         Check.svelte's box, which that component documents as
-         deliberately never a radio's circle - the wrong shape for "one of
-         these", not the tickable "any of these" a checkbox says. -->
-    <ListCard>
-      <!-- The ticked scales, which is what Home's and the calendar's own
-           pickers offer. It listed every scale, so this was the one place a
-           metric could be set to something no other picker would show and
-           `reference.activeMetric` now resolves straight back to mood - a
-           choice that looked like it did nothing. A picker offers what the
-           app can honour (phase 5 ticket 35). -->
-      {#each [{ key: null, name: m.mood() }, ...vocabulary.activeDimensions] as d (d.key ?? 'mood')}
-        <button
-          type="button"
-          class="kit-row"
-          onclick={() => {
-            selectMetric(d.key);
-            metricSheet = false;
-          }}
-        >
-          <span class="kit-row-text"><span class="kit-row-title">{d.name}</span></span>
-          {#if vocabulary.activeMetric === (d.key ?? 'mood')}<Icon name="check" size={20} />{/if}
-        </button>
-      {/each}
-    </ListCard>
-  </Sheet>
-
-  <Sheet bind:open={disguiseSheet} title={m.disguise_row()}>
-    <h3>{m.disguise_row()}</h3>
-    <div class="stack-3">
-      <div class="spread">
-        <span class="kit-row-text">
-          <span class="kit-row-title">{m.disguise_app_title()}</span>
-          <span class="kit-row-sub">
-            {isAndroid() ? m.disguise_app_sub_android() : m.disguise_app_sub_web()}
-          </span>
-        </span>
-        <Switch
-          checked={prefs.disguise}
-          label={m.disguise_app_title()}
-          onChange={(v) => {
-            prefs.disguise = v;
-          }}
-        />
-      </div>
-      <!-- The same block setup's last question draws (ticket 32). -->
-      <DisguisePreview on={prefs.disguise} />
-    </div>
   </Sheet>
 
   <Sheet bind:open={eraseSheet} title={m.erase_row()}>
@@ -625,27 +556,12 @@
     </div>
   </Sheet>
 
-  <Sheet bind:open={languageSheet} title={m.language()}>
-    <h3>{m.language()}</h3>
-    <Segmented
-      name={m.language()}
-      options={[
-        { value: 'system', label: m.theme_system() },
-        { value: 'en', label: 'English' },
-        { value: 'pl', label: 'Polski' },
-      ]}
-      value={prefs.language}
-      onChange={setLanguage}
-    />
-  </Sheet>
-
   <Sheet bind:open={a11ySheet} title={m.settings_accessibility_pack()}>
     <h3>{m.settings_accessibility_pack()}</h3>
     <div class="stack-3">
       <div class="spread">
         <span class="kit-row-text">
           <span class="kit-row-title">{m.a11y_text_size_boost()}</span>
-          <span class="kit-row-sub">{m.a11y_text_size_boost_sub()}</span>
         </span>
         <Switch
           checked={prefs.a11yTextSizeBoost}
@@ -658,7 +574,6 @@
       <div class="spread">
         <span class="kit-row-text">
           <span class="kit-row-title">{m.a11y_legibility_boost()}</span>
-          <span class="kit-row-sub">{m.a11y_legibility_boost_sub()}</span>
         </span>
         <Switch
           checked={prefs.a11yLegibilityBoost}
@@ -684,9 +599,8 @@
     </div>
   </Sheet>
 
-  <Sheet bind:open={tagGroupsSheet} title={m.tag_groups()}>
+  <Sheet bind:open={tagGroupsSheet} title={m.tag_groups()} onClosed={tagGroupsClosed}>
     <h3>{m.tag_groups()}</h3>
-    <p class="muted small" style="margin-bottom:var(--space-3)">{m.tag_groups_sub()}</p>
     <div class="stack-3">
       {#each vocabulary.tagGroups as g (g.key)}
         <div class="spread">
@@ -694,21 +608,17 @@
           <Switch checked={g.enabled} label={m.settings_taggroup_switch({ group: g.name })} onChange={(v) => journal.tags.setGroupEnabled(g.key, v)} />
         </div>
       {/each}
-      <a class="manage-tags-link" href="/settings/tags">{m.manage_tags()} <Icon name="chevronRight" size={16} /></a>
+      <a class="manage-tags-link" href="/settings/tags" onclick={(event) => leaveTagGroupsFor(event, '/settings/tags')}>{m.manage_tags()} <Icon name="chevronRight" size={16} /></a>
     </div>
   </Sheet>
 
   <Sheet bind:open={aboutSheet} title={m.about()}>
     <div class="about-content">
       <header class="about-identity">
-        <!-- The logotype, in the flag this person picked (ticket 37): the
-             white tile and its black edge beside the name, in the
-             proportions app.css's .lockup sets, scaled to 32px. The tile's
-             edge is not optional anywhere the drawing has an outside
-             (Alicja, 2026-09-21: "its supposed to be black always").
-             Absent under disguise, which is Mark's own answer - what is
-             left is the name in type, which is what every surface carrying
-             the mark falls back to (ADR-0014). -->
+        <!-- The logotype, in the flag this person picked: the white tile and its black edge
+             beside the name, in the proportions app.css's.lockup sets, scaled to 32px. The
+             tile's edge is not optional anywhere the drawing has an outside. The unlocked
+             About sheet keeps both the mark and app name. -->
         <h2 class="lockup about-lockup" translate="no">
           <Mark size={40} crop="tile" /><span class="lockup-word">{m.app_name()}</span>
         </h2>
@@ -720,27 +630,13 @@
 
       <p class="about-license">{m.about_license()}</p>
 
-      <section class="about-privacy">
-        <Icon name="shield" size={22} />
-        <div class="about-privacy-copy">
-        <!-- Platform copy (UI/UX ticket 09): the no-requests claim is
-             Android's, bought by holding no internet permission. The web
-             app is itself something the browser downloads, so its sentence
-             is about what is sent rather than what is fetched. -->
-          <h3>{isAndroid() ? m.about_no_network_title() : m.about_no_network_web_title()}</h3>
-          <p>{isAndroid() ? m.about_no_network_body() : m.about_no_network_web_body()}</p>
-        </div>
-      </section>
-
       <p class="about-attribution">{m.about_attribution()}</p>
 
-      <!-- A list rather than the two buttons it was: five ways out of a
-           sheet read as rows, the shape About screens settle on (Spotify's
-           Third-party licences, Shop's Licenses), and a grid of five leaves
-           one button alone on its last line. The four that leave the app
-           say so at their trailing edge, where the one that stays in it
-           keeps the chevron every Settings row carries (phase 15
-           release-blockers ticket 10). -->
+      <!-- A list rather than the two buttons it was: five ways out of a sheet read as rows,
+           the shape About screens settle on (Spotify's Third-party licences, Shop's
+           Licenses), and a grid of five leaves one button alone on its last line. The four
+           that leave the app say so at their trailing edge, where the one that stays in it
+           keeps the chevron every Settings row carries. -->
       {#snippet external()}<Icon name="external" size={20} />{/snippet}
       <nav class="about-links" aria-label={m.about()}>
         <ListCard>
@@ -748,7 +644,7 @@
           <ListRow key="about-site" icon="globe" title={m.about_site_link()} href={SITE_URL} target="_blank" rel="noreferrer" chevron={false} trailing={external} />
           <ListRow key="about-privacy" icon="shield" title={m.about_privacy_link()} href={privacyUrl} target="_blank" rel="noreferrer" chevron={false} trailing={external} data-about-link="privacy" />
           <ListRow key="about-source" icon="code" title={m.about_source_link()} href={SOURCE_URL} target="_blank" rel="noreferrer" chevron={false} trailing={external} data-about-link="source" />
-          <ListRow key="about-licences" icon="note" title={m.about_licences_link()} href="/settings/licences" data-about-link="licences" />
+          <ListRow key="about-licences" icon="note" title={m.licences_title()} href="/settings/licences" data-about-link="licences" />
         </ListCard>
       </nav>
     </div>
@@ -841,37 +737,6 @@
 
   .about-license,
   .about-attribution {
-    margin: 0;
-    color: var(--text-2);
-    font-size: var(--text-sm);
-    line-height: 1.55;
-  }
-
-  .about-privacy {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: start;
-    gap: var(--space-3);
-    padding: var(--space-4);
-    border: 1px solid var(--outline);
-    border-radius: var(--r-block);
-    background: var(--surface-2);
-    color: var(--accent);
-  }
-
-  .about-privacy-copy {
-    color: var(--text);
-  }
-
-  .about-privacy h3 {
-    margin: 0 0 var(--space-2);
-    font-family: var(--font-display);
-    font-size: var(--text-md);
-    font-weight: var(--weight-display);
-    line-height: 1.35;
-  }
-
-  .about-privacy p {
     margin: 0;
     color: var(--text-2);
     font-size: var(--text-sm);

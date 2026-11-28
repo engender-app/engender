@@ -1,36 +1,25 @@
 <script lang="ts">
-  /* Changing how the journal opens, later (ticket 53). The same module the
-     first run uses, so there is one place that explains the modes and one
-     place that can be got wrong.
+  /* AccessModeSetup shares onboarding's choices. Mode changes rewrap
+     the same data key (keystore.ts). Boot prefers the secret keystore
+     over leftover device-bound material, so interruption retains an
+     opening path. Changing a secret within a mode verifies the old
+     secret in its own passphrase or PIN flow.
 
-     Every direction is a rewrap of the same data key (crypto/keystore.ts):
-     the journal is not re-encrypted, so the change is instant whatever the
-     journal's size, and an interrupted one loses nothing - boot prefers a
-     secret keystore over leftover device-bound material, so a crash mid
-     change leaves a journal that still opens under one mode or the other.
-
-     Changing the secret *within* a mode is a different job and is not here:
-     that is /settings/passphrase for a passphrase and the PIN row below for
-     a PIN, both of which need the current secret and this screen does not.
-
-     Its second question is when that same secret is asked for again
-     (lock-timing ticket 01). It used to be a "Lock on leave" switch on two
-     other screens, which read as a second mechanism rather than the mode's
-     own secret coming back. Asked of the mode the journal is on now, and
-     only while no other mode is being looked at: under a chosen mode's
-     consequence it would read as a question about that one. A mode with no
-     secret has nothing to ask again, so it gets a sentence instead. */
+     Show timing controls only for the active mode while no other mode
+     is being considered. A mode without a secret needs only an explanation. */
+  import { onDestroy } from 'svelte';
+  import { UnlockCancelledError } from '$lib/lock/unlock-attempt';
+  import CurrentProtection from '$lib/components/CurrentProtection.svelte';
+  import Sheet from '$lib/components/Sheet.svelte';
   import { goto } from '$app/navigation';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { accessModeHasSecret } from '$lib/data/journal-access-mode';
   import { isAndroid } from '$lib/platform';
   import { disclose, resize } from '$lib/motion/reveal';
   import { m } from '$lib/paraglide/messages';
-  import { bootState, changeAccessMode } from '$lib/stores/boot.svelte';
+  import { bootState, prepareAccessModeChange } from '$lib/stores/boot.svelte';
   import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
   import { changeJournalPin, unlockJournalPin } from '$lib/data/journal-pin';
-  import { DeviceBindingUnavailableError } from '$lib/data/device-secret';
-  import { BiometricUnavailableError } from '$lib/data/webauthn-prf';
   import { toast } from '$lib/stores/toasts.svelte';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import AccessModeSetup, { type AccessSetupMode } from '$lib/components/AccessModeSetup.svelte';
@@ -68,16 +57,14 @@
   const reserve = readReserve('access-mode');
   const rememberHeight = (px: number) => rememberReserve('access-mode', px);
 
-  /* Whether this journal already has a recovery key (ADR-0054, ticket
-     sec-02). Two jobs: the line below, because the honest description of
-     what any mode protects against depends on it and this screen could not
-     see that fact before; and whether the offer after a change is worth
+  /* Whether this journal already has a recovery key (ADR-0054). Two jobs: the line below,
+     because the honest description of what any mode protects against depends on it and this
+     screen could not see that fact before; and whether the offer after a change is worth
      making at all.
 
-     Read once, on mount, and that is enough rather than a compromise: the
-     only way to make a key from here is the offer's own link, which leaves
-     this screen, and coming back to it mounts it again. Nothing else in the
-     app writes that file while this screen is open. */
+     Read once, on mount, and that is enough rather than a compromise: the only way to make
+     a key from here is the offer's own link, which leaves this screen, and coming back to
+     it mounts it again. Nothing else in the app writes that file while this screen is open. */
   refreshRecoveryKeyPresence();
 
   /** Set after a change that is worth offering a recovery key on, which
@@ -85,28 +72,55 @@
       offer, which is the ordinary case. */
   let offering = $state<'device-bound' | 'secret-changed' | null>(null);
 
-  async function choose(mode: Mode, secret: string) {
-    if (busy) return;
+  let protection = $state.raw<{ mode: Mode; secret: string; run: ReturnType<typeof prepareAccessModeChange>; controller: AbortController } | null>(null);
+  function cancelProtection() {
+    protection?.controller.abort();
+    protection = null;
+  }
+  onDestroy(cancelProtection);
+
+  function choose(mode: Mode, secret: string) {
+    if (busy || protection) return;
+    const controller = new AbortController();
+    protection = {
+      mode, secret, controller,
+      run: prepareAccessModeChange(mode, secret,
+        { title: m.protection_title(), subtitle: m.protection_biometric_body(), cancel: m.cancel() },
+        () => { if (controller.signal.aborted) throw new UnlockCancelledError(); })
+    };
+  }
+
+  async function authenticateChange(secret: string, current: () => void) {
+    const operation = protection;
+    if (!operation) throw new UnlockCancelledError();
+    const mode = operation.mode;
     busy = true;
     error = '';
     try {
-      await changeAccessMode(mode, secret);
+      await operation.run(secret, current);
+      if (operation.controller.signal.aborted) return;
+      protection = null;
       toast(m.am_changed_toast());
-      /* Device-bound and unlocked modes create an unrecoverable state,
-         so they get the offer rather than the navigation - and only where
-         there is nothing already covering it. */
-      if ((mode === 'device-bound' || mode === 'unlocked') && !recoveryKeyPresence.exists) {
+      /* Device-bound and unlocked modes create an unrecoverable state, so they get the
+         offer rather than the navigation - and only where there is nothing already covering
+         it. `active`, not `exists`: the change has just discarded any key nobody confirmed. */
+      if ((mode === 'device-bound' || mode === 'unlocked') && !recoveryKeyPresence.active) {
         offering = 'device-bound';
         return;
       }
       await goto('/settings/security');
     } catch (e) {
-      console.error('changing the access mode failed', e);
-      /* Same rule as the first-run gate: a device that will not release a
-         secret has not failed at changing anything, it has answered that it
-         cannot do this mode, and the sentence has to send the person to
-         another row rather than leave them retrying at a wall. */
-      error = e instanceof BiometricUnavailableError ? m.am_biometric_unavailable() : m.am_change_failed();
+      // A partial publication consumes its approval. Retrying asks for the
+      // protection now on disk, including a secret whose cleanup failed.
+      try {
+        current();
+        if (!operation.controller.signal.aborted) {
+          protection = null;
+          busy = false;
+          choose(operation.mode, operation.secret);
+        }
+      } catch { /* A departed or locked screen cannot prepare another change. */ }
+      throw e;
     } finally {
       busy = false;
     }
@@ -122,14 +136,11 @@
      Verifying by unlocking rather than by a comparison: there is nothing to
      compare against, and a PIN that opens the keystore is the definition of
      the current one. */
-  async function verifyCurrentPin(entered: string): Promise<PinAttempt> {
-    try {
-      await unlockJournalPin(entered);
-      currentPin = entered;
-      return 'ok';
-    } catch (e) {
-      return e instanceof DeviceBindingUnavailableError ? 'device-gone' : 'wrong';
-    }
+  async function verifyCurrentPin(entered: string, current: () => void): Promise<PinAttempt> {
+    await unlockJournalPin(entered, undefined, current);
+    current();
+    currentPin = entered;
+    return 'ok';
   }
 
   /** The new PIN, twice. Nothing is being guessed at here, so the bare pad. */
@@ -152,10 +163,10 @@
     try {
       await changeJournalPin(currentPin, entered);
       toast(m.pin_changed_toast());
-      /* A changed PIN rewraps the same data key, so an existing recovery key
-         still works and there is nothing to regenerate. What is worth one
-         line is the case where there is none. */
-      if (!recoveryKeyPresence.exists) {
+      /* A changed PIN rewraps the same data key, so an existing recovery key still works
+         and there is nothing to regenerate. What is worth one line is the case where there
+         is none. An unconfirmed key was discarded by the change. */
+      if (!recoveryKeyPresence.active) {
         changingPin = false;
         offering = 'secret-changed';
         return;
@@ -208,7 +219,7 @@
     <!-- Held until the boot says which mode this journal is on. A cold open
          paints before it does, so the list first offered every mode, then
          dropped the current one for the line naming it: 40px up in one
-         frame, 70ms in (ux-carpet ticket 193). -->
+         frame, 70ms in. -->
     <ReadReserve ready={current !== null} estimate={reserve} onrest={rememberHeight}>
       <!-- Travels its height when the module swaps screens inside it: the
            list and a mode's consequence share one grid cell, and the cell
@@ -235,8 +246,8 @@
               onChange={(next) => (prefs.lockAfter = next)}
               aria-labelledby="lock-after-title"
             />
-            <!-- What a lock does on the web since after-release ticket 10, and
-                 what it cannot do. Android's lock path is its own. -->
+            <!-- What a lock does on the web, and what it cannot do. Android's lock path is
+                 its own. -->
             {#if !isAndroid()}
               <p class="ob-text" data-lock-after-web>{m.lock_after_web_note()}</p>
             {/if}
@@ -250,7 +261,7 @@
            one, because only one of them applies at a time and a disabled row
            explaining why would be a third thing to read. -->
       <!-- Only for a mode with a secret to change: the other three drew an
-           empty card here (after-release ticket 09). Opens and closes by its
+           empty card here. Opens and closes by its
            height when a change of mode adds or takes away the secret. -->
       {#if current === 'passphrase' || current === 'pin'}
       <div transition:disclose>
@@ -269,7 +280,6 @@
             key="change-pin"
             icon="lock"
             title={m.pin_change_title()}
-            subtitle={m.pin_change_sub()}
             onclick={() => (changingPin = true)}
           />
         {/if}
@@ -279,6 +289,12 @@
     </ReadReserve>
   {/if}
 </div>
+
+<Sheet open={protection !== null} title={m.protection_title()} onClose={cancelProtection}>
+  {#if protection !== null}
+    <CurrentProtection mode={bootState.accessMode} allowRecovery={recoveryKeyPresence.exists} onVerify={authenticateChange} onCancel={cancelProtection} />
+  {/if}
+</Sheet>
 
 <style>
   .am-after {

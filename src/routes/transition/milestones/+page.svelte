@@ -1,38 +1,18 @@
 <script lang="ts">
+  import { undoable } from '$lib/stores/deleteUndo';
+  import { journalTextAutocomplete } from '$lib/platform';
   import SourceRecordHandoff from '$lib/components/SourceRecordHandoff.svelte';
   import { bootState } from '$lib/stores/boot.svelte';
   import { withSourceReturn } from '$lib/navigation/sourceRecord';
-  /* Milestones, on the surface kit (phase 5 UX ticket 25).
-
-     Two things were crowded.
-
-     The screen opened on an "add a milestone" card - a heading, a shuffle
-     control, a dashed row for writing your own and three shuffled
-     templates - so the first thing a person with fourteen milestones saw
-     was a picker for a fifteenth. The templates are a sheet now, opened
-     from the header's add control the way every feature screen on the hub
-     opens its editor, and the screen opens on the milestones.
-
-     And each row carried two icon buttons, an edit and a delete, on top of
-     a photo, a name and a status line. Tapping the row is the edit, which
-     is what a row with an editor behind it means everywhere else in the
-     app; the delete stays as the row's own one control.
-
-     Phase 10 redesign ticket 43 put the rail on top of it. The same
-     milestones were drawn twice, a door apart: a rail at /timeline that
-     said which side of today each one fell on, and this list, where
-     "Coming out to my parents, 2 years ago" and "Name-change hearing, in
-     16 days" sat in the same row shape and the same grey. The rail opens
-     the screen (DIRECTION.md rule 16, an area screen opens by saying what
-     is true now) and the list runs under it, because a compressed rail
-     cannot be the place you edit or delete one specific milestone - the
-     editor, the photo prompt and the delete all live on the list. /timeline
-     is a redirect to here now. */
+  /* Open with the rail to show which milestones fall before and after today.
+     The list below retains editing, photos and delete.
+     Tap a row to edit or use its own delete control. The header's add control
+     opens a sheet with all eight neutral templates in fixed order. */
   import { m } from '$lib/paraglide/messages';
   import { page } from '$app/state';
   import { goto, afterNavigate } from '$app/navigation';
   import DatePicker from '$lib/components/DatePicker.svelte';
-  import { journal, liveList, liveQuery } from '$lib/data/live/journal.svelte';
+  import { journal, liveList } from '$lib/data/live/journal.svelte';
   import { milestoneStatus } from '$lib/data/milestoneStatus';
   import { prefs } from '$lib/data/prefs/store.svelte';
   import { resolveMilestoneOrigin } from '$lib/data/provenance';
@@ -52,8 +32,6 @@
   import MilestoneRail from '$lib/components/MilestoneRail.svelte';
   import PhotoThumb from '$lib/components/PhotoThumb.svelte';
   import PhotoAlignmentReview from '$lib/components/PhotoAlignmentReview.svelte';
-  import FeltSenseOfferSheet from '$lib/components/FeltSenseOfferSheet.svelte';
-  import { OFFERS, answerOffer, type OfferAnswer } from '$lib/data/offers';
   import ScreenHeader from '$lib/components/ScreenHeader.svelte';
   import Sheet from '$lib/components/Sheet.svelte';
   import Switch from '$lib/components/Switch.svelte';
@@ -64,41 +42,30 @@
   import Notice from '$lib/components/kit/Notice.svelte';
   import Skeleton from '$lib/components/Skeleton.svelte';
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
-  import { crossfade, disclose, resize } from '$lib/motion/reveal';
+  import { collapse, crossfade, disclose, resize } from '$lib/motion/reveal';
   import { photoSection } from '$lib/components/kit/photoSection.svelte';
   import RecordSheet from '$lib/components/kit/RecordSheet.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
   import { vocabulary } from '$lib/data/vocabulary/vocabulary';
-  import { fadeOnly, motionDuration } from '$lib/motion/tokens';
-  import { toast } from '$lib/stores/toasts.svelte';
 
-  let shown = $state(vocabulary.randomTemplates(3));
+  let templates = $derived(vocabulary.milestoneTemplates);
   let picking = $state(false);
-  /* Closed by default (redesign ticket 16): the rail already says what is
+  /* Closed by default: the rail already says what is
      true now, and the record beneath it - where a milestone is edited or
      deleted - is a delete affordance most visits never need open. */
   let milestoneListOpen = $state(false);
 
   function openPicker() {
-    if (picking) shuffleSuggestions();
-    else shown = vocabulary.randomTemplates(3);
     picking = true;
   }
 
-  function shuffleSuggestions() {
-    const next = vocabulary.randomTemplates(3);
-    const remaining = next.filter((tp) => !shown.some((current) => current.key === tp.key));
-    shown = shown.map((current) => next.find((tp) => tp.key === current.key) ?? remaining.shift()!);
-  }
-
-  const suggestionFade = (_node: Element) => fadeOnly(motionDuration('--dur-fast'));
   /* A milestone shows one photo, so `photo` is whatever it will end up with -
      the stored row, a picked replacement, or none - and `storedPhotoId`
       remembers what was there when the editor opened, so Save can describe
       preserve, remove or replace. Nothing is committed until Save (F1), so
       closing the sheet undoes both. `originalPhoto` is that same starting
-      point held separately: the alignment review (ticket 12) compares a
+      point held separately: the alignment review compares a
       retake against the photo this milestone had before this edit, even
       after removing it clears `photo` to make room for a new one. */
   type Draft = {
@@ -110,12 +77,11 @@
     storedPhotoId: string | null;
     originalPhoto: Photo | null;
     templateKey: string | null;
+    /* Part of the record and of Save, unlike
+       the journey anchor below: whether Home celebrates a milestone is a
+       fact about this milestone, not a global choice pointing at one. */
+    celebrate: boolean;
   };
-  /* Offered, never required, right after a brand-new milestone is created
-     (CONTEXT: "Felt-sense entry") - editing an existing one never opens
-     this, the same reasoning ticket 24 gives for the anniversary showing
-     below being its own separate offer, not this one repeated. */
-  let feelingOfferId = $state<string | null>(null);
 
   // Mirrored, and the journal already orders them by day (ADR-0004).
   let sorted = $derived(vocabulary.milestones);
@@ -123,7 +89,7 @@
   /* Eras aren't mirrored the way milestones are, so the rail's bands read
      a live query - `erasQuery.rows` is `[]` before it resolves, which
      draws a rail with no bands rather than one waiting on a loading
-     state that never shows (redesign ticket 16). */
+     state that never shows. */
   let erasQuery = liveList((j) => j.eras.getEras());
 
   /* What a blank draft is seeded from, set by whichever row of the picker
@@ -141,7 +107,8 @@
       photo: null,
       storedPhotoId: null,
       originalPhoto: null,
-      templateKey: template?.key ?? null
+      templateKey: template?.key ?? null,
+      celebrate: true
     }),
     fromRecord: (existing) => ({
       id: existing.id,
@@ -151,10 +118,10 @@
       photo: existing.photo && { kind: 'stored', photo: existing.photo },
       storedPhotoId: existing.photo?.id ?? null,
       originalPhoto: existing.photo ?? null,
-      templateKey: existing.templateKey
+      templateKey: existing.templateKey,
+      celebrate: existing.celebrate !== false
     }),
     async upsert(draft) {
-      const isNew = !draft.id;
       const photo =
         draft.photo?.kind === 'picked'
           ? { action: 'replace' as const, photo: draft.photo.photo }
@@ -162,26 +129,25 @@
             ? { action: 'remove' as const }
             : { action: 'preserve' as const };
 
-      const id = await journal.milestones.upsertMilestone({
+      await journal.milestones.upsertMilestone({
         id: draft.id,
         name: draft.name.trim() || m.ms_default_name(),
         epochDay: epochDayFromDateInputValueOrToday(draft.date),
         description: draft.description,
         templateKey: draft.templateKey,
+        celebrate: draft.celebrate,
         photo
       });
-      if (isNew) feelingOfferId = id;
     },
-    // A new milestone is answered by the felt-sense offer instead.
-    saved: (draft) => (draft.id ? m.saved() : null),
-    remove: (id) => journal.milestones.deleteMilestone(id),
+    saved: () => m.saved(),
+    remove: (id) => undoable((j) => j.milestones.deleteMilestone(id)),
     findById: (id) => sorted.find((mi) => mi.id === id)
   });
 
   function statusText(mi: Milestone): string {
     const s = milestoneStatus(mi, currentDay());
     if (s.type === 'countdown') return m.ms_status_in_days({ days: m.n_days({ n: s.days ?? 0 }) });
-    if (s.type === 'today') return m.ms_status_today();
+    if (s.type === 'today') return m.today_status();
     return m.ms_status_years_ago({ years: m.n_years({ n: s.years ?? 0 }) });
   }
 
@@ -222,10 +188,9 @@
     return [{ id: 'milestone-photo', fileName: photo.kind === 'stored' ? photo.photo.fileName : null }];
   }
 
-  /* The day-prompt (ticket 47, ADR-0008/0015): normalizing always strips
-     whatever date the picked file carried, so a photo picked or captured
-     here is asked for a day before it lands in the draft. A milestone
-     shows at most one photo, so this holds at most one pending pick -
+  /* The day-prompt (ADR-0008/0015): normalizing always strips whatever date the picked file
+     carried, so a photo picked or captured here is asked for a day before it lands in the
+     draft. A milestone shows at most one photo, so this holds at most one pending pick -
      unlike the entry editor's queue, there is never a second to lose. */
   let pendingMilestonePhoto = $state<NormalizedPhoto | null>(null);
   let pendingMilestoneDay = $state('');
@@ -265,85 +230,6 @@
     }
   });
 
-  /* One entry in the offer registry (phase 8 features ticket 22,
-     ADR-0045). `feelingOfferId` is the open offer's subject, so a save that
-     arrives with no milestone behind it writes nothing without this screen
-     having to check for that itself. */
-  const FEELING_OFFER = OFFERS['new-milestone-felt-sense'];
-
-  async function answerFeelingOffer(
-    given: OfferAnswer,
-    input: { mood: number; note: string | null } | null
-  ) {
-    const subject =
-      feelingOfferId && input
-        ? { owner: { milestoneId: feelingOfferId }, epochDay: todayEpochDay(), ...input }
-        : null;
-    /* Closed once the write lands; the sheet holds its button meanwhile.
-       Either answer confirms the milestone itself, which this offer stands
-       in for (its own save opts out of the toast). */
-    if (feelingOfferId === null) return;
-    await answerOffer(FEELING_OFFER, subject, given, journal);
-    feelingOfferId = null;
-    toast(m.saved(), { kind: 'record-saved' });
-  }
-
-  /* The anniversary showing (phase 5 ticket 24, CONTEXT: "Felt-sense
-     entry"): on the day a milestone comes round again, the screen asks how
-     it feels now. It lived on MilestoneCard, and when redesign 43 made this
-     screen the one place milestones are drawn, nothing here took it over,
-     so the question CONTEXT promises was never asked (phase 15 after-release
-     ticket 15). It sits above the rail because it is what is true today.
-
-     Offered, never required: answering it hides the row because today's
-     reading is now on the milestone, and Skip hides it for this visit only.
-     No offer-once check, for the reason offers.ts gives - last year's
-     answer does not answer this year's. Nothing is drawn until today's
-     felt-sense read has answered, so a row is never shown and then taken
-     back from someone who already answered earlier today. */
-  const ANNIV_OFFER = OFFERS['milestone-anniversary-felt-sense'];
-  let answeredToday = liveQuery((j) =>
-    j.feltSense
-      .onDay(currentDay())
-      .then((rows) => new Set(rows.flatMap((f) => (f.owner.kind === 'milestone' ? [f.owner.id] : []))))
-  );
-  let skippedAnniv = $state<string[]>([]);
-  let anniversaries = $derived.by(() => {
-    const answered = answeredToday.value;
-    if (!answered) return [];
-    const today = currentDay();
-    return sorted.flatMap((mi) => {
-      const s = milestoneStatus(mi, today);
-      return s.isAnnivToday && !answered.has(mi.id) && !skippedAnniv.includes(mi.id) ? [{ mi, years: s.years ?? 0 }] : [];
-    });
-  });
-  let annivOffer = $state<Milestone | null>(null);
-  /* Kept after the offer closes, so the sheet still names its milestone
-     while it slides away rather than losing the line mid-close. */
-  let annivSubject = $state('');
-  /* An offer known by the time the milestones first paint arrives with
-     them, in place, rather than opening a frame later and pushing the rail
-     down 114px under someone who is already looking at it. Once the rail
-     has painted, an offer that answers late, and a row that goes, open and
-     close as usual. */
-  let railPainted = $state(false);
-  $effect(() => {
-    if (railPainted || !vocabulary.ready) return;
-    const id = requestAnimationFrame(() => (railPainted = true));
-    return () => cancelAnimationFrame(id);
-  });
-
-  async function answerAnnivOffer(given: OfferAnswer, input: { mood: number; note: string | null } | null) {
-    const open = annivOffer;
-    if (!open) return;
-    if (given === 'decline') skippedAnniv = [...skippedAnniv, open.id];
-    const subject = input ? { owner: { milestoneId: open.id }, epochDay: todayEpochDay(), ...input } : null;
-    /* Closed once the write lands; the sheet holds its button meanwhile. */
-    const saved = await answerOffer(ANNIV_OFFER, subject, given, journal);
-    annivOffer = null;
-    if (saved) toast(m.ms_feeling_anniv_saved({ name: open.name }));
-  }
-
   /* The editor's own draft carries no origin - it's a name, a date, a
      template key, a photo (RecordSheet's Draft shape) - so the notice below
      reads it off the stored record being edited instead. A brand-new
@@ -365,7 +251,7 @@
     {/snippet}
   </ScreenHeader>
   <a class="btn btn-ghost press" data-manage-eras href="/settings/eras">
-    <Icon name="columns" size={20} />
+    <Icon name="era" size={20} />
     <span>{m.eras_manage()}</span>
   </a>
   <SourceRecordHandoff id={sourceId} ready={bootState.status === 'ready'} found={!!sourceMilestone} onOpen={() => openEditor(sourceMilestone!, null)} />
@@ -376,40 +262,16 @@
       <!-- `sorted` reads `[]` on a cold navigation straight to this screen
            for a few frames before the mirror behind it hydrates, which
            otherwise looked exactly like the true "no milestones yet"
-           empty state below (ticket 152/162). -->
+           empty state below. -->
       <div out:crossfade><Skeleton variant="block" count={1} /></div>
     {:else if sorted.length}
-      <!-- What is true now, before what was true before (DIRECTION.md rule
-           16). The rail carries today's place among the milestones and the
+      <!-- What is true now, before what was true before. The rail carries today's place among the milestones and the
            hollow marks ahead of it; the list under it is the same set as
            rows, which is where a milestone is opened, edited or deleted. -->
-      {#if anniversaries.length}
-        <div class="screen-part" data-anniv-offers transition:disclose={{ skip: !railPainted }}>
-          <ListCard role={roleAt(activeFlag.roles, 0)}>
-            {#each anniversaries as { mi, years } (mi.id)}
-              <div class="rows-divide" transition:disclose>
-                <ListRow
-                  data-anniv-feeling={mi.id}
-                  onclick={() => {
-                    annivSubject = mi.name;
-                    annivOffer = mi;
-                  }}
-                  title={ANNIV_OFFER.copy.title()}
-                  subtitle={`${mi.name} · ${m.ms_status_years_ago({ years: m.n_years({ n: years }) })}`}
-                >
-                  {#snippet leading()}
-                    {#if mi.photo}
-                      <span class="ms-photo"><PhotoThumb photo={mi.photo} size={36} /></span>
-                    {:else}
-                      <span class="kit-row-ico"><Icon name="heart" size={22} /></span>
-                    {/if}
-                  {/snippet}
-                </ListRow>
-              </div>
-            {/each}
-          </ListCard>
-        </div>
-      {/if}
+      <!-- Wrapped so the whole of it can leave as one when the last milestone is deleted,
+           and the empty notice can arrive, instead of one swapping for the other in a
+           frame. -->
+      <div out:crossfade>
       <MilestoneRail
         milestones={sorted}
         eras={erasQuery.rows}
@@ -433,75 +295,70 @@
           <div data-ms-log transition:disclose>
             {#each sorted as mi (mi.id)}
               {@const origin = resolveMilestoneOrigin(mi)}
-              <ListRow
-                key={mi.id}
-                data-milestone={mi.id}
-                icon="flag"
-                title={mi.name}
-                subtitle={[
-                  `${fmtDay(mi.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })} · ${statusText(mi)}`,
-                  origin?.text,
-                  mi.id === prefs.journeyAnchorMilestoneId && m.journey_anchor_row_badge()
-                ]}
-                chevron={false}
-                onclick={() => openEditor(mi, null)}
-                action={{ icon: 'trash', label: m.ms_delete_aria({ name: mi.name }), onclick: () => record.askToDelete(mi) }}
-              >
-                {#snippet leading()}
-                  <!-- A milestone that has a photograph of itself shows it. The
-                       disc with a flag in it is what a milestone without one
-                       gets, rather than the picture being a fourth thing on the
-                       row beside the glyph standing in for it.
+              <div class="rows-divide" transition:collapse>
+                <ListRow
+                  key={mi.id}
+                  data-milestone={mi.id}
+                  icon="summit"
+                  title={mi.name}
+                  subtitle={[
+                    `${fmtDay(mi.epochDay, { day: 'numeric', month: 'short', year: 'numeric' })} · ${statusText(mi)}`,
+                    origin?.text,
+                    mi.id === prefs.journeyAnchorMilestoneId && m.journey_anchor_row_badge()
+                  ]}
+                  chevron={false}
+                  onclick={() => openEditor(mi, null)}
+                  action={{ icon: 'trash', label: m.ms_delete_aria({ name: mi.name }), onclick: () => record.askToDelete(mi) }}
+                >
+                  {#snippet leading()}
+                    <!-- A milestone that has a photograph of itself shows it. The
+                         disc with the summit in it is what a milestone without one
+                         gets, rather than the picture being a fourth thing on the
+                         row beside the glyph standing in for it.
 
-                       Round, and at the disc's own size: a list where some rows
-                       lead with a circle and others with a rounded square reads
-                       as two lists interleaved, which is what the rendered screen
-                       showed (2026-08-26). -->
-                  {#if mi.photo}
-                    <span class="ms-photo"><PhotoThumb photo={mi.photo} size={36} /></span>
-                  {:else}
-                    <span class="kit-row-ico"><Icon name="flag" size={22} /></span>
-                  {/if}
-                {/snippet}
-              </ListRow>
+                         Round, and at the disc's own size: a list where some rows
+                         lead with a circle and others with a rounded square reads
+                         as two lists interleaved, which is what the rendered screen
+                         showed (2026-08-26). -->
+                    {#if mi.photo}
+                      <span class="ms-photo"><PhotoThumb photo={mi.photo} size={36} /></span>
+                    {:else}
+                      <span class="kit-row-ico"><Icon name="summit" size={22} /></span>
+                    {/if}
+                  {/snippet}
+                </ListRow>
+              </div>
             {/each}
           </div>
         {/if}
       </ListCard>
+      </div>
     {:else}
-      <Notice
-        icon="flag"
-        key="milestones-empty"
-        role={roleAt(activeFlag.roles, 0)}
-        title={m.ms_none()}
-        action={{ label: m.ms_add(), primary: true, onclick: openPicker }}
-      />
+      <div in:crossfade>
+        <Notice
+          icon="summit"
+          key="milestones-empty"
+          role={roleAt(activeFlag.roles, 0)}
+          title={m.ms_none()}
+          action={{ label: m.add_milestone(), primary: true, onclick: openPicker }}
+        />
+      </div>
     {/if}
   </div>
 
   <Sheet open={picking} title={m.ms_add_heading()} onClose={() => (picking = false)}>
-    <div class="spread" style="margin-bottom:var(--space-3)">
-      <h3>{m.ms_add_heading()}</h3>
-      <button class="icon-btn press" data-shuffle aria-label={m.ms_shuffle()} onclick={shuffleSuggestions}>
-        <Icon name="dice" size={20} />
-      </button>
-    </div>
+    <h3 class="ms-picker-heading">{m.ms_add_heading()}</h3>
     <ListCard role={roleAt(activeFlag.roles, 0)}>
       <ListRow
         key="own"
         data-own
         icon="pencil"
         title={m.ms_own_title()}
-        subtitle={m.ms_own_sub()}
         onclick={() => openEditor(null, null)}
       />
-      {#each shown as tp, i (i)}
-        <div class="template-slot rows-divide">
-          {#key tp.key}
-            <div class="template-suggestion" in:suggestionFade out:suggestionFade>
-              <ListRow key={tp.key} data-template={tp.key} icon="flag" title={tp.name} onclick={() => openEditor(null, tp)} />
-            </div>
-          {/key}
+      {#each templates as tp (tp.key)}
+        <div class="rows-divide">
+          <ListRow key={tp.key} data-template={tp.key} icon="summit" title={tp.name} onclick={() => openEditor(null, tp)} />
         </div>
       {/each}
     </ListCard>
@@ -516,7 +373,7 @@
     handle="milestone"
     newTitle={m.ms_new_title()}
     editTitle={m.ms_edit_title()}
-    saveLabel={(draft) => (draft.id ? m.ms_save_changes() : m.ms_add())}
+    saveLabel={(draft) => (draft.id ? m.save_changes() : m.add_milestone())}
     confirm={{
       title: m.ms_delete_sheet(),
       question: (milestone) => m.ms_delete_q({ name: milestone.name }),
@@ -528,20 +385,20 @@
     {#snippet fields(editor)}
       {#if editingOrigin}
         <Notice
-          icon="sparkle"
+          icon="summit"
           key="milestone-provenance"
           text={editingOrigin.text}
           action={editingOrigin.href ? { label: m.prov_open_source(), href: milestoneOriginHref(editingOrigin.href, editor.id!) } : undefined}
         />
       {/if}
-      <Field label={m.ms_name_label()} id="ms-name">
+      <Field label={m.name_label()} id="ms-name">
         {#snippet children(id)}
-          <input class="input" {id} name="ms-name" placeholder={m.ms_name_placeholder()} bind:value={editor.name} />
+          <input autocomplete={journalTextAutocomplete()} class="input" {id} name="ms-name" placeholder={m.ms_name_placeholder()} bind:value={editor.name} />
         {/snippet}
       </Field>
       <Field label={m.ms_description_label()} id="ms-description">
         {#snippet children(id)}
-          <textarea
+          <textarea autocomplete={journalTextAutocomplete()}
             class="input"
             {id}
             name="ms-description"
@@ -551,7 +408,7 @@
           ></textarea>
         {/snippet}
       </Field>
-      <Field label={m.ms_date_label()} hint={m.ms_date_hint()} id="ms-date">
+      <Field label={m.date_label()} hint={m.ms_date_hint()} id="ms-date">
         {#snippet children(id, describedBy)}
           <DatePicker name="ms-date" bind:value={editor.date} {id} {describedBy} />
         {/snippet}
@@ -575,8 +432,8 @@
                 </button>
               </div>
             {:else}
-              <button class="photo-add" data-add-photo aria-label={m.add_photo()} onclick={milestonePhoto.pick}>
-                <Icon name="image" size={20} /><span>{m.add_photo()}</span>
+              <button class="photo-add" data-add-photo aria-label={m.add()} onclick={milestonePhoto.pick}>
+                <Icon name="image" size={20} /><span>{m.add()}</span>
               </button>
               <button
                 class="photo-add"
@@ -590,9 +447,21 @@
           </div>
         {/snippet}
       </Field>
+      <Field label={m.ms_celebrate_label()} legend>
+        {#snippet children()}
+          <div class="kit-row is-static" data-milestone-celebrate>
+            <span class="kit-row-text">
+              <span class="kit-row-sub">{m.ms_celebrate_hint()}</span>
+            </span>
+            <span class="kit-row-trail">
+              <Switch checked={editor.celebrate} label={m.ms_celebrate_label()} onChange={(v) => (editor.celebrate = v)} />
+            </span>
+          </div>
+        {/snippet}
+      </Field>
       {#if editor.id}
         <!-- Written straight to the preference the moment the switch moves,
-             not part of Save (ticket 10, ADR-0049): the anchor is one
+             not part of Save (ADR-0049): the anchor is one
              global choice this milestone points at, not a field the record
              itself owns, and a brand-new milestone has no id for it to
              point at yet. -->
@@ -613,7 +482,7 @@
           {/snippet}
         </Field>
         <!-- The target's own screen lists the documents pointing at it
-             (ticket 56, ADR-0065); the milestone stores nothing about the
+             (ADR-0065); the milestone stores nothing about the
              link. -->
         <LinkedDocuments kind="milestone" id={editor.id} />
       {/if}
@@ -627,7 +496,7 @@
       title: m.ms_photo_delete_sheet(),
       question: () => m.ms_photo_delete_q(),
       hint: () => m.ms_photo_delete_hint(),
-      confirmLabel: m.ms_photo_delete(),
+      confirmLabel: m.remove(),
       cancelLabel: m.keep_it()
     }}
   />
@@ -650,29 +519,11 @@
     onSkip={() => resolveMilestonePhotoDay(null)}
   />
 
-  <FeltSenseOfferSheet
-    open={annivOffer !== null}
-    copy={ANNIV_OFFER.copy}
-    subject={annivSubject}
-    onSave={(input) => answerAnnivOffer('confirm', input)}
-    onSkip={() => void answerAnnivOffer('decline', null)}
-  />
-
-  <FeltSenseOfferSheet
-    open={feelingOfferId !== null}
-    copy={FEELING_OFFER.copy}
-    onSave={(input) => answerFeelingOffer('confirm', input)}
-    onSkip={() => void answerFeelingOffer('decline', null)}
-  />
 </div>
 
 <style>
-  .template-slot {
-    display: grid;
-  }
-
-  .template-suggestion {
-    grid-area: 1 / 1;
+  .ms-picker-heading {
+    margin: 0 0 var(--space-3);
   }
 
   .ms-photo {

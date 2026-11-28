@@ -7,15 +7,23 @@ import {
 } from './payload';
 import type { ArchiveContents, OpenedArchive } from './pack';
 import { CorruptArchiveError, u32 } from './wire';
+import { LATEST_SCHEMA_VERSION } from '../sqlite/schema-version';
+import { isStorableFileName } from '../photos/names';
 
 const JSON_LENGTH_PREFIX = 4;
+
+/** The payload's JSON length is read off an untrusted file and allocated
+    against, so it has a ceiling. 128 MiB is far beyond a real journal's
+    text (photos travel as separate files, not in this JSON) and well under
+    the 4 GiB a length field can express. */
+export const MAX_PAYLOAD_JSON_BYTES = 128 * 1024 * 1024;
 
 interface EncodedArchiveBody {
   bodyLength: number;
   body: AsyncGenerator<Uint8Array>;
 }
 
-/* ArchiveCodec stays exported only for its own test (AU-09 test-only review). */
+/* ArchiveCodec stays exported only for its own test. */
 export interface ArchiveCodec {
   formatVersion: number;
   encode(contents: ArchiveContents): Promise<EncodedArchiveBody>;
@@ -27,6 +35,7 @@ const archiveCodecV1: ArchiveCodec = {
 
   async encode(contents) {
     const payload: ArchivePayload = {
+      writer: { app: __APP_VERSION__, schema: LATEST_SCHEMA_VERSION },
       journal: contents.journal,
       preferences: contents.preferences,
       files: contents.files
@@ -39,27 +48,27 @@ const archiveCodecV1: ArchiveCodec = {
 
   async decode(plaintext) {
     const jsonLength = new DataView((await plaintext.readExactly(JSON_LENGTH_PREFIX)).buffer).getUint32(0);
+    if (jsonLength > MAX_PAYLOAD_JSON_BYTES) throw new CorruptArchiveError('the archive contents are not readable');
     const raw = parsePayload(await plaintext.readExactly(jsonLength));
     return { payload: raw, files: readFiles(plaintext, raw.files) };
   }
 };
 
-/* v2 changed what the payload's preferences hold, not how the body is laid
-   out: phase 5 ticket 35 replaced the active preset with the list of scales
-   it stood for, and PAYLOAD_MIGRATIONS carries a v1 file across. So this is
-   v1's own encode and decode under a second version number rather than a
-   second implementation - the format version is one number shared by the
-   body layout and the payload's shape, and only the second one moved.
+/* V2 changed what the payload's preferences hold, not how the body is laid out: replaced
+   the active preset with the list of scales it stood for, and PAYLOAD_MIGRATIONS carries a
+   v1 file across. So this is v1's own encode and decode under a second version number
+   rather than a second implementation - the format version is one number shared by the body
+   layout and the payload's shape, and only the second one moved.
 
-   Written as a spread rather than by mutating v1's number, because a v1 file
-   still has to decode as v1 before the ladder walks it. */
+   Written as a spread rather than by mutating v1's number, because a v1 file still has to
+   decode as v1 before the ladder walks it. */
 const archiveCodecV2: ArchiveCodec = { ...archiveCodecV1, formatVersion: 2 };
 
 const ARCHIVE_CODECS: readonly ArchiveCodec[] = [archiveCodecV1, archiveCodecV2];
 
 export const ARCHIVE_FORMAT_VERSION = currentArchiveFormatVersion();
 
-export function currentArchiveFormatVersion(codecs: readonly ArchiveCodec[] = ARCHIVE_CODECS): number {
+function currentArchiveFormatVersion(codecs: readonly ArchiveCodec[] = ARCHIVE_CODECS): number {
   const current = codecs[codecs.length - 1];
   if (!current) throw new Error('no archive codecs are registered');
   return current.formatVersion;
@@ -166,7 +175,8 @@ function parsePayload(json: Uint8Array): ArchivePayload {
     throw new CorruptArchiveError('the archive contents are not readable');
   }
   const files = payload?.files;
-  if (!payload?.journal || !Array.isArray(files) || !files.every((file) => typeof file?.name === 'string' && Number.isInteger(file?.length) && file.length >= 0)) {
+  if (!payload?.journal || !Array.isArray(files) || !files.every((file) => typeof file?.name === 'string' &&
+      isStorableFileName(file.name) && Number.isInteger(file?.length) && file.length >= 0)) {
     throw new CorruptArchiveError('the archive contents are not readable');
   }
   return payload;

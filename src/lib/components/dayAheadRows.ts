@@ -1,5 +1,4 @@
-/* What a `dayAhead` mark looks like as a row on `/day/[day]` (phase 8
-   features ticket 62, ADR-0067).
+/* What a `dayAhead` mark looks like as a row on `/day/[day]` (ADR-0067).
 
    A mark is a day and a kind and nothing else - dayAhead.ts's own header
    says why: never which appointment, which milestone or which letter. So
@@ -23,19 +22,18 @@ import type { DayRow } from './dayRows';
    `dayAheadRoutes.ts`, so a mark's screen is named once and Today's agenda
    links to the same place this row does. */
 const MARK_ROWS: Record<DayAheadMarkKind, () => Pick<DayRow, 'icon' | 'title'>> = {
-  appointment: () => ({ icon: 'calendar', title: m.appointments_untitled() }),
-  surgery: () => ({ icon: 'flag', title: m.surgery_date_label() }),
-  // `sparkle` rather than the `flag` surgery takes: the two can share a day,
-  // and hubRows.ts already resolved this exact pair apart for the same
-  // reason - a duplicate icon reads as one row drawn twice.
-  milestone: () => ({ icon: 'sparkle', title: m.ms_default_name() }),
-  letterUnlock: () => ({ icon: 'book', title: m.day_ahead_letter_unlock() }),
-  doseSlot: () => ({ icon: 'pill', title: m.dose_amount_label() })
+  appointment: () => ({ icon: 'appointment', title: m.appointments_untitled() }),
+  surgery: () => ({ icon: 'clipboard', title: m.surgery_date_label() }),
+  // `summit`, the hub row's mark. It drew `sparkle`,
+  // and `flag` before that, which surgery shared: the two can fall on one
+  // day, and a duplicate icon reads as one row drawn twice.
+  milestone: () => ({ icon: 'summit', title: m.ms_default_name() }),
+  letterUnlock: () => ({ icon: 'envelope', title: m.day_ahead_letter_unlock() }),
+  doseSlot: () => ({ icon: 'pill', title: m.dose_label() })
 };
 
 /** The icon and the words one kind of mark is drawn with, wherever it is
-    drawn: a row on `/day/[day]` below, and a row of Today's agenda (phase
-    10 redesign ticket 13), so the two surfaces cannot come to call the same
+    drawn: a row on `/day/[day]` below, and a row of Today's agenda, so the two surfaces cannot come to call the same
     fact two different things. */
 export function dayAheadMarkLabel(kind: DayAheadMarkKind): Pick<DayRow, 'icon' | 'title'> {
   return MARK_ROWS[kind]();

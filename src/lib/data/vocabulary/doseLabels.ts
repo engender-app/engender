@@ -1,19 +1,19 @@
-/* Display wording for the dose log's closed vocabularies (phase 4 ticket
-   02), alongside reminderLabel.ts for the same reason it is there: the
-   wording speaks paraglide, and nothing the Node tier touches may import
-   that (ADR-0016). doseSchedule.ts holds the vocabularies themselves and
-   stays free of it; this is where they get their words.
+/* Display wording for the dose log's closed vocabularies, alongside reminderLabel.ts for
+   the same reason it is there: the wording speaks paraglide, and nothing the Node tier
+   touches may import that. doseSchedule.ts holds the vocabularies themselves and stays free
+   of it; this is where they get their words.
 
-   Each record is typed against a union derived from those `as const` lists,
-   the rule labels.ts sets out: adding a site or a route without adding its
-   message is then a typecheck failure rather than a raw key on screen.
+   Each record is typed against a union derived from those `as const` lists, the rule
+   labels.ts sets out: adding a site or a route without adding its message is then a
+   typecheck failure rather than a raw key on screen.
 
-   Keyed one message per member rather than composed from parts. Polish
-   inflects a side with its region's gender ("udo lewe" but "pośladek lewy"),
-   so a "{region}, {side}" template would be wrong in half the injection
-   sites, and the same trap waits in any language with agreement. */
+   Keyed one message per member rather than composed from parts. Polish inflects a side with
+   its region's gender ("udo lewe" but "pośladek lewy"), so a "{region}, {side}" template
+   would be wrong in half the injection sites, and the same trap waits in any language with
+   agreement. */
 
 import { m } from '$lib/paraglide/messages';
+import { fmtDay } from '$lib/data/dates';
 import type { ApplicationSiteKey, InjectionSiteKey, RouteOption } from '$lib/data/doseSchedule';
 import type { DoseAttribution } from '$lib/data/regimenEpisode';
 import type { DoseEvent, DoseRoute, DoseStatus, EpisodeEndReason, InjectionVehicle, PauseReason } from '$lib/data/types';
@@ -47,8 +47,10 @@ const APPLICATION_SITE_LABELS: Record<ApplicationSiteKey, () => string> = {
 const ROUTE_LABELS: Record<DoseRoute, () => string> = {
   oral: m.dose_route_oral,
   sublingual: m.dose_route_sublingual,
+  rectal: m.dose_route_rectal,
   im: m.dose_route_im,
   sc: m.dose_route_sc,
+  implant: m.dose_route_implant,
   patch: m.dose_route_patch,
   gel: m.dose_route_gel
 };
@@ -69,26 +71,29 @@ const PAUSE_REASON_LABELS: Record<PauseReason, () => string> = {
   accidental: m.pause_reason_accidental
 };
 
-/** None preferred over another (ticket 43, mirroring the rule just above). */
+/** None preferred over another. */
 const EPISODE_END_REASON_LABELS: Record<EpisodeEndReason, () => string> = {
   switchedDrugOrRoute: m.episode_end_reason_switched,
   pausedForNow: m.episode_end_reason_paused,
   decidedToStop: m.episode_end_reason_stopped
 };
 
-/* A regimen template's picker-row name, and the drug/ester text it pre-fills
-   (CONTEXT: "Regimen template", phase 5 ticket 42). Route is not repeated
-   here - it pre-fills from ROUTE_LABELS below, by the DoseRoute each
-   template names, so the word matches whatever the dose log already calls
-   that route rather than drifting into a second wording for the same
-   route. Ester is absent from a template with none, the same nullable
-   shape RegimenEpisode.ester itself has. */
+/* A regimen template's picker-row name, and the drug/ester text it pre-fills. Route is not
+   repeated here - it pre-fills from ROUTE_LABELS below, by the DoseRoute each template
+   names, so the word matches whatever the dose log already calls that route rather than
+   drifting into a second wording for the same route. Ester is absent from a template with
+   none, the same nullable shape RegimenEpisode.ester itself has. */
 const REGIMEN_TEMPLATE_NAME: Record<RegimenTemplateKey, () => string> = {
   estradiol_valerate_im: m.tpl_regimen_estradiol_valerate_im,
   estradiol_oral: m.tpl_regimen_estradiol_oral,
   estradiol_gel: m.tpl_regimen_estradiol_gel,
   testosterone_cypionate_im: m.tpl_regimen_testosterone_cypionate_im,
-  testosterone_gel: m.tpl_regimen_testosterone_gel
+  testosterone_gel: m.tpl_regimen_testosterone_gel,
+  spironolactone_oral: m.tpl_regimen_spironolactone_oral,
+  cyproterone_oral: m.tpl_regimen_cyproterone_oral,
+  bicalutamide_oral: m.tpl_regimen_bicalutamide_oral,
+  progesterone_oral: m.tpl_regimen_progesterone_oral,
+  gnrh_agonist_im: m.tpl_regimen_gnrh_agonist_im
 };
 
 const REGIMEN_TEMPLATE_DRUG: Record<RegimenTemplateKey, () => string> = {
@@ -96,12 +101,18 @@ const REGIMEN_TEMPLATE_DRUG: Record<RegimenTemplateKey, () => string> = {
   estradiol_oral: m.tpl_regimen_drug_estradiol,
   estradiol_gel: m.tpl_regimen_drug_estradiol,
   testosterone_cypionate_im: m.tpl_regimen_drug_testosterone,
-  testosterone_gel: m.tpl_regimen_drug_testosterone
+  testosterone_gel: m.tpl_regimen_drug_testosterone,
+  spironolactone_oral: m.tpl_regimen_drug_spironolactone,
+  cyproterone_oral: m.tpl_regimen_drug_cyproterone,
+  bicalutamide_oral: m.tpl_regimen_drug_bicalutamide,
+  progesterone_oral: m.tpl_regimen_drug_progesterone,
+  gnrh_agonist_im: m.tpl_regimen_drug_triptorelin
 };
 
 const REGIMEN_TEMPLATE_ESTER: Partial<Record<RegimenTemplateKey, () => string>> = {
   estradiol_valerate_im: m.tpl_regimen_ester_valerate,
-  testosterone_cypionate_im: m.tpl_regimen_ester_cypionate
+  testosterone_cypionate_im: m.tpl_regimen_ester_cypionate,
+  cyproterone_oral: m.tpl_regimen_ester_acetate
 };
 
 const REGIMEN_TEMPLATE_ROUTE: Record<RegimenTemplateKey, DoseRoute> = {
@@ -109,7 +120,12 @@ const REGIMEN_TEMPLATE_ROUTE: Record<RegimenTemplateKey, DoseRoute> = {
   estradiol_oral: 'oral',
   estradiol_gel: 'gel',
   testosterone_cypionate_im: 'im',
-  testosterone_gel: 'gel'
+  testosterone_gel: 'gel',
+  spironolactone_oral: 'oral',
+  cyproterone_oral: 'oral',
+  bicalutamide_oral: 'oral',
+  progesterone_oral: 'oral',
+  gnrh_agonist_im: 'im'
 };
 
 /* Both take a plain string, not the key union: a site read back from an
@@ -135,9 +151,41 @@ export const regimenTemplateEster = (key: string): string | null =>
 export const regimenTemplateRoute = (key: string): string =>
   routeLabel(REGIMEN_TEMPLATE_ROUTE[key as RegimenTemplateKey] ?? 'oral');
 
-/** Route options for a picker, in the order the ticket names them: the two
-    oral-ish routes, the two injections, then the two topical ones. */
-export const ROUTE_OPTIONS: RouteOption[] = (['oral', 'sublingual', 'im', 'sc', 'patch', 'gel'] as const).map(
+/* A regimen episode's interval is free text (types.ts): a person types their own ("every 2
+   weeks", "co 10 dni") and that is shown as written. The demo journal stores the two
+   English words below, though, and they went out raw on a Polish screen. Those two, and
+   only as stored, read through the catalogue; anything else is somebody's own words. A Map
+   rather than a record, so a typed "constructor" is not a key it already has. */
+const REGIMEN_INTERVAL_LABELS = new Map<string, () => string>([
+  ['daily', m.regimen_interval_daily],
+  ['weekly', m.regimen_interval_weekly]
+]);
+
+export const regimenIntervalLabel = (interval: string): string =>
+  REGIMEN_INTERVAL_LABELS.get(interval)?.() ?? interval;
+
+/** What the editor's interval field saves. The field opens on
+    `regimenIntervalLabel`, so a stored "daily" shows as "codziennie" in
+    Polish; saving that untouched keeps "daily" rather than rewriting the
+    episode in whichever language it was last opened in. */
+export const regimenIntervalToStore = (draft: string, stored: string | null): string => {
+  const text = draft.trim();
+  return stored !== null && text === regimenIntervalLabel(stored) ? stored : text;
+};
+
+/** An episode's months on the regimen row: "Jan 2025 to Feb 2026", or "from Feb 2026" while
+    it has no end. The ongoing case is its own sentence, not the word for ongoing dropped
+    into the end of a range, which in Polish read "lut 2026 do trwa". */
+export const regimenPeriodLabel = (startEpochDay: number, endEpochDay: number | null): string => {
+  const month = (epochDay: number) => fmtDay(epochDay, { month: 'short', year: 'numeric' });
+  return endEpochDay === null
+    ? m.regimen_period_ongoing({ from: month(startEpochDay) })
+    : m.regimen_period_range({ from: month(startEpochDay), to: month(endEpochDay) });
+};
+
+/** Route options for a picker: the three taken by mouth or absorbed through a mucosa, the
+    two injections and the implant, then the two topical ones. */
+export const ROUTE_OPTIONS: RouteOption[] = (['oral', 'sublingual', 'rectal', 'im', 'sc', 'implant', 'patch', 'gel'] as const).map(
   (route) => ({ value: route, label: routeLabel(route) })
 );
 
@@ -147,7 +195,7 @@ export const STATUS_OPTIONS: { value: DoseStatus; label: string }[] = (['taken',
 
 /** A dose row's title: the drug it carries leading, where one resolved, so
     concurrent regimens at the same amount and route are two records before
-    either is opened (phase 11 ticket 19). One wording rule for every
+    either is opened. One wording rule for every
     surface that shows a dose as a row; `separator` keeps each surface's
     own way of joining amount and route - the day row's comma, the log's
     middot. */
@@ -158,8 +206,7 @@ export const doseRowTitle = (
 ): string => `${drug ? `${drug} ` : ''}${dose.dose} ${dose.doseUnit}${separator}${routeLabel(dose.route)}`;
 
 /** Which episode a dose row is attributed to, in the wording the row's
-    trailing edge and an auto-logged row's second line both use (phase 5
-    ticket 11) - the two must not word it differently, so this is the one
+    trailing edge and an auto-logged row's second line both use - the two must not word it differently, so this is the one
     place either asks. */
 export const attributionLabel = (attribution: DoseAttribution): string =>
   attribution.episode

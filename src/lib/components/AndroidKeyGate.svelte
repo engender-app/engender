@@ -1,28 +1,10 @@
 <script lang="ts">
-  /* The Android side of the passphrase gate (ticket 13). Rendered by the
-     layout instead of the app, like PassphraseGate and LockScreen, so no
-     route shows journal content before there is a journal to show.
-
-     Nothing is typed here: the data key is wrapped by a key Android Keystore
-     holds and will not use until the platform says somebody authenticated
-     (ADR-0018). So the screen is a prompt with a way back to it, and its real
-     work is the ticket's third box - every refusal leaves something to do.
-     `wayForward` on each outcome is where that comes from, and the buttons
-     below are one per value of it, which is what keeps a state the platform
-     grows tomorrow from arriving with no button at all.
-
-     Copy rules, same as the passphrase gate's: this key IS the wall in front
-     of the data, so the copy may say so. The lost-key screen is a risk screen
-     (docs/ui-copy.md) and states the whole consequence before offering the
-     one action there is.
-
-     The prompt fires by itself the moment this screen mounts, every time.
-     Ticket 18 made that a question asked once ("Open automatically?") and a
-     Settings switch after it; lock-timing ticket 01 took both out at
-     Alicja's word, since the prompt has to come eventually anyway - a
-     device-bound key only unwraps once the platform says who is here - and
-     waiting behind a button first was one more tap for the same prompt. The
-     primary button below is the way back to it after a cancel. */
+  /* The layout shows this gate in place of journal routes. Android
+     Keystore unwraps the data key only after platform authentication
+     (ADR-0018). Prompt on mount and offer a retry on cancel. Every outcome
+     must supply a wayForward action so each refusal has a recovery path.
+     Explain a lost key's consequence before showing that action.
+     */
 
   import { m } from '$lib/paraglide/messages';
   import { bootState, openAndroidJournal, resetApp } from '$lib/stores/boot.svelte';
@@ -46,10 +28,9 @@
   $effect(() => {
     if (!resetOpen) resetError = '';
   });
-  /* Read once on mount, like the web gate's (ADR-0054, ticket sec-02). It
-     matters more here: the invalidated screen below is the state
-     JournalKeystore.java calls the cliff, and a recovery key is the one
-     thing that gets a journal back off it. */
+  /* Read once on mount, like the web gate's (ADR-0054). It matters more here: the
+     invalidated screen below is the state JournalKeystore.java calls the cliff, and a
+     recovery key is the one thing that gets a journal back off it. */
   refreshRecoveryKeyPresence();
   let usingRecoveryKey = $state(false);
   /* "There is no way to bring it back" is true of the Keystore alias and
@@ -74,7 +55,6 @@
     try {
       await openAndroidJournal({
         title: m.ak_prompt_title(),
-        subtitle: m.ak_prompt_subtitle(),
         cancel: m.ak_prompt_cancel(),
         deviceCredential
       });
@@ -90,7 +70,7 @@
      gives up, which is a mistake this codebase has already made once
      (boot.svelte.ts).
 
-     But only on a path the platform can honor (ticket U08, UX22). The two
+     But only on a path the platform can honor. The two
      states below are recovery states - the cliff and a device with no
      screen lock to bind a key to - and on either, firing the prompt can
      only cover the one screen that says what to do. Returning without
@@ -105,13 +85,13 @@
 
   let explanation = $derived(
     refusal === null
-      ? m.ak_unlock_body()
+      ? m.unlock_confirm_body()
       : refusal.outcome === 'cancelled'
         ? m.ak_cancelled()
         : refusal.outcome === 'lockedOut'
           ? m.ak_locked_out()
           : refusal.outcome === 'unavailable'
-            ? m.ak_unavailable()
+            ? m.ak_unavailable({ appName: appWordmark(prefs.disguise, m.app_name(), m.disguise_name()) })
             : refusal.outcome === 'unenrolled'
               ? m.ak_unenrolled()
               : m.ak_failed()
@@ -175,7 +155,7 @@
   <!-- The wordmark, not a greeting and not an instruction: this screen
        renders before the journal the name lives in can be read, and what to
        do is on the line under it. GateScreen.svelte argues the rest. -->
-  <GateScreen title={appWordmark(prefs.disguise, m.app_name(), m.disguise_name())}>
+  <GateScreen title={appWordmark(prefs.disguise, m.app_name(), m.disguise_name())} unlock>
     <!-- Polite rather than an alert: the prompt is Android's own dialog and
          takes the focus, so this line is what is waiting underneath when it
          goes, not something that interrupts. -->
@@ -231,7 +211,7 @@
   {#if resetError}
     <!-- In the sheet, which stays open: the sheet is where the button was
          pressed, and closing it on a failure left the gate looking as if
-         nothing had happened (after-release ticket 09). -->
+         nothing had happened. -->
     <p class="reset-failed small" role="alert" data-reset-failed transition:disclose>{resetError}</p>
   {/if}
   <div class="stack-3" style="margin-top:var(--space-4)">

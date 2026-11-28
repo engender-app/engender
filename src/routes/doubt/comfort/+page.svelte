@@ -1,17 +1,16 @@
 <script lang="ts">
-  /* The comfort list (phase 6 ticket 14, CONTEXT: "Comfort list"), lifted
-     out of Safe space by phase 10 redesign ticket 47.
+  import { undoable } from '$lib/stores/deleteUndo';
+  import { journalTextAutocomplete } from '$lib/platform';
+  /* The comfort list, lifted out of Safe space.
 
-     Who to text, which walk, which playlist, entirely the person's own
-     words. Nothing seeds it, nothing offers it, and nothing anywhere else
-     in the app triggers it - the only route in is Safe space's own row,
-     which is the same single tap it always was, now from a screen that
-     opens on the breath instead of scrolling past it.
+     Who to text, which walk, which playlist, entirely the person's own words. Nothing seeds
+     it, nothing offers it, and nothing anywhere else in the app triggers it - the only
+     route in is Safe space's own row, which is the same single tap it always was, now from
+     a screen that opens on the breath instead of scrolling past it.
 
-     This is the one surface Safe space holds that writes. ADR-0037 makes
-     the counterevidence check a read; the comfort list is the person's own
-     list and always could be edited, and moving it to its own screen
-     changes nothing about that. */
+     This is the one surface Safe space holds that writes. ADR-0037 makes the
+     counterevidence check a read; the comfort list is the person's own list and always
+     could be edited, and moving it to its own screen changes nothing about that. */
   import { tick } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import { attempt } from '$lib/stores/attempt.svelte';
@@ -27,7 +26,7 @@
   import { recordEditor } from '$lib/components/kit/recordEditor.svelte';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { roleAt } from '$lib/theme/roles';
-  import { crossfade, disclose, discloseWidth } from '$lib/motion/reveal';
+  import { collapse, crossfade, disclose, discloseWidth } from '$lib/motion/reveal';
   import { motionDuration } from '$lib/motion/tokens';
   import { ListDrag, measureTops, travelFrom } from '$lib/motion/reorder.svelte';
 
@@ -59,19 +58,17 @@
       if (draft.id) await journal.comfortItems.editItem(draft.id, text);
       else await journal.comfortItems.addItem(text);
     },
-    remove: (id) => journal.comfortItems.deleteItem(id),
+    remove: (id) => undoable((j) => j.comfortItems.deleteItem(id)),
     findById: (id) => comfortItems.find((item) => item.id === id)
   });
 
-  /* **Arranging** (release audit U10). The list used to carry a "move up"
-     control on every row: a chevron turned on its side, which read as a
-     row that folds open, and sat disabled but visible on the first row.
-     Now a row opens its editor (the chevron says so, as on every other
-     list that opens something) and the order is its own mode, with a
-     handle per row - the shape the Today editor already uses, and the
-     shape the report's references (Evernote, Beli) use. Pointer events
-     on the handle rather than the whole row, so the list still scrolls
-     under a thumb; the arrow keys on the handle are the keyboard's whole
+  /* **Arranging** (release). The list used to carry a "move up" control on every row: a
+     chevron turned on its side, which read as a row that folds open, and sat disabled but
+     visible on the first row. Now a row opens its editor (the chevron says so, as on every
+     other list that opens something) and the order is its own mode, with a handle per row -
+     the shape the Today editor already uses, and the shape the report's references
+     (Evernote, Beli) use. Pointer events on the handle rather than the whole row, so the
+     list still scrolls under a thumb; the arrow keys on the handle are the keyboard's whole
      equivalent, one place per press. */
   let arranging = $state(false);
 
@@ -155,7 +152,7 @@
                  one row: the main half and its text never change, and only
                  the trailing end does - the chevron closes as the handle
                  opens beside it, so nothing is redrawn and nothing cuts. -->
-            <div
+            <div transition:collapse
               class="kit-row is-split"
               data-list-row={item.id}
               data-comfort-item={item.id}
@@ -238,20 +235,20 @@
     handle="comfort-item"
     newTitle={m.comfort_list_new_sheet()}
     editTitle={m.comfort_list_edit_sheet()}
-    saveLabel={m.comfort_list_save()}
-    deleteLabel={m.comfort_list_delete()}
+    saveLabel={m.save()}
+    deleteLabel={m.remove()}
     confirm={{
       title: m.comfort_list_delete_sheet(),
       question: (item) => m.comfort_list_delete_q({ text: item.text }),
-      hint: () => m.comfort_list_delete_hint(),
-      confirmLabel: m.comfort_list_delete(),
+      hint: () => m.delete_undo_hint(),
+      confirmLabel: m.remove(),
       cancelLabel: m.keep_it()
     }}
   >
     {#snippet fields(editor)}
       <Field label={m.comfort_list_item_label()} id="comfort-item-text" hidden>
         {#snippet children(id)}
-          <textarea
+          <textarea autocomplete={journalTextAutocomplete()}
             class="input"
             {id}
             name="comfort-item-text"

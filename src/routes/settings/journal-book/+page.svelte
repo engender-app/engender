@@ -1,21 +1,8 @@
 <script lang="ts">
-  /* The journal book (phase 5 ticket 17): a print of a chosen range, made
-     of whatever record types the person ticked.
-
-     It borrows one thing from the clinician visit summary, deliberately
-     narrowly: the way that screen prints, which is a print dialog over a
-     `@media print` block and a `.no-print` class on everything that is
-     controls rather than content. Both of those now live in app.css and
-     print/print.ts, extracted when this screen became the second caller.
-     What it does not borrow is that screen's section registry (ticket 06):
-     a doctor's five sections and a keepsake's seven parts have nothing in
-     common but the word "section", and the difference that matters here
-     has no place in that registry at all - a book carries what was chosen,
-     not what the range holds.
-
-     Nothing is generated anywhere but here. The bytes of a photo come off
-     the local file store, the print dialog is the browser's own, and
-     nothing on this screen writes to the journal. */
+  /* Print the selected record types and date range using app.css's
+     print rules and the browser dialog in print/print.ts. Photos
+     come from local files. Building a book writes nothing to the
+     journal. */
   import { flushSync } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import DatePicker from '$lib/components/DatePicker.svelte';
@@ -70,7 +57,7 @@
 
   /* The inclusion is read inside the query, so unticking a part stops the
      read that would have found it rather than only the markup that would
-     have drawn it - the same shape the wrapped screen's `wrappedEnabled`
+     have drawn it - the same shape the wrapped screen's `wrapped` switch
      check uses, and the point of the flags living in the assembly. */
   let bookQuery = liveQuery((j) =>
     range ? j.journalBook.getBook(range.start, range.end, inclusion) : Promise.resolve(null)
@@ -97,16 +84,14 @@
     book?.entries ? book.entries.slice(0, renderedCount) : []
   );
 
-  /* The pages themselves, folded away until somebody asks for them (phase 12
-     final-audit ticket 20, audit finding U11). The screen used to lay the
-     whole chosen range out inline - every entry's date, mood and words, and
-     a full-bleed picture per photo - which came to 26,931px on the default
-     one year, the tallest screen in the app by a factor of four, with the
-     seven switches and Print past all of it. What goes in is now three
-     numbers; the document is behind this.
+  /* The pages themselves, folded away until somebody asks for them. The screen used to lay
+     the whole chosen range out inline - every entry's date, mood and words, and a
+     full-bleed picture per photo - which came to 26,931px on the default one year, the
+     tallest screen in the app by a factor of four, with the seven switches and Print past
+     all of it. What goes in is now three numbers; the document is behind this.
 
-     Print is not: `openForPrint` below is what every print path goes
-     through, and it opens this first. */
+     Print is not: `openForPrint` below is what every print path goes through, and it opens
+     this first. */
   let previewOpen = $state(false);
   /* True only for the instant `openForPrint` spends inside `flushSync`, so
      the pages mounted for a print land at once rather than animating open
@@ -183,13 +168,12 @@
           range: m.journal_book_range({ from: dayLong(range.start), to: dayLong(range.end) }),
           parts: partsScope
         })
-      : m.journal_book_range_required()
+      : m.range_required()
   );
 
-  /* Ticket 16's card, given the two counts the recap seam already
-     produces for this range. Palette art comes with the page rather than
-     as a fourth switch: the opening page is one choice, and a card with the
-     art off and nothing else to turn on would be a blank sheet. */
+  /* Card, given the two counts the recap seam already produces for this range. Palette art
+     comes with the page rather than as a fourth switch: the opening page is one choice, and
+     a card with the art off and nothing else to turn on would be a blank sheet. */
   let opening = $derived<WrappedCardContent | null>(
     book?.opening
       ? {
@@ -277,7 +261,7 @@
   async function printBook() {
     openForPrint();
     await photosDrawn();
-    void printCurrentPage(m.journal_book_title());
+    void printCurrentPage(m.journal_book_document_title());
   }
 </script>
 
@@ -286,19 +270,19 @@
 
   <div class="kit-panel no-print" data-kit-surface style="margin-bottom:var(--space-4)">
     <div class="book-endpoints">
-      <Field label={m.journal_book_range_start_label()} id="journal-book-start">
+      <Field label={m.start_date_label()} id="journal-book-start">
         {#snippet children(id)}
           <DatePicker max={dayRangeStartMax(endInput) ?? todayInput} bind:value={startInput} {id} />
         {/snippet}
       </Field>
-      <Field label={m.journal_book_range_end_label()} id="journal-book-end">
+      <Field label={m.end_date_label()} id="journal-book-end">
         {#snippet children(id)}
           <DatePicker min={dayRangeEndMin(startInput)} max={todayInput} bind:value={endInput} {id} />
         {/snippet}
       </Field>
     </div>
     {#if range === null}
-      <p class="muted small">{m.journal_book_range_required()}</p>
+      <p class="muted small">{m.range_required()}</p>
     {/if}
   </div>
 
@@ -319,11 +303,8 @@
           </ListRow>
         {/each}
       </ListCard>
-      <!-- What the ticks come to, in the three numbers that decide how long
-           the book is. Its own height is what animates, both on the first
-           arrival and when a switch changes the figures: the wrapper carries
-           `resize`, and the words inside it cut, which is what ADR-0078 asks
-           of a label changing under a standing element. -->
+      <!-- Use resize on the book totals during arrival and on a selection
+           change. Replace the numbers as the wrapper changes height. -->
       <div use:resize>
         {#if summaryText}
           <p class="small book-summary" data-book-summary>{summaryText}</p>
@@ -358,44 +339,21 @@
       <p class="small muted book-scope no-print" role="status">{scopeText}</p>
       <button class="btn btn-primary no-print" data-book-print onclick={printBook}>
         <Icon name="share" size={18} />
-        <span>{m.journal_book_print()}</span>
+        <span>{m.print()}</span>
       </button>
     </SaveBar>
   {/if}
   </div>
 
-  <!-- The pages, and the only part of this screen that prints. Its own
-       `.screen-part` beside the controls rather than inside them, for two
-       reasons: the wrapper above carries `resize`, which would animate the
-       screen's whole height against this fold's own travel, and
-       `.screen > .screen-part > *` (app.css) is what spaces the blocks
-       below, so they keep the spacing they had when they were that
-       wrapper's children.
+  <!-- The printable pages sit in their own screen-part to retain screen spacing.
+       The controls' resize action and disclose both animate height, so keep
+       resize off the pages to avoid oscillation. The pages stay still when the
+       range changes.
 
-       No `use:resize` on it, which is the one stillness this ticket asks
-       ADR-0078 for. The box changes size when the range does, and `resize`
-       cannot share a node with `disclose` - the two fight over height and
-       it oscillates (kit/Notice.svelte's own finding). The pages are still
-       through a range change, and what moves then is the summary line
-       above.
-
-       `disclose` on a box this size is past the cap its own docstring sets
-       - "a group rather than a screen... a disclosure that opens half the
-       document is a screen, and belongs to tier 2 as a navigation
-       instead" - and that is a deviation rather than an oversight. The cap
-       is written against cost, and the cost was measured here: the box's
-       height travels 0 to 19,205px over 16 frames at a steady 17ms, no
-       frame dropped, because what is animated is one scalar and the pages
-       below the window are never painted. Making the fold a navigation is
-       the other reading of the same cap and is a bigger decision than this
-       ticket - the ticket asked for a disclosure - so it is named here for
-       whoever takes it.
-
-       What the travel does leave is a settle: `disclose` measures the box
-       at the frame it is created, the photos inside it are still being
-       read off the file store then, and the last 6,613px arrive in the one
-       frame the animation ends. All of it below the window, and the same
-       growth `main` shows while the same photos decode. -->
+       Disclosure exceeds its usual group-size cap here. Animating the one
+       height scalar from 0 to 19,205px took 16 frames at 17ms, with offscreen
+       pages unpainted. Photos still loading at measurement added the last
+       6,613px below the viewport when the animation ended. -->
   {#if previewShown && book}
     <div class="screen-part disclosed" data-book-preview transition:disclose={{ skip: printing }}>
       {#if opening}
@@ -406,7 +364,7 @@
 
       <div class="print-heading">
         <PrintLetterhead />
-        <h1>{m.journal_book_title()}</h1>
+        <h1>{m.journal_book_document_title()}</h1>
         <p>{m.journal_book_range({ from: dayLong(book.fromEpochDay), to: dayLong(book.toEpochDay) })}</p>
       </div>
 

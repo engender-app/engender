@@ -1,23 +1,8 @@
-/* Browser-tier check for the pitch density and the figure blocks (redesign
-   ticket 42), the half no Node test can reach.
-
-   density.test.ts proves the arithmetic: that a tenth of the shape's area
-   lies below the p10 mark, and that a five-second read is not a comb. What
-   it cannot say is where any of that landed on a drawn figure, and four of
-   this ticket's claims are about exactly that:
-
-   - a take with no stored track draws its sentence and no empty shape,
-     which is the same rule a trackless take's trace already follows;
-   - a first benchmark draws six values and no history plot anywhere, so
-     there is no empty chart on the screen;
-   - a change of capture chain takes the history off every figure at once
-     (ADR-0061), not only off the ones the compare tab happens to draw;
-   - the density carries the ink rule 9 gives a series, the spine the ink it
-     gives a guide, and the bands stay on the pitch figure and nowhere near
-     a figure block (ADR-0059, ADR-0060).
-
-   Each of those is a question about the rendered tree or about a computed
-   style, so they live here. */
+/* Check rendered voice figures. A missing track gives a notice and
+   a first benchmark gives six values without history. A capture-chain
+   change clears history from every figure (ADR-0061). Density uses
+   series ink, its spine guide ink, and no figure shows population
+   bands. density.test.ts covers the calculations. */
 
 import { mount } from 'svelte';
 import '$lib/theme/fonts.css';
@@ -91,9 +76,7 @@ function figuresIn(root: string) {
       .length,
     lines: document.querySelectorAll(`${root} .vf-run`).length,
     rings: document.querySelectorAll(`${root} .vf-ring`).length,
-    /* No history plot may carry a reference band: ADR-0059 allows those on
-       the pitch figure and on nothing else, and a band behind a sparkline
-       would be a published range for a figure that has none. */
+    /* No history plot carries a population range. */
     bands: document.querySelectorAll(`${root} .vf-line rect, ${root} .vf-line .pf-band`).length,
     against: [...document.querySelectorAll(`${root} .vf-against`)].map((line) =>
       (line.textContent ?? '').trim()
@@ -194,17 +177,14 @@ try {
         median: document.querySelectorAll('#drawn [data-density-median]').length,
         span: document.querySelectorAll('#drawn [data-density-span]').length
       },
-      /* The bands run across the plot and the shape as one ground, which is
-         what makes "where I sit against the published figures" one reading
-         rather than a lookup. */
-      bandsBehindShape: density?.querySelectorAll('.pf-band').length ?? 0,
+      bandsBehindShape: density?.querySelectorAll('.pf-band, [data-pitch-band], [data-pitch-middle]').length ?? 0,
       onOutline: markOnOutline(),
       outlineInk: ink(outline),
       spineInk: ink(spine),
       traceInk: ink(document.querySelector('#drawn .pf-trace')),
       guideColour: getComputedStyle(document.documentElement).getPropertyValue('--text-2').trim(),
-      /* Phase 15 ticket 20: trans light's first role is under 3:1 on the
-         field, so every line drawn in it sits on a casing in its edge. */
+      /* Trans light's first role is under 3:1 on the field, so every line drawn in it sits
+         on a casing in its edge. */
       edge: role?.edge ?? null,
       casings: {
         trace: casingOf(document.querySelector('#drawn [data-pitch-trace]'), role?.edge ?? null),

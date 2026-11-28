@@ -1,4 +1,4 @@
-/* zipReader.ts's own tests (phase 8 audit ticket 11).
+/* zipReader.ts's own tests.
 
    fflate allocates its output buffer from the central directory's declared
    uncompressed size before it decompresses anything (`new u8(su)` in
@@ -11,7 +11,7 @@
    the property every test here is checking. */
 
 import assert from 'node:assert/strict';
-import { strToU8, unzipSync, zipSync } from 'fflate';
+import { strToU8, unzipSync, zipSync, Zip, ZipDeflate, ZipPassThrough } from 'fflate';
 import { test } from 'vitest';
 import { openZip, ZipTooLargeError } from './zipReader.ts';
 
@@ -177,4 +177,179 @@ test('prefix sniffing leaves assets uncached and bills each member once', () => 
 
 test('prefix sniffing refuses a forged oversized member before inflating', () => {
   assert.throws(() => openZip(declaring('photo.bin', 'JPEG', 4_000_000_000), 100).readPrefix('photo.bin', 12), ZipTooLargeError);
+});
+
+for (const level of [0, 6] as const) {
+  test(`prefix sniffing reads only the selected member's range (compression ${level})`, () => {
+    const bytes = zipSync({
+      'before.bin': [new Uint8Array(256 * 1024), { level: 0 }],
+      'photo.bin': [new Uint8Array(128 * 1024).fill(42), { level }],
+      'after.bin': [new Uint8Array(256 * 1024), { level: 0 }]
+    });
+    const ranges: [number, number][] = [];
+    const observed = new Proxy(bytes, {
+      get(target, property) {
+        if (property === 'subarray') return (start: number, end: number) => {
+          ranges.push([start, end]);
+          return target.subarray(start, end);
+        };
+        const value = Reflect.get(target, property, target);
+        return typeof value === 'function' ? value.bind(target) : value;
+      }
+    });
+    const reader = openZip(observed);
+    ranges.length = 0;
+    const prefix = reader.readPrefix('photo.bin', 12)!;
+    assert.deepEqual([...prefix], Array(12).fill(42));
+    assert.ok(ranges.length > 0);
+    assert.ok(ranges.every(([start, end]) => start > 256 * 1024 && end - start <= 1024),
+      'prefix reads must not traverse preceding members or submit unbounded compressed chunks');
+    prefix.fill(0);
+    assert.deepEqual([...reader.readPrefix('photo.bin', 12)!], Array(12).fill(42));
+  });
+}
+
+function descriptorZip(deflate: boolean, signed: boolean): Uint8Array {
+  const chunks: Uint8Array[] = [];
+  const zip = new Zip((error, chunk) => { if (error) throw error; chunks.push(chunk); });
+  const member = deflate ? new ZipDeflate('photo.bin') : new ZipPassThrough('photo.bin');
+  zip.add(member);
+  member.push(new Uint8Array(4096).fill(42), true);
+  zip.end();
+  const bytes = new Uint8Array(chunks.reduce((size, chunk) => size + chunk.length, 0));
+  let at = 0;
+  for (const chunk of chunks) { bytes.set(chunk, at); at += chunk.length; }
+  if (signed) return bytes;
+  const view = new DataView(bytes.buffer);
+  const central = view.getUint32(bytes.length - 6, true);
+  assert.equal(view.getUint32(central - 16, true), 0x08074b50);
+  const unsigned = new Uint8Array(bytes.length - 4);
+  unsigned.set(bytes.subarray(0, central - 16));
+  unsigned.set(bytes.subarray(central - 12), central - 16);
+  new DataView(unsigned.buffer).setUint32(unsigned.length - 6, central - 4, true);
+  return unsigned;
+}
+
+for (const deflate of [false, true]) {
+  for (const signed of [false, true]) {
+    test(`central ranges preserve ${deflate ? 'deflated' : 'stored'} ${signed ? 'signed' : 'unsigned'} descriptors`, () => {
+      const bytes = descriptorZip(deflate, signed);
+      const reader = openZip(bytes);
+      assert.deepEqual(reader.readPrefix('photo.bin', 12), unzipSync(bytes)['photo.bin'].subarray(0, 12));
+      assert.deepEqual(reader.read('photo.bin'), new Uint8Array(4096).fill(42));
+    });
+  }
+}
+
+function zip64(level: 0 | 6): Uint8Array {
+  const bytes = zipSync({ 'photo.bin': [new Uint8Array(4096).fill(42), { level, extra: { 1: new Uint8Array(24) } }] });
+  const original = new DataView(bytes.buffer);
+  const end = bytes.length - 22;
+  const central = original.getUint32(end + 16, true);
+  const compressed = original.getUint32(central + 20, true);
+  const extra = central + 46 + original.getUint16(central + 28, true);
+  original.setUint32(extra + 4, 4096, true);
+  original.setUint32(extra + 12, compressed, true);
+  original.setUint32(extra + 20, 0, true);
+  original.setUint32(central + 20, 0xffffffff, true);
+  original.setUint32(central + 24, 0xffffffff, true);
+  original.setUint32(central + 42, 0xffffffff, true);
+  const result = new Uint8Array(bytes.length + 76);
+  result.set(bytes.subarray(0, end));
+  result.set(bytes.subarray(end), end + 76);
+  const view = new DataView(result.buffer);
+  view.setUint32(end, 0x06064b50, true);
+  view.setUint32(end + 4, 44, true);
+  view.setUint32(end + 24, 1, true);
+  view.setUint32(end + 32, 1, true);
+  view.setUint32(end + 40, end - central, true);
+  view.setUint32(end + 48, central, true);
+  view.setUint32(end + 56, 0x07064b50, true);
+  view.setUint32(end + 64, end, true);
+  view.setUint32(end + 72, 1, true);
+  return result;
+}
+
+for (const level of [0, 6] as const) {
+  test(`ZIP64 offsets and sizes preserve prefix and complete reads (compression ${level})`, () => {
+    const bytes = zip64(level);
+    assert.equal(unzipSync(bytes)['photo.bin'].length, 4096, 'fixture is accepted by the existing decoder');
+    const reader = openZip(bytes);
+    assert.deepEqual(reader.readPrefix('photo.bin', 12), new Uint8Array(12).fill(42));
+    assert.deepEqual(reader.read('photo.bin'), new Uint8Array(4096).fill(42));
+  });
+}
+
+test('prefix and full reads share the declared cumulative ceiling', () => {
+  const reader = openZip(zipSync({ a: new Uint8Array(8), b: new Uint8Array(8) }), 10);
+  assert.equal(reader.readPrefix('a', 2)!.length, 2);
+  assert.equal(reader.read('a')!.length, 8);
+  assert.throws(() => reader.readPrefix('b', 2), ZipTooLargeError);
+  assert.equal(reader.readPrefix('missing', 2), null);
+});
+
+test('prefix sniffing refuses truncated member ranges and corrupt deflate streams', () => {
+  const bytes = zipSync({ a: [strToU8('valid content'), { level: 6 }] });
+  const view = new DataView(bytes.buffer);
+  const central = view.getUint32(bytes.length - 6, true);
+  const truncated = bytes.slice();
+  new DataView(truncated.buffer).setUint32(central + 20, bytes.length, true);
+  assert.throws(() => openZip(truncated).readPrefix('a', 12), /truncated ZIP member/);
+  const corrupt = bytes.slice();
+  corrupt[31] = 7; // Reserved DEFLATE block type at the local payload start.
+  assert.throws(() => openZip(corrupt).readPrefix('a', 12));
+  assert.throws(() => openZip(bytes.subarray(0, bytes.length - 10)));
+});
+
+/* ---- input budget ---- */
+
+const MIB = 1024 * 1024;
+
+test('a member declaring more than the per-member limit is refused before fflate allocates it', () => {
+  // 300 MiB in a few real bytes: under the old 1536 MiB ceiling it reached
+  // unzipSync, which allocated the buffer from the forged number.
+  const reader = openZip(declaring('backup.daylio', 'tiny', 300 * MIB));
+  assert.throws(() => reader.read('backup.daylio'), ZipTooLargeError);
+  assert.throws(() => reader.readPrefix('backup.daylio', 12), ZipTooLargeError);
+});
+
+test('a read can name a tighter limit than the reader default', () => {
+  const reader = openZip(declaring('backup.daylio', 'tiny', 65 * MIB));
+  assert.throws(() => reader.read('backup.daylio', 64 * MIB), ZipTooLargeError);
+});
+
+test('members that each fit a member limit are refused once together they pass the total', () => {
+  const bytes = zipSync({
+    'a.bin': [strToU8('a'.repeat(300)), { level: 0 }],
+    'b.bin': [strToU8('b'.repeat(300)), { level: 0 }]
+  });
+  const reader = openZip(bytes, 500, { memberBytes: 400 });
+  assert.equal(reader.read('a.bin')!.length, 300);
+  assert.throws(() => reader.read('b.bin'), ZipTooLargeError);
+});
+
+test('a zip over the entry limit is refused while its directory is scanned', () => {
+  const members: Record<string, [Uint8Array, { level: 0 }]> = {};
+  for (let i = 0; i <= 20_000; i++) members[`m${i}`] = [new Uint8Array(0), { level: 0 }];
+  assert.throws(() => openZip(zipSync(members)), ZipTooLargeError);
+  assert.throws(() => openZip(zipSync({ a: [strToU8('a'), { level: 0 }], b: [strToU8('b'), { level: 0 }] }), 1000, { entries: 1 }), ZipTooLargeError);
+});
+
+test('an overlong entry name, or too many name bytes in total, is refused', () => {
+  assert.throws(() => openZip(zipSync({ ['n'.repeat(1025)]: [strToU8('a'), { level: 0 }] })), ZipTooLargeError);
+  const members: Record<string, [Uint8Array, { level: 0 }]> = {};
+  for (let i = 0; i < 5000; i++) members[`${'n'.repeat(900)}${i}`] = [new Uint8Array(0), { level: 0 }];
+  assert.throws(() => openZip(zipSync(members)), ZipTooLargeError);
+});
+
+test('a zip at the entry limit with ordinary names still opens', () => {
+  const members: Record<string, [Uint8Array, { level: 0 }]> = {};
+  for (let i = 0; i < 20_000; i++) members[`/assets/photos/2026/1/${String(i).padStart(32, '0')}`] = [new Uint8Array(0), { level: 0 }];
+  assert.equal(openZip(zipSync(members)).names().length, 20_000);
+});
+
+test('a member first accepted by a prefix read still meets a tighter limit on a later full read', () => {
+  const reader = openZip(declaring('backup.daylio', 'tiny', 65 * MIB));
+  reader.readPrefix('backup.daylio', 12);
+  assert.throws(() => reader.read('backup.daylio', 64 * MIB), ZipTooLargeError);
 });

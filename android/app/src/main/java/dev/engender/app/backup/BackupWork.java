@@ -4,7 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import androidx.work.ExistingWorkPolicy;
 import androidx.work.OneTimeWorkRequest;
-import androidx.work.WorkManager;
+import dev.engender.app.JournalApplication;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 import androidx.annotation.NonNull;
@@ -18,6 +18,12 @@ public final class BackupWork extends Worker {
     static boolean foregroundPacking;
     static String foregroundTransferId;
     static long resetEpoch;
+
+    static void resetForegroundOwner() {
+        resetEpoch++;
+        foregroundPacking = false;
+        foregroundTransferId = null;
+    }
 
     public BackupWork(@NonNull Context context, @NonNull WorkerParameters parameters) {
         super(context, parameters);
@@ -38,7 +44,7 @@ public final class BackupWork extends Worker {
     private static void schedule(Context context, boolean append) {
         SharedPreferences preferences = preferences(context);
         if (!preferences.getBoolean("enabled", false)) {
-            await(WorkManager.getInstance(context).cancelUniqueWork(NAME));
+            await(JournalApplication.workManager(context).cancelUniqueWork(NAME));
             return;
         }
         long now = System.currentTimeMillis();
@@ -49,18 +55,21 @@ public final class BackupWork extends Worker {
         long delay = Math.max(0, earliest - now);
         OneTimeWorkRequest request = new OneTimeWorkRequest.Builder(BackupWork.class)
             .setInitialDelay(delay, TimeUnit.MILLISECONDS).build();
-        await(WorkManager.getInstance(context).enqueueUniqueWork(NAME,
+        await(JournalApplication.workManager(context).enqueueUniqueWork(NAME,
             append ? ExistingWorkPolicy.APPEND_OR_REPLACE : ExistingWorkPolicy.REPLACE, request));
     }
 
     static void await(androidx.work.Operation operation) {
-        try { operation.getResult().get(10, TimeUnit.SECONDS); }
+        try {
+            operation.getResult().get(10, TimeUnit.SECONDS);
+            if (JournalApplication.schedulingUnavailable()) throw new IllegalStateException("backup-scheduling-unavailable");
+        }
         catch (Exception failed) { throw new IllegalStateException("backup-scheduling-unavailable", failed); }
     }
 
     private void scheduleNext() {
         try {
-            boolean pending = WorkManager.getInstance(getApplicationContext()).getWorkInfosForUniqueWork(NAME)
+            boolean pending = JournalApplication.workManager(getApplicationContext()).getWorkInfosForUniqueWork(NAME)
                 .get(10, TimeUnit.SECONDS).stream().anyMatch(info -> !info.getId().equals(getId()) && !info.getState().isFinished());
             if (!pending) schedule(getApplicationContext(), true);
         } catch (Exception failed) { throw new IllegalStateException("backup-scheduling-unavailable", failed); }

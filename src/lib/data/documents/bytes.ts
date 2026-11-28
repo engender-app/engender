@@ -1,4 +1,4 @@
-/* Is this a PDF? (phase 8 features ticket 53, ADR-0065)
+/* Is this a PDF? (ADR-0065)
 
    The one signature every PDF carries, at the very start of the file:
    `%PDF-`. Read from the bytes, never the filename or the browser's

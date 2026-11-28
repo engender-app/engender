@@ -1,26 +1,46 @@
-/* Expected dilation sessions, from a taper's stages (phase 8 features
-   ticket 12, CONTEXT: "Taper"). Pure, kept above the journal seam next to
-   doseSchedule.ts for the same reason: a session is a question about a
-   schedule and a day, not a row anyone stores (ADR-0010). Nothing here
-   reads a clock or a database.
+/* Expected dilation sessions, from a taper's stages. Pure, kept above the journal seam next
+   to doseSchedule.ts for the same reason: a session is a question about a schedule and a
+   day, not a row anyone stores (ADR-0010). Nothing here reads a clock or a database.
 
-   Deliberately no verdict, the same refusal doseSchedule.ts makes: this
-   answers "what day was a session expected", and stops. Whether one was
-   logged against it, and what that means, is the screen's own question. */
+   Deliberately no verdict, the same refusal doseSchedule.ts makes: this answers "what day
+   was a session expected", and stops. Whether one was logged against it, and what that
+   means, is the screen's own question. */
 
+import type { AreaStates } from './areaState';
 import type { Procedure, Taper, TaperStage } from './types';
 
-/** Whether a procedure is one dilation can follow (audit item 7): the
-    surgery screen's own gate for offering the Dilation row at all
-    (surgery/+page.svelte), and the schedule editor's own gate for which
-    procedures it offers a taper to name (dilation/+page.svelte). Only a
-    `custom` kind carries its own opt-in - none of the compiled-in kinds
-    can be guessed to include dilation except vaginoplasty (types.ts's own
-    note on `Procedure`). Named once so the two screens and schema v83's
-    migration cannot drift on what "eligible" means. */
+/** Whether a procedure is one dilation can follow: the surgery screen's own gate for
+    offering the Dilation row at all (surgery/+page.svelte), and the schedule editor's own
+    gate for which procedures it offers a taper to name (dilation/+page.svelte). Only a
+    `custom` kind carries its own opt-in - none of the compiled-in kinds can be guessed to
+    include dilation except vaginoplasty (types.ts's own note on `Procedure`). Named once so
+    the two screens and schema v83's migration cannot drift on what "eligible" means. */
 export function dilationEligible(procedure: Pick<Procedure, 'kind' | 'dilationOptIn'>): boolean {
   return procedure.kind === 'vaginoplasty' || (procedure.kind === 'custom' && procedure.dilationOptIn);
 }
+
+/** The area record as the screens that draw dilation rows should read it: `taperSessions`
+    hidden until some procedure is `dilationEligible`, so the More search, the pin chooser
+    and the pinned rows stop offering a Dilation row to a journal with no vaginoplasty in
+    it. Derived, never written: the stored hide choice and any finished day are kept, and
+    the row comes back the moment an eligible procedure is logged, planned or done. The
+    surgery screen already gates its own hosted row the same way. */
+export function dilationGated(
+  states: AreaStates,
+  procedures: readonly Pick<Procedure, 'kind' | 'dilationOptIn'>[]
+): AreaStates {
+  if (procedures.some(dilationEligible)) return states;
+  const said = states.taperSessions ?? { finishedEpochDay: null, suspendedEpochDay: null };
+  return { ...states, taperSessions: { ...said, hidden: true } };
+}
+
+/** The most stages a taper holds and the most days its stages add up to
+    (a hundred years). The editor never limited either, so the ceilings
+    sit well past anything a person types: they only stop a runaway value
+    read off an archive the editor never wrote. The work a screen does on a
+    plan is capped separately (`expectedSessionDays`). */
+export const MAX_TAPER_STAGES = 200;
+export const MAX_TAPER_DAYS = 36525;
 
 /** The days `stages` expects a session on, starting at `startEpochDay` and
     stopping at `todayEpochDay` - never past it, since a taper has no
@@ -45,7 +65,11 @@ export function expectedSessionDays(
 
     if (stage.everyNDays >= 1) {
       for (let day = cursor; day < cursor + stage.days; day += stage.everyNDays) {
-        if (day > todayEpochDay) return days;
+        /* Stored data the editor never wrote can make a step vanish beside
+           a huge day, and a schedule has at most MAX_TAPER_DAYS days to
+           expect a session on: stop on either rather than loop. */
+        if (day > todayEpochDay || days.length >= MAX_TAPER_DAYS) return days;
+        if (day + stage.everyNDays === day) return days;
         if (day >= taper.startEpochDay) days.push(day);
       }
     }
@@ -54,6 +78,65 @@ export function expectedSessionDays(
   }
 
   return days;
+}
+
+/** The most sessions a day one stage can ask for. Schedules are given as
+    three to five a day; the ceiling is there so a count read off an archive
+    the editor never wrote cannot ask a screen for a billion rows. */
+export const MAX_TIMES_PER_DAY = 10;
+
+/** How many sessions each expected day of `stage` holds: its own
+    `timesPerDay` when that is a whole count the editor could have saved,
+    the ceiling when it is larger, and one otherwise. */
+export function sessionsPerDay(stage: TaperStage): number {
+  const times = stage.timesPerDay;
+  if (typeof times !== 'number' || !Number.isInteger(times) || times < 1) return 1;
+  return Math.min(times, MAX_TIMES_PER_DAY);
+}
+
+/** The stage `epochDay` falls in, with the day that stage starts on, or
+    null before the taper starts and after its last stage ends. */
+function placeOf(taper: Pick<Taper, 'startEpochDay' | 'stages'>, epochDay: number) {
+  let cursor = taper.startEpochDay;
+  if (epochDay < cursor) return null;
+  for (const stage of taper.stages) {
+    if (stage.days < 1) continue;
+    if (epochDay < cursor + stage.days) return { stage, firstDay: cursor };
+    cursor += stage.days;
+  }
+  return null;
+}
+
+/** The stage the schedule is in on `epochDay` (the schedule row's own
+    words for "now", dilation/+page.svelte), or null outside it. */
+export function stageOn(taper: Pick<Taper, 'startEpochDay' | 'stages'>, epochDay: number): TaperStage | null {
+  return placeOf(taper, epochDay)?.stage ?? null;
+}
+
+/** How many sessions the schedule expects on `epochDay`: none on a day
+    outside it, in a rest stage or between an every-N-days stage's days,
+    and the stage's count on every other day. Arithmetic over one day, with
+    no notion of today - the caller decides which days it asks about. */
+export function sessionsExpectedOn(taper: Pick<Taper, 'startEpochDay' | 'stages'>, epochDay: number): number {
+  const place = placeOf(taper, epochDay);
+  if (!place || !(place.stage.everyNDays >= 1)) return 0;
+  return (epochDay - place.firstDay) % place.stage.everyNDays === 0 ? sessionsPerDay(place.stage) : 0;
+}
+
+/** Which of a day's expected sessions a row stands for: "2 of 3". Null on
+    a day that expects one or none, and on a session past the day's count,
+    which is still a session but not one the schedule asked for. */
+export type SessionSlotNumber = { index: number; count: number } | null;
+
+/** A day's rows: one per expected session, filled by the day's sessions in
+    the order they were logged, and one more for each session past the
+    count. The dilation screen draws the empty ones as gaps (ADR-0010);
+    the day view keeps only the filled ones. */
+export function sessionSlots<T>(sessions: readonly T[], expected: number): { session: T | null; slot: SessionSlotNumber }[] {
+  return Array.from({ length: Math.max(expected, sessions.length) }, (_, i) => ({
+    session: sessions[i] ?? null,
+    slot: expected > 1 && i < expected ? { index: i + 1, count: expected } : null
+  }));
 }
 
 /** A typed-in number, or null when nothing usable was typed. A
@@ -69,15 +152,33 @@ function typedNumber(value: unknown): number | null {
 /** The schedule editor's stages as a taper stores them, or null when any
     row is unfinished (dilation/+page.svelte). A frequency of 0 is a real
     rest stage, so only a missing or negative one is refused, and a stage
-    needs at least one day. A cleared frequency used to read as 0 and save
-    a rest stage nobody asked for (after-release ticket 01). */
-export function stagesFromInput(inputs: readonly { everyNDays: unknown; days: unknown }[]): TaperStage[] | null {
-  if (inputs.length === 0) return null;
+    needs some days. Inside MAX_TAPER_STAGES and MAX_TAPER_DAYS: what a
+    restore of the saved schedule accepts. A
+    cleared frequency used to read as 0 and save a rest stage nobody asked
+    for.
+
+    A row that carries `timesPerDay` is a times-a-day stage: its frequency field is not read, the count has to be
+    a whole number from 1 to `MAX_TIMES_PER_DAY`, and it saves as a daily
+    stage with that count. */
+export function stagesFromInput(
+  inputs: readonly { everyNDays: unknown; days: unknown; timesPerDay?: unknown }[]
+): TaperStage[] | null {
+  if (inputs.length === 0 || inputs.length > MAX_TAPER_STAGES) return null;
   const stages: TaperStage[] = [];
+  let totalDays = 0;
   for (const input of inputs) {
-    const everyNDays = typedNumber(input.everyNDays);
     const days = typedNumber(input.days);
-    if (everyNDays === null || everyNDays < 0 || days === null || days <= 0) return null;
+    if (days === null || days <= 0) return null;
+    totalDays += days;
+    if (totalDays > MAX_TAPER_DAYS) return null;
+    if (input.timesPerDay !== undefined) {
+      const timesPerDay = typedNumber(input.timesPerDay);
+      if (timesPerDay === null || !Number.isInteger(timesPerDay) || timesPerDay < 1 || timesPerDay > MAX_TIMES_PER_DAY) return null;
+      stages.push({ everyNDays: 1, timesPerDay, days });
+      continue;
+    }
+    const everyNDays = typedNumber(input.everyNDays);
+    if (everyNDays === null || everyNDays < 0 || everyNDays > MAX_TAPER_DAYS) return null;
     stages.push({ everyNDays, days });
   }
   return stages;

@@ -1,5 +1,5 @@
 /* Which surfaces resurface the past unasked, and that each declares itself
-   (phase 6 ticket 05) - the completeness guarantee, held at the level a
+ - the completeness guarantee, held at the level a
    module with no DOM can be, the same way registry.test.ts holds
    registry.ts's. */
 
@@ -9,7 +9,13 @@ import { RESURFACING_SURFACE_ROWS, RESURFACING_SURFACES, unregisteredSurfaces, r
 
 describe('the resurfacing surface registry', () => {
   it('registers routes, Home tiles, notifications and sharing', () => {
-    expect(RESURFACING_SURFACES).toEqual(['on-this-day', 'on-this-day-home-card', 'wrapped', 'wrapped-home-card', 'on-this-day-notification', 'wrapped-notification', 'wrapped-share']);
+    expect(RESURFACING_SURFACES).toEqual([
+      'on-this-day',
+      'on-this-day-home-card',
+      'wrapped',
+      'wrapped-home-card',
+      'milestone-anniversary'
+    ]);
   });
 
   it('gives every row a key of its own', () => {

@@ -8,26 +8,13 @@ import java.time.LocalTime;
 import java.time.ZonedDateTime;
 
 /**
- * Quiet hours, the unprompted registry's one cross-class rule. The same
- * arithmetic as src/lib/unprompted/quietHours.ts, reimplemented here for the same reason
- * {@link ReminderPlanner} reimplements reminderRule.ts: an alarm is scheduled
- * before any WebView exists and Java has no import path into TypeScript.
+ * Match quietHours.ts before the WebView exists. QuietHoursFixtureTest
+ * reads the shared src/lib/android/fixtures/quiet-hours.json.
  *
- * <p>What holds the two to the same answers is
- * src/lib/android/fixtures/quiet-hours.json, read by QuietHoursFixtureTest on
- * this side.
- *
- * <p>Held, never dropped: an alarm that would fire inside the window is
- * scheduled at the end of the window instead, so the person still gets it and
- * gets it once. The window is half-open, which is what stops a held alarm
- * landing on a minute that is itself still quiet, and two equal ends read as
- * an empty window rather than a silent whole day.
- *
- * <p>The hold is applied when the alarm is <em>set</em>, not when it fires.
- * An alarm the OS delivers late - doze deferring a non-exact alarm by hours -
- * can therefore still arrive inside the window. Checking again in
- * {@link ReminderAlarmReceiver} would turn that case into a drop rather than
- * a hold, since nothing would reschedule it, which is the worse of the two.
+ * <p>Move alarms inside the half-open interval to its end. Equal ends
+ * mean an empty window. Apply the hold when scheduling. Android can
+ * still deliver late during quiet hours, and checking at receipt
+ * would drop the alarm without rescheduling.
  */
 final class QuietHours {
 

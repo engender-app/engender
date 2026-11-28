@@ -1,21 +1,7 @@
-/* Print parity for the "since last appointment" range (ticket 19, What to
-   Build #3 and its own Acceptance Criteria: "Everything shown in the range
-   reaches the print"). The screen has no separate print path - it hides
-   its controls under `.no-print` and prints whatever `.dossier-output`
-   already renders on screen - so this is a contract test over the source,
-   the same style ClinicianSummaryDossier.test.ts already uses for a
-   component this suite cannot mount: it proves the one element that
-   carries the range's content is never marked `no-print` and never hidden
-   under `@media print`, and that the shortcut this ticket adds writes into
-   the same two fields the range is already read from - nothing about "the
-   range" forks into an on-screen-only value the print side does not see.
-
-   Ticket 08 moved every control named below into the controls sheet, which
-   this screen opens rather than scrolls to. They lost their own individual
-   `no-print` there for one on the sheet's whole body instead
-   (`$lib/print/print.ts`'s own note on why a print that happens to catch
-   the sheet open still needs one) - so what this file checks about them
-   changed shape without their being any less print-safe. */
+/* Check print parity in source. The appointment shortcut sets the same
+   two range fields used on screen. .dossier-output stays visible in
+   print and the controls sheet carries no-print on its whole body,
+   including when open during printing. */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -56,7 +42,7 @@ describe('clinician summary print parity', () => {
   });
 
   it('every range control - including the new shortcut - sits inside the controls sheet\'s one no-print wrap', () => {
-    // Neither carries its own `no-print` any more (ticket 08) - one wrap
+    // Neither carries its own `no-print` any more - one wrap
     // around the whole sheet body does it for all of them.
     expect(classAttrFor(page, 'cd-endpoints')).not.toContain('no-print');
     expect(classAttrFor(page, 'cd-since-appointment')).not.toContain('no-print');
@@ -74,17 +60,16 @@ describe('clinician summary print parity', () => {
   });
 });
 
-/* Ticket 34: print preparation stays attached to its chosen scope. The
-   action moves into the frame-hosted foot ($lib/components/SaveBar.svelte,
-   the arrangement carpet 26 built so nothing sits under a pinned bar at
-   any scroll position), with the scope it prints stated beside it, so a
-   long preview never separates the reader from either. */
-describe('the print foot (ticket 34)', () => {
+/* Print preparation stays attached to its chosen scope. The action moves into the
+   frame-hosted foot ($lib/components/SaveBar.svelte, the arrangement built so nothing sits
+   under a pinned bar at any scroll position), with the scope it prints stated beside it, so
+   a long preview never separates the reader from either. */
+describe('the print foot', () => {
   it('shares included items between summaries and states the range only in the print foot', () => {
     expect(page).toContain('let scopeText = $derived.by(');
     expect(page).toContain('m.clinician_summary_scope({');
     expect(page).toContain('m.clinician_summary_scope_no_drugs(');
-    expect(page).toContain('includedSections.map(clinicianDossierPartName).join');
+    expect(page).toContain('includedSections.map(clinicianSummarySectionName).join');
     expect(page).toContain('includedDrugNames.join');
     expect(page).toContain('m.clinician_summary_settings_row({ scope: settingsScope })');
     expect(page).toContain('drugNames.length > 0 ? `${sectionsScope}. ${drugsScope}` : sectionsScope');

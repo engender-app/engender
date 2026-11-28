@@ -1,55 +1,30 @@
-/* What each of the day registry's sections looks like as a row (phase 5
-   deepening ticket 21).
-
-   day.ts holds the keys and the reads and speaks no paraglide (ADR-0016);
-   this is where they get their words, the same split
-   clinicianSummaryLabels.ts keeps. It sits beside DayRecords.svelte rather
-   than in vocabulary/ because none of it is vocabulary: it is one screen's
-   reading of rows other screens own.
-
-   Every row states the record in the record's own terms and goes to the
-   screen that owns it. Nothing here computes a figure that screen does not
-   already show (ADR-0010), and nothing writes.
-
-   Two rules the whole map answers to:
-
-   *A row's icon is the icon of the screen it goes to.* Not one glyph per
-   record type - the disc says where the row leads, so a dose and a wear
-   session both wearing `clock` is the app agreeing with itself rather than
-   a collision. The More hub is where those icons are decided.
-
-   *Photographs collapse, records do not.* Five recovery photos are one row
-   with the first of them on it and the count beside it; five doses are five
-   rows. A photo is one record among several that were taken at once and a
-   dose is not, and a day that logged eight hair photos should not read as
-   eight events. */
+/* Localized rows for the day registry. `day.ts` owns keys and reads without Paraglide. Each
+   row uses its destination's More hub icon and the owning screen's figures (ADR-0010). Rows
+   never write. Group photos with the first thumbnail and a count. Keep other records
+   individual, including repeated doses. */
 
 import { m } from '$lib/paraglide/messages';
 import { hubRow, type HubRow } from '$lib/data/hubRows';
 import { DAY_SECTION_KEYS, type DayRecords, type DaySectionKey } from '$lib/data/journal/day';
-import { isGradedScale } from '$lib/data/hairStageScales';
 import { hoursMinutesOf } from '$lib/data/journal/wearSessions';
 import { wearKindLabel } from '$lib/data/vocabulary/wearLabels';
 import type { Photo } from '$lib/data/types';
 import {
   cycleEventKindName,
-  garmentCategoryName,
   hairRemovalAreaName,
   hairRemovalMethodName,
-  hairScaleName,
-  hairStageName,
   moodName,
   severityName
 } from '$lib/data/vocabulary/labels';
 import { doseRowTitle, statusLabel } from '$lib/data/vocabulary/doseLabels';
 import { vocabulary } from '$lib/data/vocabulary/vocabulary';
 import { iconOf } from './rowIcon';
+import { appointmentDayRow } from './appointmentDayRow';
 
-/** One line in the day's context list. `subtitle` is the earned exception
-    (DIRECTION 3b), not the standard: most rows say everything in the
-    title. */
+/** A line in the day's context list. Supply a subtitle when the title
+    needs more context. */
 export interface DayRow extends Pick<HubRow, 'icon'> {
-  /** The row's own walkthrough handle (ADR-0029) - stable, never the copy. */
+  /** The row's own walkthrough handle - stable, never the copy. */
   key: string;
   title: string;
   subtitle?: string;
@@ -70,9 +45,6 @@ export interface DoseDrugFact {
   drug: string | null;
   ambiguous: boolean;
 }
-
-const HAIR_PROGRESS = '/body/hair-progress';
-const APPOINTMENTS = '/health/appointments';
 
 /* Photographs by whatever they hang off - the owning tryout or procedure -
    so each owner collapses to one row rather than one per shot. Insertion
@@ -155,10 +127,8 @@ const SECTION_ROWS: Record<
       href: '/care/labs'
     })),
 
-  /* The median pitch and nothing read into it (PRODUCT.md:109): a
-     descriptive parameter, no range, no colour, no good or bad end. The
-     subtitle is earned for the reason the wear row's is - a bare figure in
-     Hz does not say what kind of record it belongs to. */
+  /* Report median pitch in Hz without a reference range or judgment.
+     The subtitle identifies the benchmark the value came from. */
   // The compare surface rather than the recorder (searchHitRows.ts sends a
   // benchmark hit there too), so its icon is that surface's, read off the
   // voice-benchmark row rather than the recordings tab's own `mic`.
@@ -167,35 +137,21 @@ const SECTION_ROWS: Record<
       key: `voice-benchmark-${benchmark.id}`,
       ...iconOf('voice-benchmark'),
       title: m.vb_hz({ value: Math.round(benchmark.f0MedianHz) }),
-      subtitle: m.day_voice_benchmark(),
+      subtitle: m.vb_title(),
       href: `${hubRow('voice-benchmark').href}?tab=compare`
     })),
 
-  measurements: (day) =>
-    day.measurements.map((measurement) => ({
-      key: `measurement-${measurement.id}`,
-      ...iconOf('measurements'),
-      title: `${vocabulary.measurementTypeName(measurement.type)} ${measurement.value} ${measurement.unit}`,
-      href: hubRow('measurements').href
-    })),
-
-  sizeRecords: (day) =>
-    day.sizeRecords.map((record) => ({
-      key: `size-${record.id}`,
-      // No screen of its own - a size record sits behind the measurements
-      // row - so this keeps its own.
-      icon: 'package',
-      title: `${garmentCategoryName(record.category)} ${record.size}`,
-      subtitle: record.brand || undefined,
-      href: '/body/sizes'
-    })),
-
+  // "Session 2 of 3" on a day a times-a-day stage asked for several
+  //, beside the note when there is one.
   taperSessions: (day) =>
     day.taperSessions.map((session) => ({
       key: `taper-${session.id}`,
       ...iconOf('dilation'),
       title: m.dilation(),
-      subtitle: session.note || undefined,
+      subtitle:
+        [session.slot && m.dilation_session_numbered({ index: session.slot.index, count: session.slot.count }), session.note]
+          .filter(Boolean)
+          .join(' · ') || undefined,
       href: hubRow('dilation').href
     })),
 
@@ -227,24 +183,6 @@ const SECTION_ROWS: Record<
       href: hubRow('cycle-events').href
     })),
 
-  /* Both counters as one row each, with the day's count on them. A tally is
-     a tap someone makes as it happens, and eight of them are eight taps -
-     not eight events worth reading one by one. */
-  tallyEvents: (day) =>
-    (['misgendered', 'correctly_gendered'] as const)
-      .map((kind) => ({ kind, count: day.tallyEvents.filter((event) => event.kind === kind).length }))
-      .filter(({ count }) => count > 0)
-      .map(({ kind, count }) => ({
-        key: `tally-${kind}`,
-        // No screen of its own to read a row from - its own tab, not a hub
-        // row (hubRows.ts's own LAST_WRITE_WITHOUT_A_ROW) - so it keeps its
-        // own icon.
-        icon: 'stats',
-        title: kind === 'misgendered' ? m.tally_misgendered() : m.tally_correctly_gendered(),
-        href: '/tally',
-        count
-      })),
-
   wearSessions: (day) =>
     day.wearSessions.map((session) => {
       const { hours, minutes } = hoursMinutesOf(session.durationMs ?? 0);
@@ -261,7 +199,7 @@ const SECTION_ROWS: Record<
            a clock says nothing about what was worn for it, and this is the
            only record on a day whose title is a bare number. What the person
            wrote comes first where they wrote anything. */
-        // The kind rather than the screen's name (ticket 50): a day row is
+        // The kind rather than the screen's name: a day row is
         // about one session, and a session is always one of the three.
         subtitle: session.note || wearKindLabel(session.kind),
         href: hubRow('wear').href
@@ -271,48 +209,13 @@ const SECTION_ROWS: Record<
   feltSense: (day) =>
     day.feltSense.map((felt) => ({
       key: `felt-sense-${felt.id}`,
-      ...iconOf(felt.owner.kind === 'tryout' ? 'tryouts' : 'milestones'),
+      ...iconOf('tryouts'),
       title: felt.owner.name,
       // The note if there is one, and the felt sense itself if not: a row
       // saying only a name would not say what it was doing on this day.
       subtitle: felt.note || moodName(felt.mood),
-      href:
-        felt.owner.kind === 'tryout'
-          ? `${hubRow('tryouts').href}/${felt.owner.id}`
-          : hubRow('milestones').href
+      href: `${hubRow('tryouts').href}/${felt.owner.id}`
     })),
-
-  /* The scale as well as the grade. On the hair-progress screen the scale is
-     the group heading above the row and there is no grouping here, so a row
-     reading "3" would say nothing - '3' is a grade on both published scales
-     and means something different on each, which is why those two never
-     separate. 'other' publishes no grades at all, so what someone wrote is
-     the record, and that screen's own wording covers writing nothing. */
-  hairStages: (day) =>
-    day.hairStages.map((stage) => ({
-      key: `hair-stage-${stage.id}`,
-      ...iconOf('hair-progress'),
-      title: isGradedScale(stage.scale)
-        ? `${hairScaleName(stage.scale)} ${hairStageName(stage.scale, stage.stage)}`
-        : stage.description || m.hair_other_unwritten(),
-      href: HAIR_PROGRESS
-    })),
-
-  // The scheduled fixed-position photos hang off nothing but the day, so
-  // they are one group by definition.
-  hairPhotos: (day) =>
-    day.hairPhotos.length === 0
-      ? []
-      : [
-          {
-            key: 'hair-photos',
-            ...iconOf('hair-progress'),
-            title: m.day_hair_photos(),
-            href: HAIR_PROGRESS,
-            photo: day.hairPhotos[0],
-            count: day.hairPhotos.length
-          }
-        ],
 
   hairRemovalSessions: (day) =>
     day.hairRemovalSessions.map((session) => ({
@@ -324,31 +227,25 @@ const SECTION_ROWS: Record<
 
   /* A row per procedure rather than per photograph: four shots of the same
      recovery on one day are one thing that happened. The consults that used
-     to share this section are appointments now and have one of their own
-     (ticket 57). */
+     to share this section are appointments now and have one of their own.
+     */
   procedureRecords: (day) =>
     groupedBy(day.procedureRecords, (record) => record.procedureId).map((group) => ({
       key: `recovery-photos-${group[0].procedureId}`,
       ...iconOf('surgery'),
       title: group[0].procedureName,
       subtitle: m.day_recovery_photos(),
-      href: hubRow('surgery').href,
+      href: `${hubRow('surgery').href}/${encodeURIComponent(group[0].procedureId)}`,
       photo: group[0],
       count: group.length
     })),
 
-  /* What the appointment was, with where it was underneath it. An
-     appointment nobody named a kind for says only "appointment", because
-     the app ships no kinds of its own to guess with (ADR-0066); one that
-     belongs to a surgery journey says so, since that is what a consult
-     read as before the record existed. */
+  /* What the appointment was, or the referral or update on its wait
+     (appointmentDayRow.ts). */
   appointments: (day) =>
     day.appointments.map((appointment) => ({
-      key: `appointment-${appointment.id}`,
       ...iconOf('appointments'),
-      title: appointment.kind ?? appointment.procedureName ?? m.appointments_untitled(),
-      subtitle: appointment.place ?? (appointment.kind ? appointment.procedureName ?? undefined : undefined),
-      href: APPOINTMENTS
+      ...appointmentDayRow(appointment)
     })),
 
   tryoutPhotos: (day) =>
@@ -356,7 +253,7 @@ const SECTION_ROWS: Record<
       key: `tryout-photos-${group[0].tryoutId}`,
       ...iconOf('tryouts'),
       title: group[0].tryoutLabel,
-      subtitle: m.day_tryout_photos(),
+      subtitle: m.photos_row(),
       href: `${hubRow('tryouts').href}/${group[0].tryoutId}`,
       photo: group[0],
       count: group.length

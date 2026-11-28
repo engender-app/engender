@@ -1,5 +1,4 @@
 import {
-  applyPreferredUnitDefaults,
   buildDuplicateKeys,
   isPermissionDenied,
   makeReviewRows,
@@ -9,7 +8,7 @@ import {
   type OcrReviewRow
 } from './ocr';
 import { epochDayFromDateInputValue } from '../epochDay';
-import { PREFERRED_UNIT_ANALYTES } from './units';
+import { PhotoTooLargeError } from '../photos/limits';
 
 // ---------------------------------------------------------------------------
 // Adapter interfaces (seams for injection and testing)
@@ -19,15 +18,14 @@ export interface OcrImageSource {
   pickImage(source: 'gallery' | 'camera'): Promise<Uint8Array | null>;
 }
 
-/** Watching a recognition pass that is already running (phase 9 audit
-    ticket 11, ADR-0070). */
+/** Watching a recognition pass that is already running. */
 export interface OcrWatch {
   /** How far through the pass Tesseract says it is, or null while it is
       still loading its language data and has nothing to divide by. */
   onProgress?(fraction: number | null): void;
   /** Stops the pass. Safe here and only here: recognition reads a picked
-      file and never touches the journal, so stopping means picking again
-      (ADR-0070). */
+      file and never touches the journal, so stopping means picking again.
+      */
   signal?: AbortSignal;
 }
 
@@ -46,7 +44,6 @@ export interface OcrSaver {
     unit: string;
     note: string;
   }): Promise<void>;
-  getPreferredUnit?(analyte: string): string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -105,7 +102,7 @@ interface OcrMachine {
   /** User stops the pass. Only `recognizing` answers to it: that state has
       written nothing, so stopping means picking again, while `saving` is
       already putting rows in the journal and has no defined rollback -
-      the same rule that makes archive import uncancellable (ADR-0070). */
+      the same rule that makes archive import uncancellable. */
   cancel(): void;
 
   /** User closes / cancels the sheet. Returns to idle. */
@@ -162,6 +159,9 @@ export function createOcrMachine(
         attempt = null;
         if (isPermissionDenied(err)) {
           machine.state = { tag: 'permission-denied' };
+        } else if (err instanceof PhotoTooLargeError) {
+          // A file the app refuses to open is a page it could not read.
+          machine.state = { tag: 'recognition-failed' };
         } else {
           // Unexpected pick failure; go back to picking
           machine.state = { tag: 'picking' };
@@ -204,10 +204,7 @@ export function createOcrMachine(
       if (stale(mine)) return;
       attempt = null;
 
-      const preferredUnits = Object.fromEntries(
-        PREFERRED_UNIT_ANALYTES.map((analyte) => [analyte, saver.getPreferredUnit?.(analyte) ?? undefined])
-      );
-      const parsed = applyPreferredUnitDefaults(parseOcrLabRows(text), preferredUnits);
+      const parsed = parseOcrLabRows(text);
       if (!parsed.length) {
         machine.state = { tag: 'no-rows' };
         return;
@@ -278,7 +275,7 @@ export function createOcrMachine(
 
       machine.state = { tag: 'saving', rows };
 
-      /* Rows are written one at a time with no rollback (ADR-0070), so a
+      /* Rows are written one at a time with no rollback, so a
          failure part way leaves some in the journal. Those leave the list. */
       const landed = new Set<OcrReviewRow>();
       try {

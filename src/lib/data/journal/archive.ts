@@ -1,29 +1,12 @@
-/* The archive area (ticket 13, PRD F14): everything the journal holds, in
-   the shape an archive carries it (archive/payload.ts).
+/* The Archive area builds the payload and file manifest. archiveSections.ts
+   orders the travelling sections (ADR-0027), and archiveRead.ts reads them
+   by stable key or UUID (ADR-0002). Export queries all entry children at
+   once rather than querying dimensions, tags and photos per entry.
 
-   Which areas travel and in what order they are inserted back is the
-   registry's (archiveSections.ts, ADR-0027); the per-section reads are in
-   archiveRead.ts. What is left here is the file manifest, which is this
-   area's alone, and the four operations the app calls.
-
-   The sections read rows themselves rather than calling the other areas'
-   getters, for two reasons. Identity: every row travels by key or uuid, and
-   the entries area addresses entries by the rowid that means nothing on
-   another device (ADR-0002). Volume: the screens read a day or a list at a
-   time and can afford a query per entry for its dimensions, tags and
-   photos; an export reads every entry there has ever been, so each of those
-   becomes one query for the whole journal.
-
-   Photo bytes stay out of the snapshot. It names the files and how long
-   each one is - which is what lets the chunk count be settled before
-   anything is encrypted (ADR-0007) - and hands back a reader for one file
-   at a time, so nothing ever holds the photo set at once.
-
-   Ticket 14's Replace and Merge are the other half of this area, one
-   journal operation each. They live in restore.ts, with the per-section
-   writes in archiveApply.ts: the two halves share nothing but the wire
-   format and the registry, and the ordering rule an import turns on
-   (ADR-0011) is long enough to be worth reading on its own. */
+   The snapshot lists file sizes so encryption can derive the chunk count
+   in advance (ADR-0007). It reads file bytes one at a time. restore.ts
+   implements Replace and Merge in registry order (ADR-0011);
+   archiveApply.ts owns their per-section writes. */
 
 import { thumbFileName } from '../photos/names';
 import type { ImportCommit, OnRestoreProgress, RestoreContents, RestoreMode } from './restore';
@@ -34,36 +17,12 @@ import {
   type DaylioPreview
 } from '../archive/daylio';
 import { daylioBackupPreview, type DaylioBackupPreview } from '../archive/daylioBackup';
-import { dayonePreview, type DayOnePreview } from '../archive/dayone';
-import { transTracksPreview, type TransTracksPreview } from '../archive/transtracks';
-import { trackAndGraphPreview, type TrackAndGraphPreview } from '../archive/trackAndGraph';
-import { pixelsPreview, type PixelsPreview } from '../archive/pixels';
 import type { ArchiveFile, ArchiveImportLogRecord, ArchiveJournal } from '../archive/payload';
 import type { SqliteDriver } from '../sqlite/driver';
 import type { PhotoFileStore } from '../photos/photo-file-store';
 import type { NormalizedPhoto } from './photos';
 import { readImportLog, readRowContext } from './archiveRead';
 import { readArchiveJournal } from './archiveSections';
-
-interface TransTracksCommitResult {
-  milestonesAdded: number;
-  photosAdded: number;
-}
-
-interface DayOneCommitResult {
-  entriesAdded: number;
-  photosAdded: number;
-}
-
-interface TrackAndGraphCommitResult {
-  measurementsAdded: number;
-  typesAdded: number;
-}
-
-interface PixelsCommitResult {
-  entriesAdded: number;
-  tagsAdded: number;
-}
 
 export interface ArchiveSnapshot {
   journal: ArchiveJournal;
@@ -76,9 +35,9 @@ export interface ArchiveSnapshot {
   readFiles?(names: string[]): Promise<(Uint8Array | null)[]>;
 }
 
-/** What a committed backup import added. Every commit below reports its
-    counts the same way - measured over the tables it writes, inside the
-    transaction that writes them (restore.ts's `commitImport`, audit A1). */
+/** What a committed backup import added. Every commit below reports its counts the same way
+    - measured over the tables it writes, inside the transaction that writes them
+    (restore.ts's `commitImport`). */
 interface DaylioBackupCommitResult {
   entriesAdded: number;
   milestonesAdded: number;
@@ -92,11 +51,11 @@ export interface ArchiveArea {
       additions, so they are the counts commit reports (PRD F28). */
   previewDaylioImport(csv: string, naming: DaylioNaming): Promise<DaylioPreview>;
   /** Always Merge. An unmapped mood is refused before restore sees a row.
-      Writes one import_log record on success (ticket 03) - never on the
+      Writes one import_log record on success - never on the
       unmapped-mood refusal above, which never reaches restore either. */
   commitDaylioImport(preview: DaylioPreview, onProgress?: OnRestoreProgress): Promise<DaylioCommitResult>;
-  /** The same two steps for a `.daylio` backup rather than a CSV export
-      (phase 7 ticket 09), which carries milestones, tag groups, custom
+  /** The same two steps for a `.daylio` backup rather than a CSV export,
+      which carries milestones, tag groups, custom
       scales, writing templates, photos and voice notes as well. */
   previewDaylioBackupImport(file: Uint8Array, naming: DaylioNaming): Promise<DaylioBackupPreview>;
   /** Always Merge. `normalize` is the photo pipeline (photos/normalize.ts),
@@ -107,47 +66,15 @@ export interface ArchiveArea {
     normalize: (bytes: Uint8Array) => Promise<NormalizedPhoto>,
     onProgress?: OnRestoreProgress
   ): Promise<DaylioBackupCommitResult>;
-  /** Parses and resolves a TransTracks `.ttbackup` zip without writing. */
-  previewTransTracksImport(bytes: Uint8Array): Promise<TransTracksPreview>;
-  /** Always Merge. `normalize` turns each raw photo the zip carried into
-      stored JPEG bytes plus a thumbnail - normalizePhoto() needs a canvas
-      and stays a caller's job, the same division photoPicking.ts already
-      draws for every other photo-writing area (photos.ts's attach,
-      hairProgress.ts, tryouts.ts, ...). Writes one import_log record on
-      success (ticket 03), the same as commitDaylioImport. */
-  commitTransTracksImport(
-    preview: TransTracksPreview,
-    normalize: (bytes: Uint8Array) => Promise<NormalizedPhoto>
-  ): Promise<TransTracksCommitResult>;
-  /** Parses and resolves a Day One JSON export (a zip) without writing. */
-  previewDayOneImport(bytes: Uint8Array, naming: DaylioNaming): Promise<DayOnePreview>;
-  /** Always Merge. `normalize` turns each raw photo the zip carried into
-      stored JPEG bytes plus a thumbnail, the same division
-      commitTransTracksImport draws and for the same reason. Writes one
-      import_log record on success (ticket 03), the same as
-      commitDaylioImport. */
-  commitDayOneImport(
-    preview: DayOnePreview,
-    normalize: (bytes: Uint8Array) => Promise<NormalizedPhoto>
-  ): Promise<DayOneCommitResult>;
-  /** Parses and resolves a Track & Graph CSV export without writing. */
-  previewTrackAndGraphImport(csv: string): Promise<TrackAndGraphPreview>;
-  /** Always Merge. Writes one import_log record on success (ticket 03), the
-      same as commitDaylioImport and commitTransTracksImport. */
-  commitTrackAndGraphImport(preview: TrackAndGraphPreview): Promise<TrackAndGraphCommitResult>;
-  /** Parses and resolves a Pixels backup JSON without writing. */
-  previewPixelsImport(file: Uint8Array): Promise<PixelsPreview>;
-  /** Always Merge. An unrecognised `type` is skipped by pixelsPreview and
-      never blocks a commit. Writes one import_log record on success
-      (ticket 03), the same as commitDaylioImport/commitTransTracksImport. */
-  commitPixelsImport(preview: PixelsPreview): Promise<PixelsCommitResult>;
-  /** The import history, most recent first, for the settings screen
-      (ticket 03). Its own read rather than a slice of `snapshot()`: every
+  /** The import history, most recent first, for the settings screen.
+      Its own read rather than a slice of `snapshot()`: every
       other archive read costs the whole journal, and a settings screen
       asking "where did this come from" should not pay for it. */
   importLog(): Promise<ArchiveImportLogRecord[]>;
   /** Discards this device's journal and installs the archive's, keeping the
-      built-in vocabulary by key and leaving preferences alone (ADR-0011).
+      built-in vocabulary by key and device-local preferences (ADR-0011).
+      Full Archives replace validated portable preferences in the same
+      transaction; row-only callers omit them.
       One operation: the order it happens in is not a caller's to compose. */
   replace(contents: RestoreContents, onProgress?: OnRestoreProgress): Promise<void>;
   /** Adds what this device does not have and leaves matched rows alone, so
@@ -155,13 +82,11 @@ export interface ArchiveArea {
   merge(contents: RestoreContents, onProgress?: OnRestoreProgress): Promise<void>;
 }
 
-/** restore.ts behind a dynamic import: it drags in pack.ts/codec.ts/
-    payload.ts, an 82KB chunk that otherwise rides every eager path into this
-    file (ticket 21's audit, ticket 27). One wrapper per entry point rather
-    than repeating `await import('./restore')` at each of the eight call
-    sites below - a dynamic import of the same specifier already resolves
-    from the module loader's own cache, so there is nothing here worth
-    memoizing by hand. */
+/** Restore.ts behind a dynamic import: it drags in pack.ts/codec.ts/ payload.ts, an 82KB
+    chunk that otherwise rides every eager path into this file. One wrapper per entry point
+    rather than repeating `await import('./restore')` at each of the eight call sites below
+    - a dynamic import of the same specifier already resolves from the module loader's own
+    cache, so there is nothing here worth memoizing by hand. */
 async function restoreArchive(
   driver: SqliteDriver,
   files: PhotoFileStore,
@@ -173,13 +98,12 @@ async function restoreArchive(
   return restore.restoreArchive(driver, files, mode, contents, onProgress);
 }
 
-/** The same wrapper for the other entry point: a Merge that measures what it
-    added and writes the import history inside the same transaction (audit
-    A1). Each commit below names the tables its own counts are measured over
-    - the only place in this area that spells a SQL table, and deliberately
-    so: these are the numbers the commit hands back, and a count of "entries"
-    that named a section rather than a table would be one indirection away
-    from the rows it is claiming to have written. */
+/** The same wrapper for the other entry point: a Merge that measures what it added and
+    writes the import history inside the same transaction. Each commit below names the
+    tables its own counts are measured over - the only place in this area that spells a SQL
+    table, and deliberately so: these are the numbers the commit hands back, and a count of
+    "entries" that named a section rather than a table would be one indirection away from
+    the rows it is claiming to have written. */
 async function commitImport(
   driver: SqliteDriver,
   files: PhotoFileStore,
@@ -246,7 +170,7 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
 
     async importLog() {
       // Copied before reversing rather than reversed in place: `toReversed`
-      // is above the WebView floor (ADR-0023, ticket 55) and this is what
+      // is above the WebView floor (ADR-0023) and this is what
       // replaced it, so it has to keep the same promise not to touch what
       // it was handed - the read's array is its own today, and a reader
       // that started sharing one would be a bug nobody would look for here.
@@ -287,16 +211,15 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
       };
 
       /* Two files per photo and one per anything else, which is what the
-         generator above yields and therefore what the restore will count
-         (phase 9 audit ticket 11). Counted from the assets rather than
+         generator above yields and therefore what the restore will count.
+         Counted from the assets rather than
          from preview.photoCount, so the denominator cannot disagree with
          the numerator if either ever changes. */
       const fileCount = preview.assets.reduce((n, asset) => n + (asset.kind === 'photo' ? 2 : 1), 0);
-      /* A preview somebody abandoned, and an import that threw on an
-         undecodable photo, both leave no record: neither reaches the
-         transaction the history row is written in (ticket 03, audit A1).
-         An attachment is a photo row or a recording row, which is what
-         "attachments" counts on the way back out. */
+      /* A preview somebody abandoned, and an import that threw on an undecodable photo,
+         both leave no record: neither reaches the transaction the history row is written
+         in. An attachment is a photo row or a recording row, which is what "attachments"
+         counts on the way back out. */
       const added = await commitImport(
         driver,
         files,
@@ -318,80 +241,6 @@ export function makeArchiveArea(driver: SqliteDriver, files: PhotoFileStore): Ar
         tagsAdded: added.tags,
         attachmentsAdded: added.attachments
       };
-    },
-
-    async previewTransTracksImport(bytes) {
-      return transTracksPreview(bytes, await driver.readSnapshot(async (reader) => readArchiveJournal(await readRowContext(reader))));
-    },
-
-    async commitTransTracksImport(preview, normalize) {
-      const added = await commitImport(
-        driver,
-        files,
-        {
-          journal: preview.journal,
-          files: (async function* () {
-            for (const [fileName, raw] of preview.rawPhotos) {
-              const normalized = await normalize(raw);
-              yield { name: fileName, bytes: normalized.full };
-              yield { name: thumbFileName(fileName), bytes: normalized.thumb };
-            }
-          })()
-        },
-        { source: 'transtracks', counting: { milestones: ['milestone'], photos: ['photo'] } }
-      );
-      return { milestonesAdded: added.milestones, photosAdded: added.photos };
-    },
-
-    async previewDayOneImport(bytes, naming) {
-      return dayonePreview(bytes, await driver.readSnapshot(async (reader) => readArchiveJournal(await readRowContext(reader))), naming);
-    },
-
-    async commitDayOneImport(preview, normalize) {
-      const added = await commitImport(
-        driver,
-        files,
-        {
-          journal: preview.journal,
-          files: (async function* () {
-            for (const [fileName, raw] of preview.rawPhotos) {
-              const normalized = await normalize(raw);
-              yield { name: fileName, bytes: normalized.full };
-              yield { name: thumbFileName(fileName), bytes: normalized.thumb };
-            }
-          })()
-        },
-        { source: 'dayone', counting: { entries: ['entry'], photos: ['photo'] } }
-      );
-      return { entriesAdded: added.entries, photosAdded: added.photos };
-    },
-
-    async previewTrackAndGraphImport(csv) {
-      return trackAndGraphPreview(csv, await driver.readSnapshot(async (reader) => readArchiveJournal(await readRowContext(reader))));
-    },
-
-    async commitTrackAndGraphImport(preview) {
-      const added = await commitImport(
-        driver,
-        files,
-        { journal: preview.journal, files: noFiles() },
-        { source: 'trackAndGraph', counting: { measurements: ['measurement'], types: ['measurement_type'] } }
-      );
-      return { measurementsAdded: added.measurements, typesAdded: added.types };
-    },
-
-    async previewPixelsImport(file) {
-      return pixelsPreview(file, await driver.readSnapshot(async (reader) => readArchiveJournal(await readRowContext(reader))));
-    },
-
-    async commitPixelsImport(preview) {
-      const added = await commitImport(
-        driver,
-        files,
-        { journal: preview.journal, files: noFiles() },
-        { source: 'pixels', counting: { entries: ['entry'], tags: ['tag'] } }
-      );
-      return { entriesAdded: added.entries, tagsAdded: added.tags };
     },
 
     async snapshot() {

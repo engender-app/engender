@@ -1,28 +1,11 @@
 <script module lang="ts">
-  /* One observer for every tile on the page, not one observer each.
+  /* Share one observer across photo tiles so one callback yields one
+     state flush and one batched photoFiles.ts read. Per-tile callbacks
+     can drain the queue between tiles.
 
-     A browser delivers all of an observer's entries in a single callback,
-     so a screenful of tiles crossing the margin together becomes one
-     state flush and, downstream of that, one batched read in
-     photoFiles.ts. Separate observers get separate callbacks with a
-     microtask checkpoint between them, and the queue would drain once per
-     tile - which is the batching this ticket added, undone.
-
-     It lives on PhotoThumb rather than on the photo grid because a tile
-     is what knows it is about to read: the timeline, the milestone list
-     and the compare view would each need their own copy otherwise, and
-     the implicit root already accounts for whichever ancestor is doing
-     the scrolling.
-
-     The margin is roughly a screenful, so scrolling arrives at a loaded
-     tile rather than at a placeholder that then fills in - and it is why
-     the root has to be the element that scrolls rather than the implicit
-     viewport. A margin only widens the root's own rectangle; an ancestor
-     that clips still clips at its real edge, so with the app shell
-     scrolling (.app-main, app.css) the implicit root loaded a tile exactly
-     as it appeared and the margin bought nothing. Found by walking up to
-     the first scrollable ancestor rather than by naming the shell, so a
-     tile in a probe page or a scrolling sheet gets the right one too. */
+     Find the first scrollable ancestor as the root and preload roughly
+     a screenful beyond its edge. The implicit viewport root cannot
+     extend its margin through an ancestor that clips. */
   const watchers = new Map<Element, (near: boolean) => void>();
   const observers = new Map<Element | null, { observer: IntersectionObserver; watching: number }>();
 
@@ -103,11 +86,10 @@
   let element = $state<HTMLElement | null>(null);
   let near = $state(false);
 
-  /* A tile reads nothing until it comes near the screen, and lets its
-     bytes go once it is well past (phase 5 audit ticket 03, finding 04).
-     A grid of hundreds of photos otherwise reads and decodes every one of
-     them on mount and holds a blob URL and a decoded thumbnail for each,
-     so the screen costs what the journal holds instead of what is on it. */
+  /* A tile reads nothing until it comes near the screen, and lets its bytes go once it is
+     well past. A grid of hundreds of photos otherwise reads and decodes every one of them
+     on mount and holds a blob URL and a decoded thumbnail for each, so the screen costs
+     what the journal holds instead of what is on it. */
   $effect(() => {
     const target = element;
     if (!target) return;
@@ -159,11 +141,10 @@
     };
   });
 
-  /* A stable colour per photo, so the placeholder does not change shade
-     between renders. Derived from the id rather than stored - it stands in
-     for pixels nobody has loaded yet. Drafts have no id and all land on
-     the same shade, which is what the editor showed before this and is
-     only visible until ticket 08 gives them real files. */
+  /* A stable colour per photo, so the placeholder does not change shade between renders.
+     Derived from the id rather than stored - it stands in for pixels nobody has loaded yet.
+     Drafts have no id and all land on the same shade, which is what the editor showed
+     before this and is only visible gives them real files. */
   const hue = $derived(
     [...(photo.id ?? '')].reduce((h, character) => (h * 31 + character.charCodeAt(0)) % 360, 7)
   );

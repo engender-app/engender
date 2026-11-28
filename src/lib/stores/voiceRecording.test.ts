@@ -1,10 +1,15 @@
 import { afterEach, expect, test, vi } from 'vitest';
 vi.mock('$lib/audio/captureChain', () => ({ captureChainOf: () => 'chain', deviceFromUserAgent: () => 'device' }));
-vi.mock('$lib/paraglide/messages', () => ({ m: {} }));
+vi.mock('$lib/paraglide/messages', () => ({
+  m: { recording_mic_failed: () => 'microphone failed', recording_too_long: () => 'too long' }
+}));
 vi.mock('./toasts.svelte', () => ({ toast: vi.fn() }));
 vi.mock('$lib/data/fileDialog', () => ({ chooseFiles: vi.fn() }));
 vi.mock('$lib/data/videoNotes/limits', () => ({ VIDEO_SIZE_CEILING: 100 }));
-import { openMicrophone, recordStream } from './voiceRecording';
+import { openMicrophone, pickRecording, recordStream, startRecording } from './voiceRecording';
+import { chooseFiles } from '$lib/data/fileDialog';
+import { toast } from './toasts.svelte';
+import { webm } from '../data/media/audio-fixtures';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -40,4 +45,67 @@ test('a recorder that cannot start closes its microphone', () => {
   const stop = vi.fn();
   expect(() => recordStream({ getTracks: () => [{ stop }] } as unknown as MediaStream)).toThrow('encoder failed');
   expect(stop).toHaveBeenCalled();
+});
+
+
+for (const outcome of ['success', 'refusal'] as const) {
+  test(`a cancelled late microphone ${outcome} starts no recorder or feedback`, async () => {
+    const { toast } = await import('./toasts.svelte');
+    vi.mocked(toast).mockClear();
+    const construct = vi.fn();
+    vi.stubGlobal('MediaRecorder', class {
+      static isTypeSupported() { return true; }
+      constructor() { construct(); }
+    });
+    let release!: (stream: MediaStream) => void;
+    let refuse!: (error: Error) => void;
+    vi.stubGlobal('navigator', { mediaDevices: { getUserMedia: () => new Promise((resolve, reject) => {
+      release = resolve; refuse = reject;
+    }) } });
+    const stop = vi.fn();
+    const controller = new AbortController();
+    const opened = startRecording(controller.signal);
+    controller.abort();
+    if (outcome === 'success') release({ getTracks: () => [{ stop }] } as unknown as MediaStream);
+    else refuse(new DOMException('synthetic permission refusal', 'NotAllowedError'));
+    expect(await opened).toBeNull();
+    expect(construct).not.toHaveBeenCalled();
+    expect(toast).not.toHaveBeenCalled();
+    if (outcome === 'success') expect(stop).toHaveBeenCalled();
+  });
+}
+
+test('stopping closes microphone tracks before recorder completion arrives', async () => {
+  let finish!: () => void;
+  vi.stubGlobal('MediaRecorder', class {
+    state = 'recording';
+    set onstop(callback: () => void) { finish = callback; }
+    start() {}
+    stop() { this.state = 'inactive'; }
+  });
+  const stop = vi.fn();
+  const active = recordStream({ getTracks: () => [{ stop }] } as unknown as MediaStream);
+  const result = active.stop();
+  expect(stop).toHaveBeenCalled();
+  finish();
+  expect(await result).toBeNull();
+});
+
+/* The importer had only a byte ceiling, so a small low-bitrate file that is hours long went
+   straight to storage and to the waveform decoder. */
+test('an imported recording longer than the duration limit is refused with its own message', async () => {
+  const bytes = webm({ seconds: 4 * 3600 });
+  vi.mocked(chooseFiles).mockResolvedValue([
+    { type: 'audio/webm', size: bytes.length, arrayBuffer: async () => bytes.buffer } as unknown as File
+  ]);
+  expect(await pickRecording()).toBeNull();
+  expect(toast).toHaveBeenCalledWith('too long');
+});
+
+test('an imported recording inside the limit is returned as it came', async () => {
+  const bytes = webm({ seconds: 40 * 60 });
+  vi.mocked(chooseFiles).mockResolvedValue([
+    { type: 'audio/webm', size: bytes.length, arrayBuffer: async () => bytes.buffer } as unknown as File
+  ]);
+  expect(await pickRecording()).toEqual(bytes);
 });

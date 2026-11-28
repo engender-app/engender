@@ -1,18 +1,15 @@
-/* Regimen episode resolution (CONTEXT: "Regimen episode", ADR-0010): pure
-   questions over a list of episodes and a timestamp, kept above the
-   journal seam the same way milestoneStatus.ts is - nothing here reads a
-   clock or a database, so downstream tickets (02 onward) call it against
-   whatever episodes journal.regimen.getEpisodes() already returned, rather
-   than each re-deriving "which episode was this logged under".
+/* Regimen episode resolution (ADR-0010): pure questions over a list of episodes and a
+   timestamp, kept above the journal seam the same way milestoneStatus.ts is - nothing here
+   reads a clock or a database, so downstream tickets (02 onward) call it against whatever
+   episodes journal.regimen.getEpisodes() already returned, rather than each re-deriving
+   "which episode was this logged under".
 
-   Phase 5 ticket 38 widened this from "the one episode active at a
-   timestamp" to "the set of episodes active at a timestamp": an episode's
-   end is now a stored, explicit day (types.ts), so more than one episode
-   can be active on the same day when they are for different drugs. A dose
-   still usually names no drug of its own, so most attribution still comes
-   down to "is exactly one episode active" - activeEpisodesAt and
-   attributeDose are the two questions everything else in this file used to
-   answer with resolveEpisodeAt alone. */
+   Widened this from "the one episode active at a timestamp" to "the set of episodes active
+   at a timestamp": an episode's end is now a stored, explicit day (types.ts), so more than
+   one episode can be active on the same day when they are for different drugs. A dose still
+   usually names no drug of its own, so most attribution still comes down to "is exactly one
+   episode active" - activeEpisodesAt and attributeDose are the two questions everything
+   else in this file used to answer with resolveEpisodeAt alone. */
 
 import { expectedSlots, isDailySchedule, nearestOpenSlotDistance, pauseCoversDay } from './doseSchedule';
 import { epochDayFromTimestamp, startOfDayTimestamp } from './epochDay';
@@ -21,7 +18,7 @@ import type { DoseEvent, DoseSchedule, DosePause, DoseScheduleAmount, RegimenEpi
 
 /** Whether `episode` is in effect on `day`: started on or before it, and
     either still open (`endEpochDay` null) or ends on or after it. Delegates
-    to span.ts's spanCoversDay (phase 8 deepening ticket 11); the arithmetic
+    to span.ts's spanCoversDay; the arithmetic
     lives once. */
 function isActiveOn(episode: RegimenEpisode, day: number): boolean {
   return spanCoversDay(episode, day);
@@ -35,6 +32,24 @@ export const drugNameKey = (drug: string): string => drug.trim().toLowerCase();
     whitespace and case. Attribution, stock, Care and quick log share it. */
 export const sameDrug = (a: string, b: string): boolean => drugNameKey(a) === drugNameKey(b);
 
+/** The first day of the unbroken run of `episode`'s drug that `episode`
+    ends: its own start, walked back over every episode of the same drug
+    that reaches up to the day before it or overlaps it. A dose change
+    saved as a new episode the day after the old one ended is still the
+    same course, so "taking since" names when the course began, not when
+    the dose last changed. A day with no episode of the drug breaks it. */
+export function continuousSince(episodes: readonly RegimenEpisode[], episode: RegimenEpisode): number {
+  const same = episodes.filter((other) => sameDrug(other.drug, episode.drug));
+  let since = episode.startEpochDay;
+  for (;;) {
+    const earlier = same.filter(
+      (other) => other.startEpochDay < since && (other.endEpochDay === null || other.endEpochDay >= since - 1)
+    );
+    if (!earlier.length) return since;
+    since = Math.min(...earlier.map((other) => other.startEpochDay));
+  }
+}
+
 /** Every episode covering the timestamp's calendar day, including hidden
     episodes and concurrent regimens. */
 export function activeEpisodesAt(episodes: readonly RegimenEpisode[], timestamp: number): RegimenEpisode[] {
@@ -42,19 +57,16 @@ export function activeEpisodesAt(episodes: readonly RegimenEpisode[], timestamp:
   return episodes.filter((episode) => isActiveOn(episode, day));
 }
 
-/** How a dose's episode attribution came out: `episode` set when it
-    resolved to exactly one; `episode: null, ambiguous: true` when it
-    could not be told apart from another equally plausible one (more than
-    one episode active, or a named drug that does not pick out exactly
-    one of them); `episode: null, ambiguous: false` when there was nothing
-    to resolve against at all (no episode covers the timestamp), which is
-    the pre-existing "logged before any episode existed" case and not a
-    new kind of failure ticket 38 introduces.
+/** How a dose's episode attribution came out: `episode` set when it resolved to exactly
+    one; `episode: null, ambiguous: true` when it could not be told apart from another
+    equally plausible one (more than one episode active, or a named drug that does not pick
+    out exactly one of them); `episode: null, ambiguous: false` when there was nothing to
+    resolve against at all (no episode covers the timestamp), which is the pre-existing
+    "logged before any episode existed" case and not a new kind of failure introduces.
 
-    The distinction exists so a caller can count only the new, ambiguous
-    kind of exclusion (ticket 38's "counted and surfaced") without
-    changing what an existing single-episode journal already showed for
-    the old kind. */
+    The distinction exists so a caller can count only the new, ambiguous kind of exclusion
+    without changing what an existing single-episode journal already showed for the old
+    kind. */
 export type DoseAttribution =
   | { episode: RegimenEpisode; ambiguous: false }
   | { episode: null; ambiguous: boolean };
@@ -66,14 +78,13 @@ export const showAttributionLabel = (
   drug: string | null
 ): boolean => attribution.episode ? drug === null || !sameDrug(attribution.episode.drug, drug) : drug === null;
 
-/** Which episode `dose` belongs to, for reading its drug, ester and route
-    parameters against - not only its drug's name (attributeDrug below is
-    for that). A dose's own `drug` (types.ts) wins when set: it must match
-    exactly one episode active at the dose's timestamp, or attribution is
-    ambiguous. With no `drug` of its own, the dose falls back to the sole
-    active episode, exactly as every single-episode journal already
-    resolved before ticket 38 - so an existing journal, where at most one
-    episode is ever active on any given day, is unaffected either way. */
+/** Which episode `dose` belongs to, for reading its drug, ester and route parameters
+    against - not only its drug's name (attributeDrug below is for that). A dose's own
+    `drug` (types.ts) wins when set: it must match exactly one episode active at the dose's
+    timestamp, or attribution is ambiguous. With no `drug` of its own, the dose falls back
+    to the sole active episode, exactly as every single-episode journal already resolved -
+    so an existing journal, where at most one episode is ever active on any given day, is
+    unaffected either way. */
 export function attributeDose(
   episodes: readonly RegimenEpisode[],
   dose: Pick<DoseEvent, 'drug' | 'timestamp'>
@@ -90,23 +101,12 @@ export function attributeDose(
   return { episode: null, ambiguous: active.length > 1 };
 }
 
-/** How a dose's drug name came out, for callers that only need the name -
-    exposure totals and stock projection - and not an episode's ester or
-    route (attributeDose above is for that). `ambiguous` is the only new
-    way this can fail after ticket 38: a dose with no episode covering it
-    at all resolves to `{ drug: null, ambiguous: false }`, the
-    pre-existing, silent "nothing to attribute" case, and so does more
-    than one active episode agreeing on the same drug (a dose change
-    recorded as a new episode before the old one was ended, say - not an
-    attribution problem this question has, unlike attributeDose, which
-    also needs a single episode's ester and route and can't treat two
-    same-drug episodes as interchangeable). Only when the active episodes
-    actually name different drugs is there nothing honest to answer, and
-    `ambiguous` comes back true so exposure totals and stock projection can
-    count what they had to leave out. A dose's own `drug` (types.ts) is
-    taken as-is when set, even without a backing episode (a person can
-    name a drug stock or exposure should track without ever having logged
-    an episode for it), and is never ambiguous. */
+/** Resolve the drug name for exposure and stock, without selecting
+    an episode, ester or route. An explicit dose drug wins. With no
+    active episode, return `{ drug: null, ambiguous: false }`.
+    Episodes that agree give their shared drug. Conflicting active
+    episodes return null with `ambiguous: true` so callers can report
+    the exclusions. */
 export function attributeDrug(
   episodes: readonly RegimenEpisode[],
   dose: Pick<DoseEvent, 'drug' | 'timestamp'>
@@ -120,8 +120,7 @@ export function attributeDrug(
 /** The last day of `from`..`to` on which `episode` can expect a dose: `to`
     itself, or the episode's own planned end when that comes first. Null
     when the episode misses the range, starting after it or ending before
-    it. The day-ahead marks read every episode through this (after-release
-    ticket 01), so a course that ends on Friday expects nothing the week
+    it. The day-ahead marks read every episode through this, so a course that ends on Friday expects nothing the week
     after and one that starts next week still has its first dose there. */
 export function lastDayWithin(
   episode: Pick<RegimenEpisode, 'startEpochDay' | 'endEpochDay'>,
@@ -176,44 +175,14 @@ export function drugSpans(
   }));
 }
 
-/** The first episode there has ever been - the one HRT overall started
-    with, not whichever is active right now. Ticket 07's personal effects
-    timeline anchors against this and nothing else, so the anchor does not
-    shift when a second, different episode starts later. `episodes` must be
-    sorted ascending by startEpochDay (ties broken by insertion order, the
-    order journal.regimen.getEpisodes() returns). Null when there is no
-    episode at all yet. Unaffected by episodes overlapping: "first ever"
-    only ever meant the earliest start day, never that it was the only one
-    active.
+/** Default a drug-less dose to its only active episode, or to the
+    unique schedule with the nearest open slot to `todayEpochDay`.
+    Ties, no eligible schedule and as-needed episodes leave the picker
+    to ask.
 
-    The whole episode rather than only its start day, which is what this
-    returned until phase 5 ticket 27: the effects timeline reads the
-    anchor's `drug` as well, because the drug decides which literature
-    table it is allowed to draw a band from, and its start day decides
-    where that band is counted from. Both answers come off one episode, so
-    the caller takes the episode. */
-export function earliestEpisode(episodes: readonly RegimenEpisode[]): RegimenEpisode | null {
-  return episodes[0] ?? null;
-}
-
-/** Which of `active`'s episodes a new dose without a drug of its own should
-    default to (phase 8 ticket 40): the sole one if there is only one, or -
-    with several active at once - whichever schedule's nearest still-open
-    slot (doseSchedule.ts's nearestOpenSlotDistance) sits closest to
-    `todayEpochDay`. Null when that does not pick out exactly one: two (or
-    more) schedules tied for nearest, or none of the active episodes has a
-    schedule with an open slot to offer at all - an as-needed drug never
-    wins the comparison, it only leaves the tie unresolved. That is exactly
-    the case the picker still has to ask about.
-
-    `episodes` is the full list, needed only so a dose can be attributed to
-    the one active episode it names (attributeDose above) - each episode's
-    own doses and pauses are picked out here rather than by the caller, the
-    same split getComparison already makes before calling adherence: a
-    `DosePause` is scoped to one episode (`episodeId`), and adherence's own
-    pause check carries no episode filter, so handing it every episode's
-    pauses at once would let one episode's break blank out another's slot
-    on the same day. */
+    Use the full episode list to attribute existing doses first.
+    Scope pauses to the episode before matching; otherwise one
+    episode's pause can blank another's slot. */
 export function nearestActiveEpisode(
   episodes: readonly RegimenEpisode[],
   active: readonly RegimenEpisode[],
@@ -243,11 +212,10 @@ export function nearestActiveEpisode(
   return winners.length === 1 ? winners[0].episode : null;
 }
 
-/** One slot a schedule expects on a given day, with the episode it belongs
-    to named (phase 11 ticket 20, audit item 12). `dayAhead` answers which
-    days carry a slot and stops there - ADR-0067's mark is a day and a kind
-    and never an amount - so the forward day view asks this instead when it
-    has a day in hand and owes the person what is expected on it. */
+/** One slot a schedule expects on a given day, with the episode it belongs to named.
+    `dayAhead` answers which days carry a slot and stops there - ADR-0067's mark is a day
+    and a kind and never an amount - so the forward day view asks this instead when it has a
+    day in hand and owes the person what is expected on it. */
 export interface ExpectedDose {
   episodeId: string;
   drug: string;

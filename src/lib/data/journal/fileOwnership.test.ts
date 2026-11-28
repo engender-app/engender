@@ -43,7 +43,7 @@ test('every attachment survives archive restore and cleanup removes only orphans
   await journal.photos.attach({ entryId: entry }, photo);
   const milestone = await journal.milestones.upsertMilestone({ name: 'First', epochDay: 20000 });
   await journal.photos.attach({ milestoneId: milestone }, photo);
-  await journal.hairProgress.addPhoto(20000, photo);
+  await journal.progressPhotos.addPhoto(20000, 'hair', photo);
   const session = await journal.hairRemoval.upsertSession({
     epochDay: 20000, area: 'chin', method: 'laser', painRating: 2
   });
@@ -64,6 +64,8 @@ test('every attachment survives archive restore and cleanup removes only orphans
   }
   const expected = files.names();
   assert.equal(expected.length, 22);
+  const viewFiles = await db.query<{ file_name: string }>('SELECT file_name FROM media_file');
+  assert.equal(viewFiles.length, 14, 'view lists stored file references, including both benchmark columns');
   await files.write('orphan.jpg', audio);
   const snapshot = await journal.archive.snapshot();
   assert.deepEqual(snapshot.files.map((file) => file.name).sort(), expected);
@@ -83,7 +85,8 @@ test('every attachment survives archive restore and cleanup removes only orphans
   assert.deepEqual((await restored.journal.archive.snapshot()).journal, snapshot.journal);
 });
 
-test('trash attachments stay on disk but do not travel in archives', async () => {
+// Trash travels, and its files with it.
+test('trash attachments stay on disk and travel in archives', async () => {
   const { db, files, journal } = await device();
   const entry = await journal.entries.upsertEntry({
     epochDay: 20000, mood: 3, attachRecordings: [audio], attachVideos: [audio]
@@ -91,7 +94,7 @@ test('trash attachments stay on disk but do not travel in archives', async () =>
   await journal.photos.attach({ entryId: entry }, photo);
   const expected = files.names();
   await journal.entries.deleteEntry(entry);
-  assert.deepEqual((await journal.archive.snapshot()).files, []);
+  assert.deepEqual((await journal.archive.snapshot()).files.map((file) => file.name).sort(), [...expected].sort());
   await sweepOrphanPhotos(db, files);
   assert.deepEqual(files.names(), expected);
 });

@@ -1,33 +1,23 @@
-<!-- The personal effects timeline (phase 4 ticket 07): one horizontal track
-     per fixed effect, all sharing the same day axis anchored at the
-     earliest regimen episode's start day. A track shows the literature's
-     onset and completion windows as background bands and, when set, the
-     person's own first-noticed day as a marker - never framed against each
-     other, since the acceptance criterion this file exists to keep is that
-     nothing here reads as "ahead" or "behind" the bands.
+<!-- All effects share an axis anchored at HRT start. Show the person's
+     first-noticed marks independently of the literature's onset and
+     completion bands. Leave missing bands blank to avoid implying a
+     judgment about the person.
 
-     A row whose caller passed no onset window draws no band at all, and
-     draws nothing in its place either (phase 5 ticket 27): an empty track
-     is the literature having nothing to say about that change, and the
-     screen must not turn that into a gap in the person.
-
-     Purely a renderer:
-     every row's label is resolved by the caller (personalEffectName), and
-     the chart adds only its own fixed wording (the legend, the two edge
-     captions) via paraglide directly, inline rather than threaded through as a
-     prop. Decorative only - the day-by-day detail a screen reader needs
-     lives in the textual list the caller renders alongside this. -->
+     Only show bands while literature is true. Wipe from each band's start
+     and fade its legend swatches in place. The caller supplies row names
+     and renders the accessible textual detail alongside the chart. -->
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
   import { scaleLinear } from 'd3-scale';
   import { fmtDay } from '$lib/data/dates';
   import { localDateFromEpochDay, epochDayFromLocalDate } from '$lib/data/epochDay';
+  import { wipe } from '$lib/motion/reveal';
 
   export interface EffectTimelineRow {
     key: string;
     label: string;
     /** Null when the literature has nothing to say about this change for
-        this person's regimen (phase 5 ticket 27) - the row still draws its
+        this person's regimen - the row still draws its
         label, its axis and their own marker, and simply carries no band. */
     onset: { start: number; end: number } | null;
     /** Null when the literature gives no completion window at all, and
@@ -42,11 +32,14 @@
   let {
     rows,
     anchorEpochDay,
-    todayEpochDay
+    todayEpochDay,
+    literature
   }: {
     rows: EffectTimelineRow[];
     anchorEpochDay: number;
     todayEpochDay: number;
+    /** Whether the literature's bands are shown. */
+    literature: boolean;
   } = $props();
 
   const P = 4;
@@ -66,7 +59,7 @@
      would put every band hard against the left edge. */
   const MIN_SPAN_DAYS = 730;
 
-  /* Item 21: real pixels per day rather than every span squeezed into one
+  /* Use real pixels per day rather than every span squeezed into one
      320px viewBox. 0.6px/day puts two years at ~440px - a horizontal scroll
      on a phone, a wide-but-contained strip on desktop - and keeps five years
      under 1100px so the scroll stays a gesture rather than a journey. */
@@ -176,8 +169,9 @@
             <line class="tick-grid" x1={x(tick.day)} x2={x(tick.day)} y1="0" y2={ROW_H} />
           {/each}
           <line class="track-baseline" x1={P} x2={WIDTH - P} y1={ROW_H / 2} y2={ROW_H / 2} />
-          {#if row.onset}
+          {#if literature && row.onset}
             <rect
+              transition:wipe
               class="band-onset"
               x={x(row.onset.start)}
               y={BAND_Y}
@@ -185,8 +179,9 @@
               height={BAND_H}
             />
           {/if}
-          {#if row.completion}
+          {#if literature && row.completion}
             <rect
+              transition:wipe
               class="band-completion"
               x={x(row.completion.start)}
               y={BAND_Y}
@@ -206,10 +201,14 @@
   </div>
 
   <div class="effects-timeline-legend">
-    <span class="legend-item"><span class="legend-swatch swatch-onset"></span>{m.effect_legend_onset()}</span>
-    <span class="legend-item"><span class="legend-swatch swatch-completion"></span>{m.effect_legend_completion()}</span>
     <span class="legend-item"><span class="legend-swatch swatch-marker"></span>{m.effect_legend_marker()}</span>
     <span class="legend-item"><span class="legend-swatch swatch-today"></span>{m.effect_legend_today()}</span>
+    <span class="legend-item legend-literature" class:is-off={!literature} aria-hidden={!literature} data-legend-literature>
+      <span class="legend-swatch swatch-onset"></span>{m.effect_legend_onset()}
+    </span>
+    <span class="legend-item legend-literature" class:is-off={!literature} aria-hidden={!literature} data-legend-literature>
+      <span class="legend-swatch swatch-completion"></span>{m.effect_legend_completion()}
+    </span>
   </div>
 </div>
 
@@ -236,7 +235,6 @@
   }
   .timeline-tracks {
     overflow-x: auto;
-    scrollbar-width: thin;
   }
   .effect-axis {
     display: block;
@@ -308,6 +306,12 @@
     display: inline-flex;
     align-items: center;
     gap: var(--space-1);
+  }
+  .legend-literature {
+    transition: opacity var(--dur-slow) var(--ease-out);
+  }
+  .legend-literature.is-off {
+    opacity: 0;
   }
   .legend-swatch {
     width: 12px;

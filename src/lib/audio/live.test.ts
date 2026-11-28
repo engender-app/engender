@@ -80,7 +80,7 @@ test('it counts the seconds it was given', () => {
 
    Both halves of that are one test, because they have one cause and five
    minutes of synthesized take is the expensive part of asking - the tier is
-   the one that runs on every change (docs/agents/verification.md). The take
+   the one that runs on every change. The take
    arrives the way the microphone delivers it, a second at a time, from a
    buffer the test reuses so that the only thing growing with the take is
    whatever the gauge decided to keep. */

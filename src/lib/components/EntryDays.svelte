@@ -1,30 +1,12 @@
 <script lang="ts">
-  /* A run of days of entries, journal-connected (phase 5 ticket 22).
+  /* Search and Starred use this list to format dates and times, resolve tags
+     and media marks, and link to entries. Their filtered results cannot give
+     the total entries for a day. Home and Day keep their own count-bearing
+     DayCard wrappers.
 
-     The kit's `DayCard` and `DayEntry` are presentational - they take a
-     formatted date, a formatted time, resolved tag labels and icon names, and
-     know nothing about a journal. This is the caller that knows: it owns the
-     date and time formats, the resolution of a tag id to a word, which media
-     marks an entry carries and where an entry opens.
-
-     It exists because search and the starred shelf were drawing the identical
-     eighteen lines, down to the date format, and Home and a day are two more
-     of the same shape. Those two keep their own: Home caps what it draws and
-     heads each bar with how many entries the day holds, and a day heads its
-     one card with a count too. What is shared here is the case with no count
-     to give - a hit list can say how many entries of a day matched and not how
-     many it holds, and a bar reading "3 that day" over three of five would be
-     the filter describing itself (recentEntries.ts).
-
-     Both callers redraw it under a question that changes while somebody
-     types, so a day and an entry each open their own height when an answer
-     brings them and give it back when the next answer drops them (ticket
-     16, "rows animate in; no row painted in place before it arrives"). A
-     day stays one card while the entries on it come and go. The
-     transitions are local, so a list arriving as a whole rides its
-     caller's own transition instead of opening every row at once. Each
-     entry's wrapper is the kit's `.kit-entry-row`, which tells the rail
-     where a card's first and last entry are (kit.css). */
+     Local height transitions let days and entries appear or disappear as
+     the query changes while the caller animates the whole list's arrival.
+     Keep kit-entry-row wrappers for the rail's first and last marks. */
   import { fmtDayBar, fmtTime } from '$lib/data/dates';
   import { activeFlag } from '$lib/theme/activeFlag.svelte';
   import { HOME_AREA_ROLE, roleAt } from '$lib/theme/roles';
@@ -42,46 +24,36 @@
   let {
     groups,
     role: givenRole,
-    clampNotes = true,
     marginNotesByEntry,
     arrive = false,
     level
   }: {
     groups: EntryDayGroup[];
     role?: Role;
-    /** Off for a saved question's run (phase 8 features ticket 06): the
-        whole point of a run over a hit list is enough of each entry to
-        read rather than to scan. */
-    clampNotes?: boolean;
-    /** Batched by the caller, one read for the whole page rather than one
-        per entry (phase 8 features ticket 07, marginNotes.ts's own
-        reasoning). Omitted, every entry reads as carrying none - the
-        starred shelf (starred/+page.svelte) draws no margin-note
-        affordance for exactly that reason: it is not one of the four
-        surfaces the ticket names. */
+    /** Batched by the caller, one read for the whole page rather than one per entry
+        (marginNotes.ts's own reasoning). Omitted, every entry reads as carrying none - the
+        starred shelf (starred/+page.svelte) draws no margin-note affordance for exactly
+        that reason: it is not one of the four surfaces the ticket names. */
     marginNotesByEntry?: Map<number, MarginNote[]>;
-    /** Set where the whole run is disclosed at once by a control (Good
-        moments' "See all", phase 14 ticket 18): each day clips open from
-        its own left edge, one --stagger-step behind the one above, the
-        way every block in the app arrives (rule 10, ADR-0078). Without
-        it a run mounts as it stands, and only a day added later opens. */
+    /** Set where the whole run is disclosed at once by a control: each day clips open from
+        its own left edge, one --stagger-step behind the one above, the way every block in
+        the app arrives. Without it a run mounts as it stands, and only a day added later
+        opens. */
     arrive?: boolean;
     /** Each day's heading level, handed to DayCard: the placing screen's
         to say. */
     level?: 2 | 3;
   } = $props();
 
-  /* A day heads its card the way the day screen heads itself: weekday,
-     day and month, and the year only when it is not this one. The year on
-     every heading brought a comma with it in English ("Thursday, 1
-     October 2026") that no other day heading in the app carries (audit
-     UX-11). */
+  /* A day heads its card the way the day screen heads itself: weekday, day and month, and
+     the year only when it is not this one. The year on every heading brought a comma with
+     it in English ("Thursday, 1 October 2026") that no other day heading in the app
+     carries. */
   const today = $derived(currentDay());
 
-  /* Entries take the days' stripe unless the screen names another, the
-     same stripe Calendar gives its days. Good moments named none, so its
-     tags fell back to the accent and read magenta beside every other
-     screen's cyan (after-release 28, audit UI-08). */
+  /* Entries take the days' stripe unless the screen names another, the same stripe Calendar
+     gives its days. Good moments named none, so its tags fell back to the accent and read
+     magenta beside every other screen's cyan. */
   const role = $derived(givenRole ?? roleAt(activeFlag.roles, HOME_AREA_ROLE.days));
 </script>
 
@@ -107,7 +79,6 @@
           tags={entryTags(entry)}
           marks={entryMarks(entry)}
           {presentation}
-          clampNote={clampNotes}
         >
           {#snippet marginNotes()}
             {#if marginNotesByEntry}

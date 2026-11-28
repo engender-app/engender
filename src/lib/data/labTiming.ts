@@ -1,22 +1,11 @@
-/* Where a lab draw fell relative to dosing (phase 4 ticket 03, CONTEXT:
-   "Lab draw context"), and whether a chart's points were drawn under
-   comparable conditions. Pure, and kept above the journal seam beside
-   regimenEpisode.ts and doseSchedule.ts for the same reason: this is a
-   question about a draw and a dose, not a row anyone stores. Nothing here
-   reads a clock or a database - selectTimingDose (phase 8 features ticket
-   37) does lean on regimenEpisode.ts and hormoneDrug.ts as real
-   dependencies rather than peers, since picking which dose a draw's timing
-   comes from is inseparable from whose drug that dose was.
-
-   Purely descriptive throughout. This module answers "how long after which
-   dose was this drawn" and stops: it names no draw time as better than
-   another, no target value, and nothing about a result as favourable. The
-   draw-timing helper that would have advised one was rejected outright at
-   the phase 4 grilling session (Q15); this records what it would have had
-   to know, without the advice. */
+/* Describe when a lab draw occurred relative to dosing and whether
+   chart points come from comparable conditions. Resolve the timing
+   dose through regimen and hormone attribution. Keep the logic
+   free of clocks and persistence. Report timing without suggesting
+   draw times, target values or judgments about results. */
 
 import { epochDayFromTimestamp, startOfDayTimestamp, timestampAtLocalTime } from './epochDay';
-import { resolveCurveDrug } from './hormoneDrug';
+import { resolveHormoneDrug } from './hormoneDrug';
 import { attributeDrug } from './regimenEpisode';
 import type { DoseRoute, LabResult, LabTiming, RegimenEpisode } from './types';
 
@@ -62,9 +51,10 @@ export function drawUpperBound(draw: LabDraw): number {
     skipped dose is not a dose this measures from.
 
     Two figures, because "how long since dosing" means different things by
-    pharmacokinetics. Oral, sublingual, patch and gel get hours since the
-    dose. IM and SC get day-of-interval instead, since a single-digit-hour
-    figure says nothing about a depot with a days-to-weeks half-life.
+    pharmacokinetics. Oral, sublingual, rectal, patch and gel get hours since
+    the dose. IM, SC and an implant get day-of-interval instead, since a
+    single-digit-hour figure says nothing about a depot with a days-to-weeks
+    (or, for an implant, months-long) release.
 
     Null when nothing can be said: no preceding dose, or an hours route and
     a draw nobody timed. A zero or a "since midnight" figure in either case
@@ -82,18 +72,17 @@ export function labTimingFor(draw: LabDraw, dose: TimingDose | null): LabTiming 
      to know this rule to select one; this is where it is refused. */
   if (draw.drawTime === null && epochDayFromTimestamp(dose.timestamp) === draw.epochDay) return null;
 
-  /* Day-of-interval is a count of calendar days and needs no draw time,
-     which is why an untimed draw on a later day still gets a figure here.
+  /* Day-of-interval is a count of calendar days and needs no draw time, which is why an
+     untimed draw on a later day still gets a figure here.
 
-     The count comes from the dose log alone - the gap from the last
-     injection to the draw, with the injection day as day 1. Not from the
-     episode's `interval`, which is free text and cannot be computed from,
-     and not from ticket 02's dose_schedule either: a schedule is optional
-     and one per episode, so a figure that depended on one would silently go
-     missing for anyone who logs injections without setting a schedule. The
-     gap between consecutive dose events cannot be the source at all, since
-     the interval a fresh draw falls in has no next injection yet. */
-  if (dose.route === 'im' || dose.route === 'sc') {
+     The count comes from the dose log alone - the gap from the last injection to the draw,
+     with the injection day as day 1. Not from the episode's `interval`, which is free text
+     and cannot be computed from, and not from dose_schedule either: a schedule is optional
+     and one per episode, so a figure that depended on one would silently go missing for
+     anyone who logs injections without setting a schedule. The gap between consecutive dose
+     events cannot be the source at all, since the interval a fresh draw falls in has no
+     next injection yet. */
+  if (dose.route === 'im' || dose.route === 'sc' || dose.route === 'implant') {
     return { route: dose.route, dayOfInterval: draw.epochDay - epochDayFromTimestamp(dose.timestamp) + 1 };
   }
 
@@ -109,47 +98,30 @@ export function labTimingFor(draw: LabDraw, dose: TimingDose | null): LabTiming 
     ordered latest first. */
 export type CandidateDose = TimingDose & { drug: string | null };
 
-/** The candidate that supplies `analyte`'s timing, or null when none does.
-    `analyte` must itself resolve to one of the two curve drugs
-    (hormoneDrug.ts) - prolactin and any custom analyte resolve to none and
-    always get null here, exactly as when there is no dose at all.
-
-    Otherwise a candidate is skipped over, as if it weren't there, only when
-    `attributeDrug` (regimenEpisode.ts) resolves it to a drug and that drug
-    is not this analyte's curve drug - a concurrent dose for an unrelated
-    drug, the case this exists for. A dose `attributeDrug` has nothing to
-    resolve at all (`drug: null, ambiguous: false` - no episode covers it and
-    it names no drug of its own) is not the same as one resolved to a
-    different drug: it counts, exactly as every dose did before this existed,
-    so a journal that has never logged a regimen episode keeps stamping
-    timing the way it always has. Only a dose `attributeDrug` could not tell
-    apart from another (`ambiguous: true` - concurrent episodes for
-    different drugs, neither named on the dose) is excluded on that same
-    "nothing to attribute" footing, because there is no honest attribution
-    to fall back on for those either.
-
-    `doses` must already be in the order a match should be picked from -
-    latest first - since this returns the first one that qualifies rather
-    than choosing among several. */
+/** Pick the first eligible dose from newest to oldest. Only estradiol
+    and testosterone get timing. Skip doses attributed to another drug
+    and doses ambiguous across concurrent episodes. Doses with no
+    attribution and no ambiguity still qualify, preserving timing for
+    journals without regimen episodes. */
 export function selectTimingDose(
   analyte: string,
   doses: readonly CandidateDose[],
   episodes: readonly RegimenEpisode[]
 ): CandidateDose | null {
-  const curveDrug = resolveCurveDrug(analyte);
-  if (curveDrug === null) return null;
+  const hormoneDrug = resolveHormoneDrug(analyte);
+  if (hormoneDrug === null) return null;
 
   return (
     doses.find((dose) => {
       const attribution = attributeDrug(episodes, dose);
       if (attribution.drug === null) return !attribution.ambiguous;
-      return resolveCurveDrug(attribution.drug) === curveDrug;
+      return resolveHormoneDrug(attribution.drug) === hormoneDrug;
     }) ?? null
   );
 }
 
 /** The axes a lab series' points can disagree on. A **Lab series**
-    (CONTEXT.md) folds results into one line by matching unit and nothing
+     folds results into one line by matching unit and nothing
     else, so one line can hold readings taken at opposite ends of an
     injection interval, on different routes, or by different labs.
 
@@ -178,7 +150,7 @@ const positionKey = (timing: LabTiming): string =>
     timing and no provider, and a flag that fired on their absence would be
     permanently on. Providers are compared as typed, trimmed of surrounding
     whitespace and otherwise left alone - the same rule an analyte's unit
-    follows (CONTEXT: "Analyte"), so two spellings of one lab are two
+    follows, so two spellings of one lab are two
     providers and nothing matches them up. */
 export function seriesComparability(results: readonly LabResult[]): ComparabilityAxis[] {
   const values: Record<ComparabilityAxis, Set<string>> = {

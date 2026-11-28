@@ -1,57 +1,14 @@
 <script lang="ts">
-  /* One entry inside a day card: when it was written, how it felt, and what
-     it says.
+  /* The day card's hairline, mood faces and timestamps form the entry timeline. Tags arrive
+     as labels and media marks as icon names. Render them beside the note so a media-only
+     entry still shows what it holds.
 
-     The day reads as a timeline rather than as a stack of rows. A hairline
-     runs down the entries and each mood sits on it, so the shape of a day -
-     three entries close together in the evening, one in the morning - is
-     visible before a word of it is read. The times sit beside the marks
-     rather than inside the text, which is what keeps the rail readable as a
-     clock.
+     A missing note has its own labelled placeholder. Reserve data-entry-note for actual
+     notes and data-entry-card for the row. The row owns the placeholder's copy.
 
-     The mood is the same face the picker offers, at entry size. A mood that
-     is chosen as a face and read back as a coloured dot is two moods.
-
-     It opens where it is given somewhere to open (phase 5 ticket 21, its
-     first real screen): an entry that can be read back and not opened is a
-     dead end, and the surface that draws an entry is the one that owes the
-     link. Presentational where it is not, because a day card printed into
-     the journal book has nowhere to go.
-
-     An entry with no note says so rather than showing nothing. Every other
-     line here is absent when it has nothing to say, and this one is the
-     exception because the note is the field the row is read for: a gap
-     where it should be reads as a row that failed to load, and the eye
-     spends a moment on it either way (Alicja, 2026-09-04). It carries its
-     own handle rather than `data-entry-note`, which names the note itself -
-     a placeholder answering to that would make every noteless row match a
-     selector that means "this entry has words in it".
-
-     The one string this component reaches for. Everything else arrives
-     resolved - tags as labels, marks as icon names - because which tags
-     exist is the journal's business; this sentence is about the row's own
-     shape and has no caller better placed to write it.
-
-     Under the note sits what the entry carries besides its words: the tags
-     it was filed under, and a mark for a photo, a recording or a video. An
-     entry list that shows only the note makes an entry that is a photo and
-     four tags look like an empty one, and this is a summary of a day rather
-     than a preview of one field of it. Tags arrive resolved to labels, and
-     marks as icon names, because which tags exist and what a photo is are
-     both the journal's business and not this surface's.
-
-     The handles are the app's own - `data-entry-card` for the row and
-     `data-entry-note` for its note - rather than a second vocabulary for
-     the thing the old EntryCard carried before every list of entries came
-     here (ADR-0029; the last three moved in phase 14 ticket 18). Same concept, same handle, whichever surface it is
-     drawn on.
-
-     Where it opens, it is also the source half of the app's one container
-     transform (DIRECTION.md tier 2, wired by ticket 22): the row the finger
-     lands on is the box the editor grows out of. Whether that runs at all
-     belongs to the navigation and to $lib/motion/container.svelte, not here
-     - this only says which row was tapped, and only while it has somewhere
-     to go. */
+     A caller that supplies a destination makes the row a link. A printed day card stays
+     presentational. When the row opens, its measured box is the source of the container
+     transform. Navigation and motion/container.svelte decide when the transform runs. */
   import type { Snippet } from 'svelte';
   import { m } from '$lib/paraglide/messages';
   import Icon from '../Icon.svelte';
@@ -86,8 +43,7 @@
     /** Icon names for the media the entry holds - a photo, a recording, a
         video note. */
     marks?: string[];
-    /** The fluidity engine's presentation (phase 5 deepening ticket 17,
-        ADR-0048), already resolved to a name and an ink colour by the
+    /** The fluidity engine's presentation (ADR-0048), already resolved to a name and an ink colour by the
         caller - the same reason `tags` arrives as labels rather than ids.
         Absent for an entry that carries none, which shows nothing at all:
         absence, not a label. */
@@ -96,12 +52,11 @@
     href?: string;
     key?: string;
     /** Off for a run of entries meant to be read rather than scanned
-        (phase 8 features ticket 06) - the note prints in full instead of
+         - the note prints in full instead of
         clamping to two lines. Every other caller leaves this on, which is
         what keeps a day card the same height whatever somebody wrote. */
     clampNote?: boolean;
-    /** A margin note is content about this entry rather than of it (phase 8
-        features ticket 07), so it is a snippet the caller supplies rather
+    /** A margin note is content about this entry rather than of it, so it is a snippet the caller supplies rather
         than a prop this component reads a journal for - the same
         presentational rule `tags`/`marks`/`presentation` already keep,
         applied to a caller that also writes, not only reads. Rendered
@@ -140,12 +95,10 @@
 {/snippet}
 
 {#if href}
-  <!-- The transition name lives on `.kit-entry-bg`, not on this element: a
-       view transition captures a named element as one rasterised image and
-       scales it 4-8x into a full screen, and a row's note text riding inside
-       that image read as a heading-sized blow-up (Alicja, 2026-08-27: "the
-       ridiculous huge text transition"). The plain fill grows; the content
-       crossfades with the screen. -->
+  <!-- The transition name lives on `.kit-entry-bg`, not on this element: a view transition
+       captures a named element as one rasterised image and scales it 4-8x into a full
+       screen, and a row's note text riding inside that image read as a heading-sized
+       blow-up. The plain fill grows; the content crossfades with the screen. -->
   <a
     class="kit-entry"
     data-entry-card={key}
@@ -172,18 +125,31 @@
 {/if}
 
 <style>
+  /* Two lines of the note, then an ellipsis. Here rather than in kit.css:
+     this component is its one reader (check-screens-classes). */
+  .kit-entry-note {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--text-2);
+    line-height: 1.35;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
   /* No note. Italic, and nothing else: it reads as the row saying something
      about itself rather than as words somebody wrote. It keeps the note's
      own --text-2 rather than stepping quieter, because it is still text
      somebody reads and the palette contrast test holds --text-2 to the
-     4.5:1 floor across all 8 palettes - a paler grey invented here would
+     4.5:1 floor across every palette - a paler grey invented here would
      answer to nothing. */
   .kit-entry-note.is-absent {
     font-style: italic;
   }
 
-  /* A run of entries meant to be read rather than scanned (phase 8 features
-     ticket 06): the same row, the whole note. */
+  /* A run of entries meant to be read rather than scanned: the same row, the whole note. */
   .kit-entry-note.is-full {
     display: block;
     -webkit-line-clamp: unset;

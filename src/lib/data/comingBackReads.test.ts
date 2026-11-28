@@ -96,7 +96,7 @@ test('the gap it is handed is the gap it answers about, whatever the journal now
 
 test('daily entries followed by 30 days away return despite old last-write dates in other areas', async () => {
   const areas = recordingAreas(TODAY - 30).areas;
-  areas.lastWrite.getLastWrites = async () => ({ entries: TODAY - 30, labResults: TODAY - 80, measurements: TODAY - 130, tallyEvents: TODAY - 180, sideEffects: TODAY - 230 }) as never;
+  areas.lastWrite.getLastWrites = async () => ({ entries: TODAY - 30, labResults: TODAY - 80, wearSessions: TODAY - 130, cycleEvents: TODAY - 180, sideEffects: TODAY - 230 }) as never;
   areas.lastWrite.getWritingDays = async () => Array.from({ length: 30 }, (_, index) => TODAY - 59 + index);
   assert.equal(await readReturnGap(areas, TODAY), TODAY - 30);
 });

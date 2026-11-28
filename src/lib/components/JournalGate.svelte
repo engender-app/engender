@@ -16,7 +16,6 @@
   } from '$lib/stores/boot.svelte';
   import { passphraseMode, passphraseScreen } from '$lib/stores/boot-state';
   import { MIN_PASSPHRASE_LENGTH } from '$lib/data/journal-passphrase';
-  import { DeviceBindingUnavailableError } from '$lib/data/device-secret';
   import { UnlockCancelledError } from '$lib/lock/unlock-attempt';
   import GateScreen from './GateScreen.svelte';
   import RecoveryKeyEntry from './RecoveryKeyEntry.svelte';
@@ -43,11 +42,10 @@
      rather than leaving "How should your journal open?" over a screen where
      that has already been answered. */
   let chosenMode = $state<AccessSetupMode | null>(null);
-  /* Whether this journal has a recovery key, read once when the gate mounts
-     (ADR-0054, ticket sec-02). Asked before anything is typed, because the
-     entry must not be offered where there is none - a door onto nothing
-     would send somebody looking for paper they never had. False until the
-     read answers, so the way out appears rather than disappearing. */
+  /* Whether this journal has a recovery key, read once when the gate mounts (ADR-0054).
+     Asked before anything is typed, because the entry must not be offered where there is
+     none - a door onto nothing would send somebody looking for paper they never had. False
+     until the read answers, so the way out appears rather than disappearing. */
   refreshRecoveryKeyPresence();
   let usingRecoveryKey = $state(false);
 
@@ -64,7 +62,7 @@
   /* Hoisted out of the template so its length can decide whether it is a
      line to centre or a paragraph to left-align (GateScreen). */
   let formBody = $derived(
-    unlockingPin ? m.su_pin_body() : unlockingBiometric ? m.bm_unlock_body() : m.pp_unlock_body()
+    unlockingPin ? m.su_pin_body() : unlockingBiometric ? m.unlock_confirm_body() : ''
   );
 
   /* The way-out sheet says which secret is missing, and biometric mode has
@@ -87,12 +85,9 @@
       : appWordmark(prefs.disguise, m.app_name(), m.disguise_name())
   );
 
-  /** The setup module's answer, wired through boot.svelte.ts's own submit
-      path (ticket 54: onboarding's lock step hands a chosen mode to the same
-      function, so the mapping from a mode to a submit call and a failure
-      lives in one place rather than two). Device-bound mode is the one that
-      can be refused by the platform rather than by the person, so it is the
-      one with an outcome besides ok or a throw to render. */
+  /** The setup module's answer, wired through boot.svelte.ts's own submit path.
+      Device-bound mode is the one that can be refused by the platform rather than by the
+      person, so it is the one with an outcome besides ok or a throw to render. */
   async function choose(chosen: AccessSetupMode, secret: string) {
     if (busy) return;
     busy = true;
@@ -128,18 +123,11 @@
     }
   }
 
-  /* PinEntry owns the pad, the growing delay and the status line; this only
-     has to say what an attempt came to. The device-key failure is reported
-     rather than thrown away because it is the one outcome retyping cannot
-     fix, and PinEntry keeps it off the throttle for the same reason. */
-  async function submitPin(entered: string): Promise<PinAttempt> {
-    try {
-      await submitPinUnlock(entered);
-      return 'ok';
-    } catch (e) {
-      if (e instanceof UnlockCancelledError) return 'cancelled';
-      return e instanceof DeviceBindingUnavailableError ? 'device-gone' : 'wrong';
-    }
+  /* PinEntry classifies failures and owns the throttle. Its mount guard
+     prevents a queued attempt publishing after this gate leaves. */
+  async function submitPin(entered: string, current: () => void): Promise<PinAttempt> {
+    await submitPinUnlock(entered, current);
+    return 'ok';
   }
 
   /* No throttle and no attempt count: the authenticator does its own, and
@@ -181,11 +169,11 @@
     <p class="gate-body" data-legacy-refusal>{m.pp_legacy_refused_body()}</p>
   </GateScreen>
 {:else if screen === 'form'}
-  <GateScreen title={gateTitle}>
+  <GateScreen title={gateTitle} unlock={!choosingMode}>
     {#if choosingMode}
       <AccessModeSetup purpose="setup" {busy} {error} onChoose={choose} bind:chosen={chosenMode} />
     {:else}
-      <p class="gate-body">{formBody}</p>
+      {#if formBody}<p class="gate-body">{formBody}</p>{/if}
 
       {#if unlockingPin}
         <PinEntry onVerify={submitPin} />
@@ -219,7 +207,7 @@
           <p class="pin-status small" role="alert" data-passphrase-status>{error}</p>
           <button class="btn btn-primary" type="submit" data-passphrase-submit disabled={busy}>
             <span>
-              {#if busy}{mode === 'setup' ? m.pp_encrypting() : m.pp_decrypting()}
+              {#if busy}{mode === 'setup' ? m.encrypting() : m.pp_decrypting()}
               {:else if mode === 'setup'}{m.pp_submit_setup()}
               {:else}{m.pp_submit_unlock()}{/if}
             </span>
@@ -267,8 +255,8 @@
       {/if}
       <!-- The gate's own notes, not the mid-session ones: those send
            somebody to reopen the app for the recovery key, and this gate
-           already offers it beside the button that opened this sheet
-           (after-release ticket 09). -->
+           already offers it beside the button that opened this sheet.
+-->
       {unlockingPin
         ? m.pin_forgot_gate_note()
         : unlockingBiometric
@@ -280,7 +268,7 @@
   {#if resetError}
     <!-- In the sheet, which stays open: the sheet is where the button was
          pressed, and closing it on a failure left the gate looking as if
-         nothing had happened (after-release ticket 09). -->
+         nothing had happened. -->
     <p class="reset-failed small" role="alert" data-reset-failed transition:disclose>{resetError}</p>
   {/if}
   <div class="stack-3" style="margin-top:var(--space-4)">

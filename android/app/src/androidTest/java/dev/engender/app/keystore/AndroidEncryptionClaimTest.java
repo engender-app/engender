@@ -32,37 +32,14 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
-/**
- * The at-rest encryption claim on Android, proved the same way it was proved
- * on the web: seed protected content of every kind the claim names, close the
- * app, and then read the raw bytes of everything it left behind.
+/** Checks Android's at-rest encryption claim with synthetic sentinels. The
+ * WebView encryption probe seeds and closes the journal. Instrumentation
+ * scans the app's private files, including SQLCipher side files, migration
+ * backups and protected photos. The walk documents two exclusions.
  *
- * <p>The reading is why this is a Java test rather than another WebView
- * probe. What has to be scanned is the app's own private directory - the
- * SQLCipher database, its side files, the pre-migration backup copy, and
- * app-private photo files written through the Photos plugin - and a WebView
- * cannot see any of that.
- * So {@code tests/android-tier/encryption/encryption-probe.ts} seeds and
- * closes, and this walks the directory afterwards.
- *
- * <p>Two things are deliberately skipped by the walk, and both are named
- * below with the reason. Everything else is scanned byte for byte, including
- * files nothing in this repository wrote.
- *
- * <p><b>What this proves and what it does not, now that a recovery key can
- * exist.</b> The assertions here are unchanged and stay correct: no sentinel appears in the
- * clear, whatever else is in the directory. What has changed is a claim
- * people read off this test rather than one it makes. A copy of the app's
- * files used to yield nothing that could open the journal at all, because the
- * only wrap in there was one Keystore refuses to help with. A journal whose
- * owner minted a recovery key also has recovery-key.json, which is a wrap
- * this test scans, finds no plaintext in, and passes - and which 120 bits
- * written on a piece of paper would open. That is not a weakening of the
- * at-rest claim and is why nothing here needed changing: the file holds no
- * journal content and no usable key, exactly like keystore.json beside it.
- * It does mean "a copied directory opens nothing" is now "a copied directory
- * opens nothing without the paper", and whoever quotes this test should quote
- * that instead.
+ * <p>The test checks for plaintext sentinels in the files it reads. A saved
+ * recovery key adds a separate encrypted wrap for intentional restoration.
+ * The journal directory alone supplies no usable recovery key.
  */
 @RunWith(AndroidJUnit4.class)
 public class AndroidEncryptionClaimTest {

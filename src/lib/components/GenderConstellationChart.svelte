@@ -1,67 +1,27 @@
 <script lang="ts">
-  /* The constellation: every entry as a point on a plane of two scales,
-     with the path between them traced by a scrubber (phase 5 deepening
-     ticket 19, ADR-0048).
+  /* This renderer takes points already scaled to 0..1, the scales'
+     endpoint labels, a date formatter and resolved presentation roles
+     (ADR-0048). The caller resolves roles so palette changes recolour the
+     chart without changing its data.
 
-     A dumb renderer, like WearTrendChart beside it. It takes
-     positions already read to 0..1 ($lib/data/constellationData), the two
-     scales' own end words, a formatter for a date and the modes with their
-     resolved roles. It knows no dimension key, no message and no colour of
-     its own: the caller resolves a presentation's role through `roleAt()`,
-     so switching palette recolours every point and nothing here has to be
-     told.
+     One position drives the entrance sweep and the scrubber. The sweep
+     reruns when the point count or either endpoint ID changes. A repeated
+     series or an axis change within that series keeps the scrubber's day.
+     Use --dur-authored with --ease-out. Reduced motion starts at the end.
 
-     ## Why there is a scrubber rather than a static scatter
-
-     The argument for this chart at all is that fluidity is a path rather
-     than a cloud, and the difference between those two readings is entirely
-     in whether anything moves. So one number drives the whole drawing: how
-     far along the readings the head sits. It arrives by sweeping from the
-     start to the end, and after that the slider is the same number under a
-     finger. The entrance and the interaction are one mechanism rather than
-     an animation bolted onto a control - which is also why the sweep is
-     worth its cost, since the code was there anyway.
-
-     Tier 3 (DIRECTION.md): the mark moves, not its container. The sweep
-     replays when the readings themselves change - a different range, an
-     entry saved - and not when a live query merely hands the same ones back
-     again, which is what `signature` below is for. Switching a scale on
-     either axis is deliberately not a replay: those are the same readings
-     seen from another angle, and a person who has scrubbed to a day wants
-     to still be on that day after turning the plane. It takes the authored duration on --ease-out for the reason
-     AreaChart's own first draw does: at --dur-slow a path this long reads
-     as a flicker rather than as a drawing (Alicja, 2026-08-25, "a little
-     slower and not linear").
-
-     Under reduced motion the head starts at the end. That is tier 3's
-     substitute, an instant cut, and nothing is lost by it: the whole
-     picture is what the sweep arrives at.
-
-     ## What is drawn, and in what order
-
-     Points are grouped by mode, one <g> per mode carrying that mode's role,
-     because that is how a surface takes a flag stripe (kit/role.ts) and
-     because 120 inline style attributes is not. Grouping costs the
-     chronological paint order, and it costs little: an older mark is drawn
-     at a fraction of a newer one's alpha, so a newer mark landing under an
-     older one is still the one that reads. The uncoloured group is drawn
-     first, which is the one place the order is worth fixing - a mark with no
-     mode should never cover one that has a colour to say.
-
-     The trail is short on purpose, and the first build had it wrong. Joining
-     forty readings that all sit inside one corner of the plane draws forty
-     lines across each other, which is a tangle and not a path - the exact
-     smear the ticket warned the density would become. What carries the
-     reading instead is a comet's tail: the last TRAIL_READINGS joins, fading
-     out behind the head, so the picture says which way the recent move went
-     and the older marks stay marks. */
+     One SVG group per mode lets the points share a role. Paint uncoloured
+     points first. Older points fade behind newer ones, so the grouping
+     can reorder them without losing which are recent. The trail joins
+     only the last TRAIL_READINGS points to keep dense clusters legible. */
   import { untrack } from 'svelte';
-  import { EASE_OUT, motionDuration } from '$lib/motion/tokens';
+  import { createSubscriber } from 'svelte/reactivity';
+  import { EASE_OUT, crossfadeDuration, fadeOnly, motionDuration } from '$lib/motion/tokens';
   import {
-    labelOffset,
-    labeledSlots,
+    placeLabels,
     tracedThrough,
     type ConstellationPoint,
+    type Ink,
+    type LabelBox,
     type PlottedPoint
   } from '$lib/data/constellationData';
   import type { Role } from '$lib/theme/roles';
@@ -94,6 +54,7 @@
     y,
     dayLabel,
     readingLabel,
+    hoverLines,
     scrubLabel,
     ariaLabel
   }: {
@@ -114,6 +75,8 @@
         see where the head sits. The readout is an <output>, so this is
         spoken again on every step of the scrub. */
     readingLabel: (point: ConstellationPoint) => string;
+    /** What a mouse hovering a point is told, one line each: the date and both values. */
+    hoverLines: (point: ConstellationPoint) => string[];
     /** What the scrubber is, for a screen reader. */
     scrubLabel: string;
     /** What the plot is. The marks are decoration to it; the scrubber is
@@ -133,13 +96,18 @@
       end of either scale. */
   const PAD = 8;
   const DOT = 3;
-  /** No two point labels closer than this, in real pixels. A day label runs
-      up to about 45px wide and 14px tall, off-centre from its own point - so
-      the gap has to clear a label's whole box, not just the dot it is
-      anchored to (ticket CARPET-07; the pairwise check in
-      tests/constellation-gallery.mjs, deleted since, is what this was
-      tuned against). */
+  /** No two labelled dots closer than this, in real pixels, so a cluster carries a few days
+      rather than one per dot. Each label's box is kept clear of the others and of every
+      mark on its own (placeLabels); this is only how sparse the days are. */
   const MIN_LABEL_GAP = 48;
+  /** How far each mark's paint reaches from its centre line, which is what
+      a label keeps clear of: a dot's radius and the outer pixel of its 2px
+      edge, the head's ring and half of its 4.5px casing, half a join. */
+  const DOT_REACH = DOT + 1;
+  const HEAD_REACH = DOT + 3 + 4.5 / 2;
+  const JOIN_REACH = 0.5;
+  /** How long the head stands still before the days are written. */
+  const LABEL_REST_MS = 150;
 
   /* Which dataset this is, as cheaply as it can be asked. A live query
      hands back a fresh array on any journal write, and replaying the sweep
@@ -154,16 +122,14 @@
       is made of. */
   let head = $state(0);
 
-  /** Bumped by the play button to ask for the sweep again without a new
-      dataset arriving (ticket CARPET-07). The effect below reads it only to
-      be woken by it - the sweep itself always walks 0 to last, same as the
-      dataset-arrives sweep it shares its one mechanism with. */
+  /** Bumped by the play button to ask for the sweep again without a new dataset arriving.
+      The effect below reads it only to be woken by it - the sweep itself always walks 0 to
+      last, same as the dataset-arrives sweep it shares its one mechanism with. */
   let replay = $state(0);
 
-  /** True while the sweep below draws the head across, which rewrites the
-      readout every frame. The readout is an <output>, a live region, and
-      would be read out at every reading it passes (after-release 21, audit
-      L04-13); it is muted until the head comes to rest. */
+  /** True while the sweep below draws the head across, which rewrites the readout every
+      frame. The readout is an <output>, a live region, and would be read out at every
+      reading it passes; it is muted until the head comes to rest. */
   let sweeping = $state(false);
 
   $effect(() => {
@@ -240,11 +206,124 @@
 
   let headMode = $derived(modes.find((mode) => mode.id === at?.presentationId));
 
-  /** Which of the drawn points also get their day written beside them
-      (ticket CARPET-07). Off the same `traced` window everything else on
-      the plot draws from, so a label never names a reading the plot itself
-      has scrolled past. */
-  let labeled = $derived(labeledSlots(traced, plot, PAD, MIN_LABEL_GAP));
+  /* The label's own type, read off a hidden ruler set in it. The text size
+     changing resizes the ruler, which is what makes this read again: its
+     content box, in fractional pixels, so a change smaller than a whole
+     pixel still counts. */
+  let ruler: HTMLElement | undefined = $state();
+  let rulerBox: DOMRectReadOnly | undefined = $state();
+  let labelFont = $derived.by(() => {
+    void rulerBox;
+    if (!ruler) return '';
+    const style = getComputedStyle(ruler);
+    return `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+  });
+
+  /* A font arriving under the same name (Nunito swaps in over its
+     fallback) changes every day's width without changing the font string,
+     and need not change the ruler's size either; so the measurements start
+     over whenever the document finishes loading fonts. */
+  const fontsLoaded = createSubscriber((update) => {
+    document.fonts.addEventListener('loadingdone', update);
+    return () => document.fonts.removeEventListener('loadingdone', update);
+  });
+
+  /** Each day's box in the label's type, measured once per font. Canvas
+      rather than the drawn text, because a label has to be measured before
+      there is anywhere to draw it. */
+  let measureDay = $derived.by(() => {
+    fontsLoaded();
+    const context = labelFont ? document.createElement('canvas').getContext('2d') : null;
+    if (!context) return null;
+    context.font = labelFont;
+    const boxes = new Map<string, LabelBox>();
+    return (point: ConstellationPoint): LabelBox => {
+      const text = dayLabel(point.day);
+      let box = boxes.get(text);
+      if (!box) {
+        const metrics = context.measureText(text);
+        box = { width: metrics.width, ascent: metrics.fontBoundingBoxAscent, descent: metrics.fontBoundingBoxDescent };
+        boxes.set(text, box);
+      }
+      return box;
+    };
+  });
+
+  /* The days are written on a plot at rest. While the head moves - the sweep, a drag, a
+     held arrow key - the marks a day has to clear move with it, and placing the days again
+     on every frame had them flicking on and off and across their dots. So the days fade out
+     when the head moves and back in once it has stood still for LABEL_REST_MS. */
+  let restingAt = $state(-1);
+  $effect(() => {
+    const now = head;
+    const timer = setTimeout(() => (restingAt = now), LABEL_REST_MS);
+    return () => clearTimeout(timer);
+  });
+
+  /* A day comes, goes and changes sides as the plot settles, so each of
+     those is a fade rather than a cut, keyed on where it is written so a
+     move is one day fading out and the same day fading in. A crossfade
+     under reduced motion too, since it moves nothing. */
+  const dayFade = (_node: Element) => fadeOnly(crossfadeDuration());
+
+  let readoutWidth = $state(0);
+  let readoutHeight = $state(0);
+
+  /* The point a mouse is over: the nearest drawn one within HOVER_REACH.
+     Mouse only - a finger reads the plane through the scrub, and a touch
+     that also hovered would leave a label standing after the finger lifts. */
+  const HOVER_REACH = 14;
+  let hovered = $state<ConstellationPoint | null>(null);
+  let hoverWidth = $state(0);
+  let hoverHeight = $state(0);
+  const hoverAt = (event: PointerEvent) => {
+    if (event.pointerType !== 'mouse') return;
+    const box = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    const [mx, my] = [event.clientX - box.left, event.clientY - box.top];
+    let best: ConstellationPoint | null = null;
+    let bestDistance = HOVER_REACH;
+    for (const point of traced) {
+      const distance = Math.hypot(px(point) - mx, py(point) - my);
+      if (distance <= bestDistance) [best, bestDistance] = [point, distance];
+    }
+    hovered = best;
+  };
+  /* Above the point, or below it where the top of the plot leaves no room,
+     and held inside the plot sideways. */
+  const HOVER_GAP = 8;
+  let hoverBox = $derived.by(() => {
+    if (!hovered) return null;
+    const above = py(hovered) - HOVER_GAP - hoverHeight >= 0;
+    const left = Math.min(Math.max(px(hovered) - hoverWidth / 2, 0), Math.max(size - hoverWidth, 0));
+    return { left, top: above ? py(hovered) - HOVER_GAP - hoverHeight : py(hovered) + HOVER_GAP };
+  });
+
+  /** Which of the drawn points also get their day written beside them, and where. Off the
+      same `traced` window everything else on the plot draws from, so a label never names a
+      reading the plot itself has scrolled past, and clear of every mark the plot paints:
+      the dots, the head's ring, the trail's joins and the readout laid over the corner. The
+      head's own day is in the readout, so it is not written a second time beside the ring. */
+  let labeled = $derived.by(() => {
+    if (!measureDay || !at || sweeping || restingAt !== head) return [];
+    const ink: Ink[] = [
+      ...traced.map((point) => ({ x1: px(point), y1: py(point), x2: px(point), y2: py(point), reach: DOT_REACH })),
+      { x1: px(at), y1: py(at), x2: px(at), y2: py(at), reach: HEAD_REACH },
+      ...trail.map(({ from, to }) => ({ x1: px(from), y1: py(from), x2: px(to), y2: py(to), reach: JOIN_REACH }))
+    ];
+    const written = traced.slice(0, -1);
+    const placed = placeLabels(written, {
+      plot,
+      pad: PAD,
+      minGap: MIN_LABEL_GAP,
+      ink,
+      keepOut: [{ left: size - readoutWidth, top: 0, right: size, bottom: readoutHeight }],
+      measure: measureDay
+    });
+    return written.flatMap((point) => {
+      const label = placed.get(point.slot);
+      return label ? [{ key: `${point.slot} ${label.x} ${label.y}`, point, label }] : [];
+    });
+  });
 </script>
 
 {#if points.length}
@@ -258,11 +337,20 @@
       <span>{y.low}</span>
     </div>
 
-    <div class="cn-plot-wrap" bind:clientWidth={size}>
+    <!-- The wrap takes the hover, not the plot: the plot stays no target
+         (its own note), and the two share a top-left corner. -->
+    <div class="cn-plot-wrap" role="presentation" bind:clientWidth={size} onpointermove={hoverAt} onpointerleave={() => (hovered = null)}>
       <!-- role="img" with the chart's own name: the marks are a picture and
            the slider below is the way of reading it, which is where the
            readings are actually spoken. -->
-      <svg class="cn-plot" width={size} height={size} viewBox="0 0 {size} {size}" role="img" aria-label={ariaLabel}>
+      <svg
+        class="cn-plot"
+        width={size}
+        height={size}
+        viewBox="0 0 {size} {size}"
+        role="img"
+        aria-label={ariaLabel}
+      >
         <!-- The two scales' middles, drawn as one cross rather than as a
              grid. Not axis furniture: with both scales read to their own
              ends, the middle is the only position on the plane that means
@@ -300,30 +388,22 @@
           </g>
         {/each}
 
-        <!-- One day per point that earned a label without landing on
-             another (labeledSlots, ticket CARPET-07), the head's own
-             excepted: it already has its date in the readout below, so
-             writing it twice over the same mark would be one fact said
-             twice rather than two facts. The day is what is written; the
-             `<title>` carries the whole reading - the same sentence the
-             head's own visually-hidden span speaks - as a native tooltip
-             for a pointer that lingers, so "a point's underlying data" is
-             not only its date for anyone who can hover one. -->
+        <!-- One day per point that earned a label clear of every mark and every other
+             label, the head's own excepted: it already has its date in the readout below,
+             so writing it twice over the same mark would be one fact said twice rather than
+             two facts. Drawn at full strength whatever its point's weight: a faded 12px day
+             is a day nobody reads (it fell to 1.8:1 on the card at the weight floor), and
+             the dot beside it already says how old it is. The day is what is written; the
+             `<title>` carries the whole reading - the same sentence the head's own
+             visually-hidden span speaks - as a native tooltip for a pointer that lingers,
+             so "a point's underlying data" is not only its date for anyone who can hover
+             one. -->
         <g class="cn-labels" aria-hidden="true">
-          {#each traced as point (point.slot)}
-            {#if labeled.has(point.slot) && point.slot !== at?.slot}
-              {@const offset = labelOffset(point)}
-              <text
-                class="cn-point-label"
-                x={px(point) + offset.dx}
-                y={py(point) + offset.dy}
-                text-anchor={offset.anchor}
-                opacity={point.weight}
-              >
-                <title>{readingLabel(point)}</title>
-                {dayLabel(point.day)}
-              </text>
-            {/if}
+          {#each labeled as { key, point, label } (key)}
+            <text class="cn-point-label" x={label.x} y={label.y} text-anchor={label.anchor} transition:dayFade>
+              <title>{readingLabel(point)}</title>
+              {dayLabel(point.day)}
+            </text>
           {/each}
         </g>
 
@@ -355,7 +435,13 @@
       </svg>
 
       {#if at}
-        <output class="cn-readout" data-constellation-readout aria-live={sweeping ? 'off' : 'polite'}>
+        <output
+          class="cn-readout"
+          data-constellation-readout
+          aria-live={sweeping ? 'off' : 'polite'}
+          bind:offsetWidth={readoutWidth}
+          bind:offsetHeight={readoutHeight}
+        >
           <span class="visually-hidden">{readingLabel(at)}</span>
           <span aria-hidden="true">{dayLabel(at.day)}</span>
           {#if headMode}
@@ -363,6 +449,32 @@
           {/if}
         </output>
       {/if}
+
+      <!-- Keyed on the point, so moving from one point to the next is one
+           label fading out where it was and the next fading in at its own
+           point, never one label jumping across the plot. -->
+      {#if hovered && hoverBox}
+        {#key hovered.slot}
+          <div
+            class="cn-hover"
+            data-constellation-hover
+            aria-hidden="true"
+            style:left="{hoverBox.left}px"
+            style:top="{hoverBox.top}px"
+            bind:offsetWidth={hoverWidth}
+            bind:offsetHeight={hoverHeight}
+            transition:dayFade|global
+          >
+            {#each hoverLines(hovered) as line, i (i)}
+              <span class:cn-hover-day={i === 0}>{line}</span>
+            {/each}
+          </div>
+        {/key}
+      {/if}
+
+      <span class="cn-label-ruler" aria-hidden="true" bind:this={ruler} bind:contentRect={rulerBox}>
+        {dayLabel(points[0].day)}
+      </span>
     </div>
 
     <!-- The x scale's two ends, under the plot and inset with it so each
@@ -374,10 +486,9 @@
 
     {#if points.length > 1}
       <div class="cn-scrub">
-        <!-- Re-runs the same sweep the chart already plays once on arrival
-             (the $effect above) rather than a second animation of its own -
-             one mechanism for "walk the path", asked for twice (ticket
-             CARPET-07). -->
+        <!-- Re-runs the same sweep the chart already plays once on arrival (the $effect
+             above) rather than a second animation of its own - one mechanism for "walk the
+             path", asked for twice. -->
         <button
           type="button"
           class="icon-btn press cn-play"
@@ -457,7 +568,7 @@
      fill to a contrast ratio is what turned nonbinary's yellow to olive, so
      the boundary is a ring instead: --role-edge, the stripe's hue at 3:1,
      where the stripe alone is under it on the plot and transparent where it
-     is not (phase 15 ticket 20). Painted under the fill, so of its 2px only
+     is not. Painted under the fill, so of its 2px only
      the outer pixel shows and the dot keeps its size and its colour. */
   .cn-dot {
     fill: var(--role-draw);
@@ -514,6 +625,27 @@
     max-width: 45%;
   }
 
+  .cn-hover {
+    position: absolute;
+    display: grid;
+    gap: 1px;
+    padding: 4px var(--space-2);
+    border-radius: var(--r-block);
+    background: var(--surface-2);
+    border: 1px solid var(--outline);
+    font-size: var(--text-xs);
+    color: var(--text-2);
+    font-variant-numeric: tabular-nums;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 1;
+  }
+
+  .cn-hover-day {
+    color: var(--ink);
+    font-weight: var(--weight-bold);
+  }
+
   .cn-readout {
     position: absolute;
     top: 0;
@@ -560,10 +692,21 @@
   }
 
   /* Ink rather than a role, the same call the trail makes: a point's day is
-     a fact about when, which belongs to no mode. */
+     a fact about when, which belongs to no mode. Proportional figures, which
+     is what the canvas that measures a label sets: a label never changes
+     under the scrub, so tabular ones bought nothing. */
   .cn-point-label {
     fill: var(--text-2);
     font-size: var(--text-xs);
-    font-variant-numeric: tabular-nums;
+  }
+
+  .cn-label-ruler {
+    position: absolute;
+    top: 0;
+    left: 0;
+    font-size: var(--text-xs);
+    white-space: nowrap;
+    visibility: hidden;
+    pointer-events: none;
   }
 </style>

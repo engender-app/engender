@@ -1,5 +1,4 @@
-/* Days since each treatment area's last hair-removal session (phase 5
-   ticket 08). Pure: no clock, no database, so every case here is a table of
+/* Days since each treatment area's last hair-removal session. Pure: no clock, no database, so every case here is a table of
    sessions and days. */
 
 import { test } from 'vitest';
@@ -7,6 +6,7 @@ import assert from 'node:assert/strict';
 import { daysSinceLastSession } from './hairRemovalSchedule.ts';
 import { HAIR_REMOVAL_AREAS } from './hairRemovalAreas.ts';
 import type { HairRemovalSession } from './types.ts';
+import { NO_COST } from './cost.ts';
 
 const session = (epochDay: number, area: string): HairRemovalSession => ({
   id: `s-${epochDay}-${area}`,
@@ -14,8 +14,10 @@ const session = (epochDay: number, area: string): HairRemovalSession => ({
   area,
   method: 'laser',
   painRating: 2,
-  cost: '',
-  provider: ''
+  minutes: null,
+  cost: NO_COST,
+  provider: '',
+  note: null
 });
 
 test('daysSinceLastSession has an entry for every area the vocabulary knows, even with no sessions at all', () => {

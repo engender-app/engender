@@ -83,7 +83,7 @@ test('unlock derives with the parameters the metadata carries, not the constants
 test('parsing a keystore from a newer format version refuses rather than misreads', async () => {
   const { metadata } = await createKeystore('passphrase');
   // One past what this build writes. Version 1 is a readable format now
-  // (ticket 53), so the refusal has to be tested above the current one.
+  //, so the refusal has to be tested above the current one.
   const newer = serializeKeystore(metadata).replace('"version":2', '"version":3');
   expect(() => parseKeystore(newer)).toThrow(/version/);
 });
@@ -95,7 +95,26 @@ test('a mangled KDF parameter block is refused by name, not surfaced as a wrong 
   expect(() => parseKeystore(JSON.stringify(parsed))).toThrow(/parameters/);
 });
 
-/* --- the secret source (ticket 53, ADR-0041) --------------------------- */
+test.each(['null', 'not json'])('unreadable keystore JSON fails as KeystoreUnreadableError: %s', (serialized) => {
+  expect(() => parseKeystore(serialized)).toThrow(KeystoreUnreadableError);
+});
+
+test('an unknown keystore KDF is refused before it can look like a wrong passphrase', async () => {
+  const { metadata } = await createKeystore('passphrase', CHEAP);
+  const raw = JSON.parse(serializeKeystore(metadata)) as Record<string, unknown>;
+  raw.kdf = 'scrypt';
+  expect(() => parseKeystore(JSON.stringify(raw))).toThrow(KeystoreUnreadableError);
+});
+
+test.each(['salt', 'nonce', 'wrappedKey'])('a non-string keystore %s cannot be coerced into base64', async (field) => {
+  const { metadata } = await createKeystore('passphrase', CHEAP);
+  const raw = JSON.parse(serializeKeystore(metadata)) as Record<string, unknown>;
+  for (const value of [1234, null]) {
+    expect(() => parseKeystore(JSON.stringify({ ...raw, [field]: value }))).toThrow(KeystoreUnreadableError);
+  }
+});
+
+/* --- the secret source (ADR-0041) --------------------------- */
 
 /* Cheap params where the test is about the record rather than about the
    cost: the real pin-encryption profile is 64 MiB over 4 passes, and
@@ -172,7 +191,7 @@ test('rewrapping without naming a source keeps the one it already had', async ()
   expect(rewrapped.secretSource).toBe('pin');
 });
 
-/* --- which key the PIN was bound to (ticket sec-02-06) ------------------- */
+/* --- which key the PIN was bound to ------------------- */
 
 test('a PIN keystore carries its binding through serialization, so a later unlock uses the key that wrapped it', async () => {
   const { metadata } = await createKeystore('1234', CHEAP, 'pin');
@@ -219,6 +238,15 @@ test('a keystore that is not a PIN one neither needs nor gains a binding', async
   expect(reparsed.pinBinding).toBeUndefined();
 });
 
+test('a biometric keystore needs its handle before serialization', async () => {
+  const { metadata } = await createKeystore('biometric secret', CHEAP, 'biometric');
+  expect(() => serializeKeystore(metadata)).toThrow(KeystoreUnreadableError);
+
+  const biometric = { credentialId: new Uint8Array([1]), prfSalt: new Uint8Array([2]) };
+  const reparsed = parseKeystore(serializeKeystore({ ...metadata, biometric }));
+  expect(reparsed.biometric).toEqual(biometric);
+});
+
 
 test.each(['credentialId', 'prfSalt'])('malformed biometric %s reports KeystoreUnreadableError', async (field) => {
   const { metadata } = await createKeystore('biometric secret', CHEAP, 'biometric');
@@ -226,6 +254,7 @@ test.each(['credentialId', 'prfSalt'])('malformed biometric %s reports KeystoreU
     ...metadata,
     biometric: { credentialId: new Uint8Array([1]), prfSalt: new Uint8Array([2]) }
   }));
-  raw[field] = 'not base64 !!!';
-  expect(() => parseKeystore(JSON.stringify(raw))).toThrow(KeystoreUnreadableError);
+  for (const value of ['not base64 !!!', 1234, null]) {
+    expect(() => parseKeystore(JSON.stringify({ ...raw, [field]: value }))).toThrow(KeystoreUnreadableError);
+  }
 });

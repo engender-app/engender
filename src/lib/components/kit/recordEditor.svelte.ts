@@ -3,6 +3,7 @@
 import { m } from '$lib/paraglide/messages';
 import { toast } from '$lib/stores/toasts.svelte';
 import { oneAtATime } from '$lib/stores/writeOutcome';
+import { isUndoable, offerUndo } from '$lib/stores/deleteUndo';
 import { findDeleteTarget, nextEditor, sameDraft, snapshotDraft, trySave, type RecordEditorOptions } from './recordEditor.ts';
 
 export function recordEditor<TRecord extends { id: string }, TDraft extends { id?: string } = TRecord>(
@@ -56,7 +57,7 @@ export function recordEditor<TRecord extends { id: string }, TDraft extends { id
     return found;
   }
 
-  /* The sheet stays up until the record is gone (after-release ticket 06):
+  /* The sheet stays up until the record is gone:
      a delete that fails says so inside it and leaves the record where it
      was, and a second tap while one is running deletes nothing. */
   const removeOnce = oneAtATime(() => {}, (value) => { deleting = value; });
@@ -65,13 +66,15 @@ export function recordEditor<TRecord extends { id: string }, TDraft extends { id
     const remove = options.remove;
     if (!target || deleting || !remove) return;
     deleteFailed = false;
-    if (!(await removeOnce(() => remove(target.id), ''))) {
+    let removed: unknown;
+    if (!(await removeOnce(async () => { removed = await remove(target.id); }, ''))) {
       if (deleteTarget === target) deleteFailed = true;
       return;
     }
     if (deleteTarget === target) deleteTarget = null;
     const message = options.deleted ? options.deleted(target) : m.record_deleted();
-    if (message) toast(message, { kind: 'record-deleted' });
+    if (isUndoable(removed)) offerUndo(removed, message ?? m.record_deleted());
+    else if (message) toast(message, { kind: 'record-deleted' });
   }
 
   function cancelDelete() {

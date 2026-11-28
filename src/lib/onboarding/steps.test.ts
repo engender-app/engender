@@ -11,6 +11,7 @@ import {
   stepAnswers,
   stepBefore,
   stepIndex,
+  stepSun,
   sunGrowth
 } from './steps';
 
@@ -26,14 +27,18 @@ describe('the step list', () => {
     expect(new Set(ONBOARDING_STEPS).size).toBe(ONBOARDING_STEPS.length);
   });
 
-  it('sets the five things a first run has to settle, then the list of what the app can ask for, then the last question', () => {
+  it('goes from features to access mode without asking for areas', () => {
+    expect(ONBOARDING_STEPS).not.toContain('areas');
+    expect(stepAfter(ONBOARDING_STEPS, 'features')).toBe('lock');
+  });
+
+  it('sets first-run choices, then permissions and disguise', () => {
     expect(ONBOARDING_STEPS).toEqual([
       'welcome',
       'name',
       'flag',
       'scales',
       'features',
-      'areas',
       'lock',
       'permissions',
       'disguise',
@@ -41,21 +46,18 @@ describe('the step list', () => {
     ]);
   });
 
-  /* Phase 10 redesign ticket 31. The daily check-in stopped being a
-     question setup asks: the answers the permissions step collects belong
-     to the OS, and the check-in switch stays on the reminders screen where
-     it always was. A step list that still named `checkin` would mean the
-     route had a branch for a step that no longer draws anything. */
+  /* The daily check-in stopped being a question setup asks: the answers the permissions
+     step collects belong to the OS, and the check-in switch stays on the reminders screen
+     where it always was. A step list that still named `checkin` would mean the route had a
+     branch for a step that no longer draws anything. */
   it('no longer asks about the daily check-in', () => {
     expect(ONBOARDING_STEPS).not.toContain('checkin');
   });
 
-  /* ADR-0079 and ticket 32. Disguise is asked last because turning it on
-     closes the app on Android, and setup holds every answer in memory
-     until complete() writes them - so anywhere earlier in the flow the
-     alias flip would take the rest of setup down with it. The finish still
-     follows it: the question is last, the screen that says setup is over
-     is not. */
+  /* Disguise is asked last because turning it on closes the app on Android, and setup holds
+     every answer in memory until complete writes them - so anywhere earlier in the flow the
+     alias flip would take the rest of setup down with it. The finish still follows it: the
+     question is last, the screen that says setup is over is not. */
   it('asks about disguise last, with only the finish after it', () => {
     expect(stepAfter(ONBOARDING_STEPS, 'disguise')).toBe('done');
     expect(stepBefore(ONBOARDING_STEPS, 'done')).toBe('disguise');
@@ -75,10 +77,9 @@ describe('the step list', () => {
 });
 
 describe('under disguise', () => {
-  /* ADR-0079: setup does not vary by disguise. The flag step used to leave
-     the flow under it, which guarded a state no real install can reach and
-     kept a second flow alive that nothing rendered or tested. One list,
-     whatever the preference says, and the flag step is in it. */
+  /* Setup does not vary by disguise. The flag step used to leave the flow under it, which
+     guarded a state no real install can reach and kept a second flow alive that nothing
+     rendered or tested. One list, whatever the preference says, and the flag step is in it. */
   it('is the same flow, and takes nothing that could make it differ', () => {
     expect(onboardingSteps.length).toBe(0);
     expect(onboardingSteps()).toEqual(ONBOARDING_STEPS);
@@ -100,7 +101,6 @@ describe('skipping', () => {
       'flag',
       'scales',
       'features',
-      'areas',
       'lock',
       'permissions',
       'disguise'
@@ -108,7 +108,7 @@ describe('skipping', () => {
   });
 
   /* The permissions step sets nothing of the app's own, so its Skip has
-     nothing to protect - and it carries one anyway (ticket 31). Skipping it
+     nothing to protect - and it carries one anyway. Skipping it
      grants nothing and blocks nothing, which is the only honest reading of
      a step whose answers all live in the OS. */
   it('lets the permissions step be skipped like any other', () => {
@@ -116,14 +116,9 @@ describe('skipping', () => {
   });
 });
 
-/* After-release 17 (UX-09): the pins step asked two questions at once -
-   what sits on Today and which features exist at all - and offered
-   Measurements as both. Features are their own step now, before the pins,
-   so the pins step only offers areas that are switched on. */
-describe('features before pins', () => {
-  it('asks which features to show right before what to pin', () => {
+describe('features', () => {
+  it('asks which features to show after scales', () => {
     expect(stepAfter(ONBOARDING_STEPS, 'scales')).toBe('features');
-    expect(stepAfter(ONBOARDING_STEPS, 'features')).toBe('areas');
   });
 
   it('stores the cycle choice, which an archive carries, so a restore skips it', () => {
@@ -134,9 +129,8 @@ describe('features before pins', () => {
 });
 
 describe('where the flow lands', () => {
-  /* One destination now. The PIN detour this used to have belonged to the
-     app-lock gate ticket 53 retired: how the journal opens is chosen in the
-     security module, not by a toggle here. */
+  /* One destination now. The PIN detour this used to have belonged to the app-lock gate
+     retired: how the journal opens is chosen in the security module, not by a toggle here. */
   it('sends a new person Home, not into Settings', () => {
     expect(onboardingDestination()).toBe('/');
   });
@@ -178,9 +172,27 @@ describe('the sun growing through the flow', () => {
   });
 });
 
+describe("the welcome's sun", () => {
+  /* The welcome is the app's first screen and draws the sun large, as its hero, and the
+     flow then starts from the small sun the growth below measures. The welcome is not a
+     step of that growth any more; it is what the field collapses out of. */
+  for (const steps of [onboardingSteps(), restoreSteps()]) {
+    it(`is larger than Home's resting sun, and the step after it collapses (${steps.length} steps)`, () => {
+      expect(stepSun('welcome', steps)).toBeGreaterThan(1);
+      expect(stepSun(steps[1], steps)).toBeLessThan(stepSun('welcome', steps));
+    });
+
+    it(`hands every later step the growth it always had (${steps.length} steps)`, () => {
+      for (const step of steps.slice(1)) {
+        expect(stepSun(step, steps), step).toBe(sunGrowth(stepIndex(steps, step), steps.length));
+      }
+    });
+  }
+});
+
 describe('a first run that restores an archive', () => {
   /* The failure directions first, because this is the ticket where a wrong
-     answer loses somebody's journal (ticket 36).
+     answer loses somebody's journal.
 
      Two ways to be wrong, and they are not symmetrical. Asking again for
      something the archive carries is the annoyance this ticket exists to
@@ -202,7 +214,7 @@ describe('a first run that restores an archive', () => {
   });
 
   it('reads what the archive carries off the portable set rather than a second list', () => {
-    /* The one guard against drift. `applyPortablePreferences` walks
+    /* The one guard against drift. Archive Replace walks
        PORTABLE_KEYS and nothing else, so a key that leaves that list stops
        travelling - and its step has to start asking again the same day,
        not whenever somebody notices. */
@@ -226,14 +238,12 @@ describe('a first run that restores an archive', () => {
   });
 
   it('opens on the welcome, offers the restore, and ends on the finish', () => {
-    /* `permissions` and `disguise` are in it because tickets 31 and 32
-       landed while this branch was open and the flow picked both up with no
-       edit to restoreSteps(): one stores no preference at all, the other
-       stores a device-local one, so `archiveAnswers` can never call either
-       carried. That is the whole argument for reading this off
-       PORTABLE_KEYS rather than keeping a second list - a hand-kept list
-       would have silently dropped the step that asks this device what the
-       app may reach, and the step that hides the app. */
+    /* `permissions` and `disguise` are in it because landed while this branch was open and
+       the flow picked both up with no edit to restoreSteps: one stores no preference at
+       all, the other stores a device-local one, so `archiveAnswers` can never call either
+       carried. That is the whole argument for reading this off PORTABLE_KEYS rather than
+       keeping a second list - a hand-kept list would have silently dropped the step that
+       asks this device what the app may reach, and the step that hides the app. */
     expect(RESTORED).toEqual(['welcome', 'restore', 'lock', 'permissions', 'disguise', 'done']);
   });
 

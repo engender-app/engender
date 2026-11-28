@@ -1,5 +1,5 @@
 <script lang="ts">
-  /* Every surface and every chart in the kit (phase 5 ticket 20), on one
+  /* Every surface and every chart in the kit, on one
      page, at phone width, against the real tokens.
 
      A fixture rather than a route: the kit has no screen to live on until
@@ -9,7 +9,7 @@
      the copy tickets' to decide, so these stand in without pretending to be
      decisions.
 
-     tests/kit-gallery.mjs drives this page across all 8 palettes and both
+     tests/tools/kit-gallery.mjs drives this page across all 8 palettes and both
      themes for the screenshot grid. */
   import { onMount } from 'svelte';
   import AreaChart from '$lib/components/kit/AreaChart.svelte';
@@ -61,7 +61,7 @@
       y: 50 + 26 * Math.sin(i / 23 + shift) + 12 * Math.sin(i / 3.1 + shift)
     }));
 
-  /* What the annotation layer has to survive (phase 5 deepening ticket 23):
+  /* What the annotation layer has to survive:
      a stretch that started before the chart did, one that has not ended, two
      that overlap, and a moment inside both. The year fixture also carries the
      dense case the ticket sets a floor for - three moments on adjacent days -
@@ -71,8 +71,8 @@
   const ANNOTATION_SOURCES: ChartAnnotationSource[] = [
     { id: 'e', kind: 'regimen', name: 'estradiol valerate', startEpochDay: -40, endEpochDay: 250 },
     { id: 's', kind: 'regimen', name: 'spironolactone', startEpochDay: 280, endEpochDay: null },
-    { id: 'p', kind: 'journalingPause', name: null, startEpochDay: 96, endEpochDay: 110 },
-    { id: 'q', kind: 'journalingPause', name: null, startEpochDay: 2, endEpochDay: 4 },
+    { id: 'p', kind: 'dosePause', name: 'estradiol valerate', startEpochDay: 96, endEpochDay: 110 },
+    { id: 'q', kind: 'dosePause', name: 'estradiol valerate', startEpochDay: 2, endEpochDay: 4 },
     { id: 'm', kind: 'milestone', name: 'first shot', startEpochDay: 3, endEpochDay: null },
     { id: 'n', kind: 'milestone', name: 'name change filed', startEpochDay: 4, endEpochDay: null },
     { id: 'v', kind: 'milestone', name: 'voice therapy', startEpochDay: 5, endEpochDay: null },
@@ -85,7 +85,7 @@
       : annotationsInRange(ANNOTATION_SOURCES, { from: 0, to: 364, today: 364 })
   );
 
-  /* Two scales on one plot (phase 6 ticket 12), which is where the palettes
+  /* Two scales on one plot, which is where the palettes
      have to be looked at: two roles of one flag, and on several of them the
      second is a shade rather than a colour. The dash is what has to carry the
      pair there.
@@ -108,11 +108,9 @@
     roles = readFlagRoles();
   }
 
-  /* ?measure=1 runs the chart's re-tween against a transform-and-opacity
-     baseline and prints the frame cadence on the page, so the number can be
-     read off a phone over `adb reverse` without a debugger attached. The
-     rule it is judged by is ticket 28's, written before any run: a material
-     holds if at most 5% of frames land past 1.5x the baseline's median
+  /* ?measure=1 runs the chart's re-tween against a transform-and-opacity baseline and
+     prints the frame cadence on the page, so the number can be read off a phone over `adb
+     reverse` without a debugger. The chart passes if at most 5% of frames land past 1.5x the baseline's median
      period and p95 is inside 1.25x it. */
   let report = $state('');
 
@@ -349,10 +347,9 @@
     />
   </ChartCard>
 
-  <!-- Carpet ticket 20: the leader floor. Same rows a thin, early journal
-       draws on a 0-to-100 dimension - one tag with almost every entry,
-       the rest with one or two - so the smallest three bars stay a
-       readable length instead of the sliver `leader` used to draw. -->
+  <!-- The leader floor. Same rows a thin, early journal draws on a 0-to-100 dimension - one
+       tag with almost every entry, the rest with one or two - so the smallest three bars
+       stay a readable length instead of the sliver `leader` used to draw. -->
   <ChartCard level={3} heading="Tag insights, thin journal" kind="bars" role={roleAt(roles, 1)}>
     <BarRows
       rows={[
@@ -392,8 +389,7 @@
     />
   </ChartCard>
 
-  <!-- The two forms phase 8 UX ticket 04 adds, and the rule between them
-       (ADR-0058): the same five mood steps as the distribution above, drawn
+  <!-- The same five mood steps as the distribution above, drawn
        as one ordered bar, and two rings for the case where the parts have
        no order at all.
 

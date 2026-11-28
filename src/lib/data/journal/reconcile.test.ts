@@ -1,12 +1,11 @@
-/* Reconciling built-ins by key is one idempotent operation, called from
-   boot and reused by ticket 14's Replace (ADR-0002, ADR-0017). */
+/* Reconciling built-ins by key is one idempotent operation, called from boot and reused by
+   Replace (ADR-0002, ADR-0017). */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { fakeFileStore } from '../photos/test-support/fake-file-store.ts';
 import { migratedDb } from '../sqlite/test-support/migrated-db.ts';
 import {
-  BUILT_IN_AFFIRMATION_KEYS,
   BUILT_IN_DIMENSIONS,
   BUILT_IN_TAG_GROUPS
 } from '../vocabulary/builtins.ts';
@@ -23,11 +22,10 @@ test('seeds every built-in dimension, group and tag into an empty journal, and n
   await openJournal(db, fakeFileStore()).reconcileBuiltIns();
 
   assert.equal(count(db, 'gender_dimension'), BUILT_IN_DIMENSIONS.length);
-  // Ticket 35 left the presets legacy-only, so an empty journal gets none.
+  // Legacy presets stay out of an empty journal.
   assert.equal(count(db, 'gender_preset'), 0);
   assert.equal(count(db, 'tag_group'), BUILT_IN_TAG_GROUPS.length);
   assert.equal(count(db, 'tag'), BUILT_IN_TAG_GROUPS.flatMap((g) => g.tags).length);
-  assert.equal(count(db, 'affirmation'), BUILT_IN_AFFIRMATION_KEYS.length);
 
 });
 
@@ -61,63 +59,8 @@ test('restores a missing built-in without touching custom rows', async () => {
   assert.ok(emotions.tags.some((t) => t.label === 'proud'), 'custom tag survived');
 });
 
-test('restores a missing built-in affirmation without touching a custom one', async () => {
-  const db = await migratedDb();
-  const journal = openJournal(db, fakeFileStore());
-  await journal.reconcileBuiltIns();
-  await journal.affirmations.addLine('en', 'You are doing great.');
-
-  db.raw.exec("DELETE FROM affirmation WHERE key = 'affirmation_1'");
-  await journal.reconcileBuiltIns();
-
-  const affirmations = await journal.affirmations.getAffirmations();
-  assert.ok(affirmations.some((a) => a.id === 'affirmation_1'), 'affirmation_1 restored');
-  assert.ok(affirmations.some((a) => a.text === 'You are doing great.'), 'custom line survived');
-});
-
-test('the appointment debrief seeds hidden, and an ordinary template seeds visible (ticket 25)', async () => {
-  const db = await migratedDb();
-  await openJournal(db, fakeFileStore()).reconcileBuiltIns();
-
-  const debrief = db.raw.prepare("SELECT hidden FROM entry_template WHERE key = 'appointment_debrief'").get() as {
-    hidden: number;
-  };
-  assert.equal(debrief.hidden, 1, 'appointment_debrief seeds hidden');
-
-  const ordinary = db.raw.prepare("SELECT hidden FROM entry_template WHERE key = 'euphoria_day'").get() as {
-    hidden: number;
-  };
-  assert.equal(ordinary.hidden, 0, 'euphoria_day seeds visible');
-});
-
-test('a reconcile over an existing journal leaves a person-set entry template hidden flag alone (ticket 25)', async () => {
-  const db = await migratedDb();
-  const journal = openJournal(db, fakeFileStore());
-  await journal.reconcileBuiltIns();
-
-  db.raw.exec("UPDATE entry_template SET hidden = 0 WHERE key = 'appointment_debrief'");
-  db.raw.exec("UPDATE entry_template SET hidden = 1 WHERE key = 'euphoria_day'");
-  db.raw.exec("DELETE FROM entry_template WHERE key = 'dysphoria_day'");
-  await journal.reconcileBuiltIns();
-
-  const debrief = db.raw.prepare("SELECT hidden FROM entry_template WHERE key = 'appointment_debrief'").get() as {
-    hidden: number;
-  };
-  assert.equal(debrief.hidden, 0, 'a debrief the person showed stays shown');
-
-  const ordinaryHidden = db.raw.prepare("SELECT hidden FROM entry_template WHERE key = 'euphoria_day'").get() as {
-    hidden: number;
-  };
-  assert.equal(ordinaryHidden.hidden, 1, 'an ordinary template the person hid stays hidden');
-
-  const restored = db.raw.prepare("SELECT hidden FROM entry_template WHERE key = 'dysphoria_day'").get() as {
-    hidden: number;
-  };
-  assert.equal(restored.hidden, 0, 'a restored built-in gets its own seed default');
-});
-
 // The physical schema tables reconcileBuiltIns inserts into, mapped to the
-// logical TableName writes.ts announces (ticket 28's drift guard): a new
+// logical TableName writes.ts announces: a new
 // built-in table added to reconcile.ts without an entry here, or without a
 // matching RECONCILE_TABLES entry, fails this test instead of silently
 // missing its invalidation.
@@ -127,14 +70,10 @@ const PHYSICAL_TO_LOGICAL: Record<string, TableName> = {
   preset_dimension: 'preset',
   tag_group: 'tag',
   tag: 'tag',
-  affirmation: 'affirmation',
   body_region: 'bodyRegion',
-  measurement_type: 'measurementType',
   effect_category: 'effectCategory',
   personal_effect_type: 'personalEffectType',
-  entry_template: 'entryTemplate',
-  entry_template_tag: 'entryTemplate',
-  entry_template_dimension_value: 'entryTemplate'
+  progress_pose: 'progressPhoto'
 };
 
 test('RECONCILE_TABLES names exactly the tables reconcileBuiltIns writes', async () => {
@@ -154,4 +93,40 @@ test('RECONCILE_TABLES names exactly the tables reconcileBuiltIns writes', async
   await reconcileBuiltIns(counting.driver);
 
   assert.deepEqual([...written].toSorted(), [...RECONCILE_TABLES].toSorted());
+});
+
+/* Three built-ins repeat another one - the two gender-group dysphoria flags repeat the
+   physical and social dysphoria types, and the whole-body region repeats the
+   euphoria/dysphoria scale. A journal created now seeds them hidden; a journal that already
+   holds them keeps whatever it had. */
+const hiddenOf = (db: Awaited<ReturnType<typeof migratedDb>>, table: string, key: string): number | undefined =>
+  (db.raw.prepare(`SELECT hidden FROM ${table} WHERE key = ?`).get(key) as { hidden: number } | undefined)?.hidden;
+
+test('a new journal seeds the duplicate built-ins hidden and their counterparts visible', async () => {
+  const db = await migratedDb();
+  await openJournal(db, fakeFileStore()).reconcileBuiltIns();
+
+  assert.equal(hiddenOf(db, 'tag', 'g-body-dys'), 1, 'g-body-dys repeats dt-physical');
+  assert.equal(hiddenOf(db, 'tag', 'g-soc-dys'), 1, 'g-soc-dys repeats dt-social');
+  assert.equal(hiddenOf(db, 'body_region', 'whole_body'), 1, 'whole body repeats the euphoria/dysphoria scale');
+
+  assert.equal(hiddenOf(db, 'tag', 'dt-physical'), 0);
+  assert.equal(hiddenOf(db, 'tag', 'dt-social'), 0);
+  assert.equal(hiddenOf(db, 'tag', 'g-body-eu'), 0);
+  assert.equal(hiddenOf(db, 'body_region', 'chest'), 0);
+  assert.equal(hiddenOf(db, 'gender_dimension', 'euphoria_dysphoria'), 0);
+});
+
+test('a reconcile over an existing journal leaves its duplicate built-ins as they were', async () => {
+  const db = await migratedDb();
+  const journal = openJournal(db, fakeFileStore());
+  await journal.reconcileBuiltIns();
+  // What a journal seeded before this ticket holds: all three visible.
+  db.raw.exec("UPDATE tag SET hidden = 0 WHERE key IN ('g-body-dys', 'g-soc-dys')");
+  db.raw.exec("UPDATE body_region SET hidden = 0 WHERE key = 'whole_body'");
+  await journal.reconcileBuiltIns();
+
+  assert.equal(hiddenOf(db, 'tag', 'g-body-dys'), 0);
+  assert.equal(hiddenOf(db, 'tag', 'g-soc-dys'), 0);
+  assert.equal(hiddenOf(db, 'body_region', 'whole_body'), 0);
 });

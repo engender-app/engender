@@ -1,83 +1,45 @@
-/* The literature's onset/completion windows for the personal effects
-   timeline's eight markers, and the pure arithmetic that turns them into
-   epoch-day bands against a given anchor. No journal, no clock, no
-   paraglide (ADR-0016): a window is a fixed fact about the literature,
-   and converting one to a concrete band needs only the anchor day it is
-   asked about - not a live read of anything.
+/* Turn WPATH SOC8 Appendix C, Table 1 (p. S254) into dated onset and
+   completion bands. Convert years to months and leave an open upper
+   bound for "more than five years." ADR-0096 records SOC8's departures
+   from Hembree 2017 and the shared guideline lineage.
 
-   The four feminizing markers (phase 4 ticket 07) come from the
-   feminizing time-course table in Hembree WC et al., "Endocrine Treatment
-   of Gender-Dysphoric/Gender-Incongruent Persons: An Endocrine Society
-   Clinical Practice Guideline," J Clin Endocrinol Metab.
-   2017;102(11):3869-3903 - the table reproduced across major
-   gender-affirming care programs (UCSF, University of Michigan, University
-   of Minnesota Boynton Health, Rainbow Health Ontario) for feminizing
-   hormone therapy's expected timing, and the source m.effect_source() names
-   on screen.
-
-   The four masculinizing markers added by phase 5 ticket 02 - voice_drop,
-   facial_body_hair, masculinizing_fat_redistribution, cycle_cessation -
-   come from the same paper's separate masculinizing time-course table
-   (Table 12, p. 3888): deepening of voice, facial/body hair growth, fat
-   redistribution, and cessation of menses respectively. Cross-checked
-   against Rainbow Health Ontario's "Masculinizing Hormone Therapy"
-   reproduction of that table: fat redistribution and cycle cessation match
-   exactly; facial/body hair's completion window (4-5 years) also matches,
-   though Rainbow Health Ontario gives its onset as 3-6 months against
-   Hembree's own 6-12 - this file follows Hembree's primary figure, the
-   same source the feminizing four are drawn from, over the reproduction
-   where the two disagree. Cycle cessation's literature completion window
-   is genuinely unbounded - Hembree gives no ceiling at all, and Rainbow
-   Health Ontario's "n/a" reads the same way - so it is modelled exactly
-   like skin_softening's null completion, not an open-ended band like
-   hair_changes': there is no reported minimum-months-until-typically-done
-   to even start an open band from.
-
-   Which of the two tables a window came from is recorded per effect and
-   gates the band (phase 5 ticket 27). Both tables are keyed to a drug -
-   the feminizing one describes estradiol therapy and the masculinizing one
-   testosterone therapy - so a band only means anything when the anchoring
-   regimen episode names that drug. Until this gate existed the screen drew
-   all eight for everyone, which told someone on testosterone alone when to
-   expect their breast development to be complete, and cited the Endocrine
-   Society underneath it.
-
-   Phase 5 ticket 41 widens tier 1 from these eight to roughly twenty,
-   adding figures read out of GenderGP's HRT timeline tables
-   (gendergp.com/blog/hrt-timelines-hormones-effects/, fetched
-   2026-08-19), which cite WPATH Standards of Care v7 - the same guideline
-   lineage as Hembree's tables, reproduced by a private provider rather
-   than a second, independent source. Where the two disagree this file
-   keeps following the primary guideline figure, per the facial/body hair
-   resolution above; no new disagreement surfaced in the entries GenderGP
-   adds. One guideline entry GenderGP tables - masculinising scalp hair
-   loss - gives no usable completion figure ("variable", no range), so
-   per this ticket's own tier rule it is catalogued at tier 2 (named,
-   no band) rather than added here; every other new entry below carries a
-   real bounded range and sits at tier 1 alongside the original eight.
-
-   Every window here is a claim about the literature, never a target for
-   anyone's own experience - the acceptance criterion this file exists to
-   keep honest. Tier 2 and tier 3 effects carry no entry here at all:
-   `literatureCovers`/`literatureWindow` answer "no band" for any key this
-   record does not list, which is the ordinary case once the catalogue is
-   open past twenty. Which tier an effect is is derived from that same
-   record, by `effectTier` at the foot of this file - there is no stored
-   tier anywhere, on the catalogue row or off it (ADR-0010). */
+   Each window carries its source and review date for the 24-month
+   freshness check. Draw a band only when the anchoring regimen matches
+   the source table's drug, estradiol or testosterone. The figures
+   describe the literature. An effect without a source-backed window
+   gets no band, and effectTier derives its tier from this registry.
+   The arithmetic takes an anchor day and needs no journal or clock. */
 
 import { epochDayMonthsAgo } from './epochDay';
-import { resolveCurveDrug, type CurveDrug } from './hormoneDrug';
-import { earliestEpisode } from './regimenEpisode';
+import { resolveHormoneDrug, type HormoneDrug } from './hormoneDrug';
 import type { EffectDirection, PersonalEffectType, RegimenEpisode } from './types';
 
-export type { EffectDirection };
 
 interface MonthRange {
   min: number;
   max: number;
 }
 
+/** Where a band's figures were read. One source today; a band read from a
+    second one (a primary study for a single effect, say) adds a key here. */
+export const LITERATURE_SOURCES = {
+  'soc8-appendix-c-table-1': {
+    citation:
+      'Coleman E, Radix AE, Bouman WP, et al. Standards of Care for the Health of Transgender and Gender Diverse People, Version 8. Int J Transgend Health. 2022;23(sup1):S1-S259. Appendix C, Table 1, p. S254. doi:10.1080/26895269.2022.2100644',
+    /** The edition's publication day, so a stale guard can say what to re-check. */
+    published: '2022-09-15'
+  }
+} as const;
+
+export type LiteratureSourceKey = keyof typeof LITERATURE_SOURCES;
+
+/** What every window below shares: one table, read on one day. */
+const SOC8 = { source: 'soc8-appendix-c-table-1', reviewedOn: '2026-10-21' } as const;
+
 interface EffectLiteratureWindow {
+  source: LiteratureSourceKey;
+  /** The ISO day these figures were last read against `source`. */
+  reviewedOn: string;
   direction: EffectDirection;
   onsetMonths: MonthRange;
   /** Null when the literature reports no defined ceiling at all (skin).
@@ -91,96 +53,93 @@ interface EffectLiteratureWindow {
     2 and tier 3 effects have no literature window by definition. Listing a
     key here is what makes it tier 1; see `effectTier`. */
 const EFFECT_LITERATURE_WINDOW: Partial<Record<PersonalEffectType, EffectLiteratureWindow>> = {
-  breast_development: { direction: 'feminizing', onsetMonths: { min: 3, max: 6 }, completionMonths: { min: 24, max: 36 } },
-  fat_redistribution: { direction: 'feminizing', onsetMonths: { min: 3, max: 6 }, completionMonths: { min: 24, max: 36 } },
-  skin_softening: { direction: 'feminizing', onsetMonths: { min: 3, max: 6 }, completionMonths: null },
-  hair_changes: { direction: 'feminizing', onsetMonths: { min: 6, max: 12 }, completionMonths: { min: 36, max: null } },
-  voice_drop: { direction: 'masculinizing', onsetMonths: { min: 6, max: 12 }, completionMonths: { min: 12, max: 24 } },
-  facial_body_hair: { direction: 'masculinizing', onsetMonths: { min: 6, max: 12 }, completionMonths: { min: 48, max: 60 } },
-  masculinizing_fat_redistribution: {
-    direction: 'masculinizing',
-    onsetMonths: { min: 1, max: 6 },
-    completionMonths: { min: 24, max: 60 }
-  },
-  cycle_cessation: { direction: 'masculinizing', onsetMonths: { min: 1, max: 6 }, completionMonths: null },
-
-  // Ticket 41's tier-1 widening, from GenderGP's WPATH-sourced tables.
+  // Feminizing (estradiol)
+  breast_development: { ...SOC8, direction: 'feminizing', onsetMonths: { min: 3, max: 6 }, completionMonths: { min: 24, max: 60 } },
+  fat_redistribution: { ...SOC8, direction: 'feminizing', onsetMonths: { min: 3, max: 6 }, completionMonths: { min: 24, max: 60 } },
+  skin_softening: { ...SOC8, direction: 'feminizing', onsetMonths: { min: 3, max: 6 }, completionMonths: null },
+  hair_changes: { ...SOC8, direction: 'feminizing', onsetMonths: { min: 6, max: 12 }, completionMonths: { min: 36, max: null } },
   decreased_muscle_mass_strength: {
+    ...SOC8,
     direction: 'feminizing',
     onsetMonths: { min: 3, max: 6 },
     completionMonths: { min: 12, max: 24 }
   },
-  decreased_libido: { direction: 'feminizing', onsetMonths: { min: 1, max: 3 }, completionMonths: { min: 12, max: 24 } },
+  decreased_libido: { ...SOC8, direction: 'feminizing', onsetMonths: { min: 1, max: 3 }, completionMonths: null },
   decreased_spontaneous_erections: {
+    ...SOC8,
     direction: 'feminizing',
     onsetMonths: { min: 1, max: 3 },
     completionMonths: { min: 3, max: 6 }
   },
-  decreased_testicular_volume: {
-    direction: 'feminizing',
-    onsetMonths: { min: 3, max: 6 },
-    completionMonths: { min: 24, max: 36 }
+  decreased_testicular_volume: { ...SOC8, direction: 'feminizing', onsetMonths: { min: 3, max: 6 }, completionMonths: null },
+
+  // Masculinizing (testosterone)
+  voice_drop: { ...SOC8, direction: 'masculinizing', onsetMonths: { min: 1, max: 6 }, completionMonths: { min: 12, max: 24 } },
+  facial_body_hair: { ...SOC8, direction: 'masculinizing', onsetMonths: { min: 6, max: 12 }, completionMonths: { min: 60, max: null } },
+  scalp_hair_loss_masculinizing: {
+    ...SOC8,
+    direction: 'masculinizing',
+    onsetMonths: { min: 6, max: 12 },
+    completionMonths: { min: 60, max: null }
   },
-  male_pattern_baldness_ceasing: {
-    direction: 'feminizing',
-    onsetMonths: { min: 1, max: 3 },
-    completionMonths: { min: 12, max: 24 }
+  masculinizing_fat_redistribution: {
+    ...SOC8,
+    direction: 'masculinizing',
+    onsetMonths: { min: 1, max: 6 },
+    completionMonths: { min: 24, max: 60 }
   },
+  cycle_cessation: { ...SOC8, direction: 'masculinizing', onsetMonths: { min: 1, max: 6 }, completionMonths: { min: 12, max: 24 } },
   skin_oiliness_acne_masculinizing: {
+    ...SOC8,
     direction: 'masculinizing',
     onsetMonths: { min: 1, max: 6 },
     completionMonths: { min: 12, max: 24 }
   },
   increased_muscle_mass_strength_masculinizing: {
+    ...SOC8,
     direction: 'masculinizing',
     onsetMonths: { min: 6, max: 12 },
     completionMonths: { min: 24, max: 60 }
   },
   clitoral_enlargement_masculinizing: {
+    ...SOC8,
     direction: 'masculinizing',
-    onsetMonths: { min: 3, max: 6 },
+    onsetMonths: { min: 1, max: 6 },
     completionMonths: { min: 12, max: 24 }
   },
   vaginal_atrophy_masculinizing: {
+    ...SOC8,
     direction: 'masculinizing',
-    onsetMonths: { min: 3, max: 6 },
+    onsetMonths: { min: 1, max: 6 },
     completionMonths: { min: 12, max: 24 }
   }
 };
 
-/** The drug each table's timings are timings of. Hembree's feminizing table
+/** Every band's source and reviewed-on day, one row per tier-1 effect: what
+    the release-time staleness guard reads. */
+export function literatureReviews(): { effect: PersonalEffectType; source: LiteratureSourceKey; reviewedOn: string }[] {
+  return (Object.entries(EFFECT_LITERATURE_WINDOW) as [PersonalEffectType, EffectLiteratureWindow][]).map(
+    ([effect, window]) => ({ effect, source: window.source, reviewedOn: window.reviewedOn })
+  );
+}
+
+/** The drug each table's timings are timings of. SOC8's feminizing column
     is a description of estradiol therapy and the masculinizing one of
     testosterone therapy, so this is the tables' own claim rather than a
     mapping chosen here. */
-const DIRECTION_DRUG: Record<EffectDirection, CurveDrug> = {
+const DIRECTION_DRUG: Record<EffectDirection, HormoneDrug> = {
   feminizing: 'estradiol',
   masculinizing: 'testosterone'
 };
 
-/** Whether the literature's window for `effect` is a claim about someone on
-    `drug` at all - the gate on every band this file produces.
-
-    Fails closed, the way the hormone curve does. `resolveCurveDrug` answers
-    null for a free-text drug this app cannot classify, for an antiandrogen
-    and for progesterone alone, and null matches neither direction, so those
-    episodes get no band rather than a hedged one. That is the whole point:
-    without this gate someone whose only episode is testosterone was told,
-    sourced on screen to the Endocrine Society, when to expect their breast
-    development to be complete.
-
-    Built on hormoneDrug.ts rather than on a second list of drug names, for
-    the reason hormoneEster.ts gives about sharing a matcher: one place
-    deciding what "E2-val" or "testosteron" names means the effects timeline
-    and the curve cannot disagree about the same typed text.
-
-    Also answers false for any key with no tier-1 window at all - a tier 2
-    or tier 3 effect, or a custom one - which is the ordinary case once
-    the catalogue is open past twenty (ticket 41). */
-/* literatureCovers stays exported only for its own test (AU-09 test-only
-   review). */
+/** Show a band only when resolveHormoneDrug classifies the drug and the
+    literature supplies a tier-1 window for that direction. Unknown names,
+    antiandrogens and progesterone alone match neither direction. Custom and
+    later-tier effects without a window get no band. */
+/* literatureCovers stays exported only for its own test. */
 export function literatureCovers(effect: PersonalEffectType, drug: string): boolean {
   const window = EFFECT_LITERATURE_WINDOW[effect];
-  return window !== undefined && resolveCurveDrug(drug) === DIRECTION_DRUG[window.direction];
+  return window !== undefined && resolveHormoneDrug(drug) === DIRECTION_DRUG[window.direction];
 }
 
 /** Undefined for any key with no tier-1 window - see `literatureCovers`. */
@@ -214,34 +173,42 @@ function afterAnchor(anchorEpochDay: number, months: number): number {
   return epochDayMonthsAgo(anchorEpochDay, -months);
 }
 
-/** `effect`'s onset and completion as concrete epoch-day ranges counted
-    forward from `anchor`, the earliest regimen episode overall
-    (regimenEpisode.ts) - what a screen draws its background bands from -
-    or null when `anchor`'s drug is not the one this effect's table
-    describes and there is no band to draw.
+/** Where HRT began, which drug its bands are read against, and where it stopped. The three
+    parts of an answer `literatureWindowDays` needs, in the shape of an episode so a single
+    episode still passes as one. */
+export type HrtAnchor = Pick<RegimenEpisode, 'drug' | 'startEpochDay' | 'endEpochDay'>;
 
-    The anchor is the whole episode because all three parts of the answer
-    come from it: its start day is where the bands are counted from, its drug
-    is what decides whether they exist, and its end day is where they stop.
-    Which episode anchors is unchanged (ticket 02) - it is still the earliest
-    overall, not the active one.
+/**
+ * Anchor effect timelines to HRT episodes in start-day order.
+ * Use the portable hrtStartEpochDay override, or the earliest HRT
+ * start. Choose the first HRT episode with an estradiol or testosterone
+ * table, falling back to the first HRT episode. An earlier antiandrogen
+ * can start the clock.
+ *
+ * Keep the anchor open while any HRT episode runs. Otherwise use
+ * the last end day. A date without an episode anchors elapsed time
+ * without a drug band. Return null when both are absent.
+ */
+export function hrtAnchor(episodes: readonly RegimenEpisode[], hrtStartEpochDay: number | null): HrtAnchor | null {
+  const hrt = episodes.filter((episode) => episode.drugClass === 'hrt');
+  if (hrt.length === 0 && hrtStartEpochDay === null) return null;
+  const drug = (hrt.find((episode) => resolveHormoneDrug(episode.drug) !== null) ?? hrt[0])?.drug ?? '';
+  const ends = hrt.map((episode) => episode.endEpochDay);
+  return {
+    drug,
+    startEpochDay: hrtStartEpochDay ?? hrt[0].startEpochDay,
+    endEpochDay: ends.length > 0 && ends.every((end) => end !== null) ? Math.max(...(ends as number[])) : null
+  };
+}
 
-    Nothing is drawn past `endEpochDay` (phase 8 features ticket 49). Every
-    window here is a claim about a body on the drug the table describes, so
-    it says nothing about the days after that drug stopped, and the gate
-    fails closed the same way `resolveCurveDrug`'s does rather than hedging:
-
-    - an episode that ended before the onset could even begin gets null, not
-      a band whose every day is unreachable,
-    - a completion window the episode never reached is dropped rather than
-      drawn with both ends in the past,
-    - anything the episode ran into stops at its end day, including
-      hair_changes' open end, which was only ever open for a body still on
-      the hormone.
-
-    Until this, a five-year masculinizing completion band kept drawing years
-    past a stopped regimen, citing the Endocrine Society underneath it for a
-    body no longer on what the table describes. */
+/**
+ * Convert an effect's onset and completion to epoch days relative to
+ * the anchor's start. Return null if the anchor drug does not match
+ * the source table or the episode ended before onset.
+ *
+ * Clip each band at the episode end, including open completion
+ * bounds. Omit a completion window the episode never reached.
+ */
 export function literatureWindowDays(
   effect: PersonalEffectType,
   anchor: Pick<RegimenEpisode, 'drug' | 'startEpochDay' | 'endEpochDay'>
@@ -315,29 +282,3 @@ export function effectWindowShape(effect: PersonalEffectType): EffectWindowShape
   if (!window.completionMonths) return 'no-completion';
   return window.completionMonths.max == null ? 'open-completion' : 'bounded';
 }
-
-/** Whether at least one tier-1 personal effect's literature onset window is
-    currently active for `episodes`'s earliest episode (phase 5 ticket 49).
-    Shows while at least one onset window for the anchor episode's drug is
-    current (from the anchor's start day through the latest onset window end
-    across all covered effects, e.g. 12 months for estradiol/testosterone),
-    and false once every onset window has passed or when no covered episode
-    exists. */
-export function isHrtOnsetWindowCurrent(
-  episodes: readonly RegimenEpisode[],
-  todayEpochDay: number
-): boolean {
-  const anchor = earliestEpisode(episodes);
-  if (!anchor) return false;
-  if (todayEpochDay < anchor.startEpochDay) return false;
-
-  for (const effectKey of Object.keys(EFFECT_LITERATURE_WINDOW) as PersonalEffectType[]) {
-    const days = literatureWindowDays(effectKey, anchor);
-    if (!days) continue;
-    if (todayEpochDay <= days.onset.end) {
-      return true;
-    }
-  }
-  return false;
-}
-

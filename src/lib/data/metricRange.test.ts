@@ -50,7 +50,7 @@ test('levels step evenly across the range', () => {
   );
 });
 
-/* Recency as colour (phase 6 ticket 13). The injection map's dots shade by
+/* Recency as colour. The injection map's dots shade by
    how long ago each site was used, so "days since" has to become a swatch
    index the same way a metric value does - here rather than in the map,
    because ADR-0012 keeps one place where a native number turns into

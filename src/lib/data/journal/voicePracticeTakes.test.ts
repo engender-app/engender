@@ -1,4 +1,4 @@
-/* The voice practice take area (phase 8 features ticket 10). */
+/* The voice practice take area. */
 
 import { test } from 'vitest';
 import assert from 'node:assert/strict';

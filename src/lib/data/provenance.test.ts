@@ -1,4 +1,4 @@
-/* The provenance line's own decisions (phase 5 deepening ticket 22): which
+/* The provenance line's own decisions: which
    of a milestone's three links wins, what a since-cleared or since-stale
    one renders as, and a reminder's auto_source read the same way. */
 
@@ -34,7 +34,6 @@ const milestone = (overrides: Partial<Milestone> = {}): Milestone => ({
 const reminder = (overrides: Partial<Reminder> = {}): Reminder => ({
   id: 'r-1',
   title: 'Estradiol',
-  type: 'med',
   time: '09:00',
   recurrence: null,
   interval: null,
@@ -42,6 +41,7 @@ const reminder = (overrides: Partial<Reminder> = {}): Reminder => ({
   epochDay: 20000,
   enabled: true,
   autoSource: null,
+  drug: null,
   ...overrides
 });
 
@@ -51,7 +51,7 @@ test('a hand-written milestone carries no provenance', () => {
 
 test('a milestone linked to a procedure names it and links to the surgery journey screen', () => {
   const origin = resolveMilestoneOrigin(milestone({ procedureId: 'p-1', procedureName: 'Top surgery' }));
-  assert.deepEqual(origin, { text: 'From your surgery journey: Top surgery', href: '/health/surgery?procedure=p-1' });
+  assert.deepEqual(origin, { text: 'From your surgery journey: Top surgery', href: '/health/surgery/p-1' });
 });
 
 test('a milestone linked to a built-in roadmap goal names the goal and links to the roadmap screen', () => {
@@ -73,12 +73,11 @@ test('a roadmap goal key that resolves to nothing degrades to the shared honest 
 });
 
 test('a milestone whose custom goal has since been deleted falls to that same fallback', () => {
-  /* Phase 8 features ticket 69, ADR-0068: `deleteCustomGoal` leaves the
-     milestone's `roadmapGoalKey` alone rather than nulling it, so what a
-     delete leaves behind is exactly this row - a key that is still set and
-     a joined text that has gone null (roadmap.test.ts pins that the delete
-     produces it). The second way to reach a line written for a key
-     arriving from a stale archive, and it needs no second string. */
+  /* ADR-0068: `deleteCustomGoal` leaves the milestone's `roadmapGoalKey` alone rather than
+     nulling it, so what a delete leaves behind is exactly this row - a key that is still
+     set and a joined text that has gone null (roadmap.test.ts pins that the delete produces
+     it). The second way to reach a line written for a key arriving from a stale archive,
+     and it needs no second string. */
   const origin = resolveMilestoneOrigin(
     milestone({ roadmapGoalKey: 'custom-goal-uuid', customRoadmapGoalText: null })
   );
@@ -94,7 +93,7 @@ test('a procedure link takes precedence over a roadmap or tryout link on the sam
   const origin = resolveMilestoneOrigin(
     milestone({ procedureId: 'p-1', procedureName: 'Top surgery', roadmapGoalKey: 'pl-legal-id-card', tryoutId: 't-1' })
   );
-  assert.equal(origin?.href, '/health/surgery?procedure=p-1');
+  assert.equal(origin?.href, '/health/surgery/p-1');
 });
 
 test('a reminder nobody has touched has no provenance', () => {
@@ -109,9 +108,19 @@ test('a stock-managed reminder names the drug, explains the handoff, and links t
   const origin = resolveReminderOrigin(reminder({ autoSource: 'stock:Estradiol' }));
   assert.deepEqual(origin, {
     text: 'Kept in step with your Estradiol stock.',
-    hint: 'Saving stops automatic updates to this reminder. You can then change it here.',
+    hint: 'Saving stops automatic updates to this reminder.',
     href: '/care',
     actionLabel: 'View stock'
+  });
+});
+
+test('a schedule reminder says it follows the schedule and opens the episode it belongs to', () => {
+  const origin = resolveReminderOrigin(reminder({ autoSource: 'dose:episode-1', drug: 'Progesterone' }));
+  assert.deepEqual(origin, {
+    text: 'Follows the dose schedule.',
+    hint: 'Saving stops automatic updates to this reminder.',
+    href: '/care/regimen?episode=episode-1',
+    actionLabel: 'Edit schedule'
   });
 });
 
@@ -119,7 +128,7 @@ test('a wear-session reminder is recognised too, not just stock - the same auto_
   const origin = resolveReminderOrigin(reminder({ autoSource: 'wear:session-1' }));
   assert.deepEqual(origin, {
     text: 'Set from a wear session you logged.',
-    hint: 'Saving stops automatic updates to this reminder. You can then change it here.',
+    hint: 'Saving stops automatic updates to this reminder.',
     href: '/body/wear',
     actionLabel: 'View wear log'
   });

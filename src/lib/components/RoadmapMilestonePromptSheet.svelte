@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { journalTextAutocomplete } from '$lib/platform';
   import { m } from '$lib/paraglide/messages';
   import { writer } from '$lib/stores/attempt.svelte';
   import DatePicker from './DatePicker.svelte';
@@ -15,8 +16,7 @@
   import type { NormalizedPhoto } from '$lib/data/journal/photos';
   import type { OfferCopy, RoadmapGoalMilestone } from '$lib/data/offers';
 
-  /* What the sheet says arrives as one `copy` object (phase 8 features
-     ticket 22): this is one entry in the offer registry, and an offer's
+  /* What the sheet says arrives as one `copy` object: this is one entry in the offer registry, and an offer's
      words live beside what it writes rather than here. */
 
   let {
@@ -57,8 +57,8 @@
     if (photo) pickedPhoto = photo;
   }
 
-  /* One write per tap, and a rejected one says so here, with the name,
-     date and photo left in the sheet (after-release 06, L05-06). */
+  /* One write per tap, and a rejected one says so here, with the name, date and photo left
+     in the sheet. */
   const confirming = writer();
   async function handleConfirm() {
     const trimmed = name.trim() || m.ms_default_name();
@@ -70,9 +70,9 @@
 
 <Sheet busy={confirming.busy} {open} title={copy.title()} onClose={onDismiss}>
   <h3>{m.roadmap_milestone_prompt_title({ goal: goalTitle })}</h3>
-  <Field label={m.ms_name_label()} id="roadmap-milestone-name">
+  <Field label={m.name_label()} id="roadmap-milestone-name">
     {#snippet children(id)}
-      <input
+      <input autocomplete={journalTextAutocomplete()}
         class="input"
         {id}
         name="milestone-name"
@@ -81,7 +81,7 @@
       />
     {/snippet}
   </Field>
-  <Field label={m.ms_date_label()} id="roadmap-milestone-date">
+  <Field label={m.date_label()} id="roadmap-milestone-date">
     {#snippet children(id)}
       <DatePicker bind:value={date} {id} name="milestone-date" />
     {/snippet}
@@ -102,8 +102,8 @@
             </button>
           </div>
         {:else}
-          <button type="button" class="photo-add" data-add-photo aria-label={m.add_photo()} onclick={pick}>
-            <Icon name="image" size={20} /><span>{m.add_photo()}</span>
+          <button type="button" class="photo-add" data-add-photo aria-label={m.add()} onclick={pick}>
+            <Icon name="image" size={20} /><span>{m.add()}</span>
           </button>
           <button
             type="button"

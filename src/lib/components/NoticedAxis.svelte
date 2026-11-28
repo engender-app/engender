@@ -1,58 +1,14 @@
 <script lang="ts">
-  /* When each change was first noticed, on one line (phase 10 redesign
-     ticket 57, DIRECTION.md rule 16).
+  /* Each mark shows the day a change was first noticed. noticedAxis.ts
+     computes positions and stacks marks that share a month, with the later
+     ones above the earlier ones. Stem height counts collisions. Literature
+     windows belong beside individual changes in EffectsTimeline (ADR-0012).
 
-     The screen under this used to be a grouped list where a first-noticed
-     day was a date in grey in a row's subtitle - the most re-read number in
-     an HRT journal, rendered as the least of the things on its row. The
-     dates are a shape, and this is that shape: months along the line, one
-     mark per change at the day it was noticed, the whole set readable
-     before a single group is opened.
-
-     Its own component rather than markup on the screen, for the reason
-     MilestoneRail and ProcedurePhaseRail give: the arithmetic is in
-     $lib/data/noticedAxis with its own tests, the markup and classes that
-     turn positions into a line are one thing, and the screen that carries
-     it is already four hundred lines of groups, sheets and a catalogue
-     editor.
-
-     What this does not draw, deliberately: the literature's onset and
-     completion windows. Those are EffectsTimeline's, inside each group,
-     where a band sits against the one change it belongs to. Drawn behind
-     these marks they would turn a record of what somebody noticed into a
-     comparison against when they might have, which ticket 57 rules out in
-     as many words and ADR-0012 refuses generally.
-
-     The lanes are a collision answer and nothing else. Two changes noticed
-     in the same month are two dots at the same place, so the later one
-     stands above the earlier one on a stem; the height is how many marks
-     were crowded there, never how large or how welcome any of them was.
-     Reference for the form: Oura's Symptom Radar recent-days line, where
-     marks stand off a date axis on stems, and Clue's cycle history, where
-     one axis carries every symptom at once.
-
-     Marks are controls, the way CurveMarkers' are and unlike
-     ProcedurePhaseRail's: each one stands for a record with an editor, so a
-     tap opens that change's sheet - the same sheet its row in the list
-     opens. Which makes the accessible name the whole of what a screen
-     reader gets from here, since the drawing itself is decoration; the list
-     under it writes every one of these dates out in text.
-
-     Ticket 13 put a second kind of mark on this line: a side effect,
-     alongside the personal effect this always drew. Told apart by shape
-     rather than by colour (ADR-0012 again, and the AC this ticket wrote for
-     itself) - a personal effect fills its dot in its direction's role, a
-     side effect draws the same dot hollow in `--text-2` (`MilestoneRail`'s
-     ring technique for "this has not happened yet", reused here for "this
-     is the other kind", but in the axis's own neutral ink rather than the
-     role: every side effect carries the 'other' direction, which on trans
-     is the flag's white band, and a ring that thin in a role this pale
-     read as gone on the light theme - see the mark's own CSS). `open` reads
-     which sheet to hand a tap to off the mark's own `kind`, since a side
-     effect's key is
-     its own record id and a personal effect's is a catalogue key - two
-     namespaces that happen never to collide, but the kind is what a caller
-     should be trusting, not the shape of the key. */
+     Personal effects use filled dots in their direction's role. Side effects
+     use hollow dots in --text-2, so shape distinguishes the two even on a
+     palette with a pale stripe. Each mark is a labelled button that opens
+     the same editor as its row below. Pass the mark's kind with its key so
+     the editor can distinguish catalogue keys from record IDs. */
   import { m } from '$lib/paraglide/messages';
   import { fmtDay } from '$lib/data/dates';
   import {
@@ -70,19 +26,17 @@
     changes,
     anchorEpochDay,
     todayEpochDay,
-    onOpen,
-    onRecord
+    onOpen
   }: {
     /** Only the changes that carry a marker, already joined to their
         catalogue entry by the screen: an axis of what somebody noticed has
         nothing to say about what they have not. */
     changes: NoticedChange[];
-    /** The day the earliest regimen episode began, or null where there is
-        none - which the axis draws rather than refuses. */
+    /** The HRT start (personalEffectWindow.ts's hrtAnchor), or null where
+        there is none - which the axis draws rather than refuses. */
     anchorEpochDay: number | null;
     todayEpochDay: number;
     onOpen: (key: string, kind: NoticedChangeKind) => void;
-    onRecord?: () => void;
   } = $props();
 
   let axis = $derived(noticedAxis(changes, anchorEpochDay, todayEpochDay));
@@ -94,7 +48,7 @@
      and a node taken out and put back loses the transition that was about
      to run on it. Measured: a mark re-dated from July to the May before it
      went 235px between two frames with the list in day order, and travels
-     over --dur-med in key order (tests/noticed-axis-motion.mjs, scene
+     over --dur-med in key order (tests/tools/noticed-axis-motion.mjs, scene
      mark-travel). Nothing on screen depends on the paint order - every mark
      is absolutely positioned and the lanes keep them from overlapping. */
   let drawn = $derived([...axis.marks].sort((a, b) => (a.key < b.key ? -1 : 1)));
@@ -125,9 +79,9 @@
   const DIRECTION_ROLE: Record<EffectDirectionGroup, number> = { feminizing: 0, masculinizing: 1, other: 2 };
   const roleFor = (direction: EffectDirectionGroup) => roleAt(activeFlag.roles, DIRECTION_ROLE[direction]);
 
-  /* The legend names what the marks show: a filled dot per direction a
-     personal effect carries, and one hollow ring for side effects, which
-     are drawn by kind rather than by direction (after-release 05, L05-09). */
+  /* The legend names what the marks show: a filled dot per direction a personal effect
+     carries, and one hollow ring for side effects, which are drawn by kind rather than by
+     direction. */
   let directionsPresent = $derived(
     EFFECT_DIRECTIONS.filter((direction) =>
       axis.marks.some((mark) => mark.kind === 'personal-effect' && mark.direction === direction))
@@ -157,13 +111,13 @@
       : m.effects_axis_calendar()
   );
 
-  /* Hoisted out of the markup the way CurveMarkers hoists its own: a
+  /* Hoisted out of the markup: a
      message call with an object argument inside `{...}` is the shape
      kit-surfaces.test.ts's copy regex misreads, and it is worth staying out
      of that trap everywhere.
 
      The severity word draws into the label rather than as a size or a hue
-     (ticket 13, ADR-0012) - present only on a side effect that carries one,
+     (ADR-0012) - present only on a side effect that carries one,
      since a personal effect's marker has no severity to say. */
   const markLabel = (mark: { label: string; firstNoticedEpochDay: number; severity?: string | null }) =>
     mark.severity
@@ -187,11 +141,6 @@
 <div class="noticed-axis" data-noticed-axis in:wipe={{ authored: true }}>
   <div class="na-header">
     <p class="na-summary">{summary}</p>
-    {#if onRecord}
-      <button type="button" class="btn btn-soft press na-record-btn" data-record-change onclick={onRecord}>
-        <span>{m.effect_record_change()}</span>
-      </button>
-    {/if}
   </div>
 
   <!-- The uncovering above runs left to right across this too, so the line
@@ -274,10 +223,6 @@
     margin: 0;
   }
 
-  .na-record-btn {
-    flex-shrink: 0;
-  }
-
   .na-plot {
     position: relative;
     /* Its own inline-size container, so a mark's placement is a translate
@@ -321,31 +266,18 @@
      mark and a pseudo reads its originating element's properties by
      inheritance. Registered `inherits: false`, `var(--lane)` in
      `.na-mark::after` resolves to the initial 0 instead of the mark's own
-     lane and every stem draws at no height - which is how this was found,
-     in the sign-off crop, with three marks floating over the line. */
+     lane and every stem has zero height, leaving marks floating above the line. */
   @property --lane {
     syntax: '<number>';
     inherits: true;
     initial-value: 0;
   }
 
-  /* A mark is a control and carries its own tap target, which is smaller
-     than the app's 48px floor for the reason CurveMarkers' own targets are:
-     at 48px two changes noticed a fortnight apart steal each other's taps,
-     and the row for this record is on the same screen at full size - that
-     row is the floor's answer, and the list under the line holds one for
-     every mark.
-
-     24 by 24, which is WCAG 2.5.8's own minimum, and both halves are the
-     same rule - a target reaches halfway to its neighbour and no further.
-     Across, the lanes guarantee MARK_MIN_GAP of the line between two marks
-     in one lane, which is 24px at 320px, the narrowest width the app
-     supports; up and down, a lane is 24px, so half of it each way is the
-     whole box. It was 22 by 18 until phase 14 ticket 29 (accessibility
-     audit A04): 18px lanes put two marks in one month closer than 24px and
-     axe reported target-size on the whole line. Measured at 320 and 390 by
-     tests/chart-a11y-check.mjs: no two targets overlap and none sits
-     within 24px of another. */
+  /* Give each mark a 24px square target (WCAG 2.5.8). Each lane
+     is 24px tall and MARK_MIN_GAP keeps marks in a lane at least
+     24px apart at 320px. Larger targets would overlap. Every mark
+     also has a full-sized row below. chart-a11y-check.mjs measures
+     targets at 320px and 390px. */
   .na-mark {
     position: absolute;
     left: 0;
@@ -366,7 +298,7 @@
        the specified value is the same token either side of the edit and no
        transition is ever set up. Measured, not reasoned about - the first
        spelling moved a re-dated mark 235px between two frames
-       (tests/noticed-axis-motion.mjs, scene mark-travel). The stem under a
+       (tests/tools/noticed-axis-motion.mjs, scene mark-travel). The stem under a
        stacked mark grows with `--lane` for the same reason. */
     translate: calc(var(--na-inset) + var(--at) * (100cqw - 2 * var(--na-inset)))
       calc(var(--lane) * var(--lane-h) * -1);
@@ -387,20 +319,16 @@
     background: var(--role-draw, var(--accent));
   }
 
-  /* A side effect is the same dot hollow - `MilestoneRail`'s own ring for
-     "the other kind of mark", but drawn in `--text-2` rather than in
-     `--role-draw`. Every side effect carries the 'other' direction, which
-     on trans is the flag's own white band - a role a filled dot can take
-     undiluted (`--role-draw` owes no ratio, `roles.ts`'s own reasoning for
-     "a lone mark"), but a 2px ring of it is close enough to `--bg` on the
-     light theme to disappear (Alicja, on this ticket's sign-off render:
-     "hollow ones in light mode is invisible"). `--text-2` is the stem's own
-     colour (`.na-mark::after`, below), already held to a contrast floor
-     against `--bg` in both themes, so the ring reads as the stem extended
-     into a circle rather than as a shade of whichever role a side effect
-     happens to carry - kind is a shape signal now, fully independent of
-     the per-direction colour, which is the stronger reading of "never
-     colour alone" anyway. */
+  /* A side effect is the same dot hollow - `MilestoneRail`'s own ring for "the other kind
+     of mark", but drawn in `--text-2` rather than in `--role-draw`. Every side effect
+     carries the 'other' direction, which on trans is the flag's own white band - a role a
+     filled dot can take undiluted (`--role-draw` owes no ratio, `roles.ts`'s own reasoning
+     for "a lone mark"), but a 2px ring of it is close enough to `--bg` on the light theme
+     to disappear. `--text-2` is the stem's own colour (`.na-mark::after`, below), already
+     held to a contrast floor against `--bg` in both themes, so the ring reads as the stem
+     extended into a circle rather than as a shade of whichever role a side effect happens
+     to carry - kind is a shape signal now, fully independent of the per-direction colour,
+     which is the stronger reading of "never colour alone" anyway. */
   .na-mark[data-kind='side-effect']::before {
     background: var(--bg);
     box-shadow: inset 0 0 0 2px var(--text-2);

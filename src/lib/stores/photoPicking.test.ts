@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, test, vi } from 'vitest';
 const { filePick, cameraPick, normalizePhoto, toast, FakeUnsupportedImageError, FakeDocumentRefusedError } =
   vi.hoisted(() => {
     class FakeUnsupportedImageError extends Error {
-      readonly kind: 'heic' | 'unreadable';
-      constructor(kind: 'heic' | 'unreadable') {
+      readonly kind: 'heic' | 'unreadable' | 'too-many-pixels';
+      constructor(kind: 'heic' | 'unreadable' | 'too-many-pixels') {
         super(kind);
         this.kind = kind;
       }
@@ -32,7 +32,9 @@ vi.mock('$lib/paraglide/messages', () => ({
     photo_heic: () => 'heic',
     photo_not_an_image: () => 'not-an-image',
     photo_unreadable: () => 'unreadable',
-    document_too_large: () => 'too-large'
+    document_too_large: () => 'too-large',
+    image_too_many_pixels: () => 'too-many-pixels',
+    photo_selection_too_large: () => 'selection-too-large'
   }
 }));
 vi.mock('./toasts.svelte', () => ({ toast }));
@@ -40,15 +42,30 @@ vi.mock('../data/photos/normalize', () => ({
   normalizePhoto,
   UnsupportedImageError: FakeUnsupportedImageError
 }));
+vi.mock('../data/media/budget', () => ({
+  MediaBudgetError: class MediaBudgetError extends Error {
+    kind: string;
+    constructor(kind: string, message?: string) {
+      super(message);
+      this.kind = kind;
+    }
+  }
+}));
 vi.mock('../data/documents/accept', () => ({
   DocumentRefusedError: FakeDocumentRefusedError
 }));
+vi.mock('./lock.svelte', () => ({ isSessionLocked: () => false }));
 vi.mock('../data/photos/picker', () => ({
   filePhotoPicker: () => ({ pick: filePick }),
-  cameraPhotoPicker: () => ({ pick: cameraPick })
+  cameraPhotoPicker: () => ({ pick: cameraPick }),
+  androidPickedBytes: vi.fn(),
+  PickDeferredError: class extends Error {}
 }));
 
 import { capturePhoto, pickPhotos } from './photoPicking';
+
+/** What a selection picker hands back: one reader per file. */
+const readers = (...files: number[][]) => files.map((bytes) => async () => new Uint8Array(bytes));
 
 const NORMALIZED = { full: new Uint8Array([1]), thumb: new Uint8Array([2]) };
 
@@ -112,7 +129,7 @@ describe('pickPhotos', () => {
   });
 
   test('normalizes every picked photo, in order', async () => {
-    filePick.mockResolvedValue([new Uint8Array([1]), new Uint8Array([2])]);
+    filePick.mockResolvedValue(readers([1], [2]));
     normalizePhoto.mockResolvedValue(NORMALIZED);
 
     const photos = await pickPhotos();
@@ -122,7 +139,7 @@ describe('pickPhotos', () => {
   });
 
   test('drops an unreadable photo but keeps the rest, and toasts once for it', async () => {
-    filePick.mockResolvedValue([new Uint8Array([1]), new Uint8Array([2])]);
+    filePick.mockResolvedValue(readers([1], [2]));
     normalizePhoto.mockRejectedValueOnce(new FakeUnsupportedImageError('unreadable')).mockResolvedValueOnce(NORMALIZED);
 
     const photos = await pickPhotos();
@@ -147,5 +164,47 @@ describe('pickPhotos', () => {
 
     expect(photos).toEqual([]);
     expect(toast).toHaveBeenCalledWith('too-large');
+  });
+
+  test('asks the picker for a single photo when the owner holds one', async () => {
+    filePick.mockResolvedValue([]);
+    await pickPhotos(1);
+    expect(filePick).toHaveBeenCalledWith({ multiple: false });
+    await pickPhotos();
+    expect(filePick).toHaveBeenLastCalledWith({ multiple: true });
+  });
+
+  test('reads and normalizes one photo before it reads the next', async () => {
+    const order: string[] = [];
+    filePick.mockResolvedValue(
+      [1, 2].map((n) => async () => {
+        order.push(`read ${n}`);
+        return new Uint8Array([n]);
+      })
+    );
+    normalizePhoto.mockImplementation(async (bytes: Uint8Array) => {
+      order.push(`normalize ${bytes[0]}`);
+      return NORMALIZED;
+    });
+
+    await pickPhotos();
+
+    expect(order).toEqual(['read 1', 'normalize 1', 'read 2', 'normalize 2']);
+  });
+
+  test('says an over-budget image has too many pixels, and keeps the rest', async () => {
+    filePick.mockResolvedValue(readers([1], [2]));
+    normalizePhoto.mockRejectedValueOnce(new FakeUnsupportedImageError('too-many-pixels')).mockResolvedValueOnce(NORMALIZED);
+
+    expect(await pickPhotos()).toEqual([NORMALIZED]);
+    expect(toast).toHaveBeenCalledWith('too-many-pixels');
+  });
+
+  test('says a selection over the count or total budget is too much at once', async () => {
+    const { MediaBudgetError } = await import('../data/media/budget');
+    filePick.mockRejectedValue(new MediaBudgetError('pick-selection', 'too many'));
+
+    expect(await pickPhotos()).toEqual([]);
+    expect(toast).toHaveBeenCalledWith('selection-too-large');
   });
 });

@@ -1,54 +1,16 @@
-<!-- The body map's figure (phase 10 redesign ticket 40, redrawn for phase 11
-     ticket 47).
+<!-- Each selectable region is a band clipped to the same silhouette
+     from bodySilhouette.ts. Adjacent bands share a 1px hairline,
+     keeping the contour continuous. Real buttons overlay the decorative
+     SVG to provide focus, touch targets and accessible names.
 
-     **The regions are the drawing, and the drawing is a body.** One
-     silhouette (bodySilhouette.ts, ADR-0087), and a region is a band of it,
-     clipped, so every panel edge follows the body's own contour. A region is
-     a piece of the body rather than a mark placed on one, which is what the
-     four arrangements before ticket 40 could not be at once: eight rounded
-     rectangles in a column were regions and no body, a mannequin and a
-     capsule silhouette were bodies the regions sat on top of, and dots on
-     that silhouette carried the data without the figure being made of it.
+     The fill shows the dominant-side mean on the role's heat ramp.
+     Regions with no readings keep the neutral silhouette fill. An edge
+     marks the selected region and leaves other fills alone. Two small
+     bars identify readings on both sides of the midpoint. Their ink
+     comes from roles.ts and clears 4.5:1 on the fill.
 
-     What ticket 47 changed, and why. Ticket 40's figure was the right idea
-     assembled out of nine rounded rectangles, each panel inset by a seam of
-     card colour and an unread panel painted white - which is four bare
-     boxes stacked on a grey body (Alicja, 2026-09-21: "it looks really bad,
-     blocky, amateurish"). So:
-
-     - the geometry is a drawn contour rather than a stack of blocks, with
-       a shoulder slope, a neck that meets it, limbs that are not bars and
-       feet that are not tabs. Neutrality is three measurements on the path
-       rather than a ban on shape;
-     - a panel is a band of that path, clipped to it, and neighbours are
-       parted by a 1px hairline in the region's own ink (rule 9, 1 for a
-       guide) rather than by a gap of card colour. The body stays one
-       unbroken object;
-     - a region with no readings takes the silhouette's own neutral fill and
-       its hairline, so the part is still named but plainly unpainted. Never
-       a faint tint: a little colour reads as a little data.
-
-     Real buttons over the drawing, never tappable SVG paths - the rule
-     InjectionSiteMap.svelte already follows, for the same three reasons: a
-     <button> gets the focus ring, the touch target and the accessible name
-     for free. The SVG is the picture and the buttons are transparent boxes
-     over it.
-
-     Three channels, one each, the way the injection map's dots carry three:
-
-     - The **fill** is the region's dominant-side mean on the role's own heat
-       ramp. A region with no readings in the range is unpainted, because
-       neither a large number nor zero reads as "never".
-     - The **edge** is selection: which region the charts below describe.
-       Never a dimming of the others - the fill means intensity and nothing
-       else.
-     - The **mark** is mixed: a region whose readings in this range fell on
-       both sides of the midpoint carries two short bars on its panel, in the
-       ink the role's ramp computes for that step, which roles.ts holds to
-       4.5:1 against that step's own fill.
-
-     No text is set on a fill. Names live in the accessible name, in the
-     elsewhere cluster's pills, and in the heading under the figure. -->
+     Region names live in button labels, pills for other regions, and the
+     heading below the figure. -->
 <script lang="ts">
   import { m } from '$lib/paraglide/messages';
   import { regionSummary, type RegionSideReading } from '$lib/data/bodyMap';
@@ -302,14 +264,11 @@
   </div>
 
   {#if placement.elsewhere.length}
-    <!-- Docked to the figure and sharing its card. A region with no one
-         place on a body - `body_facial_hair`, and every region somebody
-         added themselves - is a pill here, which is the shape this screen
-         has always given a region that has to carry its own name (Alicja,
-         2026-09-14: "for the 'elsewhere' parts, we want to preserve the nice
-         looking pills"). The reading rides in a swatch beside the name
-         rather than in the pill's own fill, because nothing may be written
-         on a region's fill. -->
+    <!-- Docked to the figure and sharing its card. A region with no one place on a body -
+         `body_facial_hair`, and every region somebody added themselves - is a pill here,
+         which is the shape this screen has always given a region that has to carry its own
+         name. The reading rides in a swatch beside the name rather than in the pill's own
+         fill, because nothing may be written on a region's fill. -->
     <div class="region-elsewhere">
       <p class="region-elsewhere-head">{m.body_map_elsewhere()}</p>
       <div class="region-elsewhere-pills">
@@ -481,13 +440,12 @@
     to { width: calc(var(--band-w) * 1px); }
   }
 
-  /* The cluster's pills are ordinary boxes, so they take the kit's own block
-     arrival rather than the figure's.
+  /* The cluster's pills are ordinary boxes, so they take the kit's own block arrival rather
+     than the figure's.
 
-     The wipe ends, and the pill rests, with half a touch target of room
-     around it rather than 3px. A clip-path clips hit testing as well as
-     paint, and 3px cut the pill's 48px target (its .tag-chip ::after) to 47
-     (after-release 18). Nothing the pill paints reaches past 3px, so the
+     The wipe ends, and the pill rests, with half a touch target of room around it rather
+     than 3px. A clip-path clips hit testing as well as paint, and 3px cut the pill's 48px
+     target (its .tag-chip ::after) to 47. Nothing the pill paints reaches past 3px, so the
      wider clip changes no pixel of the wipe. */
   .region-pill.region-arrive {
     clip-path: inset(calc(var(--touch-target) / -2) round var(--radius-pill));

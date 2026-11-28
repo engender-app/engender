@@ -31,6 +31,34 @@ public class FileDeliveryTest {
     private final Context app = instrumentation.getTargetContext();
     private final Uri tree = DocumentsContract.buildTreeDocumentUri(BackupDocumentsProvider.AUTHORITY, "root");
 
+    @Test public void resetAndRecoveryDiscardOldSlotsWithoutAbortingTheNewOwner() throws Exception {
+        try (ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class)) {
+            scenario.onActivity(activity -> {
+                FileDeliveryPlugin plugin = (FileDeliveryPlugin) activity.getBridge().getPlugin("FileDelivery").getInstance();
+                for (boolean wipe : new boolean[] {true, false}) {
+                    CapturedCall old = new CapturedCall("beginFile", new JSObject().put("fileName", "old.csv"));
+                    plugin.beginFile(old);
+                    assertNull(old.error);
+                    if (wipe) {
+                        try { FileDeliveryPlugin.wipe(app); }
+                        catch (Exception error) { throw new AssertionError(error); }
+                    } else {
+                        plugin.abortPendingTransfers(new CapturedCall("abortPendingTransfers", new JSObject()));
+                    }
+                    CapturedCall current = new CapturedCall("beginFile", new JSObject().put("fileName", "new.csv"));
+                    plugin.beginFile(current);
+                    assertNull(current.error);
+                    plugin.abortFile(new CapturedCall("abortFile", new JSObject().put("transferId", old.result.getString("transferId"))));
+                    CapturedCall append = new CapturedCall("appendFile", new JSObject().put("transferId", current.result.getString("transferId"))
+                        .put("offset", 0).put("base64", Base64.encodeToString(new byte[] {42}, Base64.NO_WRAP)));
+                    plugin.appendFile(append);
+                    assertNull(append.error);
+                    plugin.abortFile(new CapturedCall("abortFile", new JSObject().put("transferId", current.result.getString("transferId"))));
+                }
+            });
+        }
+    }
+
     @Test public void processDeathProbeLeavesOnlyEncryptedStaging() throws Exception {
         byte[] body = "private-journal-export-sentinel".getBytes(java.nio.charset.StandardCharsets.UTF_8);
         ActivityScenario<MainActivity> scenario = ActivityScenario.launch(MainActivity.class);
@@ -44,7 +72,8 @@ public class FileDeliveryTest {
             plugin.appendFile(append);
             assertNull(append.error);
         });
-        byte[] stored = java.nio.file.Files.readAllBytes(new File(app.getCacheDir(), "manual-export.pending").toPath());
+        assertEquals(1, pendingFiles().length);
+        byte[] stored = java.nio.file.Files.readAllBytes(pendingFiles()[0].toPath());
         assertFalse(new String(stored, java.nio.charset.StandardCharsets.ISO_8859_1).contains("private-journal-export-sentinel"));
         // Leave transfer live so the host can kill the process and inspect its cache.
     }
@@ -64,7 +93,8 @@ public class FileDeliveryTest {
     @Test public void savePickerDeliversVerifiedBytesAndCancellationAndTruncationNeverSucceed() throws Exception {
         CountDownLatch bootstrapped = new CountDownLatch(1);
         app.sendOrderedBroadcast(new Intent().setComponent(new android.content.ComponentName(
-            "dev.engender.app.test", BackupDocumentsProvider.Bootstrap.class.getName())), null,
+            instrumentation.getContext().getPackageName(), BackupDocumentsProvider.Bootstrap.class.getName()))
+            .putExtra("targetPackage", app.getPackageName()), null,
             new android.content.BroadcastReceiver() {
                 @Override public void onReceive(Context context, Intent intent) { bootstrapped.countDown(); }
             }, null, 0, null, null);
@@ -130,12 +160,18 @@ public class FileDeliveryTest {
                     } else {
                         assertEquals("export-delivery-failed", finish.error);
                     }
-                    assertFalse(new File(app.getCacheDir(), "manual-export.pending").exists());
+                    assertEquals(0, pendingFiles().length);
                 } finally { instrumentation.removeMonitor(monitor); }
             }
         } finally {
             app.getContentResolver().call(Uri.parse("content://" + BackupDocumentsProvider.AUTHORITY), "reset", null, null);
         }
+    }
+
+    private File[] pendingFiles() {
+        File[] files = app.getCacheDir().listFiles((directory, name) ->
+            name.equals("manual-export.pending") || name.matches("manual-export-[a-f0-9-]{36}\\.pending"));
+        return files == null ? new File[0] : files;
     }
 
     private static final class CapturedCall extends PluginCall {
