@@ -1227,6 +1227,7 @@ export function samplerExpression(act, ms, names) {
 
     const frames = [];
     const t0 = performance.now();
+    const tl0 = Number(document.timeline.currentTime);
     /* The gesture starts on the second frame, not before the first. A
        resting frame is what "it was there and then it was not" is measured
        against, and without one the sweep cannot see a cut that finishes
@@ -1341,7 +1342,12 @@ export function samplerExpression(act, ms, names) {
             const row = vtRow(side, name);
             if (row) vt[`${side}(${name})`] = row;
           }
-        frames.push({ at: Math.round(now), wallAt: performance.timeOrigin + performance.now(), active, rows, vt });
+        /* The frame's animation clock, which every animated value read above was
+           computed for. On a loaded runner a read can land well into its frame, so
+           two frames of animation can be read 17ms apart; steps are measured
+           against this rather than against the moment of reading. */
+        const ft = Math.round((Number(document.timeline.currentTime) - tl0) * 10) / 10;
+        frames.push({ at: Math.round(now), ft, wallAt: performance.timeOrigin + performance.now(), active, rows, vt });
         if (!started) {
           started = true;
           try { go(); } catch (error) {
@@ -1397,7 +1403,7 @@ export function findYanks(frames, instrument, settles = frames.length - 1, telep
   }
 
   for (const k of keys) {
-    const run = frames.map((f, i) => ({ i, at: f.at, row: f[instrument][k] ?? null }));
+    const run = frames.map((f, i) => ({ i, at: f.at, ft: f.ft, row: f[instrument][k] ?? null }));
     const present = run.filter((r) => r.row);
     if (present.length < 2) continue;
     if (instrument === 'rows' && !present.some((r) => r.row.v !== false)) continue;
@@ -1416,7 +1422,7 @@ export function findYanks(frames, instrument, settles = frames.length - 1, telep
          their measured jump happens after paint is under 10% opacity. */
       if (a.leaving && b.leaving && Math.max(a.o, b.o) < 0.1) continue;
       if (b.leaving && (!a.leaving || b.o < a.o)) continue;
-      const dt = Math.max(1, (run[i].at ?? (i * 16)) - (run[i - 1].at ?? ((i - 1) * 16)));
+      const dt = Math.max(1, (run[i].ft ?? run[i].at ?? (i * 16)) - (run[i - 1].ft ?? run[i - 1].at ?? ((i - 1) * 16)));
       const steps = Math.max(1, dt / 16);
       const d = Math.hypot(b.x - a.x, b.y - a.y);
       if (Math.abs(b.y - a.y + (b.sy ?? 0) - (a.sy ?? 0)) < teleportPx &&
@@ -1481,7 +1487,7 @@ export function findYanks(frames, instrument, settles = frames.length - 1, telep
       const a = run[i - 1].row;
       const b = run[i].row;
       if (!a || !b) continue;
-      const dt = Math.max(1, (run[i].at ?? (i * 16)) - (run[i - 1].at ?? ((i - 1) * 16)));
+      const dt = Math.max(1, (run[i].ft ?? run[i].at ?? (i * 16)) - (run[i - 1].ft ?? run[i - 1].at ?? ((i - 1) * 16)));
       const steps = Math.max(1, dt / 16);
       const dc = markColorDelta(a, b);
       colorDeltas.push({ i, dc, dcNorm: dc / steps, steps, at: run[i].at });
@@ -1534,7 +1540,7 @@ export function findYanks(frames, instrument, settles = frames.length - 1, telep
       const b = run[i].row;
       if (!a || a.o < VISIBLE) continue;
       if (instrument === 'rows' && (a.v === false || b?.v === false)) continue;
-      const dt = Math.max(1, (run[i].at ?? (i * 16)) - (run[i - 1].at ?? ((i - 1) * 16)));
+      const dt = Math.max(1, (run[i].ft ?? run[i].at ?? (i * 16)) - (run[i - 1].ft ?? run[i - 1].at ?? ((i - 1) * 16)));
       const steps = Math.max(1, dt / 16);
       const dropPerFrame = (a.o - (b ? b.o : 0)) / steps;
       /* A mark sliding through the viewport edge can lose almost all its
@@ -1602,7 +1608,7 @@ export function findYanks(frames, instrument, settles = frames.length - 1, telep
         const wasVisibleBefore = run.slice(0, i).some((r) => r.row && r.row.o >= VISIBLE);
         if (wasVisibleBefore) continue;
 
-        const dt = Math.max(1, (run[i].at ?? (i * 16)) - (run[i - 1].at ?? ((i - 1) * 16)));
+        const dt = Math.max(1, (run[i].ft ?? run[i].at ?? (i * 16)) - (run[i - 1].ft ?? run[i - 1].at ?? ((i - 1) * 16)));
         const steps = Math.max(1, dt / 16);
         const risePerFrame = (b.o - (a ? a.o : 0)) / steps;
 
